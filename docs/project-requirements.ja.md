@@ -106,6 +106,10 @@ OEPは、異なる接続interface上で、機能の意味を接続方法ごと�
 
 接続interface固有の性質や制限は、機能そのものの意味と混同されてはならない。
 
+requestに対するresponseは、hostとprobeが別のOEP通信経路を明示的に選択していない限り、そのrequestを受け取った同じlogical connection contextへ返されなければならない。同じ物理deviceに別interfaceが存在することだけを理由に、responseを別interfaceへ暗黙に送ってはならない。
+
+connection bindingは、下位通信での分割、再構成、破損検出および下位再送を扱い、OEP共通protocolへ完全なlogical messageまたは明示的な通信failureを渡さなければならない。不完全または破損したmessageを正常なOEP request、responseまたはdataとして扱ってはならない。
+
 ### 理由
 
 接続方法ごとに機能を別仕様として定義すると、同じ機能を再利用できず、interfaceごとの専用実装へ戻るため。
@@ -119,6 +123,8 @@ OEPは、異なる接続interface上で、機能の意味を接続方法ごと�
 - 同じ機能定義を、少なくとも二つの異なる接続環境で利用できる
 - 接続環境の変更だけを理由に、操作や結果の意味が変化しない
 - 接続固有の制限を、機能全体の非互換として扱わない
+- HID、UART、CDC、vendor interfaceまたはnetworkのどこからrequestを受けても、responseが同じlogical connection contextへ返る
+- 下位通信でfragment化されたmessageが一つのlogical messageとして扱われ、回復できない欠落または破損が正常なmessageとして上位へ渡らない
 
 ## OEP-REQ-005: 対応範囲の共通部分を利用できる
 
