@@ -1,6 +1,6 @@
 # Open Embedded Probe — 共通protocolの抽象的な振る舞い
 
-状態: **検討中のprotocol設計入力**。この文書は、[概念モデル](conceptual-model.ja.md)と[責任境界](responsibility-boundaries.ja.md)に基づき、OEP共通protocolが外部から観測可能にする必要のある振る舞いを整理する。
+状態: **合意済みの抽象的な振る舞い**。この文書は、[概念モデル](conceptual-model.ja.md)と[責任境界](responsibility-boundaries.ja.md)に基づき、OEP共通protocolが外部から観測可能にする必要のある振る舞いを整理する。下流設計によって矛盾が見つかった場合は、理由を記録して改訂する。
 
 この文書は、packet、message、field、encoding、転送単位、数値識別子または具体的なstate machineを規定しない。ここで示す段階を一つずつ独立した通信として実装することも要求しない。
 
