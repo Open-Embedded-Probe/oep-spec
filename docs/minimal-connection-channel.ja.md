@@ -134,6 +134,8 @@ bindingは、同じcontext内で適切な物理方向へ変換する。
 
 これらはすべての実装へ課す制限ではない。高機能なbindingは複数request、非同期送信および高throughput data flowを追加できる。
 
+同時requestを一つに制限しても、request correlationを暗黙にできるとは限らない。HID response cacheやtimeout後の遅延resultを次のrequestから区別するため、初期の最小profileでも共通logical messageの明示correlationを維持する。bindingが古いresultを次のexchangeへ持ち越さないことまで保証する将来のcompact profileは、別のprofileとして検討する。
+
 ## Bootstrap前に必要な共通上限
 
 probe固有の最大message長は、提供情報を取得した後に開示できる。しかし、その提供情報を取得する最初のrequestとresponse自体は、事前に共有された上限内でなければならない。
