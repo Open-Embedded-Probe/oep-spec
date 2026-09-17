@@ -21,6 +21,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 - [Message header構成比較](docs/message-header-layout-comparison.ja.md)
 - [Request correlationのscopeとlifecycle](docs/request-correlation-lifecycle.ja.md)
 - [明示correlationと暗黙対応の比較](docs/implicit-correlation-comparison.ja.md)
+- [Request correlation幅と再利用の比較](docs/correlation-width-comparison.ja.md)
 - [Requestの受理と完了](docs/request-completion-semantics.ja.md)
 - [Activityの参照とlifecycle](docs/activity-reference-lifecycle.ja.md)
 - [Connection binding設計入力](docs/connection-binding-design-inputs.ja.md)
