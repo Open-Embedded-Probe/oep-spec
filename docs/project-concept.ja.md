@@ -2,7 +2,7 @@
 
 [English](project-concept.md)
 
-状態: **最上流のproject定義案**。project名、相互運用を中心とする目的、およびOEP外の専用通信へ迂回しない原則は合意済みである。その他の文言と範囲は引き続き検討中であり、protocolの構造や技術的な解決方法は規定しない。
+状態: **最上流のproject定義案**。project名、相互運用を中心とする目的、OEP外の専用通信へ迂回しない原則、および非互換な派生をOEPとして識別しない原則は合意済みである。その他の文言と範囲は引き続き検討中であり、protocolの構造や技術的な解決方法は規定しない。
 
 ## 背景
 
@@ -68,6 +68,18 @@ USB、UART、network等の接続interfaceが異なる場合も、その上でOEP
 - OEP機能から独立し、OEPへの適合を主張しない別機能または別protocolの併設
 
 別protocolを併設する場合も、その通信をOEP機能の成立に必要な経路として使用してはならない。
+
+### 非互換な派生との区別
+
+OEPのsource codeまたは仕様を変更、forkまたは移植すること自体は、その実装をOEPでなくするものではない。異なるhardware、softwareまたは接続interfaceへの移植であっても、OEPの要求を満たすならOEP実装として相互運用できる。
+
+一方、OEP機能をprotocol外通信へ依存させる等、OEPの必須要求を満たさない変更は、OEPから派生した別protocolとして扱う。その実装はOEPへの適合または互換性を主張してはならず、OEP protocolと誤認されるprotocol名またはprotocol identityを使用してはならない。
+
+将来OEP projectへUSB VID:PIDその他の共通identityが割り当てられた場合、非互換な派生はそれを使用できない。独自のidentityを使用し、OEP実装と機械的に区別できなければならない。
+
+同じ物理deviceへOEPと非OEPの機能またはprotocolを併設する場合も、非OEP側をOEP機能として公開してはならず、hostがOEP endpointまたはOEP機能と誤認しないよう区別できなければならない。具体的なprotocol identity、USB PID、profileおよびcomposite deviceの規則は後で定義する。
+
+softwareや仕様文書のlicenseに基づいてforkする権利と、OEPへの適合を主張する権利、OEPの名称を互換性表示に用いる条件、およびproject identityを利用する権利は別の問題として扱う。
 
 ## 対象となる関係
 
