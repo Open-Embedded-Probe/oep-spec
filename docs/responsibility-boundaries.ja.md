@@ -144,11 +144,17 @@ connection bindingは、必要に応じて次を扱う責任を持つ。
 - OEP通信をそのinterface上で開始できる状態にする方法
 - OEPの情報をinterface上で運ぶ単位との対応
 - interfaceが持つ転送量、順序性、信頼性等の性質への対応
+- 通信単位の破損、欠落、重複および順序変更を検出または回復する範囲
+- 下位通信が提供する再送、到達確認、切断検出および正常性確認の利用
 - 接続先をOEP endpointの候補として扱うために利用できる情報
 - interface固有のidentity、profileまたは構成とOEP endpointとの関係
 - 接続の切断、転送不能または破損をOEP側へ伝えるために必要な性質
 
 具体的なframing、接続先情報の表現、および利用可能な場合の発見方法は、connection interfaceごとの設計で決める。connection bindingは自動発見を必須としない。hostは、利用者の指定、設定または別の仕組みから接続先情報を得てもよい。
+
+下位通信またはconnection bindingによる再送は、一つの論理的な通信単位を届けるための処理であり、OEPの機能操作を再実行することとは区別する。connection bindingは、自身が提供する完全性、順序性、重複抑止および切断検出の保証と、上位で扱う必要があるfailureを明確にする。
+
+OEP requestのtimeout後に同じrequestを再送することは、機能操作を重複して実行する可能性があるため、connection bindingだけでは決めない。requestの相関、重複検出、idempotency、状態再確認および機能固有の副作用を含めてOEP共通protocolまたは個別機能で扱う。
 
 ### Connection bindingが決めないこと
 
