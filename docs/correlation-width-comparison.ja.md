@@ -98,7 +98,13 @@ binding sequence、HID report ID、USB transfer番号またはTCP byte位置をc
 - 現在のbootstrap、routingおよびmatcher実験を同じ幅で比較できる
 - 値空間が不足した場合に上書きせず停止またはconnection更新できる
 
-採用前に、最大同時request数、結果不明値の保持、duplicate window、allocatorの枯渇動作、およびconnection更新との関係を実験する。8 bit compact profileや32 bit拡張を同じ初期仕様へ同時に入れることは、必要性が確認されるまで避ける。
+採用前に、最大同時request数、結果不明値の保持、duplicate windowおよびconnection更新との関係を確認する。8 bit compact profileや32 bit拡張を同じ初期仕様へ同時に入れることは、必要性が確認されるまで避ける。
+
+## Allocator実験
+
+[Message routing比較実装](../experiments/message-routing/README.ja.md)へ、固定pending slotから未使用値を探索するallocatorを追加した。4値の縮小namespaceを完全に保持した場合は使用中値を上書きせず枯渇し、1値をresolveしてretireした後だけその値を再利用した。8 bit全256値と16 bit全65,536値もallocate、resolve、retireしてwrap境界を確認した。
+
+同じgeneric 16 bit内部実装へ8 bitまたは16 bitの上限を与えたbare ELFでは、code/RAM差はなかった。これは実装が同じ型と探索処理を使うためであり、wire上の1 byte差を否定しない。generic allocatorはATmega328PでFlash 1,120 byte、CH32V003でtext 812 byteだったが、protocolはこのalgorithmを要求しない。固定一件、bitmap、mapその他の実装でも、使用中値を再利用せず枯渇を明示的に扱えばよい。
 
 ## この文書で決めないこと
 
@@ -110,5 +116,4 @@ binding sequence、HID report ID、USB transfer番号またはTCP byte位置をc
 - request deduplication keyとの共有
 - connection再開時に以前のcorrelationを引き継ぐ方法
 
-次段階では、8/16 bit allocatorに同時pending数とretention windowを与え、枯渇時に使用中値を再利用しないことを実験する。
-
+次段階では、結果不明になったrequestをいつretireできるか、およびduplicate windowをbinding保証からどう確定するかを整理する。

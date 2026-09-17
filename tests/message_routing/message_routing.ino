@@ -481,6 +481,95 @@ static void test_all_correlation_values()
     check(all_match, F("all correlation values match pending request"));
 }
 
+static void test_correlation_allocator_exhaustion()
+{
+    struct oep_pending_request slots[4];
+    struct oep_request_context context;
+    uint16_t next = 0u;
+    uint16_t allocated = 0xffffu;
+    bool sequence_ok = true;
+    oep_pending_reset(slots, 4u);
+
+    for (uint16_t expected = 0u; expected < 4u; ++expected) {
+        if (oep_pending_allocate(
+                slots, 4u, &next, 3u, 0x1001u,
+                static_cast<uint8_t>(expected), &allocated) !=
+                OEP_CORRELATION_OK ||
+            allocated != expected) {
+            sequence_ok = false;
+        }
+    }
+    allocated = 0xa55au;
+    bool exhausted = oep_pending_allocate(
+        slots, 4u, &next, 3u, 0x1001u, 0x44u, &allocated) ==
+            OEP_CORRELATION_EXHAUSTED &&
+        allocated == 0xa55au;
+    bool retire_one = oep_pending_resolve(
+        slots, 4u, 1u, OEP_REQUEST_COMPLETED, 0u, &context) ==
+            OEP_CORRELATION_OK &&
+        oep_pending_retire(slots, 4u, 1u) == OEP_CORRELATION_OK;
+    bool reused_only_retired = oep_pending_allocate(
+        slots, 4u, &next, 3u, 0x9001u, 0x55u, &allocated) ==
+            OEP_CORRELATION_OK &&
+        allocated == 1u;
+
+    check(
+        sequence_ok && exhausted && retire_one && reused_only_retired,
+        F("allocator stops at exhaustion and reuses only retired value"));
+}
+
+static void test_correlation_allocator_width_boundaries()
+{
+    struct oep_pending_request slot;
+    struct oep_request_context context;
+    uint16_t next = 0u;
+    uint16_t allocated = 0u;
+    bool eight_bit_ok = true;
+    bool sixteen_bit_ok = true;
+
+    oep_pending_reset(&slot, 1u);
+    for (uint16_t expected = 0u; expected <= 0xffu; ++expected) {
+        if (oep_pending_allocate(
+                &slot, 1u, &next, 0xffu, 0x1001u, 0x44u,
+                &allocated) != OEP_CORRELATION_OK ||
+            allocated != expected ||
+            oep_pending_resolve(
+                &slot, 1u, allocated, OEP_REQUEST_COMPLETED, 0u,
+                &context) != OEP_CORRELATION_OK ||
+            oep_pending_retire(&slot, 1u, allocated) !=
+                OEP_CORRELATION_OK) {
+            eight_bit_ok = false;
+            break;
+        }
+    }
+    if (next != 0u) {
+        eight_bit_ok = false;
+    }
+
+    oep_pending_reset(&slot, 1u);
+    next = 0u;
+    for (uint32_t expected = 0u; expected <= 0xffffu; ++expected) {
+        if (oep_pending_allocate(
+                &slot, 1u, &next, 0xffffu, 0x1001u, 0x44u,
+                &allocated) != OEP_CORRELATION_OK ||
+            allocated != static_cast<uint16_t>(expected) ||
+            oep_pending_resolve(
+                &slot, 1u, allocated, OEP_REQUEST_COMPLETED, 0u,
+                &context) != OEP_CORRELATION_OK ||
+            oep_pending_retire(&slot, 1u, allocated) !=
+                OEP_CORRELATION_OK) {
+            sixteen_bit_ok = false;
+            break;
+        }
+    }
+    if (next != 0u) {
+        sixteen_bit_ok = false;
+    }
+
+    check(eight_bit_ok, F("allocator wraps complete 8 bit namespace"));
+    check(sixteen_bit_ok, F("allocator wraps complete 16 bit namespace"));
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -495,6 +584,8 @@ void setup()
     test_all_header_roles_and_lengths();
     test_request_correlation_lifecycle();
     test_all_correlation_values();
+    test_correlation_allocator_exhaustion();
+    test_correlation_allocator_width_boundaries();
 
     Serial.print(F("TEST done "));
     Serial.print(test_passed);

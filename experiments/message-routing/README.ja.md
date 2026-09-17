@@ -97,3 +97,22 @@ host testでは次を確認した。
 一つのpending slotはATmega328Pで9 byte、CH32V003で10 byteである。RAM総差は配列外の測定用contextとalignmentも含む。slot数を増やしても同じ探索codeを使うためcode量はほぼ変わらず、RAMが主に増える。
 
 pending matcherはrequestを開始する側の状態である。hostからのrequestに応答するだけでprobeからhostへのrequestを開始しない最小probeは、このmatcherもpending slotも実装する必要がない。受信requestのcorrelationをresultへ返す処理とは別の費用である。
+
+## Correlation allocator
+
+固定slotから未使用値を探す比較用allocatorを追加した。候補値がpendingまたはresolved-retained slotに存在する間は飛ばし、namespaceまたはslotが埋まった場合は既存slotと出力値を変更せず`exhausted`または`full`を返す。
+
+host testでは、4値へ縮小したnamespaceを4 slotで埋め、5件目が使用中値を上書きしないこと、1値をresolveしてretireした後だけその値を再利用することを確認した。さらに8 bit全256値と16 bit全65,536値を、1 slotでallocate、resolve、retireしてwrap境界まで走査した。
+
+`reset`、`allocate`および`resolve`を含む1 slotのgeneric allocatorは次の結果になった。
+
+| target | 8 bit上限 | 16 bit上限 |
+|---|---:|---:|
+| ATmega328P Flash | 1,120 byte | 1,120 byte |
+| ATmega328P static RAM | 21 byte | 21 byte |
+| CH32V003 text | 812 byte | 812 byte |
+| CH32V003 static RAM | 26 byte | 26 byte |
+
+この実装は8 bit候補も内部で16 bit値として扱うため、二つの上限でsize差がない。wire fieldの差がないことは意味しない。generic探索allocatorはmatcherのopen/resolveだけを使う測定よりATmega328PでFlash 432 byte、CH32V003でtext 204 byte大きい。
+
+protocolはこの探索algorithmを要求しない。固定一件のrequesterは次候補と一つのretained値だけを使う専用実装、高機能hostは適切なmapやbitmapを選べる。必要なのは、枯渇時に使用中値を再利用しない観測可能な振る舞いである。
