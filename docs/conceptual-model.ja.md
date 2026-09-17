@@ -1,6 +1,6 @@
 # Open Embedded Probe — 概念モデル
 
-状態: **検討中の概念案**。この文書は、[プロジェクトの目的と範囲](project-concept.ja.md)、[相互運用ユースケース](use-cases.ja.md)および[Project要求](project-requirements.ja.md)で使う中心概念と、それらの関係を整理する。
+状態: **合意済みの概念モデル**。この文書は、[プロジェクトの目的と範囲](project-concept.ja.md)、[相互運用ユースケース](use-cases.ja.md)および[Project要求](project-requirements.ja.md)で使う中心概念と、それらの関係を整理する。具体的なprotocol設計によって矛盾が見つかった場合は、理由を記録して改訂する。
 
 この文書で概念を区別することは、それぞれに独立したfield、数値ID、messageまたは通信段階を設けることを意味しない。具体的なprotocol表現は後で決める。
 
