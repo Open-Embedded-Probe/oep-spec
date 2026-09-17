@@ -294,6 +294,23 @@ stop-and-waitは最小実装と相性がよいが、data flowのthroughputとlat
 
 これは候補Bのfieldを採用した決定ではない。特に4 byte identity、16 bit correlation、16 bit message上限および16 byte HID reportはすべて仮値である。
 
+## 仮parserの実測結果
+
+[Bootstrap layout比較実装](../experiments/bootstrap-layout/README.ja.md)では、候補Bをreport IDと有効長を含む16 byte report、候補Cをreport IDを含む9 byte reportとして、同じbufferをrequestからresponseへ再利用するC parserを実装した。
+
+候補Cにもexactな16 bit message上限と8 bit in-flight上限を返す二往復目の仮recordを置き、候補Bの一往復と情報量を揃えた。field割当は測定専用である。
+
+ATmega328P、avr-gcc 7.3.0、`-Os`での測定用ELFは次になった。
+
+| 仮候補 | Flash | static RAM | 共有report buffer |
+|---|---:|---:|---:|
+| B | 404 byte | 17 byte | 16 byte |
+| C | 404 byte | 10 byte | 9 byte |
+
+候補Cは共有bufferを7 byte削減したが、Flashは削減しなかった。またreport IDを含む9 byte reportをlow-speed EP0で運ぶ仮定では一reportが二data packetとなり、exact limitまで二往復を要する。
+
+この結果は候補Cの独立形式を追加する実装上の根拠を強めない。ただし一つのAVR toolchainと仮fieldによる比較であり、候補Bの採用判断にはしない。CH32V003 toolchain、実際のUSB stackとの統合、busyおよびGET_REPORT pollingの状態量は未測定である。
+
 ## 次の検証
 
 UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼性model候補](uart-reliability-model.ja.md)に整理する。UART外側frameの後続比較は[UART frame layout比較](uart-frame-layout-comparison.ja.md)に示す。候補Bについて、core messageと各bindingの責任をさらに分ける必要がある。
@@ -305,7 +322,7 @@ UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼
 5. UART detect-onlyとstop-and-waitのどちらを最小適合とするか
 6. 16 bit message上限を採用せずに、小さいbootstrapでexact constraintを表す方法
 
-その後、仮parserをCH32V003向けCとAVR向けC++で実装し、flash/RAMを実測する。
+AVR向け仮parserの単体比較は実施した。次はCH32V003 toolchainで同じC sourceを測定し、実際のUSB stackと統合した場合のflash/RAM、busyおよびGET_REPORT pollingの状態量を確認する。
 
 ## この文書で決めないこと
 
