@@ -125,6 +125,8 @@ bindingはfunction definitionや独自payloadを解釈しない。個別機能ha
 
 この結果は、function definition identityを毎requestへ載せず、提供情報から得たconnection-local offered function referenceで通常requestを配送できることを示す。6 byte header、16 bit reference、resultでtargetをechoする構成およびstatus値はまだ採用しない。
 
+同じ処理をruntime function pointer tableとcompile-time固定の`switch`で比較した。後者はATmega328PでFlash 336 byte / static RAM 10 byte、CH32V003でtext 168 byte / static RAM 10 byteだった。runtime table版との差はATmega328PでFlash 414 byte / RAM 12 byte、CH32V003でtext + rodata 292 byteだった。このため、論理routingはhandler tableの保持方式を規定せず、固定機能の最小probeにruntime tableを要求しない。
+
 ## この文書で決めないこと
 
 - role、scope kindおよびreferenceのwire field
