@@ -413,6 +413,26 @@ static void test_lifecycle_transition_matrix()
         F("lifecycle all state and operation combinations"));
 }
 
+static void test_lifecycle_reset_from_every_state()
+{
+    bool all_states_reset = true;
+
+    for (uint8_t state = OEP_HID_FEATURE_IDLE;
+         state <= OEP_HID_FEATURE_SENDING;
+         ++state) {
+        struct oep_hid_feature_lifecycle lifecycle;
+        lifecycle.state = state;
+        oep_hid_feature_lifecycle_reset(&lifecycle);
+        if (lifecycle.state != OEP_HID_FEATURE_IDLE ||
+            oep_hid_feature_begin_get(&lifecycle, 16u, 16u)) {
+            all_states_reset = false;
+        }
+    }
+    check(
+        all_states_reset,
+        F("lifecycle reset clears every state and pending response"));
+}
+
 static bool simulated_hid_set(
     struct oep_hid_feature_lifecycle *lifecycle,
     uint8_t *device_report,
@@ -567,6 +587,7 @@ void setup()
     test_candidate_c();
     test_single_buffer_lifecycle();
     test_lifecycle_transition_matrix();
+    test_lifecycle_reset_from_every_state();
     test_silent_busy_recovery_by_correlation();
     test_rv003usb_feature_selector();
     test_rv003usb_short_final_packet_characterization();

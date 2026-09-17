@@ -96,6 +96,8 @@ rv003usbのsource経路では、callbackが拒否を`endpoint->max_len = 0`で�
 
 rv003usbがHID callbackへ渡す`lValueLSBIndexMSB`も検証する。統合試作はFeature Report type 3、report ID 1、interface 0の組合せ`0x00000301`だけを受け付ける。異なるreport type、report IDまたはinterfaceのGET_REPORTは未取得responseを消費せず、SET_REPORTはOEP parserへ渡さない。
 
+HID lifecycleのreset操作は、受信中、response待機中および送信中を含む全4状態から`IDLE`へ戻し、以前のresponseをGET_REPORTできない状態にする。利用したrv003usb revisionにはUSB bus resetをuser codeへ通知するhookが見当たらないため、統合試作からこの操作を呼ぶ経路はまだない。firmware再起動時は初期化によって同じ状態になる。bus reset時の接続はUSB stack側の検出方法と合わせて実機検証する。
+
 ## UART bindingとの結合試験
 
 `tests/bootstrap_over_uart`は、候補Bの10 byte core requestをUART stop-and-waitでhostからprobeへ送り、probeがbinding非依存core handlerで14 byte responseを生成して同じconnection上で返す。

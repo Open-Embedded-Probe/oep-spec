@@ -3,6 +3,12 @@
 void oep_hid_feature_lifecycle_init(
     struct oep_hid_feature_lifecycle *lifecycle)
 {
+    oep_hid_feature_lifecycle_reset(lifecycle);
+}
+
+void oep_hid_feature_lifecycle_reset(
+    struct oep_hid_feature_lifecycle *lifecycle)
+{
     lifecycle->state = OEP_HID_FEATURE_IDLE;
 }
 
