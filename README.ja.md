@@ -21,6 +21,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 - [Activityの参照とlifecycle](docs/activity-reference-lifecycle.ja.md)
 - [Connection binding設計入力](docs/connection-binding-design-inputs.ja.md)
 - [最小connection channel候補](docs/minimal-connection-channel.ja.md)
+- [Bootstrap layout候補](docs/bootstrap-layout-candidates.ja.md)
 - [調査・移行メモ](memo.ja.md)
 
 検討中の実装repository構成:
