@@ -212,4 +212,4 @@ HIDで最小抽象channelを提供するには、少なくとも次を決める�
 - UART再送を必須にするか
 - HIDのfeature reportとinterrupt reportの選択
 
-次段階では、最小bootstrap exchangeの仮layoutを複数案作り、8 byte単位のHIDと64 byte級bufferのUARTで比較する。
+次段階の比較案は、[Bootstrap layout候補](bootstrap-layout-candidates.ja.md)に示す。
