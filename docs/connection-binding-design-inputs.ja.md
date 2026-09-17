@@ -19,7 +19,7 @@ OEPの論理message modelを先に固定すると、実際の接続環境で運�
 
 ### 制約の大きいHID
 
-CH32V003のsoftware USB実装で使用できるHIDを、最小connection bindingの基準候補とする。
+小さいreport、host pollingおよび少ないbufferで動作するHIDを、最小connection bindingの基準候補の一つとする。CH32V003のsoftware USB HID実装は具体的な検証対象になり得るが、OEPを実装できることや初期仕様で正式対応することはまだ決定しない。
 
 初期調査では少なくとも次を実装事実として確認する。
 
@@ -30,7 +30,7 @@ CH32V003のsoftware USB実装で使用できるHIDを、最小connection binding
 - reportを越える論理messageの分割可否
 - timeout、STALL、切断および再列挙をhostからどう観測できるか
 
-HIDを低速または補助的な経路として後付けせず、この制約内でendpoint確認と最小control interactionが成立することを初期設計の検証条件にする。
+HIDを低速または補助的な経路として後付けせず、この種の制約内でendpoint確認と最小control interactionが成立するかを初期設計で検証する。
 
 ### Byte stream
 
@@ -43,6 +43,8 @@ UART、OEP用USB CDCおよびTCP等は、OEPから連続したbyte列として�
 - TCPは順序付きbyte streamを提供するが、OEP message境界、接続相手のidentityおよびrequestの完了までは保証しない
 
 OEP用CDCと、target UARTを公開するexternal binding用CDCは、同じUSB classであっても役割を識別できなければならない。
+
+Arduino Uno R3級の小さい実装を検討する場合、probe applicationから見える主経路はUART byte streamになり得る。USB serial変換を別MCUまたはbridgeが担当する構成でも、OEP共通protocolから見たconnection bindingの責任を曖昧にしない。
 
 ### USB vendor interface
 
@@ -66,6 +68,62 @@ TCP等のbyte stream transportを使用する場合、stream framingの一部を
 - routing、MTUおよび中間networkによる制約
 
 TCP、UDP、WebSocketその他のどれを標準network binding候補にするかは未決である。
+
+## OEP共通protocolへ渡す抽象channel
+
+connection bindingは、下位interfaceの違いを処理し、OEP共通protocolへ共通の抽象channelを提供する。
+
+概念上、共通protocolが受け取るものを次の形で考える。
+
+```text
+connection context + 完全なOEP logical message
+または
+connection context + transport failure / connection loss
+```
+
+共通protocolは、USB packet、HID report、UART frame、TCP segment等を直接解釈しない。connection bindingは、少なくとも次を担当する。
+
+- 下位転送単位からbinding frameまたはfragmentを取り出す
+- transport上の分割を再構成する
+- 順序、重複および破損をbindingが定める保証に従って扱う
+- 下位再送を行う場合、それを一回のlogical message deliveryとして上位へ見せる
+- 回復できない欠落、破損または切断をfailureとして上位へ示す
+- 不完全または破損したmessageを正常なOEP requestとして渡さない
+
+異なるbindingは、最大長、latency、throughput、pollingおよび接続lifecycleについて異なる制約を持ち得る。したがって、共通protocolから下位差が完全に見えなくなるわけではない。ただし、その違いによってOEP messageや個別機能の意味を変えない。
+
+### Responseの返送先
+
+requestに対するresponse、拒否および即時のfailureは、そのrequestを受け取った同じlogical connection contextへ返す。
+
+ここでいう同じcontextは、同じ物理wireや同じendpoint addressだけを意味しない。
+
+- HIDでは、同じOEP用HID interfaceとその規則に従う返送経路
+- UARTでは、requestを受信した同じlogical serial connection
+- CDCでは、requestを受信した同じOEP用port
+- TCPでは、requestを受信した同じconnection
+- USB vendor interfaceでは、同じOEP logical connectionを構成するIN/OUT経路
+
+同じ物理deviceにHID、CDCおよびvendor interfaceが存在しても、HIDから受けたrequestのresponseを、hostが利用できると確認していないvendor interfaceへ暗黙に返さない。
+
+`accepted`後のactivity update、dataおよびterminal outcomeも、原則としてactivityを作成したconnection contextへ返す。別connection bindingへの移行、複数経路の併用またはfailoverを認める場合は、hostとprobeがその関係を明示的に確認できる別の仕組みとして定義する。
+
+external bindingでdataを別interfaceへ流すことは、この返送規則の例外ではない。OEP requestへのresponseは元のOEP connection contextへ返し、明示された機能dataだけをexternal pathで運ぶ。
+
+### Transport fragmentationを上位へ持ち込まない
+
+HID report長、UART frame長、USB transfer長、network MTU等による分割は、connection binding内のtransport fragmentationとして扱い、個別機能へ見せない。
+
+ただし、大量dataを一つの無制限なlogical messageへまとめることは要求しない。小さなprobeがmessage全体をbufferせずに済むよう、機能dataは複数のboundedなOEP data unitまたはdata flowとして表現できるようにする。transport fragmentと、OEP共通protocolが意味を持つdata unitを区別する。
+
+## 最小実装の検証候補
+
+初期の設計検証では、少なくとも次のような小さい実装候補を意識する。
+
+- CH32V003のsoftware USB HIDを利用する構成
+- Arduino Uno R3級のMCUからUARTまたはUSB serial bridgeを利用する構成
+
+これらの機種をOEP適合実装として必須化せず、実際に実装可能であることも現時点では保証しない。RAM、flash、転送単位、pollingおよび速度の制約から、共通protocolが不要に大きなmessage、同時処理または永続状態を要求していないかを検証するための設計対象とする。
 
 ## Connection bindingが明示する性質
 
@@ -189,4 +247,4 @@ HIDではreportまたはcontrol transfer、UARTでは実際のframe byte列、CD
 - fragmentation、再構成およびstreaming parserの具体的方式
 - 性能classまたは必須throughput
 
-次段階では、CH32V003のsoftware USB HID実装が実際に提供する転送方式、上限およびbuffer条件を確認し、それとUART framingに共通化できる最小転送modelを比較する。
+次段階では、CH32V003のsoftware USB HIDおよびArduino Uno R3級のUART構成について、実際に利用できる転送方式、上限およびbuffer条件を確認し、共通protocolへ渡す抽象channelを成立させる最小binding modelを比較する。
