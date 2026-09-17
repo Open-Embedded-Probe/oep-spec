@@ -222,3 +222,5 @@ host                         probe
 10. unknownなmessage role、機能、操作または追加情報を受信した場合の処理
 
 次段階では、候補Cを仮の比較基準として、最初の四項目であるrequestの完了意味、activityの作成、identityおよびnotificationの必須範囲を順に検討する。
+
+roleを正しいfunction、activityまたはdata flowへ対応付けるための論理情報は、[Message routing model候補](message-routing-model.ja.md)に整理する。
