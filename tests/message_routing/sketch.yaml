@@ -1,0 +1,27 @@
+profiles:
+  host:
+    fqbn: lang-ship:host:host
+    port: socket://localhost
+    platforms:
+      - platform: lang-ship:host (1.7.1)
+        platform_index_url: https://tanakamasayuki.github.io/lang-ship-arduino-core/package_lang-ship_index.json
+    libraries:
+      - dir: ../../experiments/message-routing
+
+  uno:
+    fqbn: arduino:avr:uno
+    platforms:
+      - platform: arduino:avr (1.8.8)
+        platform_index_url: https://downloads.arduino.cc/packages/package_index.json
+    libraries:
+      - dir: ../../experiments/message-routing
+
+  ch32v003:
+    fqbn: ch32-riscv-arduino:ch32riscv:CH32V003_EVT
+    platforms:
+      - platform: ch32-riscv-arduino:ch32riscv (1.4.0)
+        platform_index_url: https://raw.githubusercontent.com/ch32-riscv-ug/arduino_core_ch32_riscv_arduino/main/package_ch32-riscv-arduino.json
+    libraries:
+      - dir: ../../experiments/message-routing
+
+default_profile: host

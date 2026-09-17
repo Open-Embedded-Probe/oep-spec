@@ -25,6 +25,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 - [Bootstrap layout候補](docs/bootstrap-layout-candidates.ja.md)
 - [Bootstrap具体layout実験案](docs/bootstrap-concrete-layout-experiment.ja.md)
 - [Bootstrap layout比較実装（非規定）](experiments/bootstrap-layout/README.ja.md)
+- [Message routing比較実装（非規定）](experiments/message-routing/README.ja.md)
 - [UART bindingの信頼性model候補](docs/uart-reliability-model.ja.md)
 - [UART connection epoch同期候補](docs/uart-connection-epoch.ja.md)
 - [UART timeoutと回復model候補](docs/uart-timeout-recovery-model.ja.md)
