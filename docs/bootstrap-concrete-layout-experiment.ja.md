@@ -351,18 +351,31 @@ parser単体ではlength 0から32 byte、response size未満のcapacity 0から
 
 候補BのHID wrapperもeffective core lengthの意味判断を重複せず、固定report長とreport IDの検証後は共通core parserへ渡す。identityまで含む8または9 byteの短いcore requestはUARTと同じ`malformed` responseを返し、identityを確認できない長さまたはHID report payload capacityを超える長さには応答しない。
 
+## 実験で分離できた入力結果
+
+候補Bの仮byte列では、入力結果を次の境界で区別できた。
+
+| 入力 | bindingの扱い | coreの扱い |
+|---|---|---|
+| frame破損、不完全なtransport fragment | coreへ渡さない | 観測しない |
+| 完全なlogical messageだがOEP identityを確認できない | 正常にdeliveryし、必要なtransport ACKを返す | OEP responseを返さない |
+| OEP request role、identityおよびcorrelationを確認できるが形状が不正 | 正常なlogical messageとして扱う | correlation付き`malformed` rejection |
+| 認識済みrole内の未知operation | 正常なlogical messageとして扱う | operationとcorrelation付き`unsupported operation` rejection |
+| 既知operationだが互換revisionがない | 正常なlogical messageとして扱う | correlation付き`incompatible` response |
+| 既知operationで互換revisionがある | 正常なlogical messageとして扱う | correlation付き`compatible` response |
+
+この分類により、transport retry、OEPではないdata、解釈可能なrequestの拒否および互換性結果を同じfailureへ潰さずに済む。名称、status値、無応答にする最小条件およびresponse fieldはまだ仕様として決めない。
+
 ## 次の検証
 
 UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼性model候補](uart-reliability-model.ja.md)に整理する。UART外側frameの後続比較は[UART frame layout比較](uart-frame-layout-comparison.ja.md)に示す。候補Bについて、core messageと各bindingの責任をさらに分ける必要がある。
 
-1. `kind`が表す最小message role
-2. core operation namespaceと個別機能namespaceの分離
-3. compatible、incompatible、malformedおよびunknown operationのresponse形状
-4. HID feature reportでのbusyとhost polling
-5. UART detect-onlyとstop-and-waitのどちらを最小適合とするか
-6. 16 bit message上限を採用せずに、小さいbootstrapでexact constraintを表す方法
+1. 16 bit message上限を採用せずに、小さいbootstrapでexact constraintを表す方法
+2. UART stop-and-wait候補の実UART上でのlatency、resetおよびbuffer挙動
+3. HID feature reportの実機上での列挙、SET/GET_REPORT、拒否、retryおよびreset
+4. bootstrap roleと通常のfunction、activity、notificationおよびdata roleの対応
 
-AVRとCH32V003 ABI向け仮parserの単体比較、およびrv003usbを含むbuild比較は実施した。次は実機上で列挙、SET/GET_REPORT、busy、連続requestおよびreset時の状態を確認する。
+AVRとCH32V003 ABI向け仮parserの単体比較、およびrv003usbを含むbuild比較は実施した。実機が必要な項目と並行して、bootstrap後の通常messageへ同じroleとcorrelationの境界を拡張できるかを次に比較する。
 
 ## この文書で決めないこと
 
