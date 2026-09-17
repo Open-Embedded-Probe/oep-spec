@@ -44,6 +44,8 @@ static RAMには共有report bufferと1 byteの測定用sinkを含む。候補B�
 
 この実験では候補Cに、二往復目で16 bitのmessage上限と8 bitのin-flight上限を返す仮recordを追加した。これは比較を同じ情報量に揃えるための測定用形式であり、仕様案の追加ではない。
 
+候補Bの仮8 bit minimum/maximum revisionは全65,536組をhost上で試験し、revision 1を範囲に含む場合だけcompatibleとなること、compatible/incompatibleの双方で16 bit correlationを保存することを確認した。これは8 bit幅またはrange方式を採用する根拠ではなく、比較実装の境界試験である。
+
 CH32V003 ABI（`rv32ec` / `ilp32e`）向けのbare ELF比較は、RISC-V compilerを`PATH`へ置いて次で実行する。
 
 ```sh
