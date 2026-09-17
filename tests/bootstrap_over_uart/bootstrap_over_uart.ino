@@ -62,7 +62,8 @@ static bool deliver_message(
         uint8_t response[OEP_BOOTSTRAP_B_RESPONSE_SIZE];
 
         if (length > sizeof(response)) {
-            return false;
+            endpoint->core_rejected = true;
+            return true;
         }
         memcpy(response, message, length);
         size_t response_length = oep_bootstrap_b_handle_core_message(
@@ -229,6 +230,40 @@ static void test_unknown_operation_returns_rejected_response()
         F("unknown operation correlated rejection"));
 }
 
+static void test_malformed_lengths_are_transport_accepted()
+{
+    const uint8_t lengths[] = {0u, 9u, 15u, OEP_UART_MAX_PAYLOAD};
+
+    for (uint8_t case_index = 0;
+         case_index < sizeof(lengths);
+         ++case_index) {
+        uint8_t message[OEP_UART_MAX_PAYLOAD];
+        struct Endpoint host;
+        struct Endpoint probe;
+
+        for (uint8_t index = 0; index < sizeof(message); ++index) {
+            message[index] = static_cast<uint8_t>(index * 19u + 7u);
+        }
+        initialize_endpoint(&host, OEP_UART_ROLE_HOST, false);
+        initialize_endpoint(&probe, OEP_UART_ROLE_PROBE, true);
+        synchronize(&host, &probe);
+
+        bool sent = oep_uart_stopwait_send(
+            &host.link, message, lengths[case_index]);
+        pump(&host, &probe);
+        pump(&probe, &host);
+        if (!sent || probe.delivery_count != 1u ||
+            !probe.core_rejected || probe.response_started ||
+            host.link.waiting_for_ack || host.delivery_count != 0u ||
+            oep_uart_stopwait_timeout(&host.link) !=
+                OEP_UART_TIMEOUT_IDLE) {
+            check(false, F("malformed length transport accepted"));
+            return;
+        }
+    }
+    check(true, F("malformed length transport accepted"));
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -237,6 +272,7 @@ void setup()
     test_bootstrap_round_trip();
     test_invalid_core_is_transport_accepted();
     test_unknown_operation_returns_rejected_response();
+    test_malformed_lengths_are_transport_accepted();
 
     Serial.print(F("TEST done "));
     Serial.print(test_passed);

@@ -327,6 +327,8 @@ UART結合試験では、候補Bの同じ10 byte core requestと14 byte response
 
 identityとrequest roleが正常でoperationだけが未知の場合は、元のoperationとcorrelationを保持した固定14 byteの仮rejected responseを返す実装も追加した。identity不一致時の無応答と、認識済みcore namespace内のoperation rejectionを区別できることを確認した。status値とfield配置は測定用であり、仕様割当ではない。
 
+core parserの固定10 byte requestと異なる0、9、15および32 byteのlogical messageについても、UART bindingはtransport ACK後にcoreで拒否した。message length不一致をreceiver busy、CRC failureまたはbinding retryへ変換しないことを確認した。
+
 ## 次の検証
 
 UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼性model候補](uart-reliability-model.ja.md)に整理する。UART外側frameの後続比較は[UART frame layout比較](uart-frame-layout-comparison.ja.md)に示す。候補Bについて、core messageと各bindingの責任をさらに分ける必要がある。
