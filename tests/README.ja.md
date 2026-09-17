@@ -18,6 +18,7 @@
 - `uart_sequence_characterization` — 1 bit sequenceと順序保存前提の境界
 - `bootstrap_layout_comparison` — 仮bootstrap候補B/Cのparserとbuffer比較
 - `bootstrap_over_uart` — binding非依存bootstrap coreをUART stop-and-waitで往復
+- `message_routing` — 通常function requestをoffered function referenceで標準・独自handlerへ配送
 
 ## 実行
 

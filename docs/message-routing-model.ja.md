@@ -115,6 +115,16 @@ bindingはfunction definitionや独自payloadを解釈しない。個別機能ha
 
 通常messageでは、これにoffered function、activityまたはflowのtarget referenceが加わる。bootstrapの4 byte仮headerをすべての通常messageへそのまま採用できることは意味しない。
 
+## 通常function requestの仮layout実験
+
+[Message routing比較実装](../experiments/message-routing/README.ja.md)では、bootstrapのrole、operationおよびcorrelationへ16 bitのconnection-local offered function referenceを加えた6 byte headerを試作した。resultも同じ外形を使い、operation位置をresolutionまたはrejection、target位置を元のoffered function referenceとして返す。
+
+二つのoffered functionへ同じoperation値を送り、一方は標準機能を模したhandler、もう一方は共通dispatcherが意味を知らない非公開機能handlerへ配送した。payloadの処理結果は異なるが、dispatcherはreferenceからhandlerを選ぶ以外にpayloadを解釈しない。
+
+16 bitのoffered function reference全65,536値とcorrelation全65,536値をhost上で走査し、既知referenceだけが対応handlerへ入り、未知referenceは別instanceへ誤配送されずcorrelation付きrejectionになった。既知instance内の未知operationとpayload不正も別のrejectionにできた。
+
+この結果は、function definition identityを毎requestへ載せず、提供情報から得たconnection-local offered function referenceで通常requestを配送できることを示す。6 byte header、16 bit reference、resultでtargetをechoする構成およびstatus値はまだ採用しない。
+
 ## この文書で決めないこと
 
 - role、scope kindおよびreferenceのwire field
@@ -128,4 +138,4 @@ bindingはfunction definitionや独自payloadを解釈しない。個別機能ha
 - criticalityのencoding
 - batch messageと一つのmessage内の複数target
 
-次段階では、通常のfunction request/resultに必要な最小routing情報を仮byte layoutへ置き、bootstrap候補と同じHID/UART制約で実装量を比較する。
+次段階では、このrequest/resultだけのroutingへactivity reference、notification targetおよびdata flow referenceを加える場合に、role固有headerと統一headerのどちらが小さい実装に適するか比較する。
