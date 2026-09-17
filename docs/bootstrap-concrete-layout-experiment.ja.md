@@ -294,7 +294,7 @@ stop-and-waitは最小実装と相性がよいが、data flowのthroughputとlat
 
 ## 次の検証
 
-次は候補Bについて、core messageと各bindingの責任をさらに分ける。
+UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼性model候補](uart-reliability-model.ja.md)に整理する。次は候補Bについて、core messageと各bindingの責任をさらに分ける。
 
 1. `kind`が表す最小message role
 2. core operation namespaceと個別機能namespaceの分離
@@ -316,4 +316,3 @@ stop-and-waitは最小実装と相性がよいが、data flowのthroughputとlat
 - HID reportの長さとreport ID
 - UART COBS、CRC、sequenceおよび再送方式
 - 最小実装でのnotification、activityおよびdata flow
-
