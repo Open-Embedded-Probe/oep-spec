@@ -103,13 +103,18 @@ Role別headerを選んでも、各roleを無関係な独自形式にはしない
 
 最大集合の固定headerは、不要fieldのwire費用だけでなく、その値と検証規則も全実装へ要求する。role別headerなら、request/resultだけの最小probeにactivity、notificationおよびdata用fieldや状態を要求せず、必要な実装だけを追加できる。これは共通message modelで選んだ段階的実装の方向と一致する。
 
-ただし、これは可変長encodingや具体的field配置の採用ではない。実装比較で、role分岐によるcode sizeが固定headerの削減より大きい場合や、安全な未知role分離が難しい場合は再評価する。
+ただし、これは可変長encodingや具体的field配置の採用ではない。
+
+## Decoder実験
+
+[Message routing比較実装](../experiments/message-routing/README.ja.md)へ、上記の仮幅で6 roleすべてを正規化した同じviewへdecodeする固定header版とrole別header版を追加した。role全256値と長さ0から7 byteを走査し、既知roleが各最小長へ達した場合だけ成功すること、失敗時に出力viewを変更しないこと、および入力境界外を書き換えないことを確認した。
+
+全roleを含むbare ELFでは、role別版のcodeは固定版よりATmega328Pで90 byte、CH32V003で46 byte大きかった。一方、wire headerはmessageごとに1から3 byte短く、測定用入力bufferも1から2 byte小さい。どちらも永続的なparser stateを持たない。
+
+したがってrole別方式はcode sizeが常に小さいから選ぶのではなく、小さいtransferで不要fieldとその検証規則を常時負担しないための候補である。request/resultだけのprobeは未使用roleのdecoderを省けるため、全role parserの差をすべての最小probeへ課す必要はない。
 
 ## 次の確認
 
-- 候補Aと候補Bの最小dispatcherを同じrole集合で実装し、ATmega328PとCH32V003のcode/RAMを比較する
-- 各roleの全値と0 byteから最大仮header長までを走査し、短いmessageでfieldを先読みしないことを確認する
 - resultのtargetをrequest correlationから導出するためにhostが保持する最小状態を確認する
 - notificationとdataでtarget scopeをroleから導出できる範囲を確認する
 - 未知roleおよび未知role subtypeのcriticalityをheader自身から判断可能にする必要があるか検討する
-
