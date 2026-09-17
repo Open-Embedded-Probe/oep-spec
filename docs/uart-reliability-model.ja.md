@@ -251,21 +251,25 @@ stop-and-waitはUART bindingの候補であり、すべてのconnection binding�
 - 大量data向けのwindowまたは別profileは後から検討する
 - HID、TCP等へUART固有ACKを強制せず、抽象channelの保証だけを揃える
 
+## 比較実装による中間結果
+
+[非規定のUART binding比較実装](../experiments/uart-binding/README.ja.md)で、最大32 byte payloadのframingとstop-and-waitを試作した。
+
+host上では、frame破損、byte欠落・挿入、ACK喪失、receiver busyおよびretry上限を試験し、破損または再送されたframeをOEP coreへ重複deliveryしないことを確認した。
+
+ATmega328P向けの測定用ELFでは、detect-onlyがFlash 1,294 byte / static RAM 94 byte、stop-and-waitを含む構成がFlash 2,078 byte / static RAM 146 byteだった。差はFlash 784 byte / static RAM 52 byteである。Arduino core、UART driver、timerおよびOEP coreは含まないため、最終実装量ではなく候補間の中間比較として扱う。
+
+この結果から、初期UART control channelの第一候補はstop-and-waitのまま維持する。ただし、wire上のepoch同期と片側resetは未検証であり、採用確定には使用しない。
+
 ## 次の検証
 
-次は次の二つを比較実装する。
+比較実装の次段階として、Arduino Uno R3級の実機または実UART経路で少なくとも次を測る。
 
-1. delimiter、length、CRCだけを持つdetect-only framing
-2. 同じframingへsequence、ACKおよびstop-and-wait再送を加えた方式
-
-Arduino Uno R3級を想定し、少なくとも次を測る。
-
-- flashとRAM
-- 正常時のbootstrap latency
-- 一byte破損、欠落、挿入およびACK喪失からの回復
+- 正常時のbootstrap latencyとACK turnaround
 - probe resetとhost再同期
 - 115200 baudその他の候補速度での実効throughput
-- OEP coreへ同じrequestが重複deliveryされないこと
+- 遅延した旧frameが新しいepochへ混入しないこと
+- 双方向DATAが近接した場合の動作
 
 実測前にCRC種別、delimiter encoding、sequence幅およびretry回数をprotocol仕様として固定しない。
 
@@ -280,4 +284,3 @@ Arduino Uno R3級を想定し、少なくとも次を測る。
 - 既定baud rateとbaud変更手順
 - UART以外へのstop-and-wait適用
 - windowed data transferの方式
-
