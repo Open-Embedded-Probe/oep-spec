@@ -7,7 +7,7 @@ AVR_CFLAGS := -std=c11 -mmcu=atmega328p -Os -Wall -Wextra -Werror \
 	-ffunction-sections -fdata-sections
 AVR_LDFLAGS := -mmcu=atmega328p -Wl,--gc-sections
 
-.PHONY: avr-size clean
+.PHONY: avr-size avr-stack clean
 
 build:
 	mkdir -p build
@@ -43,6 +43,12 @@ avr-size: build/detect.elf build/derived.elf build/slip.elf build/stopwait.elf
 	$(AVR_NM) --print-size --size-sort --radix=d build/derived.elf | tail -n 12
 	$(AVR_NM) --print-size --size-sort --radix=d build/slip.elf | tail -n 12
 	$(AVR_NM) --print-size --size-sort --radix=d build/stopwait.elf | tail -n 16
+
+avr-stack: | build
+	cd build && $(AVR_CC) $(AVR_CFLAGS) -fstack-usage -I../src $(AVR_LDFLAGS) \
+		../size_stopwait.c ../src/alternatives/derived_length_frame.c \
+		../src/uart_stopwait.c -o stopwait-stack.elf
+	@sed -n '1,240p' build/*.su
 
 clean:
 	rm -rf build

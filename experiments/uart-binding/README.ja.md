@@ -119,6 +119,14 @@ make -C experiments/uart-binding avr-size
 
 補助測定には`avr-gcc`、`avr-size`および`avr-nm`が必要である。
 
+compilerが報告する関数ごとのstatic stack usageは次で確認できる。
+
+```sh
+make -C experiments/uart-binding avr-stack
+```
+
+avr-gcc 7.3.0の報告では、主要関数の局所stackはencoder 21 byte、decoder feed 16 byte、stop-and-wait feed 29 byte、ACK生成15 byteだった。callee分を加えたbinding内の最大既知経路は、`stopwait_feed -> send_ack -> encode_frame`の約65 byteである。callback、UART driver、interrupt、Arduino coreおよび呼出し規約上の追加量は含まないため、最終stack上限ではない。
+
 ## 中間結論
 
 stop-and-waitはdetect-onlyより状態とwire overheadを増やすが、破損DATAとACK喪失をbinding内で回復し、同じrequestをOEP coreへ重複deliveryしない性質を小さい実装で実現できた。epoch同期を加えてもATmega328P上のstateは93 byteであり、初期UART control channelの第一候補を維持する。
