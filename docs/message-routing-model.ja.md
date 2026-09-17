@@ -140,4 +140,4 @@ bindingはfunction definitionや独自payloadを解釈しない。個別機能ha
 - criticalityのencoding
 - batch messageと一つのmessage内の複数target
 
-次段階では、このrequest/resultだけのroutingへactivity reference、notification targetおよびdata flow referenceを加える場合に、role固有headerと統一headerのどちらが小さい実装に適するか比較する。
+[Message header構成比較](message-header-layout-comparison.ja.md)では、すべてのroleへcorrelationとreferenceの最大集合を置く固定headerと、roleごとに必要なrouting情報だけを置くheaderを比較した。現時点では、roleを共通に識別した後、role別headerを検証する方式を優先候補とする。これは具体的なwire layoutの採用ではなく、実装sizeと未知role処理を次に検証するための方向である。

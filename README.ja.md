@@ -18,6 +18,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 - [最小interaction pattern](docs/interaction-patterns.ja.md)
 - [共通message model候補](docs/message-model-candidates.ja.md)
 - [Message routing model候補](docs/message-routing-model.ja.md)
+- [Message header構成比較](docs/message-header-layout-comparison.ja.md)
 - [Requestの受理と完了](docs/request-completion-semantics.ja.md)
 - [Activityの参照とlifecycle](docs/activity-reference-lifecycle.ja.md)
 - [Connection binding設計入力](docs/connection-binding-design-inputs.ja.md)
