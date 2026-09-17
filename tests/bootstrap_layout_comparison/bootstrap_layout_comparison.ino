@@ -72,6 +72,26 @@ static void test_candidate_b()
         F("candidate B length rejection"));
 
     prepare_b(report, 1u, 1u);
+    report[1] = 8u;
+    check(
+        oep_bootstrap_b_handle_report(report, sizeof(report)) ==
+            sizeof(report) &&
+            report[1] == OEP_BOOTSTRAP_B_RESPONSE_SIZE &&
+            report[4] == 0x34u && report[5] == 0x12u &&
+            report[10] == OEP_BOOTSTRAP_B_STATUS_MALFORMED,
+        F("candidate B identified short core rejection"));
+    prepare_b(report, 1u, 1u);
+    report[1] = 7u;
+    check(
+        oep_bootstrap_b_handle_report(report, sizeof(report)) == 0,
+        F("candidate B unidentified short core ignored"));
+    prepare_b(report, 1u, 1u);
+    report[1] = 15u;
+    check(
+        oep_bootstrap_b_handle_report(report, sizeof(report)) == 0,
+        F("candidate B oversized effective length rejected"));
+
+    prepare_b(report, 1u, 1u);
     report[12] = 0xa5u;
     report[13] = 0x5au;
     report[14] = 0xffu;
@@ -179,6 +199,70 @@ static void test_candidate_b_role_and_operation_namespaces()
     check(
         all_operations_match,
         F("candidate B all operation values scoped by role"));
+}
+
+static void test_candidate_b_length_capacity_boundaries()
+{
+    bool all_lengths_match = true;
+    bool all_capacities_match = true;
+
+    for (uint8_t length = 0u; length <= 32u; ++length) {
+        uint8_t guarded[34];
+        uint8_t *message = guarded + 1;
+        memset(guarded, 0, sizeof(guarded));
+        guarded[0] = 0xa5u;
+        guarded[33] = 0x5au;
+        message[0] = 0x01u;
+        message[1] = 0x01u;
+        message[2] = 0x34u;
+        message[3] = 0x12u;
+        message[4] = 0x4fu;
+        message[5] = 0x45u;
+        message[6] = 0x50u;
+        message[7] = 0x3fu;
+        message[8] = 0x01u;
+        message[9] = 0x01u;
+
+        size_t result = oep_bootstrap_b_handle_core_message(
+            message,
+            length,
+            32u);
+        bool identified = length >= 8u;
+        if (result != (identified ? OEP_BOOTSTRAP_B_RESPONSE_SIZE : 0u) ||
+            guarded[0] != 0xa5u || guarded[33] != 0x5au ||
+            (identified && length != OEP_BOOTSTRAP_B_REQUEST_SIZE &&
+             message[8] != OEP_BOOTSTRAP_B_STATUS_MALFORMED)) {
+            all_lengths_match = false;
+        }
+    }
+
+    for (uint8_t capacity = 0u;
+         capacity < OEP_BOOTSTRAP_B_RESPONSE_SIZE;
+         ++capacity) {
+        uint8_t guarded[16] = {
+            0xa5u,
+            0x01u, 0x01u, 0x34u, 0x12u,
+            0x4fu, 0x45u, 0x50u, 0x3fu,
+            0x01u, 0x01u,
+        };
+        guarded[15] = 0x5au;
+        size_t message_length = capacity < OEP_BOOTSTRAP_B_REQUEST_SIZE ?
+            capacity : OEP_BOOTSTRAP_B_REQUEST_SIZE;
+        size_t result = oep_bootstrap_b_handle_core_message(
+            guarded + 1,
+            message_length,
+            capacity);
+
+        if (result != 0u || guarded[0] != 0xa5u || guarded[15] != 0x5au) {
+            all_capacities_match = false;
+        }
+    }
+
+    check(all_lengths_match, F("candidate B length boundaries guarded"));
+    check(
+        all_capacities_match &&
+            oep_bootstrap_b_handle_core_message(NULL, 0u, 0u) == 0u,
+        F("candidate B response capacities guarded"));
 }
 
 static void test_candidate_b_all_revision_ranges()
@@ -627,6 +711,7 @@ void setup()
     test_candidate_b_core_without_hid_wrapper();
     test_candidate_b_unknown_operation_response();
     test_candidate_b_role_and_operation_namespaces();
+    test_candidate_b_length_capacity_boundaries();
     test_candidate_b_all_revision_ranges();
     test_candidate_c();
     test_single_buffer_lifecycle();

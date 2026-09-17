@@ -7,8 +7,7 @@ size_t oep_bootstrap_b_handle_report(uint8_t *report, size_t report_length)
     size_t response_length;
 
     if (report == NULL || report_length != OEP_BOOTSTRAP_B_REPORT_SIZE ||
-        report[0] != OEP_BOOTSTRAP_B_REPORT_ID ||
-        report[1] != OEP_BOOTSTRAP_B_REQUEST_SIZE) {
+        report[0] != OEP_BOOTSTRAP_B_REPORT_ID) {
         return 0;
     }
 #if defined(OEP_BOOTSTRAP_B_STRICT_PADDING)

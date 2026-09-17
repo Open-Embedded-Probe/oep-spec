@@ -59,12 +59,8 @@ static bool deliver_message(
     ++endpoint->delivery_count;
 
     if (endpoint->handle_bootstrap) {
-        uint8_t response[OEP_BOOTSTRAP_B_RESPONSE_SIZE];
+        uint8_t response[OEP_UART_MAX_PAYLOAD];
 
-        if (length > sizeof(response)) {
-            endpoint->core_rejected = true;
-            return true;
-        }
         memcpy(response, message, length);
         size_t response_length = oep_bootstrap_b_handle_core_message(
             response, length, sizeof(response));
@@ -232,24 +228,21 @@ static void test_unknown_operation_returns_rejected_response()
 
 static void test_malformed_lengths_are_transport_accepted()
 {
-    const uint8_t lengths[] = {0u, 9u, 15u, OEP_UART_MAX_PAYLOAD};
+    const uint8_t unidentified[] = {0u, 7u};
 
     for (uint8_t case_index = 0;
-         case_index < sizeof(lengths);
+         case_index < sizeof(unidentified);
          ++case_index) {
-        uint8_t message[OEP_UART_MAX_PAYLOAD];
+        uint8_t message[OEP_UART_MAX_PAYLOAD] = {0};
         struct Endpoint host;
         struct Endpoint probe;
 
-        for (uint8_t index = 0; index < sizeof(message); ++index) {
-            message[index] = static_cast<uint8_t>(index * 19u + 7u);
-        }
         initialize_endpoint(&host, OEP_UART_ROLE_HOST, false);
         initialize_endpoint(&probe, OEP_UART_ROLE_PROBE, true);
         synchronize(&host, &probe);
 
         bool sent = oep_uart_stopwait_send(
-            &host.link, message, lengths[case_index]);
+            &host.link, message, unidentified[case_index]);
         pump(&host, &probe);
         pump(&probe, &host);
         if (!sent || probe.delivery_count != 1u ||
@@ -257,11 +250,48 @@ static void test_malformed_lengths_are_transport_accepted()
             host.link.waiting_for_ack || host.delivery_count != 0u ||
             oep_uart_stopwait_timeout(&host.link) !=
                 OEP_UART_TIMEOUT_IDLE) {
-            check(false, F("malformed length transport accepted"));
+            check(false, F("unidentified short message transport accepted"));
             return;
         }
     }
-    check(true, F("malformed length transport accepted"));
+    check(true, F("unidentified short message transport accepted"));
+
+    const uint8_t recognized[] = {
+        8u, 9u, 15u, OEP_UART_MAX_PAYLOAD,
+    };
+
+    for (uint8_t case_index = 0;
+         case_index < sizeof(recognized);
+         ++case_index) {
+        uint8_t message[OEP_UART_MAX_PAYLOAD] = {
+            0x01u, 0x01u, 0x34u, 0x12u,
+            0x4fu, 0x45u, 0x50u, 0x3fu,
+        };
+        struct Endpoint host;
+        struct Endpoint probe;
+
+        initialize_endpoint(&host, OEP_UART_ROLE_HOST, false);
+        initialize_endpoint(&probe, OEP_UART_ROLE_PROBE, true);
+        synchronize(&host, &probe);
+
+        bool sent = oep_uart_stopwait_send(
+            &host.link, message, recognized[case_index]);
+        pump(&host, &probe);
+        pump(&probe, &host);
+        pump(&host, &probe);
+        if (!sent || probe.delivery_count != 1u ||
+            probe.core_rejected || !probe.response_started ||
+            host.delivery_count != 1u ||
+            host.delivered_length != OEP_BOOTSTRAP_B_RESPONSE_SIZE ||
+            host.delivered[1] != 0x01u ||
+            host.delivered[2] != 0x34u || host.delivered[3] != 0x12u ||
+            host.delivered[8] != OEP_BOOTSTRAP_B_STATUS_MALFORMED ||
+            host.link.waiting_for_ack || probe.link.waiting_for_ack) {
+            check(false, F("recognized malformed length rejected"));
+            return;
+        }
+    }
+    check(true, F("recognized malformed length rejected"));
 }
 
 void setup()
