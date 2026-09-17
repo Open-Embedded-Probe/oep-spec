@@ -225,9 +225,9 @@ static void test_single_buffer_lifecycle()
             lifecycle.state == OEP_HID_FEATURE_RECEIVING,
         F("lifecycle SET starts receive"));
     check(
-        !oep_hid_feature_begin_set(&lifecycle, 16u, 16u) &&
+        oep_hid_feature_begin_set(&lifecycle, 16u, 16u) &&
             lifecycle.state == OEP_HID_FEATURE_RECEIVING,
-        F("lifecycle nested SET rejected"));
+        F("lifecycle new SET replaces interrupted receive"));
     check(
         oep_hid_feature_finish_set(&lifecycle, true) &&
             lifecycle.state == OEP_HID_FEATURE_RESPONSE_READY,
@@ -256,6 +256,103 @@ static void test_single_buffer_lifecycle()
         !oep_hid_feature_begin_set(&lifecycle, 9u, 16u) &&
             lifecycle.state == OEP_HID_FEATURE_IDLE,
         F("lifecycle wrong SET length rejected"));
+}
+
+enum lifecycle_operation {
+    LIFECYCLE_BEGIN_SET_VALID,
+    LIFECYCLE_BEGIN_SET_WRONG_LENGTH,
+    LIFECYCLE_FINISH_SET_VALID,
+    LIFECYCLE_FINISH_SET_INVALID,
+    LIFECYCLE_BEGIN_GET_VALID,
+    LIFECYCLE_BEGIN_GET_WRONG_LENGTH,
+};
+
+struct lifecycle_expectation {
+    bool result;
+    uint8_t state;
+};
+
+static bool apply_lifecycle_operation(
+    struct oep_hid_feature_lifecycle *lifecycle,
+    uint8_t operation)
+{
+    switch (operation) {
+    case LIFECYCLE_BEGIN_SET_VALID:
+        return oep_hid_feature_begin_set(lifecycle, 16u, 16u);
+    case LIFECYCLE_BEGIN_SET_WRONG_LENGTH:
+        return oep_hid_feature_begin_set(lifecycle, 15u, 16u);
+    case LIFECYCLE_FINISH_SET_VALID:
+        return oep_hid_feature_finish_set(lifecycle, true);
+    case LIFECYCLE_FINISH_SET_INVALID:
+        return oep_hid_feature_finish_set(lifecycle, false);
+    case LIFECYCLE_BEGIN_GET_VALID:
+        return oep_hid_feature_begin_get(lifecycle, 16u, 16u);
+    case LIFECYCLE_BEGIN_GET_WRONG_LENGTH:
+        return oep_hid_feature_begin_get(lifecycle, 15u, 16u);
+    }
+    return false;
+}
+
+static void test_lifecycle_transition_matrix()
+{
+    static const struct lifecycle_expectation expected[4][6] = {
+        {
+            {true, OEP_HID_FEATURE_RECEIVING},
+            {false, OEP_HID_FEATURE_IDLE},
+            {false, OEP_HID_FEATURE_IDLE},
+            {false, OEP_HID_FEATURE_IDLE},
+            {false, OEP_HID_FEATURE_IDLE},
+            {false, OEP_HID_FEATURE_IDLE},
+        },
+        {
+            {true, OEP_HID_FEATURE_RECEIVING},
+            {false, OEP_HID_FEATURE_IDLE},
+            {true, OEP_HID_FEATURE_RESPONSE_READY},
+            {false, OEP_HID_FEATURE_IDLE},
+            {false, OEP_HID_FEATURE_IDLE},
+            {false, OEP_HID_FEATURE_IDLE},
+        },
+        {
+            {false, OEP_HID_FEATURE_RESPONSE_READY},
+            {false, OEP_HID_FEATURE_RESPONSE_READY},
+            {false, OEP_HID_FEATURE_RESPONSE_READY},
+            {false, OEP_HID_FEATURE_RESPONSE_READY},
+            {true, OEP_HID_FEATURE_SENDING},
+            {false, OEP_HID_FEATURE_RESPONSE_READY},
+        },
+        {
+            {true, OEP_HID_FEATURE_RECEIVING},
+            {false, OEP_HID_FEATURE_IDLE},
+            {false, OEP_HID_FEATURE_SENDING},
+            {false, OEP_HID_FEATURE_SENDING},
+            {false, OEP_HID_FEATURE_IDLE},
+            {false, OEP_HID_FEATURE_IDLE},
+        },
+    };
+    bool all_transitions_match = true;
+
+    for (uint8_t state = OEP_HID_FEATURE_IDLE;
+         state <= OEP_HID_FEATURE_SENDING;
+         ++state) {
+        for (uint8_t operation = LIFECYCLE_BEGIN_SET_VALID;
+             operation <= LIFECYCLE_BEGIN_GET_WRONG_LENGTH;
+             ++operation) {
+            struct oep_hid_feature_lifecycle lifecycle;
+            lifecycle.state = state;
+            bool result = apply_lifecycle_operation(
+                &lifecycle,
+                operation);
+            const struct lifecycle_expectation *want =
+                &expected[state][operation];
+
+            if (result != want->result || lifecycle.state != want->state) {
+                all_transitions_match = false;
+            }
+        }
+    }
+    check(
+        all_transitions_match,
+        F("lifecycle all state and operation combinations"));
 }
 
 static uint8_t rv003usb_forwarded_out_bytes(uint8_t report_length)
@@ -312,6 +409,7 @@ void setup()
     test_candidate_b_all_revision_ranges();
     test_candidate_c();
     test_single_buffer_lifecycle();
+    test_lifecycle_transition_matrix();
     test_rv003usb_short_final_packet_characterization();
 
     Serial.print(F("TEST done "));
