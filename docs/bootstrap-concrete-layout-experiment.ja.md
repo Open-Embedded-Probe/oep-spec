@@ -306,14 +306,14 @@ ATmega328P、avr-gcc 7.3.0、`-Os`での測定用ELFは次になった。
 
 | 仮候補 | Flash | static RAM | 共有report buffer |
 |---|---:|---:|---:|
-| B | 480 byte | 17 byte | 16 byte |
+| B | 502 byte | 17 byte | 16 byte |
 | C | 404 byte | 10 byte | 9 byte |
 
-候補Bをbinding非依存core handlerとHID wrapperへ分離したため、HID測定ELFでは候補CがFlash 76 byte、共有bufferを7 byte削減した。一方、AVR上の候補B core handler単体は156 byte、候補C専用handlerは152 byteでほぼ同じであり、UART等では候補Bの共通形式に追加wrapperを必要としない。候補Bはunknown operation rejectionも含む。またreport IDを含む9 byte reportをlow-speed EP0で運ぶ仮定では一reportが二data packetとなり、exact limitまで二往復を要する。
+候補Bをbinding非依存core handlerとHID wrapperへ分離したため、HID測定ELFでは候補CがFlash 98 byte、共有bufferを7 byte削減した。AVR上の候補B core handler単体は184 byte、候補C専用handlerは152 byteである。候補Bはunknown operationと、identityを確認できるmalformed lengthのrejectionを含み、UART等でも同じcore handlerを共有できる。またreport IDを含む9 byte reportをlow-speed EP0で運ぶ仮定では一reportが二data packetとなり、exact limitまで二往復を要する。
 
 この結果は候補Cの独立形式を追加する実装上の根拠を強めない。ただし一つのAVR toolchainと仮fieldによる比較であり、候補Bの採用判断にはしない。CH32V003 toolchain、実際のUSB stackとの統合、busyおよびGET_REPORT pollingの状態量は未測定である。
 
-同じC sourceをCH32V003 ABI（`rv32ec` / `ilp32e`）、xPack RISC-V GCC 14.3.0、`-Os`でも測定した。startupを含まないbare ELFでは、候補Bがtext 566 byte / RAM section 17 byte、候補Cがtext 548 byte / RAM section 13 byteだった。候補Bのcore handler単体は246 byte、HID wrapperは68 byte、候補C専用handlerは252 byteである。
+同じC sourceをCH32V003 ABI（`rv32ec` / `ilp32e`）、xPack RISC-V GCC 14.3.0、`-Os`でも測定した。startupを含まないbare ELFでは、候補Bがtext 604 byte / RAM section 17 byte、候補Cがtext 548 byte / RAM section 13 byteだった。候補Bのcore handler単体は290 byte、HID wrapperは62 byte、候補C専用handlerは252 byteである。
 
 また同じparser test sketchがCH32V003 Arduino core 1.4.0でcompileできることを確認対象に加えた。これはrv003usbとの統合動作を確認するものではない。
 
@@ -323,7 +323,7 @@ rv003usb `5cddcd5e1d46`では、EP0 OUTの最後のdata packetが1から3 byte�
 
 report全長1から64 byteのcharacterizationでは、8で割った余りが1から3の長さで同じ欠落が生じ、余り0または4から7では全byteがcallbackへ渡ることを確認した。これはHID bindingへ要求する性質ではなく、利用したrv003usb revision固有の実装制約である。callback条件を`length > 0`へ変える局所的な実験パッチでは、候補Cをpaddingなしの9 byteとしてbuildできた。
 
-xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,496 byte / RAM 112 byte、候補C成立版はFlash 2,464 byte / RAM 108 byte、短packet実験パッチを使うpaddingなし候補CはFlash 2,444 byte / RAM 108 byteだった。通常の成立版で候補Cの削減はFlash 32 byte / RAM 4 byte、実験パッチ込みでもFlash 52 byte / RAM 4 byteに留まり、exact limitまで二往復を要する。候補Bはunknown operation rejectionも含む。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。候補Bのcore parserはHID wrapperから独立しており、UART等でも共有できることをhost testで確認した。ただし短packet実験パッチを含め、実機での列挙、SET/GET_REPORT、拒否時のcontrol transferおよびresetはまだ検証していない。
+xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,528 byte / RAM 112 byte、候補C成立版はFlash 2,464 byte / RAM 108 byte、短packet実験パッチを使うpaddingなし候補CはFlash 2,444 byte / RAM 108 byteだった。通常の成立版で候補Cの削減はFlash 64 byte / RAM 4 byte、実験パッチ込みでもFlash 84 byte / RAM 4 byteに留まり、exact limitまで二往復を要する。候補Bはunknown operationと、identityを確認できる長さ不正のrejectionも含む。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。候補Bのcore parserはHID wrapperから独立しており、UART等でも共有できることをhost testで確認した。ただし短packet実験パッチを含め、実機での列挙、SET/GET_REPORT、拒否時のcontrol transferおよびresetはまだ検証していない。
 
 単一bufferのHID lifecycleは4状態と6操作の全24組合せを走査した。新しいSET_REPORTまたはGET_REPORT setupは、受信途中または送信途中のcontrol transferを終了させてから評価する。これにより中断されたSET_REPORTの後も`RECEIVING`へ固定されない。未取得responseがある`RESPONSE_READY`だけは、不正長GETや新しいSETから保護する。
 
@@ -345,7 +345,11 @@ identityとrequest roleが正常でoperationだけが未知の場合は、元の
 
 さらに仮`kind`の全256値と、認識済みrequest role内の仮`operation`全256値を走査した。未知roleではbodyを変更せず、既知role内の未知operationではoperationとcorrelationを保持したrejected responseを生成した。これにより、固定headerへ独立したnamespace fieldを追加しなくても、roleを先に確定してからrole固有のoperation namespaceを解釈できる。ただし、この構造、未知roleの扱いおよび数値割当はまだ採用しない。
 
-core parserの固定10 byte requestと異なる0、9、15および32 byteのlogical messageについても、UART bindingはtransport ACK後にcoreで拒否した。message length不一致をreceiver busy、CRC failureまたはbinding retryへ変換しないことを確認した。
+core parserの固定10 byte requestと異なる0、7、8、9、15および32 byteのlogical messageについても、UART bindingはtransport ACK後にcoreで扱った。8 byte未満はOEP identity全体を確認できないため無応答とし、8 byte以上でrequest role、correlationおよびidentityを確認できる場合は、元のoperationとcorrelationを含む仮`malformed` responseを返した。message length不一致をreceiver busy、CRC failureまたはbinding retryへ変換しないことを確認した。responseを生成するにはbinding側bufferに14 byteのresponse capacityが必要であり、identityを確認できないdataへOEPを名乗って応答しない。
+
+parser単体ではlength 0から32 byte、response size未満のcapacity 0から13 byteをguard byte付きで走査した。短い入力でidentityを読み越さず、capacity不足時にresponseを書かず、成功時も指定buffer外を変更しないことを確認した。
+
+候補BのHID wrapperもeffective core lengthの意味判断を重複せず、固定report長とreport IDの検証後は共通core parserへ渡す。identityまで含む8または9 byteの短いcore requestはUARTと同じ`malformed` responseを返し、identityを確認できない長さまたはHID report payload capacityを超える長さには応答しない。
 
 ## 次の検証
 
