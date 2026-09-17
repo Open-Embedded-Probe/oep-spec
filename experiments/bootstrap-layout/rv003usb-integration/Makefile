@@ -15,6 +15,7 @@ ADDITIONAL_C_FILES += ../src/hid_feature_lifecycle.c
 
 ifeq ($(LAYOUT_DEFINE),-DOEP_BOOTSTRAP_LAYOUT_B)
 ADDITIONAL_C_FILES += ../src/bootstrap_candidate_b.c
+ADDITIONAL_C_FILES += ../src/bootstrap_candidate_b_core.c
 else ifeq ($(LAYOUT_DEFINE),-DOEP_BOOTSTRAP_LAYOUT_C)
 ADDITIONAL_C_FILES += ../src/bootstrap_candidate_c.c
 endif
