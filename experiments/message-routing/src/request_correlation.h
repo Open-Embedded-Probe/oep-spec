@@ -18,6 +18,7 @@ enum oep_correlation_result {
     OEP_CORRELATION_BUSY = 4,
     OEP_CORRELATION_FULL = 5,
     OEP_CORRELATION_INVALID = 6,
+    OEP_CORRELATION_EXHAUSTED = 7,
 };
 
 enum oep_pending_state {
@@ -56,6 +57,15 @@ enum oep_correlation_result oep_pending_open(
     uint16_t correlation,
     uint16_t target_reference,
     uint8_t operation);
+
+enum oep_correlation_result oep_pending_allocate(
+    struct oep_pending_request *slots,
+    size_t slot_count,
+    uint16_t *next_candidate,
+    uint16_t maximum_value,
+    uint16_t target_reference,
+    uint8_t operation,
+    uint16_t *allocated_correlation);
 
 enum oep_correlation_result oep_pending_resolve(
     struct oep_pending_request *slots,

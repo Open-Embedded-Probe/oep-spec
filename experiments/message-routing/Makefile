@@ -81,11 +81,41 @@ build/ch32-correlation-4.elf: size_request_correlation.c \
 		-Wl,--gc-sections,-e,main size_request_correlation.c \
 		src/request_correlation.c -lc -lgcc -o $@
 
+build/avr-allocator-8.elf: size_correlation_allocator.c \
+		src/request_correlation.c src/request_correlation.h | build
+	$(AVR_CC) $(COMMON_CFLAGS) -mmcu=atmega328p \
+		-DOEP_SIZE_CORRELATION_MAXIMUM=0xff \
+		-Wl,--gc-sections size_correlation_allocator.c \
+		src/request_correlation.c -o $@
+
+build/avr-allocator-16.elf: size_correlation_allocator.c \
+		src/request_correlation.c src/request_correlation.h | build
+	$(AVR_CC) $(COMMON_CFLAGS) -mmcu=atmega328p \
+		-DOEP_SIZE_CORRELATION_MAXIMUM=0xffff \
+		-Wl,--gc-sections size_correlation_allocator.c \
+		src/request_correlation.c -o $@
+
+build/ch32-allocator-8.elf: size_correlation_allocator.c \
+		src/request_correlation.c src/request_correlation.h | build
+	$(CH32_CC) $(COMMON_CFLAGS) -march=rv32ec -mabi=ilp32e \
+		-DOEP_SIZE_CORRELATION_MAXIMUM=0xff -nostartfiles \
+		-Wl,--gc-sections,-e,main size_correlation_allocator.c \
+		src/request_correlation.c -lc -lgcc -o $@
+
+build/ch32-allocator-16.elf: size_correlation_allocator.c \
+		src/request_correlation.c src/request_correlation.h | build
+	$(CH32_CC) $(COMMON_CFLAGS) -march=rv32ec -mabi=ilp32e \
+		-DOEP_SIZE_CORRELATION_MAXIMUM=0xffff -nostartfiles \
+		-Wl,--gc-sections,-e,main size_correlation_allocator.c \
+		src/request_correlation.c -lc -lgcc -o $@
+
 sizes: build/avr.elf build/ch32.elf build/avr-fixed.elf build/ch32-fixed.elf \
 		build/avr-header-uniform.elf build/ch32-header-uniform.elf \
 		build/avr-header-role.elf build/ch32-header-role.elf \
 		build/avr-correlation-1.elf build/avr-correlation-4.elf \
-		build/ch32-correlation-1.elf build/ch32-correlation-4.elf
+		build/ch32-correlation-1.elf build/ch32-correlation-4.elf \
+		build/avr-allocator-8.elf build/avr-allocator-16.elf \
+		build/ch32-allocator-8.elf build/ch32-allocator-16.elf
 	$(AVR_SIZE) -C --mcu=atmega328p build/avr.elf
 	$(CH32_SIZE) -A build/ch32.elf
 	$(AVR_SIZE) -C --mcu=atmega328p build/avr-fixed.elf
@@ -98,6 +128,10 @@ sizes: build/avr.elf build/ch32.elf build/avr-fixed.elf build/ch32-fixed.elf \
 	$(AVR_SIZE) -C --mcu=atmega328p build/avr-correlation-4.elf
 	$(CH32_SIZE) -A build/ch32-correlation-1.elf
 	$(CH32_SIZE) -A build/ch32-correlation-4.elf
+	$(AVR_SIZE) -C --mcu=atmega328p build/avr-allocator-8.elf
+	$(AVR_SIZE) -C --mcu=atmega328p build/avr-allocator-16.elf
+	$(CH32_SIZE) -A build/ch32-allocator-8.elf
+	$(CH32_SIZE) -A build/ch32-allocator-16.elf
 
 clean:
 	rm -rf build
