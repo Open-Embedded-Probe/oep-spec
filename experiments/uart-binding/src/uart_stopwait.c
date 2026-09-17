@@ -2,7 +2,7 @@
 
 static void reset_transport_state(struct oep_uart_stopwait *link)
 {
-    oep_uart_decoder_init(&link->decoder);
+    oep_uart_derived_decoder_init(&link->decoder);
     link->transmit_length = 0;
     link->transmit_sequence = 0;
     link->expected_receive_sequence = 0;
@@ -46,8 +46,8 @@ static void activate_epoch(
 
 static void send_ack(struct oep_uart_stopwait *link, uint8_t sequence)
 {
-    uint8_t ack[OEP_UART_ACK_WIRE_SIZE];
-    size_t ack_length = oep_uart_encode_frame(
+    uint8_t ack[OEP_UART_STOPWAIT_ACK_WIRE_SIZE];
+    size_t ack_length = oep_uart_derived_encode_frame(
         OEP_UART_FRAME_ACK,
         sequence,
         NULL,
@@ -64,8 +64,9 @@ static void send_sync_ack(
     struct oep_uart_stopwait *link,
     const uint8_t token[OEP_UART_EPOCH_TOKEN_SIZE])
 {
-    uint8_t response[OEP_UART_EPOCH_TOKEN_SIZE + OEP_UART_RAW_OVERHEAD + 2u];
-    size_t response_length = oep_uart_encode_frame(
+    uint8_t response[
+        OEP_UART_EPOCH_TOKEN_SIZE + OEP_UART_DERIVED_RAW_OVERHEAD + 2u];
+    size_t response_length = oep_uart_derived_encode_frame(
         OEP_UART_FRAME_SYNC_ACK,
         0,
         token,
@@ -111,7 +112,7 @@ bool oep_uart_stopwait_start_sync(
 
     reset_transport_state(link);
     copy_token(link->epoch_token, token);
-    wire_length = oep_uart_encode_frame(
+    wire_length = oep_uart_derived_encode_frame(
         OEP_UART_FRAME_SYNC,
         0,
         token,
@@ -147,7 +148,7 @@ bool oep_uart_stopwait_send(
         link->waiting_for_ack || link->wire_send == NULL) {
         return false;
     }
-    wire_length = oep_uart_encode_frame(
+    wire_length = oep_uart_derived_encode_frame(
         OEP_UART_FRAME_DATA,
         link->transmit_sequence,
         message,
@@ -173,7 +174,7 @@ void oep_uart_stopwait_feed(
     uint8_t byte)
 {
     struct oep_uart_frame_view frame;
-    enum oep_uart_decode_result result = oep_uart_decoder_feed(
+    enum oep_uart_decode_result result = oep_uart_derived_decoder_feed(
         &link->decoder,
         byte,
         &frame);
@@ -250,7 +251,7 @@ void oep_uart_stopwait_feed(
 
 bool oep_uart_stopwait_abort_partial_frame(struct oep_uart_stopwait *link)
 {
-    return oep_uart_decoder_abort_partial_frame(&link->decoder);
+    return oep_uart_derived_decoder_abort_partial_frame(&link->decoder);
 }
 
 enum oep_uart_timeout_result oep_uart_stopwait_timeout(

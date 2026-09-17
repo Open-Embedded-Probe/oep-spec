@@ -108,7 +108,7 @@ RTS/CTSを利用できる実装は使用してよいが、最小profileの必須
 
 receiver busy時にACKを保留する候補は、短時間のbackpressureとして機能する。しかしbusyがretry windowを超える場合はtransport failureになる。長い機能処理を理由にbinding receiveを停止せず、requestをqueueへ受理した後はtransport ACKとOEP responseを分離する。
 
-現在の実験上限では、最大32 byte DATAのwire長は39 byte、ACKは7 byteである。同じlocal TXへ最大DATAとACKが続く基本burstは46 byteで、Arduino Uno R3 coreの既定64 byte TX bufferより小さい。ただしbufferが空であること、実際のring buffer有効容量、割込み進行および別用途との共有を含まないため、64 byteあれば常に安全という仕様根拠にはしない。
+現在のdelimiter-derived length実験では、最大32 byte DATAのwire長は37 byte、ACKは5 byteである。同じlocal TXへ最大DATAとACKが続く基本burstは42 byteで、Arduino Uno R3 coreの既定64 byte TX bufferより小さい。ただしbufferが空であること、実際のring buffer有効容量、割込み進行および別用途との共有を含まないため、64 byteあれば常に安全という仕様根拠にはしない。
 
 ## Half-duplexとの切り分け
 
@@ -157,9 +157,9 @@ host-arduino-core上の比較実装で次を確認した。
 - partial frame timeout後の残りbyteをdeliveryせず、retryで回復する
 - 順序を人工的に崩した古いframeに対する1 bit sequenceの限界
 
-テスト用queueは最大frame四つ分としており、これはbinding仕様の要求量ではない。同時最大DATAの試験で観測したlocal queue high-water markは46 byte以下だった。必要なqueue量と送信方法は実装方式ごとに決める。
+テスト用queueは最大frame四つ分としており、これはbinding仕様の要求量ではない。同時最大DATAの試験で観測したlocal queue high-water markは42 byte以下だった。必要なqueue量と送信方法は実装方式ごとに決める。
 
-partial frame abortを測定対象へ加えたATmega328P用ELFはFlash 2,816 byte / static RAM 156 byteだった。直前のepoch同期実装からFlash 52 byte増加し、static RAMは増加しなかった。
+delimiter-derived length、partial frame abort、epoch同期およびstop-and-waitを含むATmega328P用ELFはFlash 2,696 byte / static RAM 150 byteだった。明示length版の同じ構成よりFlash 120 byte / static RAM 6 byte減った。
 
 ## 暫定合意候補
 

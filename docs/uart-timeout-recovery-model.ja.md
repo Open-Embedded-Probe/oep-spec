@@ -151,17 +151,17 @@ OEP response timeout後に同じ機能requestを新しいcorrelationで再実行
 
 | frame | wire bytes | 115200 baud | 9600 baud |
 |---|---:|---:|---:|
-| ACK | 7 | 約0.61 ms | 約7.29 ms |
-| SYNC / SYNC-ACK | 11 | 約0.95 ms | 約11.46 ms |
-| bootstrap request DATA | 17 | 約1.48 ms | 約17.71 ms |
-| bootstrap response DATA | 21 | 約1.82 ms | 約21.88 ms |
-| 最大32 byte DATA | 39 | 約3.39 ms | 約40.63 ms |
+| ACK | 5 | 約0.43 ms | 約5.21 ms |
+| SYNC / SYNC-ACK | 9 | 約0.78 ms | 約9.38 ms |
+| bootstrap request DATA | 15 | 約1.30 ms | 約15.63 ms |
+| bootstrap response DATA | 19 | 約1.65 ms | 約19.79 ms |
+| 最大32 byte DATA | 37 | 約3.21 ms | 約38.54 ms |
 
 line timeだけの往復下限は次になる。
 
-- SYNC + SYNC-ACK: 115200 baudで約1.91 ms、9600 baudで約22.92 ms
-- 最大DATA + ACK: 115200 baudで約3.99 ms、9600 baudで約47.92 ms
-- bootstrap request/responseと各ACK: 115200 baudで約4.51 ms、9600 baudで約54.17 ms
+- SYNC + SYNC-ACK: 115200 baudで約1.56 ms、9600 baudで約18.75 ms
+- 最大DATA + ACK: 115200 baudで約3.65 ms、9600 baudで約43.75 ms
+- bootstrap request/responseと各ACK: 115200 baudで約3.82 ms、9600 baudで約45.83 ms
 
 これらを丸めただけの値をtimeout既定値にしない。特にhost OSとUSB-UART bridgeを経由する場合、software delayがline timeより大きくなり得る。
 

@@ -7,7 +7,7 @@
 static unsigned int test_total;
 static unsigned int test_passed;
 
-#define OEP_TEST_WIRE_QUEUE_CAPACITY (OEP_UART_MAX_WIRE * 4u)
+#define OEP_TEST_WIRE_QUEUE_CAPACITY (OEP_UART_STOPWAIT_MAX_WIRE * 4u)
 
 static bool expect_true(bool condition, const __FlashStringHelper *name)
 {
@@ -111,12 +111,12 @@ static bool capture_delivery(
 
 static uint8_t first_queued_frame_type(const struct EndpointContext *context)
 {
-    struct oep_uart_decoder decoder;
+    struct oep_uart_derived_decoder decoder;
     struct oep_uart_frame_view frame;
 
-    oep_uart_decoder_init(&decoder);
+    oep_uart_derived_decoder_init(&decoder);
     for (uint16_t index = 0; index < context->outgoing_length; ++index) {
-        if (oep_uart_decoder_feed(
+        if (oep_uart_derived_decoder_feed(
                 &decoder,
                 context->outgoing[index],
                 &frame) == OEP_UART_DECODE_FRAME) {
@@ -188,8 +188,8 @@ static void feed_encoded_frame(
     const uint8_t *payload,
     uint16_t payload_length)
 {
-    uint8_t wire[OEP_UART_MAX_WIRE];
-    size_t wire_length = oep_uart_encode_frame(
+    uint8_t wire[OEP_UART_STOPWAIT_MAX_WIRE];
+    size_t wire_length = oep_uart_derived_encode_frame(
         type,
         sequence,
         payload,
@@ -464,7 +464,7 @@ static void test_partial_frame_timeout_and_retry()
         0x61, 0x62, 0x63, 0x64,
     };
     const uint8_t message[] = {0x10, 0x00, 0x20, 0x30};
-    uint8_t first_attempt[OEP_UART_MAX_WIRE];
+    uint8_t first_attempt[OEP_UART_STOPWAIT_MAX_WIRE];
     uint16_t first_attempt_length;
     struct oep_uart_stopwait host;
     struct oep_uart_stopwait probe;
@@ -969,9 +969,11 @@ static void test_simultaneous_bidirectional_data()
         "duplex/queues-drained");
     EXPECT_TRUE(
         host_context.outgoing_peak <=
-            OEP_UART_MAX_WIRE + OEP_UART_ACK_WIRE_SIZE &&
+            OEP_UART_STOPWAIT_MAX_WIRE +
+                OEP_UART_STOPWAIT_ACK_WIRE_SIZE &&
             probe_context.outgoing_peak <=
-                OEP_UART_MAX_WIRE + OEP_UART_ACK_WIRE_SIZE,
+                OEP_UART_STOPWAIT_MAX_WIRE +
+                    OEP_UART_STOPWAIT_ACK_WIRE_SIZE,
         "duplex/max-data-plus-ack-queue");
 }
 
