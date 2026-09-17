@@ -47,6 +47,9 @@ struct oep_uart_decoder {
 
 void oep_uart_decoder_init(struct oep_uart_decoder *decoder);
 
+bool oep_uart_decoder_abort_partial_frame(
+    struct oep_uart_decoder *decoder);
+
 size_t oep_uart_encode_frame(
     uint8_t type,
     uint8_t sequence,

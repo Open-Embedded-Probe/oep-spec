@@ -132,6 +132,18 @@ void oep_uart_decoder_init(struct oep_uart_decoder *decoder)
     decoder->discard_until_delimiter = false;
 }
 
+bool oep_uart_decoder_abort_partial_frame(struct oep_uart_decoder *decoder)
+{
+    bool had_partial_frame =
+        decoder->encoded_length != 0 || decoder->discard_until_delimiter;
+
+    if (decoder->encoded_length != 0) {
+        decoder->encoded_length = 0;
+        decoder->discard_until_delimiter = true;
+    }
+    return had_partial_frame;
+}
+
 size_t oep_uart_encode_frame(
     uint8_t type,
     uint8_t sequence,

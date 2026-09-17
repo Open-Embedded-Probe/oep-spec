@@ -26,6 +26,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 - [UART bindingの信頼性model候補](docs/uart-reliability-model.ja.md)
 - [UART connection epoch同期候補](docs/uart-connection-epoch.ja.md)
 - [UART timeoutと回復model候補](docs/uart-timeout-recovery-model.ja.md)
+- [UART duplexとflow control候補](docs/uart-duplex-flow-control.ja.md)
 - [UART binding比較実装（非規定）](experiments/uart-binding/README.ja.md)
 - [実験実装の検証環境](tests/README.ja.md)
 - [調査・移行メモ](memo.ja.md)
