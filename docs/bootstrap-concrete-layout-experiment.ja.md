@@ -321,9 +321,9 @@ ATmega328P、avr-gcc 7.3.0、`-Os`での測定用ELFは次になった。
 
 rv003usb `5cddcd5e1d46`では、EP0 OUTの最後のdata packetが1から3 byteの場合にuser data callbackが呼ばれない。report IDを含む9 byteの候補Cは8+1 byteとなるため、そのままでは最後の1 byteが仮parserへ届かなかった。候補CのUSB reportを12 byteへpaddingし8+4 byteとした成立版で比較した。
 
-report全長1から64 byteのcharacterizationでは、8で割った余りが1から3の長さで同じ欠落が生じ、余り0または4から7では全byteがcallbackへ渡ることを確認した。これはHID bindingへ要求する性質ではなく、利用したrv003usb revision固有の実装制約である。
+report全長1から64 byteのcharacterizationでは、8で割った余りが1から3の長さで同じ欠落が生じ、余り0または4から7では全byteがcallbackへ渡ることを確認した。これはHID bindingへ要求する性質ではなく、利用したrv003usb revision固有の実装制約である。callback条件を`length > 0`へ変える局所的な実験パッチでは、候補Cをpaddingなしの9 byteとしてbuildできた。
 
-xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,464 byte / RAM 112 byte、候補C成立版はFlash 2,432 byte / RAM 108 byteだった。候補Cの削減はFlash 32 byte / RAM 4 byteに留まり、exact limitまで二往復を要する。候補Bはunknown operation rejectionも含む。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。候補Bのcore parserはHID wrapperから独立しており、UART等でも共有できることをhost testで確認した。ただし実機での列挙とSET/GET_REPORT、USB STALLによるbusy通知およびresetはまだ検証していない。
+xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,464 byte / RAM 112 byte、候補C成立版はFlash 2,432 byte / RAM 108 byte、短packet実験パッチを使うpaddingなし候補CはFlash 2,412 byte / RAM 108 byteだった。通常の成立版で候補Cの削減はFlash 32 byte / RAM 4 byte、実験パッチ込みでもFlash 52 byte / RAM 4 byteに留まり、exact limitまで二往復を要する。候補Bはunknown operation rejectionも含む。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。候補Bのcore parserはHID wrapperから独立しており、UART等でも共有できることをhost testで確認した。ただし短packet実験パッチを含め、実機での列挙とSET/GET_REPORT、USB STALLによるbusy通知およびresetはまだ検証していない。
 
 UART結合試験では、候補Bの同じ10 byte core requestと14 byte responseをderived-length COBS系frameおよびstop-and-waitへ載せた。probeのrequest delivery callback内でresponseを生成し、response DATAがrequest ACKより先にqueueされる場合でも、hostはresponseを一度だけ受信し、双方のtransport ACKを完了した。これにより仮core parserがHID report形式へ依存せず、UART bindingからも利用できることを確認した。
 

@@ -24,8 +24,12 @@
 #if defined(OEP_BOOTSTRAP_LAYOUT_B)
 #define OEP_HID_REPORT_COUNT 15
 #elif defined(OEP_BOOTSTRAP_LAYOUT_C)
+#if defined(OEP_RV003USB_SHORT_OUT_PATCHED)
+#define OEP_HID_REPORT_COUNT 8
+#else
 /* rv003usb 5cddcd5e1d46 does not forward a final 1-3 byte OUT packet. */
 #define OEP_HID_REPORT_COUNT 11
+#endif
 #else
 #error Select OEP_BOOTSTRAP_LAYOUT_B or OEP_BOOTSTRAP_LAYOUT_C
 #endif

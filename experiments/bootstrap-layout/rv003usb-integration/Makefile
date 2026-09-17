@@ -6,11 +6,12 @@ $(error CH32FUN must point to the ch32fun source directory)
 endif
 TARGET_MCU := CH32V003
 TARGET ?= bootstrap_rv003usb
+RV003USB_C ?= $(RV003USB_DIR)/rv003usb/rv003usb.c
 
 ADDITIONAL_C_FILES += $(RV003USB_DIR)/rv003usb/rv003usb.S
-ADDITIONAL_C_FILES += $(RV003USB_DIR)/rv003usb/rv003usb.c
+ADDITIONAL_C_FILES += $(RV003USB_C)
 EXTRA_CFLAGS += -I$(RV003USB_DIR)/lib -I$(RV003USB_DIR)/rv003usb
-EXTRA_CFLAGS += -I../src $(LAYOUT_DEFINE)
+EXTRA_CFLAGS += -I../src $(LAYOUT_DEFINE) $(PATCH_DEFINE)
 ADDITIONAL_C_FILES += ../src/hid_feature_lifecycle.c
 
 ifeq ($(LAYOUT_DEFINE),-DOEP_BOOTSTRAP_LAYOUT_B)

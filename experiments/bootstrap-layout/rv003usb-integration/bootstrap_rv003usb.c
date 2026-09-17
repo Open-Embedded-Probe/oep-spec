@@ -12,8 +12,12 @@
 #define HANDLE_REPORT oep_bootstrap_b_handle_report
 #elif defined(OEP_BOOTSTRAP_LAYOUT_C)
 #include "bootstrap_candidate_c.h"
+#if defined(OEP_RV003USB_SHORT_OUT_PATCHED)
+#define TRANSFER_SIZE OEP_BOOTSTRAP_C_REPORT_SIZE
+#else
 /* Pad 9 bytes to 12 so rv003usb forwards the final 4-byte OUT packet. */
 #define TRANSFER_SIZE 12u
+#endif
 #define PARSER_SIZE OEP_BOOTSTRAP_C_REPORT_SIZE
 #define HANDLE_REPORT oep_bootstrap_c_handle_report
 #else
@@ -77,7 +81,9 @@ void usb_handle_user_data(
         bool response_valid =
             HANDLE_REPORT(report, PARSER_SIZE) == PARSER_SIZE;
 #if defined(OEP_BOOTSTRAP_LAYOUT_C)
+#if !defined(OEP_RV003USB_SHORT_OUT_PATCHED)
         memset(report + PARSER_SIZE, 0, TRANSFER_SIZE - PARSER_SIZE);
+#endif
 #endif
         (void)oep_hid_feature_finish_set(&lifecycle, response_valid);
     }
