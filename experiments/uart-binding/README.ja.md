@@ -58,6 +58,8 @@ host testでは次を確認する。
 - 双方向で同時に未確認DATAを持つ場合のDATA/ACK直列化
 - OEP response DATAがrequest ACKより先に並ぶ場合の相互処理
 - 1 bit sequenceが送信順序保存を前提とすることのcharacterization
+- COBS系およびSLIP型encoderのbuffer容量境界とguard領域の保持
+- 固定seedによる256通りのnoise列後のframe再同期
 
 ## ATmega328Pでの中間測定
 
