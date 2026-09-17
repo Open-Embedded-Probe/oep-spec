@@ -6,10 +6,11 @@ void oep_hid_feature_lifecycle_init(
     lifecycle->state = OEP_HID_FEATURE_IDLE;
 }
 
-static void release_previous_get(
+static void release_previous_transfer(
     struct oep_hid_feature_lifecycle *lifecycle)
 {
-    if (lifecycle->state == OEP_HID_FEATURE_SENDING) {
+    if (lifecycle->state == OEP_HID_FEATURE_RECEIVING ||
+        lifecycle->state == OEP_HID_FEATURE_SENDING) {
         lifecycle->state = OEP_HID_FEATURE_IDLE;
     }
 }
@@ -19,7 +20,7 @@ bool oep_hid_feature_begin_set(
     uint16_t requested_length,
     uint16_t report_length)
 {
-    release_previous_get(lifecycle);
+    release_previous_transfer(lifecycle);
     if (lifecycle->state != OEP_HID_FEATURE_IDLE ||
         requested_length != report_length) {
         return false;
@@ -45,7 +46,7 @@ bool oep_hid_feature_begin_get(
     uint16_t requested_length,
     uint16_t report_length)
 {
-    release_previous_get(lifecycle);
+    release_previous_transfer(lifecycle);
     if (lifecycle->state != OEP_HID_FEATURE_RESPONSE_READY ||
         requested_length != report_length) {
         return false;
