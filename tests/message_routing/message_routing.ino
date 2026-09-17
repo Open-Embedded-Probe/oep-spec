@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <string.h>
 
+#include <message_header_layout.h>
 #include <message_routing.h>
 
 static unsigned int test_total;
@@ -265,6 +266,134 @@ static void test_routing_buffer_boundaries()
     check(all_lengths_guarded, F("routing length boundaries guarded"));
 }
 
+static bool header_role_is_known(uint8_t role)
+{
+    return role == OEP_HEADER_ROLE_FUNCTION_REQUEST ||
+        role == OEP_HEADER_ROLE_RESULT ||
+        role == OEP_HEADER_ROLE_ACTIVITY_UPDATE ||
+        role == OEP_HEADER_ROLE_ACTIVITY_OUTCOME ||
+        role == OEP_HEADER_ROLE_NOTIFICATION ||
+        role == OEP_HEADER_ROLE_DATA;
+}
+
+static size_t role_header_size(uint8_t role)
+{
+    switch (role) {
+    case OEP_HEADER_ROLE_FUNCTION_REQUEST:
+        return OEP_ROLE_HEADER_REQUEST_SIZE;
+    case OEP_HEADER_ROLE_RESULT:
+        return OEP_ROLE_HEADER_RESULT_SIZE;
+    case OEP_HEADER_ROLE_NOTIFICATION:
+        return OEP_ROLE_HEADER_NOTIFICATION_SIZE;
+    default:
+        return OEP_ROLE_HEADER_ACTIVITY_SIZE;
+    }
+}
+
+static void test_header_layout_semantics()
+{
+    const uint8_t uniform_request[OEP_UNIFORM_HEADER_SIZE] = {
+        OEP_HEADER_ROLE_FUNCTION_REQUEST, 0x44u,
+        OEP_HEADER_SCOPE_OFFERED_FUNCTION, 0x34u, 0x12u, 0x78u, 0x56u,
+    };
+    const uint8_t role_request[OEP_ROLE_HEADER_REQUEST_SIZE] = {
+        OEP_HEADER_ROLE_FUNCTION_REQUEST, 0x44u,
+        0x34u, 0x12u, 0x78u, 0x56u,
+    };
+    const uint8_t role_result[OEP_ROLE_HEADER_RESULT_SIZE] = {
+        OEP_HEADER_ROLE_RESULT, 0x02u, 0x34u, 0x12u,
+    };
+    const uint8_t role_activity[OEP_ROLE_HEADER_ACTIVITY_SIZE] = {
+        OEP_HEADER_ROLE_ACTIVITY_OUTCOME, 0x03u, 0x78u, 0x56u,
+    };
+    const uint8_t role_notification[OEP_ROLE_HEADER_NOTIFICATION_SIZE] = {
+        OEP_HEADER_ROLE_NOTIFICATION, 0x04u, 0x09u, 0x78u, 0x56u,
+    };
+    struct oep_header_view view;
+
+    bool uniform_ok = oep_decode_uniform_header(
+        uniform_request, sizeof(uniform_request), &view) &&
+        view.role == OEP_HEADER_ROLE_FUNCTION_REQUEST &&
+        view.detail == 0x44u &&
+        view.scope == OEP_HEADER_SCOPE_OFFERED_FUNCTION &&
+        view.correlation == 0x1234u && view.reference == 0x5678u &&
+        view.present == (OEP_HEADER_HAS_SCOPE |
+            OEP_HEADER_HAS_CORRELATION | OEP_HEADER_HAS_REFERENCE) &&
+        view.header_length == OEP_UNIFORM_HEADER_SIZE;
+    check(uniform_ok, F("uniform header exposes request semantics"));
+
+    bool request_ok = oep_decode_role_header(
+        role_request, sizeof(role_request), &view) &&
+        view.scope == OEP_HEADER_SCOPE_OFFERED_FUNCTION &&
+        view.correlation == 0x1234u && view.reference == 0x5678u &&
+        view.header_length == OEP_ROLE_HEADER_REQUEST_SIZE;
+    bool result_ok = oep_decode_role_header(
+        role_result, sizeof(role_result), &view) &&
+        view.correlation == 0x1234u && view.reference == 0u &&
+        view.present == OEP_HEADER_HAS_CORRELATION &&
+        view.header_length == OEP_ROLE_HEADER_RESULT_SIZE;
+    bool activity_ok = oep_decode_role_header(
+        role_activity, sizeof(role_activity), &view) &&
+        view.correlation == 0u && view.reference == 0x5678u &&
+        view.present == OEP_HEADER_HAS_REFERENCE &&
+        view.header_length == OEP_ROLE_HEADER_ACTIVITY_SIZE;
+    bool notification_ok = oep_decode_role_header(
+        role_notification, sizeof(role_notification), &view) &&
+        view.scope == 0x09u && view.reference == 0x5678u &&
+        view.present == (OEP_HEADER_HAS_SCOPE | OEP_HEADER_HAS_REFERENCE) &&
+        view.header_length == OEP_ROLE_HEADER_NOTIFICATION_SIZE;
+    check(
+        request_ok && result_ok && activity_ok && notification_ok,
+        F("role headers expose only role-required routing"));
+}
+
+static void test_all_header_roles_and_lengths()
+{
+    bool uniform_boundaries_ok = true;
+    bool role_boundaries_ok = true;
+
+    for (uint16_t role_value = 0u; role_value <= 0xffu; ++role_value) {
+        uint8_t role = static_cast<uint8_t>(role_value);
+        for (uint8_t length = 0u; length <= OEP_UNIFORM_HEADER_SIZE; ++length) {
+            uint8_t guarded[OEP_UNIFORM_HEADER_SIZE + 2u] = {
+                0xa5u, role, 0x44u, 0x09u, 0x34u,
+                0x12u, 0x78u, 0x56u, 0x5au,
+            };
+            struct oep_header_view view;
+            struct oep_header_view original;
+            memset(&view, 0xa5, sizeof(view));
+            original = view;
+            bool decoded = oep_decode_uniform_header(
+                guarded + 1u, length, &view);
+            bool expected = header_role_is_known(role) &&
+                length >= OEP_UNIFORM_HEADER_SIZE;
+            if (decoded != expected || guarded[0] != 0xa5u ||
+                guarded[OEP_UNIFORM_HEADER_SIZE + 1u] != 0x5au ||
+                (!decoded && memcmp(&view, &original, sizeof(view)) != 0)) {
+                uniform_boundaries_ok = false;
+            }
+
+            memset(&view, 0xa5, sizeof(view));
+            original = view;
+            decoded = oep_decode_role_header(guarded + 1u, length, &view);
+            expected = header_role_is_known(role) &&
+                length >= role_header_size(role);
+            if (decoded != expected || guarded[0] != 0xa5u ||
+                guarded[OEP_UNIFORM_HEADER_SIZE + 1u] != 0x5au ||
+                (!decoded && memcmp(&view, &original, sizeof(view)) != 0)) {
+                role_boundaries_ok = false;
+            }
+        }
+    }
+
+    check(
+        uniform_boundaries_ok,
+        F("uniform header guards all roles and short lengths"));
+    check(
+        role_boundaries_ok,
+        F("role header guards all roles and short lengths"));
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -275,6 +404,8 @@ void setup()
     test_invalid_common_routing();
     test_all_target_and_correlation_values();
     test_routing_buffer_boundaries();
+    test_header_layout_semantics();
+    test_all_header_roles_and_lengths();
 
     Serial.print(F("TEST done "));
     Serial.print(test_passed);

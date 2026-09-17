@@ -47,3 +47,23 @@ make -C experiments/message-routing sizes
 ATmega328Pでは二つのentryを持つfunction pointer tableが12 byteのstatic RAMを使う。CH32V003では同じtableが24 byteのread-only dataに置かれる。この差はABIとlinker配置によるもので、routing modelがruntime tableを要求することを意味しない。
 
 提供機能がcompile-timeに固定された小さなprobeは、生成した`switch`等でtableを持たずに実装できる。提供機能をruntimeに構成する実装や共通firmwareではtable版を選べる。測定値にはArduino core、connection binding、bootstrap、および二つの最小handlerを超える実機能は含まない。
+
+## 固定headerとrole別header
+
+[Message header構成比較](../../docs/message-header-layout-comparison.ja.md)の仮幅を使い、6種類のroleを正規化した同じviewへdecodeする二つのparserも比較した。
+
+- 固定header版は全roleを7 byteとし、roleに不要なfieldを出力viewから除外する
+- role別header版はrequest 6 byte、result/activity/data 4 byte、notification 5 byteを検証する
+- 両方とも未知roleを拒否し、成功前にrole固有fieldを出力しない
+- role全256値とmessage length 0から7 byteの組合せをhost testで走査した
+
+2026-09-18時点のbare ELF測定は次のとおり。両方とも6 roleすべてのdecode処理、正規化view、入力message、volatileな測定用sinkを含む。
+
+| target | 7 byte固定header | 4〜6 byte role別header | role別の差 |
+|---|---:|---:|---:|
+| ATmega328P Flash | 484 byte | 574 byte | +90 byte |
+| ATmega328P static RAM | 10 byte | 8 byte | -2 byte |
+| CH32V003 text | 346 byte | 392 byte | +46 byte |
+| CH32V003 static RAM | 9 byte | 8 byte | -1 byte |
+
+static RAM差は主に測定用入力bufferが7 byteから6 byteになる差であり、どちらのparserも永続状態を要求しない。role別版はroleごとの長さとfield位置を分岐するためcodeが増える一方、messageごとに1から3 byteを削減する。request/resultだけの最小probeは未使用roleのdecode処理をcompileしない実装も可能であり、この全role測定値をすべてのprobeの必須費用とはしない。
