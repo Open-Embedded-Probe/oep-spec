@@ -71,6 +71,18 @@ length fieldが破損、欠落または挿入を検出する唯一の根拠で�
 
 stop-and-wait state全体をderived方式へ移植した実測では、stateが97 byteから93 byteへ4 byte減った。
 
+最大payloadを仕様として決める前の資源量比較として、同じstop-and-wait構造をcompile-timeに変更して測定した。
+
+| 最大payload | 最大COBS系wire | stop-and-wait state | 測定用ELF static RAM |
+|---:|---:|---:|---:|
+| 8 byte | 13 byte | 45 byte | 50 byte |
+| 16 byte | 21 byte | 61 byte | 66 byte |
+| 32 byte | 37 byte | 93 byte | 98 byte |
+| 64 byte | 69 byte | 157 byte | 162 byte |
+| 128 byte | 133 byte | 285 byte | 290 byte |
+
+この比較用stateは受信decoderと未確認送信frameを別々に保持するため、最大payloadを1 byte増やすとstateが2 byte増える。ELFのRAM値は共通の小さいharnessを含むが、Arduino core、UART ring buffer、OEP coreおよびstackを含まない。buffer共有等で傾きが変わる可能性があるため、この表だけで最大payloadを決定しない。
+
 ## ATmega328P code size比較
 
 同じ14 byte messageをencodeし、decoderへ戻す測定用ELFを、avr-gcc 7.3.0、`-Os`、section garbage collectionありで比較した。

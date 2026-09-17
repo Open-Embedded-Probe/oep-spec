@@ -6,8 +6,10 @@ INCLUDES := -Isrc
 AVR_CFLAGS := -std=c11 -mmcu=atmega328p -Os -Wall -Wextra -Werror \
 	-ffunction-sections -fdata-sections
 AVR_LDFLAGS := -mmcu=atmega328p -Wl,--gc-sections
+PAYLOAD_SIZES := 8 16 32 64 128
+PAYLOAD_ELFS := $(foreach size,$(PAYLOAD_SIZES),build/payload-$(size).elf)
 
-.PHONY: avr-size avr-stack clean
+.PHONY: avr-size avr-stack avr-payload-sizes clean
 
 build:
 	mkdir -p build
@@ -34,6 +36,14 @@ build/stopwait.elf: size_stopwait.c src/alternatives/derived_length_frame.c \
 		size_stopwait.c src/alternatives/derived_length_frame.c \
 		src/uart_stopwait.c -o $@
 
+build/payload-%.elf: size_payload.c \
+		src/alternatives/derived_length_frame.c src/uart_stopwait.c \
+		src/alternatives/derived_length_frame.h src/uart_frame.h \
+		src/uart_stopwait.h | build
+	$(AVR_CC) $(AVR_CFLAGS) -DOEP_UART_MAX_PAYLOAD=$*u \
+		$(INCLUDES) $(AVR_LDFLAGS) size_payload.c \
+		src/alternatives/derived_length_frame.c src/uart_stopwait.c -o $@
+
 avr-size: build/detect.elf build/derived.elf build/slip.elf build/stopwait.elf
 	$(AVR_SIZE) -C --mcu=atmega328p build/detect.elf
 	$(AVR_SIZE) -C --mcu=atmega328p build/derived.elf
@@ -49,6 +59,14 @@ avr-stack: | build
 		../size_stopwait.c ../src/alternatives/derived_length_frame.c \
 		../src/uart_stopwait.c -o stopwait-stack.elf
 	@sed -n '1,240p' build/*.su
+
+avr-payload-sizes: $(PAYLOAD_ELFS)
+	@for size in $(PAYLOAD_SIZES); do \
+		echo "payload $$size bytes"; \
+		$(AVR_SIZE) -C --mcu=atmega328p build/payload-$$size.elf; \
+		$(AVR_NM) --print-size --radix=d build/payload-$$size.elf | \
+			awk '$$4 == "link" { print "stopwait state:", $$2, "bytes" }'; \
+	done
 
 clean:
 	rm -rf build
