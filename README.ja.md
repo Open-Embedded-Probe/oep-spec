@@ -15,6 +15,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 - [責任境界](docs/responsibility-boundaries.ja.md)
 - [共通protocolの抽象的な振る舞い](docs/common-protocol-behavior.ja.md)
 - [共通protocolの情報model](docs/information-model.ja.md)
+- [最小interaction pattern](docs/interaction-patterns.ja.md)
 - [調査・移行メモ](memo.ja.md)
 
 検討中の実装repository構成:

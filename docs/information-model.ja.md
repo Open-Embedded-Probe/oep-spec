@@ -1,6 +1,6 @@
 # Open Embedded Probe — 共通protocolの情報model
 
-状態: **検討中のprotocol設計入力**。この文書は、[共通protocolの抽象的な振る舞い](common-protocol-behavior.ja.md)を成立させるために、OEPが概念上区別する必要のある情報とその関係を整理する。
+状態: **合意済みの情報model**。この文書は、[共通protocolの抽象的な振る舞い](common-protocol-behavior.ja.md)を成立させるために、OEPが概念上区別する必要のある情報とその関係を整理する。下流設計によって矛盾が見つかった場合は、理由を記録して改訂する。
 
 ここで定義する情報要素は、そのままwire上のobject、message、fieldまたは個別のqueryになるとは限らない。複数の情報をまとめること、既知の情報を省略すること、接続固有の方法から導出することは、将来のprotocol設計で決める。
 
@@ -173,7 +173,7 @@ constraintには次の形があり得る。
 - 現在状態に依存する条件
 - 具体的な要求をprobeが評価することによってのみ判明する条件
 
-すべてのconstraintを静的な一覧へ変換できるとは仮定しない。静的記述と具体的なconfiguration要求への受理・拒否を併用できるmodelが必要になる可能性がある。
+probeは、hostが利用候補を選ぶために必要なconstraintを、表現可能な範囲で開示する。すべてのconstraintを静的な一覧へ変換できるとは仮定せず、静的記述と具体的なconfiguration要求への受理・拒否を併用できるmodelが必要になる可能性がある。
 
 constraintの意味、単位および条件間の関係は、個別機能またはbindingが定義する。OEP共通protocolは、意味を推測せず正しいscopeへ対応付ける。
 
