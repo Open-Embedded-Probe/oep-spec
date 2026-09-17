@@ -311,6 +311,14 @@ ATmega328P、avr-gcc 7.3.0、`-Os`での測定用ELFは次になった。
 
 この結果は候補Cの独立形式を追加する実装上の根拠を強めない。ただし一つのAVR toolchainと仮fieldによる比較であり、候補Bの採用判断にはしない。CH32V003 toolchain、実際のUSB stackとの統合、busyおよびGET_REPORT pollingの状態量は未測定である。
 
+同じC sourceをCH32V003 ABI（`rv32ec` / `ilp32e`）、xPack RISC-V GCC 14.3.0、`-Os`でも測定した。startupを含まないbare ELFでは、候補Bがtext 516 byte / RAM section 17 byte、候補Cがtext 548 byte / RAM section 13 byteだった。候補Cはalignment込みでRAMを4 byte削減したが、二つのoperationを呼ぶ全体のFlashは32 byte増えた。
+
+また同じparser test sketchがCH32V003 Arduino core 1.4.0でcompileできることを確認対象に加えた。これはrv003usbとの統合動作を確認するものではない。
+
+さらにrv003usb、HID descriptor、8 byte packet単位のSET_REPORT再構成、共有bufferおよびGET_REPORT callbackまで含むCH32V003 firmwareをbuildした。xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,396 byte / RAM 112 byte、候補CはFlash 2,364 byte / RAM 108 byteだった。
+
+候補Cの統合時の削減はFlash 32 byte / RAM 4 byteである。一方、report IDを含む9 byte reportを使用するためEP0 data stageは一report二packetとなり、exact limitまで二往復を要する。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。ただし実機での列挙とSET/GET_REPORT、busyおよび連続requestはまだ検証していない。
+
 ## 次の検証
 
 UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼性model候補](uart-reliability-model.ja.md)に整理する。UART外側frameの後続比較は[UART frame layout比較](uart-frame-layout-comparison.ja.md)に示す。候補Bについて、core messageと各bindingの責任をさらに分ける必要がある。
@@ -322,7 +330,7 @@ UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼
 5. UART detect-onlyとstop-and-waitのどちらを最小適合とするか
 6. 16 bit message上限を採用せずに、小さいbootstrapでexact constraintを表す方法
 
-AVR向け仮parserの単体比較は実施した。次はCH32V003 toolchainで同じC sourceを測定し、実際のUSB stackと統合した場合のflash/RAM、busyおよびGET_REPORT pollingの状態量を確認する。
+AVRとCH32V003 ABI向け仮parserの単体比較、およびrv003usbを含むbuild比較は実施した。次は実機上で列挙、SET/GET_REPORT、busy、連続requestおよびreset時の状態を確認する。
 
 ## この文書で決めないこと
 

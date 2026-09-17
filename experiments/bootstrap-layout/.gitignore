@@ -1,1 +1,6 @@
 build/
+rv003usb-integration/*.elf
+rv003usb-integration/*.bin
+rv003usb-integration/*.hex
+rv003usb-integration/*.lst
+rv003usb-integration/*.map
