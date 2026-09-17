@@ -118,4 +118,6 @@ HID wrapperもeffective core lengthを独自に10 byteへ限定せず、固定re
 
 以上から、transport破損はbinding内で処理し、OEP identityを確認できないlogical messageにはOEP responseを返さず、identityとcorrelationを確認できる形状不正または未知operationにはcorrelation付きrejectionを返す、という三つの境界を別々に再現できた。これはresponseの数値やwire layoutの採用ではなく、結果を混同しないための実験上の分類である。
 
+16 bitをlogical message長のprotocol上限にしない候補として、0〜65,534はexact値、65,535は「少なくともこの長さを受信でき、より大きいexact値はdetail取得が必要」とするsummaryも試作した。全16 bit exact範囲と複数の大きい境界値をhost testで走査した。比較は[Bootstrap constraint encoding実験](../../docs/bootstrap-constraint-encoding-experiment.ja.md)に示す。
+
 仮`kind` 256値と、そのrequest role内の仮`operation` 256値も全走査した。認識するrequest role以外はbodyを変更せず無応答とし、認識済みrole内では未知operationも元のoperationとcorrelationを持つrejected responseにできた。この結果は、roleを検証してからrole固有のoperation namespaceを解釈できることを示す。role、operationおよびstatusの値や、未知roleを常に無応答にする規則を採用するものではない。

@@ -4,6 +4,7 @@
 #include <bootstrap_candidate_b.h>
 #include <bootstrap_candidate_b_core.h>
 #include <bootstrap_candidate_c.h>
+#include <bootstrap_limit_summary.h>
 #include <hid_feature_lifecycle.h>
 #include <rv003usb_feature_selector.h>
 
@@ -659,6 +660,55 @@ static void test_rv003usb_feature_selector()
         F("rv003usb other interface rejected"));
 }
 
+static void test_bootstrap_limit_summary()
+{
+    bool all_exact_16_bit_values_match = true;
+
+    for (uint32_t exact = 0u;
+         exact < OEP_BOOTSTRAP_LIMIT_DETAIL_REQUIRED;
+         ++exact) {
+        uint16_t summary = oep_bootstrap_summarize_message_limit(exact);
+        if (summary != exact ||
+            oep_bootstrap_message_limit_needs_detail(summary) ||
+            !oep_bootstrap_message_limit_allows_without_detail(
+                summary,
+                exact) ||
+            oep_bootstrap_message_limit_allows_without_detail(
+                summary,
+                exact + 1u)) {
+            all_exact_16_bit_values_match = false;
+            break;
+        }
+    }
+    check(
+        all_exact_16_bit_values_match,
+        F("bootstrap limit summaries exact through 65534"));
+
+    const uint32_t larger_limits[] = {
+        65535u, 65536u, 0x00100000u, UINT32_MAX,
+    };
+    bool all_larger_values_require_detail = true;
+    for (uint8_t index = 0u;
+         index < sizeof(larger_limits) / sizeof(larger_limits[0]);
+         ++index) {
+        uint16_t summary = oep_bootstrap_summarize_message_limit(
+            larger_limits[index]);
+        if (summary != OEP_BOOTSTRAP_LIMIT_DETAIL_REQUIRED ||
+            !oep_bootstrap_message_limit_needs_detail(summary) ||
+            !oep_bootstrap_message_limit_allows_without_detail(
+                summary,
+                OEP_BOOTSTRAP_LIMIT_DETAIL_REQUIRED) ||
+            oep_bootstrap_message_limit_allows_without_detail(
+                summary,
+                (uint32_t)OEP_BOOTSTRAP_LIMIT_DETAIL_REQUIRED + 1u)) {
+            all_larger_values_require_detail = false;
+        }
+    }
+    check(
+        all_larger_values_require_detail,
+        F("bootstrap larger limits expose safe floor and require detail"));
+}
+
 static uint8_t rv003usb_forwarded_out_bytes(uint8_t report_length)
 {
     uint8_t forwarded = 0;
@@ -720,6 +770,7 @@ void setup()
     test_silent_busy_recovery_by_correlation();
     test_get_report_retry_keeps_response();
     test_rv003usb_feature_selector();
+    test_bootstrap_limit_summary();
     test_rv003usb_short_final_packet_characterization();
 
     Serial.print(F("TEST done "));
