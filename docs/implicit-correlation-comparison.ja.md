@@ -109,5 +109,4 @@ correlationはrequest/resultの誤対応を防ぐ識別情報であり、exactly
 - timeout後の照会または回復操作
 - 暗黙correlation profileを将来実際に定義するか
 
-次段階では、明示correlationの候補幅と再利用windowを、HID cache、UART epochおよび最大同時request数に対して比較する。
-
+[Request correlation幅と再利用の比較](correlation-width-comparison.ja.md)で8、16および32 bit候補を比較する。

@@ -140,4 +140,4 @@ target echoを省略してもrequesterはstatelessにならない。payloadの�
 
 これはrequester側の費用である。hostからのrequestに応答するだけの最小probeはpending matcherを持たず、受信したcorrelationをresultへ返せばよい。probeからhostへのrequestを提供する場合に、その方向のpending stateが必要になる。
 
-次段階では、correlationの候補幅と再利用windowを比較する。
+[Request correlation幅と再利用の比較](correlation-width-comparison.ja.md)では8、16および32 bitを比較し、16 bitを初期共通protocolの有力候補として実験を継続する。次段階では、allocatorの枯渇とretention windowを実験する。
