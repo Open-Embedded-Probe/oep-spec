@@ -113,6 +113,38 @@ static void test_candidate_b_unknown_operation_response()
         F("candidate B unknown operation response"));
 }
 
+static void test_candidate_b_all_revision_ranges()
+{
+    bool valid = true;
+
+    for (uint16_t minimum = 0; minimum <= 0xffu && valid; ++minimum) {
+        for (uint16_t maximum = 0; maximum <= 0xffu; ++maximum) {
+            uint8_t message[OEP_BOOTSTRAP_B_RESPONSE_SIZE] = {
+                0x01u, 0x01u, 0xa5u, 0x5au,
+                0x4fu, 0x45u, 0x50u, 0x3fu,
+                static_cast<uint8_t>(minimum),
+                static_cast<uint8_t>(maximum),
+            };
+            bool compatible = minimum <= 1u && maximum >= 1u;
+            size_t response_length = oep_bootstrap_b_handle_core_message(
+                message,
+                OEP_BOOTSTRAP_B_REQUEST_SIZE,
+                sizeof(message));
+
+            if (response_length != OEP_BOOTSTRAP_B_RESPONSE_SIZE ||
+                message[2] != 0xa5u || message[3] != 0x5au ||
+                message[8] != (compatible ?
+                    OEP_BOOTSTRAP_B_STATUS_COMPATIBLE :
+                    OEP_BOOTSTRAP_B_STATUS_INCOMPATIBLE) ||
+                message[9] != (compatible ? 1u : 0u)) {
+                valid = false;
+                break;
+            }
+        }
+    }
+    check(valid, F("candidate B all revision ranges"));
+}
+
 static void prepare_c(
     uint8_t *report,
     uint8_t operation,
@@ -251,6 +283,7 @@ void setup()
     test_candidate_b();
     test_candidate_b_core_without_hid_wrapper();
     test_candidate_b_unknown_operation_response();
+    test_candidate_b_all_revision_ranges();
     test_candidate_c();
     test_single_buffer_lifecycle();
     test_rv003usb_short_final_packet_characterization();
