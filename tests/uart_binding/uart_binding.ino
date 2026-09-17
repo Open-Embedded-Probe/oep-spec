@@ -1029,6 +1029,91 @@ static void test_response_data_before_request_ack()
         "response-order/response-acknowledged");
 }
 
+static void test_sequential_fault_matrix()
+{
+    const uint8_t token[OEP_UART_EPOCH_TOKEN_SIZE] = {
+        0x31, 0x32, 0x33, 0x34,
+    };
+    uint8_t message[OEP_UART_MAX_PAYLOAD];
+    struct oep_uart_stopwait host;
+    struct oep_uart_stopwait probe;
+    struct EndpointContext host_context;
+    struct EndpointContext probe_context;
+    bool valid = true;
+
+    initialize_unsynchronized_pair(
+        &host, &host_context, &probe, &probe_context, 2);
+    REQUIRE_TRUE(
+        synchronize_pair(
+            &host, &host_context, &probe, &probe_context, token),
+        "fault-matrix/synchronized");
+
+    for (uint16_t length = 0;
+         length <= OEP_UART_MAX_PAYLOAD && valid;
+         ++length) {
+        uint8_t delivery_count_before = probe_context.delivery_count;
+        uint8_t attempts = 0;
+
+        for (uint16_t index = 0; index < length; ++index) {
+            message[index] = static_cast<uint8_t>(
+                length * 17u + index * 29u);
+        }
+        switch (length % 6u) {
+        case 1:
+            host_context.drop_next = true;
+            break;
+        case 2:
+            host_context.corrupt_next = true;
+            break;
+        case 3:
+            probe_context.drop_next = true;
+            break;
+        case 4:
+            probe_context.corrupt_next = true;
+            break;
+        case 5:
+            probe_context.accept_delivery = false;
+            break;
+        default:
+            break;
+        }
+
+        if (!oep_uart_stopwait_send(&host, message, length)) {
+            valid = false;
+            break;
+        }
+        pump(&host_context, &probe);
+        if (length % 6u == 5u) {
+            probe_context.accept_delivery = true;
+        }
+        pump(&probe_context, &host);
+
+        while (host.waiting_for_ack && attempts++ < 2u) {
+            if (oep_uart_stopwait_timeout(&host) !=
+                OEP_UART_TIMEOUT_RETRIED) {
+                valid = false;
+                break;
+            }
+            pump(&host_context, &probe);
+            pump(&probe_context, &host);
+        }
+        if (!valid || host.waiting_for_ack ||
+            !oep_uart_stopwait_is_active(&host) ||
+            !oep_uart_stopwait_is_active(&probe) ||
+            probe_context.delivery_count !=
+                static_cast<uint8_t>(delivery_count_before + 1u) ||
+            probe_context.delivered_length != length ||
+            memcmp(probe_context.delivered, message, length) != 0) {
+            valid = false;
+        }
+    }
+
+    EXPECT_TRUE(valid, "fault-matrix/all-lengths-exactly-once");
+    EXPECT_TRUE(
+        probe_context.delivery_count == OEP_UART_MAX_PAYLOAD + 1u,
+        "fault-matrix/delivery-count");
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -1054,6 +1139,7 @@ void setup()
     test_retry_exhaustion();
     test_simultaneous_bidirectional_data();
     test_response_data_before_request_ack();
+    test_sequential_fault_matrix();
 
     Serial.print(F("TEST done "));
     Serial.print(test_passed);

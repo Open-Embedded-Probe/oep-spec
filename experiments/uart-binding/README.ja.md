@@ -60,6 +60,7 @@ host testでは次を確認する。
 - 1 bit sequenceが送信順序保存を前提とすることのcharacterization
 - COBS系およびSLIP型encoderのbuffer容量境界とguard領域の保持
 - 固定seedによる256通りのnoise列後のframe再同期
+- payload長0から32 byteの連続送信中にDATA/ACKの欠落・破損とreceiver busyを順番に注入しても、各messageを一度だけdeliveryすること
 
 ## ATmega328Pでの中間測定
 
