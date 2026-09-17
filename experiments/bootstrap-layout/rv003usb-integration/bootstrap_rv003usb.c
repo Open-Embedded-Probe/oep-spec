@@ -4,11 +4,13 @@
 
 #include "rv003usb.h"
 #include "hid_feature_lifecycle.h"
+#include "rv003usb_feature_selector.h"
 
 #if defined(OEP_BOOTSTRAP_LAYOUT_B)
 #include "bootstrap_candidate_b.h"
 #define TRANSFER_SIZE OEP_BOOTSTRAP_B_REPORT_SIZE
 #define PARSER_SIZE OEP_BOOTSTRAP_B_REPORT_SIZE
+#define REPORT_ID OEP_BOOTSTRAP_B_REPORT_ID
 #define HANDLE_REPORT oep_bootstrap_b_handle_report
 #elif defined(OEP_BOOTSTRAP_LAYOUT_C)
 #include "bootstrap_candidate_c.h"
@@ -19,6 +21,7 @@
 #define TRANSFER_SIZE 12u
 #endif
 #define PARSER_SIZE OEP_BOOTSTRAP_C_REPORT_SIZE
+#define REPORT_ID OEP_BOOTSTRAP_C_REPORT_ID
 #define HANDLE_REPORT oep_bootstrap_c_handle_report
 #else
 #error Select a bootstrap layout
@@ -94,8 +97,11 @@ void usb_handle_hid_get_report_start(
     int requested_length,
     uint32_t value_index)
 {
-    (void)value_index;
-    if (!oep_hid_feature_begin_get(
+    if (!oep_rv003usb_feature_selector_matches(
+            value_index,
+            REPORT_ID,
+            0u) ||
+        !oep_hid_feature_begin_get(
             &lifecycle,
             (uint16_t)requested_length,
             TRANSFER_SIZE)) {
@@ -110,8 +116,11 @@ void usb_handle_hid_set_report_start(
     int requested_length,
     uint32_t value_index)
 {
-    (void)value_index;
-    if (!oep_hid_feature_begin_set(
+    if (!oep_rv003usb_feature_selector_matches(
+            value_index,
+            REPORT_ID,
+            0u) ||
+        !oep_hid_feature_begin_set(
             &lifecycle,
             (uint16_t)requested_length,
             TRANSFER_SIZE)) {

@@ -5,6 +5,7 @@
 #include <bootstrap_candidate_b_core.h>
 #include <bootstrap_candidate_c.h>
 #include <hid_feature_lifecycle.h>
+#include <rv003usb_feature_selector.h>
 
 static unsigned int test_total;
 static unsigned int test_passed;
@@ -429,6 +430,30 @@ static void test_silent_busy_recovery_by_correlation()
         F("silent busy recovered by correlation and retry"));
 }
 
+static void test_rv003usb_feature_selector()
+{
+    check(
+        oep_rv003usb_feature_selector_matches(0x00000301u, 1u, 0u),
+        F("rv003usb feature selector accepted"));
+    check(
+        !oep_rv003usb_feature_selector_matches(0x00000101u, 1u, 0u) &&
+            !oep_rv003usb_feature_selector_matches(
+                0x00000201u,
+                1u,
+                0u),
+        F("rv003usb non-feature report types rejected"));
+    check(
+        !oep_rv003usb_feature_selector_matches(0x00000302u, 1u, 0u),
+        F("rv003usb other report ID rejected"));
+    check(
+        !oep_rv003usb_feature_selector_matches(0x00010301u, 1u, 0u) &&
+            !oep_rv003usb_feature_selector_matches(
+                0x01000301u,
+                1u,
+                0u),
+        F("rv003usb other interface rejected"));
+}
+
 static uint8_t rv003usb_forwarded_out_bytes(uint8_t report_length)
 {
     uint8_t forwarded = 0;
@@ -485,6 +510,7 @@ void setup()
     test_single_buffer_lifecycle();
     test_lifecycle_transition_matrix();
     test_silent_busy_recovery_by_correlation();
+    test_rv003usb_feature_selector();
     test_rv003usb_short_final_packet_characterization();
 
     Serial.print(F("TEST done "));
