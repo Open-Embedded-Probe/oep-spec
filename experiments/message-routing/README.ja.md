@@ -67,3 +67,20 @@ ATmega328Pでは二つのentryを持つfunction pointer tableが12 byteのstatic
 | CH32V003 static RAM | 9 byte | 8 byte | -1 byte |
 
 static RAM差は主に測定用入力bufferが7 byteから6 byteになる差であり、どちらのparserも永続状態を要求しない。role別版はroleごとの長さとfield位置を分岐するためcodeが増える一方、messageごとに1から3 byteを削減する。request/resultだけの最小probeは未使用roleのdecode処理をcompileしない実装も可能であり、この全role測定値をすべてのprobeの必須費用とはしない。
+
+## Request correlation matcher
+
+[Request correlationのscopeとlifecycle](../../docs/request-correlation-lifecycle.ja.md)に従う比較用matcherを追加した。一つまたは複数の固定slotへ、correlationとtarget reference、operation、および解決後のresolution/activity referenceを保持する。
+
+host testでは次を確認した。
+
+- 未知correlationのresultで、別のpending requestまたは出力contextを変更しない
+- matching resultからtarget referenceとoperationを復元する
+- 同じresolutionとactivity referenceの再受信をduplicateとして区別する
+- 同じcorrelationに矛盾するresolutionまたはactivity referenceをconflictとする
+- resolved slotを明示的にretireするまでcorrelationを再利用しない
+- `accepted` resultでrequest contextと新しいactivity referenceを同時に得る
+- 複数slotのうち一致したrequestだけを解決する
+- 16 bit correlationの全65,536値でopen、resolve、retireが一致する
+
+このmatcherはpayload全体の重複一致、timeout、再送、connectionを越える回復、およびactivity table自体を実装しない。同一envelopeのduplicateを検出しても、機能固有payloadまで同一であることを保証するものではない。
