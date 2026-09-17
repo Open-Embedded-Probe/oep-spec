@@ -26,9 +26,14 @@ bool oep_hid_feature_begin_set(
     uint16_t requested_length,
     uint16_t report_length)
 {
+    if (requested_length != report_length) {
+        if (lifecycle->state == OEP_HID_FEATURE_RECEIVING) {
+            lifecycle->state = OEP_HID_FEATURE_IDLE;
+        }
+        return false;
+    }
     release_previous_transfer(lifecycle);
-    if (lifecycle->state != OEP_HID_FEATURE_IDLE ||
-        requested_length != report_length) {
+    if (lifecycle->state != OEP_HID_FEATURE_IDLE) {
         return false;
     }
     lifecycle->state = OEP_HID_FEATURE_RECEIVING;
@@ -52,8 +57,11 @@ bool oep_hid_feature_begin_get(
     uint16_t requested_length,
     uint16_t report_length)
 {
-    release_previous_transfer(lifecycle);
-    if (lifecycle->state != OEP_HID_FEATURE_RESPONSE_READY ||
+    if (lifecycle->state == OEP_HID_FEATURE_RECEIVING) {
+        lifecycle->state = OEP_HID_FEATURE_IDLE;
+    }
+    if ((lifecycle->state != OEP_HID_FEATURE_RESPONSE_READY &&
+         lifecycle->state != OEP_HID_FEATURE_SENDING) ||
         requested_length != report_length) {
         return false;
     }
