@@ -52,6 +52,14 @@ host、probeおよびtargetを組み合わせ、目的の開発作業を行う�
 
 利用者はprotocol上の通信相手とは限らないが、相互運用の結果、非対応の理由、失敗および適合性を理解できる必要がある。
 
+### External consumer
+
+**external consumer**は、external bindingが示す外部interfaceまたは外部protocolを直接利用するsoftwareまたはOS componentである。
+
+たとえば、OEP hostがtarget UARTのroutingを設定し、別のterminal applicationが対応するUSB CDCを利用できる。OEP hostがI2Sの解釈を設定し、OSのaudio driverとaudio applicationがUSB Audioを利用することもできる。
+
+OEP hostとexternal consumerは同じprogramであっても、別のprocess、driverまたはapplicationであってもよい。両者をどのように関連付け、設定変更やlifecycleを調整するかはexternal bindingの責任に含める。
+
 ## 実装とrole
 
 **実装**は、hostまたはprobeのroleを実現する具体的なsoftware、firmwareまたはhardwareである。
@@ -170,6 +178,10 @@ OEP機能は未宣言の外部通信に依存してはならない。外部通�
 **利用可能性**は、定義上は対応している機能を、現在の構成や状態で利用できるかを表す概念である。
 
 機能を実装していないこと、意味に互換性がないこと、条件が制限を超えること、一時的に利用できないこと、および実行中に失敗したことは区別する。
+
+external bindingの利用可能性は、一つの主体が事前に完全には判断できない場合がある。probeはprobe側のresourceや有効化状態を判断できるが、host OS上のdriver、権限、device node、他processによる占有等は判断できない。したがって、bindingが宣言されていること、外部interfaceを特定できること、各側で既知の状態、および実際のopenや通信によって利用を確認したことを区別する。
+
+判断できない状態は「利用可能」と推定せず、未知として扱える必要がある。具体的な状態表現は未決である。
 
 ## Identityの区別
 

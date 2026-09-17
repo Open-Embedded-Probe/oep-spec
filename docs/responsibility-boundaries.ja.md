@@ -1,6 +1,6 @@
 # Open Embedded Probe — 責任境界
 
-状態: **検討中の設計入力**。この文書は、[合意済みの概念モデル](conceptual-model.ja.md)に基づき、OEP共通protocol、個別機能、connection binding、host・probe実装、およびproject governanceがそれぞれ何を担当するかを整理する。
+状態: **合意済みの責任境界**。この文書は、[合意済みの概念モデル](conceptual-model.ja.md)に基づき、OEP共通protocol、個別機能、connection binding、external binding、host・probe実装、およびproject governanceがそれぞれ何を担当するかを整理する。下流設計によって矛盾が見つかった場合は、理由を記録して改訂する。
 
 この文書は責任の所在を定めるものであり、message形式、encoding、識別子の形式、通信手順またはsoftware構造は規定しない。
 
@@ -34,6 +34,7 @@ OEPでは、異なる機能、実装およびconnection interfaceを同じ相互
 | 実装ごとの性能や制限 | probe実装が事実を提供し、機能定義が意味を定め、OEP共通protocolが区別して運ぶ |
 | 操作を実際に実行すること | probe実装 |
 | 利用する機能と条件を選ぶこと | host実装 |
+| external bindingのdataを直接利用すること | external consumer |
 | 標準機能、共通identity、適合性規則の管理 | OEP project governance |
 
 複数領域が関係する項目でも、同じ意味をそれぞれが独自に定義しない。共通protocolは機能固有の意味を決めず、機能定義はconnection interface固有の運搬方法を決めない。
@@ -171,12 +172,15 @@ external bindingは、必要に応じて次を扱う責任を持つ。
 - どの提供機能とどの外部interfaceまたはprotocolが関係するか
 - external bindingをhostが識別し、対応可否を判断するために必要な情報
 - OEPと外部側のどちらが設定、開始、停止および状態管理を担当するか
+- OEP hostとexternal consumerが同一でない場合の関連付けと調整
 - dataの方向、format、単位および外部protocol上の意味
-- 外部経路の利用可能性、切断、drop、破損その他の失敗
+- 各側から観測できる外部経路の状態、切断、drop、破損その他の失敗
 - OEP native pathや他のexternal bindingとの代替、併用または排他関係
 - 他機能と共有するresourceまたは同時利用上の制限
 
 すべてのexternal bindingが同じ情報を必要とするとは限らない。USB標準class自身が定義する設定や状態をOEPで重複して定義する必要はないが、責任の所在とOEP機能との関係は曖昧にしない。
+
+probeはhost OS上のdriver、権限、device nodeまたは他processによる占有を常に知ることはできない。hostもprobe内部のresource状態を常に知るとは限らない。external bindingは、状態を報告する主体とその観測範囲を区別し、判断できない状態を利用可能とみなさない。
 
 ### External bindingの相互運用範囲
 
