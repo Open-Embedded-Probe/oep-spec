@@ -333,6 +333,8 @@ rv003usbのsourceを追うと、統合callbackで拒否時に設定している`
 
 HID callbackのselector境界では、rv003usbの`lValueLSBIndexMSB`をFeature Report type 3、report ID 1、interface 0の完全な組として照合する。異なるreport type、report IDまたはinterfaceによるGET_REPORTでOEPの未取得responseが消費されず、SET_REPORTのdataがOEP parserへ入らない構成とした。
 
+lifecycleのresetは全4状態から`IDLE`へ戻し、以前の未取得responseを無効化する。firmware再起動時は初期化から実行できるが、利用したrv003usb revisionにはUSB bus resetのuser callbackが見当たらず、bus resetとの接続は未実装である。USB stack側のreset検出と合わせた実機検証が必要になる。
+
 UART結合試験では、候補Bの同じ10 byte core requestと14 byte responseをderived-length COBS系frameおよびstop-and-waitへ載せた。probeのrequest delivery callback内でresponseを生成し、response DATAがrequest ACKより先にqueueされる場合でも、hostはresponseを一度だけ受信し、双方のtransport ACKを完了した。これにより仮core parserがHID report形式へ依存せず、UART bindingからも利用できることを確認した。
 
 またtransport frameとCRCが正常で、bootstrap identityだけが不正なrequestは、bindingがtransport ACKした後にcore parserで拒否した。core内容の拒否をACK抑止やbinding retryへ変換しない層境界を確認した。このidentity不一致caseではOEP responseを生成しない。

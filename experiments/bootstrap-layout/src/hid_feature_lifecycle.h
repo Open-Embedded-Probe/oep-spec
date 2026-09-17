@@ -22,6 +22,9 @@ struct oep_hid_feature_lifecycle {
 void oep_hid_feature_lifecycle_init(
     struct oep_hid_feature_lifecycle *lifecycle);
 
+void oep_hid_feature_lifecycle_reset(
+    struct oep_hid_feature_lifecycle *lifecycle);
+
 bool oep_hid_feature_begin_set(
     struct oep_hid_feature_lifecycle *lifecycle,
     uint16_t requested_length,
