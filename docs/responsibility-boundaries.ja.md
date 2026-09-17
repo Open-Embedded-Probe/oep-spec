@@ -144,11 +144,11 @@ connection bindingは、必要に応じて次を扱う責任を持つ。
 - OEP通信をそのinterface上で開始できる状態にする方法
 - OEPの情報をinterface上で運ぶ単位との対応
 - interfaceが持つ転送量、順序性、信頼性等の性質への対応
-- 接続候補からOEP endpointを見つけるために利用できる情報
+- 接続先をOEP endpointの候補として扱うために利用できる情報
 - interface固有のidentity、profileまたは構成とOEP endpointとの関係
 - 接続の切断、転送不能または破損をOEP側へ伝えるために必要な性質
 
-具体的なframingや発見方法は、connection interfaceごとの設計で決める。
+具体的なframing、接続先情報の表現、および利用可能な場合の発見方法は、connection interfaceごとの設計で決める。connection bindingは自動発見を必須としない。hostは、利用者の指定、設定または別の仕組みから接続先情報を得てもよい。
 
 ### Connection bindingが決めないこと
 

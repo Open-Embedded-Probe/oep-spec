@@ -32,11 +32,13 @@ OEP native pathまたはexternal bindingで機能を利用する
 
 ## 1. 接続候補を得る
 
-hostは、connection bindingが提供する方法により、OEP endpointである可能性のある接続候補を得る。
+hostは、connection bindingに従って通信を試行するために必要な接続先情報を得る。
 
-USB VID:PID、USB interface、serial port、network service等は候補を見つける手掛かりになり得るが、それだけで相手がOEPであること、提供機能、適合性または真正性を確定しない。
+接続先情報は、interfaceの列挙やservice discoveryだけでなく、利用者によるaddressの指定、hostの設定、別の仕組みによる発見、または他のsoftwareからの受け渡しによって得てもよい。connection bindingは、自動発見機構を必ず提供する必要はない。
 
-接続候補の列挙方法、OS API、address形式および自動接続policyは、connection bindingまたはhost implementationの責任とする。
+USB VID:PID、USB interface、serial port、network serviceおよび指定されたnetwork address等は、接続候補を識別する手掛かりになり得るが、それだけで相手が到達可能であること、OEPであること、提供機能、適合性または真正性を確定しない。
+
+接続先情報の表現、利用可能な場合の列挙または発見方法、OS APIおよび自動接続policyは、connection bindingまたはhost implementationの責任とする。
 
 ## 2. OEP endpointを確認する
 
@@ -140,7 +142,7 @@ hostは、機能と通信経路について、目的の条件が成立するか�
 - external bindingは宣言されているが、実際にopenできるかまだ確認していない
 - external bindingのopenまたは通信を試みたが、host側またはprobe側の理由で利用できない
 
-制限を事前に静的情報として示すか、具体的な条件をprobeへ提示して判断するか、または両方を利用するかは未決である。
+probeは、hostが利用候補を選ぶために必要な選択肢と制限を、表現可能な範囲で事前に示さなければならない。ただし、resourceの現在状態や複雑な条件の組合せなど、具体的な条件を評価しなければ確定できない事項まで静的な一覧として完全に列挙することは要求しない。
 
 ## 7. 利用条件を要求し、受理結果を得る
 
