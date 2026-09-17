@@ -327,6 +327,8 @@ xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,476 byte / RAM 112 
 
 単一bufferのHID lifecycleは4状態と6操作の全24組合せを走査した。新しいSET_REPORTまたはGET_REPORT setupは、受信途中または送信途中のcontrol transferを終了させてから評価する。これにより中断されたSET_REPORTの後も`RECEIVING`へ固定されない。未取得responseがある`RESPONSE_READY`だけは、不正長GETや新しいSETから保護する。
 
+rv003usbのsourceを追うと、統合callbackで拒否時に設定している`endpoint->max_len = 0`はSTALLを生成しない。SET_REPORTの後続OUT DATAはACKされ、GET_REPORTのINにはzero-length DATAが返る。したがって現在の試作でbusyをUSB errorとして通知することはできない。hostが一つのSET_REPORTと対応するGET_REPORTを完了してから次を開始する運用、OEP dataによる明示的なbusy応答、bindingまたはUSB stackへのSTALL/NAK追加を今後比較する必要がある。この確認はsource上の経路解析であり、USB bus traceによる実機確認ではない。
+
 UART結合試験では、候補Bの同じ10 byte core requestと14 byte responseをderived-length COBS系frameおよびstop-and-waitへ載せた。probeのrequest delivery callback内でresponseを生成し、response DATAがrequest ACKより先にqueueされる場合でも、hostはresponseを一度だけ受信し、双方のtransport ACKを完了した。これにより仮core parserがHID report形式へ依存せず、UART bindingからも利用できることを確認した。
 
 またtransport frameとCRCが正常で、bootstrap identityだけが不正なrequestは、bindingがtransport ACKした後にcore parserで拒否した。core内容の拒否をACK抑止やbinding retryへ変換しない層境界を確認した。このidentity不一致caseではOEP responseを生成しない。
