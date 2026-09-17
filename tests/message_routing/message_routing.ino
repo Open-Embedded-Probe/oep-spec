@@ -3,6 +3,7 @@
 
 #include <message_header_layout.h>
 #include <message_routing.h>
+#include <request_correlation.h>
 
 static unsigned int test_total;
 static unsigned int test_passed;
@@ -394,6 +395,92 @@ static void test_all_header_roles_and_lengths()
         F("role header guards all roles and short lengths"));
 }
 
+static void test_request_correlation_lifecycle()
+{
+    struct oep_pending_request slots[2];
+    struct oep_request_context context;
+    struct oep_request_context unchanged;
+    memset(&context, 0xa5, sizeof(context));
+    unchanged = context;
+    oep_pending_reset(slots, 2u);
+
+    bool opened = oep_pending_open(
+        slots, 2u, 0x1234u, 0x1001u, 0x44u) == OEP_CORRELATION_OK;
+    bool unknown = oep_pending_resolve(
+        slots, 2u, 0x9999u, OEP_REQUEST_COMPLETED, 0u, &context) ==
+            OEP_CORRELATION_UNKNOWN &&
+        memcmp(&context, &unchanged, sizeof(context)) == 0;
+    bool resolved = oep_pending_resolve(
+        slots, 2u, 0x1234u, OEP_REQUEST_COMPLETED, 0u, &context) ==
+            OEP_CORRELATION_OK &&
+        context.target_reference == 0x1001u &&
+        context.operation == 0x44u &&
+        context.resolution == OEP_REQUEST_COMPLETED &&
+        context.activity_reference == 0u;
+    bool duplicate = oep_pending_resolve(
+        slots, 2u, 0x1234u, OEP_REQUEST_COMPLETED, 0u, &context) ==
+            OEP_CORRELATION_DUPLICATE;
+    bool conflict = oep_pending_resolve(
+        slots, 2u, 0x1234u, OEP_REQUEST_REJECTED, 0u, &context) ==
+            OEP_CORRELATION_CONFLICT;
+    bool reuse_blocked = oep_pending_open(
+        slots, 2u, 0x1234u, 0x9001u, 0x55u) == OEP_CORRELATION_BUSY;
+    bool retired = oep_pending_retire(slots, 2u, 0x1234u) ==
+        OEP_CORRELATION_OK;
+    bool reused = oep_pending_open(
+        slots, 2u, 0x1234u, 0x9001u, 0x55u) == OEP_CORRELATION_OK;
+
+    check(
+        opened && unknown && resolved && duplicate && conflict &&
+            reuse_blocked && retired && reused,
+        F("correlation lifecycle rejects guessing and early reuse"));
+
+    oep_pending_reset(slots, 2u);
+    bool first = oep_pending_open(
+        slots, 2u, 0x1111u, 0x1001u, 0x01u) == OEP_CORRELATION_OK;
+    bool second = oep_pending_open(
+        slots, 2u, 0x2222u, 0x9001u, 0x02u) == OEP_CORRELATION_OK;
+    bool full = oep_pending_open(
+        slots, 2u, 0x3333u, 0x7777u, 0x03u) == OEP_CORRELATION_FULL;
+    bool accepted = oep_pending_resolve(
+        slots, 2u, 0x2222u, OEP_REQUEST_ACCEPTED, 0x4567u, &context) ==
+            OEP_CORRELATION_OK &&
+        context.target_reference == 0x9001u &&
+        context.operation == 0x02u &&
+        context.activity_reference == 0x4567u;
+    bool other_pending = slots[0].state == OEP_PENDING_WAITING &&
+        slots[0].correlation == 0x1111u;
+    check(
+        first && second && full && accepted && other_pending,
+        F("accepted result transfers matching request context"));
+}
+
+static void test_all_correlation_values()
+{
+    struct oep_pending_request slot;
+    struct oep_request_context context;
+    bool all_match = true;
+
+    for (uint32_t correlation = 0u; correlation <= 0xffffu; ++correlation) {
+        oep_pending_reset(&slot, 1u);
+        if (oep_pending_open(
+                &slot, 1u, static_cast<uint16_t>(correlation),
+                0x1001u, 0x44u) != OEP_CORRELATION_OK ||
+            oep_pending_resolve(
+                &slot, 1u, static_cast<uint16_t>(correlation),
+                OEP_REQUEST_COMPLETED, 0u, &context) != OEP_CORRELATION_OK ||
+            context.target_reference != 0x1001u ||
+            context.operation != 0x44u ||
+            oep_pending_retire(
+                &slot, 1u, static_cast<uint16_t>(correlation)) !=
+                    OEP_CORRELATION_OK) {
+            all_match = false;
+            break;
+        }
+    }
+    check(all_match, F("all correlation values match pending request"));
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -406,6 +493,8 @@ void setup()
     test_routing_buffer_boundaries();
     test_header_layout_semantics();
     test_all_header_roles_and_lengths();
+    test_request_correlation_lifecycle();
+    test_all_correlation_values();
 
     Serial.print(F("TEST done "));
     Serial.print(test_passed);

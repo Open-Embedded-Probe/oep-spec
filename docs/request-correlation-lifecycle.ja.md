@@ -127,5 +127,10 @@ target echoを省略してもrequesterはstatelessにならない。payloadの�
 - target echoを任意の診断情報として標準化するか
 - probeからhostへのrequestを初期protocolへ含めるか
 
-次段階では、最小pending slotと複数slotのmatcherで、未知correlation、重複result、`accepted`からactivityへの移行、およびcorrelation再利用境界を実験する。
+## Matcher実験
 
+[Message routing比較実装](../experiments/message-routing/README.ja.md)へ、一つまたは複数の固定pending slotを使うmatcherを追加した。16 bit correlation全65,536値でopen、resolve、retireを走査し、未知resultが別requestへ適用されないこと、同一envelopeのduplicateと矛盾するresolutionを分離できること、retire前の再利用を拒否すること、および`accepted`時にtarget contextとactivity referenceを対応付けて取得できることを確認した。
+
+この結果から、resultにtargetをechoしなくてもpending記録から意味上の配送先を復元できる。ただしrequester側の状態を不要にはできず、重複payload全体の同一性、retire可能になる時点およびtimeout後の回復は引き続き未決である。
+
+次段階では、pending slotの実装costを測定し、直列profileで明示correlationを維持する場合と省略する場合の安全条件を比較する。
