@@ -200,6 +200,8 @@ transport ACKはOEP操作完了を待たないため、機能操作のtimeoutと
 
 retry回数、timeout計算、backoffおよびconnection failureへ移行する条件は未決である。低速UARTで正常frameを早すぎるtimeoutにより重複送信し続けないようにする。
 
+timerの種類、wire時間を用いる計算基準およびretry後の回復境界は[UART timeoutと回復model候補](uart-timeout-recovery-model.ja.md)に示す。
+
 ## Throughputへの影響
 
 stop-and-waitはcontrol messageを単純かつ小さい状態で確実に運びやすい一方、round-trip latencyがthroughputを制限する。
