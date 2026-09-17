@@ -141,7 +141,7 @@ SYNCでは、必要に応じて次を扱う。
 - binding revision
 - bootstrap frameを運べる最小payload上限
 
-epoch tokenは認証情報ではない。reset前の遅延frameを新しいconnectionへ誤適用しないための値である。幅、生成方法および必須性は未決である。
+epoch tokenは認証情報ではない。reset前の遅延frameを新しいconnectionへ誤適用しないための値である。具体的な振る舞い候補は[UART connection epoch同期候補](uart-connection-epoch.ja.md)に示す。幅と生成方法は未決である。
 
 ### Reset後の扱い
 
