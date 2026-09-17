@@ -92,6 +92,8 @@ report全長1から64 byteについて同じpacket分割条件を走査した。
 
 rv003usbのsource経路では、callbackが拒否を`endpoint->max_len = 0`で表してもSTALLにはならない。SET_REPORTの後続OUT DATAはACKされ、GET_REPORTのINにはzero-length DATAが返る。このため現在の統合試作はbusyをUSB errorとして通知できず、hostがSET_REPORTと対応するGET_REPORTを一組ずつ直列化する必要がある。明示的なbusy応答をOEP dataにするか、bindingまたはUSB stackにSTALL/NAK機構を加えるかは未決定である。USB pin、仮VID:PID、descriptorおよびcallbackはbuild比較用であり、列挙、SET/GET_REPORTの実動作、host API差、resetは未検証である。
 
+誤って二つ目のSET_REPORTを先行した場合も結合試験した。probeは未取得の一つ目のresponseを保護する。hostは次のGET_REPORTで一つ目のcorrelationを識別して消費し、二つ目を再送すると対応するcorrelationのresponseを取得できる。したがってsilent busyからの回復にはcorrelationが有効だが、USB上で二つ目のSET_REPORTが拒否された事実を直接通知するものではない。
+
 ## UART bindingとの結合試験
 
 `tests/bootstrap_over_uart`は、候補Bの10 byte core requestをUART stop-and-waitでhostからprobeへ送り、probeがbinding非依存core handlerで14 byte responseを生成して同じconnection上で返す。
