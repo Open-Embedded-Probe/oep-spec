@@ -355,6 +355,80 @@ static void test_lifecycle_transition_matrix()
         F("lifecycle all state and operation combinations"));
 }
 
+static bool simulated_hid_set(
+    struct oep_hid_feature_lifecycle *lifecycle,
+    uint8_t *device_report,
+    const uint8_t *request)
+{
+    if (!oep_hid_feature_begin_set(
+            lifecycle,
+            OEP_BOOTSTRAP_B_REPORT_SIZE,
+            OEP_BOOTSTRAP_B_REPORT_SIZE)) {
+        return false;
+    }
+    memcpy(device_report, request, OEP_BOOTSTRAP_B_REPORT_SIZE);
+    bool response_valid = oep_bootstrap_b_handle_report(
+        device_report,
+        OEP_BOOTSTRAP_B_REPORT_SIZE) == OEP_BOOTSTRAP_B_REPORT_SIZE;
+    return oep_hid_feature_finish_set(lifecycle, response_valid);
+}
+
+static bool simulated_hid_get(
+    struct oep_hid_feature_lifecycle *lifecycle,
+    uint8_t *response,
+    const uint8_t *device_report)
+{
+    if (!oep_hid_feature_begin_get(
+            lifecycle,
+            OEP_BOOTSTRAP_B_REPORT_SIZE,
+            OEP_BOOTSTRAP_B_REPORT_SIZE)) {
+        return false;
+    }
+    memcpy(response, device_report, OEP_BOOTSTRAP_B_REPORT_SIZE);
+    return true;
+}
+
+static void test_silent_busy_recovery_by_correlation()
+{
+    struct oep_hid_feature_lifecycle lifecycle;
+    uint8_t device_report[OEP_BOOTSTRAP_B_REPORT_SIZE];
+    uint8_t first_request[OEP_BOOTSTRAP_B_REPORT_SIZE];
+    uint8_t second_request[OEP_BOOTSTRAP_B_REPORT_SIZE];
+    uint8_t response[OEP_BOOTSTRAP_B_REPORT_SIZE];
+
+    oep_hid_feature_lifecycle_init(&lifecycle);
+    prepare_b(first_request, 1u, 1u);
+    first_request[4] = 0x11u;
+    first_request[5] = 0x11u;
+    prepare_b(second_request, 1u, 1u);
+    second_request[4] = 0x22u;
+    second_request[5] = 0x22u;
+
+    bool first_accepted = simulated_hid_set(
+        &lifecycle,
+        device_report,
+        first_request);
+    bool second_busy = !simulated_hid_set(
+        &lifecycle,
+        device_report,
+        second_request);
+    bool first_received = simulated_hid_get(
+        &lifecycle,
+        response,
+        device_report) &&
+        response[4] == 0x11u && response[5] == 0x11u;
+    bool second_retried = simulated_hid_set(
+        &lifecycle,
+        device_report,
+        second_request) &&
+        simulated_hid_get(&lifecycle, response, device_report) &&
+        response[4] == 0x22u && response[5] == 0x22u;
+
+    check(
+        first_accepted && second_busy && first_received && second_retried,
+        F("silent busy recovered by correlation and retry"));
+}
+
 static uint8_t rv003usb_forwarded_out_bytes(uint8_t report_length)
 {
     uint8_t forwarded = 0;
@@ -410,6 +484,7 @@ void setup()
     test_candidate_c();
     test_single_buffer_lifecycle();
     test_lifecycle_transition_matrix();
+    test_silent_busy_recovery_by_correlation();
     test_rv003usb_short_final_packet_characterization();
 
     Serial.print(F("TEST done "));
