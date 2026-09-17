@@ -323,13 +323,15 @@ rv003usb `5cddcd5e1d46`では、EP0 OUTの最後のdata packetが1から3 byte�
 
 report全長1から64 byteのcharacterizationでは、8で割った余りが1から3の長さで同じ欠落が生じ、余り0または4から7では全byteがcallbackへ渡ることを確認した。これはHID bindingへ要求する性質ではなく、利用したrv003usb revision固有の実装制約である。callback条件を`length > 0`へ変える局所的な実験パッチでは、候補Cをpaddingなしの9 byteとしてbuildできた。
 
-xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,476 byte / RAM 112 byte、候補C成立版はFlash 2,440 byte / RAM 108 byte、短packet実験パッチを使うpaddingなし候補CはFlash 2,420 byte / RAM 108 byteだった。通常の成立版で候補Cの削減はFlash 36 byte / RAM 4 byte、実験パッチ込みでもFlash 56 byte / RAM 4 byteに留まり、exact limitまで二往復を要する。候補Bはunknown operation rejectionも含む。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。候補Bのcore parserはHID wrapperから独立しており、UART等でも共有できることをhost testで確認した。ただし短packet実験パッチを含め、実機での列挙とSET/GET_REPORT、USB STALLによるbusy通知およびresetはまだ検証していない。
+xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,492 byte / RAM 112 byte、候補C成立版はFlash 2,460 byte / RAM 108 byte、短packet実験パッチを使うpaddingなし候補CはFlash 2,440 byte / RAM 108 byteだった。通常の成立版で候補Cの削減はFlash 32 byte / RAM 4 byte、実験パッチ込みでもFlash 52 byte / RAM 4 byteに留まり、exact limitまで二往復を要する。候補Bはunknown operation rejectionも含む。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。候補Bのcore parserはHID wrapperから独立しており、UART等でも共有できることをhost testで確認した。ただし短packet実験パッチを含め、実機での列挙、SET/GET_REPORT、拒否時のcontrol transferおよびresetはまだ検証していない。
 
 単一bufferのHID lifecycleは4状態と6操作の全24組合せを走査した。新しいSET_REPORTまたはGET_REPORT setupは、受信途中または送信途中のcontrol transferを終了させてから評価する。これにより中断されたSET_REPORTの後も`RECEIVING`へ固定されない。未取得responseがある`RESPONSE_READY`だけは、不正長GETや新しいSETから保護する。
 
 rv003usbのsourceを追うと、統合callbackで拒否時に設定している`endpoint->max_len = 0`はSTALLを生成しない。SET_REPORTの後続OUT DATAはACKされ、GET_REPORTのINにはzero-length DATAが返る。したがって現在の試作でbusyをUSB errorとして通知することはできない。hostが一つのSET_REPORTと対応するGET_REPORTを完了してから次を開始する運用、OEP dataによる明示的なbusy応答、bindingまたはUSB stackへのSTALL/NAK追加を今後比較する必要がある。この確認はsource上の経路解析であり、USB bus traceによる実機確認ではない。
 
 二つ目のSET_REPORTが未取得responseによってsilent busyとなる順序もhost testで再現した。hostはGET_REPORTで返った一つ目のcorrelationを識別して消費し、二つ目を再送することでそのresponseを取得できた。この回復はcorrelationの有用性を示すが、複数要求の同時進行を許す根拠にはならない。
+
+HID callbackのselector境界では、rv003usbの`lValueLSBIndexMSB`をFeature Report type 3、report ID 1、interface 0の完全な組として照合する。異なるreport type、report IDまたはinterfaceによるGET_REPORTでOEPの未取得responseが消費されず、SET_REPORTのdataがOEP parserへ入らない構成とした。
 
 UART結合試験では、候補Bの同じ10 byte core requestと14 byte responseをderived-length COBS系frameおよびstop-and-waitへ載せた。probeのrequest delivery callback内でresponseを生成し、response DATAがrequest ACKより先にqueueされる場合でも、hostはresponseを一度だけ受信し、双方のtransport ACKを完了した。これにより仮core parserがHID report形式へ依存せず、UART bindingからも利用できることを確認した。
 

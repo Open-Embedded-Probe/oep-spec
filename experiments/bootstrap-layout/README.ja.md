@@ -78,9 +78,9 @@ rv003usb `5cddcd5e1d46`、ch32fun `618bba58c615`、xPack RISC-V GCC 14.3.0、`-O
 
 | 仮候補 | Flash | RAM | USB report buffer | exact limitまでの往復 |
 |---|---:|---:|---:|---:|
-| B | 2,476 byte | 112 byte | 16 byte | 1 |
-| C | 2,440 byte | 108 byte | 12 byte | 2 |
-| C + rv003usb短packet実験パッチ | 2,420 byte | 108 byte | 9 byte | 2 |
+| B | 2,492 byte | 112 byte | 16 byte | 1 |
+| C | 2,460 byte | 108 byte | 12 byte | 2 |
+| C + rv003usb短packet実験パッチ | 2,440 byte | 108 byte | 9 byte | 2 |
 
 rv003usb `5cddcd5e1d46`は、EP0 OUTの最後のdata packetが1から3 byteの場合、user data callbackへ渡さない。report ID込み9 byteの候補Cは8+1 byteになり、最後の1 byteをparserが受け取れなかった。このため統合候補CはUSB reportを12 byteへpaddingし、8+4 byteとして測定した。仮parserが解釈する先頭9 byteは変えていない。
 
@@ -88,11 +88,13 @@ report全長1から64 byteについて同じpacket分割条件を走査した。
 
 `rv003usb-short-out.patch`でそのcallback条件を`length > 0`へ変更し、候補Cをpaddingなしの9 byte reportとしてbuildした。統合Makefileへ一時コピーのpathを`RV003USB_C`、`-DOEP_RV003USB_SHORT_OUT_PATCHED`を`PATCH_DEFINE`として渡せる。外部checkout自体は変更しない。測定上はpadding版からFlashが20 byte減り、RAMは変わらなかった。このパッチはbuildのみの実験であり、短packetの実受信、zero-length packetおよびrv003usbの他機能との組合せは未検証である。
 
-成立するHID構成同士では、候補Cの削減はFlash 36 byte / RAM 4 byteだった。候補Bはunknown operationをcorrelation付きresponseで拒否する処理も含む。core handlerはHID wrapperから分離されており、UART等から同じ形式を直接処理できる。lifecycleは未取得responseが次のSET_REPORTで上書きされることを防ぎ、正しい長さのGET_REPORT開始後にだけbufferを次のsetupで再利用可能にする。SET_REPORT受信途中またはGET_REPORT送信途中に次のSET_REPORT/GET_REPORT setupが始まった場合は、前のcontrol transferを終了して新しい要求を評価する。4状態と6操作の全24組合せをhost testで確認した。
+成立するHID構成同士では、候補Cの削減はFlash 32 byte / RAM 4 byteだった。候補Bはunknown operationをcorrelation付きresponseで拒否する処理も含む。core handlerはHID wrapperから分離されており、UART等から同じ形式を直接処理できる。lifecycleは未取得responseが次のSET_REPORTで上書きされることを防ぎ、正しい長さのGET_REPORT開始後にだけbufferを次のsetupで再利用可能にする。SET_REPORT受信途中またはGET_REPORT送信途中に次のSET_REPORT/GET_REPORT setupが始まった場合は、前のcontrol transferを終了して新しい要求を評価する。4状態と6操作の全24組合せをhost testで確認した。
 
 rv003usbのsource経路では、callbackが拒否を`endpoint->max_len = 0`で表してもSTALLにはならない。SET_REPORTの後続OUT DATAはACKされ、GET_REPORTのINにはzero-length DATAが返る。このため現在の統合試作はbusyをUSB errorとして通知できず、hostがSET_REPORTと対応するGET_REPORTを一組ずつ直列化する必要がある。明示的なbusy応答をOEP dataにするか、bindingまたはUSB stackにSTALL/NAK機構を加えるかは未決定である。USB pin、仮VID:PID、descriptorおよびcallbackはbuild比較用であり、列挙、SET/GET_REPORTの実動作、host API差、resetは未検証である。
 
 誤って二つ目のSET_REPORTを先行した場合も結合試験した。probeは未取得の一つ目のresponseを保護する。hostは次のGET_REPORTで一つ目のcorrelationを識別して消費し、二つ目を再送すると対応するcorrelationのresponseを取得できる。したがってsilent busyからの回復にはcorrelationが有効だが、USB上で二つ目のSET_REPORTが拒否された事実を直接通知するものではない。
+
+rv003usbがHID callbackへ渡す`lValueLSBIndexMSB`も検証する。統合試作はFeature Report type 3、report ID 1、interface 0の組合せ`0x00000301`だけを受け付ける。異なるreport type、report IDまたはinterfaceのGET_REPORTは未取得responseを消費せず、SET_REPORTはOEP parserへ渡さない。
 
 ## UART bindingとの結合試験
 
