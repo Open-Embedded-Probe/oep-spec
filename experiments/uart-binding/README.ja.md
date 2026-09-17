@@ -14,7 +14,9 @@
 
 stop-and-wait部分は、1 bit sequence、ACK、timeout時の同一frame再送、retry上限およびreceiver側の重複delivery抑止を実装する。ACKはOEP処理結果ではなく、bindingから上位へmessageをdeliveryできたことだけを表す。
 
-wire上のSYNC、epoch token、実時間timer、baud変更および同時送信時の調停はまだ実装していない。`reset_epoch()`はlocal stateを初期化するだけであり、相手との同期を成立させるものではない。
+さらにhost/probe roleと、`unsynchronized`、`synchronizing`、`active`、`failed`のepoch stateを持ち、host主導のSYNC / SYNC-ACKを実装する。この実験ではtokenを4 byteと仮置きするが、仕様上の幅ではない。
+
+実時間timer、baud変更および同時送信時の調停はまだ実装していない。`reset_epoch()`はlocal stateを未同期へ戻すだけであり、単独では相手との同期を成立させない。
 
 ## 仮frame
 
@@ -29,6 +31,8 @@ decode後のframeは次の形である。
 
 COBS系encodingの後にdelimiterを加えるため、最大32 byte payloadのwire長は最大39 byte、payloadなしのACKは7 byteになる。
 
+4 byte tokenを使用する仮SYNC / SYNC-ACKは各11 byteになる。通常DATAにはepoch tokenを付加しない。
+
 ## 確認した挙動
 
 host testでは次を確認する。
@@ -41,6 +45,13 @@ host testでは次を確認する。
 - DATA破損後のtimeout再送
 - receiverが上位へdeliveryできない間はACKせず、再送時に受理
 - retry上限後のfailure
+- epoch成立前のDATA拒否
+- SYNC-ACK喪失時の同一token再送
+- 同一tokenのSYNCを受けてもsequence stateを再初期化しないこと
+- 異なるtokenによる新しいepochとsequence初期化
+- probeだけがresetした場合のDATA拒否と再同期
+- 同期中の古いSYNC-ACKおよびDATAの無視
+- SYNC retry上限後のfailed state
 
 ## ATmega328Pでの中間測定
 
@@ -49,10 +60,12 @@ Arduino Uno R3相当のATmega328Pを対象に、avr-gcc 7.3.0、`-Os`、section 
 | 構成 | Flash | static RAM |
 |---|---:|---:|
 | detect-only codecの送受信 | 1,294 byte | 94 byte |
-| codec + stop-and-waitの送受信・再送 | 2,078 byte | 146 byte |
-| 差 | +784 byte | +52 byte |
+| codec + stop-and-wait + epoch同期 | 2,764 byte | 156 byte |
+| detect-onlyとの差 | +1,470 byte | +62 byte |
 
-測定ELF上の`oep_uart_stopwait` stateは91 byteである。これには39 byteの再送frameと38 byteのincremental decoder領域が含まれる。host ABIではpointer幅とalignmentが異なるため同じ構造体は112 byteになる。
+epoch同期追加前のstop-and-wait測定はFlash 2,078 byte / static RAM 146 byteだった。同じtoolchainでの差はFlash 686 byte / static RAM 10 byteである。差にはSYNCを実行する測定harnessの増加も含む。
+
+測定ELF上の`oep_uart_stopwait` stateは97 byteである。これには39 byteの再送frame、38 byteのincremental decoder領域、4 byte token、roleおよびstateが含まれる。
 
 この差は最終実装の費用ではない。codecとの関数統合、incremental CRC、buffer共有、UART driverとの統合によって変わる。ただし、32 byte payloadのstop-and-wait候補がUno R3の2 KiB SRAMに対して直ちに成立しない大きさではないことは確認できる。
 
@@ -93,6 +106,6 @@ make -C experiments/uart-binding avr-size
 
 ## 中間結論
 
-stop-and-waitはdetect-onlyより状態とwire overheadを増やすが、破損DATAとACK喪失をbinding内で回復し、同じrequestをOEP coreへ重複deliveryしない性質を小さい実装で実現できた。このため、初期UART control channelの第一候補をstop-and-waitのまま維持する。
+stop-and-waitはdetect-onlyより状態とwire overheadを増やすが、破損DATAとACK喪失をbinding内で回復し、同じrequestをOEP coreへ重複deliveryしない性質を小さい実装で実現できた。epoch同期を加えてもATmega328P上のstateは97 byteであり、初期UART control channelの第一候補を維持する。
 
-採用を確定する前に、wire上のepoch同期、片側reset、遅延した旧frame、実UART/USB-UART bridgeでのtimeoutとthroughputを検証する必要がある。
+host-arduino-core上では片側resetと古いframeの排除を確認した。採用を確定する前に、実UART/USB-UART bridge上の片側reset、遅延した旧frame、timeoutとthroughputを検証する必要がある。

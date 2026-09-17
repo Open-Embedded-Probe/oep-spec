@@ -217,9 +217,11 @@ binding同期失敗はtransport failureである。正常なSYNC後のOEP非互�
 - epoch変更によって以前の機能操作を取消したことにはしない
 - epochを越えたexactly-onceを保証しない
 
-## 次の検証
+## 比較実装による中間結果
 
-非規定の比較実装へSYNC stateを追加し、host-arduino-core上で少なくとも次を確認する。
+非規定の[UART binding比較実装](../experiments/uart-binding/README.ja.md)へhost/probe roleとepoch stateを追加した。比較用tokenは4 byteとしたが、仕様値ではない。
+
+host-arduino-core上で次を確認した。
 
 - 初回SYNC後だけDATAをdeliveryする
 - SYNC-ACK喪失と同じtokenのretry
@@ -227,6 +229,10 @@ binding同期失敗はtransport failureである。正常なSYNC後のOEP非互�
 - probeだけのreset後に未同期DATAを拒否する
 - 古いSYNC-ACKおよび以前のresponseをhostが無視する
 - 新しいepochで両方向のsequenceが初期値へ戻る
+
+ATmega328P向け測定用ELFでは、epoch同期を含むstop-and-wait構成はFlash 2,764 byte / static RAM 156 byteだった。epoch同期追加前の測定との差はFlash 686 byte / static RAM 10 byteである。測定harnessを含むため、最終実装量ではない。
+
+## 次の検証
 
 実UARTでは、port open時のDTR reset、OS input purge、USB-UART bridge bufferおよびACK turnaroundを別途検証する。
 
