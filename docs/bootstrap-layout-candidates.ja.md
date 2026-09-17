@@ -324,7 +324,7 @@ HID feature reportでは、OS API上のbufferへreport IDを含める実装が�
 5. 不正length、CRC failure、途中切断および重複frameの処理
 6. unknown operationをrejectedとして返すために必要な情報
 
-この検証結果を得るまで、候補BまたはCをprotocol仕様として採用しない。
+具体的な仮fieldとbyte数の比較は、[Bootstrap具体layout実験案](bootstrap-concrete-layout-experiment.ja.md)に示す。この検証結果を得るまで、候補BまたはCをprotocol仕様として採用しない。
 
 ## この文書で決めないこと
 
