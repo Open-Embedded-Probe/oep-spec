@@ -78,9 +78,9 @@ rv003usb `5cddcd5e1d46`、ch32fun `618bba58c615`、xPack RISC-V GCC 14.3.0、`-O
 
 | 仮候補 | Flash | RAM | USB report buffer | exact limitまでの往復 |
 |---|---:|---:|---:|---:|
-| B | 2,492 byte | 112 byte | 16 byte | 1 |
-| C | 2,460 byte | 108 byte | 12 byte | 2 |
-| C + rv003usb短packet実験パッチ | 2,440 byte | 108 byte | 9 byte | 2 |
+| B | 2,496 byte | 112 byte | 16 byte | 1 |
+| C | 2,464 byte | 108 byte | 12 byte | 2 |
+| C + rv003usb短packet実験パッチ | 2,444 byte | 108 byte | 9 byte | 2 |
 
 rv003usb `5cddcd5e1d46`は、EP0 OUTの最後のdata packetが1から3 byteの場合、user data callbackへ渡さない。report ID込み9 byteの候補Cは8+1 byteになり、最後の1 byteをparserが受け取れなかった。このため統合候補CはUSB reportを12 byteへpaddingし、8+4 byteとして測定した。仮parserが解釈する先頭9 byteは変えていない。
 
@@ -97,6 +97,8 @@ rv003usbのsource経路では、callbackが拒否を`endpoint->max_len = 0`で�
 rv003usbがHID callbackへ渡す`lValueLSBIndexMSB`も検証する。統合試作はFeature Report type 3、report ID 1、interface 0の組合せ`0x00000301`だけを受け付ける。異なるreport type、report IDまたはinterfaceのGET_REPORTは未取得responseを消費せず、SET_REPORTはOEP parserへ渡さない。
 
 HID lifecycleのreset操作は、受信中、response待機中および送信中を含む全4状態から`IDLE`へ戻し、以前のresponseをGET_REPORTできない状態にする。利用したrv003usb revisionにはUSB bus resetをuser codeへ通知するhookが見当たらないため、統合試作からこの操作を呼ぶ経路はまだない。firmware再起動時は初期化によって同じ状態になる。bus reset時の接続はUSB stack側の検出方法と合わせて実機検証する。
+
+rv003usbにはGET_REPORT control transferの完了をuser codeへ通知するhookもない。最初のGET_REPORT開始だけでresponseを消費済みにすると、中断後の再GETでresponseを失う。このためresponse bufferは次の正しいSET_REPORTまたはlifecycle resetまで保持し、同じ長さのGET_REPORTへ同じcorrelation付きresponseを繰り返し返す。誤った長さやselectorのGET_REPORTもcached responseを消費しない。これによりhostのGET retryは冪等になるが、hostは新しいrequestへ進む際に古いresponseをcorrelationで区別する必要がある。
 
 ## UART bindingとの結合試験
 

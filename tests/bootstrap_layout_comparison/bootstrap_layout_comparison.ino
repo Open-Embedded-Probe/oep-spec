@@ -380,11 +380,11 @@ static void test_lifecycle_transition_matrix()
         },
         {
             {true, OEP_HID_FEATURE_RECEIVING},
-            {false, OEP_HID_FEATURE_IDLE},
             {false, OEP_HID_FEATURE_SENDING},
             {false, OEP_HID_FEATURE_SENDING},
-            {false, OEP_HID_FEATURE_IDLE},
-            {false, OEP_HID_FEATURE_IDLE},
+            {false, OEP_HID_FEATURE_SENDING},
+            {true, OEP_HID_FEATURE_SENDING},
+            {false, OEP_HID_FEATURE_SENDING},
         },
     };
     bool all_transitions_match = true;
@@ -507,6 +507,50 @@ static void test_silent_busy_recovery_by_correlation()
         F("silent busy recovered by correlation and retry"));
 }
 
+static void test_get_report_retry_keeps_response()
+{
+    struct oep_hid_feature_lifecycle lifecycle;
+    uint8_t device_report[OEP_BOOTSTRAP_B_REPORT_SIZE];
+    uint8_t request[OEP_BOOTSTRAP_B_REPORT_SIZE];
+    uint8_t first_response[OEP_BOOTSTRAP_B_REPORT_SIZE];
+    uint8_t retried_response[OEP_BOOTSTRAP_B_REPORT_SIZE];
+
+    oep_hid_feature_lifecycle_init(&lifecycle);
+    prepare_b(request, 1u, 1u);
+    request[4] = 0x5au;
+    request[5] = 0xa5u;
+
+    bool request_accepted = simulated_hid_set(
+        &lifecycle,
+        device_report,
+        request);
+    bool first_get = simulated_hid_get(
+        &lifecycle,
+        first_response,
+        device_report);
+    bool wrong_length_preserved =
+        !oep_hid_feature_begin_get(
+            &lifecycle,
+            OEP_BOOTSTRAP_B_REPORT_SIZE - 1u,
+            OEP_BOOTSTRAP_B_REPORT_SIZE) &&
+        lifecycle.state == OEP_HID_FEATURE_SENDING;
+    bool retry_get = simulated_hid_get(
+        &lifecycle,
+        retried_response,
+        device_report);
+
+    check(
+        request_accepted && first_get && wrong_length_preserved &&
+            retry_get &&
+            memcmp(
+                first_response,
+                retried_response,
+                OEP_BOOTSTRAP_B_REPORT_SIZE) == 0 &&
+            retried_response[4] == 0x5au &&
+            retried_response[5] == 0xa5u,
+        F("GET retry returns cached correlated response"));
+}
+
 static void test_rv003usb_feature_selector()
 {
     check(
@@ -589,6 +633,7 @@ void setup()
     test_lifecycle_transition_matrix();
     test_lifecycle_reset_from_every_state();
     test_silent_busy_recovery_by_correlation();
+    test_get_report_retry_keeps_response();
     test_rv003usb_feature_selector();
     test_rv003usb_short_final_packet_characterization();
 
