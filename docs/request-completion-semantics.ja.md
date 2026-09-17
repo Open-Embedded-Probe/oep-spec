@@ -176,7 +176,7 @@ hostがresolutionを受け取れなかった場合、requestは次のどの状�
 ## この文書で決めないこと
 
 - requestおよびresponseのwire上の名称とtype
-- request correlationの識別子と省略条件
+- request correlationの幅、wire表現および再利用条件
 - activity identityの割当主体、表現、scopeおよびlifetime
 - activity updateとterminal outcomeの具体的形式
 - activityを照会、停止または解放する共通操作

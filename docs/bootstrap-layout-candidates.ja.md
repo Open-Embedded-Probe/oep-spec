@@ -237,9 +237,9 @@ endpoint確認に限り、常に8 byteの固定recordを使用する。通常の
 
 ## Correlationの論点
 
-最小実装は一度に一requestだけ処理するため、request correlationを暗黙にできる可能性がある。一方、HIDのSETと後続GET、UARTでの再送、複数request対応および遅延responseを考えると、bootstrapにも小さいtokenがある方が誤対応を検出しやすい。
+最小実装が一度に一requestだけ処理する場合も、HIDの分離したSET/GET、response cache、UARTでの再送およびtimeout後の遅延responseがあり得る。一件制限だけでは古いresponseを次のrequestから区別できないため、[明示correlationと暗黙対応の比較](implicit-correlation-comparison.ja.md)に従い、初期bootstrapにも明示correlationを持たせる方向とする。
 
-候補Cの1 byte tokenは説明用であり、wraparound、再接続、重複responseおよびsecurityを考慮した幅ではない。候補A/Bの2 byte correlationも採用値ではない。
+候補Cの1 byte tokenは説明用であり、wraparound、再接続、重複responseおよびsecurityを考慮した幅ではない。候補A/Bの2 byte correlationも採用値ではない。明示する方針と具体的な幅の採用は分けて検討する。
 
 ## Constraint表現の論点
 

@@ -132,7 +132,7 @@ bindingはfunction definitionや独自payloadを解釈しない。個別機能ha
 ## この文書で決めないこと
 
 - role、scope kindおよびreferenceのwire field
-- referenceとcorrelationの幅、割当、再利用および省略条件
+- referenceとcorrelationの幅、割当および再利用。将来のcompact profileでcorrelationを暗黙化できる条件
 - function definition referenceのnamespace、ownerおよびrevision表現
 - offered function一覧とreferenceを取得する操作
 - notificationの配送保証と再取得方法
@@ -143,3 +143,5 @@ bindingはfunction definitionや独自payloadを解釈しない。個別機能ha
 - batch messageと一つのmessage内の複数target
 
 [Message header構成比較](message-header-layout-comparison.ja.md)では、すべてのroleへcorrelationとreferenceの最大集合を置く固定headerと、roleごとに必要なrouting情報だけを置くheaderを比較した。現時点では、roleを共通に識別した後、role別headerを検証する方式を優先候補とする。これは具体的なwire layoutの採用ではなく、実装sizeと未知role処理を次に検証するための方向である。
+
+[明示correlationと暗黙対応の比較](implicit-correlation-comparison.ja.md)では、直列profileでもHID response cacheやtimeout後の遅延resultを新しいrequestから区別するため、初期共通protocolに明示correlationを維持する方向とした。幅とfield配置は未決である。

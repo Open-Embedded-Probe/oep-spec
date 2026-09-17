@@ -2,7 +2,7 @@
 
 状態: **検討中の論理protocol案**。この文書は、requestと最初のresultを対応付け、resultに対象情報を重複して載せなくても誤配送しないためのrequest correlationを整理する。
 
-wire表現、bit幅、予約値、再送方式および省略encodingは決定しない。correlationが明示fieldであるか、直列exchangeのconnection contextから暗黙に導出されるかも決定しない。
+wire表現、bit幅、予約値および再送方式は決定しない。[明示correlationと暗黙対応の比較](implicit-correlation-comparison.ja.md)により、初期の共通logical protocolでは直列profileにも明示correlationを持たせる方向とした。
 
 ## 解決する問題
 
@@ -101,13 +101,16 @@ target echoを省略してもrequesterはstatelessにならない。payloadの�
 
 同時に一つのrequestしか送らない実装は、pending tableの代わりに一つのslotを使用できる。その場合も、遅延またはcached resultを新しいrequestへ誤適用しない必要がある。
 
-明示的correlationを省略し、「現在の一件」を暗黙のcorrelationとするencodingを将来認めるかは未決である。省略する場合、connection bindingまたはprofileが一件だけの未解決request、順序、重複およびresponse cacheの境界を保証しなければならない。最小実装であることだけを理由に、古いresultを区別できない構成を認めない。
+初期の共通logical protocolでは明示correlationを維持する。一件制限だけでは、遅延またはcached resultが次のrequestへ誤適用されないことを保証できない。
+
+将来「現在の一件」を暗黙のcorrelationとするcompact profileを認める場合、connection bindingまたはprofileが一件だけの未解決request、順序、重複、response cacheの破棄、および結果不明時のconnection終了を保証しなければならない。最小実装であることだけを理由にcorrelationを省略しない。
 
 ## 現時点の方向
 
 - requestを開始する側がcorrelationを割り当てる
 - correlationはconnection contextとrequest方向の中で解釈する
 - 同じscope内の未解決request間で値を重複させない
+- 初期の直列profileでもcorrelationを明示する
 - resultは同じcorrelationを返す
 - requesterはcorrelationからtarget、definition、operationおよび受取先を復元する
 - resultのtarget echoを意味上の必須情報にしない
@@ -118,7 +121,7 @@ target echoを省略してもrequesterはstatelessにならない。payloadの�
 ## この文書で決めないこと
 
 - correlationのwire幅、encodingおよび予約値
-- 明示fieldを省略できるprofile
+- 将来、明示fieldを省略するcompact profileを定義するか
 - 最大同時request数
 - resultのorderingおよびout-of-order許容
 - duplicate resultの識別とacknowledgement
@@ -137,4 +140,4 @@ target echoを省略してもrequesterはstatelessにならない。payloadの�
 
 これはrequester側の費用である。hostからのrequestに応答するだけの最小probeはpending matcherを持たず、受信したcorrelationをresultへ返せばよい。probeからhostへのrequestを提供する場合に、その方向のpending stateが必要になる。
 
-次段階では、直列profileで明示correlationを維持する場合と省略する場合の安全条件を比較する。
+次段階では、correlationの候補幅と再利用windowを比較する。
