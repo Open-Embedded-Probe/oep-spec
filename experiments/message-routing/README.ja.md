@@ -84,3 +84,16 @@ host testでは次を確認した。
 - 16 bit correlationの全65,536値でopen、resolve、retireが一致する
 
 このmatcherはpayload全体の重複一致、timeout、再送、connectionを越える回復、およびactivity table自体を実装しない。同一envelopeのduplicateを検出しても、機能固有payloadまで同一であることを保証するものではない。
+
+`reset`、`open`および`accepted` resultの`resolve`を通るbare ELFを、1 slotと4 slotで測定した。測定用contextとvolatile値も含み、`retire`はlink時に除去される。
+
+| target | 1 slot | 4 slot | 差 |
+|---|---:|---:|---:|
+| ATmega328P Flash | 688 byte | 688 byte | 0 byte |
+| ATmega328P static RAM | 17 byte | 44 byte | +27 byte |
+| CH32V003 text | 608 byte | 610 byte | +2 byte |
+| CH32V003 static RAM | 22 byte | 50 byte | +28 byte |
+
+一つのpending slotはATmega328Pで9 byte、CH32V003で10 byteである。RAM総差は配列外の測定用contextとalignmentも含む。slot数を増やしても同じ探索codeを使うためcode量はほぼ変わらず、RAMが主に増える。
+
+pending matcherはrequestを開始する側の状態である。hostからのrequestに応答するだけでprobeからhostへのrequestを開始しない最小probeは、このmatcherもpending slotも実装する必要がない。受信requestのcorrelationをresultへ返す処理とは別の費用である。

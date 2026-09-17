@@ -133,4 +133,8 @@ target echoを省略してもrequesterはstatelessにならない。payloadの�
 
 この結果から、resultにtargetをechoしなくてもpending記録から意味上の配送先を復元できる。ただしrequester側の状態を不要にはできず、重複payload全体の同一性、retire可能になる時点およびtimeout後の回復は引き続き未決である。
 
-次段階では、pending slotの実装costを測定し、直列profileで明示correlationを維持する場合と省略する場合の安全条件を比較する。
+1 slotと4 slotのbare ELFを測定すると、slot自体はATmega328Pで9 byte、CH32V003で10 byteだった。4 slot化によるcode増加はATmega328Pで0 byte、CH32V003で2 byteであり、主な増加はslotごとのRAMだった。
+
+これはrequester側の費用である。hostからのrequestに応答するだけの最小probeはpending matcherを持たず、受信したcorrelationをresultへ返せばよい。probeからhostへのrequestを提供する場合に、その方向のpending stateが必要になる。
+
+次段階では、直列profileで明示correlationを維持する場合と省略する場合の安全条件を比較する。
