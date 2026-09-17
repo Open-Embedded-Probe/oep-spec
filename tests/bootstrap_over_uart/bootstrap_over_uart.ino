@@ -193,6 +193,42 @@ static void test_invalid_core_is_transport_accepted()
         F("invalid core transport not retried"));
 }
 
+static void test_unknown_operation_returns_rejected_response()
+{
+    uint8_t request[OEP_BOOTSTRAP_B_REQUEST_SIZE] = {
+        0x01u, 0x7fu, 0x78u, 0x56u,
+        0x4fu, 0x45u, 0x50u, 0x3fu,
+        0x01u, 0x01u,
+    };
+    struct Endpoint host;
+    struct Endpoint probe;
+
+    initialize_endpoint(&host, OEP_UART_ROLE_HOST, false);
+    initialize_endpoint(&probe, OEP_UART_ROLE_PROBE, true);
+    synchronize(&host, &probe);
+
+    check(
+        oep_uart_stopwait_send(&host.link, request, sizeof(request)),
+        F("unknown operation sent"));
+    pump(&host, &probe);
+    pump(&probe, &host);
+    pump(&host, &probe);
+
+    check(
+        probe.delivery_count == 1u && probe.response_started &&
+            !probe.core_rejected && host.delivery_count == 1u,
+        F("unknown operation answered"));
+    check(
+        host.delivered_length == OEP_BOOTSTRAP_B_RESPONSE_SIZE &&
+            host.delivered[0] == 0x81u && host.delivered[1] == 0x7fu &&
+            host.delivered[2] == 0x78u && host.delivered[3] == 0x56u &&
+            host.delivered[8] ==
+                OEP_BOOTSTRAP_B_STATUS_UNSUPPORTED_OPERATION &&
+            host.delivered[9] == 0u &&
+            !host.link.waiting_for_ack && !probe.link.waiting_for_ack,
+        F("unknown operation correlated rejection"));
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -200,6 +236,7 @@ void setup()
 
     test_bootstrap_round_trip();
     test_invalid_core_is_transport_accepted();
+    test_unknown_operation_returns_rejected_response();
 
     Serial.print(F("TEST done "));
     Serial.print(test_passed);
