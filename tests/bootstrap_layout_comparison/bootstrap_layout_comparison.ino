@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include <bootstrap_candidate_b.h>
+#include <bootstrap_candidate_b_core.h>
 #include <bootstrap_candidate_c.h>
 #include <hid_feature_lifecycle.h>
 
@@ -68,6 +69,28 @@ static void test_candidate_b()
     check(
         oep_bootstrap_b_handle_report(report, sizeof(report) - 1u) == 0,
         F("candidate B length rejection"));
+}
+
+static void test_candidate_b_core_without_hid_wrapper()
+{
+    uint8_t message[OEP_BOOTSTRAP_B_RESPONSE_SIZE] = {
+        0x01u, 0x01u, 0x78u, 0x56u,
+        0x4fu, 0x45u, 0x50u, 0x3fu,
+        0x01u, 0x01u,
+    };
+
+    check(
+        oep_bootstrap_b_handle_core_message(
+            message,
+            OEP_BOOTSTRAP_B_REQUEST_SIZE,
+            sizeof(message)) == OEP_BOOTSTRAP_B_RESPONSE_SIZE &&
+            message[0] == 0x81u && message[1] == 0x01u &&
+            message[2] == 0x78u && message[3] == 0x56u &&
+            message[4] == 0x4fu && message[7] == 0x21u &&
+            message[8] == 0u && message[9] == 1u &&
+            message[10] == 0u && message[11] == 1u &&
+            message[12] == 1u && message[13] == 1u,
+        F("candidate B binding-independent core"));
 }
 
 static void prepare_c(
@@ -206,6 +229,7 @@ void setup()
     delay(500);
 
     test_candidate_b();
+    test_candidate_b_core_without_hid_wrapper();
     test_candidate_c();
     test_single_buffer_lifecycle();
     test_rv003usb_short_final_packet_characterization();

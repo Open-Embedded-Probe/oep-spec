@@ -304,14 +304,14 @@ ATmega328P、avr-gcc 7.3.0、`-Os`での測定用ELFは次になった。
 
 | 仮候補 | Flash | static RAM | 共有report buffer |
 |---|---:|---:|---:|
-| B | 404 byte | 17 byte | 16 byte |
+| B | 466 byte | 17 byte | 16 byte |
 | C | 404 byte | 10 byte | 9 byte |
 
-候補Cは共有bufferを7 byte削減したが、Flashは削減しなかった。またreport IDを含む9 byte reportをlow-speed EP0で運ぶ仮定では一reportが二data packetとなり、exact limitまで二往復を要する。
+候補Bをbinding非依存core handlerとHID wrapperへ分離したため、HID測定ELFでは候補CがFlash 62 byte、共有bufferを7 byte削減した。一方、AVR上の候補B core handler単体は142 byte、候補C専用handlerは152 byteであり、UART等では候補Bの共通形式に追加wrapperを必要としない。またreport IDを含む9 byte reportをlow-speed EP0で運ぶ仮定では一reportが二data packetとなり、exact limitまで二往復を要する。
 
 この結果は候補Cの独立形式を追加する実装上の根拠を強めない。ただし一つのAVR toolchainと仮fieldによる比較であり、候補Bの採用判断にはしない。CH32V003 toolchain、実際のUSB stackとの統合、busyおよびGET_REPORT pollingの状態量は未測定である。
 
-同じC sourceをCH32V003 ABI（`rv32ec` / `ilp32e`）、xPack RISC-V GCC 14.3.0、`-Os`でも測定した。startupを含まないbare ELFでは、候補Bがtext 516 byte / RAM section 17 byte、候補Cがtext 548 byte / RAM section 13 byteだった。候補Cはalignment込みでRAMを4 byte削減したが、二つのoperationを呼ぶ全体のFlashは32 byte増えた。
+同じC sourceをCH32V003 ABI（`rv32ec` / `ilp32e`）、xPack RISC-V GCC 14.3.0、`-Os`でも測定した。startupを含まないbare ELFでは、候補Bがtext 554 byte / RAM section 17 byte、候補Cがtext 548 byte / RAM section 13 byteだった。候補Bのcore handler単体は234 byte、HID wrapperは68 byte、候補C専用handlerは252 byteである。
 
 また同じparser test sketchがCH32V003 Arduino core 1.4.0でcompileできることを確認対象に加えた。これはrv003usbとの統合動作を確認するものではない。
 
@@ -319,7 +319,7 @@ ATmega328P、avr-gcc 7.3.0、`-Os`での測定用ELFは次になった。
 
 rv003usb `5cddcd5e1d46`では、EP0 OUTの最後のdata packetが1から3 byteの場合にuser data callbackが呼ばれない。report IDを含む9 byteの候補Cは8+1 byteとなるため、そのままでは最後の1 byteが仮parserへ届かなかった。候補CのUSB reportを12 byteへpaddingし8+4 byteとした成立版で比較した。
 
-xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,436 byte / RAM 112 byte、候補C成立版はFlash 2,432 byte / RAM 108 byteだった。候補Cの削減はFlash 4 byte / RAM 4 byteに留まり、exact limitまで二往復を要する。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。ただし実機での列挙とSET/GET_REPORT、USB STALLによるbusy通知およびresetはまだ検証していない。
+xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,440 byte / RAM 112 byte、候補C成立版はFlash 2,432 byte / RAM 108 byteだった。候補Cの削減はFlash 8 byte / RAM 4 byteに留まり、exact limitまで二往復を要する。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。候補Bのcore parserはHID wrapperから独立しており、UART等でも共有できることをhost testで確認した。ただし実機での列挙とSET/GET_REPORT、USB STALLによるbusy通知およびresetはまだ検証していない。
 
 ## 次の検証
 

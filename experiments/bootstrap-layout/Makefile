@@ -18,9 +18,11 @@ build:
 	mkdir -p build
 
 build/candidate-b.elf: size_candidate_b.c src/bootstrap_candidate_b.c \
-		src/bootstrap_candidate_b.h | build
+		src/bootstrap_candidate_b_core.c src/bootstrap_candidate_b.h \
+		src/bootstrap_candidate_b_core.h | build
 	$(AVR_CC) $(AVR_CFLAGS) $(AVR_LDFLAGS) \
-		size_candidate_b.c src/bootstrap_candidate_b.c -o $@
+		size_candidate_b.c src/bootstrap_candidate_b.c \
+		src/bootstrap_candidate_b_core.c -o $@
 
 build/candidate-c.elf: size_candidate_c.c src/bootstrap_candidate_c.c \
 		src/bootstrap_candidate_c.h | build
@@ -34,9 +36,11 @@ avr-size: build/candidate-b.elf build/candidate-c.elf
 	$(AVR_NM) --print-size --size-sort --radix=d build/candidate-c.elf | tail -n 8
 
 build/ch32-candidate-b.elf: size_candidate_b.c \
-		src/bootstrap_candidate_b.c src/bootstrap_candidate_b.h | build
+		src/bootstrap_candidate_b.c src/bootstrap_candidate_b_core.c \
+		src/bootstrap_candidate_b.h src/bootstrap_candidate_b_core.h | build
 	$(CH32_CC) $(CH32_CFLAGS) $(CH32_LDFLAGS) \
-		size_candidate_b.c src/bootstrap_candidate_b.c -lc -lgcc -o $@
+		size_candidate_b.c src/bootstrap_candidate_b.c \
+		src/bootstrap_candidate_b_core.c -lc -lgcc -o $@
 
 build/ch32-candidate-c.elf: size_candidate_c.c \
 		src/bootstrap_candidate_c.c src/bootstrap_candidate_c.h | build
