@@ -58,31 +58,43 @@ dataを交換できるだけでは、その解釈が一致せず、機能を相�
 - 同じ操作と結果を、複数の独立実装が同じ意味として解釈できる
 - 実装内部の違いが、共通に定義された外部の意味を変更しない
 
-## OEP-REQ-003: OEP機能の通信をOEP内で完結させる
+## OEP-REQ-003: OEP機能の通信経路を明示する
 
 ### 要求
 
-OEP機能の利用に必要なhostとprobeの間のすべての通信は、OEP protocolによって表現されなければならない。
+OEP機能の利用に必要なhost–probe間通信は、次のいずれかとして扱われなければならない。
 
-OEP機能は、protocol外の通信へ迂回してはならず、protocol外の通信に依存してはならない。これには、機能の操作、data、状態、結果および失敗に関する通信を含む。
+- 操作、data、状態、結果および失敗をOEP protocolで運ぶOEP native path
+- OEP機能と外部interfaceまたは外部protocolの関係をOEP上で明示するexternal binding
 
-OEPを運ぶ下位通信、接続を成立させるための接続固有手続き、およびprobeとtargetの間の通信は、この禁止の対象ではない。OEPから独立した別protocolを併設する場合、その通信をOEP機能の成立に必要な経路として使用してはならない。
+external bindingは、USB CDC、USB Audio等の標準interfaceでも、独自protocolまたは非公開protocolでもよい。機能に必要な通信を、OEPから認識できない未宣言の外部経路へ暗黙に切り替え、または依存させてはならない。
+
+external bindingは、対応する提供機能と外部経路の関係、およびhostが対応可否を判断するために必要な情報を示せなければならない。OEP側と外部側の設定、開始、停止、状態、失敗およびresource管理の責任は、bindingごとに曖昧でないよう定義されなければならない。外部protocol自身が定義する制御を、OEPが重複して定義することは要求しない。
+
+一つの提供機能が複数の通信経路を持つ場合、それらが代替、併用可能または排他的であるかを誤解なく扱えなければならない。
+
+OEPを運ぶ下位通信、接続を成立させるための接続固有手続き、およびprobeとtargetの間の通信は、host–probe間の機能通信経路には含めない。
 
 ### 理由
 
-protocol外の専用通信へ依存すると、接続interfaceの違いを吸収できず、hostとprobeが再び組合せ固有になるため。
+OEP native pathだけに限定すると、USB標準class等の既存interfaceを直接利用する実用的な構成を表現できない。一方、外部経路を明示しなければ、hostが必要な対応を判断できず、組合せ固有の隠れた依存になるため。
 
 ### 由来
 
 - UC-5: 新しい機能または実装固有の機能と共存する
 - UC-6: 独自機能に対応する専用hostとprobeを実装する
 - UC-7: 異なる接続環境で同じ機能を利用する
+- UC-10: OEP機能のdataを外部interfaceで直接利用する
 
 ### 成立の確認
 
-- OEP機能を利用する一連のhost–probe間通信を、OEPだけで完了できる
-- OEP外の製品固有host–probe通信を使用せずに、OEP機能を完了できる
-- 接続interfaceを変更しても、機能ごとの専用protocolを追加する必要がない
+- OEP native pathだけで完了する機能を実装できる
+- UARTからUSB CDC、I2SからUSB Audio等のdata経路をexternal bindingとして表現できる
+- 独自protocolを使う外部経路も、一般的なhostが誤認しない形でexternal bindingとして表現できる
+- hostが、必要なexternal bindingへの対応有無を判断できる
+- hostが、OEP機能に対応する外部interfaceまたは外部protocolを特定できる
+- external bindingが利用できない場合に、同じ機能の別経路や無関係な機能を不必要に利用不能にしない
+- 未宣言の外部経路がなければ動作しない機能を、成立するOEP機能として扱わない
 
 ## OEP-REQ-004: 接続interfaceと機能の意味を分離する
 
@@ -201,9 +213,9 @@ OEPは、共通に標準化された機能に加えて、独自機能、実験�
 
 ### 要求
 
-OEPは、独自機能の意味またはdata形式をOEP coreや一般的なhostが理解することを要求してはならない。独自機能の仕様公開や、第三者による再実装の許可を、OEP利用の必須条件としてはならない。
+OEPは、独自機能の意味またはdata形式をOEPの共通部分や一般的なhostが理解することを要求してはならない。独自機能の仕様公開や、第三者による再実装の許可を、OEP利用の必須条件としてはならない。
 
-専用hostとprobeは、両者だけが理解するdataをOEP上で交換できなければならない。これには、別protocolで定義されたpacketまたはbyte列を独自dataとして運ぶ場合を含む。ただし、独自機能に必要なhost–probe間通信はOEP内で完結しなければならず、OEP外の専用通信へ迂回してはならない。
+専用hostとprobeは、両者だけが理解するdataをOEP native pathまたは明示的なexternal bindingで交換できなければならない。これには、別protocolで定義されたpacketまたはbyte列をOEP native pathの独自dataとして運ぶ場合と、独自protocol自体をexternal bindingとして利用する場合を含む。
 
 ### 理由
 
@@ -215,10 +227,11 @@ OEPは、独自機能の意味またはdata形式をOEP coreや一般的なhost�
 
 ### 成立の確認
 
-- OEP coreが内容を理解しない独自dataを、専用hostとprobeの間でOEP上に限定して交換できる
+- OEPの共通部分が内容を理解しない独自dataを、専用hostとprobeの間でOEP native pathにより交換できる
+- 非公開の外部protocolをexternal bindingとして使用できる
 - 独自機能の仕様を公開しなくても、その機能をOEP上で提供できる
 - 独自機能を理解しないhostが、そのdataを既知の機能として誤解しない
-- OEP外のhost–probe通信を使用せずに、独自機能の処理を完了できる
+- OEP native pathかexternal bindingかをhostが区別できる
 
 ## OEP-REQ-010: 互換な範囲で改訂を共存させる
 
@@ -303,7 +316,9 @@ OEPの必須要求を満たさないprotocolまたは実装は、OEPへの適合
 
 将来OEP projectへUSB VID:PIDその他の共通identityが割り当てられた場合、非互換な派生はそれを使用してはならない。非互換な派生は独自のidentityを使用し、OEP実装と機械的に区別できなければならない。
 
-OEPと非OEPの機能またはprotocolを同じ物理deviceへ併設する場合、非OEP側をOEP機能として公開してはならず、hostが両者を区別できなければならない。
+OEP endpoint、適合するexternal binding、およびOEPから独立した別機能または別protocolを、同じ物理deviceへ併設できる。hostはそれぞれの関係を区別できなければならず、独立した別protocolをOEP endpoint、OEP機能またはexternal bindingとして誤認してはならない。
+
+適合するexternal bindingは、登録済みまたは許容されたprofileの範囲でOEP endpointと同じUSB VID:PIDその他のdevice identityを共有できる。外部通信を使用することだけを理由に非互換な派生としてはならない。
 
 source codeまたは仕様を変更、forkまたは移植した事実だけでは、OEPへの適合性を決定しない。変更後も必須要求を満たす実装はOEP実装になり得る。
 
@@ -318,8 +333,9 @@ source codeまたは仕様を変更、forkまたは移植した事実だけで�
 ### 成立の確認
 
 - hostが、非互換な派生をOEP endpointとして選択しない
-- OEPの共通identityを持つ実装に、OEPの必須要求を満たさないものが混在しない
-- 同じ物理deviceにOEPと非OEPが併設されても、それぞれを誤認せず選択できる
+- OEPの共通identityを持つ実装に、OEP endpointや適合するprofileを持たないものが混在しない
+- 同じ物理deviceにOEP endpoint、external bindingおよび独立した別protocolが併設されても、それぞれの関係を誤認せず選択できる
+- 登録済みまたは許容されたexternal bindingが、同じdevice identity内でOEP endpointと関連付けられる
 - 異なるhardwareまたは接続interfaceへの適合実装は、forkやportであることだけを理由に排除されない
 
 ## 未決事項
@@ -332,9 +348,11 @@ source codeまたは仕様を変更、forkまたは移植した事実だけで�
 - 対応範囲や実装制限を伝える方法
 - 操作、data、状態、結果および失敗の表現方法
 - 接続interfaceとOEP protocolの境界
+- OEP native pathとexternal bindingの識別、関連付けおよびlifecycle
+- external bindingにおける設定責任、状態同期、失敗およびresource関係
 - versionと互換性の表現および判断方法
 - 適合性のlevel、test方法および管理主体
 - OEPの名称、protocol identity、project PIDおよびその他の共通identityの具体的な利用条件
-- OEPと非OEPを同じ物理deviceへ併設する場合の識別およびUSB profile規則
+- OEP endpoint、external bindingおよび独立した別protocolを同じ物理deviceへ併設する場合の識別およびUSB profile規則
 
-次段階では、要求間の重複や矛盾を確認した後、OEPが扱う中心概念とその関係を定義する。
+この要求案は、[概念モデル](conceptual-model.ja.md)と[責任境界](responsibility-boundaries.ja.md)の入力として使用する。次段階では、要求との対応を維持しながら、OEP共通protocolの抽象的な振る舞いを定義する。

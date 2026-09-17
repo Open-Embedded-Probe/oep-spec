@@ -10,13 +10,14 @@ OEPでは、異なる機能、実装およびconnection interfaceを同じ相互
 
 逆に、共通protocolの責任を持たず、すべてを個別機能やconnection interfaceへ委ねると、hostとprobeの組合せごとに専用protocolが必要になり、OEPの目的を満たせない。
 
-そのため、次の五つの責任領域を区別する。
+そのため、次の六つの責任領域を区別する。
 
 1. OEP共通protocol
 2. 個別の機能定義
 3. connection binding
-4. hostおよびprobeの実装
-5. OEP project governance
+4. external binding
+5. hostおよびprobeの実装
+6. OEP project governance
 
 この区別は、wire上のlayer数、software module数またはrepository数を決めるものではない。
 
@@ -29,6 +30,7 @@ OEPでは、異なる機能、実装およびconnection interfaceを同じ相互
 | 機能が何を行うか | 個別の機能定義 |
 | 独自payloadの意味 | 独自機能の定義と対応実装 |
 | OEP通信をUSB、UART、network等で運ぶこと | connection binding |
+| 機能dataをCDC、USB Audio、独自protocol等で運ぶこと | external binding |
 | 実装ごとの性能や制限 | probe実装が事実を提供し、機能定義が意味を定め、OEP共通protocolが区別して運ぶ |
 | 操作を実際に実行すること | probe実装 |
 | 利用する機能と条件を選ぶこと | host実装 |
@@ -90,11 +92,13 @@ OEP共通protocolは、未知の機能や将来追加された情報が存在し
 
 共通protocol自身の改訂と、個別機能の改訂は概念上区別する。それぞれのversion表現や互換性判断の方法は未決である。
 
-### Protocol外通信の禁止
+### 機能の通信経路
 
-OEP共通protocolは、OEP機能に必要なhost–probe間通信をOEP内で完結できる範囲を提供しなければならない。
+OEP共通protocolは、機能に必要なhost–probe間通信経路を、OEP native pathまたはexternal bindingとして区別できるようにする責任を持つ。
 
-個別機能やconnection bindingは、OEP上の操作を入口としてhost–probe通信をOEP外へ切り替えてはならない。別protocol由来のpacketやbyte列を独自payloadとしてOEP内で運ぶことは、この禁止に該当しない。
+OEP native pathでは機能の通信をOEP protocolで運ぶ。external bindingでは、OEP機能と外部interfaceまたは外部protocolとの関係を明示し、通信の一部を外部経路で運ぶ。
+
+OEP共通protocolはexternal bindingのpayloadを解釈する必要はない。ただし、どの提供機能とどのexternal bindingが関係するかをhostが認識できなければならない。OEP機能を未宣言の外部通信へ依存させてはならない。
 
 ## 個別機能の責任
 
@@ -127,8 +131,8 @@ OEP共通protocolは、OEP機能に必要なhost–probe間通信をOEP内で完
 
 - 他の標準機能または独自機能と誤認されない
 - OEP共通protocolの意味を変更しない
-- OEP機能として必要なhost–probe間通信をOEP外へ迂回させない
-- 独自payload内部に別protocolの表現を使う場合も、通信経路はOEP内に保つ
+- 必要な通信経路をOEP native pathまたはexternal bindingとして明示する
+- 独自payload内部に別protocolの表現を使う場合も、どの経路で運ぶかを区別する
 
 ## Connection bindingの責任
 
@@ -151,10 +155,40 @@ connection bindingは次を行わない。
 
 - 個別機能の操作やdataの意味を再定義する
 - 接続interfaceごとに同じ機能へ異なる意味を与える
-- OEP機能をinterface固有の専用protocolへ切り替える
+- 個別機能のexternal bindingを、OEP自体を運ぶconnection bindingと混同する
 - VID:PID等のinterface固有identityだけで、提供機能や適合性を完全に表す
 
 接続環境によって機能を提供できる範囲が変わることはあり得る。その場合も、変わるのは提供の有無、利用可能性または制限であり、機能定義そのものの意味ではない。
+
+## External bindingの責任
+
+**external binding**は、OEP機能と、OEP protocol以外の外部interfaceまたは外部protocolとの関係を定義する。
+
+USB CDC、USB Audio等の標準interface、既存の外部protocol、独自protocolおよび非公開protocolをexternal bindingとして利用できる。
+
+external bindingは、必要に応じて次を扱う責任を持つ。
+
+- どの提供機能とどの外部interfaceまたはprotocolが関係するか
+- external bindingをhostが識別し、対応可否を判断するために必要な情報
+- OEPと外部側のどちらが設定、開始、停止および状態管理を担当するか
+- dataの方向、format、単位および外部protocol上の意味
+- 外部経路の利用可能性、切断、drop、破損その他の失敗
+- OEP native pathや他のexternal bindingとの代替、併用または排他関係
+- 他機能と共有するresourceまたは同時利用上の制限
+
+すべてのexternal bindingが同じ情報を必要とするとは限らない。USB標準class自身が定義する設定や状態をOEPで重複して定義する必要はないが、責任の所在とOEP機能との関係は曖昧にしない。
+
+### External bindingの相互運用範囲
+
+標準化されたexternal bindingは、その外部interfaceまたはprotocolへ対応するhostと相互運用できる。独自または非公開のexternal bindingは専用hostを必要としてよく、そのことだけでOEP不適合にはならない。
+
+hostがexternal bindingへ対応しない場合でも、同じprobeが提供する他の共通機能や、同じ機能の別の通信経路を不必要に利用不能にしない。
+
+### USB device profileとの関係
+
+USB composite deviceでは、OEP endpoint用interfaceと、CDC、Audio等のexternal binding用interfaceが一つのVID:PIDを共有し得る。
+
+project PIDを使用できるinterface構成、external binding、interface番号およびprofileの組合せは、将来のUSB profile規則で管理する。許容されたexternal bindingが同じVID:PIDに存在することを、非OEP protocolの混在とはみなさない。
 
 ## Probe実装の責任
 
@@ -165,7 +199,8 @@ probe実装は次の責任を持つ。
 - 実装上の制限と現在の利用可能性について、OEPが要求する情報を正しく提供する
 - 受理できない条件を、別の操作または成功として扱わない
 - 操作、data、状態、結果および失敗を、対応する機能の意味に従って処理する
-- OEP機能に必要なhost–probe間通信をOEP外へ迂回させない
+- OEP機能に必要な通信経路をOEP native pathまたはexternal bindingとして正しく公開する
+- 未宣言の外部通信を機能成立の必須条件にしない
 - 非OEP機能をOEPの提供機能として公開しない
 
 target固有の信号生成、電気的保護、buffering、timing、内部resource管理等はprobe実装の責任になり得る。どこまでを各標準機能の適合要件に含めるかは機能ごとに決める。
@@ -180,7 +215,8 @@ host実装は次の責任を持つ。
 - probeの制限と現在の利用可能性を無視して、成立しない操作を成功扱いしない
 - 非対応、条件不成立、protocol上の失敗および機能固有の失敗を、必要な範囲で区別する
 - product名、board名等だけを根拠とする組合せ固有の処理を、標準機能の利用に必須としない
-- OEP機能に必要なhost–probe間通信をOEP外へ迂回させない
+- 使用するOEP native pathまたはexternal bindingへの対応を確認する
+- 宣言されていない外部通信をOEP機能の一部として推測しない
 
 専用hostは、独自機能の非公開な意味を知ることができる。それでも、OEP endpointの確認と独自機能の識別にはOEPの共通規則を使用する。
 
@@ -194,13 +230,14 @@ OEP project governanceは、実装ではなく、共通仕様とecosystem上のi
 - 標準機能の採用、改訂および廃止
 - 標準識別子、namespaceまたはregistry
 - connection bindingとprofile
+- 標準化されたexternal bindingとUSB profileへの組込み規則
 - test vector、適合testおよび適合表示
 - OEPの名称を互換性表示に使う条件
 - project VID:PIDその他の共通identityの利用条件
 
 softwareや文書のlicenseに基づく利用許可と、OEPへの適合表示またはproject identityの利用許可を混同しない。
 
-非互換な派生protocolは、OEPのprotocol identityまたはproject identityを使用できない。具体的な管理主体、意思決定手順、異議申立て、名称方針およびPID利用規則は未決である。
+非互換な派生protocolは、OEPのprotocol identityまたはproject identityを使用できない。適合するexternal bindingは、許容されたprofileの一部としてproject identityを共有し得る。具体的な管理主体、意思決定手順、異議申立て、名称方針およびPID利用規則は未決である。
 
 ## 境界を確認する例
 
@@ -215,19 +252,34 @@ softwareや文書のlicenseに基づく利用許可と、OEPへの適合表示�
 
 ### 非公開の独自機能を利用する
 
-- OEP共通protocolは独自機能を他機能と区別してdataを運ぶ
+- OEP共通protocolは独自機能を他機能と区別する
 - 専用hostとprobeだけが独自payloadの意味を理解する
 - 独自仕様の公開は要求しない
-- host–probe間通信はOEP内で完結する
+- dataはOEP native pathでも非公開のexternal bindingでも運べる
+- 使用する経路をhostが区別できるようにする
 
-### OEPと非OEPを同じdeviceへ併設する
+### Target UARTをUSB CDCへ投影する
 
-- OEP endpointと非OEP側をhostが区別できるようにする
-- 非OEP機能をOEPの提供機能として公開しない
-- 非OEP側はOEPのprotocol identityやproject identityを使用しない
-- 非OEP通信をOEP機能の実行経路として使用しない
+- OEP機能はtarget側UARTのpin、routingおよび必要な変換を扱う
+- external bindingはその機能とUSB CDC interfaceの関係を定義する
+- UART dataはUSB CDCで直接送受信する
+- hostは対応するCDC interfaceとOEP機能の関係を識別できる
 
-具体的なUSB interface、PIDまたはprofileの分離規則は後で決める。
+### Target I2SをUSB Audioへ投影する
+
+- OEP機能はtarget側I2Sのpin、format、channel mappingおよび変換条件を扱う
+- external bindingはその機能とUSB Audio interfaceの関係を定義する
+- audio sampleはUSB Audioで直接転送する
+- USB Audio自身が持つ制御とOEPが持つ制御の責任を定義する
+
+### OEPと独立した別protocolを同じdeviceへ併設する
+
+- OEP endpoint、external bindingおよび独立した別protocolをhostが区別できるようにする
+- 独立した別protocolをOEP機能またはexternal bindingとして公開しない
+- 別protocolがOEP機能と関係する場合はexternal bindingとして明示する
+- OEPと無関係な別protocolはOEPのprotocol identityを使用しない
+
+具体的なUSB interface、PIDまたはprofileの合成・分離規則は後で決める。
 
 ## 未決事項
 
@@ -239,7 +291,9 @@ softwareや文書のlicenseに基づく利用許可と、OEPへの適合表示�
 - 共通の操作、data、状態、結果および失敗model
 - 共通protocolと個別機能のversion関係
 - connection bindingの共通部分とinterface固有部分
+- external bindingの共通model、識別、lifecycleおよび適合性
+- OEP native pathとexternal bindingを代替または併用する規則
 - 制限、利用可能性および機能間関係の表現方法
 - 適合性、名称、registryおよびproject identityのgovernance
 
-次段階では、OEP共通protocolが外部へ提供する必要のある責任を、具体的なwire表現ではなくprotocol上の抽象的な振る舞いとして整理する。
+次段階では、OEP共通protocolがOEP native pathとexternal bindingを扱うために必要な責任を、具体的なwire表現ではなくprotocol上の抽象的な振る舞いとして整理する。

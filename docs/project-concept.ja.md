@@ -2,7 +2,7 @@
 
 [English](project-concept.md)
 
-状態: **最上流のproject定義案**。project名、相互運用を中心とする目的、OEP外の専用通信へ迂回しない原則、および非互換な派生をOEPとして識別しない原則は合意済みである。その他の文言と範囲は引き続き検討中であり、protocolの構造や技術的な解決方法は規定しない。
+状態: **最上流のproject定義案**。project名、相互運用を中心とする目的、機能に必要な通信経路をOEP native pathまたは明示的なexternal bindingとして扱う原則、および非互換な派生をOEPとして識別しない原則は合意済みである。その他の文言と範囲は引き続き検討中であり、protocolの構造や技術的な解決方法は規定しない。
 
 ## 背景
 
@@ -48,36 +48,44 @@ probe側とhost側が共通仕様をそれぞれ実装することにより、�
 
 これらは必要な性質を示すものであり、機能の公開、識別、選択、操作をどの技術で実現するかは定めない。
 
-### OEP内で完結する相互運用
+### OEPが管理する通信経路
 
 OEPは、標準化された機能だけに利用を限定しない。独自機能、実験的な機能、その機能に特化したhostまたはprobeも実装できるようにする。
 
-OEP機能の利用に必要なhostとprobeの間のすべての通信は、OEP protocolによって表現されなければならない。OEP機能をprotocol外の通信へ迂回させ、またはprotocol外の通信に依存させてはならない。これには、その機能の操作、data、状態、結果および失敗に関する通信を含む。
+OEP機能は、必要なhost–probe間通信を次のいずれかの経路として扱う。
 
-USB、UART、network等の接続interfaceが異なる場合も、その上でOEP protocolによる通信を行う。接続interfaceによる通信方法の違いをOEPとして扱う範囲で吸収し、機能ごとに別の専用protocolへ切り替えない。
+- **OEP native path** — 操作、data、状態、結果および失敗をOEP protocolで運ぶ
+- **external binding** — OEP機能と外部interfaceまたは外部protocolの関係をOEP上で明示し、通信の一部をその外部経路で運ぶ
 
-独自機能の意味やdata形式は、OEP coreや一般的なhostが理解できないものであってもよい。その機能に対応する専用hostとprobeは、独自に合意した意味やdataをOEP上で交換できる。別protocolで定義されたpacketやbyte列を独自dataとしてOEP内で運ぶこともできる。独自機能の仕様公開は必須としない。
+external bindingでは、OEPでrouting、変換、利用条件等を設定し、実dataをUSB CDC、USB Audioその他の標準interfaceで直接運べる。独自protocolまたは非公開protocolもexternal bindingに使用できる。
 
-独自機能であること、仕様が非公開であること、またはdata内部に別protocolの表現を使うことは許容する。hostとprobeの通信経路をOEP外へ切り替えることは許容しない。この原則は、独自機能の識別方法、拡張形式またはdata表現をこの段階で決めるものではない。
+機能に必要な通信経路は、OEP native pathまたはexternal bindingとして明示されなければならない。OEPから認識できない未宣言の外部通信へ暗黙に依存してはならない。
 
-この禁止は、OEP機能に必要なhostとprobeの間の通信に適用する。次のものをprotocol外への迂回とはみなさない。
+USB、UART、network等のconnection interfaceが異なる場合も、その上でOEP protocolによる通信を行う。connection interfaceはOEP自体を運ぶ経路であり、external bindingは個別機能の通信を外部interfaceまたはprotocolへ結び付ける関係である。この二つを区別する。
+
+独自機能の意味やdata形式は、OEPの共通部分や一般的なhostが理解できないものであってもよい。その機能に対応する専用hostとprobeは、独自に合意した意味やdataをOEP native pathまたは明示的なexternal bindingで交換できる。独自機能の仕様公開は必須としない。
+
+独自機能であること、仕様が非公開であること、data内部に別protocolの表現を使うこと、または独自protocolをexternal bindingとして使うことは許容する。ただし、一般的なhostが利用できる標準的な経路と誤認されないよう区別する。この原則は、独自機能やexternal bindingの識別方法、拡張形式またはdata表現をこの段階で決めるものではない。
+
+次の通信は、それ自体が未宣言の外部通信を意味しない。
 
 - OEPを運ぶUSB、UART、network等の下位通信
 - USB列挙等、OEPによる通信を開始できる状態にするための接続固有の手続き
 - probeとtargetの間で使われるSWD、JTAG、UART等の通信
-- OEP機能から独立し、OEPへの適合を主張しない別機能または別protocolの併設
+- OEP機能へ明示的に結び付けられたexternal binding
+- OEP機能から独立した別機能または別protocolの併設
 
-別protocolを併設する場合も、その通信をOEP機能の成立に必要な経路として使用してはならない。
+外部interfaceまたは別protocolをOEP機能に必要な経路として使用する場合は、独立した併設ではなくexternal bindingとして明示する。
 
 ### 非互換な派生との区別
 
 OEPのsource codeまたは仕様を変更、forkまたは移植すること自体は、その実装をOEPでなくするものではない。異なるhardware、softwareまたは接続interfaceへの移植であっても、OEPの要求を満たすならOEP実装として相互運用できる。
 
-一方、OEP機能をprotocol外通信へ依存させる等、OEPの必須要求を満たさない変更は、OEPから派生した別protocolとして扱う。その実装はOEPへの適合または互換性を主張してはならず、OEP protocolと誤認されるprotocol名またはprotocol identityを使用してはならない。
+一方、OEP機能を未宣言の外部通信へ依存させる、標準機能へ異なる意味を与える等、OEPの必須要求を満たさない変更は、OEPから派生した別protocolとして扱う。その実装はOEPへの適合または互換性を主張してはならず、OEP protocolと誤認されるprotocol名またはprotocol identityを使用してはならない。明示的なexternal bindingを使用することだけでは、非互換な派生にならない。
 
 将来OEP projectへUSB VID:PIDその他の共通identityが割り当てられた場合、非互換な派生はそれを使用できない。独自のidentityを使用し、OEP実装と機械的に区別できなければならない。
 
-同じ物理deviceへOEPと非OEPの機能またはprotocolを併設する場合も、非OEP側をOEP機能として公開してはならず、hostがOEP endpointまたはOEP機能と誤認しないよう区別できなければならない。具体的なprotocol identity、USB PID、profileおよびcomposite deviceの規則は後で定義する。
+同じ物理deviceへOEP endpoint、external bindingおよびOEPから独立した別機能を併設できる。external bindingは、登録済みまたは許容されたprofileの一部として、OEP endpointと一つのUSB VID:PIDを共有し得る。OEPから独立した別protocolは、hostがOEP endpoint、OEP機能またはそのexternal bindingと誤認しないよう区別できなければならない。具体的なprotocol identity、USB PID、interface、profileおよびcomposite deviceの規則は後で定義する。
 
 softwareや仕様文書のlicenseに基づいてforkする権利と、OEPへの適合を主張する権利、OEPの名称を互換性表示に用いる条件、およびproject identityを利用する権利は別の問題として扱う。
 
@@ -114,7 +122,7 @@ OEPは、少なくとも次のこと自体を目的としない。
 - 特定のMCU、board、firmware framework、OSまたはprogramming languageを標準とすること
 - 特定の接続方法だけを前提とすること
 - 既存のdebug、programming、measurementの仕組みをすべて置き換えること
-- probeとhostの間の機能通信を、組合せ固有のprotocol外通信へ迂回させること
+- OEP機能を、OEPから認識できない未宣言の外部通信へ依存させること
 - device identityだけで機能、品質、適合性、真正性または安全性を保証すること
 - 一つのreference implementationを仕様そのものとすること
 

@@ -8,21 +8,21 @@
 
 ```text
 host implementation
-        │
-        │  OEPによるhost–probe間通信
-        │  （connection interface上で運ばれる）
-        ▼
-    OEP endpoint
-        │
-        ▼
-probe implementation ── target側の通信・信号 ── target
-        │
-        ├─ 提供する機能 A ── 機能定義 A
-        ├─ 提供する機能 B ── 機能定義 B
-        └─ 独自機能 X   ── 独自機能定義 X
+   │                 │
+   │ OEP protocol    │ declared external path
+   ▼                 ▼
+OEP endpoint    external interface / protocol
+   │                 │
+   └────────┬────────┘
+            ▼
+    probe implementation ── target側の通信・信号 ── target
+            │
+            ├─ 提供する機能 A ── 機能定義 A
+            ├─ 提供する機能 B ── 機能定義 B
+            └─ 独自機能 X   ── 独自機能定義 X
 ```
 
-hostとprobeの間でOEP機能を利用する通信は、すべてOEP protocol内で行う。connection interfaceはOEPを運ぶが、機能の意味を定義しない。probeとtargetの間の通信や電気信号は、host–probe間のOEP protocolには含めない。
+hostとprobeの間でOEP機能を利用する通信経路には、OEP protocolで運ぶOEP native pathと、OEP上で機能との関係を明示したexternal bindingがある。connection interfaceはOEP自体を運ぶが、機能の意味を定義しない。probeとtargetの間の通信や電気信号は、host–probe間の通信経路には含めない。
 
 ## 中心となる主体
 
@@ -76,7 +76,31 @@ USB、UART、network等は候補例であり、この文書では必須の接続
 
 connection interfaceには、接続の確立、dataを運ぶ単位、転送量、順序性、信頼性その他の固有性質があり得る。これらの違いは、OEP機能そのものの意味と区別する。
 
-異なるconnection interfaceを使用しても、hostとprobeの機能通信をOEP外の専用protocolへ切り替えない。
+connection interfaceは、個別機能のdataを外部interfaceへ結び付けるexternal bindingとは異なる概念である。
+
+## 機能の通信経路
+
+### OEP native path
+
+**OEP native path**は、機能の操作、data、状態、結果または失敗をOEP protocolで運ぶ通信経路である。
+
+OEP native pathを利用する機能は、個別の外部interfaceへ依存せず、対応するOEP hostから利用できる。実際に利用できる性能や条件はconnection interfaceと実装の制限を受け得る。
+
+### External binding
+
+**external binding**は、OEP機能と、OEP protocol以外の外部interfaceまたは外部protocolとの関係をOEP上で明示する概念である。
+
+external bindingでは、機能の通信の一部をUSB CDC、USB Audio等の標準interface、または独自protocolや非公開protocolで直接運べる。OEPは少なくとも、どの提供機能とどの外部経路が関係するかをhostが区別できるようにする。
+
+OEPと外部経路のどちらが設定、開始、停止、状態、失敗およびresource管理の各責任を持つかは、external bindingごとに定義する必要がある。具体的な共通modelは未決である。
+
+一つの提供機能がOEP native pathとexternal bindingの両方を提供することや、複数のexternal bindingを代替経路として提供することを排除しない。選択、併用および排他の表現方法は未決である。
+
+### 未宣言の外部通信
+
+**未宣言の外部通信**は、OEP機能の成立に必要であるにもかかわらず、OEP native pathでもexternal bindingでもなく、OEPからその依存関係を認識できないhost–probe間通信である。
+
+OEP機能は未宣言の外部通信に依存してはならない。外部通信を使用すること自体ではなく、その必要性と関係がOEPから認識できないことを禁止する。
 
 ## 機能
 
@@ -113,9 +137,9 @@ connection interfaceには、接続の確立、dataを運ぶ単位、転送量�
 
 **独自機能**は、OEP projectの標準機能として定義されていない機能である。製品固有、組織固有、実験的または非公開の機能を含む。
 
-独自機能の意味やdata形式を、OEPの共通部分または一般的なhostが理解する必要はない。専用hostとprobeだけが理解する不透明なdataや、別protocolに由来するpacketまたはbyte列も、OEP内で独自機能のdataとして運べる。
+独自機能の意味やdata形式を、OEPの共通部分または一般的なhostが理解する必要はない。専用hostとprobeだけが理解する不透明なdataや、別protocolに由来するpacketまたはbyte列は、OEP native pathでもexternal bindingでも運べる。
 
-独自機能の仕様公開や第三者による再実装は必須ではない。ただし、独自機能に必要なhost–probe間通信はOEP内で完結しなければならない。
+独自機能の仕様公開や第三者による再実装は必須ではない。ただし、独自機能に必要なhost–probe間通信経路は、OEP native pathまたはexternal bindingとして明示しなければならない。
 
 独自機能を理解しないhostが、別の標準機能または独自機能として誤解しないよう区別できる必要がある。具体的な識別方法とnamespaceは未決である。
 
@@ -159,6 +183,7 @@ OEPでは、少なくとも次のidentity上の問いを概念的に区別する
 | どの個体か | 必要な場合のdeviceまたはprobe個体の区別 |
 | どの意味の機能か | 標準機能または独自機能の定義の区別 |
 | どの提供機能か | 同じ定義に基づく複数の提供機能の区別 |
+| どの通信経路か | OEP native path、external bindingおよびその外部interfaceの区別 |
 | どの接続構成か | USB profile等、接続環境から見える構成の区別 |
 
 それぞれに永続的なidentityが必要か、これらを同一の識別子で表すか、独立した識別子を設けるかは、この文書では決めない。ただし、一つのidentityを別の問いへの回答として誤用してはならない。
@@ -169,9 +194,9 @@ USB VID:PIDは接続候補の識別に利用できる可能性があるが、そ
 
 OEPの必須要求を満たす実装は、使用するhardware、言語、codebaseまたはconnection interfaceにかかわらずOEP実装になり得る。
 
-OEPの必須要求を満たさない派生protocolまたは実装は、OEP実装ではない。OEPと誤認されるprotocol identityや、将来のOEP project PIDその他の共通identityを使用しない。
+OEPの必須要求を満たさない派生protocolまたは実装は、OEP実装ではない。OEPと誤認されるprotocol identityや、将来のOEP project PIDその他の共通identityを使用しない。明示的なexternal bindingを使用することだけでは非互換にならない。
 
-同じ物理deviceにOEPと非OEPのendpointまたは機能を併設する場合、hostが両者を区別できなければならない。非OEP機能をOEPの提供機能として公開しない。
+同じ物理deviceにOEP endpoint、external bindingおよびOEPから独立した別protocolを併設できる。適合するexternal bindingは、許容されたdevice profileの一部としてOEP endpointと同じUSB VID:PIDを共有し得る。独立した別protocolは、OEP endpointまたはexternal bindingと誤認されないよう区別できなければならない。
 
 ## 適合性の区別
 
@@ -189,14 +214,16 @@ OEPの必須要求を満たさない派生protocolまたは実装は、OEP実装
 
 この段階までの合意から、次を不変条件とする。
 
-1. OEP機能に必要なhost–probe間通信はOEP内で完結する
-2. connection interfaceが変わっても、機能の意味を別protocolとして再定義しない
-3. 標準機能と独自機能は共存できる
-4. 独自機能の仕様公開は必須ではない
-5. 未知の機能を既知の機能として扱わない
-6. OEPの必須要求を満たさない派生をOEPとして識別しない
-7. OEPの共通identityへ非互換な実装を混在させない
-8. 実装の由来とOEPへの適合性を混同しない
+1. OEP機能に必要なhost–probe間通信経路は、OEP native pathまたはexternal bindingとして明示する
+2. OEP機能を未宣言の外部通信へ依存させない
+3. connection interfaceが変わっても、機能の意味を別protocolとして再定義しない
+4. 標準機能と独自機能は共存できる
+5. 独自機能の仕様公開は必須ではない
+6. 未知の機能を既知の機能として扱わない
+7. OEPの必須要求を満たさない派生をOEPとして識別しない
+8. OEPの共通identityへ非互換な実装を混在させない
+9. 適合するexternal bindingは、外部通信を使うことだけを理由に非OEPとしない
+10. 実装の由来とOEPへの適合性を混同しない
 
 ## 次に決めること
 
@@ -204,9 +231,10 @@ OEPの必須要求を満たさない派生protocolまたは実装は、OEP実装
 
 1. OEP protocolが共通に提供すべき責任と、個別機能が持つ責任の境界
 2. OEP endpointとconnection interfaceの関係
-3. 機能定義、提供される機能および独自機能を区別するために必要な情報
-4. 操作、結果、状態および失敗に共通して必要な性質
-5. 対応範囲、制限および利用可能性を判断するために必要な性質
-6. protocol、機能、実装および接続構成のidentityと互換性
+3. OEP native pathとexternal bindingに共通して必要な関係とlifecycle
+4. 機能定義、提供される機能および独自機能を区別するために必要な情報
+5. 操作、結果、状態および失敗に共通して必要な性質
+6. 対応範囲、制限および利用可能性を判断するために必要な性質
+7. protocol、機能、実装、通信経路および接続構成のidentityと互換性
 
 これらの責任と情報を決めた後に、message model、encoding、transport bindingおよび数値registryを検討する。
