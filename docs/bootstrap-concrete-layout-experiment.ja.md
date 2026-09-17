@@ -370,7 +370,7 @@ parser単体ではlength 0から32 byte、response size未満のcapacity 0から
 
 UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼性model候補](uart-reliability-model.ja.md)に整理する。UART外側frameの後続比較は[UART frame layout比較](uart-frame-layout-comparison.ja.md)に示す。候補Bについて、core messageと各bindingの責任をさらに分ける必要がある。
 
-1. 16 bit message上限を採用せずに、小さいbootstrapでexact constraintを表す方法
+1. [Bootstrap constraint encoding実験](bootstrap-constraint-encoding-experiment.ja.md)のsummary + detail境界とdetail取得方法
 2. UART stop-and-wait候補の実UART上でのlatency、resetおよびbuffer挙動
 3. HID feature reportの実機上での列挙、SET/GET_REPORT、拒否、retryおよびreset
 4. bootstrap roleと通常のfunction、activity、notificationおよびdata roleの対応
