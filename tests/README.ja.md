@@ -14,6 +14,7 @@
 ## 現在のtest module
 
 - `uart_binding` — framing、破損回復、stop-and-wait、epoch、partial timeoutおよび双方向queue
+- `uart_framing_comparison` — explicit/derived lengthとCOBS系/SLIP型encodingの比較
 - `uart_sequence_characterization` — 1 bit sequenceと順序保存前提の境界
 
 ## 実行

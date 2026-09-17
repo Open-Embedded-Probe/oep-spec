@@ -29,8 +29,8 @@ static void feed_frame(
     const uint8_t *payload,
     uint16_t payload_length)
 {
-    uint8_t wire[OEP_UART_MAX_WIRE];
-    size_t length = oep_uart_encode_frame(
+    uint8_t wire[OEP_UART_STOPWAIT_MAX_WIRE];
+    size_t length = oep_uart_derived_encode_frame(
         type,
         sequence,
         payload,

@@ -157,6 +157,8 @@ bootstrap responseをframe全体で保持する実装では最大19 byteが必�
 
 lengthまたはCRCが不正なframeはOEP coreへ渡さない。次のdelimiterまで破棄し、再同期する。
 
+後続の[UART frame layout比較](uart-frame-layout-comparison.ja.md)では、delimiterがframe境界を与えるため、上記2 byte lengthを省略するalternativeも実装した。その場合のwire概算はrequest 15 byte、response 19 byteで、一往復34 byte、各方向の5 byte ACKを含めて44 byteになる。上記38 byteはACKを含まないexplicit length案の比較値として残す。
+
 ## 候補Cの具体案: 固定8 byte bootstrap
 
 ### Request record
@@ -294,7 +296,7 @@ stop-and-waitは最小実装と相性がよいが、data flowのthroughputとlat
 
 ## 次の検証
 
-UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼性model候補](uart-reliability-model.ja.md)に整理する。次は候補Bについて、core messageと各bindingの責任をさらに分ける。
+UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼性model候補](uart-reliability-model.ja.md)に整理する。UART外側frameの後続比較は[UART frame layout比較](uart-frame-layout-comparison.ja.md)に示す。候補Bについて、core messageと各bindingの責任をさらに分ける必要がある。
 
 1. `kind`が表す最小message role
 2. core operation namespaceと個別機能namespaceの分離

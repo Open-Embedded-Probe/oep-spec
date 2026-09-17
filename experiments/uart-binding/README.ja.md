@@ -4,10 +4,10 @@
 
 ## 実験の範囲
 
-共通codecは、次の仮条件を使用する。
+主要なstop-and-wait codecは、次の仮条件を使用する。
 
 - 最大payload: 32 byte
-- decode後: 1 byteのtype/sequence、2 byteのpayload length、payload、2 byte CRC
+- decode後: 1 byteのtype/sequence、payload、2 byte CRC
 - frame境界: COBS系encodingと`0x00` delimiter
 - 完全性検査: CRC-16、polynomial `0x1021`、初期値`0xffff`
 - 一つのDATA frameに一つのlogical messageを格納
@@ -25,13 +25,12 @@ decode後のframeは次の形である。
 | offset | size | 内容 |
 |---:|---:|---|
 | 0 | 1 | 上位4 bit: frame type、下位1 bit: sequence |
-| 1 | 2 | payload length、little endian |
-| 3 | N | payload |
-| 3+N | 2 | CRC、little endian |
+| 1 | N | payload |
+| 1+N | 2 | CRC、little endian |
 
-COBS系encodingの後にdelimiterを加えるため、最大32 byte payloadのwire長は最大39 byte、payloadなしのACKは7 byteになる。
+payload長はdelimiterで確定したdecode後frame長から導出する。COBS系encodingの後にdelimiterを加えるため、最大32 byte payloadのwire長は最大37 byte、payloadなしのACKは5 byteになる。
 
-4 byte tokenを使用する仮SYNC / SYNC-ACKは各11 byteになる。通常DATAにはepoch tokenを付加しない。
+4 byte tokenを使用する仮SYNC / SYNC-ACKは各9 byteになる。通常DATAにはepoch tokenを付加しない。16 bit explicit length版は比較用codecとして残す。
 
 ## 確認した挙動
 
@@ -67,12 +66,18 @@ Arduino Uno R3相当のATmega328Pを対象に、avr-gcc 7.3.0、`-Os`、section 
 | 構成 | Flash | static RAM |
 |---|---:|---:|
 | detect-only codecの送受信 | 1,294 byte | 94 byte |
-| codec + stop-and-wait + epoch同期 + partial abort | 2,816 byte | 156 byte |
-| detect-onlyとの差 | +1,522 byte | +62 byte |
+| delimiter-derived length codecの送受信 | 1,178 byte | 90 byte |
+| SLIP型derived length codecの送受信 | 1,018 byte | 124 byte |
+| delimiter-derived codec + stop-and-wait + epoch同期 + partial abort | 2,696 byte | 150 byte |
+| explicit detect-onlyとの差 | +1,402 byte | +56 byte |
 
-epoch同期追加前のstop-and-wait測定はFlash 2,078 byte / static RAM 146 byteだった。epoch同期を加えた時点ではFlash 2,764 byte / static RAM 156 byte、partial frame abortを測定対象へ加えた現在値はFlash 2,816 byte / static RAM 156 byteである。差には測定harnessの増加も含む。
+explicit length版では、epoch同期追加前のstop-and-waitがFlash 2,078 byte / static RAM 146 byte、epoch同期追加時がFlash 2,764 byte / static RAM 156 byte、partial frame abort追加時がFlash 2,816 byte / static RAM 156 byteだった。主要実装をdelimiter-derived lengthへ移した現在値はFlash 2,696 byte / static RAM 150 byteである。差には測定harnessの増減も含む。
 
-測定ELF上の`oep_uart_stopwait` stateは97 byteである。これには39 byteの再送frame、38 byteのincremental decoder領域、4 byte token、roleおよびstateが含まれる。
+16 bit explicit lengthを持つdetect-only codecに対し、delimiterからpayload長を導出するalternativeはFlash 116 byte / static RAM 4 byte小さかった。wire上でも各frameを2 byte削減できた。詳細は[UART frame layout比較](../../docs/uart-frame-layout-comparison.ja.md)に示す。
+
+SLIP型alternativeはderived COBS系よりFlash 160 byte小さい一方、最大wire bufferが37 byteから71 byteへ増え、測定ELFのstatic RAMは34 byte増えた。主要stop-and-wait実装は、固定worst-caseを小さく保つCOBS系のままとした。
+
+測定ELF上の`oep_uart_stopwait` stateは93 byteである。これには37 byteの再送frame、38 byteのincremental decoder領域、4 byte token、roleおよびstateが含まれる。
 
 この差は最終実装の費用ではない。codecとの関数統合、incremental CRC、buffer共有、UART driverとの統合によって変わる。ただし、32 byte payloadのstop-and-wait候補がUno R3の2 KiB SRAMに対して直ちに成立しない大きさではないことは確認できる。
 
@@ -80,12 +85,12 @@ epoch同期追加前のstop-and-wait測定はFlash 2,078 byte / static RAM 146 b
 
 8-N-1では1 byteを10 bitとして計算する。115200 baudで、error、OS/bridge latency、処理時間およびframe間idleがない場合:
 
-- 10 byte bootstrap request DATA 17 byte + ACK 7 byte: 約2.08 ms
-- 14 byte bootstrap response DATA 21 byte + ACK 7 byte: 約2.43 ms
-- request/response一往復の合計52 byte: 約4.51 ms
-- detect-onlyのrequest/response 38 byte: 約3.30 ms
+- 10 byte bootstrap request DATA 15 byte + ACK 5 byte: 約1.74 ms
+- 14 byte bootstrap response DATA 19 byte + ACK 5 byte: 約2.08 ms
+- request/response一往復の合計44 byte: 約3.82 ms
+- ACKなしのrequest/response合計34 byte: 約2.95 ms
 
-32 byte DATAとACKは合計46 byteで、payload比率は約69.6%である。line timeだけから求めた一方向上限は約8.0 kB/s（約7.8 KiB/s）だが、stop-and-waitではACK turnaroundとsoftware schedulingが加わるため実効値はこれより低い。
+32 byte DATAとACKは合計42 byteで、payload比率は約76.2%である。line timeだけから求めた一方向上限は約8.78 kB/s（約8.57 KiB/s）だが、stop-and-waitではACK turnaroundとsoftware schedulingが加わるため実効値はこれより低い。
 
 ## 通常の検証方法
 
@@ -103,7 +108,7 @@ cd tests
 uv run pytest uart_binding --profile=uno --run-mode=build
 ```
 
-`Makefile`は、detect-onlyとstop-and-waitのAVR footprintを同じ小さいharnessで比較する補助測定にだけ残す。通常のlogic検証経路にはしない。
+`Makefile`は、codec候補とstop-and-waitのAVR footprintを同じ小さいharnessで比較する補助測定にだけ残す。通常のlogic検証経路にはしない。
 
 ```sh
 make -C experiments/uart-binding avr-size
@@ -113,6 +118,6 @@ make -C experiments/uart-binding avr-size
 
 ## 中間結論
 
-stop-and-waitはdetect-onlyより状態とwire overheadを増やすが、破損DATAとACK喪失をbinding内で回復し、同じrequestをOEP coreへ重複deliveryしない性質を小さい実装で実現できた。epoch同期を加えてもATmega328P上のstateは97 byteであり、初期UART control channelの第一候補を維持する。
+stop-and-waitはdetect-onlyより状態とwire overheadを増やすが、破損DATAとACK喪失をbinding内で回復し、同じrequestをOEP coreへ重複deliveryしない性質を小さい実装で実現できた。epoch同期を加えてもATmega328P上のstateは93 byteであり、初期UART control channelの第一候補を維持する。
 
 host-arduino-core上では片側resetと古いframeの排除を確認した。採用を確定する前に、実UART/USB-UART bridge上の片側reset、遅延した旧frame、timeoutとthroughputを検証する必要がある。

@@ -1,7 +1,7 @@
 #include "uart_stopwait.h"
 
 static struct oep_uart_stopwait link;
-static uint8_t captured_wire[OEP_UART_MAX_WIRE];
+static uint8_t captured_wire[OEP_UART_STOPWAIT_MAX_WIRE];
 static uint8_t captured_length;
 static volatile uint8_t sink;
 
@@ -42,7 +42,7 @@ int main(void)
         &link, OEP_UART_ROLE_HOST, 2, wire_send, deliver, 0);
     sink ^= (uint8_t)oep_uart_stopwait_abort_partial_frame(&link);
     (void)oep_uart_stopwait_start_sync(&link, token);
-    captured_length = (uint8_t)oep_uart_encode_frame(
+    captured_length = (uint8_t)oep_uart_derived_encode_frame(
         OEP_UART_FRAME_SYNC_ACK,
         0,
         token,

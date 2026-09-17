@@ -261,7 +261,7 @@ stop-and-waitはUART bindingの候補であり、すべてのconnection binding�
 
 host上では、frame破損、byte欠落・挿入、ACK喪失、receiver busyおよびretry上限を試験し、破損または再送されたframeをOEP coreへ重複deliveryしないことを確認した。
 
-ATmega328P向けの測定用ELFでは、detect-onlyがFlash 1,294 byte / static RAM 94 byte、stop-and-wait、epoch同期およびpartial frame abortを含む構成がFlash 2,816 byte / static RAM 156 byteだった。差はFlash 1,522 byte / static RAM 62 byteである。Arduino core、UART driver、timerおよびOEP coreは含まないため、最終実装量ではなく候補間の中間比較として扱う。
+ATmega328P向けの測定用ELFでは、明示lengthのdetect-onlyがFlash 1,294 byte / static RAM 94 byte、delimiter-derived length、stop-and-wait、epoch同期およびpartial frame abortを含む構成がFlash 2,696 byte / static RAM 150 byteだった。差はFlash 1,402 byte / static RAM 56 byteである。Arduino core、UART driver、timerおよびOEP coreは含まないため、最終実装量ではなく候補間の中間比較として扱う。
 
 host-arduino-core上では、epoch成立前のDATA拒否、SYNC-ACK喪失、同一tokenの冪等性、異なるtokenによるsequence初期化、片側resetおよび古いframeの無視を確認した。この結果から、初期UART control channelの第一候補はstop-and-waitとhost主導epoch同期の組合せを維持する。ただし、実UART上のresetとbuffer挙動は未検証である。
 

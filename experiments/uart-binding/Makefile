@@ -16,15 +16,32 @@ build/detect.elf: size_detect.c src/uart_frame.c src/uart_frame.h | build
 	$(AVR_CC) $(AVR_CFLAGS) $(INCLUDES) $(AVR_LDFLAGS) \
 		size_detect.c src/uart_frame.c -o $@
 
-build/stopwait.elf: size_stopwait.c src/uart_frame.c src/uart_stopwait.c \
+build/derived.elf: size_derived.c \
+		src/alternatives/derived_length_frame.c \
+		src/alternatives/derived_length_frame.h src/uart_frame.h | build
+	$(AVR_CC) $(AVR_CFLAGS) $(INCLUDES) $(AVR_LDFLAGS) \
+		size_derived.c src/alternatives/derived_length_frame.c -o $@
+
+build/slip.elf: size_slip.c src/alternatives/slip_frame.c \
+		src/alternatives/slip_frame.h src/uart_frame.h | build
+	$(AVR_CC) $(AVR_CFLAGS) $(INCLUDES) $(AVR_LDFLAGS) \
+		size_slip.c src/alternatives/slip_frame.c -o $@
+
+build/stopwait.elf: size_stopwait.c src/alternatives/derived_length_frame.c \
+		src/uart_stopwait.c src/alternatives/derived_length_frame.h \
 		src/uart_frame.h src/uart_stopwait.h | build
 	$(AVR_CC) $(AVR_CFLAGS) $(INCLUDES) $(AVR_LDFLAGS) \
-		size_stopwait.c src/uart_frame.c src/uart_stopwait.c -o $@
+		size_stopwait.c src/alternatives/derived_length_frame.c \
+		src/uart_stopwait.c -o $@
 
-avr-size: build/detect.elf build/stopwait.elf
+avr-size: build/detect.elf build/derived.elf build/slip.elf build/stopwait.elf
 	$(AVR_SIZE) -C --mcu=atmega328p build/detect.elf
+	$(AVR_SIZE) -C --mcu=atmega328p build/derived.elf
+	$(AVR_SIZE) -C --mcu=atmega328p build/slip.elf
 	$(AVR_SIZE) -C --mcu=atmega328p build/stopwait.elf
 	$(AVR_NM) --print-size --size-sort --radix=d build/detect.elf | tail -n 12
+	$(AVR_NM) --print-size --size-sort --radix=d build/derived.elf | tail -n 12
+	$(AVR_NM) --print-size --size-sort --radix=d build/slip.elf | tail -n 12
 	$(AVR_NM) --print-size --size-sort --radix=d build/stopwait.elf | tail -n 16
 
 clean:

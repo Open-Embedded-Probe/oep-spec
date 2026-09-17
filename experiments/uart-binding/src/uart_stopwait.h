@@ -1,9 +1,11 @@
 #ifndef OEP_EXPERIMENT_UART_STOPWAIT_H
 #define OEP_EXPERIMENT_UART_STOPWAIT_H
 
-#include "uart_frame.h"
+#include "alternatives/derived_length_frame.h"
 
 #define OEP_UART_EPOCH_TOKEN_SIZE 4u
+#define OEP_UART_STOPWAIT_MAX_WIRE OEP_UART_DERIVED_MAX_WIRE
+#define OEP_UART_STOPWAIT_ACK_WIRE_SIZE OEP_UART_DERIVED_ACK_WIRE_SIZE
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,8 +40,8 @@ enum oep_uart_link_state {
 };
 
 struct oep_uart_stopwait {
-    struct oep_uart_decoder decoder;
-    uint8_t transmit_wire[OEP_UART_MAX_WIRE];
+    struct oep_uart_derived_decoder decoder;
+    uint8_t transmit_wire[OEP_UART_STOPWAIT_MAX_WIRE];
     uint8_t epoch_token[OEP_UART_EPOCH_TOKEN_SIZE];
     uint8_t transmit_length;
     uint8_t transmit_sequence;
