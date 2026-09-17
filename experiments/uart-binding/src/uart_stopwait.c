@@ -248,6 +248,11 @@ void oep_uart_stopwait_feed(
     }
 }
 
+bool oep_uart_stopwait_abort_partial_frame(struct oep_uart_stopwait *link)
+{
+    return oep_uart_decoder_abort_partial_frame(&link->decoder);
+}
+
 enum oep_uart_timeout_result oep_uart_stopwait_timeout(
     struct oep_uart_stopwait *link)
 {

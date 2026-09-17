@@ -40,6 +40,9 @@ host testでは次を確認する。
 - `0x00`を含むpayloadと、0から32 byteまでの全payload長のround trip
 - 一byte破損をCRCで破棄し、次のframeで再同期
 - 一byte欠落または挿入後に、次のframeで再同期
+- encoded上限超過、malformed COBSおよび空delimiterからの回復
+- 最大長frameの全byte位置に対する破損・欠落・挿入後の再同期
+- token長不正SYNC、payload付きACKおよびunknown frame typeの無視
 - 正常なDATA/ACK交換
 - ACK喪失時に再送しても上位へ重複deliveryしない
 - DATA破損後のtimeout再送
@@ -52,6 +55,10 @@ host testでは次を確認する。
 - probeだけがresetした場合のDATA拒否と再同期
 - 同期中の古いSYNC-ACKおよびDATAの無視
 - SYNC retry上限後のfailed state
+- partial frame timeout後の残りbyte破棄とDATA retryによる回復
+- 双方向で同時に未確認DATAを持つ場合のDATA/ACK直列化
+- OEP response DATAがrequest ACKより先に並ぶ場合の相互処理
+- 1 bit sequenceが送信順序保存を前提とすることのcharacterization
 
 ## ATmega328Pでの中間測定
 
@@ -60,10 +67,10 @@ Arduino Uno R3相当のATmega328Pを対象に、avr-gcc 7.3.0、`-Os`、section 
 | 構成 | Flash | static RAM |
 |---|---:|---:|
 | detect-only codecの送受信 | 1,294 byte | 94 byte |
-| codec + stop-and-wait + epoch同期 | 2,764 byte | 156 byte |
-| detect-onlyとの差 | +1,470 byte | +62 byte |
+| codec + stop-and-wait + epoch同期 + partial abort | 2,816 byte | 156 byte |
+| detect-onlyとの差 | +1,522 byte | +62 byte |
 
-epoch同期追加前のstop-and-wait測定はFlash 2,078 byte / static RAM 146 byteだった。同じtoolchainでの差はFlash 686 byte / static RAM 10 byteである。差にはSYNCを実行する測定harnessの増加も含む。
+epoch同期追加前のstop-and-wait測定はFlash 2,078 byte / static RAM 146 byteだった。epoch同期を加えた時点ではFlash 2,764 byte / static RAM 156 byte、partial frame abortを測定対象へ加えた現在値はFlash 2,816 byte / static RAM 156 byteである。差には測定harnessの増加も含む。
 
 測定ELF上の`oep_uart_stopwait` stateは97 byteである。これには39 byteの再送frame、38 byteのincremental decoder領域、4 byte token、roleおよびstateが含まれる。
 

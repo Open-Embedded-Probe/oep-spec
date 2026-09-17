@@ -9,6 +9,13 @@
 
 この経路では、host compilerへsourceを直接渡すだけでなく、Arduino libraryの探索、C/C++ compilationおよびlinkも確認できる。peripheral、timing、割込み、memory layoutおよび実UARTの性質はhost testでは保証しない。
 
+`uart_sequence_characterization`は、1 bit sequenceが順序保存されたstreamで重複を抑止できる一方、二つ後まで並べ替えられた古いframeを新規と区別できないことを意図的に再現する。これはその並べ替えを許容する試験ではなく、最小UART bindingが送信順序保存を前提にする根拠を固定するcharacterizationである。
+
+## 現在のtest module
+
+- `uart_binding` — framing、破損回復、stop-and-wait、epoch、partial timeoutおよび双方向queue
+- `uart_sequence_characterization` — 1 bit sequenceと順序保存前提の境界
+
 ## 実行
 
 ```sh

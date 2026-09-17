@@ -197,6 +197,8 @@ host側とprobe側の送受信eventへtimestampを記録し、実UART/USB-UART b
 
 平均値だけでなく、最大値または十分なpercentileと外れ値の原因を記録する。
 
+非規定の比較実装では、partial frameを明示的にabortして次のdelimiterまで破棄し、送信側の同一DATA retryによって回復することをhost-arduino-core上で確認した。実時間timerとの接続と実UART上のinter-byte gap測定は未実施である。
+
 ## この文書で決めないこと
 
 - 既定baud rateとline setting

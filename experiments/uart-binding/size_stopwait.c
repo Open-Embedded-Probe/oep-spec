@@ -40,6 +40,7 @@ int main(void)
 
     oep_uart_stopwait_init(
         &link, OEP_UART_ROLE_HOST, 2, wire_send, deliver, 0);
+    sink ^= (uint8_t)oep_uart_stopwait_abort_partial_frame(&link);
     (void)oep_uart_stopwait_start_sync(&link, token);
     captured_length = (uint8_t)oep_uart_encode_frame(
         OEP_UART_FRAME_SYNC_ACK,

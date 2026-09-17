@@ -78,6 +78,9 @@ void oep_uart_stopwait_feed(
     struct oep_uart_stopwait *link,
     uint8_t byte);
 
+bool oep_uart_stopwait_abort_partial_frame(
+    struct oep_uart_stopwait *link);
+
 enum oep_uart_timeout_result oep_uart_stopwait_timeout(
     struct oep_uart_stopwait *link);
 
