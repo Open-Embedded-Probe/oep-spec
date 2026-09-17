@@ -17,6 +17,7 @@
 - `uart_framing_comparison` — explicit/derived lengthとCOBS系/SLIP型encodingの比較
 - `uart_sequence_characterization` — 1 bit sequenceと順序保存前提の境界
 - `bootstrap_layout_comparison` — 仮bootstrap候補B/Cのparserとbuffer比較
+- `bootstrap_over_uart` — binding非依存bootstrap coreをUART stop-and-waitで往復
 
 ## 実行
 

@@ -321,6 +321,8 @@ rv003usb `5cddcd5e1d46`では、EP0 OUTの最後のdata packetが1から3 byte�
 
 xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,440 byte / RAM 112 byte、候補C成立版はFlash 2,432 byte / RAM 108 byteだった。候補Cの削減はFlash 8 byte / RAM 4 byteに留まり、exact limitまで二往復を要する。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。候補Bのcore parserはHID wrapperから独立しており、UART等でも共有できることをhost testで確認した。ただし実機での列挙とSET/GET_REPORT、USB STALLによるbusy通知およびresetはまだ検証していない。
 
+UART結合試験では、候補Bの同じ10 byte core requestと14 byte responseをderived-length COBS系frameおよびstop-and-waitへ載せた。probeのrequest delivery callback内でresponseを生成し、response DATAがrequest ACKより先にqueueされる場合でも、hostはresponseを一度だけ受信し、双方のtransport ACKを完了した。これにより仮core parserがHID report形式へ依存せず、UART bindingからも利用できることを確認した。
+
 ## 次の検証
 
 UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼性model候補](uart-reliability-model.ja.md)に整理する。UART外側frameの後続比較は[UART frame layout比較](uart-frame-layout-comparison.ja.md)に示す。候補Bについて、core messageと各bindingの責任をさらに分ける必要がある。
