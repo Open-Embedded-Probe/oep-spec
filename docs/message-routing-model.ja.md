@@ -57,6 +57,8 @@ function definition referenceは標準機能と独自機能、異なるownerの�
 
 `accepted` resultはrequest correlationへ対応し、新しく割り当てたactivity referenceをpayloadとして示す。その後のupdate、data、停止操作およびterminal outcomeはactivity referenceへ対応付け、元のrequest correlationをactivity identityとして使い続けることを前提にしない。
 
+resultは[Request correlationのscopeとlifecycle](request-correlation-lifecycle.ja.md)に従い、requesterが保持するpending記録へ対応付ける。target、definitionおよびoperationはその記録から復元できるため、resultへtarget referenceを必ずechoすることは意味上の要件にしない。
+
 ## 共通dispatcherの処理候補
 
 受信側は概念上次の順序で処理する。
