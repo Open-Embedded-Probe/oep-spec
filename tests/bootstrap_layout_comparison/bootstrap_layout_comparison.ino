@@ -93,6 +93,26 @@ static void test_candidate_b_core_without_hid_wrapper()
         F("candidate B binding-independent core"));
 }
 
+static void test_candidate_b_unknown_operation_response()
+{
+    uint8_t message[OEP_BOOTSTRAP_B_RESPONSE_SIZE] = {
+        0x01u, 0x7fu, 0xabu, 0xcdu,
+        0x4fu, 0x45u, 0x50u, 0x3fu,
+        0x01u, 0x01u,
+    };
+
+    check(
+        oep_bootstrap_b_handle_core_message(
+            message,
+            OEP_BOOTSTRAP_B_REQUEST_SIZE,
+            sizeof(message)) == OEP_BOOTSTRAP_B_RESPONSE_SIZE &&
+            message[0] == 0x81u && message[1] == 0x7fu &&
+            message[2] == 0xabu && message[3] == 0xcdu &&
+            message[8] == OEP_BOOTSTRAP_B_STATUS_UNSUPPORTED_OPERATION &&
+            message[9] == 0u,
+        F("candidate B unknown operation response"));
+}
+
 static void prepare_c(
     uint8_t *report,
     uint8_t operation,
@@ -230,6 +250,7 @@ void setup()
 
     test_candidate_b();
     test_candidate_b_core_without_hid_wrapper();
+    test_candidate_b_unknown_operation_response();
     test_candidate_c();
     test_single_buffer_lifecycle();
     test_rv003usb_short_final_packet_characterization();
