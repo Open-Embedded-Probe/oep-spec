@@ -274,6 +274,8 @@ static uint8_t rv003usb_forwarded_out_bytes(uint8_t report_length)
 
 static void test_rv003usb_short_final_packet_characterization()
 {
+    bool all_lengths_match = true;
+
     check(
         rv003usb_forwarded_out_bytes(16u) == 16u,
         F("rv003usb 16-byte report fully forwarded"));
@@ -283,6 +285,20 @@ static void test_rv003usb_short_final_packet_characterization()
     check(
         rv003usb_forwarded_out_bytes(12u) == 12u,
         F("rv003usb padded 12-byte report fully forwarded"));
+
+    for (uint8_t length = 1u; length <= 64u; ++length) {
+        uint8_t remainder = length & 7u;
+        bool expected_complete = remainder == 0u || remainder >= 4u;
+        bool complete = rv003usb_forwarded_out_bytes(length) == length;
+
+        if (complete != expected_complete) {
+            all_lengths_match = false;
+            break;
+        }
+    }
+    check(
+        all_lengths_match,
+        F("rv003usb report lengths 1 through 64 characterized"));
 }
 
 void setup()
