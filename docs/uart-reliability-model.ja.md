@@ -164,6 +164,14 @@ ACK喪失時にresponse自体を再送するため、直前のOEP responseをcac
 
 OEP response生成前にprobeがresetまたはconnectionを失った場合は、transport再送だけでは回復できない。
 
+### Correlationのduplicate window
+
+activeな同一epoch内で、receiver bindingが受理済みsequenceの再送を上位へdeliveryしない限り、同じresponse DATA frameのbinding由来duplicateは最初の上位deliveryで終了する。requesterはこの保証を[correlationのretire条件](correlation-retirement-model.ja.md)の根拠にできる。
+
+ただし、transport ACK前後の切断やretry上限超過でresultを上位へdeliveryできなかった場合、OEP requestのresolutionは結果不明になり得る。新epochの成立は以前のframeを新contextへdeliveryしない境界にできるが、以前の機能操作が未実行、取消済みまたは失敗したことを意味しない。
+
+responderが同じOEP resultを新しいDATA frameとして生成し直す場合はtransport duplicateではなく、上位の重複規則で扱う。UART sequenceだけをrequest correlationの代わりに使用しない。
+
 ## Messageとframeの関係
 
 最小UART bindingでは、一つのbounded OEP logical messageを一つのUART DATA frameへ格納する案を優先する。
