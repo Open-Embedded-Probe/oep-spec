@@ -11,6 +11,7 @@ ADDITIONAL_C_FILES += $(RV003USB_DIR)/rv003usb/rv003usb.S
 ADDITIONAL_C_FILES += $(RV003USB_DIR)/rv003usb/rv003usb.c
 EXTRA_CFLAGS += -I$(RV003USB_DIR)/lib -I$(RV003USB_DIR)/rv003usb
 EXTRA_CFLAGS += -I../src $(LAYOUT_DEFINE)
+ADDITIONAL_C_FILES += ../src/hid_feature_lifecycle.c
 
 ifeq ($(LAYOUT_DEFINE),-DOEP_BOOTSTRAP_LAYOUT_B)
 ADDITIONAL_C_FILES += ../src/bootstrap_candidate_b.c

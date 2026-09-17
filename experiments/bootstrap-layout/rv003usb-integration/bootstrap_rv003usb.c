@@ -3,26 +3,31 @@
 #include <string.h>
 
 #include "rv003usb.h"
+#include "hid_feature_lifecycle.h"
 
 #if defined(OEP_BOOTSTRAP_LAYOUT_B)
 #include "bootstrap_candidate_b.h"
-#define REPORT_SIZE OEP_BOOTSTRAP_B_REPORT_SIZE
+#define TRANSFER_SIZE OEP_BOOTSTRAP_B_REPORT_SIZE
+#define PARSER_SIZE OEP_BOOTSTRAP_B_REPORT_SIZE
 #define HANDLE_REPORT oep_bootstrap_b_handle_report
 #elif defined(OEP_BOOTSTRAP_LAYOUT_C)
 #include "bootstrap_candidate_c.h"
-#define REPORT_SIZE OEP_BOOTSTRAP_C_REPORT_SIZE
+/* Pad 9 bytes to 12 so rv003usb forwards the final 4-byte OUT packet. */
+#define TRANSFER_SIZE 12u
+#define PARSER_SIZE OEP_BOOTSTRAP_C_REPORT_SIZE
 #define HANDLE_REPORT oep_bootstrap_c_handle_report
 #else
 #error Select a bootstrap layout
 #endif
 
-static uint8_t report[REPORT_SIZE];
-static volatile uint8_t response_ready;
+static uint8_t report[TRANSFER_SIZE];
+static struct oep_hid_feature_lifecycle lifecycle;
 
 int main(void)
 {
     SystemInit();
     Delay_Ms(1);
+    oep_hid_feature_lifecycle_init(&lifecycle);
     usb_setup();
     for (;;) {
         __asm__ volatile("nop");
@@ -69,8 +74,12 @@ void usb_handle_user_data(
     memcpy(report + offset, data, (size_t)remaining);
     ++endpoint->count;
     if ((endpoint->count << 3) >= endpoint->max_len) {
-        response_ready =
-            HANDLE_REPORT(report, sizeof(report)) == sizeof(report);
+        bool response_valid =
+            HANDLE_REPORT(report, PARSER_SIZE) == PARSER_SIZE;
+#if defined(OEP_BOOTSTRAP_LAYOUT_C)
+        memset(report + PARSER_SIZE, 0, TRANSFER_SIZE - PARSER_SIZE);
+#endif
+        (void)oep_hid_feature_finish_set(&lifecycle, response_valid);
     }
 }
 
@@ -80,12 +89,14 @@ void usb_handle_hid_get_report_start(
     uint32_t value_index)
 {
     (void)value_index;
-    if (!response_ready || requested_length > (int)sizeof(report)) {
+    if (!oep_hid_feature_begin_get(
+            &lifecycle,
+            (uint16_t)requested_length,
+            TRANSFER_SIZE)) {
         requested_length = 0;
     }
-    endpoint->opaque = report;
+    endpoint->opaque = requested_length != 0 ? report : 0;
     endpoint->max_len = requested_length;
-    response_ready = 0;
 }
 
 void usb_handle_hid_set_report_start(
@@ -94,8 +105,10 @@ void usb_handle_hid_set_report_start(
     uint32_t value_index)
 {
     (void)value_index;
-    response_ready = 0;
-    if (requested_length != (int)sizeof(report)) {
+    if (!oep_hid_feature_begin_set(
+            &lifecycle,
+            (uint16_t)requested_length,
+            TRANSFER_SIZE)) {
         requested_length = 0;
     }
     endpoint->max_len = requested_length;

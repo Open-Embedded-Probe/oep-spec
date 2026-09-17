@@ -315,9 +315,11 @@ ATmega328P、avr-gcc 7.3.0、`-Os`での測定用ELFは次になった。
 
 また同じparser test sketchがCH32V003 Arduino core 1.4.0でcompileできることを確認対象に加えた。これはrv003usbとの統合動作を確認するものではない。
 
-さらにrv003usb、HID descriptor、8 byte packet単位のSET_REPORT再構成、共有bufferおよびGET_REPORT callbackまで含むCH32V003 firmwareをbuildした。xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,396 byte / RAM 112 byte、候補CはFlash 2,364 byte / RAM 108 byteだった。
+さらにrv003usb、HID descriptor、8 byte packet単位のSET_REPORT再構成、共有buffer、pending response lifecycleおよびGET_REPORT callbackまで含むCH32V003 firmwareをbuildした。
 
-候補Cの統合時の削減はFlash 32 byte / RAM 4 byteである。一方、report IDを含む9 byte reportを使用するためEP0 data stageは一report二packetとなり、exact limitまで二往復を要する。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。ただし実機での列挙とSET/GET_REPORT、busyおよび連続requestはまだ検証していない。
+rv003usb `5cddcd5e1d46`では、EP0 OUTの最後のdata packetが1から3 byteの場合にuser data callbackが呼ばれない。report IDを含む9 byteの候補Cは8+1 byteとなるため、そのままでは最後の1 byteが仮parserへ届かなかった。候補CのUSB reportを12 byteへpaddingし8+4 byteとした成立版で比較した。
+
+xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,436 byte / RAM 112 byte、候補C成立版はFlash 2,432 byte / RAM 108 byteだった。候補Cの削減はFlash 4 byte / RAM 4 byteに留まり、exact limitまで二往復を要する。この差は専用bootstrap形式を追加する強い実装上の根拠にはならない。ただし実機での列挙とSET/GET_REPORT、USB STALLによるbusy通知およびresetはまだ検証していない。
 
 ## 次の検証
 

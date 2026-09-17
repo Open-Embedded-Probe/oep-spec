@@ -54,7 +54,7 @@ xPack RISC-V GCC 14.3.0、`-Os`で、候補Bはtext 516 byte / RAM section 17 by
 
 ## rv003usbとのbuild統合
 
-`rv003usb-integration`は、HID descriptor、EP0で8 byteずつ受け取るSET_REPORT callback、共有report buffer、仮parserおよびGET_REPORT callbackをrv003usbへ組み込む。実機へflashせず、候補B/Cのfirmware ELFを比較する。
+`rv003usb-integration`は、HID descriptor、EP0で8 byteずつ受け取るSET_REPORT callback、共有report buffer、仮parser、pending responseを保護するlifecycleおよびGET_REPORT callbackをrv003usbへ組み込む。実機へflashせず、候補B/Cのfirmware ELFを比較する。
 
 ```sh
 cd experiments/bootstrap-layout/rv003usb-integration
@@ -65,9 +65,11 @@ make compare RV003USB_DIR=/path/to/rv003usb \
 
 rv003usb `5cddcd5e1d46`、ch32fun `618bba58c615`、xPack RISC-V GCC 14.3.0、`-Os -flto`による結果:
 
-| 仮候補 | Flash | RAM | report buffer | exact limitまでの往復 |
+| 仮候補 | Flash | RAM | USB report buffer | exact limitまでの往復 |
 |---|---:|---:|---:|---:|
-| B | 2,396 byte | 112 byte | 16 byte | 1 |
-| C | 2,364 byte | 108 byte | 9 byte | 2 |
+| B | 2,436 byte | 112 byte | 16 byte | 1 |
+| C | 2,432 byte | 108 byte | 12 byte | 2 |
 
-候補Cは統合firmware全体でFlash 32 byte、RAM 4 byteを削減した。RAM差がbuffer差の7 byteより小さいのはsection alignmentと周辺stateを含むためである。USB pin、仮VID:PID、descriptorおよびcallbackはbuild比較用であり、列挙、SET/GET_REPORTの実動作、host API差、busy、連続requestおよびresetは未検証である。
+rv003usb `5cddcd5e1d46`は、EP0 OUTの最後のdata packetが1から3 byteの場合、user data callbackへ渡さない。report ID込み9 byteの候補Cは8+1 byteになり、最後の1 byteをparserが受け取れなかった。このため統合候補CはUSB reportを12 byteへpaddingし、8+4 byteとして測定した。仮parserが解釈する先頭9 byteは変えていない。
+
+成立する構成同士では、候補Cの削減はFlash 4 byte / RAM 4 byteだった。lifecycleは未取得responseが次のSET_REPORTで上書きされることを防ぎ、正しい長さのGET_REPORT開始後にだけbufferを次のsetupで再利用可能にする。USB pin、仮VID:PID、descriptorおよびcallbackはbuild比較用であり、列挙、SET/GET_REPORTの実動作、host API差、USB STALLによるbusy通知、resetは未検証である。
