@@ -79,3 +79,5 @@ rv003usb `5cddcd5e1d46`は、EP0 OUTの最後のdata packetが1から3 byteの�
 `tests/bootstrap_over_uart`は、候補Bの10 byte core requestをUART stop-and-waitでhostからprobeへ送り、probeがbinding非依存core handlerで14 byte responseを生成して同じconnection上で返す。
 
 probeのdelivery callback内で同期的にresponseを生成するため、wire queueではresponse DATAがrequestのtransport ACKより先に並ぶ。この順序でもhostがresponseと後続ACKを別々に処理し、双方の未確認DATAが最終的に解消することをhost-arduino-core上で確認した。Uno R3とCH32V003 profileでもcompileできる。
+
+CRCとframeが正常だがbootstrap identityが不正なDATAも試験した。UART bindingはそのDATAを一度だけdeliveryしてtransport ACKを返し、core parserの拒否をtransport retryへ変換しない。仮parserはまだ規定のrejected responseを生成しないため、この試験ではOEP responseを返さず、層の分離だけを確認する。
