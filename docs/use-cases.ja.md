@@ -127,7 +127,7 @@ hostは、不要な機能への対応を要求されず、理解する機能だ�
 - 未知の機能を既知の機能として誤解しない
 - 追加機能が既存機能の意味を暗黙に変更しない
 - 異なる主体が追加した機能を相互に取り違えない
-- 独自機能であることを理由に、その実行をprotocol外の専用通信へ切り替えない
+- 外部interfaceまたは独自protocolを必要とする場合は、未宣言の通信へ切り替えず、external bindingとして明示する
 
 ### この段階で決めないこと
 
@@ -142,24 +142,23 @@ hostは、不要な機能への対応を要求されず、理解する機能だ�
 ### 前提
 
 - 専用hostとprobeが、独自機能の意味とdata形式について合意している
-- 独自機能に必要なやり取りをOEP上で行う
+- 独自機能に必要な通信経路を、OEP native pathまたはexternal bindingとして扱う
 
 ### 期待する結果
 
-専用hostとprobeは、一般的なhostやOEP coreが独自dataの意味を理解しなくても、独自機能に必要な通信をOEP内で完了できる。独自機能を理解しないhostは、その機能を利用しない。
+専用hostとprobeは、一般的なhostやOEPの共通部分が独自dataの意味を理解しなくても、OEP native pathまたは明示されたexternal bindingを通して独自機能を利用できる。独自機能を理解しないhostは、その機能を利用しない。
 
 ### 相互運用の成立条件
 
-- 機能の操作に必要な制御、data、状態、結果および失敗をOEP protocol内で表現できる
-- probeとhostの間で、OEP外の通信経路を使用しない
-- OEP上で操作を開始した後、host–probe通信をOEP外の専用protocolへ切り替えない
-- 専用hostであることを、OEPを迂回する理由にしない
-- OEP coreが独自dataの内容を解釈しなくても、そのdataをOEP内で運べる
+- 必要な通信経路をOEP native pathまたはexternal bindingとして区別できる
+- external bindingを使う場合、対応する外部interfaceまたはprotocolとの関係をhostが認識できる
+- OEPから認識できない未宣言の外部通信へ依存しない
+- OEPの共通部分が独自dataの内容を解釈しなくても、OEP native pathまたはexternal bindingとして扱える
 - 独自機能を理解しないhostが、そのdataを既知の機能として誤解しない
 
-独自機能のdata表現はOEPの拡張として定義でき、その意味を専用hostとprobeだけが知る構成も許容する。別protocolで定義されたpacketやbyte列を、独自dataとしてOEP内で運ぶこともできる。仕様を公開するか、第三者による再実装を許可するかは、独自機能の提供者が決める。
+独自機能のdata表現はOEPの拡張として定義でき、その意味を専用hostとprobeだけが知る構成も許容する。別protocolで定義されたpacketやbyte列は、OEP native pathの独自dataとして運ぶことも、独自protocolのexternal bindingで運ぶこともできる。仕様を公開するか、第三者による再実装を許可するかは、独自機能の提供者が決める。
 
-OEPを運ぶ下位通信とprobeからtargetへの通信は、この禁止の対象ではない。また、OEPから独立した別protocolを同じdeviceへ併設することはできるが、それをOEP機能の実行に必要な経路として使用してはならない。
+OEPから独立した別protocolを同じdeviceへ併設することもできる。OEP機能と関係を持つ場合はexternal bindingとして明示し、関係を持たない場合はOEP機能と誤認されないよう区別する。
 
 ### この段階で決めないこと
 
@@ -173,13 +172,13 @@ OEPを運ぶ下位通信とprobeからtargetへの通信は、この禁止の対
 
 ### 期待する結果
 
-接続環境が異なっても、probeとhostはOEP protocol内で通信する。接続interfaceによる通信方法の違いは機能から分離され、機能そのものの意味を接続方法ごとに再定義する必要がない。接続環境によって生じる制約は、その機能の意味と混同されない。
+接続環境が異なっても、probeとhostはOEP protocolでOEP endpointと機能を扱う。接続interfaceによる通信方法の違いは機能から分離され、機能そのものの意味を接続方法ごとに再定義する必要がない。external bindingを利用できる範囲や接続環境によって生じる制約は、その機能の意味と混同されない。
 
 ### 相互運用の成立条件
 
 - USB上のidentityや構成だけを機能の定義そのものとしない
 - USB以外で利用するために、同じ機能へ別の意味を与えない
-- 接続interfaceごとに、OEP外の専用protocolへ切り替えない
+- 外部経路を必要とする場合、接続interfaceごとの隠れた切替ではなくexternal bindingとして扱う
 - 接続環境の違いにより実現できない条件を、機能全体の非互換と誤認しない
 
 ### この段階で決めないこと
@@ -215,7 +214,7 @@ OEPから派生していても必須要求を満たさないprotocolまたは実
 ### 前提
 
 - OEPのsource codeまたは仕様を変更、forkまたは移植した実装が存在する
-- その実装は、OEP外通信への依存等によりOEPの必須要求を満たさない
+- その実装は、未宣言の外部通信への依存、標準機能の意味の変更等によりOEPの必須要求を満たさない
 
 ### 期待する結果
 
@@ -228,12 +227,43 @@ OEPから派生していても必須要求を満たさないprotocolまたは実
 - 将来のOEP project PIDその他の共通identityを使用しない
 - OEPと非OEPを同じ物理deviceへ併設しても、hostが両者を区別できる
 - 非OEP機能がOEPの対応機能として公開されない
+- 適合するexternal bindingは、外部通信を使うことだけを理由に非OEPとして扱われない
 
 source codeまたは文書がOEPから派生した事実を示すことと、OEPへの適合や互換性を表示することは区別する。
 
 ### この段階で決めないこと
 
 OEPへの適合表示、名称利用、protocol identity、project PID、USB profileおよび同一deviceへの併設に関する具体的な規則は決めない。
+
+## UC-10: OEP機能のdataを外部interfaceで直接利用する
+
+### 目的
+
+OEPで機能の構成や関係を扱いながら、機能の実dataをUSB標準classその他の外部interfaceまたは外部protocolで直接利用する。
+
+### 前提
+
+- probeがOEP endpointと外部interfaceまたは外部protocolを提供する
+- OEP機能と外部経路の関係がexternal bindingとして明示される
+- hostまたは別のhost applicationが、そのexternal bindingへ対応している
+
+### 期待する結果
+
+hostは、どのOEP機能とどの外部経路が関係するかを識別できる。OEPで必要なrouting、変換、利用条件等を扱い、実dataはexternal bindingで直接送受信できる。
+
+たとえば、target UARTのpinとroutingをOEPで設定し、UART dataをUSB CDCで送受信できる。また、target I2Sの解釈やchannel mappingをOEPで設定し、audio sampleをUSB Audioで受信できる。
+
+### 相互運用の成立条件
+
+- OEP機能と外部interfaceまたは外部protocolの関係をhostが識別できる
+- OEP側と外部側の設定、開始、停止、状態および失敗に関する責任が曖昧でない
+- external bindingへの対応がないhostは、その経路を利用可能と誤認しない
+- external bindingが利用できない場合も、無関係なOEP機能を不必要に利用不能にしない
+- USB標準class自身が定義する制御を、理由なくOEPで重複定義しない
+
+### この段階で決めないこと
+
+external bindingの識別方法、OEP機能との関連付け、USB interfaceの対応付け、設定の同期、lifecycle、resource関係およびprofile合成規則は決めない。
 
 ## 失敗および非対応の場面
 
@@ -245,6 +275,7 @@ OEPへの適合表示、名称利用、protocol identity、project PID、USB pro
 - 機能は通常利用できるが、現在の構成や状態では利用できない
 - 操作を開始できない
 - 操作の途中で継続できなくなる
+- 必要なexternal bindingが存在しない、対応していない、または利用できない
 - 操作結果の全部または一部を信頼できない
 - 相手から未知または理解不能な情報を受け取る
 
@@ -260,10 +291,11 @@ OEPへの適合表示、名称利用、protocol identity、project PID、USB pro
 4. 同じ機能の実装差と、意味が異なる別機能をどこで区別するか
 5. 非対応、条件不成立、一時的な利用不能、実行失敗および不完全な結果を、利用者の観点でどう区別すべきか
 6. 新しい機能や改訂が既存の相互運用を壊さないために、何を安定させる必要があるか
-7. OEP coreが意味を理解しない独自dataを、既存機能と混同せずOEP内で扱うために何が必要か
-8. すべての機能通信をOEP内で完結させ、protocol外への迂回を防ぐために何を要求する必要があるか
+7. OEPの共通部分が意味を理解しない独自dataを、既存機能と混同せず扱うために何が必要か
+8. OEP native path、external bindingおよび未宣言の外部通信を区別するために何を要求する必要があるか
 9. 機能の意味と接続環境固有の性質の境界をどこに置くか
 10. 独立した複数実装による相互運用を、どのような観測可能な結果で検証するか
 11. 非互換な派生、非OEP機能およびOEP実装を、hostと利用者が誤認しないために何を区別する必要があるか
+12. OEP機能とexternal bindingの関係、設定責任、状態、失敗およびresource関係をどこまで共通化する必要があるか
 
 次段階では、これらの問いへの回答を技術方式ではなく要求として記述する。
