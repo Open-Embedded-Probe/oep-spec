@@ -116,4 +116,4 @@ binding sequence、HID report ID、USB transfer番号またはTCP byte位置をc
 - request deduplication keyとの共有
 - connection再開時に以前のcorrelationを引き継ぐ方法
 
-次段階では、結果不明になったrequestをいつretireできるか、およびduplicate windowをbinding保証からどう確定するかを整理する。
+[Request correlationのretire条件](correlation-retirement-model.ja.md)で、pending、indeterminateおよびresolved-retainedを分け、binding保証から再利用可能性を判断する。
