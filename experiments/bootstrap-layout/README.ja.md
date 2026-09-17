@@ -80,10 +80,13 @@ rv003usb `5cddcd5e1d46`、ch32fun `618bba58c615`、xPack RISC-V GCC 14.3.0、`-O
 |---|---:|---:|---:|---:|
 | B | 2,464 byte | 112 byte | 16 byte | 1 |
 | C | 2,432 byte | 108 byte | 12 byte | 2 |
+| C + rv003usb短packet実験パッチ | 2,412 byte | 108 byte | 9 byte | 2 |
 
 rv003usb `5cddcd5e1d46`は、EP0 OUTの最後のdata packetが1から3 byteの場合、user data callbackへ渡さない。report ID込み9 byteの候補Cは8+1 byteになり、最後の1 byteをparserが受け取れなかった。このため統合候補CはUSB reportを12 byteへpaddingし、8+4 byteとして測定した。仮parserが解釈する先頭9 byteは変えていない。
 
 report全長1から64 byteについて同じpacket分割条件を走査した。8で割った余りが1、2、3となる長さは最後のpacketがcallbackへ届かず、余り0または4から7の長さは全byteが届く。これはUSBまたはHID一般の制約ではなく、上記rv003usb revisionの`usb_pid_handle_data()`にあるcallback条件のcharacterizationである。
+
+`rv003usb-short-out.patch`でそのcallback条件を`length > 0`へ変更し、候補Cをpaddingなしの9 byte reportとしてbuildした。統合Makefileへ一時コピーのpathを`RV003USB_C`、`-DOEP_RV003USB_SHORT_OUT_PATCHED`を`PATCH_DEFINE`として渡せる。外部checkout自体は変更しない。測定上はpadding版からFlashが20 byte減り、RAMは変わらなかった。このパッチはbuildのみの実験であり、短packetの実受信、zero-length packetおよびrv003usbの他機能との組合せは未検証である。
 
 成立するHID構成同士では、候補Cの削減はFlash 32 byte / RAM 4 byteだった。候補Bはunknown operationをcorrelation付きresponseで拒否する処理も含む。core handlerはHID wrapperから分離されており、UART等から同じ形式を直接処理できる。lifecycleは未取得responseが次のSET_REPORTで上書きされることを防ぎ、正しい長さのGET_REPORT開始後にだけbufferを次のsetupで再利用可能にする。USB pin、仮VID:PID、descriptorおよびcallbackはbuild比較用であり、列挙、SET/GET_REPORTの実動作、host API差、USB STALLによるbusy通知、resetは未検証である。
 
