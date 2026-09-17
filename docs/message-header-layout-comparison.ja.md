@@ -115,6 +115,6 @@ Role別headerを選んでも、各roleを無関係な独自形式にはしない
 
 ## 次の確認
 
-- resultのtargetをrequest correlationから導出するためにhostが保持する最小状態を確認する
+- [Request correlationのscopeとlifecycle](request-correlation-lifecycle.ja.md)で整理したpending記録を最小slotと複数slotで実験する
 - notificationとdataでtarget scopeをroleから導出できる範囲を確認する
 - 未知roleおよび未知role subtypeのcriticalityをheader自身から判断可能にする必要があるか検討する
