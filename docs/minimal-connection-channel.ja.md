@@ -109,6 +109,8 @@ send(connection context, complete logical message)
 
 通信が失われる直前にmessageが相手へ届いたかどうかまで、常に確定できるとは限らない。channelの完全性保証と、OEP requestを相手が実行したかの保証は区別する。
 
+4の重複抑止について、bindingは同じlogical messageを上位へ再度deliveryし得る期間と、その期間が終了したと判断できる事実を明確にする。共通protocolはこの境界をrequest correlationのretire根拠に利用できる。境界を示せない場合、requesterは古いresultが到着し得る値を同じconnection contextで再利用しない。
+
 ### Response経路
 
 OEP共通protocolは、受信messageと共にconnection contextを受け取る。requestに対するresponseは同じcontextを指定して返す。

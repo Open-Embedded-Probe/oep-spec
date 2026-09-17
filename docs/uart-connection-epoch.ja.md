@@ -204,6 +204,8 @@ binding同期失敗はtransport failureである。正常なSYNC後のOEP非互�
 
 新しいepochで同じOEP requestを再送するかはbindingが自動決定しない。再実行が安全か、activity照会を行うか、結果不明として利用者へ示すかはOEP request semanticsに従う。
 
+新しいepochへ以前のDATA frameがdeliveryされないことを保証できる場合、新epochは以前のconnection-local correlationを新しいrequestへ誤適用しない境界になる。ただし以前のrequestの実行結果は依然として不明であり、correlation namespaceを更新できることと機能操作を安全に再実行できることを混同しない。
+
 ## 暫定合意候補
 
 - UART bindingはreset直後またはport open直後にactiveと仮定しない
