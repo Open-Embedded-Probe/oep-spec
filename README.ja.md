@@ -11,6 +11,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 - [プロジェクトの目的と範囲](docs/project-concept.ja.md)
 - [相互運用ユースケース](docs/use-cases.ja.md)
 - [Project要求](docs/project-requirements.ja.md)
+- [概念モデル](docs/conceptual-model.ja.md)
 - [調査・移行メモ](memo.ja.md)
 
 検討中の実装repository構成:
