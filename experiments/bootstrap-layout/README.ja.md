@@ -46,6 +46,15 @@ static RAMには共有report bufferと1 byteの測定用sinkを含む。候補B�
 
 候補Bの仮8 bit minimum/maximum revisionは全65,536組をhost上で試験し、revision 1を範囲に含む場合だけcompatibleとなること、compatible/incompatibleの双方で16 bit correlationを保存することを確認した。これは8 bit幅またはrange方式を採用する根拠ではなく、比較実装の境界試験である。
 
+候補B requestの未使用padding 4 byteは、既定実装では内容を無視する。4 byteすべてをzero必須とするstrict variantもbuildした。
+
+| toolchain | padding無視 | zero必須 | 差 |
+|---|---:|---:|---:|
+| avr-gcc 7.3.0 ELF | 480 byte | 504 byte | +24 byte Flash |
+| RISC-V GCC 14.3.0 text | 566 byte | 590 byte | +24 byte text |
+
+どちらもstatic RAMは同じだった。strict paddingはcanonicalな送信形状を検査でき、padding無視は将来利用またはhost API差への許容度が高い。この測定ではpolicyを決定しない。
+
 CH32V003 ABI（`rv32ec` / `ilp32e`）向けのbare ELF比較は、RISC-V compilerを`PATH`へ置いて次で実行する。
 
 ```sh

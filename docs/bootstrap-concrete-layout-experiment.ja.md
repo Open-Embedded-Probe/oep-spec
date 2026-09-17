@@ -123,6 +123,8 @@ HID report全体はUSB stackがcontrol transferとして分割・再構成し、
 
 実際に一つのbufferを共有できるかは、SET_REPORTのstatus stage、次のGET_REPORT、NAK処理および割込み実装に依存する。
 
+未使用padding 4 byteについて、内容を無視するparserとzeroを必須にするstrict parserを比較した。strict検査の追加量はavr-gcc 7.3.0とRISC-V GCC 14.3.0の双方でFlash/text 24 byte、static RAM増加なしだった。この値だけではpadding policyを決定しない。
+
 既存rvswdio_programmerの264 byte buffer二本は、この16 byte案の必須条件ではない。一方、16 byteに縮めた場合に提供機能のrequestを運べるかは別途検証が必要である。
 
 ## 候補BをUART frameへ載せる
