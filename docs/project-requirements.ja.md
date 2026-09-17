@@ -295,6 +295,33 @@ protocolへの対応、個別機能への対応、接続環境固有の対応お
 - 同じ観測可能な要件を、異なる内部実装へ適用できる
 - 一つの適合主張を、別の種類の適合または品質保証として扱わない
 
+## OEP-REQ-013: 非互換な派生をOEPとして識別しない
+
+### 要求
+
+OEPの必須要求を満たさないprotocolまたは実装は、OEPへの適合または互換性を主張してはならず、OEP protocolと誤認されるprotocol名またはprotocol identityを使用してはならない。
+
+将来OEP projectへUSB VID:PIDその他の共通identityが割り当てられた場合、非互換な派生はそれを使用してはならない。非互換な派生は独自のidentityを使用し、OEP実装と機械的に区別できなければならない。
+
+OEPと非OEPの機能またはprotocolを同じ物理deviceへ併設する場合、非OEP側をOEP機能として公開してはならず、hostが両者を区別できなければならない。
+
+source codeまたは仕様を変更、forkまたは移植した事実だけでは、OEPへの適合性を決定しない。変更後も必須要求を満たす実装はOEP実装になり得る。
+
+### 理由
+
+相互運用できない実装がOEPと同じidentityで混在すると、hostが誤って接続または操作し、OEP ecosystem全体の互換性を判断できなくなるため。
+
+### 由来
+
+- UC-9: 非互換な派生をOEP実装と区別する
+
+### 成立の確認
+
+- hostが、非互換な派生をOEP endpointとして選択しない
+- OEPの共通identityを持つ実装に、OEPの必須要求を満たさないものが混在しない
+- 同じ物理deviceにOEPと非OEPが併設されても、それぞれを誤認せず選択できる
+- 異なるhardwareまたは接続interfaceへの適合実装は、forkやportであることだけを理由に排除されない
+
 ## 未決事項
 
 この要求案は、次の事項をまだ決定しない。
@@ -307,5 +334,7 @@ protocolへの対応、個別機能への対応、接続環境固有の対応お
 - 接続interfaceとOEP protocolの境界
 - versionと互換性の表現および判断方法
 - 適合性のlevel、test方法および管理主体
+- OEPの名称、protocol identity、project PIDおよびその他の共通identityの具体的な利用条件
+- OEPと非OEPを同じ物理deviceへ併設する場合の識別およびUSB profile規則
 
 次段階では、要求間の重複や矛盾を確認した後、OEPが扱う中心概念とその関係を定義する。
