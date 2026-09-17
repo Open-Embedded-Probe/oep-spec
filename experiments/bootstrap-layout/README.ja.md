@@ -73,3 +73,9 @@ rv003usb `5cddcd5e1d46`、ch32fun `618bba58c615`、xPack RISC-V GCC 14.3.0、`-O
 rv003usb `5cddcd5e1d46`は、EP0 OUTの最後のdata packetが1から3 byteの場合、user data callbackへ渡さない。report ID込み9 byteの候補Cは8+1 byteになり、最後の1 byteをparserが受け取れなかった。このため統合候補CはUSB reportを12 byteへpaddingし、8+4 byteとして測定した。仮parserが解釈する先頭9 byteは変えていない。
 
 成立するHID構成同士では、候補Cの削減はFlash 8 byte / RAM 4 byteだった。候補Bのcore handlerはHID wrapperから分離されており、UART等から同じ形式を直接処理できる。lifecycleは未取得responseが次のSET_REPORTで上書きされることを防ぎ、正しい長さのGET_REPORT開始後にだけbufferを次のsetupで再利用可能にする。USB pin、仮VID:PID、descriptorおよびcallbackはbuild比較用であり、列挙、SET/GET_REPORTの実動作、host API差、USB STALLによるbusy通知、resetは未検証である。
+
+## UART bindingとの結合試験
+
+`tests/bootstrap_over_uart`は、候補Bの10 byte core requestをUART stop-and-waitでhostからprobeへ送り、probeがbinding非依存core handlerで14 byte responseを生成して同じconnection上で返す。
+
+probeのdelivery callback内で同期的にresponseを生成するため、wire queueではresponse DATAがrequestのtransport ACKより先に並ぶ。この順序でもhostがresponseと後続ACKを別々に処理し、双方の未確認DATAが最終的に解消することをhost-arduino-core上で確認した。Uno R3とCH32V003 profileでもcompileできる。
