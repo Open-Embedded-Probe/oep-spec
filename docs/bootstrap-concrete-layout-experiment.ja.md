@@ -339,6 +339,8 @@ UART結合試験では、候補Bの同じ10 byte core requestと14 byte response
 
 identityとrequest roleが正常でoperationだけが未知の場合は、元のoperationとcorrelationを保持した固定14 byteの仮rejected responseを返す実装も追加した。identity不一致時の無応答と、認識済みcore namespace内のoperation rejectionを区別できることを確認した。status値とfield配置は測定用であり、仕様割当ではない。
 
+さらに仮`kind`の全256値と、認識済みrequest role内の仮`operation`全256値を走査した。未知roleではbodyを変更せず、既知role内の未知operationではoperationとcorrelationを保持したrejected responseを生成した。これにより、固定headerへ独立したnamespace fieldを追加しなくても、roleを先に確定してからrole固有のoperation namespaceを解釈できる。ただし、この構造、未知roleの扱いおよび数値割当はまだ採用しない。
+
 core parserの固定10 byte requestと異なる0、9、15および32 byteのlogical messageについても、UART bindingはtransport ACK後にcoreで拒否した。message length不一致をreceiver busy、CRC failureまたはbinding retryへ変換しないことを確認した。
 
 ## 次の検証
