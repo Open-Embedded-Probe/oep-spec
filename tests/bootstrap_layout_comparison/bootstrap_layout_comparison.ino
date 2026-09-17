@@ -69,6 +69,16 @@ static void test_candidate_b()
     check(
         oep_bootstrap_b_handle_report(report, sizeof(report) - 1u) == 0,
         F("candidate B length rejection"));
+
+    prepare_b(report, 1u, 1u);
+    report[12] = 0xa5u;
+    report[13] = 0x5au;
+    report[14] = 0xffu;
+    report[15] = 0x01u;
+    check(
+        oep_bootstrap_b_handle_report(report, sizeof(report)) ==
+            sizeof(report),
+        F("candidate B default ignores request padding"));
 }
 
 static void test_candidate_b_core_without_hid_wrapper()

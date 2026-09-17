@@ -11,6 +11,12 @@ size_t oep_bootstrap_b_handle_report(uint8_t *report, size_t report_length)
         report[1] != OEP_BOOTSTRAP_B_REQUEST_SIZE) {
         return 0;
     }
+#if defined(OEP_BOOTSTRAP_B_STRICT_PADDING)
+    if (report[12] != 0 || report[13] != 0 ||
+        report[14] != 0 || report[15] != 0) {
+        return 0;
+    }
+#endif
     response_length = oep_bootstrap_b_handle_core_message(
         report + 2,
         report[1],
