@@ -1,0 +1,116 @@
+# 調査・移行メモ
+
+[English](memo.md)
+
+状態: **informativeな作業メモ**。このファイルはOEP仕様projectを開始するために使った背景を記録する。normativeではなく、判断内容が仕様とissue管理へ移った後に再編または削除できる。
+
+## 出発点
+
+OEPは、より広い調査repositoryである[wch-protocols](https://github.com/ch32-riscv-ug/wch-protocols)から分離した。元repositoryは、MCU protocol調査、USBとOSの実験、ESP32-P4 captureの実測、初期product設計議論の根拠資料として残す。
+
+新organizationでは、platform非依存の契約と実装を分離する。
+
+- `oep-spec`: protocol、registry、適合規則、PID方針
+- `oep-probe-arduino`: Arduino firmware実装とplatform backend
+- `oep-client-python`: Python library、CLI、bridge、初期conformance runner
+
+既存調査は丸ごと複製せず、仕様へ要点を抽出する。実験logとhardware固有の性能資料は`wch-protocols`に残し、normativeな判断が実測に依存するときはOEP仕様から参照する。
+
+## 引き継ぐ調査結果
+
+### 異なるMCUでprobeを実装できる
+
+既存調査により、RP2040とESP32-S3でUART、GPIO/reset、SWD、JTAGを実装できる見込みがある。時間制約の厳しいbackendはMCU固有になる。再利用する境界は、bitごとのhost往復や`digitalWrite()`だけのAPIではなく、batch化されたsequenceまたはtransfer engineである。
+
+したがってprotocolはserviceの意味を共通化し、PIO、GPIO、SPI、RMT、DMA等のplatform固有実装を許容する。
+
+### Capability discoveryがproductの中心になる
+
+probeは選択したserviceだけを組み込んでよい。性能値と構成上限はMCU、firmware build、USB経路、resource割当によって変わる。clientはboard名の対応表ではなく、申告されたcapabilityからserviceを選択する必要がある。
+
+ESP32-P4のlogic capture実験からは、一つの最大sample rateだけでは能力を表せないことも分かった。channel幅、channelごとの縮約、encoding cost、USB budget、trigger mode、resource共有によって受理できる構成が変わる。このためprotocolには、静的な限界記述と、構成を問い合わせてaccept/rejectを返す仕組みの両方が必要になる。
+
+### 一つのengineを標準serviceと特殊serviceの両方で表現できる
+
+logic analyzerは、範囲を絞ったportableなcapture serviceと、ESP32-P4固有の高機能なmixed-rate serviceを同時に宣言できる。拡張を理解するclientは後者を選び、一般的なclientは標準serviceを利用する。二つを独立engineとして同時openしないよう、代替関係または共有resource関係も宣言する必要がある。
+
+### USB identity、USB layout、protocol capabilityは別の問題である
+
+同じprotocolを、USB、既存USB-serial bridge、network経由で運べる。OEP USB descriptor profileとPID方針が必要なのは、firmwareがnative USB deviceのdescriptorを制御する場合だけである。
+
+E062のWindows 11観測により、初期の仮説は訂正された。正常にinstall済みのdevice instanceは基本的に現在のdescriptorへ追随し、単機能とcompositeの切替やinterface functionの変更でもdriverを再bindできる。`bcdDevice`はdevice instance identityに含まれず、一般的なprofile selectorにはならない。一方でinterface pathや永続propertyには規律あるprofile・interface番号管理が必要であり、MS OS descriptorのregistry property変更には適切なvendor revision機構が必要になる。
+
+この結果は、任意layoutの互換性costが消えたことを意味しない。protocol capabilityは自由に変えられるが、外部に見えるUSB layoutには登録済みprofileまたは合成規則を設ける。
+
+### PID利用には割当元の了承と独立したgovernanceが必要である
+
+Openmokoとpid.codesを、MCU非依存なOSS向けPID割当候補として調査した。想定する利用範囲は一つのfirmware imageより広く、複数MCUへのportと、場合によっては独立した準拠実装が一つのproject identityを共有する。この範囲を約束する前に、割当元から明示的な了承を得る必要がある。
+
+MIT Licenseはproject VID:PIDの利用を許可するものではない。将来の`PID-USE.md`で、利用資格、identity規則、source公開要件、適合性、USB profile、非準拠利用の扱いを別途定義する。serial、vendor ID、独自に割り当てられたIDを使う実装は、project PID規則へ同意しなくてもOEPを実装できるようにする。
+
+### 既存ecosystemはcoreの制約ではなくadapterにする
+
+CMSIS-DAP、OpenOCD、SUMP、BeagleLogic、sigrok/PulseView、標準USB classには相互運用上の価値がある。host側adapterでOEP serviceと変換すれば、すべてのprobe firmwareやcore wire modelを既存protocol一つの制約へ合わせずに済む。
+
+USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準class interfaceへ投影できる。そのdescriptorで定義されるformatとtopologyはUSB profile側で管理し、OEP capability discoveryでは対応する内部serviceとresource関係を報告する。
+
+## 引き継がない結論・避けること
+
+- VID:PIDを完全な機能識別に使わない。OEPかどうかはhandshakeで確認する
+- `bcdDevice`をdescriptor profileの区別に使わない
+- 実現性確認に有用だったという理由だけで、すべてのreference probeへUART、SWD、JTAGを必須化しない
+- 将来の全serviceが共有する単一global command ID空間を作らない
+- 特定firmware libraryの利用を、protocol互換や将来のPID利用資格の必須条件にしない
+- 共通PIDを認証、certification、security boundaryとして説明しない
+- 実験で得た性能値をnormativeなcapability上限として写さない
+
+## 未決の設計事項
+
+次は意図的に未決のまま残す。
+
+1. core messageのframingと表現形式
+2. protocolおよびserviceのversion negotiation規則
+3. 安定したdevice identity、implementation identity、USB serial形式
+4. 標準service identifierの大きさとprivate namespaceのencoding
+5. 最小capability directoryとserviceごとの詳細記述model
+6. 共有resource、排他、動的availabilityの表現
+7. 検証に使う最初のcontrol serviceとstream/batch service
+8. 最初のUSB bootstrap profileとOSごとの発見方法
+9. optionalな標準class functionのUSB profile合成規則
+10. conformance levelとtestの管理主体
+11. PID割当元と、了承された複数実装での利用範囲
+12. PID利用許可、review、version/profile互換性の方針
+
+関係するnamespaceとlifecycle規則を合意するまで、数値registry値を割り当てない。
+
+## 推奨する作業順序
+
+1. 用語、role、scope、normative languageを合意する
+2. discoveryとcapability matchingのuse case・failure caseを書く
+3. wire encodingを選ぶ前にcore state modelを定義する
+4. service/private extensionのidentityとversioningを定義する
+5. 意図的に異なる二つのprobe buildと、一つのclient選択algorithmをmodel化する
+6. portable版とESP32-P4固有版のlogic captureをextensionの試験例としてmodel化する
+7. 最小USB bootstrap profileを選び、Windows、Linux、macOSで検証する
+8. 最初のframing draftと同時に機械可読test vectorを公開する
+9. 同じdraftを`oep-probe-arduino`と`oep-client-python`で実装する
+10. 単なる別board wrapperではなく独立した根拠になる段階で、二つ目の実装ecosystemを追加する
+11. conformance claimを定義し、`PID-USE.md`のdraftを作る
+12. 共通PIDを申請または利用可能と約束する前に、選択した割当元へ想定範囲を確認する
+
+## 元資料の候補
+
+`wch-protocols`の次のファイルを出発点とする。これら自体は仕様ではない。
+
+- [probe product concept](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/probe-product-concept.ja.md)
+- [Arduino probe protocol実現性](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/arduino-probe-protocol-feasibility.ja.md)
+- [probe実現性gate](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/probe-feasibility-gates.ja.md)
+- [PID取得roadmap](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/pid-acquisition-roadmap.ja.md)
+- [OSS USB PID申請調査](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/oss-usb-pid-application-report.ja.md)
+- [USB host descriptor persistence](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/usb-host-descriptor-persistence.ja.md)
+- [E062: 同一identityでのUSB layout変更](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/experiments/e062_usb_same_identity_layout_change/README.ja.md)
+- [ESP32-P4 logic analyzer調査](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/p4-logic-analyzer-investigation.ja.md)
+- [ESP32-P4 probe roadmap](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/p4-probe-roadmap.ja.md)
+- [PulseView連携](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/pulseview-integration.ja.md)
+
+結論をOEPへ移すときは、調査経緯全体を複製せず、仕様には結果となる規則を簡潔に記載し、根拠資料へリンクする。
