@@ -7,6 +7,13 @@
 
 static unsigned int test_total;
 static unsigned int test_passed;
+static uint32_t random_state = 0x4f455031u;
+
+static uint8_t next_random_byte()
+{
+    random_state = random_state * 1664525u + 1013904223u;
+    return static_cast<uint8_t>(random_state >> 24);
+}
 
 static void check(bool condition, const __FlashStringHelper *name)
 {
@@ -241,6 +248,149 @@ static void test_slip_mutation_recovery()
     check(recovered, F("SLIP mutations recover"));
 }
 
+static void test_encoder_capacity_boundaries()
+{
+    uint8_t payload[OEP_UART_MAX_PAYLOAD];
+    uint8_t reference[OEP_UART_SLIP_MAX_WIRE];
+    uint8_t guarded[OEP_UART_SLIP_MAX_WIRE + 2u];
+    bool valid = true;
+
+    for (uint8_t index = 0; index < sizeof(payload); ++index) {
+        payload[index] = (index & 1u) == 0 ? 0xc0u : 0xdbu;
+    }
+
+    size_t derived_length = oep_uart_derived_encode_frame(
+        OEP_UART_FRAME_DATA,
+        0,
+        payload,
+        sizeof(payload),
+        reference,
+        sizeof(reference));
+    memset(guarded, 0xa5, sizeof(guarded));
+    valid = valid && derived_length != 0 &&
+        oep_uart_derived_encode_frame(
+            OEP_UART_FRAME_DATA,
+            0,
+            payload,
+            sizeof(payload),
+            guarded + 1,
+            derived_length - 1u) == 0 &&
+        guarded[0] == 0xa5 && guarded[derived_length] == 0xa5;
+    memset(guarded, 0xa5, sizeof(guarded));
+    valid = valid && oep_uart_derived_encode_frame(
+        OEP_UART_FRAME_DATA,
+        0,
+        payload,
+        sizeof(payload),
+        guarded + 1,
+        derived_length) == derived_length &&
+        guarded[0] == 0xa5 && guarded[derived_length + 1u] == 0xa5;
+
+    size_t slip_length = oep_uart_slip_encode_frame(
+        OEP_UART_FRAME_DATA,
+        0,
+        payload,
+        sizeof(payload),
+        reference,
+        sizeof(reference));
+    memset(guarded, 0xa5, sizeof(guarded));
+    valid = valid && slip_length != 0 &&
+        oep_uart_slip_encode_frame(
+            OEP_UART_FRAME_DATA,
+            0,
+            payload,
+            sizeof(payload),
+            guarded + 1,
+            slip_length - 1u) == 0 &&
+        guarded[0] == 0xa5 && guarded[slip_length] == 0xa5;
+    memset(guarded, 0xa5, sizeof(guarded));
+    valid = valid && oep_uart_slip_encode_frame(
+        OEP_UART_FRAME_DATA,
+        0,
+        payload,
+        sizeof(payload),
+        guarded + 1,
+        slip_length) == slip_length &&
+        guarded[0] == 0xa5 && guarded[slip_length + 1u] == 0xa5;
+
+    check(valid, F("encoder exact capacity and guards"));
+}
+
+static void test_noise_then_valid_frame_recovery()
+{
+    uint8_t payload[OEP_UART_MAX_PAYLOAD];
+    uint8_t derived_wire[OEP_UART_DERIVED_MAX_WIRE];
+    uint8_t slip_wire[OEP_UART_SLIP_MAX_WIRE];
+    bool recovered = true;
+
+    for (uint16_t iteration = 0; iteration < 256u && recovered; ++iteration) {
+        struct oep_uart_derived_decoder derived_decoder;
+        struct oep_uart_slip_decoder slip_decoder;
+        struct oep_uart_frame_view frame;
+        uint16_t payload_length = next_random_byte() %
+            (OEP_UART_MAX_PAYLOAD + 1u);
+        uint16_t noise_length = next_random_byte() % 96u;
+        enum oep_uart_decode_result result = OEP_UART_DECODE_NONE;
+
+        for (uint16_t index = 0; index < payload_length; ++index) {
+            payload[index] = next_random_byte();
+        }
+        size_t derived_length = oep_uart_derived_encode_frame(
+            OEP_UART_FRAME_DATA,
+            static_cast<uint8_t>(iteration & 1u),
+            payload,
+            payload_length,
+            derived_wire,
+            sizeof(derived_wire));
+        size_t slip_length = oep_uart_slip_encode_frame(
+            OEP_UART_FRAME_DATA,
+            static_cast<uint8_t>(iteration & 1u),
+            payload,
+            payload_length,
+            slip_wire,
+            sizeof(slip_wire));
+
+        oep_uart_derived_decoder_init(&derived_decoder);
+        oep_uart_slip_decoder_init(&slip_decoder);
+        for (uint16_t index = 0; index < noise_length; ++index) {
+            uint8_t noise = next_random_byte();
+            if (noise == 0) {
+                noise = 1;
+            }
+            oep_uart_derived_decoder_feed(&derived_decoder, noise, &frame);
+            if (noise == 0xc0u) {
+                noise = 0xc1u;
+            }
+            oep_uart_slip_decoder_feed(&slip_decoder, noise, &frame);
+        }
+        oep_uart_derived_decoder_feed(&derived_decoder, 0, &frame);
+        oep_uart_slip_decoder_feed(&slip_decoder, 0xc0u, &frame);
+
+        for (size_t index = 0; index < derived_length; ++index) {
+            result = oep_uart_derived_decoder_feed(
+                &derived_decoder, derived_wire[index], &frame);
+        }
+        if (result != OEP_UART_DECODE_FRAME ||
+            frame.sequence != (iteration & 1u) ||
+            frame.payload_length != payload_length ||
+            memcmp(frame.payload, payload, payload_length) != 0) {
+            recovered = false;
+            break;
+        }
+        for (size_t index = 0; index < slip_length; ++index) {
+            result = oep_uart_slip_decoder_feed(
+                &slip_decoder, slip_wire[index], &frame);
+        }
+        if (result != OEP_UART_DECODE_FRAME ||
+            frame.sequence != (iteration & 1u) ||
+            frame.payload_length != payload_length ||
+            memcmp(frame.payload, payload, payload_length) != 0) {
+            recovered = false;
+        }
+    }
+    check(recovered, F("256 noise recovery cases"));
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -250,6 +400,8 @@ void setup()
     test_derived_mutation_recovery();
     test_slip_payloads_and_bound();
     test_slip_mutation_recovery();
+    test_encoder_capacity_boundaries();
+    test_noise_then_valid_frame_recovery();
     check(
         OEP_UART_ACK_WIRE_SIZE == 7u &&
             OEP_UART_DERIVED_ACK_WIRE_SIZE == 5u,
