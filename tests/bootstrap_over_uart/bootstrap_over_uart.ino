@@ -18,6 +18,7 @@ struct Endpoint {
     uint8_t delivery_count;
     bool handle_bootstrap;
     bool response_started;
+    bool core_rejected;
 };
 
 static void check(bool condition, const __FlashStringHelper *name)
@@ -67,7 +68,8 @@ static bool deliver_message(
         size_t response_length = oep_bootstrap_b_handle_core_message(
             response, length, sizeof(response));
         if (response_length == 0) {
-            return false;
+            endpoint->core_rejected = true;
+            return true;
         }
         endpoint->response_started = oep_uart_stopwait_send(
             &endpoint->link, response, response_length);
@@ -103,11 +105,19 @@ static void pump(struct Endpoint *source, struct Endpoint *destination)
     }
 }
 
-static void test_bootstrap_round_trip()
+static void synchronize(struct Endpoint *host, struct Endpoint *probe)
 {
     const uint8_t token[OEP_UART_EPOCH_TOKEN_SIZE] = {
         0x42u, 0x53u, 0x54u, 0x50u,
     };
+
+    (void)oep_uart_stopwait_start_sync(&host->link, token);
+    pump(host, probe);
+    pump(probe, host);
+}
+
+static void test_bootstrap_round_trip()
+{
     const uint8_t request[OEP_BOOTSTRAP_B_REQUEST_SIZE] = {
         0x01u, 0x01u, 0x34u, 0x12u,
         0x4fu, 0x45u, 0x50u, 0x3fu,
@@ -119,11 +129,7 @@ static void test_bootstrap_round_trip()
     initialize_endpoint(&host, OEP_UART_ROLE_HOST, false);
     initialize_endpoint(&probe, OEP_UART_ROLE_PROBE, true);
 
-    check(
-        oep_uart_stopwait_start_sync(&host.link, token),
-        F("UART bootstrap sync started"));
-    pump(&host, &probe);
-    pump(&probe, &host);
+    synchronize(&host, &probe);
     check(
         oep_uart_stopwait_is_active(&host.link) &&
             oep_uart_stopwait_is_active(&probe.link),
@@ -155,12 +161,45 @@ static void test_bootstrap_round_trip()
         F("UART bootstrap transport complete"));
 }
 
+static void test_invalid_core_is_transport_accepted()
+{
+    uint8_t request[OEP_BOOTSTRAP_B_REQUEST_SIZE] = {
+        0x01u, 0x01u, 0x34u, 0x12u,
+        0x4fu, 0x45u, 0x50u, 0x3fu,
+        0x01u, 0x01u,
+    };
+    struct Endpoint host;
+    struct Endpoint probe;
+
+    request[6] ^= 1u;
+    initialize_endpoint(&host, OEP_UART_ROLE_HOST, false);
+    initialize_endpoint(&probe, OEP_UART_ROLE_PROBE, true);
+    synchronize(&host, &probe);
+
+    check(
+        oep_uart_stopwait_send(&host.link, request, sizeof(request)),
+        F("invalid core transport sent"));
+    pump(&host, &probe);
+    pump(&probe, &host);
+
+    check(
+        probe.delivery_count == 1u && probe.core_rejected &&
+            !probe.response_started,
+        F("invalid core rejected above binding"));
+    check(
+        !host.link.waiting_for_ack &&
+            oep_uart_stopwait_timeout(&host.link) == OEP_UART_TIMEOUT_IDLE &&
+            host.delivery_count == 0u,
+        F("invalid core transport not retried"));
+}
+
 void setup()
 {
     Serial.begin(115200);
     delay(500);
 
     test_bootstrap_round_trip();
+    test_invalid_core_is_transport_accepted();
 
     Serial.print(F("TEST done "));
     Serial.print(test_passed);

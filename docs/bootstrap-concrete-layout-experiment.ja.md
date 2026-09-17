@@ -323,6 +323,8 @@ xPack RISC-V GCC 14.3.0、`-Os -flto`で、候補BはFlash 2,440 byte / RAM 112 
 
 UART結合試験では、候補Bの同じ10 byte core requestと14 byte responseをderived-length COBS系frameおよびstop-and-waitへ載せた。probeのrequest delivery callback内でresponseを生成し、response DATAがrequest ACKより先にqueueされる場合でも、hostはresponseを一度だけ受信し、双方のtransport ACKを完了した。これにより仮core parserがHID report形式へ依存せず、UART bindingからも利用できることを確認した。
 
+またtransport frameとCRCが正常で、bootstrap identityだけが不正なrequestは、bindingがtransport ACKした後にcore parserで拒否した。core内容の拒否をACK抑止やbinding retryへ変換しない層境界を確認した。具体的なOEP rejected responseはまだ実装していない。
+
 ## 次の検証
 
 UARTの再送と重複抑止に関する第一候補は、[UART bindingの信頼性model候補](uart-reliability-model.ja.md)に整理する。UART外側frameの後続比較は[UART frame layout比較](uart-frame-layout-comparison.ja.md)に示す。候補Bについて、core messageと各bindingの責任をさらに分ける必要がある。
