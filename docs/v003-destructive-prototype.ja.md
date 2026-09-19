@@ -153,3 +153,9 @@ FixtureUartではinstanceが持つRX/TX pinと、hostが要求するbaudrateを�
 返す仮構成を試した。writeとread-availableはapplicationの行形式を解釈せずbyte列を運ぶ。実機で
 V003の`PING`/`PONG`が成立し、未知commandに対するpeerの`ERROR command`もそのまま取得できた。
 peer applicationの拒否をOEP requestのrejectedやUART転送failureへ変換しない境界を維持できた。
+
+13,780 byte imageの連続page書込みでは、書込み済みpageに対するverify偽陰性と、page内の一部wordが
+実際に`FF`のまま残るfailureの両方を観測した。仮completed/failureへ処理段階の診断byteを付け、
+独立readで両者を区別した。既に全内容が一致するpageは成功としてeraseを省略できるが、部分一致を
+成功にしてはならない。timeoutやfailureを共通protocolが自動retryする根拠にはせず、page操作の
+再実行可能性と上限はTargetFlash定義またはhost tool側で明示する必要がある。
