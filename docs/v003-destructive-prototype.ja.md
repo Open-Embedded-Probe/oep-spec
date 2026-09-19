@@ -116,6 +116,7 @@ prototype固有の数値割当は実装repositoryで管理し、規範仕様の�
 3. V003へattach/haltし、FLASH `STATR`からstart modeとboot statusを取得する
 4. RAMへ短い処理を注入し、CPU自身のsystem resetによってuser modeへ正規化する
 5. 同じ方式で製品bootloaderへ移行し、Windows側で`1209:b803`の再列挙を確認する
+6. TargetMemoryでV003 flashの`0x08000000`からbounded readを行う
 
 GPIO23の外部RESET線は使用していない。仮resultではrequestを開始しなかった`rejected`と、開始後の
 成功または失敗を持つ`completed`を分けた。数値割当とpayload配置は非規定である。
@@ -125,3 +126,8 @@ haltを行わなければ対象registerを読めず、status結果の仮flagsで
 状態取得後に自動resumeするか、debug session開始と状態取得を別操作にするか、halt済み状態を
 明示的なsession stateとして扱うかは未決定である。少なくとも汎用の「副作用なしGetStatus」として
 仕様化してはならない。
+
+最初のmemory操作は4 byte aligned、4～32 byteのreadに限定した。この制約は64 byteの仮message
+上限と現在のword readerから導いた実装値であり、TargetMemoryの一般仕様候補ではない。実機では
+flash先頭16 byteを取得でき、TargetControlと同じbackendがtarget-link処理を共有できることを
+確認した。
