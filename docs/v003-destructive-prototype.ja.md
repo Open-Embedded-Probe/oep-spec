@@ -148,3 +148,8 @@ Fixture側ではread-onlyのdigital inputを最初の`FixtureGpio`操作とし�
 ようにした。実機request/resultでGPIO14の変化は観測できたが、V003側の既知出力commandと同期した
 controlled testはまだ行っていない。汎用GPIO functionと、特定boardのpin allowlistおよび試験手順を
 別の層に置けるかを次に確認する。
+
+FixtureUartではinstanceが持つRX/TX pinと、hostが要求するbaudrateを分け、probeがactual baudrateを
+返す仮構成を試した。writeとread-availableはapplicationの行形式を解釈せずbyte列を運ぶ。実機で
+V003の`PING`/`PONG`が成立し、未知commandに対するpeerの`ERROR command`もそのまま取得できた。
+peer applicationの拒否をOEP requestのrejectedやUART転送failureへ変換しない境界を維持できた。
