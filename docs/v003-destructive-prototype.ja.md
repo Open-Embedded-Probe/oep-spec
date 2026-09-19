@@ -106,3 +106,22 @@ prototype固有の数値割当は実装repositoryで管理し、規範仕様の�
 8. 各操作のrejection、開始後failureおよびcompletedを取り違えない
 
 この完了条件に届くまで、既存fixtureを削除またはOEP版へ一本化しない。
+
+## P1途中結果（2026-09-20）
+
+無印ESP32のGPIO16とV003 PD1のSWDIOだけを使用し、仮TargetControl functionで次を実機確認した。
+
+1. hostがendpoint確認後、実装済みTargetControlだけをoffered functionとして取得する
+2. request/resultのcorrelationとoffered function referenceを照合する
+3. V003へattach/haltし、FLASH `STATR`からstart modeとboot statusを取得する
+4. RAMへ短い処理を注入し、CPU自身のsystem resetによってuser modeへ正規化する
+5. 同じ方式で製品bootloaderへ移行し、Windows側で`1209:b803`の再列挙を確認する
+
+GPIO23の外部RESET線は使用していない。仮resultではrequestを開始しなかった`rejected`と、開始後の
+成功または失敗を持つ`completed`を分けた。数値割当とpayload配置は非規定である。
+
+この試作により、状態取得が単純な観測ではないことも判明した。現在のV003実装はSWDIO attachと
+haltを行わなければ対象registerを読めず、status結果の仮flagsでattached/haltedを返している。
+状態取得後に自動resumeするか、debug session開始と状態取得を別操作にするか、halt済み状態を
+明示的なsession stateとして扱うかは未決定である。少なくとも汎用の「副作用なしGetStatus」として
+仕様化してはならない。
