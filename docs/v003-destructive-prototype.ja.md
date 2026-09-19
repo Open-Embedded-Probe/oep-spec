@@ -142,3 +142,9 @@ messageを見るという層境界の試験入力になる。
 成功値として返す事象を観測した。同じwordの2回連続一致を要求すると正しい内容を取得できた。
 このretryと安定化はtarget-link backendの責任であり、OEP requestの再実行や複数resolutionとして
 hostへ見せない。
+
+Fixture側ではread-onlyのdigital inputを最初の`FixtureGpio`操作として追加した。board procedureが
+許可した14本だけを対象とし、ESP32 boot strap、SWDIOおよびRESETを任意pin番号で操作できない
+ようにした。実機request/resultでGPIO14の変化は観測できたが、V003側の既知出力commandと同期した
+controlled testはまだ行っていない。汎用GPIO functionと、特定boardのpin allowlistおよび試験手順を
+別の層に置けるかを次に確認する。
