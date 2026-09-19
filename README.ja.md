@@ -38,6 +38,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 - [UART frame layout比較](docs/uart-frame-layout-comparison.ja.md)
 - [UART binding比較実装（非規定）](experiments/uart-binding/README.ja.md)
 - [実験実装の検証環境](tests/README.ja.md)
+- [V003開発プローブ破壊的prototype](docs/v003-destructive-prototype.ja.md)
 - [調査・移行メモ](memo.ja.md)
 
 検討中の実装repository構成:
