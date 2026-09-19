@@ -159,3 +159,8 @@ peer applicationの拒否をOEP requestのrejectedやUART転送failureへ変換�
 独立readで両者を区別した。既に全内容が一致するpageは成功としてeraseを省略できるが、部分一致を
 成功にしてはならない。timeoutやfailureを共通protocolが自動retryする根拠にはせず、page操作の
 再実行可能性と上限はTargetFlash定義またはhost tool側で明示する必要がある。
+
+製品HIDからfixture imageを復旧した後、FixtureUartでtarget pin 7および9をLOW/HIGH/LOWへ駆動し、
+別のFixtureGpio requestでESP32 GPIO27および14として一致することを確認した。これにより最初の
+実機完了条件に含めた「少なくとも一つのfixture function」は、UARTとGPIOを跨ぐcontrolled testで
+成立した。UART byte転送、peer application command、GPIO観測を一つの機能へ結合せずに実行できた。
