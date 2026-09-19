@@ -131,3 +131,14 @@ haltを行わなければ対象registerを読めず、status結果の仮flagsで
 上限と現在のword readerから導いた実装値であり、TargetMemoryの一般仕様候補ではない。実機では
 flash先頭16 byteを取得でき、TargetControlと同じbackendがtarget-link処理を共有できることを
 確認した。
+
+TargetFlashでは`address + 64 byte page`を一つの論理requestとして試した。6 byte function headerを
+含めると当初の64-byte message上限を超えるため、UART prototypeの論理上限を96 byteへ変更した。
+この結果はHID等の一packetへ収める要求ではなく、bindingの分割・再結合後に共通protocolが同じ
+messageを見るという層境界の試験入力になる。
+
+実機では`0x08003fc0`のerase、program、backend内verify、および独立したTargetMemoryによる
+64-byte read-backが成功した。独立readの初回には、SWDIO/DMIがerrorを返さず古い`DATA0`を
+成功値として返す事象を観測した。同じwordの2回連続一致を要求すると正しい内容を取得できた。
+このretryと安定化はtarget-link backendの責任であり、OEP requestの再実行や複数resolutionとして
+hostへ見せない。
