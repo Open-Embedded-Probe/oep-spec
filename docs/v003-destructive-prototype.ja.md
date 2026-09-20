@@ -181,3 +181,10 @@ TargetFlashのoffered function公開を一時停止した。`completed/success`�
 結果である。読み出した先頭領域は既知fixture imageとの差分を含み、fixture UARTも応答しなかった。
 既知imageの再書込みには未検証のTargetFlashを使わず、製品HIDの再列挙または対象を明確に識別した
 別の書込み経路を待つ。
+
+E133ではESP32 RMT RXをSWIOのGPIO16へ重ね、係数8〜14のhost pulseとtarget responseを
+12.5 ns/tickで観測した。係数8〜10は単発DMI read/writeで高い一致率を示した一方、係数8では
+abstract memory/flash sequenceが成立しなかった。また係数10/11で直後verifyが成功しても、
+software reset後の64 byte read-backに不一致を観測した。したがってPHY校正、page program、
+reset/finalize、独立read-backを別々の完了条件として扱う必要がある。TargetFlashは単発page操作
+だけでなく、image単位のfinalizeとreset後verifyを表現できる形を検討する。
