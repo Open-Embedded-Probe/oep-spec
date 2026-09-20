@@ -174,3 +174,10 @@ timingを再測定せず行えない。抽象化境界はcycle-sensitiveなPHY�
 別BOOT領域にあり上書きしていないが、controller状態の安全な終了条件が未確定である。このため
 TargetFlashのoffered function公開を一時停止した。`completed/success`は後続sessionからも永続内容を
 確認できる条件にしなければならず、直前のDMI値だけを根拠にしてはならない。
+
+停止版を実機へ反映すると、提供一覧はTargetControl、TargetMemory、FixtureGpio、FixtureUartの4件に
+なった。TargetMemoryを32 byte単位で連続実行した試験では、一部requestが`completed/failed`となり
+再試行で読めた。これはtransport再送で隠す対象ではなく、target-link backendが開始後に失敗した
+結果である。読み出した先頭領域は既知fixture imageとの差分を含み、fixture UARTも応答しなかった。
+既知imageの再書込みには未検証のTargetFlashを使わず、製品HIDの再列挙または対象を明確に識別した
+別の書込み経路を待つ。
