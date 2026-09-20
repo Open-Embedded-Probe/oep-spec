@@ -164,3 +164,13 @@ peer applicationの拒否をOEP requestのrejectedやUART転送failureへ変換�
 別のFixtureGpio requestでESP32 GPIO27および14として一致することを確認した。これにより最初の
 実機完了条件に含めた「少なくとも一つのfixture function」は、UARTとGPIOを跨ぐcontrolled testで
 成立した。UART byte転送、peer application command、GPIO観測を一つの機能へ結合せずに実行できた。
+
+追加試験では、SWDIO bit timingに関わるGPIO maskをruntime変数へ一般化したことがE129との差に
+なっていた。GPIO16定数へ戻すとDMI read failureは大幅に減ったため、target-link PHYのpin可変化は
+timingを再測定せず行えない。抽象化境界はcycle-sensitiveなPHY実装より上に置く必要がある。
+
+ただしTargetFlashは、同一debug session内verifyと後続requestのread-backが一致しないcase、および
+操作後にsoftware resetと外部resetのどちらでもbootへ移行できない状態を生じた。製品bootloaderは
+別BOOT領域にあり上書きしていないが、controller状態の安全な終了条件が未確定である。このため
+TargetFlashのoffered function公開を一時停止した。`completed/success`は後続sessionからも永続内容を
+確認できる条件にしなければならず、直前のDMI値だけを根拠にしてはならない。
