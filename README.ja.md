@@ -9,6 +9,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 まず、解決したい問題、projectの目的、相互運用の意味、対象範囲、成功条件を定義します。機能の分類、protocol構造、接続方法、USBやPIDの扱いなどは、その上流の合意から段階的に検討します。
 
 - [開発ガイドライン（作業版）](docs/development-guidelines.ja.md)
+- [core wire model v0 draft（作業版）](docs/v0-core-wire-model.ja.md)
 - [プロジェクトの目的と範囲](docs/project-concept.ja.md)
 - [相互運用ユースケース](docs/use-cases.ja.md)
 - [Project要求](docs/project-requirements.ja.md)
