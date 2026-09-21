@@ -103,6 +103,11 @@ client は confirmation で上限を受け取り、それ以上を送らない�
 3. **共通 tool の受入試験は 2 実装で回す。** P4 と、もう一つ（S3 または Pico）。1 実装しか無いものは独自 tool のまま。
 4. **速度は後、拡張性は先。** 速度改善は task list に載せ、実験時間を圧迫するものだけ予備実験で先に潰す。
 5. **wire に MCU 固有の値を漏らさない。** pin 番号、peripheral 番号、IDF の enum は probe の内側で閉じる。
+6. **target 経路の正否は上位の CRC / read-back で判定する。** RVSWD の DMI parity は 1 bit で、壊れた応答の半分を通す
+   （E156 / E157、2026-09-22）。probe は DMI 失敗を bounded retry し、memory read / flash program の result には CRC32 または
+   read-back 比較の結果を含める。host は parity が通ったことを成功の根拠にしない。
+7. **PHY は session ごとに margin を確かめる。** 追加遅延 0 の clock は run によって崩れることがある。probe は attach 時に
+   既知 register（DMSTATUS）の読出しを一定回数行い、全数一致する最小の half period を選び、capability にはその実測値を返す。
 
 ## 7. まだ決めていないこと
 
