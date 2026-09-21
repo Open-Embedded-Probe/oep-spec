@@ -23,6 +23,11 @@ PSRAM）まで、同じ core が動く**」ことである。そのために cor
 - **未知の service / operation / TLV は副作用なく reject または無視できる。** client は reject を「非対応」として扱い、失敗と混同しない。
 - **transport は差し替え可能。** USB-Serial/JTAG の byte stream、HS vendor bulk、UART、TCP のどれでも同じ frame を運ぶ。
   信頼性のない transport（UART）だけ CRC と再送を足す。
+- **window は frame 数ではなく byte 数で宣言する。** E155（2026-09-22）で、ESP32-P4 の USB-Serial/JTAG は outstanding byte が
+  device の ring（8 KiB）を超えると HWCDC がデータを落とした。USB 自体が無損失でも、probe の buffer を超えた分は保証されない。
+  client は「probe が宣言した window byte 数」を超えて送らない。
+- **往復の jitter は大きい前提で設計する。** 同経路の request 往復は min 0.36 ms、median 1.3 ms、p95 11.7 ms（usbipd/WSL）。
+  stop-and-wait は使わず、pipelining を core の既定にする。帯域は 512 B frame × in-flight 4 で約 320 kB/s に飽和し、4 KiB frame でも上がらない。
 
 ## 2. 共通 tool と独自 tool の分岐点
 
@@ -83,8 +88,8 @@ client が log を解析して成否を判定する設計にしない。
 
 | | 低スペック（例: ATmega328P、UART） | 中（ESP32-S3、USB FS CDC） | 高（ESP32-P4、HS USB） |
 |---|---|---|---|
-| frame 上限 | 64 byte | 512 byte | 4 KiB 以上（E155 で決める） |
-| in-flight | 1 | 4 | 16 |
+| frame 上限 | 64 byte | 512 byte | 512 byte〜1 KiB（E155: 4 KiB にしても帯域は上がらない） |
+| window（outstanding byte） | 64 byte（= 1 frame） | 2 KiB | 4 KiB（ring 8 KiB の半分。E155） |
 | CRC / 再送 | 必須 | transport 次第 | 不要（USB が保証） |
 | service | 書込み + UART peer だけでよい | + GPIO / capture 低速 tier | + 独自 tool 群 |
 | capability | 最小 TLV 数個 | | paged / chunked |
@@ -101,7 +106,7 @@ client は confirmation で上限を受け取り、それ以上を送らない�
 
 ## 7. まだ決めていないこと
 
-- frame の具体形式（length16 + seq + type + payload + CRC の候補。E155 の数値待ち）。
+- frame の具体形式（length16 + seq + type + payload + CRC の候補。上限は E155 から 512 B〜1 KiB、window 4 KiB byte で起草する）。
 - service id / mode id / TLV tag の番号空間と private namespace の encoding。
 - event（非同期通知）を core に入れるか、status polling だけにするか。低スペックでは polling のみで足りる可能性。
 - plan の「同時開始」の精度をどう宣言するか（µs 単位の同時か、順序保証だけか）。
