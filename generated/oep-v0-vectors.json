@@ -1,0 +1,1812 @@
+{
+ "registry": "oep-v0.yaml",
+ "vectors": [
+  {
+   "name": "header.request.0",
+   "kind": "header",
+   "role": "request",
+   "fields": {
+    "correlation": 8721,
+    "function": 8978,
+    "operation": 19
+   },
+   "bytes": "011122122313"
+  },
+  {
+   "name": "header.request.1",
+   "kind": "header",
+   "role": "request",
+   "fields": {
+    "correlation": 10520,
+    "function": 10777,
+    "operation": 26
+   },
+   "bytes": "011829192a1a"
+  },
+  {
+   "name": "header.request.wrong_role",
+   "kind": "header_reject",
+   "role": "request",
+   "bytes": "411122122313"
+  },
+  {
+   "name": "header.request.truncated",
+   "kind": "header_reject",
+   "role": "request",
+   "bytes": "0111221223"
+  },
+  {
+   "name": "header.result.0",
+   "kind": "header",
+   "role": "result",
+   "fields": {
+    "correlation": 8721,
+    "resolution": 18,
+    "detail": 19
+   },
+   "bytes": "0211221213"
+  },
+  {
+   "name": "header.result.1",
+   "kind": "header",
+   "role": "result",
+   "fields": {
+    "correlation": 10520,
+    "resolution": 25,
+    "detail": 26
+   },
+   "bytes": "021829191a"
+  },
+  {
+   "name": "header.result.wrong_role",
+   "kind": "header_reject",
+   "role": "result",
+   "bytes": "4211221213"
+  },
+  {
+   "name": "header.result.truncated",
+   "kind": "header_reject",
+   "role": "result",
+   "bytes": "02112212"
+  },
+  {
+   "name": "header.activity_update.0",
+   "kind": "header",
+   "role": "activity_update",
+   "fields": {
+    "activity": 8721,
+    "kind": 18
+   },
+   "bytes": "03112212"
+  },
+  {
+   "name": "header.activity_update.1",
+   "kind": "header",
+   "role": "activity_update",
+   "fields": {
+    "activity": 10520,
+    "kind": 25
+   },
+   "bytes": "03182919"
+  },
+  {
+   "name": "header.activity_update.wrong_role",
+   "kind": "header_reject",
+   "role": "activity_update",
+   "bytes": "43112212"
+  },
+  {
+   "name": "header.activity_update.truncated",
+   "kind": "header_reject",
+   "role": "activity_update",
+   "bytes": "031122"
+  },
+  {
+   "name": "header.activity_outcome.0",
+   "kind": "header",
+   "role": "activity_outcome",
+   "fields": {
+    "activity": 8721,
+    "outcome": 18
+   },
+   "bytes": "04112212"
+  },
+  {
+   "name": "header.activity_outcome.1",
+   "kind": "header",
+   "role": "activity_outcome",
+   "fields": {
+    "activity": 10520,
+    "outcome": 25
+   },
+   "bytes": "04182919"
+  },
+  {
+   "name": "header.activity_outcome.wrong_role",
+   "kind": "header_reject",
+   "role": "activity_outcome",
+   "bytes": "44112212"
+  },
+  {
+   "name": "header.activity_outcome.truncated",
+   "kind": "header_reject",
+   "role": "activity_outcome",
+   "bytes": "041122"
+  },
+  {
+   "name": "header.notification.0",
+   "kind": "header",
+   "role": "notification",
+   "fields": {
+    "function": 8721,
+    "kind": 18
+   },
+   "bytes": "05112212"
+  },
+  {
+   "name": "header.notification.1",
+   "kind": "header",
+   "role": "notification",
+   "fields": {
+    "function": 10520,
+    "kind": 25
+   },
+   "bytes": "05182919"
+  },
+  {
+   "name": "header.notification.wrong_role",
+   "kind": "header_reject",
+   "role": "notification",
+   "bytes": "45112212"
+  },
+  {
+   "name": "header.notification.truncated",
+   "kind": "header_reject",
+   "role": "notification",
+   "bytes": "051122"
+  },
+  {
+   "name": "header.data.0",
+   "kind": "header",
+   "role": "data",
+   "fields": {
+    "activity": 8721,
+    "kind": 18,
+    "sequence": 9235
+   },
+   "bytes": "061122121324"
+  },
+  {
+   "name": "header.data.1",
+   "kind": "header",
+   "role": "data",
+   "fields": {
+    "activity": 10520,
+    "kind": 25,
+    "sequence": 11034
+   },
+   "bytes": "061829191a2b"
+  },
+  {
+   "name": "header.data.wrong_role",
+   "kind": "header_reject",
+   "role": "data",
+   "bytes": "461122121324"
+  },
+  {
+   "name": "header.data.truncated",
+   "kind": "header_reject",
+   "role": "data",
+   "bytes": "0611221213"
+  },
+  {
+   "name": "core.confirm.request.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "confirm",
+   "direction": "request",
+   "fields": {
+    "magic": [
+     65,
+     66,
+     67,
+     68
+    ],
+    "min_revision": 18,
+    "max_revision": 19
+   },
+   "bytes": "414243441213"
+  },
+  {
+   "name": "core.confirm.request.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "confirm",
+   "direction": "request",
+   "fields": {
+    "magic": [
+     72,
+     73,
+     74,
+     75
+    ],
+    "min_revision": 25,
+    "max_revision": 26
+   },
+   "bytes": "48494a4b191a"
+  },
+  {
+   "name": "core.confirm.request.truncated",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "confirm",
+   "direction": "request",
+   "bytes": "4142434412"
+  },
+  {
+   "name": "core.confirm.request.trailing",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "confirm",
+   "direction": "request",
+   "bytes": "41424344121300"
+  },
+  {
+   "name": "core.confirm.result.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "confirm",
+   "direction": "result",
+   "fields": {
+    "magic": [
+     65,
+     66,
+     67,
+     68
+    ],
+    "revision": 18,
+    "max_frame": 9235,
+    "window_bytes": 9492,
+    "max_inflight": 21,
+    "flags": 22
+   },
+   "bytes": "4142434412132414251516"
+  },
+  {
+   "name": "core.confirm.result.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "confirm",
+   "direction": "result",
+   "fields": {
+    "magic": [
+     72,
+     73,
+     74,
+     75
+    ],
+    "revision": 25,
+    "max_frame": 11034,
+    "window_bytes": 11291,
+    "max_inflight": 28,
+    "flags": 29
+   },
+   "bytes": "48494a4b191a2b1b2c1c1d"
+  },
+  {
+   "name": "core.confirm.result.truncated",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "confirm",
+   "direction": "result",
+   "bytes": "41424344121324142515"
+  },
+  {
+   "name": "core.confirm.result.trailing",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "confirm",
+   "direction": "result",
+   "bytes": "414243441213241425151600"
+  },
+  {
+   "name": "core.list.request.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "list",
+   "direction": "request",
+   "fields": {
+    "first": 17
+   },
+   "bytes": "11"
+  },
+  {
+   "name": "core.list.request.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "list",
+   "direction": "request",
+   "fields": {
+    "first": 24
+   },
+   "bytes": "18"
+  },
+  {
+   "name": "core.list.request.truncated",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "list",
+   "direction": "request",
+   "bytes": ""
+  },
+  {
+   "name": "core.list.request.trailing",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "list",
+   "direction": "request",
+   "bytes": "1100"
+  },
+  {
+   "name": "core.list.result.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "list",
+   "direction": "result",
+   "fields": {
+    "total": 17,
+    "entries": [
+     {
+      "function": 10520,
+      "owner": 10777,
+      "id": 11034,
+      "revision": 27,
+      "flags": 28
+     },
+     {
+      "function": 12319,
+      "owner": 12576,
+      "id": 12833,
+      "revision": 34,
+      "flags": 35
+     }
+    ]
+   },
+   "bytes": "11021829192a1a2b1b1c1f30203121322223"
+  },
+  {
+   "name": "core.list.result.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "list",
+   "direction": "result",
+   "fields": {
+    "total": 24,
+    "entries": []
+   },
+   "bytes": "1800"
+  },
+  {
+   "name": "core.list.result.truncated",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "list",
+   "direction": "result",
+   "bytes": ""
+  },
+  {
+   "name": "core.describe.request.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "describe",
+   "direction": "request",
+   "fields": {
+    "function": 8721,
+    "first": 18
+   },
+   "bytes": "112212"
+  },
+  {
+   "name": "core.describe.request.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "describe",
+   "direction": "request",
+   "fields": {
+    "function": 10520,
+    "first": 25
+   },
+   "bytes": "182919"
+  },
+  {
+   "name": "core.describe.request.truncated",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "describe",
+   "direction": "request",
+   "bytes": "1122"
+  },
+  {
+   "name": "core.describe.request.trailing",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "describe",
+   "direction": "request",
+   "bytes": "11221200"
+  },
+  {
+   "name": "core.describe.result.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "describe",
+   "direction": "result",
+   "fields": {
+    "tlv": [
+     160,
+     161,
+     162
+    ]
+   },
+   "bytes": "a0a1a2"
+  },
+  {
+   "name": "core.describe.result.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "describe",
+   "direction": "result",
+   "fields": {
+    "tlv": [
+     167,
+     168,
+     169,
+     170
+    ]
+   },
+   "bytes": "a7a8a9aa"
+  },
+  {
+   "name": "core.plan_apply.request.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "plan_apply",
+   "direction": "request",
+   "fields": {
+    "tlv": [
+     160,
+     161,
+     162
+    ]
+   },
+   "bytes": "a0a1a2"
+  },
+  {
+   "name": "core.plan_apply.request.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "plan_apply",
+   "direction": "request",
+   "fields": {
+    "tlv": [
+     167,
+     168,
+     169,
+     170
+    ]
+   },
+   "bytes": "a7a8a9aa"
+  },
+  {
+   "name": "core.plan_apply.result.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "plan_apply",
+   "direction": "result",
+   "fields": {
+    "lease": 8721,
+    "tlv": [
+     161,
+     162,
+     163
+    ]
+   },
+   "bytes": "1122a1a2a3"
+  },
+  {
+   "name": "core.plan_apply.result.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "plan_apply",
+   "direction": "result",
+   "fields": {
+    "lease": 10520,
+    "tlv": [
+     168,
+     169,
+     170,
+     171
+    ]
+   },
+   "bytes": "1829a8a9aaab"
+  },
+  {
+   "name": "core.plan_apply.result.truncated",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "plan_apply",
+   "direction": "result",
+   "bytes": "11"
+  },
+  {
+   "name": "core.plan_release.request.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "plan_release",
+   "direction": "request",
+   "fields": {
+    "lease": 8721
+   },
+   "bytes": "1122"
+  },
+  {
+   "name": "core.plan_release.request.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "plan_release",
+   "direction": "request",
+   "fields": {
+    "lease": 10520
+   },
+   "bytes": "1829"
+  },
+  {
+   "name": "core.plan_release.request.truncated",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "plan_release",
+   "direction": "request",
+   "bytes": "11"
+  },
+  {
+   "name": "core.plan_release.request.trailing",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "plan_release",
+   "direction": "request",
+   "bytes": "112200"
+  },
+  {
+   "name": "core.plan_release.result.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "plan_release",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "core.plan_release.result.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "plan_release",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "core.plan_release.result.trailing",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "plan_release",
+   "direction": "result",
+   "bytes": "00"
+  },
+  {
+   "name": "core.stop.request.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "stop",
+   "direction": "request",
+   "fields": {
+    "activity": 8721
+   },
+   "bytes": "1122"
+  },
+  {
+   "name": "core.stop.request.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "stop",
+   "direction": "request",
+   "fields": {
+    "activity": 10520
+   },
+   "bytes": "1829"
+  },
+  {
+   "name": "core.stop.request.truncated",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "stop",
+   "direction": "request",
+   "bytes": "11"
+  },
+  {
+   "name": "core.stop.request.trailing",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "stop",
+   "direction": "request",
+   "bytes": "112200"
+  },
+  {
+   "name": "core.stop.result.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "stop",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "core.stop.result.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "stop",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "core.stop.result.trailing",
+   "kind": "payload_reject",
+   "definition": "core",
+   "operation": "stop",
+   "direction": "result",
+   "bytes": "00"
+  },
+  {
+   "name": "core.ping.request.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "ping",
+   "direction": "request",
+   "fields": {
+    "data": [
+     160,
+     161,
+     162
+    ]
+   },
+   "bytes": "a0a1a2"
+  },
+  {
+   "name": "core.ping.request.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "ping",
+   "direction": "request",
+   "fields": {
+    "data": [
+     167,
+     168,
+     169,
+     170
+    ]
+   },
+   "bytes": "a7a8a9aa"
+  },
+  {
+   "name": "core.ping.result.0",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "ping",
+   "direction": "result",
+   "fields": {
+    "data": [
+     160,
+     161,
+     162
+    ]
+   },
+   "bytes": "a0a1a2"
+  },
+  {
+   "name": "core.ping.result.1",
+   "kind": "payload",
+   "definition": "core",
+   "operation": "ping",
+   "direction": "result",
+   "fields": {
+    "data": [
+     167,
+     168,
+     169,
+     170
+    ]
+   },
+   "bytes": "a7a8a9aa"
+  },
+  {
+   "name": "probe_identity.get.request.0",
+   "kind": "payload",
+   "definition": "probe_identity",
+   "operation": "get",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "probe_identity.get.request.1",
+   "kind": "payload",
+   "definition": "probe_identity",
+   "operation": "get",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "probe_identity.get.request.trailing",
+   "kind": "payload_reject",
+   "definition": "probe_identity",
+   "operation": "get",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "probe_identity.get.result.0",
+   "kind": "payload",
+   "definition": "probe_identity",
+   "operation": "get",
+   "direction": "result",
+   "fields": {
+    "profile_id": 1144201745,
+    "firmware_revision": 1161044754,
+    "reserved_pin_mask": 9978121173465375763,
+    "fixture_pin_mask": 10050461346303452436
+   },
+   "bytes": "1122334412233445132435465768798a1425364758697a8b"
+  },
+  {
+   "name": "probe_identity.get.result.1",
+   "kind": "payload",
+   "definition": "probe_identity",
+   "operation": "get",
+   "direction": "result",
+   "fields": {
+    "profile_id": 1262102808,
+    "firmware_revision": 1278945817,
+    "reserved_pin_mask": 10484502383331912474,
+    "fixture_pin_mask": 10556842556169989147
+   },
+   "bytes": "18293a4b192a3b4c1a2b3c4d5e6f80911b2c3d4e5f708192"
+  },
+  {
+   "name": "probe_identity.get.result.truncated",
+   "kind": "payload_reject",
+   "definition": "probe_identity",
+   "operation": "get",
+   "direction": "result",
+   "bytes": "1122334412233445132435465768798a1425364758697a"
+  },
+  {
+   "name": "probe_identity.get.result.trailing",
+   "kind": "payload_reject",
+   "definition": "probe_identity",
+   "operation": "get",
+   "direction": "result",
+   "bytes": "1122334412233445132435465768798a1425364758697a8b00"
+  },
+  {
+   "name": "target_control.status.request.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "status",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.status.request.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "status",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.status.request.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "status",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "target_control.status.result.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "status",
+   "direction": "result",
+   "fields": {
+    "flags": 17,
+    "start_mode": 18,
+    "boot_status": 19
+   },
+   "bytes": "111213"
+  },
+  {
+   "name": "target_control.status.result.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "status",
+   "direction": "result",
+   "fields": {
+    "flags": 24,
+    "start_mode": 25,
+    "boot_status": 26
+   },
+   "bytes": "18191a"
+  },
+  {
+   "name": "target_control.status.result.truncated",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "status",
+   "direction": "result",
+   "bytes": "1112"
+  },
+  {
+   "name": "target_control.status.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "status",
+   "direction": "result",
+   "bytes": "11121300"
+  },
+  {
+   "name": "target_control.reset.request.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "reset",
+   "direction": "request",
+   "fields": {
+    "mode": 17
+   },
+   "bytes": "11"
+  },
+  {
+   "name": "target_control.reset.request.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "reset",
+   "direction": "request",
+   "fields": {
+    "mode": 24
+   },
+   "bytes": "18"
+  },
+  {
+   "name": "target_control.reset.request.truncated",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "reset",
+   "direction": "request",
+   "bytes": ""
+  },
+  {
+   "name": "target_control.reset.request.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "reset",
+   "direction": "request",
+   "bytes": "1100"
+  },
+  {
+   "name": "target_control.reset.result.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "reset",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.reset.result.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "reset",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.reset.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "reset",
+   "direction": "result",
+   "bytes": "00"
+  },
+  {
+   "name": "target_control.halt.request.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "halt",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.halt.request.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "halt",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.halt.request.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "halt",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "target_control.halt.result.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "halt",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.halt.result.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "halt",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.halt.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "halt",
+   "direction": "result",
+   "bytes": "00"
+  },
+  {
+   "name": "target_control.resume.request.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "resume",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.resume.request.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "resume",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.resume.request.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "resume",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "target_control.resume.result.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "resume",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.resume.result.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "resume",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_control.resume.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "resume",
+   "direction": "result",
+   "bytes": "00"
+  },
+  {
+   "name": "target_memory.read.request.0",
+   "kind": "payload",
+   "definition": "target_memory",
+   "operation": "read",
+   "direction": "request",
+   "fields": {
+    "address": 1144201745,
+    "length": 8978
+   },
+   "bytes": "112233441223"
+  },
+  {
+   "name": "target_memory.read.request.1",
+   "kind": "payload",
+   "definition": "target_memory",
+   "operation": "read",
+   "direction": "request",
+   "fields": {
+    "address": 1262102808,
+    "length": 10777
+   },
+   "bytes": "18293a4b192a"
+  },
+  {
+   "name": "target_memory.read.request.truncated",
+   "kind": "payload_reject",
+   "definition": "target_memory",
+   "operation": "read",
+   "direction": "request",
+   "bytes": "1122334412"
+  },
+  {
+   "name": "target_memory.read.request.trailing",
+   "kind": "payload_reject",
+   "definition": "target_memory",
+   "operation": "read",
+   "direction": "request",
+   "bytes": "11223344122300"
+  },
+  {
+   "name": "target_memory.read.result.0",
+   "kind": "payload",
+   "definition": "target_memory",
+   "operation": "read",
+   "direction": "result",
+   "fields": {
+    "data": [
+     160,
+     161,
+     162
+    ]
+   },
+   "bytes": "a0a1a2"
+  },
+  {
+   "name": "target_memory.read.result.1",
+   "kind": "payload",
+   "definition": "target_memory",
+   "operation": "read",
+   "direction": "result",
+   "fields": {
+    "data": [
+     167,
+     168,
+     169,
+     170
+    ]
+   },
+   "bytes": "a7a8a9aa"
+  },
+  {
+   "name": "target_memory.write.request.0",
+   "kind": "payload",
+   "definition": "target_memory",
+   "operation": "write",
+   "direction": "request",
+   "fields": {
+    "address": 1144201745,
+    "data": [
+     161,
+     162,
+     163
+    ]
+   },
+   "bytes": "11223344a1a2a3"
+  },
+  {
+   "name": "target_memory.write.request.1",
+   "kind": "payload",
+   "definition": "target_memory",
+   "operation": "write",
+   "direction": "request",
+   "fields": {
+    "address": 1262102808,
+    "data": [
+     168,
+     169,
+     170,
+     171
+    ]
+   },
+   "bytes": "18293a4ba8a9aaab"
+  },
+  {
+   "name": "target_memory.write.request.truncated",
+   "kind": "payload_reject",
+   "definition": "target_memory",
+   "operation": "write",
+   "direction": "request",
+   "bytes": "112233"
+  },
+  {
+   "name": "target_memory.write.result.0",
+   "kind": "payload",
+   "definition": "target_memory",
+   "operation": "write",
+   "direction": "result",
+   "fields": {
+    "written": 8721
+   },
+   "bytes": "1122"
+  },
+  {
+   "name": "target_memory.write.result.1",
+   "kind": "payload",
+   "definition": "target_memory",
+   "operation": "write",
+   "direction": "result",
+   "fields": {
+    "written": 10520
+   },
+   "bytes": "1829"
+  },
+  {
+   "name": "target_memory.write.result.truncated",
+   "kind": "payload_reject",
+   "definition": "target_memory",
+   "operation": "write",
+   "direction": "result",
+   "bytes": "11"
+  },
+  {
+   "name": "target_memory.write.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_memory",
+   "operation": "write",
+   "direction": "result",
+   "bytes": "112200"
+  },
+  {
+   "name": "target_flash.geometry.request.0",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "geometry",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_flash.geometry.request.1",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "geometry",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_flash.geometry.request.trailing",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "geometry",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "target_flash.geometry.result.0",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "geometry",
+   "direction": "result",
+   "fields": {
+    "base": 1144201745,
+    "size": 1161044754,
+    "page": 9235,
+    "program_unit": 9492
+   },
+   "bytes": "112233441223344513241425"
+  },
+  {
+   "name": "target_flash.geometry.result.1",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "geometry",
+   "direction": "result",
+   "fields": {
+    "base": 1262102808,
+    "size": 1278945817,
+    "page": 11034,
+    "program_unit": 11291
+   },
+   "bytes": "18293a4b192a3b4c1a2b1b2c"
+  },
+  {
+   "name": "target_flash.geometry.result.truncated",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "geometry",
+   "direction": "result",
+   "bytes": "1122334412233445132414"
+  },
+  {
+   "name": "target_flash.geometry.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "geometry",
+   "direction": "result",
+   "bytes": "11223344122334451324142500"
+  },
+  {
+   "name": "target_flash.erase_page.request.0",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "erase_page",
+   "direction": "request",
+   "fields": {
+    "address": 1144201745
+   },
+   "bytes": "11223344"
+  },
+  {
+   "name": "target_flash.erase_page.request.1",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "erase_page",
+   "direction": "request",
+   "fields": {
+    "address": 1262102808
+   },
+   "bytes": "18293a4b"
+  },
+  {
+   "name": "target_flash.erase_page.request.truncated",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "erase_page",
+   "direction": "request",
+   "bytes": "112233"
+  },
+  {
+   "name": "target_flash.erase_page.request.trailing",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "erase_page",
+   "direction": "request",
+   "bytes": "1122334400"
+  },
+  {
+   "name": "target_flash.erase_page.result.0",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "erase_page",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_flash.erase_page.result.1",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "erase_page",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_flash.erase_page.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "erase_page",
+   "direction": "result",
+   "bytes": "00"
+  },
+  {
+   "name": "target_flash.program_page.request.0",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "program_page",
+   "direction": "request",
+   "fields": {
+    "address": 1144201745,
+    "data": [
+     161,
+     162,
+     163
+    ]
+   },
+   "bytes": "11223344a1a2a3"
+  },
+  {
+   "name": "target_flash.program_page.request.1",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "program_page",
+   "direction": "request",
+   "fields": {
+    "address": 1262102808,
+    "data": [
+     168,
+     169,
+     170,
+     171
+    ]
+   },
+   "bytes": "18293a4ba8a9aaab"
+  },
+  {
+   "name": "target_flash.program_page.request.truncated",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "program_page",
+   "direction": "request",
+   "bytes": "112233"
+  },
+  {
+   "name": "target_flash.program_page.result.0",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "program_page",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_flash.program_page.result.1",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "program_page",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "target_flash.program_page.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "program_page",
+   "direction": "result",
+   "bytes": "00"
+  },
+  {
+   "name": "target_flash.verify_crc32.request.0",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "verify_crc32",
+   "direction": "request",
+   "fields": {
+    "address": 1144201745,
+    "length": 1161044754
+   },
+   "bytes": "1122334412233445"
+  },
+  {
+   "name": "target_flash.verify_crc32.request.1",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "verify_crc32",
+   "direction": "request",
+   "fields": {
+    "address": 1262102808,
+    "length": 1278945817
+   },
+   "bytes": "18293a4b192a3b4c"
+  },
+  {
+   "name": "target_flash.verify_crc32.request.truncated",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "verify_crc32",
+   "direction": "request",
+   "bytes": "11223344122334"
+  },
+  {
+   "name": "target_flash.verify_crc32.request.trailing",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "verify_crc32",
+   "direction": "request",
+   "bytes": "112233441223344500"
+  },
+  {
+   "name": "target_flash.verify_crc32.result.0",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "verify_crc32",
+   "direction": "result",
+   "fields": {
+    "crc32": 1144201745
+   },
+   "bytes": "11223344"
+  },
+  {
+   "name": "target_flash.verify_crc32.result.1",
+   "kind": "payload",
+   "definition": "target_flash",
+   "operation": "verify_crc32",
+   "direction": "result",
+   "fields": {
+    "crc32": 1262102808
+   },
+   "bytes": "18293a4b"
+  },
+  {
+   "name": "target_flash.verify_crc32.result.truncated",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "verify_crc32",
+   "direction": "result",
+   "bytes": "112233"
+  },
+  {
+   "name": "target_flash.verify_crc32.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_flash",
+   "operation": "verify_crc32",
+   "direction": "result",
+   "bytes": "1122334400"
+  },
+  {
+   "name": "fixture_gpio.configure.request.0",
+   "kind": "payload",
+   "definition": "fixture_gpio",
+   "operation": "configure",
+   "direction": "request",
+   "fields": {
+    "channel": 17,
+    "mode": 18
+   },
+   "bytes": "1112"
+  },
+  {
+   "name": "fixture_gpio.configure.request.1",
+   "kind": "payload",
+   "definition": "fixture_gpio",
+   "operation": "configure",
+   "direction": "request",
+   "fields": {
+    "channel": 24,
+    "mode": 25
+   },
+   "bytes": "1819"
+  },
+  {
+   "name": "fixture_gpio.configure.request.truncated",
+   "kind": "payload_reject",
+   "definition": "fixture_gpio",
+   "operation": "configure",
+   "direction": "request",
+   "bytes": "11"
+  },
+  {
+   "name": "fixture_gpio.configure.request.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_gpio",
+   "operation": "configure",
+   "direction": "request",
+   "bytes": "111200"
+  },
+  {
+   "name": "fixture_gpio.configure.result.0",
+   "kind": "payload",
+   "definition": "fixture_gpio",
+   "operation": "configure",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "fixture_gpio.configure.result.1",
+   "kind": "payload",
+   "definition": "fixture_gpio",
+   "operation": "configure",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "fixture_gpio.configure.result.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_gpio",
+   "operation": "configure",
+   "direction": "result",
+   "bytes": "00"
+  },
+  {
+   "name": "fixture_gpio.read_bank.request.0",
+   "kind": "payload",
+   "definition": "fixture_gpio",
+   "operation": "read_bank",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "fixture_gpio.read_bank.request.1",
+   "kind": "payload",
+   "definition": "fixture_gpio",
+   "operation": "read_bank",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "fixture_gpio.read_bank.request.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_gpio",
+   "operation": "read_bank",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "fixture_gpio.read_bank.result.0",
+   "kind": "payload",
+   "definition": "fixture_gpio",
+   "operation": "read_bank",
+   "direction": "result",
+   "fields": {
+    "available": 9833440827789222417,
+    "values": 9905781000627299090
+   },
+   "bytes": "11223344556677881223344556677889"
+  },
+  {
+   "name": "fixture_gpio.read_bank.result.1",
+   "kind": "payload",
+   "definition": "fixture_gpio",
+   "operation": "read_bank",
+   "direction": "result",
+   "fields": {
+    "available": 10339822037655759128,
+    "values": 10412162210493835801
+   },
+   "bytes": "18293a4b5c6d7e8f192a3b4c5d6e7f90"
+  },
+  {
+   "name": "fixture_gpio.read_bank.result.truncated",
+   "kind": "payload_reject",
+   "definition": "fixture_gpio",
+   "operation": "read_bank",
+   "direction": "result",
+   "bytes": "112233445566778812233445566778"
+  },
+  {
+   "name": "fixture_gpio.read_bank.result.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_gpio",
+   "operation": "read_bank",
+   "direction": "result",
+   "bytes": "1122334455667788122334455667788900"
+  },
+  {
+   "name": "fixture_uart.configure.request.0",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "configure",
+   "direction": "request",
+   "fields": {
+    "baud": 1144201745
+   },
+   "bytes": "11223344"
+  },
+  {
+   "name": "fixture_uart.configure.request.1",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "configure",
+   "direction": "request",
+   "fields": {
+    "baud": 1262102808
+   },
+   "bytes": "18293a4b"
+  },
+  {
+   "name": "fixture_uart.configure.request.truncated",
+   "kind": "payload_reject",
+   "definition": "fixture_uart",
+   "operation": "configure",
+   "direction": "request",
+   "bytes": "112233"
+  },
+  {
+   "name": "fixture_uart.configure.request.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_uart",
+   "operation": "configure",
+   "direction": "request",
+   "bytes": "1122334400"
+  },
+  {
+   "name": "fixture_uart.configure.result.0",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "configure",
+   "direction": "result",
+   "fields": {
+    "actual_baud": 1144201745
+   },
+   "bytes": "11223344"
+  },
+  {
+   "name": "fixture_uart.configure.result.1",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "configure",
+   "direction": "result",
+   "fields": {
+    "actual_baud": 1262102808
+   },
+   "bytes": "18293a4b"
+  },
+  {
+   "name": "fixture_uart.configure.result.truncated",
+   "kind": "payload_reject",
+   "definition": "fixture_uart",
+   "operation": "configure",
+   "direction": "result",
+   "bytes": "112233"
+  },
+  {
+   "name": "fixture_uart.configure.result.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_uart",
+   "operation": "configure",
+   "direction": "result",
+   "bytes": "1122334400"
+  },
+  {
+   "name": "fixture_uart.write.request.0",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "write",
+   "direction": "request",
+   "fields": {
+    "data": [
+     160,
+     161,
+     162
+    ]
+   },
+   "bytes": "a0a1a2"
+  },
+  {
+   "name": "fixture_uart.write.request.1",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "write",
+   "direction": "request",
+   "fields": {
+    "data": [
+     167,
+     168,
+     169,
+     170
+    ]
+   },
+   "bytes": "a7a8a9aa"
+  },
+  {
+   "name": "fixture_uart.write.result.0",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "write",
+   "direction": "result",
+   "fields": {
+    "written": 8721
+   },
+   "bytes": "1122"
+  },
+  {
+   "name": "fixture_uart.write.result.1",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "write",
+   "direction": "result",
+   "fields": {
+    "written": 10520
+   },
+   "bytes": "1829"
+  },
+  {
+   "name": "fixture_uart.write.result.truncated",
+   "kind": "payload_reject",
+   "definition": "fixture_uart",
+   "operation": "write",
+   "direction": "result",
+   "bytes": "11"
+  },
+  {
+   "name": "fixture_uart.write.result.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_uart",
+   "operation": "write",
+   "direction": "result",
+   "bytes": "112200"
+  },
+  {
+   "name": "fixture_uart.read.request.0",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "read",
+   "direction": "request",
+   "fields": {
+    "maximum": 8721
+   },
+   "bytes": "1122"
+  },
+  {
+   "name": "fixture_uart.read.request.1",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "read",
+   "direction": "request",
+   "fields": {
+    "maximum": 10520
+   },
+   "bytes": "1829"
+  },
+  {
+   "name": "fixture_uart.read.request.truncated",
+   "kind": "payload_reject",
+   "definition": "fixture_uart",
+   "operation": "read",
+   "direction": "request",
+   "bytes": "11"
+  },
+  {
+   "name": "fixture_uart.read.request.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_uart",
+   "operation": "read",
+   "direction": "request",
+   "bytes": "112200"
+  },
+  {
+   "name": "fixture_uart.read.result.0",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "read",
+   "direction": "result",
+   "fields": {
+    "data": [
+     160,
+     161,
+     162
+    ]
+   },
+   "bytes": "a0a1a2"
+  },
+  {
+   "name": "fixture_uart.read.result.1",
+   "kind": "payload",
+   "definition": "fixture_uart",
+   "operation": "read",
+   "direction": "result",
+   "fields": {
+    "data": [
+     167,
+     168,
+     169,
+     170
+    ]
+   },
+   "bytes": "a7a8a9aa"
+  }
+ ]
+}

@@ -1,0 +1,206 @@
+# OEP core wire model v0 registry (working draft, 2026-09-22).
+# Single source for every number that appears on the wire. tools/oepgen.py
+# generates the C library, the Python module and the test vectors from it.
+# Layout rules: little endian; a `bytes` field is variable length and must be
+# last; an `array` field is a u8 count followed by repeated structs and must
+# be last. Field types: u8 u16 u32 u64 bytes[n] bytes array.
+protocol:
+  name: oep
+  version: 0
+  revision: 0
+
+constants:
+  confirm_request_magic: "OEP?"
+  confirm_result_magic: "OEP!"
+
+roles:
+  request: 0x01
+  result: 0x02
+  activity_update: 0x03
+  activity_outcome: 0x04
+  notification: 0x05
+  data: 0x06
+
+resolutions:
+  rejected: 0x00
+  completed: 0x01
+  accepted: 0x02
+
+outcomes:
+  success: 0x00
+  failed: 0x01
+  partial: 0x02
+
+reject_reasons:
+  unknown_function: 0x01
+  unknown_operation: 0x02
+  malformed_payload: 0x03
+  unavailable: 0x04
+  busy: 0x05
+  window_exceeded: 0x06
+
+# Role headers. Every message starts with the 1-byte role.
+headers:
+  request: [{name: correlation, type: u16}, {name: function, type: u16}, {name: operation, type: u8}]
+  result: [{name: correlation, type: u16}, {name: resolution, type: u8}, {name: detail, type: u8}]
+  activity_update: [{name: activity, type: u16}, {name: kind, type: u8}]
+  activity_outcome: [{name: activity, type: u16}, {name: outcome, type: u8}]
+  notification: [{name: function, type: u16}, {name: kind, type: u8}]
+  data: [{name: activity, type: u16}, {name: kind, type: u8}, {name: sequence, type: u16}]
+
+# TLV: tag(u8) len(u8) value. Bit 7 of the tag marks critical.
+tlv:
+  critical_mask: 0x80
+  core_tags:
+    channel_candidate: 0x01     # u16 channel id, repeated
+    max_clock_hz: 0x02          # u32
+    max_length: 0x03            # u16
+    exclusive_group: 0x04       # u16 group id, repeated
+    role_assignment: 0x90       # critical: u16 function, u8 role, u16 channel
+    start_together: 0x91        # critical: u16 function, repeated
+
+structs:
+  offered_function:
+    - {name: function, type: u16}
+    - {name: owner, type: u16}
+    - {name: id, type: u16}
+    - {name: revision, type: u8}
+    - {name: flags, type: u8}
+
+definitions:
+  - name: core
+    owner: 0x0000
+    id: 0x0000
+    revision: 0
+    function: 0x0000           # fixed offered-function reference for the endpoint itself
+    operations:
+      - name: confirm
+        op: 0x01
+        request: [{name: magic, type: "bytes[4]"}, {name: min_revision, type: u8}, {name: max_revision, type: u8}]
+        result: [{name: magic, type: "bytes[4]"}, {name: revision, type: u8}, {name: max_frame, type: u16},
+                 {name: window_bytes, type: u16}, {name: max_inflight, type: u8}, {name: flags, type: u8}]
+      - name: list
+        op: 0x02
+        request: [{name: first, type: u8}]
+        result: [{name: total, type: u8}, {name: entries, type: array, of: offered_function, max: 16}]
+      - name: describe
+        op: 0x03
+        request: [{name: function, type: u16}, {name: first, type: u8}]
+        result: [{name: tlv, type: bytes}]
+      - name: plan_apply
+        op: 0x04
+        request: [{name: tlv, type: bytes}]
+        result: [{name: lease, type: u16}, {name: tlv, type: bytes}]
+      - name: plan_release
+        op: 0x05
+        request: [{name: lease, type: u16}]
+        result: []
+      - name: stop
+        op: 0x06
+        request: [{name: activity, type: u16}]
+        result: []
+      - name: ping
+        op: 0x07
+        request: [{name: data, type: bytes}]
+        result: [{name: data, type: bytes}]
+
+  - name: probe_identity
+    owner: 0x0000
+    id: 0x0001
+    revision: 0
+    operations:
+      - name: get
+        op: 0x01
+        request: []
+        result: [{name: profile_id, type: u32}, {name: firmware_revision, type: u32},
+                 {name: reserved_pin_mask, type: u64}, {name: fixture_pin_mask, type: u64}]
+
+  - name: target_control
+    owner: 0x0000
+    id: 0x0010
+    revision: 0
+    operations:
+      - name: status
+        op: 0x01
+        request: []
+        result: [{name: flags, type: u8}, {name: start_mode, type: u8}, {name: boot_status, type: u8}]
+      - name: reset
+        op: 0x02
+        request: [{name: mode, type: u8}]
+        result: []
+      - name: halt
+        op: 0x03
+        request: []
+        result: []
+      - name: resume
+        op: 0x04
+        request: []
+        result: []
+
+  - name: target_memory
+    owner: 0x0000
+    id: 0x0011
+    revision: 0
+    operations:
+      - name: read
+        op: 0x01
+        request: [{name: address, type: u32}, {name: length, type: u16}]
+        result: [{name: data, type: bytes}]
+      - name: write
+        op: 0x02
+        request: [{name: address, type: u32}, {name: data, type: bytes}]
+        result: [{name: written, type: u16}]
+
+  - name: target_flash
+    owner: 0x0000
+    id: 0x0012
+    revision: 0
+    operations:
+      - name: geometry
+        op: 0x01
+        request: []
+        result: [{name: base, type: u32}, {name: size, type: u32}, {name: page, type: u16}, {name: program_unit, type: u16}]
+      - name: erase_page
+        op: 0x02
+        request: [{name: address, type: u32}]
+        result: []
+      - name: program_page
+        op: 0x03
+        request: [{name: address, type: u32}, {name: data, type: bytes}]
+        result: []
+      - name: verify_crc32
+        op: 0x04
+        request: [{name: address, type: u32}, {name: length, type: u32}]
+        result: [{name: crc32, type: u32}]
+
+  - name: fixture_gpio
+    owner: 0x0000
+    id: 0x0020
+    revision: 0
+    operations:
+      - name: configure
+        op: 0x01
+        request: [{name: channel, type: u8}, {name: mode, type: u8}]
+        result: []
+      - name: read_bank
+        op: 0x02
+        request: []
+        result: [{name: available, type: u64}, {name: values, type: u64}]
+
+  - name: fixture_uart
+    owner: 0x0000
+    id: 0x0021
+    revision: 0
+    operations:
+      - name: configure
+        op: 0x01
+        request: [{name: baud, type: u32}]
+        result: [{name: actual_baud, type: u32}]
+      - name: write
+        op: 0x02
+        request: [{name: data, type: bytes}]
+        result: [{name: written, type: u16}]
+      - name: read
+        op: 0x03
+        request: [{name: maximum, type: u16}]
+        result: [{name: data, type: bytes}]
