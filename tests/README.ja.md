@@ -19,6 +19,7 @@
 - `bootstrap_layout_comparison` — 仮bootstrap候補B/Cのparserとbuffer比較
 - `bootstrap_over_uart` — binding非依存bootstrap coreをUART stop-and-waitで往復
 - `message_routing` — 通常function requestの配送、header decode境界、およびrequest correlation lifecycle
+- `registry_codec` — `registry/oep-v0.yaml` から生成した C codec（host sketch）と Python codec が同じ test vector を往復し、`generated/` が registry と同期していること
 
 ## 実行
 
