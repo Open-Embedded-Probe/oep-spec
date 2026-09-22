@@ -1034,6 +1034,158 @@
    "bytes": "00"
   },
   {
+   "name": "target_control.read_dmi.request.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "read_dmi",
+   "direction": "request",
+   "fields": {
+    "address": 17
+   },
+   "bytes": "11"
+  },
+  {
+   "name": "target_control.read_dmi.request.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "read_dmi",
+   "direction": "request",
+   "fields": {
+    "address": 24
+   },
+   "bytes": "18"
+  },
+  {
+   "name": "target_control.read_dmi.request.truncated",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "read_dmi",
+   "direction": "request",
+   "bytes": ""
+  },
+  {
+   "name": "target_control.read_dmi.request.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "read_dmi",
+   "direction": "request",
+   "bytes": "1100"
+  },
+  {
+   "name": "target_control.read_dmi.result.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "read_dmi",
+   "direction": "result",
+   "fields": {
+    "value": 1144201745
+   },
+   "bytes": "11223344"
+  },
+  {
+   "name": "target_control.read_dmi.result.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "read_dmi",
+   "direction": "result",
+   "fields": {
+    "value": 1262102808
+   },
+   "bytes": "18293a4b"
+  },
+  {
+   "name": "target_control.read_dmi.result.truncated",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "read_dmi",
+   "direction": "result",
+   "bytes": "112233"
+  },
+  {
+   "name": "target_control.read_dmi.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "read_dmi",
+   "direction": "result",
+   "bytes": "1122334400"
+  },
+  {
+   "name": "target_control.read_register.request.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "read_register",
+   "direction": "request",
+   "fields": {
+    "regno": 8721
+   },
+   "bytes": "1122"
+  },
+  {
+   "name": "target_control.read_register.request.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "read_register",
+   "direction": "request",
+   "fields": {
+    "regno": 10520
+   },
+   "bytes": "1829"
+  },
+  {
+   "name": "target_control.read_register.request.truncated",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "read_register",
+   "direction": "request",
+   "bytes": "11"
+  },
+  {
+   "name": "target_control.read_register.request.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "read_register",
+   "direction": "request",
+   "bytes": "112200"
+  },
+  {
+   "name": "target_control.read_register.result.0",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "read_register",
+   "direction": "result",
+   "fields": {
+    "value": 1144201745
+   },
+   "bytes": "11223344"
+  },
+  {
+   "name": "target_control.read_register.result.1",
+   "kind": "payload",
+   "definition": "target_control",
+   "operation": "read_register",
+   "direction": "result",
+   "fields": {
+    "value": 1262102808
+   },
+   "bytes": "18293a4b"
+  },
+  {
+   "name": "target_control.read_register.result.truncated",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "read_register",
+   "direction": "result",
+   "bytes": "112233"
+  },
+  {
+   "name": "target_control.read_register.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "read_register",
+   "direction": "result",
+   "bytes": "1122334400"
+  },
+  {
    "name": "target_memory.read.request.0",
    "kind": "payload",
    "definition": "target_memory",

@@ -110,81 +110,97 @@ static const uint8_t oep_v0_vec_97[] = {0x00};
 static const uint8_t oep_v0_vec_98[] = {0};
 static const uint8_t oep_v0_vec_99[] = {0};
 static const uint8_t oep_v0_vec_100[] = {0x00};
-static const uint8_t oep_v0_vec_101[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23};
-static const uint8_t oep_v0_vec_102[] = {0x18, 0x29, 0x3a, 0x4b, 0x19, 0x2a};
-static const uint8_t oep_v0_vec_103[] = {0x11, 0x22, 0x33, 0x44, 0x12};
-static const uint8_t oep_v0_vec_104[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x00};
-static const uint8_t oep_v0_vec_105[] = {0xa0, 0xa1, 0xa2};
-static const uint8_t oep_v0_vec_106[] = {0xa7, 0xa8, 0xa9, 0xaa};
-static const uint8_t oep_v0_vec_107[] = {0x11, 0x22, 0x33, 0x44, 0xa1, 0xa2, 0xa3};
-static const uint8_t oep_v0_vec_108[] = {0x18, 0x29, 0x3a, 0x4b, 0xa8, 0xa9, 0xaa, 0xab};
-static const uint8_t oep_v0_vec_109[] = {0x11, 0x22, 0x33};
-static const uint8_t oep_v0_vec_110[] = {0x11, 0x22};
-static const uint8_t oep_v0_vec_111[] = {0x18, 0x29};
-static const uint8_t oep_v0_vec_112[] = {0x11};
-static const uint8_t oep_v0_vec_113[] = {0x11, 0x22, 0x00};
-static const uint8_t oep_v0_vec_114[] = {0};
-static const uint8_t oep_v0_vec_115[] = {0};
-static const uint8_t oep_v0_vec_116[] = {0x00};
-static const uint8_t oep_v0_vec_117[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x14, 0x25};
-static const uint8_t oep_v0_vec_118[] = {0x18, 0x29, 0x3a, 0x4b, 0x19, 0x2a, 0x3b, 0x4c, 0x1a, 0x2b, 0x1b, 0x2c};
-static const uint8_t oep_v0_vec_119[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x14};
-static const uint8_t oep_v0_vec_120[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x14, 0x25, 0x00};
-static const uint8_t oep_v0_vec_121[] = {0x11, 0x22, 0x33, 0x44};
-static const uint8_t oep_v0_vec_122[] = {0x18, 0x29, 0x3a, 0x4b};
-static const uint8_t oep_v0_vec_123[] = {0x11, 0x22, 0x33};
-static const uint8_t oep_v0_vec_124[] = {0x11, 0x22, 0x33, 0x44, 0x00};
-static const uint8_t oep_v0_vec_125[] = {0};
-static const uint8_t oep_v0_vec_126[] = {0};
-static const uint8_t oep_v0_vec_127[] = {0x00};
-static const uint8_t oep_v0_vec_128[] = {0x11, 0x22, 0x33, 0x44, 0xa1, 0xa2, 0xa3};
-static const uint8_t oep_v0_vec_129[] = {0x18, 0x29, 0x3a, 0x4b, 0xa8, 0xa9, 0xaa, 0xab};
-static const uint8_t oep_v0_vec_130[] = {0x11, 0x22, 0x33};
+static const uint8_t oep_v0_vec_101[] = {0x11};
+static const uint8_t oep_v0_vec_102[] = {0x18};
+static const uint8_t oep_v0_vec_103[] = {0};
+static const uint8_t oep_v0_vec_104[] = {0x11, 0x00};
+static const uint8_t oep_v0_vec_105[] = {0x11, 0x22, 0x33, 0x44};
+static const uint8_t oep_v0_vec_106[] = {0x18, 0x29, 0x3a, 0x4b};
+static const uint8_t oep_v0_vec_107[] = {0x11, 0x22, 0x33};
+static const uint8_t oep_v0_vec_108[] = {0x11, 0x22, 0x33, 0x44, 0x00};
+static const uint8_t oep_v0_vec_109[] = {0x11, 0x22};
+static const uint8_t oep_v0_vec_110[] = {0x18, 0x29};
+static const uint8_t oep_v0_vec_111[] = {0x11};
+static const uint8_t oep_v0_vec_112[] = {0x11, 0x22, 0x00};
+static const uint8_t oep_v0_vec_113[] = {0x11, 0x22, 0x33, 0x44};
+static const uint8_t oep_v0_vec_114[] = {0x18, 0x29, 0x3a, 0x4b};
+static const uint8_t oep_v0_vec_115[] = {0x11, 0x22, 0x33};
+static const uint8_t oep_v0_vec_116[] = {0x11, 0x22, 0x33, 0x44, 0x00};
+static const uint8_t oep_v0_vec_117[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23};
+static const uint8_t oep_v0_vec_118[] = {0x18, 0x29, 0x3a, 0x4b, 0x19, 0x2a};
+static const uint8_t oep_v0_vec_119[] = {0x11, 0x22, 0x33, 0x44, 0x12};
+static const uint8_t oep_v0_vec_120[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x00};
+static const uint8_t oep_v0_vec_121[] = {0xa0, 0xa1, 0xa2};
+static const uint8_t oep_v0_vec_122[] = {0xa7, 0xa8, 0xa9, 0xaa};
+static const uint8_t oep_v0_vec_123[] = {0x11, 0x22, 0x33, 0x44, 0xa1, 0xa2, 0xa3};
+static const uint8_t oep_v0_vec_124[] = {0x18, 0x29, 0x3a, 0x4b, 0xa8, 0xa9, 0xaa, 0xab};
+static const uint8_t oep_v0_vec_125[] = {0x11, 0x22, 0x33};
+static const uint8_t oep_v0_vec_126[] = {0x11, 0x22};
+static const uint8_t oep_v0_vec_127[] = {0x18, 0x29};
+static const uint8_t oep_v0_vec_128[] = {0x11};
+static const uint8_t oep_v0_vec_129[] = {0x11, 0x22, 0x00};
+static const uint8_t oep_v0_vec_130[] = {0};
 static const uint8_t oep_v0_vec_131[] = {0};
-static const uint8_t oep_v0_vec_132[] = {0};
-static const uint8_t oep_v0_vec_133[] = {0x00};
-static const uint8_t oep_v0_vec_134[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45};
-static const uint8_t oep_v0_vec_135[] = {0x18, 0x29, 0x3a, 0x4b, 0x19, 0x2a, 0x3b, 0x4c};
-static const uint8_t oep_v0_vec_136[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34};
-static const uint8_t oep_v0_vec_137[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x00};
-static const uint8_t oep_v0_vec_138[] = {0x11, 0x22, 0x33, 0x44};
-static const uint8_t oep_v0_vec_139[] = {0x18, 0x29, 0x3a, 0x4b};
-static const uint8_t oep_v0_vec_140[] = {0x11, 0x22, 0x33};
-static const uint8_t oep_v0_vec_141[] = {0x11, 0x22, 0x33, 0x44, 0x00};
-static const uint8_t oep_v0_vec_142[] = {0x11, 0x12};
-static const uint8_t oep_v0_vec_143[] = {0x18, 0x19};
-static const uint8_t oep_v0_vec_144[] = {0x11};
-static const uint8_t oep_v0_vec_145[] = {0x11, 0x12, 0x00};
-static const uint8_t oep_v0_vec_146[] = {0};
+static const uint8_t oep_v0_vec_132[] = {0x00};
+static const uint8_t oep_v0_vec_133[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x14, 0x25};
+static const uint8_t oep_v0_vec_134[] = {0x18, 0x29, 0x3a, 0x4b, 0x19, 0x2a, 0x3b, 0x4c, 0x1a, 0x2b, 0x1b, 0x2c};
+static const uint8_t oep_v0_vec_135[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x14};
+static const uint8_t oep_v0_vec_136[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x14, 0x25, 0x00};
+static const uint8_t oep_v0_vec_137[] = {0x11, 0x22, 0x33, 0x44};
+static const uint8_t oep_v0_vec_138[] = {0x18, 0x29, 0x3a, 0x4b};
+static const uint8_t oep_v0_vec_139[] = {0x11, 0x22, 0x33};
+static const uint8_t oep_v0_vec_140[] = {0x11, 0x22, 0x33, 0x44, 0x00};
+static const uint8_t oep_v0_vec_141[] = {0};
+static const uint8_t oep_v0_vec_142[] = {0};
+static const uint8_t oep_v0_vec_143[] = {0x00};
+static const uint8_t oep_v0_vec_144[] = {0x11, 0x22, 0x33, 0x44, 0xa1, 0xa2, 0xa3};
+static const uint8_t oep_v0_vec_145[] = {0x18, 0x29, 0x3a, 0x4b, 0xa8, 0xa9, 0xaa, 0xab};
+static const uint8_t oep_v0_vec_146[] = {0x11, 0x22, 0x33};
 static const uint8_t oep_v0_vec_147[] = {0};
-static const uint8_t oep_v0_vec_148[] = {0x00};
-static const uint8_t oep_v0_vec_149[] = {0};
-static const uint8_t oep_v0_vec_150[] = {0};
-static const uint8_t oep_v0_vec_151[] = {0x00};
-static const uint8_t oep_v0_vec_152[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78, 0x89};
-static const uint8_t oep_v0_vec_153[] = {0x18, 0x29, 0x3a, 0x4b, 0x5c, 0x6d, 0x7e, 0x8f, 0x19, 0x2a, 0x3b, 0x4c, 0x5d, 0x6e, 0x7f, 0x90};
-static const uint8_t oep_v0_vec_154[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78};
-static const uint8_t oep_v0_vec_155[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78, 0x89, 0x00};
-static const uint8_t oep_v0_vec_156[] = {0x11, 0x22, 0x33, 0x44};
-static const uint8_t oep_v0_vec_157[] = {0x18, 0x29, 0x3a, 0x4b};
-static const uint8_t oep_v0_vec_158[] = {0x11, 0x22, 0x33};
-static const uint8_t oep_v0_vec_159[] = {0x11, 0x22, 0x33, 0x44, 0x00};
-static const uint8_t oep_v0_vec_160[] = {0x11, 0x22, 0x33, 0x44};
-static const uint8_t oep_v0_vec_161[] = {0x18, 0x29, 0x3a, 0x4b};
-static const uint8_t oep_v0_vec_162[] = {0x11, 0x22, 0x33};
-static const uint8_t oep_v0_vec_163[] = {0x11, 0x22, 0x33, 0x44, 0x00};
-static const uint8_t oep_v0_vec_164[] = {0xa0, 0xa1, 0xa2};
-static const uint8_t oep_v0_vec_165[] = {0xa7, 0xa8, 0xa9, 0xaa};
-static const uint8_t oep_v0_vec_166[] = {0x11, 0x22};
-static const uint8_t oep_v0_vec_167[] = {0x18, 0x29};
-static const uint8_t oep_v0_vec_168[] = {0x11};
-static const uint8_t oep_v0_vec_169[] = {0x11, 0x22, 0x00};
-static const uint8_t oep_v0_vec_170[] = {0x11, 0x22};
-static const uint8_t oep_v0_vec_171[] = {0x18, 0x29};
-static const uint8_t oep_v0_vec_172[] = {0x11};
-static const uint8_t oep_v0_vec_173[] = {0x11, 0x22, 0x00};
-static const uint8_t oep_v0_vec_174[] = {0xa0, 0xa1, 0xa2};
-static const uint8_t oep_v0_vec_175[] = {0xa7, 0xa8, 0xa9, 0xaa};
+static const uint8_t oep_v0_vec_148[] = {0};
+static const uint8_t oep_v0_vec_149[] = {0x00};
+static const uint8_t oep_v0_vec_150[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45};
+static const uint8_t oep_v0_vec_151[] = {0x18, 0x29, 0x3a, 0x4b, 0x19, 0x2a, 0x3b, 0x4c};
+static const uint8_t oep_v0_vec_152[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34};
+static const uint8_t oep_v0_vec_153[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x00};
+static const uint8_t oep_v0_vec_154[] = {0x11, 0x22, 0x33, 0x44};
+static const uint8_t oep_v0_vec_155[] = {0x18, 0x29, 0x3a, 0x4b};
+static const uint8_t oep_v0_vec_156[] = {0x11, 0x22, 0x33};
+static const uint8_t oep_v0_vec_157[] = {0x11, 0x22, 0x33, 0x44, 0x00};
+static const uint8_t oep_v0_vec_158[] = {0x11, 0x12};
+static const uint8_t oep_v0_vec_159[] = {0x18, 0x19};
+static const uint8_t oep_v0_vec_160[] = {0x11};
+static const uint8_t oep_v0_vec_161[] = {0x11, 0x12, 0x00};
+static const uint8_t oep_v0_vec_162[] = {0};
+static const uint8_t oep_v0_vec_163[] = {0};
+static const uint8_t oep_v0_vec_164[] = {0x00};
+static const uint8_t oep_v0_vec_165[] = {0};
+static const uint8_t oep_v0_vec_166[] = {0};
+static const uint8_t oep_v0_vec_167[] = {0x00};
+static const uint8_t oep_v0_vec_168[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78, 0x89};
+static const uint8_t oep_v0_vec_169[] = {0x18, 0x29, 0x3a, 0x4b, 0x5c, 0x6d, 0x7e, 0x8f, 0x19, 0x2a, 0x3b, 0x4c, 0x5d, 0x6e, 0x7f, 0x90};
+static const uint8_t oep_v0_vec_170[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78};
+static const uint8_t oep_v0_vec_171[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78, 0x89, 0x00};
+static const uint8_t oep_v0_vec_172[] = {0x11, 0x22, 0x33, 0x44};
+static const uint8_t oep_v0_vec_173[] = {0x18, 0x29, 0x3a, 0x4b};
+static const uint8_t oep_v0_vec_174[] = {0x11, 0x22, 0x33};
+static const uint8_t oep_v0_vec_175[] = {0x11, 0x22, 0x33, 0x44, 0x00};
+static const uint8_t oep_v0_vec_176[] = {0x11, 0x22, 0x33, 0x44};
+static const uint8_t oep_v0_vec_177[] = {0x18, 0x29, 0x3a, 0x4b};
+static const uint8_t oep_v0_vec_178[] = {0x11, 0x22, 0x33};
+static const uint8_t oep_v0_vec_179[] = {0x11, 0x22, 0x33, 0x44, 0x00};
+static const uint8_t oep_v0_vec_180[] = {0xa0, 0xa1, 0xa2};
+static const uint8_t oep_v0_vec_181[] = {0xa7, 0xa8, 0xa9, 0xaa};
+static const uint8_t oep_v0_vec_182[] = {0x11, 0x22};
+static const uint8_t oep_v0_vec_183[] = {0x18, 0x29};
+static const uint8_t oep_v0_vec_184[] = {0x11};
+static const uint8_t oep_v0_vec_185[] = {0x11, 0x22, 0x00};
+static const uint8_t oep_v0_vec_186[] = {0x11, 0x22};
+static const uint8_t oep_v0_vec_187[] = {0x18, 0x29};
+static const uint8_t oep_v0_vec_188[] = {0x11};
+static const uint8_t oep_v0_vec_189[] = {0x11, 0x22, 0x00};
+static const uint8_t oep_v0_vec_190[] = {0xa0, 0xa1, 0xa2};
+static const uint8_t oep_v0_vec_191[] = {0xa7, 0xa8, 0xa9, 0xaa};
 
 static int oep_v0_rt_request_header(const uint8_t *in, size_t len) {
     struct oep_v0_request_header v; size_t hl = 0; uint8_t out[512];
@@ -388,6 +404,34 @@ static int oep_v0_rt_target_control_resume_result(const uint8_t *in, size_t len)
     memset(&v, 0, sizeof v);
     if (!oep_v0_target_control_resume_result_unpack(in, len, &v)) return 1;
     size_t n = oep_v0_target_control_resume_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_target_control_read_dmi_request(const uint8_t *in, size_t len) {
+    struct oep_v0_target_control_read_dmi_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_target_control_read_dmi_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_target_control_read_dmi_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_target_control_read_dmi_result(const uint8_t *in, size_t len) {
+    struct oep_v0_target_control_read_dmi_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_target_control_read_dmi_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_target_control_read_dmi_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_target_control_read_register_request(const uint8_t *in, size_t len) {
+    struct oep_v0_target_control_read_register_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_target_control_read_register_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_target_control_read_register_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_target_control_read_register_result(const uint8_t *in, size_t len) {
+    struct oep_v0_target_control_read_register_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_target_control_read_register_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_target_control_read_register_result_pack(&v, out, sizeof out);
     return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
 }
 static int oep_v0_rt_target_memory_read_request(const uint8_t *in, size_t len) {
@@ -647,81 +691,97 @@ static const struct oep_v0_vector oep_v0_vectors[] = {
     {"target_control.resume.result.0", oep_v0_vec_98, sizeof oep_v0_vec_98 - 1, 0, oep_v0_rt_target_control_resume_result},
     {"target_control.resume.result.1", oep_v0_vec_99, sizeof oep_v0_vec_99 - 1, 0, oep_v0_rt_target_control_resume_result},
     {"target_control.resume.result.trailing", oep_v0_vec_100, sizeof oep_v0_vec_100, 1, oep_v0_rt_target_control_resume_result},
-    {"target_memory.read.request.0", oep_v0_vec_101, sizeof oep_v0_vec_101, 0, oep_v0_rt_target_memory_read_request},
-    {"target_memory.read.request.1", oep_v0_vec_102, sizeof oep_v0_vec_102, 0, oep_v0_rt_target_memory_read_request},
-    {"target_memory.read.request.truncated", oep_v0_vec_103, sizeof oep_v0_vec_103, 1, oep_v0_rt_target_memory_read_request},
-    {"target_memory.read.request.trailing", oep_v0_vec_104, sizeof oep_v0_vec_104, 1, oep_v0_rt_target_memory_read_request},
-    {"target_memory.read.result.0", oep_v0_vec_105, sizeof oep_v0_vec_105, 0, oep_v0_rt_target_memory_read_result},
-    {"target_memory.read.result.1", oep_v0_vec_106, sizeof oep_v0_vec_106, 0, oep_v0_rt_target_memory_read_result},
-    {"target_memory.write.request.0", oep_v0_vec_107, sizeof oep_v0_vec_107, 0, oep_v0_rt_target_memory_write_request},
-    {"target_memory.write.request.1", oep_v0_vec_108, sizeof oep_v0_vec_108, 0, oep_v0_rt_target_memory_write_request},
-    {"target_memory.write.request.truncated", oep_v0_vec_109, sizeof oep_v0_vec_109, 1, oep_v0_rt_target_memory_write_request},
-    {"target_memory.write.result.0", oep_v0_vec_110, sizeof oep_v0_vec_110, 0, oep_v0_rt_target_memory_write_result},
-    {"target_memory.write.result.1", oep_v0_vec_111, sizeof oep_v0_vec_111, 0, oep_v0_rt_target_memory_write_result},
-    {"target_memory.write.result.truncated", oep_v0_vec_112, sizeof oep_v0_vec_112, 1, oep_v0_rt_target_memory_write_result},
-    {"target_memory.write.result.trailing", oep_v0_vec_113, sizeof oep_v0_vec_113, 1, oep_v0_rt_target_memory_write_result},
-    {"target_flash.geometry.request.0", oep_v0_vec_114, sizeof oep_v0_vec_114 - 1, 0, oep_v0_rt_target_flash_geometry_request},
-    {"target_flash.geometry.request.1", oep_v0_vec_115, sizeof oep_v0_vec_115 - 1, 0, oep_v0_rt_target_flash_geometry_request},
-    {"target_flash.geometry.request.trailing", oep_v0_vec_116, sizeof oep_v0_vec_116, 1, oep_v0_rt_target_flash_geometry_request},
-    {"target_flash.geometry.result.0", oep_v0_vec_117, sizeof oep_v0_vec_117, 0, oep_v0_rt_target_flash_geometry_result},
-    {"target_flash.geometry.result.1", oep_v0_vec_118, sizeof oep_v0_vec_118, 0, oep_v0_rt_target_flash_geometry_result},
-    {"target_flash.geometry.result.truncated", oep_v0_vec_119, sizeof oep_v0_vec_119, 1, oep_v0_rt_target_flash_geometry_result},
-    {"target_flash.geometry.result.trailing", oep_v0_vec_120, sizeof oep_v0_vec_120, 1, oep_v0_rt_target_flash_geometry_result},
-    {"target_flash.erase_page.request.0", oep_v0_vec_121, sizeof oep_v0_vec_121, 0, oep_v0_rt_target_flash_erase_page_request},
-    {"target_flash.erase_page.request.1", oep_v0_vec_122, sizeof oep_v0_vec_122, 0, oep_v0_rt_target_flash_erase_page_request},
-    {"target_flash.erase_page.request.truncated", oep_v0_vec_123, sizeof oep_v0_vec_123, 1, oep_v0_rt_target_flash_erase_page_request},
-    {"target_flash.erase_page.request.trailing", oep_v0_vec_124, sizeof oep_v0_vec_124, 1, oep_v0_rt_target_flash_erase_page_request},
-    {"target_flash.erase_page.result.0", oep_v0_vec_125, sizeof oep_v0_vec_125 - 1, 0, oep_v0_rt_target_flash_erase_page_result},
-    {"target_flash.erase_page.result.1", oep_v0_vec_126, sizeof oep_v0_vec_126 - 1, 0, oep_v0_rt_target_flash_erase_page_result},
-    {"target_flash.erase_page.result.trailing", oep_v0_vec_127, sizeof oep_v0_vec_127, 1, oep_v0_rt_target_flash_erase_page_result},
-    {"target_flash.program_page.request.0", oep_v0_vec_128, sizeof oep_v0_vec_128, 0, oep_v0_rt_target_flash_program_page_request},
-    {"target_flash.program_page.request.1", oep_v0_vec_129, sizeof oep_v0_vec_129, 0, oep_v0_rt_target_flash_program_page_request},
-    {"target_flash.program_page.request.truncated", oep_v0_vec_130, sizeof oep_v0_vec_130, 1, oep_v0_rt_target_flash_program_page_request},
-    {"target_flash.program_page.result.0", oep_v0_vec_131, sizeof oep_v0_vec_131 - 1, 0, oep_v0_rt_target_flash_program_page_result},
-    {"target_flash.program_page.result.1", oep_v0_vec_132, sizeof oep_v0_vec_132 - 1, 0, oep_v0_rt_target_flash_program_page_result},
-    {"target_flash.program_page.result.trailing", oep_v0_vec_133, sizeof oep_v0_vec_133, 1, oep_v0_rt_target_flash_program_page_result},
-    {"target_flash.verify_crc32.request.0", oep_v0_vec_134, sizeof oep_v0_vec_134, 0, oep_v0_rt_target_flash_verify_crc32_request},
-    {"target_flash.verify_crc32.request.1", oep_v0_vec_135, sizeof oep_v0_vec_135, 0, oep_v0_rt_target_flash_verify_crc32_request},
-    {"target_flash.verify_crc32.request.truncated", oep_v0_vec_136, sizeof oep_v0_vec_136, 1, oep_v0_rt_target_flash_verify_crc32_request},
-    {"target_flash.verify_crc32.request.trailing", oep_v0_vec_137, sizeof oep_v0_vec_137, 1, oep_v0_rt_target_flash_verify_crc32_request},
-    {"target_flash.verify_crc32.result.0", oep_v0_vec_138, sizeof oep_v0_vec_138, 0, oep_v0_rt_target_flash_verify_crc32_result},
-    {"target_flash.verify_crc32.result.1", oep_v0_vec_139, sizeof oep_v0_vec_139, 0, oep_v0_rt_target_flash_verify_crc32_result},
-    {"target_flash.verify_crc32.result.truncated", oep_v0_vec_140, sizeof oep_v0_vec_140, 1, oep_v0_rt_target_flash_verify_crc32_result},
-    {"target_flash.verify_crc32.result.trailing", oep_v0_vec_141, sizeof oep_v0_vec_141, 1, oep_v0_rt_target_flash_verify_crc32_result},
-    {"fixture_gpio.configure.request.0", oep_v0_vec_142, sizeof oep_v0_vec_142, 0, oep_v0_rt_fixture_gpio_configure_request},
-    {"fixture_gpio.configure.request.1", oep_v0_vec_143, sizeof oep_v0_vec_143, 0, oep_v0_rt_fixture_gpio_configure_request},
-    {"fixture_gpio.configure.request.truncated", oep_v0_vec_144, sizeof oep_v0_vec_144, 1, oep_v0_rt_fixture_gpio_configure_request},
-    {"fixture_gpio.configure.request.trailing", oep_v0_vec_145, sizeof oep_v0_vec_145, 1, oep_v0_rt_fixture_gpio_configure_request},
-    {"fixture_gpio.configure.result.0", oep_v0_vec_146, sizeof oep_v0_vec_146 - 1, 0, oep_v0_rt_fixture_gpio_configure_result},
-    {"fixture_gpio.configure.result.1", oep_v0_vec_147, sizeof oep_v0_vec_147 - 1, 0, oep_v0_rt_fixture_gpio_configure_result},
-    {"fixture_gpio.configure.result.trailing", oep_v0_vec_148, sizeof oep_v0_vec_148, 1, oep_v0_rt_fixture_gpio_configure_result},
-    {"fixture_gpio.read_bank.request.0", oep_v0_vec_149, sizeof oep_v0_vec_149 - 1, 0, oep_v0_rt_fixture_gpio_read_bank_request},
-    {"fixture_gpio.read_bank.request.1", oep_v0_vec_150, sizeof oep_v0_vec_150 - 1, 0, oep_v0_rt_fixture_gpio_read_bank_request},
-    {"fixture_gpio.read_bank.request.trailing", oep_v0_vec_151, sizeof oep_v0_vec_151, 1, oep_v0_rt_fixture_gpio_read_bank_request},
-    {"fixture_gpio.read_bank.result.0", oep_v0_vec_152, sizeof oep_v0_vec_152, 0, oep_v0_rt_fixture_gpio_read_bank_result},
-    {"fixture_gpio.read_bank.result.1", oep_v0_vec_153, sizeof oep_v0_vec_153, 0, oep_v0_rt_fixture_gpio_read_bank_result},
-    {"fixture_gpio.read_bank.result.truncated", oep_v0_vec_154, sizeof oep_v0_vec_154, 1, oep_v0_rt_fixture_gpio_read_bank_result},
-    {"fixture_gpio.read_bank.result.trailing", oep_v0_vec_155, sizeof oep_v0_vec_155, 1, oep_v0_rt_fixture_gpio_read_bank_result},
-    {"fixture_uart.configure.request.0", oep_v0_vec_156, sizeof oep_v0_vec_156, 0, oep_v0_rt_fixture_uart_configure_request},
-    {"fixture_uart.configure.request.1", oep_v0_vec_157, sizeof oep_v0_vec_157, 0, oep_v0_rt_fixture_uart_configure_request},
-    {"fixture_uart.configure.request.truncated", oep_v0_vec_158, sizeof oep_v0_vec_158, 1, oep_v0_rt_fixture_uart_configure_request},
-    {"fixture_uart.configure.request.trailing", oep_v0_vec_159, sizeof oep_v0_vec_159, 1, oep_v0_rt_fixture_uart_configure_request},
-    {"fixture_uart.configure.result.0", oep_v0_vec_160, sizeof oep_v0_vec_160, 0, oep_v0_rt_fixture_uart_configure_result},
-    {"fixture_uart.configure.result.1", oep_v0_vec_161, sizeof oep_v0_vec_161, 0, oep_v0_rt_fixture_uart_configure_result},
-    {"fixture_uart.configure.result.truncated", oep_v0_vec_162, sizeof oep_v0_vec_162, 1, oep_v0_rt_fixture_uart_configure_result},
-    {"fixture_uart.configure.result.trailing", oep_v0_vec_163, sizeof oep_v0_vec_163, 1, oep_v0_rt_fixture_uart_configure_result},
-    {"fixture_uart.write.request.0", oep_v0_vec_164, sizeof oep_v0_vec_164, 0, oep_v0_rt_fixture_uart_write_request},
-    {"fixture_uart.write.request.1", oep_v0_vec_165, sizeof oep_v0_vec_165, 0, oep_v0_rt_fixture_uart_write_request},
-    {"fixture_uart.write.result.0", oep_v0_vec_166, sizeof oep_v0_vec_166, 0, oep_v0_rt_fixture_uart_write_result},
-    {"fixture_uart.write.result.1", oep_v0_vec_167, sizeof oep_v0_vec_167, 0, oep_v0_rt_fixture_uart_write_result},
-    {"fixture_uart.write.result.truncated", oep_v0_vec_168, sizeof oep_v0_vec_168, 1, oep_v0_rt_fixture_uart_write_result},
-    {"fixture_uart.write.result.trailing", oep_v0_vec_169, sizeof oep_v0_vec_169, 1, oep_v0_rt_fixture_uart_write_result},
-    {"fixture_uart.read.request.0", oep_v0_vec_170, sizeof oep_v0_vec_170, 0, oep_v0_rt_fixture_uart_read_request},
-    {"fixture_uart.read.request.1", oep_v0_vec_171, sizeof oep_v0_vec_171, 0, oep_v0_rt_fixture_uart_read_request},
-    {"fixture_uart.read.request.truncated", oep_v0_vec_172, sizeof oep_v0_vec_172, 1, oep_v0_rt_fixture_uart_read_request},
-    {"fixture_uart.read.request.trailing", oep_v0_vec_173, sizeof oep_v0_vec_173, 1, oep_v0_rt_fixture_uart_read_request},
-    {"fixture_uart.read.result.0", oep_v0_vec_174, sizeof oep_v0_vec_174, 0, oep_v0_rt_fixture_uart_read_result},
-    {"fixture_uart.read.result.1", oep_v0_vec_175, sizeof oep_v0_vec_175, 0, oep_v0_rt_fixture_uart_read_result},
+    {"target_control.read_dmi.request.0", oep_v0_vec_101, sizeof oep_v0_vec_101, 0, oep_v0_rt_target_control_read_dmi_request},
+    {"target_control.read_dmi.request.1", oep_v0_vec_102, sizeof oep_v0_vec_102, 0, oep_v0_rt_target_control_read_dmi_request},
+    {"target_control.read_dmi.request.truncated", oep_v0_vec_103, sizeof oep_v0_vec_103 - 1, 1, oep_v0_rt_target_control_read_dmi_request},
+    {"target_control.read_dmi.request.trailing", oep_v0_vec_104, sizeof oep_v0_vec_104, 1, oep_v0_rt_target_control_read_dmi_request},
+    {"target_control.read_dmi.result.0", oep_v0_vec_105, sizeof oep_v0_vec_105, 0, oep_v0_rt_target_control_read_dmi_result},
+    {"target_control.read_dmi.result.1", oep_v0_vec_106, sizeof oep_v0_vec_106, 0, oep_v0_rt_target_control_read_dmi_result},
+    {"target_control.read_dmi.result.truncated", oep_v0_vec_107, sizeof oep_v0_vec_107, 1, oep_v0_rt_target_control_read_dmi_result},
+    {"target_control.read_dmi.result.trailing", oep_v0_vec_108, sizeof oep_v0_vec_108, 1, oep_v0_rt_target_control_read_dmi_result},
+    {"target_control.read_register.request.0", oep_v0_vec_109, sizeof oep_v0_vec_109, 0, oep_v0_rt_target_control_read_register_request},
+    {"target_control.read_register.request.1", oep_v0_vec_110, sizeof oep_v0_vec_110, 0, oep_v0_rt_target_control_read_register_request},
+    {"target_control.read_register.request.truncated", oep_v0_vec_111, sizeof oep_v0_vec_111, 1, oep_v0_rt_target_control_read_register_request},
+    {"target_control.read_register.request.trailing", oep_v0_vec_112, sizeof oep_v0_vec_112, 1, oep_v0_rt_target_control_read_register_request},
+    {"target_control.read_register.result.0", oep_v0_vec_113, sizeof oep_v0_vec_113, 0, oep_v0_rt_target_control_read_register_result},
+    {"target_control.read_register.result.1", oep_v0_vec_114, sizeof oep_v0_vec_114, 0, oep_v0_rt_target_control_read_register_result},
+    {"target_control.read_register.result.truncated", oep_v0_vec_115, sizeof oep_v0_vec_115, 1, oep_v0_rt_target_control_read_register_result},
+    {"target_control.read_register.result.trailing", oep_v0_vec_116, sizeof oep_v0_vec_116, 1, oep_v0_rt_target_control_read_register_result},
+    {"target_memory.read.request.0", oep_v0_vec_117, sizeof oep_v0_vec_117, 0, oep_v0_rt_target_memory_read_request},
+    {"target_memory.read.request.1", oep_v0_vec_118, sizeof oep_v0_vec_118, 0, oep_v0_rt_target_memory_read_request},
+    {"target_memory.read.request.truncated", oep_v0_vec_119, sizeof oep_v0_vec_119, 1, oep_v0_rt_target_memory_read_request},
+    {"target_memory.read.request.trailing", oep_v0_vec_120, sizeof oep_v0_vec_120, 1, oep_v0_rt_target_memory_read_request},
+    {"target_memory.read.result.0", oep_v0_vec_121, sizeof oep_v0_vec_121, 0, oep_v0_rt_target_memory_read_result},
+    {"target_memory.read.result.1", oep_v0_vec_122, sizeof oep_v0_vec_122, 0, oep_v0_rt_target_memory_read_result},
+    {"target_memory.write.request.0", oep_v0_vec_123, sizeof oep_v0_vec_123, 0, oep_v0_rt_target_memory_write_request},
+    {"target_memory.write.request.1", oep_v0_vec_124, sizeof oep_v0_vec_124, 0, oep_v0_rt_target_memory_write_request},
+    {"target_memory.write.request.truncated", oep_v0_vec_125, sizeof oep_v0_vec_125, 1, oep_v0_rt_target_memory_write_request},
+    {"target_memory.write.result.0", oep_v0_vec_126, sizeof oep_v0_vec_126, 0, oep_v0_rt_target_memory_write_result},
+    {"target_memory.write.result.1", oep_v0_vec_127, sizeof oep_v0_vec_127, 0, oep_v0_rt_target_memory_write_result},
+    {"target_memory.write.result.truncated", oep_v0_vec_128, sizeof oep_v0_vec_128, 1, oep_v0_rt_target_memory_write_result},
+    {"target_memory.write.result.trailing", oep_v0_vec_129, sizeof oep_v0_vec_129, 1, oep_v0_rt_target_memory_write_result},
+    {"target_flash.geometry.request.0", oep_v0_vec_130, sizeof oep_v0_vec_130 - 1, 0, oep_v0_rt_target_flash_geometry_request},
+    {"target_flash.geometry.request.1", oep_v0_vec_131, sizeof oep_v0_vec_131 - 1, 0, oep_v0_rt_target_flash_geometry_request},
+    {"target_flash.geometry.request.trailing", oep_v0_vec_132, sizeof oep_v0_vec_132, 1, oep_v0_rt_target_flash_geometry_request},
+    {"target_flash.geometry.result.0", oep_v0_vec_133, sizeof oep_v0_vec_133, 0, oep_v0_rt_target_flash_geometry_result},
+    {"target_flash.geometry.result.1", oep_v0_vec_134, sizeof oep_v0_vec_134, 0, oep_v0_rt_target_flash_geometry_result},
+    {"target_flash.geometry.result.truncated", oep_v0_vec_135, sizeof oep_v0_vec_135, 1, oep_v0_rt_target_flash_geometry_result},
+    {"target_flash.geometry.result.trailing", oep_v0_vec_136, sizeof oep_v0_vec_136, 1, oep_v0_rt_target_flash_geometry_result},
+    {"target_flash.erase_page.request.0", oep_v0_vec_137, sizeof oep_v0_vec_137, 0, oep_v0_rt_target_flash_erase_page_request},
+    {"target_flash.erase_page.request.1", oep_v0_vec_138, sizeof oep_v0_vec_138, 0, oep_v0_rt_target_flash_erase_page_request},
+    {"target_flash.erase_page.request.truncated", oep_v0_vec_139, sizeof oep_v0_vec_139, 1, oep_v0_rt_target_flash_erase_page_request},
+    {"target_flash.erase_page.request.trailing", oep_v0_vec_140, sizeof oep_v0_vec_140, 1, oep_v0_rt_target_flash_erase_page_request},
+    {"target_flash.erase_page.result.0", oep_v0_vec_141, sizeof oep_v0_vec_141 - 1, 0, oep_v0_rt_target_flash_erase_page_result},
+    {"target_flash.erase_page.result.1", oep_v0_vec_142, sizeof oep_v0_vec_142 - 1, 0, oep_v0_rt_target_flash_erase_page_result},
+    {"target_flash.erase_page.result.trailing", oep_v0_vec_143, sizeof oep_v0_vec_143, 1, oep_v0_rt_target_flash_erase_page_result},
+    {"target_flash.program_page.request.0", oep_v0_vec_144, sizeof oep_v0_vec_144, 0, oep_v0_rt_target_flash_program_page_request},
+    {"target_flash.program_page.request.1", oep_v0_vec_145, sizeof oep_v0_vec_145, 0, oep_v0_rt_target_flash_program_page_request},
+    {"target_flash.program_page.request.truncated", oep_v0_vec_146, sizeof oep_v0_vec_146, 1, oep_v0_rt_target_flash_program_page_request},
+    {"target_flash.program_page.result.0", oep_v0_vec_147, sizeof oep_v0_vec_147 - 1, 0, oep_v0_rt_target_flash_program_page_result},
+    {"target_flash.program_page.result.1", oep_v0_vec_148, sizeof oep_v0_vec_148 - 1, 0, oep_v0_rt_target_flash_program_page_result},
+    {"target_flash.program_page.result.trailing", oep_v0_vec_149, sizeof oep_v0_vec_149, 1, oep_v0_rt_target_flash_program_page_result},
+    {"target_flash.verify_crc32.request.0", oep_v0_vec_150, sizeof oep_v0_vec_150, 0, oep_v0_rt_target_flash_verify_crc32_request},
+    {"target_flash.verify_crc32.request.1", oep_v0_vec_151, sizeof oep_v0_vec_151, 0, oep_v0_rt_target_flash_verify_crc32_request},
+    {"target_flash.verify_crc32.request.truncated", oep_v0_vec_152, sizeof oep_v0_vec_152, 1, oep_v0_rt_target_flash_verify_crc32_request},
+    {"target_flash.verify_crc32.request.trailing", oep_v0_vec_153, sizeof oep_v0_vec_153, 1, oep_v0_rt_target_flash_verify_crc32_request},
+    {"target_flash.verify_crc32.result.0", oep_v0_vec_154, sizeof oep_v0_vec_154, 0, oep_v0_rt_target_flash_verify_crc32_result},
+    {"target_flash.verify_crc32.result.1", oep_v0_vec_155, sizeof oep_v0_vec_155, 0, oep_v0_rt_target_flash_verify_crc32_result},
+    {"target_flash.verify_crc32.result.truncated", oep_v0_vec_156, sizeof oep_v0_vec_156, 1, oep_v0_rt_target_flash_verify_crc32_result},
+    {"target_flash.verify_crc32.result.trailing", oep_v0_vec_157, sizeof oep_v0_vec_157, 1, oep_v0_rt_target_flash_verify_crc32_result},
+    {"fixture_gpio.configure.request.0", oep_v0_vec_158, sizeof oep_v0_vec_158, 0, oep_v0_rt_fixture_gpio_configure_request},
+    {"fixture_gpio.configure.request.1", oep_v0_vec_159, sizeof oep_v0_vec_159, 0, oep_v0_rt_fixture_gpio_configure_request},
+    {"fixture_gpio.configure.request.truncated", oep_v0_vec_160, sizeof oep_v0_vec_160, 1, oep_v0_rt_fixture_gpio_configure_request},
+    {"fixture_gpio.configure.request.trailing", oep_v0_vec_161, sizeof oep_v0_vec_161, 1, oep_v0_rt_fixture_gpio_configure_request},
+    {"fixture_gpio.configure.result.0", oep_v0_vec_162, sizeof oep_v0_vec_162 - 1, 0, oep_v0_rt_fixture_gpio_configure_result},
+    {"fixture_gpio.configure.result.1", oep_v0_vec_163, sizeof oep_v0_vec_163 - 1, 0, oep_v0_rt_fixture_gpio_configure_result},
+    {"fixture_gpio.configure.result.trailing", oep_v0_vec_164, sizeof oep_v0_vec_164, 1, oep_v0_rt_fixture_gpio_configure_result},
+    {"fixture_gpio.read_bank.request.0", oep_v0_vec_165, sizeof oep_v0_vec_165 - 1, 0, oep_v0_rt_fixture_gpio_read_bank_request},
+    {"fixture_gpio.read_bank.request.1", oep_v0_vec_166, sizeof oep_v0_vec_166 - 1, 0, oep_v0_rt_fixture_gpio_read_bank_request},
+    {"fixture_gpio.read_bank.request.trailing", oep_v0_vec_167, sizeof oep_v0_vec_167, 1, oep_v0_rt_fixture_gpio_read_bank_request},
+    {"fixture_gpio.read_bank.result.0", oep_v0_vec_168, sizeof oep_v0_vec_168, 0, oep_v0_rt_fixture_gpio_read_bank_result},
+    {"fixture_gpio.read_bank.result.1", oep_v0_vec_169, sizeof oep_v0_vec_169, 0, oep_v0_rt_fixture_gpio_read_bank_result},
+    {"fixture_gpio.read_bank.result.truncated", oep_v0_vec_170, sizeof oep_v0_vec_170, 1, oep_v0_rt_fixture_gpio_read_bank_result},
+    {"fixture_gpio.read_bank.result.trailing", oep_v0_vec_171, sizeof oep_v0_vec_171, 1, oep_v0_rt_fixture_gpio_read_bank_result},
+    {"fixture_uart.configure.request.0", oep_v0_vec_172, sizeof oep_v0_vec_172, 0, oep_v0_rt_fixture_uart_configure_request},
+    {"fixture_uart.configure.request.1", oep_v0_vec_173, sizeof oep_v0_vec_173, 0, oep_v0_rt_fixture_uart_configure_request},
+    {"fixture_uart.configure.request.truncated", oep_v0_vec_174, sizeof oep_v0_vec_174, 1, oep_v0_rt_fixture_uart_configure_request},
+    {"fixture_uart.configure.request.trailing", oep_v0_vec_175, sizeof oep_v0_vec_175, 1, oep_v0_rt_fixture_uart_configure_request},
+    {"fixture_uart.configure.result.0", oep_v0_vec_176, sizeof oep_v0_vec_176, 0, oep_v0_rt_fixture_uart_configure_result},
+    {"fixture_uart.configure.result.1", oep_v0_vec_177, sizeof oep_v0_vec_177, 0, oep_v0_rt_fixture_uart_configure_result},
+    {"fixture_uart.configure.result.truncated", oep_v0_vec_178, sizeof oep_v0_vec_178, 1, oep_v0_rt_fixture_uart_configure_result},
+    {"fixture_uart.configure.result.trailing", oep_v0_vec_179, sizeof oep_v0_vec_179, 1, oep_v0_rt_fixture_uart_configure_result},
+    {"fixture_uart.write.request.0", oep_v0_vec_180, sizeof oep_v0_vec_180, 0, oep_v0_rt_fixture_uart_write_request},
+    {"fixture_uart.write.request.1", oep_v0_vec_181, sizeof oep_v0_vec_181, 0, oep_v0_rt_fixture_uart_write_request},
+    {"fixture_uart.write.result.0", oep_v0_vec_182, sizeof oep_v0_vec_182, 0, oep_v0_rt_fixture_uart_write_result},
+    {"fixture_uart.write.result.1", oep_v0_vec_183, sizeof oep_v0_vec_183, 0, oep_v0_rt_fixture_uart_write_result},
+    {"fixture_uart.write.result.truncated", oep_v0_vec_184, sizeof oep_v0_vec_184, 1, oep_v0_rt_fixture_uart_write_result},
+    {"fixture_uart.write.result.trailing", oep_v0_vec_185, sizeof oep_v0_vec_185, 1, oep_v0_rt_fixture_uart_write_result},
+    {"fixture_uart.read.request.0", oep_v0_vec_186, sizeof oep_v0_vec_186, 0, oep_v0_rt_fixture_uart_read_request},
+    {"fixture_uart.read.request.1", oep_v0_vec_187, sizeof oep_v0_vec_187, 0, oep_v0_rt_fixture_uart_read_request},
+    {"fixture_uart.read.request.truncated", oep_v0_vec_188, sizeof oep_v0_vec_188, 1, oep_v0_rt_fixture_uart_read_request},
+    {"fixture_uart.read.request.trailing", oep_v0_vec_189, sizeof oep_v0_vec_189, 1, oep_v0_rt_fixture_uart_read_request},
+    {"fixture_uart.read.result.0", oep_v0_vec_190, sizeof oep_v0_vec_190, 0, oep_v0_rt_fixture_uart_read_result},
+    {"fixture_uart.read.result.1", oep_v0_vec_191, sizeof oep_v0_vec_191, 0, oep_v0_rt_fixture_uart_read_result},
 };
 #define OEP_V0_VECTOR_COUNT (sizeof oep_v0_vectors / sizeof oep_v0_vectors[0])
 

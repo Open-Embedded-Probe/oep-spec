@@ -136,6 +136,16 @@ definitions:
         op: 0x04
         request: []
         result: []
+      # Debug-module visibility for diagnosis and HIL assertions (2026-09-22): a
+      # raw DMI register and an abstract-command register read while halted.
+      - name: read_dmi
+        op: 0x10
+        request: [{name: address, type: u8}]
+        result: [{name: value, type: u32}]
+      - name: read_register
+        op: 0x11
+        request: [{name: regno, type: u16}]
+        result: [{name: value, type: u32}]
 
   - name: target_memory
     owner: 0x0000
