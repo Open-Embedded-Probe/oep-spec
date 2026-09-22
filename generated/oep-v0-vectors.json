@@ -2636,6 +2636,76 @@
    "operation": "reset",
    "direction": "result",
    "bytes": "00"
+  },
+  {
+   "name": "p4_i2c_target.read_hw.request.0",
+   "kind": "payload",
+   "definition": "p4_i2c_target",
+   "operation": "read_hw",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_i2c_target.read_hw.request.1",
+   "kind": "payload",
+   "definition": "p4_i2c_target",
+   "operation": "read_hw",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_i2c_target.read_hw.request.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_i2c_target",
+   "operation": "read_hw",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "p4_i2c_target.read_hw.result.0",
+   "kind": "payload",
+   "definition": "p4_i2c_target",
+   "operation": "read_hw",
+   "direction": "result",
+   "fields": {
+    "sr": 1144201745,
+    "int_raw": 1161044754,
+    "fifo_st": 1177887763,
+    "ctr": 1194730772
+   },
+   "bytes": "11223344122334451324354614253647"
+  },
+  {
+   "name": "p4_i2c_target.read_hw.result.1",
+   "kind": "payload",
+   "definition": "p4_i2c_target",
+   "operation": "read_hw",
+   "direction": "result",
+   "fields": {
+    "sr": 1262102808,
+    "int_raw": 1278945817,
+    "fifo_st": 1295788826,
+    "ctr": 1312631835
+   },
+   "bytes": "18293a4b192a3b4c1a2b3c4d1b2c3d4e"
+  },
+  {
+   "name": "p4_i2c_target.read_hw.result.truncated",
+   "kind": "payload_reject",
+   "definition": "p4_i2c_target",
+   "operation": "read_hw",
+   "direction": "result",
+   "bytes": "112233441223344513243546142536"
+  },
+  {
+   "name": "p4_i2c_target.read_hw.result.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_i2c_target",
+   "operation": "read_hw",
+   "direction": "result",
+   "bytes": "1122334412233445132435461425364700"
   }
  ]
 }
