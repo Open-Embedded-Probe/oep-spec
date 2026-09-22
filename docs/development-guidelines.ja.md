@@ -118,6 +118,10 @@ client は confirmation で上限を受け取り、それ以上を送らない�
    reset vector に駐留し、その間も DMSTATUS は running を返した（E158、2026-09-22）。同じ理由で、host は「request が completed を
    返した」ことより result の証拠 field を見る。証拠が取れない probe（低スペック）は `confirm=0` を受けて DM の見た目だけを返し、
    host 側が UART banner などで補う。
+   証拠には強さの順がある: **外部観測（UART banner、GPIO の変化）> 走行中の hart を halt → PC sample → resume > DMSTATUS**。
+   PC が flash を指していても割込みが届かず止まっている状態があり（E159 追試: reset-halt から resume した hart の約 4 割で SysTick が
+   止まり、次の halt → resume で正常化）、PC sample はその halt → resume を兼ねるから有効であって、PC の値だけが証拠なのではない。
+   runner（ArduinoCore-CH32 `oep_smoke`）が banner を待つのはこの最上位の証拠を取るためで、省いてはいけない。
 
 ## 7. まだ決めていないこと
 
