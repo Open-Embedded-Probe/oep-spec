@@ -62,6 +62,7 @@ tlv:
     max_clock_hz: 0x02          # u32
     max_length: 0x03            # u16
     exclusive_group: 0x04       # u16 group id, repeated
+    min_clock_hz: 0x05          # u32: smallest rate the instance can be configured for (capture sample rate, 2026-09-22)
     role_assignment: 0x90       # critical: u16 function, u8 role, u16 channel
     start_together: 0x91        # critical: u16 function, repeated
 
