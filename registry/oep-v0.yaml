@@ -231,6 +231,37 @@ definitions:
         request: [{name: maximum, type: u16}]
         result: [{name: data, type: bytes}]
 
+  # ---- common tool: sampled logic capture, a read-only observer (2026-09-22) ----
+  # Plan roles: role k (0..7) = line k, channel = the probe pin to sample. The
+  # capture never drives a channel, so its channels may also belong to another
+  # function in the same plan or in an existing lease (e.g. observe the SCL/SDA
+  # that fixture.i2c-target or the DUT is using). One sample = one byte, bit k =
+  # level of line k. configure sets the rate and the length; arm starts sampling
+  # at once and stops after `samples`; read returns sample bytes from `offset`.
+  # Decoding (I2C, SPI, UART) is host-side so a low-spec probe only samples.
+  - name: fixture_capture
+    owner: 0x0000
+    id: 0x0022
+    revision: 0
+    operations:
+      - name: configure
+        op: 0x01
+        request: [{name: sample_rate_hz, type: u32}, {name: samples, type: u32}]
+        result: [{name: actual_sample_rate_hz, type: u32}, {name: samples, type: u32}, {name: lines, type: u8}]
+      - name: arm
+        op: 0x02
+        request: []
+        result: []
+      # flags: bit0 configured, bit1 running, bit2 complete, bit3 error
+      - name: status
+        op: 0x03
+        request: []
+        result: [{name: flags, type: u8}, {name: samples, type: u32}]
+      - name: read
+        op: 0x04
+        request: [{name: offset, type: u32}, {name: maximum, type: u16}]
+        result: [{name: data, type: bytes}]
+
   # ---- vendor tool: ESP32-P4 hardware I2C target (ESP-IDF slave v1), E147-E150 ----
   # Modes: 1 fixed_rx (one write of exactly `length` bytes per arm), 2 framed_rx
   # (1-byte length header transaction, then a payload transaction of that length),

@@ -78,6 +78,11 @@ DEF_FIXTURE_UART = (0x0000, 0x0021, 0)
 FIXTURE_UART_OP_CONFIGURE = 0x01
 FIXTURE_UART_OP_WRITE = 0x02
 FIXTURE_UART_OP_READ = 0x03
+DEF_FIXTURE_CAPTURE = (0x0000, 0x0022, 0)
+FIXTURE_CAPTURE_OP_CONFIGURE = 0x01
+FIXTURE_CAPTURE_OP_ARM = 0x02
+FIXTURE_CAPTURE_OP_STATUS = 0x03
+FIXTURE_CAPTURE_OP_READ = 0x04
 DEF_P4_I2C_TARGET = (0x0100, 0x0001, 0)
 P4_I2C_TARGET_OP_CONFIGURE = 0x01
 P4_I2C_TARGET_OP_ARM_RX = 0x02
@@ -1186,6 +1191,151 @@ class FixtureUartReadResult:
 
 
 @dataclass
+class FixtureCaptureConfigureRequest:
+    sample_rate_hz: int = 0
+    samples: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<I', self.sample_rate_hz)
+        out += struct.pack('<I', self.samples)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'FixtureCaptureConfigureRequest':
+        n = 0
+        if len(data) != 8: raise ValueError('payload length must be 8')
+        sample_rate_hz = struct.unpack_from('<I', data, n)[0]; n += 4
+        samples = struct.unpack_from('<I', data, n)[0]; n += 4
+        return cls(sample_rate_hz=sample_rate_hz, samples=samples)
+
+
+@dataclass
+class FixtureCaptureConfigureResult:
+    actual_sample_rate_hz: int = 0
+    samples: int = 0
+    lines: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<I', self.actual_sample_rate_hz)
+        out += struct.pack('<I', self.samples)
+        out += struct.pack('B', self.lines)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'FixtureCaptureConfigureResult':
+        n = 0
+        if len(data) != 9: raise ValueError('payload length must be 9')
+        actual_sample_rate_hz = struct.unpack_from('<I', data, n)[0]; n += 4
+        samples = struct.unpack_from('<I', data, n)[0]; n += 4
+        lines = struct.unpack_from('B', data, n)[0]; n += 1
+        return cls(actual_sample_rate_hz=actual_sample_rate_hz, samples=samples, lines=lines)
+
+
+@dataclass
+class FixtureCaptureArmRequest:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'FixtureCaptureArmRequest':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class FixtureCaptureArmResult:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'FixtureCaptureArmResult':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class FixtureCaptureStatusRequest:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'FixtureCaptureStatusRequest':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class FixtureCaptureStatusResult:
+    flags: int = 0
+    samples: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.flags)
+        out += struct.pack('<I', self.samples)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'FixtureCaptureStatusResult':
+        n = 0
+        if len(data) != 5: raise ValueError('payload length must be 5')
+        flags = struct.unpack_from('B', data, n)[0]; n += 1
+        samples = struct.unpack_from('<I', data, n)[0]; n += 4
+        return cls(flags=flags, samples=samples)
+
+
+@dataclass
+class FixtureCaptureReadRequest:
+    offset: int = 0
+    maximum: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<I', self.offset)
+        out += struct.pack('<H', self.maximum)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'FixtureCaptureReadRequest':
+        n = 0
+        if len(data) != 6: raise ValueError('payload length must be 6')
+        offset = struct.unpack_from('<I', data, n)[0]; n += 4
+        maximum = struct.unpack_from('<H', data, n)[0]; n += 2
+        return cls(offset=offset, maximum=maximum)
+
+
+@dataclass
+class FixtureCaptureReadResult:
+    data: bytes = b''
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += bytes(self.data)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'FixtureCaptureReadResult':
+        n = 0
+        if len(data) < 0: raise ValueError('short payload')
+        data = bytes(data[n:]); n = len(data)
+        return cls(data=data)
+
+
+@dataclass
 class P4I2CTargetConfigureRequest:
     address: int = 0
     mode: int = 0
@@ -1444,6 +1594,14 @@ PAYLOAD_CLASSES = {
     ('fixture_uart', 'write', 'result'): FixtureUartWriteResult,
     ('fixture_uart', 'read', 'request'): FixtureUartReadRequest,
     ('fixture_uart', 'read', 'result'): FixtureUartReadResult,
+    ('fixture_capture', 'configure', 'request'): FixtureCaptureConfigureRequest,
+    ('fixture_capture', 'configure', 'result'): FixtureCaptureConfigureResult,
+    ('fixture_capture', 'arm', 'request'): FixtureCaptureArmRequest,
+    ('fixture_capture', 'arm', 'result'): FixtureCaptureArmResult,
+    ('fixture_capture', 'status', 'request'): FixtureCaptureStatusRequest,
+    ('fixture_capture', 'status', 'result'): FixtureCaptureStatusResult,
+    ('fixture_capture', 'read', 'request'): FixtureCaptureReadRequest,
+    ('fixture_capture', 'read', 'result'): FixtureCaptureReadResult,
     ('p4_i2c_target', 'configure', 'request'): P4I2CTargetConfigureRequest,
     ('p4_i2c_target', 'configure', 'result'): P4I2CTargetConfigureResult,
     ('p4_i2c_target', 'arm_rx', 'request'): P4I2CTargetArmRxRequest,
