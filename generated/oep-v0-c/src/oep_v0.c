@@ -1659,6 +1659,41 @@ bool oep_v0_p4_i2c_target_read_hw_result_unpack(const uint8_t *in, size_t len, s
     return true;
 }
 
+size_t oep_v0_p4_i2c_target_set_stretch_request_pack(const struct oep_v0_p4_i2c_target_set_stretch_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->stretch_us;
+    out[n++] = (uint8_t)(value->stretch_us >> 8);
+    out[n++] = (uint8_t)(value->stretch_us >> 16);
+    out[n++] = (uint8_t)(value->stretch_us >> 24);
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_i2c_target_set_stretch_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_set_stretch_request *value) {
+    size_t n = 0;
+    if (len != 4u) return false;
+    value->stretch_us = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_p4_i2c_target_set_stretch_result_pack(const struct oep_v0_p4_i2c_target_set_stretch_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_i2c_target_set_stretch_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_set_stretch_result *value) {
+    size_t n = 0;
+    if (len != 0u) return false;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
 uint8_t oep_v0_message_role(const uint8_t *msg, size_t len) {
     if (!len) return 0;
     switch (msg[0]) {

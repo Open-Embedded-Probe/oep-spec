@@ -92,6 +92,7 @@ P4_I2C_TARGET_OP_PRELOAD_TX = 0x04
 P4_I2C_TARGET_OP_STATUS = 0x05
 P4_I2C_TARGET_OP_RESET = 0x06
 P4_I2C_TARGET_OP_READ_HW = 0x10
+P4_I2C_TARGET_OP_SET_STRETCH = 0x11
 
 @dataclass
 class OfferedFunction:
@@ -1594,6 +1595,38 @@ class P4I2CTargetReadHwResult:
         return cls(sr=sr, int_raw=int_raw, fifo_st=fifo_st, ctr=ctr, slave_addr=slave_addr, filter_cfg=filter_cfg, scl_stretch_conf=scl_stretch_conf)
 
 
+@dataclass
+class P4I2CTargetSetStretchRequest:
+    stretch_us: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<I', self.stretch_us)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetSetStretchRequest':
+        n = 0
+        if len(data) != 4: raise ValueError('payload length must be 4')
+        stretch_us = struct.unpack_from('<I', data, n)[0]; n += 4
+        return cls(stretch_us=stretch_us)
+
+
+@dataclass
+class P4I2CTargetSetStretchResult:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetSetStretchResult':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
 HEADER_CLASSES = {'request': RequestHeader, 'result': ResultHeader, 'activity_update': ActivityUpdateHeader, 'activity_outcome': ActivityOutcomeHeader, 'notification': NotificationHeader, 'data': DataHeader}
 PAYLOAD_CLASSES = {
     ('core', 'confirm', 'request'): CoreConfirmRequest,
@@ -1668,6 +1701,8 @@ PAYLOAD_CLASSES = {
     ('p4_i2c_target', 'reset', 'result'): P4I2CTargetResetResult,
     ('p4_i2c_target', 'read_hw', 'request'): P4I2CTargetReadHwRequest,
     ('p4_i2c_target', 'read_hw', 'result'): P4I2CTargetReadHwResult,
+    ('p4_i2c_target', 'set_stretch', 'request'): P4I2CTargetSetStretchRequest,
+    ('p4_i2c_target', 'set_stretch', 'result'): P4I2CTargetSetStretchResult,
 }
 
 def message_role(msg: bytes) -> int:

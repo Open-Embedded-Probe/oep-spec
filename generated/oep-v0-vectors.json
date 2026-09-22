@@ -2712,6 +2712,70 @@
    "operation": "read_hw",
    "direction": "result",
    "bytes": "1122334412233445132435461425364715263748162738491728394a00"
+  },
+  {
+   "name": "p4_i2c_target.set_stretch.request.0",
+   "kind": "payload",
+   "definition": "p4_i2c_target",
+   "operation": "set_stretch",
+   "direction": "request",
+   "fields": {
+    "stretch_us": 1144201745
+   },
+   "bytes": "11223344"
+  },
+  {
+   "name": "p4_i2c_target.set_stretch.request.1",
+   "kind": "payload",
+   "definition": "p4_i2c_target",
+   "operation": "set_stretch",
+   "direction": "request",
+   "fields": {
+    "stretch_us": 1262102808
+   },
+   "bytes": "18293a4b"
+  },
+  {
+   "name": "p4_i2c_target.set_stretch.request.truncated",
+   "kind": "payload_reject",
+   "definition": "p4_i2c_target",
+   "operation": "set_stretch",
+   "direction": "request",
+   "bytes": "112233"
+  },
+  {
+   "name": "p4_i2c_target.set_stretch.request.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_i2c_target",
+   "operation": "set_stretch",
+   "direction": "request",
+   "bytes": "1122334400"
+  },
+  {
+   "name": "p4_i2c_target.set_stretch.result.0",
+   "kind": "payload",
+   "definition": "p4_i2c_target",
+   "operation": "set_stretch",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_i2c_target.set_stretch.result.1",
+   "kind": "payload",
+   "definition": "p4_i2c_target",
+   "operation": "set_stretch",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_i2c_target.set_stretch.result.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_i2c_target",
+   "operation": "set_stretch",
+   "direction": "result",
+   "bytes": "00"
   }
  ]
 }
