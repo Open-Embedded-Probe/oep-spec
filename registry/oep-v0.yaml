@@ -135,6 +135,13 @@ definitions:
       # after the reset. DMSTATUS alone is not evidence: on CH32X035 the hart
       # stays parked at the reset vector in ~4 % of debug resets while DMSTATUS
       # says allrunning (E158, 2026-09-22). mode 0 = system reset then run.
+      # mode 0 = system reset through the debug module (ndmreset), the target runs its
+      # application. mode 1 = product bootloader: on QingKe V2 parts with the UIAPduino
+      # bootloader the probe injects the E129 RAM payload (BOOT_MODE, PD4/USB D- low as a
+      # detach, PFIC software reset executed by the CPU) so the part re-enumerates as HID
+      # 1209:b803; mode 2 = normalise to user mode the same way (E130: clear BOOT_MODE,
+      # software reset). Modes 1/2 are rejected (unavailable) where the profile has no
+      # payload; confirm is ignored for them and flags bit0 says the payload ran.
       # confirm 0 = report the DM view only; 1 = also halt briefly, sample the
       # PC, resume; a sample at the reset vector counts as "parked, released by
       # the resume" and is re-sampled, a failed halt redoes the reset sequence.
