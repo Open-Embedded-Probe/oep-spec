@@ -1625,17 +1625,35 @@ size_t oep_v0_p4_i2c_target_read_hw_result_pack(const struct oep_v0_p4_i2c_targe
     out[n++] = (uint8_t)(value->ctr >> 8);
     out[n++] = (uint8_t)(value->ctr >> 16);
     out[n++] = (uint8_t)(value->ctr >> 24);
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->slave_addr;
+    out[n++] = (uint8_t)(value->slave_addr >> 8);
+    out[n++] = (uint8_t)(value->slave_addr >> 16);
+    out[n++] = (uint8_t)(value->slave_addr >> 24);
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->filter_cfg;
+    out[n++] = (uint8_t)(value->filter_cfg >> 8);
+    out[n++] = (uint8_t)(value->filter_cfg >> 16);
+    out[n++] = (uint8_t)(value->filter_cfg >> 24);
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->scl_stretch_conf;
+    out[n++] = (uint8_t)(value->scl_stretch_conf >> 8);
+    out[n++] = (uint8_t)(value->scl_stretch_conf >> 16);
+    out[n++] = (uint8_t)(value->scl_stretch_conf >> 24);
     (void)value; (void)out; (void)cap;
     return n;
 }
 
 bool oep_v0_p4_i2c_target_read_hw_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_read_hw_result *value) {
     size_t n = 0;
-    if (len != 16u) return false;
+    if (len != 28u) return false;
     value->sr = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
     value->int_raw = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
     value->fifo_st = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
     value->ctr = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    value->slave_addr = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    value->filter_cfg = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    value->scl_stretch_conf = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
     (void)n; (void)value;
     (void)in;
     return true;
