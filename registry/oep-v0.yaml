@@ -305,3 +305,11 @@ definitions:
         request: []
         result: [{name: sr, type: u32}, {name: int_raw, type: u32}, {name: fifo_st, type: u32}, {name: ctr, type: u32},
                  {name: slave_addr, type: u32}, {name: filter_cfg, type: u32}, {name: scl_stretch_conf, type: u32}]
+      # Deliberate SCL stretching for master tests (2026-09-22, X035 worklist P3 row 6): with a
+      # nonzero stretch_us the ESP-IDF slave stretches SCL at address match / TX empty / RX full /
+      # ACK, and the probe holds each stretch for stretch_us before the driver releases it.
+      # 0 = off (default). Takes effect at the next configure. Bounded to 100000 us.
+      - name: set_stretch
+        op: 0x11
+        request: [{name: stretch_us, type: u32}]
+        result: []

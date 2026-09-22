@@ -275,6 +275,13 @@ static const uint8_t oep_v0_vec_262[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x3
 static const uint8_t oep_v0_vec_263[] = {0x18, 0x29, 0x3a, 0x4b, 0x19, 0x2a, 0x3b, 0x4c, 0x1a, 0x2b, 0x3c, 0x4d, 0x1b, 0x2c, 0x3d, 0x4e, 0x1c, 0x2d, 0x3e, 0x4f, 0x1d, 0x2e, 0x3f, 0x50, 0x1e, 0x2f, 0x40, 0x51};
 static const uint8_t oep_v0_vec_264[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x35, 0x46, 0x14, 0x25, 0x36, 0x47, 0x15, 0x26, 0x37, 0x48, 0x16, 0x27, 0x38, 0x49, 0x17, 0x28, 0x39};
 static const uint8_t oep_v0_vec_265[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x35, 0x46, 0x14, 0x25, 0x36, 0x47, 0x15, 0x26, 0x37, 0x48, 0x16, 0x27, 0x38, 0x49, 0x17, 0x28, 0x39, 0x4a, 0x00};
+static const uint8_t oep_v0_vec_266[] = {0x11, 0x22, 0x33, 0x44};
+static const uint8_t oep_v0_vec_267[] = {0x18, 0x29, 0x3a, 0x4b};
+static const uint8_t oep_v0_vec_268[] = {0x11, 0x22, 0x33};
+static const uint8_t oep_v0_vec_269[] = {0x11, 0x22, 0x33, 0x44, 0x00};
+static const uint8_t oep_v0_vec_270[] = {0};
+static const uint8_t oep_v0_vec_271[] = {0};
+static const uint8_t oep_v0_vec_272[] = {0x00};
 
 static int oep_v0_rt_request_header(const uint8_t *in, size_t len) {
     struct oep_v0_request_header v; size_t hl = 0; uint8_t out[512];
@@ -816,6 +823,20 @@ static int oep_v0_rt_p4_i2c_target_read_hw_result(const uint8_t *in, size_t len)
     size_t n = oep_v0_p4_i2c_target_read_hw_result_pack(&v, out, sizeof out);
     return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
 }
+static int oep_v0_rt_p4_i2c_target_set_stretch_request(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_i2c_target_set_stretch_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_i2c_target_set_stretch_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_i2c_target_set_stretch_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_p4_i2c_target_set_stretch_result(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_i2c_target_set_stretch_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_i2c_target_set_stretch_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_i2c_target_set_stretch_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
 
 static const struct oep_v0_vector oep_v0_vectors[] = {
     {"header.request.0", oep_v0_vec_0, sizeof oep_v0_vec_0, 0, oep_v0_rt_request_header},
@@ -1084,6 +1105,13 @@ static const struct oep_v0_vector oep_v0_vectors[] = {
     {"p4_i2c_target.read_hw.result.1", oep_v0_vec_263, sizeof oep_v0_vec_263, 0, oep_v0_rt_p4_i2c_target_read_hw_result},
     {"p4_i2c_target.read_hw.result.truncated", oep_v0_vec_264, sizeof oep_v0_vec_264, 1, oep_v0_rt_p4_i2c_target_read_hw_result},
     {"p4_i2c_target.read_hw.result.trailing", oep_v0_vec_265, sizeof oep_v0_vec_265, 1, oep_v0_rt_p4_i2c_target_read_hw_result},
+    {"p4_i2c_target.set_stretch.request.0", oep_v0_vec_266, sizeof oep_v0_vec_266, 0, oep_v0_rt_p4_i2c_target_set_stretch_request},
+    {"p4_i2c_target.set_stretch.request.1", oep_v0_vec_267, sizeof oep_v0_vec_267, 0, oep_v0_rt_p4_i2c_target_set_stretch_request},
+    {"p4_i2c_target.set_stretch.request.truncated", oep_v0_vec_268, sizeof oep_v0_vec_268, 1, oep_v0_rt_p4_i2c_target_set_stretch_request},
+    {"p4_i2c_target.set_stretch.request.trailing", oep_v0_vec_269, sizeof oep_v0_vec_269, 1, oep_v0_rt_p4_i2c_target_set_stretch_request},
+    {"p4_i2c_target.set_stretch.result.0", oep_v0_vec_270, sizeof oep_v0_vec_270 - 1, 0, oep_v0_rt_p4_i2c_target_set_stretch_result},
+    {"p4_i2c_target.set_stretch.result.1", oep_v0_vec_271, sizeof oep_v0_vec_271 - 1, 0, oep_v0_rt_p4_i2c_target_set_stretch_result},
+    {"p4_i2c_target.set_stretch.result.trailing", oep_v0_vec_272, sizeof oep_v0_vec_272, 1, oep_v0_rt_p4_i2c_target_set_stretch_result},
 };
 #define OEP_V0_VECTOR_COUNT (sizeof oep_v0_vectors / sizeof oep_v0_vectors[0])
 
