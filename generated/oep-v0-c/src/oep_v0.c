@@ -1588,6 +1588,59 @@ bool oep_v0_p4_i2c_target_reset_result_unpack(const uint8_t *in, size_t len, str
     return true;
 }
 
+size_t oep_v0_p4_i2c_target_read_hw_request_pack(const struct oep_v0_p4_i2c_target_read_hw_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_i2c_target_read_hw_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_read_hw_request *value) {
+    size_t n = 0;
+    if (len != 0u) return false;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_p4_i2c_target_read_hw_result_pack(const struct oep_v0_p4_i2c_target_read_hw_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->sr;
+    out[n++] = (uint8_t)(value->sr >> 8);
+    out[n++] = (uint8_t)(value->sr >> 16);
+    out[n++] = (uint8_t)(value->sr >> 24);
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->int_raw;
+    out[n++] = (uint8_t)(value->int_raw >> 8);
+    out[n++] = (uint8_t)(value->int_raw >> 16);
+    out[n++] = (uint8_t)(value->int_raw >> 24);
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->fifo_st;
+    out[n++] = (uint8_t)(value->fifo_st >> 8);
+    out[n++] = (uint8_t)(value->fifo_st >> 16);
+    out[n++] = (uint8_t)(value->fifo_st >> 24);
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->ctr;
+    out[n++] = (uint8_t)(value->ctr >> 8);
+    out[n++] = (uint8_t)(value->ctr >> 16);
+    out[n++] = (uint8_t)(value->ctr >> 24);
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_i2c_target_read_hw_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_read_hw_result *value) {
+    size_t n = 0;
+    if (len != 16u) return false;
+    value->sr = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    value->int_raw = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    value->fifo_st = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    value->ctr = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
 uint8_t oep_v0_message_role(const uint8_t *msg, size_t len) {
     if (!len) return 0;
     switch (msg[0]) {

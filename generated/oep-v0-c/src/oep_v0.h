@@ -117,6 +117,7 @@ extern "C" {
 #define OEP_V0_P4_I2C_TARGET_OP_PRELOAD_TX 0x04u
 #define OEP_V0_P4_I2C_TARGET_OP_STATUS 0x05u
 #define OEP_V0_P4_I2C_TARGET_OP_RESET 0x06u
+#define OEP_V0_P4_I2C_TARGET_OP_READ_HW 0x10u
 
 struct oep_v0_offered_function {
     uint16_t function;
@@ -649,6 +650,21 @@ struct oep_v0_p4_i2c_target_reset_result {
 };
 size_t oep_v0_p4_i2c_target_reset_result_pack(const struct oep_v0_p4_i2c_target_reset_result *value, uint8_t *out, size_t cap);
 bool oep_v0_p4_i2c_target_reset_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_reset_result *value);
+
+struct oep_v0_p4_i2c_target_read_hw_request {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_i2c_target_read_hw_request_pack(const struct oep_v0_p4_i2c_target_read_hw_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_read_hw_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_read_hw_request *value);
+
+struct oep_v0_p4_i2c_target_read_hw_result {
+    uint32_t sr;
+    uint32_t int_raw;
+    uint32_t fifo_st;
+    uint32_t ctr;
+};
+size_t oep_v0_p4_i2c_target_read_hw_result_pack(const struct oep_v0_p4_i2c_target_read_hw_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_read_hw_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_read_hw_result *value);
 
 /* Returns the role byte of a message, or 0 when it is empty or unknown. */
 uint8_t oep_v0_message_role(const uint8_t *msg, size_t len);

@@ -268,6 +268,13 @@ static const uint8_t oep_v0_vec_255[] = {0x00};
 static const uint8_t oep_v0_vec_256[] = {0};
 static const uint8_t oep_v0_vec_257[] = {0};
 static const uint8_t oep_v0_vec_258[] = {0x00};
+static const uint8_t oep_v0_vec_259[] = {0};
+static const uint8_t oep_v0_vec_260[] = {0};
+static const uint8_t oep_v0_vec_261[] = {0x00};
+static const uint8_t oep_v0_vec_262[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x35, 0x46, 0x14, 0x25, 0x36, 0x47};
+static const uint8_t oep_v0_vec_263[] = {0x18, 0x29, 0x3a, 0x4b, 0x19, 0x2a, 0x3b, 0x4c, 0x1a, 0x2b, 0x3c, 0x4d, 0x1b, 0x2c, 0x3d, 0x4e};
+static const uint8_t oep_v0_vec_264[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x35, 0x46, 0x14, 0x25, 0x36};
+static const uint8_t oep_v0_vec_265[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x35, 0x46, 0x14, 0x25, 0x36, 0x47, 0x00};
 
 static int oep_v0_rt_request_header(const uint8_t *in, size_t len) {
     struct oep_v0_request_header v; size_t hl = 0; uint8_t out[512];
@@ -795,6 +802,20 @@ static int oep_v0_rt_p4_i2c_target_reset_result(const uint8_t *in, size_t len) {
     size_t n = oep_v0_p4_i2c_target_reset_result_pack(&v, out, sizeof out);
     return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
 }
+static int oep_v0_rt_p4_i2c_target_read_hw_request(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_i2c_target_read_hw_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_i2c_target_read_hw_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_i2c_target_read_hw_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_p4_i2c_target_read_hw_result(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_i2c_target_read_hw_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_i2c_target_read_hw_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_i2c_target_read_hw_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
 
 static const struct oep_v0_vector oep_v0_vectors[] = {
     {"header.request.0", oep_v0_vec_0, sizeof oep_v0_vec_0, 0, oep_v0_rt_request_header},
@@ -1056,6 +1077,13 @@ static const struct oep_v0_vector oep_v0_vectors[] = {
     {"p4_i2c_target.reset.result.0", oep_v0_vec_256, sizeof oep_v0_vec_256 - 1, 0, oep_v0_rt_p4_i2c_target_reset_result},
     {"p4_i2c_target.reset.result.1", oep_v0_vec_257, sizeof oep_v0_vec_257 - 1, 0, oep_v0_rt_p4_i2c_target_reset_result},
     {"p4_i2c_target.reset.result.trailing", oep_v0_vec_258, sizeof oep_v0_vec_258, 1, oep_v0_rt_p4_i2c_target_reset_result},
+    {"p4_i2c_target.read_hw.request.0", oep_v0_vec_259, sizeof oep_v0_vec_259 - 1, 0, oep_v0_rt_p4_i2c_target_read_hw_request},
+    {"p4_i2c_target.read_hw.request.1", oep_v0_vec_260, sizeof oep_v0_vec_260 - 1, 0, oep_v0_rt_p4_i2c_target_read_hw_request},
+    {"p4_i2c_target.read_hw.request.trailing", oep_v0_vec_261, sizeof oep_v0_vec_261, 1, oep_v0_rt_p4_i2c_target_read_hw_request},
+    {"p4_i2c_target.read_hw.result.0", oep_v0_vec_262, sizeof oep_v0_vec_262, 0, oep_v0_rt_p4_i2c_target_read_hw_result},
+    {"p4_i2c_target.read_hw.result.1", oep_v0_vec_263, sizeof oep_v0_vec_263, 0, oep_v0_rt_p4_i2c_target_read_hw_result},
+    {"p4_i2c_target.read_hw.result.truncated", oep_v0_vec_264, sizeof oep_v0_vec_264, 1, oep_v0_rt_p4_i2c_target_read_hw_result},
+    {"p4_i2c_target.read_hw.result.trailing", oep_v0_vec_265, sizeof oep_v0_vec_265, 1, oep_v0_rt_p4_i2c_target_read_hw_result},
 };
 #define OEP_V0_VECTOR_COUNT (sizeof oep_v0_vectors / sizeof oep_v0_vectors[0])
 

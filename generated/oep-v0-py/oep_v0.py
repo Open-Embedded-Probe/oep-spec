@@ -90,6 +90,7 @@ P4_I2C_TARGET_OP_READ_RX = 0x03
 P4_I2C_TARGET_OP_PRELOAD_TX = 0x04
 P4_I2C_TARGET_OP_STATUS = 0x05
 P4_I2C_TARGET_OP_RESET = 0x06
+P4_I2C_TARGET_OP_READ_HW = 0x10
 
 @dataclass
 class OfferedFunction:
@@ -1542,6 +1543,47 @@ class P4I2CTargetResetResult:
         return cls()
 
 
+@dataclass
+class P4I2CTargetReadHwRequest:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetReadHwRequest':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class P4I2CTargetReadHwResult:
+    sr: int = 0
+    int_raw: int = 0
+    fifo_st: int = 0
+    ctr: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<I', self.sr)
+        out += struct.pack('<I', self.int_raw)
+        out += struct.pack('<I', self.fifo_st)
+        out += struct.pack('<I', self.ctr)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetReadHwResult':
+        n = 0
+        if len(data) != 16: raise ValueError('payload length must be 16')
+        sr = struct.unpack_from('<I', data, n)[0]; n += 4
+        int_raw = struct.unpack_from('<I', data, n)[0]; n += 4
+        fifo_st = struct.unpack_from('<I', data, n)[0]; n += 4
+        ctr = struct.unpack_from('<I', data, n)[0]; n += 4
+        return cls(sr=sr, int_raw=int_raw, fifo_st=fifo_st, ctr=ctr)
+
+
 HEADER_CLASSES = {'request': RequestHeader, 'result': ResultHeader, 'activity_update': ActivityUpdateHeader, 'activity_outcome': ActivityOutcomeHeader, 'notification': NotificationHeader, 'data': DataHeader}
 PAYLOAD_CLASSES = {
     ('core', 'confirm', 'request'): CoreConfirmRequest,
@@ -1614,6 +1656,8 @@ PAYLOAD_CLASSES = {
     ('p4_i2c_target', 'status', 'result'): P4I2CTargetStatusResult,
     ('p4_i2c_target', 'reset', 'request'): P4I2CTargetResetRequest,
     ('p4_i2c_target', 'reset', 'result'): P4I2CTargetResetResult,
+    ('p4_i2c_target', 'read_hw', 'request'): P4I2CTargetReadHwRequest,
+    ('p4_i2c_target', 'read_hw', 'result'): P4I2CTargetReadHwResult,
 }
 
 def message_role(msg: bytes) -> int:
