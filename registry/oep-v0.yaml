@@ -48,6 +48,12 @@ headers:
   notification: [{name: function, type: u16}, {name: kind, type: u8}]
   data: [{name: activity, type: u16}, {name: kind, type: u8}, {name: sequence, type: u16}]
 
+# Owners: 0x0000 = OEP standard definitions. Vendor (probe-specific) tools use
+# their own owner id; they may be offered next to the rounded standard tool.
+owners:
+  oep: 0x0000
+  oep_probe_arduino: 0x0100   # ESP32 tools of the oep-probe-arduino project
+
 # TLV: tag(u8) len(u8) value. Bit 7 of the tag marks critical.
 tlv:
   critical_mask: 0x80
@@ -214,3 +220,38 @@ definitions:
         op: 0x03
         request: [{name: maximum, type: u16}]
         result: [{name: data, type: bytes}]
+
+  # ---- vendor tool: ESP32-P4 hardware I2C target (ESP-IDF slave v1), E147-E150 ----
+  # Modes: 1 fixed_rx (one write of exactly `length` bytes per arm), 2 framed_rx
+  # (1-byte length header transaction, then a payload transaction of that length),
+  # 3 preloaded_tx (host preloads fixed response slots; each slot carries one
+  # filler byte after the payload, E150). Roles for the plan: 1 = SDA, 2 = SCL.
+  - name: p4_i2c_target
+    owner: 0x0100
+    id: 0x0001
+    revision: 0
+    operations:
+      - name: configure
+        op: 0x01
+        request: [{name: address, type: u8}, {name: mode, type: u8}]
+        result: []
+      - name: arm_rx
+        op: 0x02
+        request: [{name: length, type: u16}]
+        result: []
+      - name: read_rx
+        op: 0x03
+        request: []
+        result: [{name: pending, type: u8}, {name: data, type: bytes}]
+      - name: preload_tx
+        op: 0x04
+        request: [{name: data, type: bytes}]
+        result: [{name: slots, type: u8}]
+      - name: status
+        op: 0x05
+        request: []
+        result: [{name: flags, type: u8}, {name: rx_frames, type: u32}, {name: tx_slots, type: u8}, {name: errors, type: u16}]
+      - name: reset
+        op: 0x06
+        request: []
+        result: []
