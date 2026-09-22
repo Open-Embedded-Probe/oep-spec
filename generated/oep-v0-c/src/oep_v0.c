@@ -668,6 +668,81 @@ bool oep_v0_target_control_resume_result_unpack(const uint8_t *in, size_t len, s
     return true;
 }
 
+size_t oep_v0_target_control_read_dmi_request_pack(const struct oep_v0_target_control_read_dmi_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->address;
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_target_control_read_dmi_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_read_dmi_request *value) {
+    size_t n = 0;
+    if (len != 1u) return false;
+    value->address = (uint8_t)in[n]; n += 1u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_target_control_read_dmi_result_pack(const struct oep_v0_target_control_read_dmi_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->value;
+    out[n++] = (uint8_t)(value->value >> 8);
+    out[n++] = (uint8_t)(value->value >> 16);
+    out[n++] = (uint8_t)(value->value >> 24);
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_target_control_read_dmi_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_read_dmi_result *value) {
+    size_t n = 0;
+    if (len != 4u) return false;
+    value->value = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_target_control_read_register_request_pack(const struct oep_v0_target_control_read_register_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 2u) return 0;
+    out[n++] = (uint8_t)value->regno;
+    out[n++] = (uint8_t)(value->regno >> 8);
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_target_control_read_register_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_read_register_request *value) {
+    size_t n = 0;
+    if (len != 2u) return false;
+    value->regno = (uint16_t)in[n] | ((uint16_t)in[n + 1] << 8); n += 2u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_target_control_read_register_result_pack(const struct oep_v0_target_control_read_register_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->value;
+    out[n++] = (uint8_t)(value->value >> 8);
+    out[n++] = (uint8_t)(value->value >> 16);
+    out[n++] = (uint8_t)(value->value >> 24);
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_target_control_read_register_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_read_register_result *value) {
+    size_t n = 0;
+    if (len != 4u) return false;
+    value->value = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
 size_t oep_v0_target_memory_read_request_pack(const struct oep_v0_target_memory_read_request *value, uint8_t *out, size_t cap) {
     size_t n = 0;
     if (cap - n < 4u) return 0;

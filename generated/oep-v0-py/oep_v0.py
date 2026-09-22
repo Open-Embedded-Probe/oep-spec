@@ -61,6 +61,8 @@ TARGET_CONTROL_OP_STATUS = 0x01
 TARGET_CONTROL_OP_RESET = 0x02
 TARGET_CONTROL_OP_HALT = 0x03
 TARGET_CONTROL_OP_RESUME = 0x04
+TARGET_CONTROL_OP_READ_DMI = 0x10
+TARGET_CONTROL_OP_READ_REGISTER = 0x11
 DEF_TARGET_MEMORY = (0x0000, 0x0011, 0)
 TARGET_MEMORY_OP_READ = 0x01
 TARGET_MEMORY_OP_WRITE = 0x02
@@ -707,6 +709,74 @@ class TargetControlResumeResult:
 
 
 @dataclass
+class TargetControlReadDmiRequest:
+    address: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.address)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetControlReadDmiRequest':
+        n = 0
+        if len(data) != 1: raise ValueError('payload length must be 1')
+        address = struct.unpack_from('B', data, n)[0]; n += 1
+        return cls(address=address)
+
+
+@dataclass
+class TargetControlReadDmiResult:
+    value: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<I', self.value)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetControlReadDmiResult':
+        n = 0
+        if len(data) != 4: raise ValueError('payload length must be 4')
+        value = struct.unpack_from('<I', data, n)[0]; n += 4
+        return cls(value=value)
+
+
+@dataclass
+class TargetControlReadRegisterRequest:
+    regno: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<H', self.regno)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetControlReadRegisterRequest':
+        n = 0
+        if len(data) != 2: raise ValueError('payload length must be 2')
+        regno = struct.unpack_from('<H', data, n)[0]; n += 2
+        return cls(regno=regno)
+
+
+@dataclass
+class TargetControlReadRegisterResult:
+    value: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<I', self.value)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetControlReadRegisterResult':
+        n = 0
+        if len(data) != 4: raise ValueError('payload length must be 4')
+        value = struct.unpack_from('<I', data, n)[0]; n += 4
+        return cls(value=value)
+
+
+@dataclass
 class TargetMemoryReadRequest:
     address: int = 0
     length: int = 0
@@ -1123,6 +1193,10 @@ PAYLOAD_CLASSES = {
     ('target_control', 'halt', 'result'): TargetControlHaltResult,
     ('target_control', 'resume', 'request'): TargetControlResumeRequest,
     ('target_control', 'resume', 'result'): TargetControlResumeResult,
+    ('target_control', 'read_dmi', 'request'): TargetControlReadDmiRequest,
+    ('target_control', 'read_dmi', 'result'): TargetControlReadDmiResult,
+    ('target_control', 'read_register', 'request'): TargetControlReadRegisterRequest,
+    ('target_control', 'read_register', 'result'): TargetControlReadRegisterResult,
     ('target_memory', 'read', 'request'): TargetMemoryReadRequest,
     ('target_memory', 'read', 'result'): TargetMemoryReadResult,
     ('target_memory', 'write', 'request'): TargetMemoryWriteRequest,

@@ -70,6 +70,8 @@ extern "C" {
 #define OEP_V0_TARGET_CONTROL_OP_RESET 0x02u
 #define OEP_V0_TARGET_CONTROL_OP_HALT 0x03u
 #define OEP_V0_TARGET_CONTROL_OP_RESUME 0x04u
+#define OEP_V0_TARGET_CONTROL_OP_READ_DMI 0x10u
+#define OEP_V0_TARGET_CONTROL_OP_READ_REGISTER 0x11u
 
 #define OEP_V0_DEF_TARGET_MEMORY_OWNER 0x0000u
 #define OEP_V0_DEF_TARGET_MEMORY_ID 0x0011u
@@ -323,6 +325,30 @@ struct oep_v0_target_control_resume_result {
 };
 size_t oep_v0_target_control_resume_result_pack(const struct oep_v0_target_control_resume_result *value, uint8_t *out, size_t cap);
 bool oep_v0_target_control_resume_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_resume_result *value);
+
+struct oep_v0_target_control_read_dmi_request {
+    uint8_t address;
+};
+size_t oep_v0_target_control_read_dmi_request_pack(const struct oep_v0_target_control_read_dmi_request *value, uint8_t *out, size_t cap);
+bool oep_v0_target_control_read_dmi_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_read_dmi_request *value);
+
+struct oep_v0_target_control_read_dmi_result {
+    uint32_t value;
+};
+size_t oep_v0_target_control_read_dmi_result_pack(const struct oep_v0_target_control_read_dmi_result *value, uint8_t *out, size_t cap);
+bool oep_v0_target_control_read_dmi_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_read_dmi_result *value);
+
+struct oep_v0_target_control_read_register_request {
+    uint16_t regno;
+};
+size_t oep_v0_target_control_read_register_request_pack(const struct oep_v0_target_control_read_register_request *value, uint8_t *out, size_t cap);
+bool oep_v0_target_control_read_register_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_read_register_request *value);
+
+struct oep_v0_target_control_read_register_result {
+    uint32_t value;
+};
+size_t oep_v0_target_control_read_register_result_pack(const struct oep_v0_target_control_read_register_result *value, uint8_t *out, size_t cap);
+bool oep_v0_target_control_read_register_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_read_register_result *value);
 
 struct oep_v0_target_memory_read_request {
     uint32_t address;
