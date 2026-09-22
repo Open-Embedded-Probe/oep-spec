@@ -113,6 +113,11 @@ client は confirmation で上限を受け取り、それ以上を送らない�
    read-back 比較の結果を含める。host は parity が通ったことを成功の根拠にしない。
 7. **PHY は session ごとに margin を確かめる。** 追加遅延 0 の clock は run によって崩れることがある。probe は attach 時に
    既知 register（DMSTATUS）の読出しを一定回数行い、全数一致する最小の half period を選び、capability にはその実測値を返す。
+8. **完了条件は「状態 register」ではなく「証拠」で書く。** target.control reset は DMSTATUS の running を完了とせず、解放後に
+   PC を sample して **reset vector 以外を指した**ことを result（`flags` / `pc`）で返す。X035 では debug reset 後の hart が約 4 % で
+   reset vector に駐留し、その間も DMSTATUS は running を返した（E158、2026-09-22）。同じ理由で、host は「request が completed を
+   返した」ことより result の証拠 field を見る。証拠が取れない probe（低スペック）は `confirm=0` を受けて DM の見た目だけを返し、
+   host 側が UART banner などで補う。
 
 ## 7. まだ決めていないこと
 
