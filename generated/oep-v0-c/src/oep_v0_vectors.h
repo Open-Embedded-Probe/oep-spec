@@ -282,6 +282,38 @@ static const uint8_t oep_v0_vec_269[] = {0x11, 0x22, 0x33, 0x44, 0x00};
 static const uint8_t oep_v0_vec_270[] = {0};
 static const uint8_t oep_v0_vec_271[] = {0};
 static const uint8_t oep_v0_vec_272[] = {0x00};
+static const uint8_t oep_v0_vec_273[] = {0x11, 0x12};
+static const uint8_t oep_v0_vec_274[] = {0x18, 0x19};
+static const uint8_t oep_v0_vec_275[] = {0x11};
+static const uint8_t oep_v0_vec_276[] = {0x11, 0x12, 0x00};
+static const uint8_t oep_v0_vec_277[] = {0};
+static const uint8_t oep_v0_vec_278[] = {0};
+static const uint8_t oep_v0_vec_279[] = {0x00};
+static const uint8_t oep_v0_vec_280[] = {0x11, 0x22, 0xa1, 0xa2, 0xa3};
+static const uint8_t oep_v0_vec_281[] = {0x18, 0x29, 0xa8, 0xa9, 0xaa, 0xab};
+static const uint8_t oep_v0_vec_282[] = {0x11};
+static const uint8_t oep_v0_vec_283[] = {0};
+static const uint8_t oep_v0_vec_284[] = {0};
+static const uint8_t oep_v0_vec_285[] = {0x00};
+static const uint8_t oep_v0_vec_286[] = {0};
+static const uint8_t oep_v0_vec_287[] = {0};
+static const uint8_t oep_v0_vec_288[] = {0x00};
+static const uint8_t oep_v0_vec_289[] = {0x11, 0x12, 0x23, 0x34, 0x45, 0xa2, 0xa3, 0xa4};
+static const uint8_t oep_v0_vec_290[] = {0x18, 0x19, 0x2a, 0x3b, 0x4c, 0xa9, 0xaa, 0xab, 0xac};
+static const uint8_t oep_v0_vec_291[] = {0x11, 0x12, 0x23, 0x34};
+static const uint8_t oep_v0_vec_292[] = {0};
+static const uint8_t oep_v0_vec_293[] = {0};
+static const uint8_t oep_v0_vec_294[] = {0x00};
+static const uint8_t oep_v0_vec_295[] = {0x11, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24};
+static const uint8_t oep_v0_vec_296[] = {0x18, 0x19, 0x2a, 0x3b, 0x4c, 0x1a, 0x2b};
+static const uint8_t oep_v0_vec_297[] = {0x11, 0x12, 0x23, 0x34, 0x45, 0x13};
+static const uint8_t oep_v0_vec_298[] = {0x11, 0x12, 0x23, 0x34, 0x45, 0x13, 0x24, 0x00};
+static const uint8_t oep_v0_vec_299[] = {0};
+static const uint8_t oep_v0_vec_300[] = {0};
+static const uint8_t oep_v0_vec_301[] = {0x00};
+static const uint8_t oep_v0_vec_302[] = {0};
+static const uint8_t oep_v0_vec_303[] = {0};
+static const uint8_t oep_v0_vec_304[] = {0x00};
 
 static int oep_v0_rt_request_header(const uint8_t *in, size_t len) {
     struct oep_v0_request_header v; size_t hl = 0; uint8_t out[512];
@@ -837,6 +869,76 @@ static int oep_v0_rt_p4_i2c_target_set_stretch_result(const uint8_t *in, size_t 
     size_t n = oep_v0_p4_i2c_target_set_stretch_result_pack(&v, out, sizeof out);
     return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
 }
+static int oep_v0_rt_p4_spi_target_configure_request(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_spi_target_configure_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_spi_target_configure_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_spi_target_configure_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_p4_spi_target_configure_result(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_spi_target_configure_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_spi_target_configure_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_spi_target_configure_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_p4_spi_target_arm_request(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_spi_target_arm_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_spi_target_arm_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_spi_target_arm_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_p4_spi_target_arm_result(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_spi_target_arm_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_spi_target_arm_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_spi_target_arm_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_p4_spi_target_read_rx_request(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_spi_target_read_rx_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_spi_target_read_rx_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_spi_target_read_rx_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_p4_spi_target_read_rx_result(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_spi_target_read_rx_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_spi_target_read_rx_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_spi_target_read_rx_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_p4_spi_target_status_request(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_spi_target_status_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_spi_target_status_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_spi_target_status_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_p4_spi_target_status_result(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_spi_target_status_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_spi_target_status_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_spi_target_status_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_p4_spi_target_reset_request(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_spi_target_reset_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_spi_target_reset_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_spi_target_reset_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_p4_spi_target_reset_result(const uint8_t *in, size_t len) {
+    struct oep_v0_p4_spi_target_reset_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_p4_spi_target_reset_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_p4_spi_target_reset_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
 
 static const struct oep_v0_vector oep_v0_vectors[] = {
     {"header.request.0", oep_v0_vec_0, sizeof oep_v0_vec_0, 0, oep_v0_rt_request_header},
@@ -1112,6 +1214,38 @@ static const struct oep_v0_vector oep_v0_vectors[] = {
     {"p4_i2c_target.set_stretch.result.0", oep_v0_vec_270, sizeof oep_v0_vec_270 - 1, 0, oep_v0_rt_p4_i2c_target_set_stretch_result},
     {"p4_i2c_target.set_stretch.result.1", oep_v0_vec_271, sizeof oep_v0_vec_271 - 1, 0, oep_v0_rt_p4_i2c_target_set_stretch_result},
     {"p4_i2c_target.set_stretch.result.trailing", oep_v0_vec_272, sizeof oep_v0_vec_272, 1, oep_v0_rt_p4_i2c_target_set_stretch_result},
+    {"p4_spi_target.configure.request.0", oep_v0_vec_273, sizeof oep_v0_vec_273, 0, oep_v0_rt_p4_spi_target_configure_request},
+    {"p4_spi_target.configure.request.1", oep_v0_vec_274, sizeof oep_v0_vec_274, 0, oep_v0_rt_p4_spi_target_configure_request},
+    {"p4_spi_target.configure.request.truncated", oep_v0_vec_275, sizeof oep_v0_vec_275, 1, oep_v0_rt_p4_spi_target_configure_request},
+    {"p4_spi_target.configure.request.trailing", oep_v0_vec_276, sizeof oep_v0_vec_276, 1, oep_v0_rt_p4_spi_target_configure_request},
+    {"p4_spi_target.configure.result.0", oep_v0_vec_277, sizeof oep_v0_vec_277 - 1, 0, oep_v0_rt_p4_spi_target_configure_result},
+    {"p4_spi_target.configure.result.1", oep_v0_vec_278, sizeof oep_v0_vec_278 - 1, 0, oep_v0_rt_p4_spi_target_configure_result},
+    {"p4_spi_target.configure.result.trailing", oep_v0_vec_279, sizeof oep_v0_vec_279, 1, oep_v0_rt_p4_spi_target_configure_result},
+    {"p4_spi_target.arm.request.0", oep_v0_vec_280, sizeof oep_v0_vec_280, 0, oep_v0_rt_p4_spi_target_arm_request},
+    {"p4_spi_target.arm.request.1", oep_v0_vec_281, sizeof oep_v0_vec_281, 0, oep_v0_rt_p4_spi_target_arm_request},
+    {"p4_spi_target.arm.request.truncated", oep_v0_vec_282, sizeof oep_v0_vec_282, 1, oep_v0_rt_p4_spi_target_arm_request},
+    {"p4_spi_target.arm.result.0", oep_v0_vec_283, sizeof oep_v0_vec_283 - 1, 0, oep_v0_rt_p4_spi_target_arm_result},
+    {"p4_spi_target.arm.result.1", oep_v0_vec_284, sizeof oep_v0_vec_284 - 1, 0, oep_v0_rt_p4_spi_target_arm_result},
+    {"p4_spi_target.arm.result.trailing", oep_v0_vec_285, sizeof oep_v0_vec_285, 1, oep_v0_rt_p4_spi_target_arm_result},
+    {"p4_spi_target.read_rx.request.0", oep_v0_vec_286, sizeof oep_v0_vec_286 - 1, 0, oep_v0_rt_p4_spi_target_read_rx_request},
+    {"p4_spi_target.read_rx.request.1", oep_v0_vec_287, sizeof oep_v0_vec_287 - 1, 0, oep_v0_rt_p4_spi_target_read_rx_request},
+    {"p4_spi_target.read_rx.request.trailing", oep_v0_vec_288, sizeof oep_v0_vec_288, 1, oep_v0_rt_p4_spi_target_read_rx_request},
+    {"p4_spi_target.read_rx.result.0", oep_v0_vec_289, sizeof oep_v0_vec_289, 0, oep_v0_rt_p4_spi_target_read_rx_result},
+    {"p4_spi_target.read_rx.result.1", oep_v0_vec_290, sizeof oep_v0_vec_290, 0, oep_v0_rt_p4_spi_target_read_rx_result},
+    {"p4_spi_target.read_rx.result.truncated", oep_v0_vec_291, sizeof oep_v0_vec_291, 1, oep_v0_rt_p4_spi_target_read_rx_result},
+    {"p4_spi_target.status.request.0", oep_v0_vec_292, sizeof oep_v0_vec_292 - 1, 0, oep_v0_rt_p4_spi_target_status_request},
+    {"p4_spi_target.status.request.1", oep_v0_vec_293, sizeof oep_v0_vec_293 - 1, 0, oep_v0_rt_p4_spi_target_status_request},
+    {"p4_spi_target.status.request.trailing", oep_v0_vec_294, sizeof oep_v0_vec_294, 1, oep_v0_rt_p4_spi_target_status_request},
+    {"p4_spi_target.status.result.0", oep_v0_vec_295, sizeof oep_v0_vec_295, 0, oep_v0_rt_p4_spi_target_status_result},
+    {"p4_spi_target.status.result.1", oep_v0_vec_296, sizeof oep_v0_vec_296, 0, oep_v0_rt_p4_spi_target_status_result},
+    {"p4_spi_target.status.result.truncated", oep_v0_vec_297, sizeof oep_v0_vec_297, 1, oep_v0_rt_p4_spi_target_status_result},
+    {"p4_spi_target.status.result.trailing", oep_v0_vec_298, sizeof oep_v0_vec_298, 1, oep_v0_rt_p4_spi_target_status_result},
+    {"p4_spi_target.reset.request.0", oep_v0_vec_299, sizeof oep_v0_vec_299 - 1, 0, oep_v0_rt_p4_spi_target_reset_request},
+    {"p4_spi_target.reset.request.1", oep_v0_vec_300, sizeof oep_v0_vec_300 - 1, 0, oep_v0_rt_p4_spi_target_reset_request},
+    {"p4_spi_target.reset.request.trailing", oep_v0_vec_301, sizeof oep_v0_vec_301, 1, oep_v0_rt_p4_spi_target_reset_request},
+    {"p4_spi_target.reset.result.0", oep_v0_vec_302, sizeof oep_v0_vec_302 - 1, 0, oep_v0_rt_p4_spi_target_reset_result},
+    {"p4_spi_target.reset.result.1", oep_v0_vec_303, sizeof oep_v0_vec_303 - 1, 0, oep_v0_rt_p4_spi_target_reset_result},
+    {"p4_spi_target.reset.result.trailing", oep_v0_vec_304, sizeof oep_v0_vec_304, 1, oep_v0_rt_p4_spi_target_reset_result},
 };
 #define OEP_V0_VECTOR_COUNT (sizeof oep_v0_vectors / sizeof oep_v0_vectors[0])
 

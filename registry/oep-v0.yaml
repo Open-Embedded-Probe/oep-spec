@@ -313,3 +313,34 @@ definitions:
         op: 0x11
         request: [{name: stretch_us, type: u32}]
         result: []
+
+  # ---- vendor tool: ESP32-P4 hardware SPI target (ESP-IDF spi_slave, SPI2_HOST), 2026-09-22 ----
+  # One CS-framed transaction at a time: arm() queues it with the MISO bytes to send (zero
+  # padded to `length`); after the master raises CS, read_rx() returns what came in on MOSI
+  # and the transaction length in bits. Roles for the plan: 1 = SCK, 2 = MOSI, 3 = MISO, 4 = CS.
+  # mode 0..3 = (CPOL, CPHA); bit_order 0 = MSB first, 1 = LSB first. No DMA: max 64 bytes.
+  - name: p4_spi_target
+    owner: 0x0100
+    id: 0x0002
+    revision: 0
+    operations:
+      - name: configure
+        op: 0x01
+        request: [{name: mode, type: u8}, {name: bit_order, type: u8}]
+        result: []
+      - name: arm
+        op: 0x02
+        request: [{name: length, type: u16}, {name: tx, type: bytes}]
+        result: []
+      - name: read_rx
+        op: 0x03
+        request: []
+        result: [{name: pending, type: u8}, {name: bits, type: u32}, {name: data, type: bytes}]
+      - name: status
+        op: 0x04
+        request: []
+        result: [{name: flags, type: u8}, {name: transactions, type: u32}, {name: errors, type: u16}]
+      - name: reset
+        op: 0x05
+        request: []
+        result: []
