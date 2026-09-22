@@ -131,9 +131,15 @@ client は confirmation で上限を受け取り、それ以上を送らない�
    止まり、次の halt → resume で正常化）、PC sample はその halt → resume を兼ねるから有効であって、PC の値だけが証拠なのではない。
    runner（ArduinoCore-CH32 `oep_smoke`）が banner を待つのはこの最上位の証拠を取るためで、省いてはいけない。
 
+9. **transport は「束ねて送り、並走して受ける」。** frame を 1 個ずつ書くと usbip 経由の bulk は 300〜900 µs/frame が天井で、
+   window 内の frame を 1 回の write に束ねると 4 倍になる（E160）。device は byte stream として frame 境界を自分で切り、
+   応答は burst の終端で flush する。write が block する transport（bulk）では device の応答 FIFO が埋まると deadlock するので、
+   host は受信を別スレッドで常に吸う。window は request byte 数の約束であって応答 backlog を抑えないことを忘れない（§7）。
+
 ## 7. まだ決めていないこと
 
-- frame の具体形式（length16 + seq + type + payload + CRC の候補。上限は E155 から 512 B〜1 KiB、window 4 KiB byte で起草する）。
+- frame の具体形式（length16 + seq + type + payload + CRC の候補。上限は E155 から 512 B〜1 KiB、window 4 KiB byte で起草する。HS bulk では window 16 KiB が最良点、E160）。
+- **応答 backlog の上限**を宣言するか。window は request byte 数で、9 B の read request が 1 KiB の応答を生む。probe の TX buffer（HWCDC 8 KiB、EspUsbDevice vendor 4 KiB）より応答が多く積まれると transport が詰まる。confirm に `max_response_backlog` を足す案。
 - service id / mode id / TLV tag の番号空間と private namespace の encoding。
 - event（非同期通知）を core に入れるか、status polling だけにするか。低スペックでは polling のみで足りる可能性。
 - plan の「同時開始」の精度をどう宣言するか（µs 単位の同時か、順序保証だけか）。
