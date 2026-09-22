@@ -74,6 +74,14 @@ I2C / SPI の target 側、logic capture の高速 tier、ADC source は当面�
 4. **開始タイミングが揃う必要がある組（capture と刺激、UART peer と target reset）は plan に「同時開始」を書ける。**
    probe は同時開始できる組合せを capability で宣言する（できなければ plan を reject）。
 
+### 3.1b 観測だけの tool は channel を共有できる（observer）
+
+capture のように線を**駆動しない** tool は、他の function が同じ plan で使う channel、または既存 lease の channel を role に取れる
+（`fixture.capture`、2026-09-22）。probe 側は observer の channel を claim せず、存在確認だけを行う。これにより「I2C target と
+その線の trace を 1 つの plan で同時に開始する」が書ける。observer が後から駆動側に変わることは無い（変わるなら別 tool）。
+decode（I2C / SPI / UART）は host 側で行い、probe は sample しか返さない。低スペック probe でも sample は出せるからである。
+RMT のような線ごとの duration 列は 2 本以上の時間軸が揃わないので、共通契約には同時 sample（1 byte/sample、bit k = line k）を採る。
+
 ### 3.2 lifecycle は全 service で同じ
 
 `configure(plan) → enable/start → status / read → disable/stop → release`。どの service もこの順で、
