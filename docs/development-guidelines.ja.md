@@ -46,6 +46,11 @@ PSRAM）まで、同じ core が動く**」ことである。そのために cor
 一般 client は前者、P4 を知る client は後者を選ぶ。**両者は同じ pin / peripheral を使うので排他 resource として宣言する。**
 
 昇格の流れ: 独自 tool として実装・実測 → 2 実装目が同じ試験を通る → 共通 tool の revision として取り込む。
+
+実例（2026-09-22）: `registry/oep-v0.yaml` の owner `0x0100`（oep-probe-arduino）に `p4_i2c_target` を置いた。mode を
+fixed-rx / framed-rx / preloaded-tx の 3 つに限定し、上限は describe の TLV（`max_length` 128、`max_clock_hz` 1 MHz）で返す。
+ESP-IDF slave v1 の「受信 job は正確な長さで arm」「slot 末尾に filler 1 byte」という都合は wire に出さず、mode の契約として閉じた。
+同じ firmware に共通 `fixture.uart` / `fixture.gpio` が並んでおり、lease は同じ plan で扱う。
 **最初から共通 tool に入れる範囲は、書込み / verify / reset / memory / GPIO / UART peer の「今すでに 2 実装で動くもの」だけ**にする。
 I2C / SPI の target 側、logic capture の高速 tier、ADC source は当面独自 tool から始める。
 
