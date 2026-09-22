@@ -662,6 +662,9 @@ struct oep_v0_p4_i2c_target_read_hw_result {
     uint32_t int_raw;
     uint32_t fifo_st;
     uint32_t ctr;
+    uint32_t slave_addr;
+    uint32_t filter_cfg;
+    uint32_t scl_stretch_conf;
 };
 size_t oep_v0_p4_i2c_target_read_hw_result_pack(const struct oep_v0_p4_i2c_target_read_hw_result *value, uint8_t *out, size_t cap);
 bool oep_v0_p4_i2c_target_read_hw_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_read_hw_result *value);

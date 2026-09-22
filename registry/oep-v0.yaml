@@ -302,4 +302,5 @@ definitions:
       - name: read_hw
         op: 0x10
         request: []
-        result: [{name: sr, type: u32}, {name: int_raw, type: u32}, {name: fifo_st, type: u32}, {name: ctr, type: u32}]
+        result: [{name: sr, type: u32}, {name: int_raw, type: u32}, {name: fifo_st, type: u32}, {name: ctr, type: u32},
+                 {name: slave_addr, type: u32}, {name: filter_cfg, type: u32}, {name: scl_stretch_conf, type: u32}]
