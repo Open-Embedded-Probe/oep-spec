@@ -100,6 +100,14 @@ extern "C" {
 #define OEP_V0_FIXTURE_UART_OP_WRITE 0x02u
 #define OEP_V0_FIXTURE_UART_OP_READ 0x03u
 
+#define OEP_V0_DEF_FIXTURE_CAPTURE_OWNER 0x0000u
+#define OEP_V0_DEF_FIXTURE_CAPTURE_ID 0x0022u
+#define OEP_V0_DEF_FIXTURE_CAPTURE_REVISION 0u
+#define OEP_V0_FIXTURE_CAPTURE_OP_CONFIGURE 0x01u
+#define OEP_V0_FIXTURE_CAPTURE_OP_ARM 0x02u
+#define OEP_V0_FIXTURE_CAPTURE_OP_STATUS 0x03u
+#define OEP_V0_FIXTURE_CAPTURE_OP_READ 0x04u
+
 #define OEP_V0_DEF_P4_I2C_TARGET_OWNER 0x0100u
 #define OEP_V0_DEF_P4_I2C_TARGET_ID 0x0001u
 #define OEP_V0_DEF_P4_I2C_TARGET_REVISION 0u
@@ -508,6 +516,60 @@ struct oep_v0_fixture_uart_read_result {
 };
 size_t oep_v0_fixture_uart_read_result_pack(const struct oep_v0_fixture_uart_read_result *value, uint8_t *out, size_t cap);
 bool oep_v0_fixture_uart_read_result_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_uart_read_result *value);
+
+struct oep_v0_fixture_capture_configure_request {
+    uint32_t sample_rate_hz;
+    uint32_t samples;
+};
+size_t oep_v0_fixture_capture_configure_request_pack(const struct oep_v0_fixture_capture_configure_request *value, uint8_t *out, size_t cap);
+bool oep_v0_fixture_capture_configure_request_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_configure_request *value);
+
+struct oep_v0_fixture_capture_configure_result {
+    uint32_t actual_sample_rate_hz;
+    uint32_t samples;
+    uint8_t lines;
+};
+size_t oep_v0_fixture_capture_configure_result_pack(const struct oep_v0_fixture_capture_configure_result *value, uint8_t *out, size_t cap);
+bool oep_v0_fixture_capture_configure_result_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_configure_result *value);
+
+struct oep_v0_fixture_capture_arm_request {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_fixture_capture_arm_request_pack(const struct oep_v0_fixture_capture_arm_request *value, uint8_t *out, size_t cap);
+bool oep_v0_fixture_capture_arm_request_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_arm_request *value);
+
+struct oep_v0_fixture_capture_arm_result {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_fixture_capture_arm_result_pack(const struct oep_v0_fixture_capture_arm_result *value, uint8_t *out, size_t cap);
+bool oep_v0_fixture_capture_arm_result_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_arm_result *value);
+
+struct oep_v0_fixture_capture_status_request {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_fixture_capture_status_request_pack(const struct oep_v0_fixture_capture_status_request *value, uint8_t *out, size_t cap);
+bool oep_v0_fixture_capture_status_request_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_status_request *value);
+
+struct oep_v0_fixture_capture_status_result {
+    uint8_t flags;
+    uint32_t samples;
+};
+size_t oep_v0_fixture_capture_status_result_pack(const struct oep_v0_fixture_capture_status_result *value, uint8_t *out, size_t cap);
+bool oep_v0_fixture_capture_status_result_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_status_result *value);
+
+struct oep_v0_fixture_capture_read_request {
+    uint32_t offset;
+    uint16_t maximum;
+};
+size_t oep_v0_fixture_capture_read_request_pack(const struct oep_v0_fixture_capture_read_request *value, uint8_t *out, size_t cap);
+bool oep_v0_fixture_capture_read_request_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_read_request *value);
+
+struct oep_v0_fixture_capture_read_result {
+    const uint8_t *data;
+    uint16_t data_length;
+};
+size_t oep_v0_fixture_capture_read_result_pack(const struct oep_v0_fixture_capture_read_result *value, uint8_t *out, size_t cap);
+bool oep_v0_fixture_capture_read_result_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_read_result *value);
 
 struct oep_v0_p4_i2c_target_configure_request {
     uint8_t address;

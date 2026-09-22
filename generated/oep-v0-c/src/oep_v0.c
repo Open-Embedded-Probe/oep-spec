@@ -1208,6 +1208,171 @@ bool oep_v0_fixture_uart_read_result_unpack(const uint8_t *in, size_t len, struc
     return true;
 }
 
+size_t oep_v0_fixture_capture_configure_request_pack(const struct oep_v0_fixture_capture_configure_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->sample_rate_hz;
+    out[n++] = (uint8_t)(value->sample_rate_hz >> 8);
+    out[n++] = (uint8_t)(value->sample_rate_hz >> 16);
+    out[n++] = (uint8_t)(value->sample_rate_hz >> 24);
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->samples;
+    out[n++] = (uint8_t)(value->samples >> 8);
+    out[n++] = (uint8_t)(value->samples >> 16);
+    out[n++] = (uint8_t)(value->samples >> 24);
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_fixture_capture_configure_request_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_configure_request *value) {
+    size_t n = 0;
+    if (len != 8u) return false;
+    value->sample_rate_hz = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    value->samples = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_fixture_capture_configure_result_pack(const struct oep_v0_fixture_capture_configure_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->actual_sample_rate_hz;
+    out[n++] = (uint8_t)(value->actual_sample_rate_hz >> 8);
+    out[n++] = (uint8_t)(value->actual_sample_rate_hz >> 16);
+    out[n++] = (uint8_t)(value->actual_sample_rate_hz >> 24);
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->samples;
+    out[n++] = (uint8_t)(value->samples >> 8);
+    out[n++] = (uint8_t)(value->samples >> 16);
+    out[n++] = (uint8_t)(value->samples >> 24);
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->lines;
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_fixture_capture_configure_result_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_configure_result *value) {
+    size_t n = 0;
+    if (len != 9u) return false;
+    value->actual_sample_rate_hz = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    value->samples = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    value->lines = (uint8_t)in[n]; n += 1u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_fixture_capture_arm_request_pack(const struct oep_v0_fixture_capture_arm_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_fixture_capture_arm_request_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_arm_request *value) {
+    size_t n = 0;
+    if (len != 0u) return false;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_fixture_capture_arm_result_pack(const struct oep_v0_fixture_capture_arm_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_fixture_capture_arm_result_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_arm_result *value) {
+    size_t n = 0;
+    if (len != 0u) return false;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_fixture_capture_status_request_pack(const struct oep_v0_fixture_capture_status_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_fixture_capture_status_request_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_status_request *value) {
+    size_t n = 0;
+    if (len != 0u) return false;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_fixture_capture_status_result_pack(const struct oep_v0_fixture_capture_status_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->flags;
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->samples;
+    out[n++] = (uint8_t)(value->samples >> 8);
+    out[n++] = (uint8_t)(value->samples >> 16);
+    out[n++] = (uint8_t)(value->samples >> 24);
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_fixture_capture_status_result_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_status_result *value) {
+    size_t n = 0;
+    if (len != 5u) return false;
+    value->flags = (uint8_t)in[n]; n += 1u;
+    value->samples = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_fixture_capture_read_request_pack(const struct oep_v0_fixture_capture_read_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->offset;
+    out[n++] = (uint8_t)(value->offset >> 8);
+    out[n++] = (uint8_t)(value->offset >> 16);
+    out[n++] = (uint8_t)(value->offset >> 24);
+    if (cap - n < 2u) return 0;
+    out[n++] = (uint8_t)value->maximum;
+    out[n++] = (uint8_t)(value->maximum >> 8);
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_fixture_capture_read_request_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_read_request *value) {
+    size_t n = 0;
+    if (len != 6u) return false;
+    value->offset = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    value->maximum = (uint16_t)in[n] | ((uint16_t)in[n + 1] << 8); n += 2u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_fixture_capture_read_result_pack(const struct oep_v0_fixture_capture_read_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < value->data_length) return 0;
+    if (value->data_length) memcpy(out + n, value->data, value->data_length);
+    n += value->data_length;
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_fixture_capture_read_result_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_capture_read_result *value) {
+    size_t n = 0;
+    if (len - n > 0xFFFFu) return false;
+    value->data = in + n; value->data_length = (uint16_t)(len - n); n = len;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
 size_t oep_v0_p4_i2c_target_configure_request_pack(const struct oep_v0_p4_i2c_target_configure_request *value, uint8_t *out, size_t cap) {
     size_t n = 0;
     if (cap - n < 1u) return 0;

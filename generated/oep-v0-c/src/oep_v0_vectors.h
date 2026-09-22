@@ -202,45 +202,72 @@ static const uint8_t oep_v0_vec_189[] = {0x11};
 static const uint8_t oep_v0_vec_190[] = {0x11, 0x22, 0x00};
 static const uint8_t oep_v0_vec_191[] = {0xa0, 0xa1, 0xa2};
 static const uint8_t oep_v0_vec_192[] = {0xa7, 0xa8, 0xa9, 0xaa};
-static const uint8_t oep_v0_vec_193[] = {0x11, 0x12};
-static const uint8_t oep_v0_vec_194[] = {0x18, 0x19};
-static const uint8_t oep_v0_vec_195[] = {0x11};
-static const uint8_t oep_v0_vec_196[] = {0x11, 0x12, 0x00};
-static const uint8_t oep_v0_vec_197[] = {0};
-static const uint8_t oep_v0_vec_198[] = {0};
-static const uint8_t oep_v0_vec_199[] = {0x00};
-static const uint8_t oep_v0_vec_200[] = {0x11, 0x22};
-static const uint8_t oep_v0_vec_201[] = {0x18, 0x29};
-static const uint8_t oep_v0_vec_202[] = {0x11};
-static const uint8_t oep_v0_vec_203[] = {0x11, 0x22, 0x00};
+static const uint8_t oep_v0_vec_193[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45};
+static const uint8_t oep_v0_vec_194[] = {0x18, 0x29, 0x3a, 0x4b, 0x19, 0x2a, 0x3b, 0x4c};
+static const uint8_t oep_v0_vec_195[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34};
+static const uint8_t oep_v0_vec_196[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x00};
+static const uint8_t oep_v0_vec_197[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13};
+static const uint8_t oep_v0_vec_198[] = {0x18, 0x29, 0x3a, 0x4b, 0x19, 0x2a, 0x3b, 0x4c, 0x1a};
+static const uint8_t oep_v0_vec_199[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45};
+static const uint8_t oep_v0_vec_200[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x34, 0x45, 0x13, 0x00};
+static const uint8_t oep_v0_vec_201[] = {0};
+static const uint8_t oep_v0_vec_202[] = {0};
+static const uint8_t oep_v0_vec_203[] = {0x00};
 static const uint8_t oep_v0_vec_204[] = {0};
 static const uint8_t oep_v0_vec_205[] = {0};
 static const uint8_t oep_v0_vec_206[] = {0x00};
 static const uint8_t oep_v0_vec_207[] = {0};
 static const uint8_t oep_v0_vec_208[] = {0};
 static const uint8_t oep_v0_vec_209[] = {0x00};
-static const uint8_t oep_v0_vec_210[] = {0x11, 0xa1, 0xa2, 0xa3};
-static const uint8_t oep_v0_vec_211[] = {0x18, 0xa8, 0xa9, 0xaa, 0xab};
-static const uint8_t oep_v0_vec_212[] = {0};
-static const uint8_t oep_v0_vec_213[] = {0xa0, 0xa1, 0xa2};
-static const uint8_t oep_v0_vec_214[] = {0xa7, 0xa8, 0xa9, 0xaa};
-static const uint8_t oep_v0_vec_215[] = {0x11};
-static const uint8_t oep_v0_vec_216[] = {0x18};
-static const uint8_t oep_v0_vec_217[] = {0};
-static const uint8_t oep_v0_vec_218[] = {0x11, 0x00};
-static const uint8_t oep_v0_vec_219[] = {0};
-static const uint8_t oep_v0_vec_220[] = {0};
-static const uint8_t oep_v0_vec_221[] = {0x00};
-static const uint8_t oep_v0_vec_222[] = {0x11, 0x12, 0x23, 0x34, 0x45, 0x13, 0x14, 0x25};
-static const uint8_t oep_v0_vec_223[] = {0x18, 0x19, 0x2a, 0x3b, 0x4c, 0x1a, 0x1b, 0x2c};
-static const uint8_t oep_v0_vec_224[] = {0x11, 0x12, 0x23, 0x34, 0x45, 0x13, 0x14};
-static const uint8_t oep_v0_vec_225[] = {0x11, 0x12, 0x23, 0x34, 0x45, 0x13, 0x14, 0x25, 0x00};
-static const uint8_t oep_v0_vec_226[] = {0};
-static const uint8_t oep_v0_vec_227[] = {0};
-static const uint8_t oep_v0_vec_228[] = {0x00};
-static const uint8_t oep_v0_vec_229[] = {0};
-static const uint8_t oep_v0_vec_230[] = {0};
-static const uint8_t oep_v0_vec_231[] = {0x00};
+static const uint8_t oep_v0_vec_210[] = {0x11, 0x12, 0x23, 0x34, 0x45};
+static const uint8_t oep_v0_vec_211[] = {0x18, 0x19, 0x2a, 0x3b, 0x4c};
+static const uint8_t oep_v0_vec_212[] = {0x11, 0x12, 0x23, 0x34};
+static const uint8_t oep_v0_vec_213[] = {0x11, 0x12, 0x23, 0x34, 0x45, 0x00};
+static const uint8_t oep_v0_vec_214[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23};
+static const uint8_t oep_v0_vec_215[] = {0x18, 0x29, 0x3a, 0x4b, 0x19, 0x2a};
+static const uint8_t oep_v0_vec_216[] = {0x11, 0x22, 0x33, 0x44, 0x12};
+static const uint8_t oep_v0_vec_217[] = {0x11, 0x22, 0x33, 0x44, 0x12, 0x23, 0x00};
+static const uint8_t oep_v0_vec_218[] = {0xa0, 0xa1, 0xa2};
+static const uint8_t oep_v0_vec_219[] = {0xa7, 0xa8, 0xa9, 0xaa};
+static const uint8_t oep_v0_vec_220[] = {0x11, 0x12};
+static const uint8_t oep_v0_vec_221[] = {0x18, 0x19};
+static const uint8_t oep_v0_vec_222[] = {0x11};
+static const uint8_t oep_v0_vec_223[] = {0x11, 0x12, 0x00};
+static const uint8_t oep_v0_vec_224[] = {0};
+static const uint8_t oep_v0_vec_225[] = {0};
+static const uint8_t oep_v0_vec_226[] = {0x00};
+static const uint8_t oep_v0_vec_227[] = {0x11, 0x22};
+static const uint8_t oep_v0_vec_228[] = {0x18, 0x29};
+static const uint8_t oep_v0_vec_229[] = {0x11};
+static const uint8_t oep_v0_vec_230[] = {0x11, 0x22, 0x00};
+static const uint8_t oep_v0_vec_231[] = {0};
+static const uint8_t oep_v0_vec_232[] = {0};
+static const uint8_t oep_v0_vec_233[] = {0x00};
+static const uint8_t oep_v0_vec_234[] = {0};
+static const uint8_t oep_v0_vec_235[] = {0};
+static const uint8_t oep_v0_vec_236[] = {0x00};
+static const uint8_t oep_v0_vec_237[] = {0x11, 0xa1, 0xa2, 0xa3};
+static const uint8_t oep_v0_vec_238[] = {0x18, 0xa8, 0xa9, 0xaa, 0xab};
+static const uint8_t oep_v0_vec_239[] = {0};
+static const uint8_t oep_v0_vec_240[] = {0xa0, 0xa1, 0xa2};
+static const uint8_t oep_v0_vec_241[] = {0xa7, 0xa8, 0xa9, 0xaa};
+static const uint8_t oep_v0_vec_242[] = {0x11};
+static const uint8_t oep_v0_vec_243[] = {0x18};
+static const uint8_t oep_v0_vec_244[] = {0};
+static const uint8_t oep_v0_vec_245[] = {0x11, 0x00};
+static const uint8_t oep_v0_vec_246[] = {0};
+static const uint8_t oep_v0_vec_247[] = {0};
+static const uint8_t oep_v0_vec_248[] = {0x00};
+static const uint8_t oep_v0_vec_249[] = {0x11, 0x12, 0x23, 0x34, 0x45, 0x13, 0x14, 0x25};
+static const uint8_t oep_v0_vec_250[] = {0x18, 0x19, 0x2a, 0x3b, 0x4c, 0x1a, 0x1b, 0x2c};
+static const uint8_t oep_v0_vec_251[] = {0x11, 0x12, 0x23, 0x34, 0x45, 0x13, 0x14};
+static const uint8_t oep_v0_vec_252[] = {0x11, 0x12, 0x23, 0x34, 0x45, 0x13, 0x14, 0x25, 0x00};
+static const uint8_t oep_v0_vec_253[] = {0};
+static const uint8_t oep_v0_vec_254[] = {0};
+static const uint8_t oep_v0_vec_255[] = {0x00};
+static const uint8_t oep_v0_vec_256[] = {0};
+static const uint8_t oep_v0_vec_257[] = {0};
+static const uint8_t oep_v0_vec_258[] = {0x00};
 
 static int oep_v0_rt_request_header(const uint8_t *in, size_t len) {
     struct oep_v0_request_header v; size_t hl = 0; uint8_t out[512];
@@ -628,6 +655,62 @@ static int oep_v0_rt_fixture_uart_read_result(const uint8_t *in, size_t len) {
     size_t n = oep_v0_fixture_uart_read_result_pack(&v, out, sizeof out);
     return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
 }
+static int oep_v0_rt_fixture_capture_configure_request(const uint8_t *in, size_t len) {
+    struct oep_v0_fixture_capture_configure_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_fixture_capture_configure_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_fixture_capture_configure_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_fixture_capture_configure_result(const uint8_t *in, size_t len) {
+    struct oep_v0_fixture_capture_configure_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_fixture_capture_configure_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_fixture_capture_configure_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_fixture_capture_arm_request(const uint8_t *in, size_t len) {
+    struct oep_v0_fixture_capture_arm_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_fixture_capture_arm_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_fixture_capture_arm_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_fixture_capture_arm_result(const uint8_t *in, size_t len) {
+    struct oep_v0_fixture_capture_arm_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_fixture_capture_arm_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_fixture_capture_arm_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_fixture_capture_status_request(const uint8_t *in, size_t len) {
+    struct oep_v0_fixture_capture_status_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_fixture_capture_status_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_fixture_capture_status_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_fixture_capture_status_result(const uint8_t *in, size_t len) {
+    struct oep_v0_fixture_capture_status_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_fixture_capture_status_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_fixture_capture_status_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_fixture_capture_read_request(const uint8_t *in, size_t len) {
+    struct oep_v0_fixture_capture_read_request v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_fixture_capture_read_request_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_fixture_capture_read_request_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
+static int oep_v0_rt_fixture_capture_read_result(const uint8_t *in, size_t len) {
+    struct oep_v0_fixture_capture_read_result v; uint8_t out[512];
+    memset(&v, 0, sizeof v);
+    if (!oep_v0_fixture_capture_read_result_unpack(in, len, &v)) return 1;
+    size_t n = oep_v0_fixture_capture_read_result_pack(&v, out, sizeof out);
+    return (n == len && memcmp(out, in, len) == 0) ? 0 : 2;
+}
 static int oep_v0_rt_p4_i2c_target_configure_request(const uint8_t *in, size_t len) {
     struct oep_v0_p4_i2c_target_configure_request v; uint8_t out[512];
     memset(&v, 0, sizeof v);
@@ -907,45 +990,72 @@ static const struct oep_v0_vector oep_v0_vectors[] = {
     {"fixture_uart.read.request.trailing", oep_v0_vec_190, sizeof oep_v0_vec_190, 1, oep_v0_rt_fixture_uart_read_request},
     {"fixture_uart.read.result.0", oep_v0_vec_191, sizeof oep_v0_vec_191, 0, oep_v0_rt_fixture_uart_read_result},
     {"fixture_uart.read.result.1", oep_v0_vec_192, sizeof oep_v0_vec_192, 0, oep_v0_rt_fixture_uart_read_result},
-    {"p4_i2c_target.configure.request.0", oep_v0_vec_193, sizeof oep_v0_vec_193, 0, oep_v0_rt_p4_i2c_target_configure_request},
-    {"p4_i2c_target.configure.request.1", oep_v0_vec_194, sizeof oep_v0_vec_194, 0, oep_v0_rt_p4_i2c_target_configure_request},
-    {"p4_i2c_target.configure.request.truncated", oep_v0_vec_195, sizeof oep_v0_vec_195, 1, oep_v0_rt_p4_i2c_target_configure_request},
-    {"p4_i2c_target.configure.request.trailing", oep_v0_vec_196, sizeof oep_v0_vec_196, 1, oep_v0_rt_p4_i2c_target_configure_request},
-    {"p4_i2c_target.configure.result.0", oep_v0_vec_197, sizeof oep_v0_vec_197 - 1, 0, oep_v0_rt_p4_i2c_target_configure_result},
-    {"p4_i2c_target.configure.result.1", oep_v0_vec_198, sizeof oep_v0_vec_198 - 1, 0, oep_v0_rt_p4_i2c_target_configure_result},
-    {"p4_i2c_target.configure.result.trailing", oep_v0_vec_199, sizeof oep_v0_vec_199, 1, oep_v0_rt_p4_i2c_target_configure_result},
-    {"p4_i2c_target.arm_rx.request.0", oep_v0_vec_200, sizeof oep_v0_vec_200, 0, oep_v0_rt_p4_i2c_target_arm_rx_request},
-    {"p4_i2c_target.arm_rx.request.1", oep_v0_vec_201, sizeof oep_v0_vec_201, 0, oep_v0_rt_p4_i2c_target_arm_rx_request},
-    {"p4_i2c_target.arm_rx.request.truncated", oep_v0_vec_202, sizeof oep_v0_vec_202, 1, oep_v0_rt_p4_i2c_target_arm_rx_request},
-    {"p4_i2c_target.arm_rx.request.trailing", oep_v0_vec_203, sizeof oep_v0_vec_203, 1, oep_v0_rt_p4_i2c_target_arm_rx_request},
-    {"p4_i2c_target.arm_rx.result.0", oep_v0_vec_204, sizeof oep_v0_vec_204 - 1, 0, oep_v0_rt_p4_i2c_target_arm_rx_result},
-    {"p4_i2c_target.arm_rx.result.1", oep_v0_vec_205, sizeof oep_v0_vec_205 - 1, 0, oep_v0_rt_p4_i2c_target_arm_rx_result},
-    {"p4_i2c_target.arm_rx.result.trailing", oep_v0_vec_206, sizeof oep_v0_vec_206, 1, oep_v0_rt_p4_i2c_target_arm_rx_result},
-    {"p4_i2c_target.read_rx.request.0", oep_v0_vec_207, sizeof oep_v0_vec_207 - 1, 0, oep_v0_rt_p4_i2c_target_read_rx_request},
-    {"p4_i2c_target.read_rx.request.1", oep_v0_vec_208, sizeof oep_v0_vec_208 - 1, 0, oep_v0_rt_p4_i2c_target_read_rx_request},
-    {"p4_i2c_target.read_rx.request.trailing", oep_v0_vec_209, sizeof oep_v0_vec_209, 1, oep_v0_rt_p4_i2c_target_read_rx_request},
-    {"p4_i2c_target.read_rx.result.0", oep_v0_vec_210, sizeof oep_v0_vec_210, 0, oep_v0_rt_p4_i2c_target_read_rx_result},
-    {"p4_i2c_target.read_rx.result.1", oep_v0_vec_211, sizeof oep_v0_vec_211, 0, oep_v0_rt_p4_i2c_target_read_rx_result},
-    {"p4_i2c_target.read_rx.result.truncated", oep_v0_vec_212, sizeof oep_v0_vec_212 - 1, 1, oep_v0_rt_p4_i2c_target_read_rx_result},
-    {"p4_i2c_target.preload_tx.request.0", oep_v0_vec_213, sizeof oep_v0_vec_213, 0, oep_v0_rt_p4_i2c_target_preload_tx_request},
-    {"p4_i2c_target.preload_tx.request.1", oep_v0_vec_214, sizeof oep_v0_vec_214, 0, oep_v0_rt_p4_i2c_target_preload_tx_request},
-    {"p4_i2c_target.preload_tx.result.0", oep_v0_vec_215, sizeof oep_v0_vec_215, 0, oep_v0_rt_p4_i2c_target_preload_tx_result},
-    {"p4_i2c_target.preload_tx.result.1", oep_v0_vec_216, sizeof oep_v0_vec_216, 0, oep_v0_rt_p4_i2c_target_preload_tx_result},
-    {"p4_i2c_target.preload_tx.result.truncated", oep_v0_vec_217, sizeof oep_v0_vec_217 - 1, 1, oep_v0_rt_p4_i2c_target_preload_tx_result},
-    {"p4_i2c_target.preload_tx.result.trailing", oep_v0_vec_218, sizeof oep_v0_vec_218, 1, oep_v0_rt_p4_i2c_target_preload_tx_result},
-    {"p4_i2c_target.status.request.0", oep_v0_vec_219, sizeof oep_v0_vec_219 - 1, 0, oep_v0_rt_p4_i2c_target_status_request},
-    {"p4_i2c_target.status.request.1", oep_v0_vec_220, sizeof oep_v0_vec_220 - 1, 0, oep_v0_rt_p4_i2c_target_status_request},
-    {"p4_i2c_target.status.request.trailing", oep_v0_vec_221, sizeof oep_v0_vec_221, 1, oep_v0_rt_p4_i2c_target_status_request},
-    {"p4_i2c_target.status.result.0", oep_v0_vec_222, sizeof oep_v0_vec_222, 0, oep_v0_rt_p4_i2c_target_status_result},
-    {"p4_i2c_target.status.result.1", oep_v0_vec_223, sizeof oep_v0_vec_223, 0, oep_v0_rt_p4_i2c_target_status_result},
-    {"p4_i2c_target.status.result.truncated", oep_v0_vec_224, sizeof oep_v0_vec_224, 1, oep_v0_rt_p4_i2c_target_status_result},
-    {"p4_i2c_target.status.result.trailing", oep_v0_vec_225, sizeof oep_v0_vec_225, 1, oep_v0_rt_p4_i2c_target_status_result},
-    {"p4_i2c_target.reset.request.0", oep_v0_vec_226, sizeof oep_v0_vec_226 - 1, 0, oep_v0_rt_p4_i2c_target_reset_request},
-    {"p4_i2c_target.reset.request.1", oep_v0_vec_227, sizeof oep_v0_vec_227 - 1, 0, oep_v0_rt_p4_i2c_target_reset_request},
-    {"p4_i2c_target.reset.request.trailing", oep_v0_vec_228, sizeof oep_v0_vec_228, 1, oep_v0_rt_p4_i2c_target_reset_request},
-    {"p4_i2c_target.reset.result.0", oep_v0_vec_229, sizeof oep_v0_vec_229 - 1, 0, oep_v0_rt_p4_i2c_target_reset_result},
-    {"p4_i2c_target.reset.result.1", oep_v0_vec_230, sizeof oep_v0_vec_230 - 1, 0, oep_v0_rt_p4_i2c_target_reset_result},
-    {"p4_i2c_target.reset.result.trailing", oep_v0_vec_231, sizeof oep_v0_vec_231, 1, oep_v0_rt_p4_i2c_target_reset_result},
+    {"fixture_capture.configure.request.0", oep_v0_vec_193, sizeof oep_v0_vec_193, 0, oep_v0_rt_fixture_capture_configure_request},
+    {"fixture_capture.configure.request.1", oep_v0_vec_194, sizeof oep_v0_vec_194, 0, oep_v0_rt_fixture_capture_configure_request},
+    {"fixture_capture.configure.request.truncated", oep_v0_vec_195, sizeof oep_v0_vec_195, 1, oep_v0_rt_fixture_capture_configure_request},
+    {"fixture_capture.configure.request.trailing", oep_v0_vec_196, sizeof oep_v0_vec_196, 1, oep_v0_rt_fixture_capture_configure_request},
+    {"fixture_capture.configure.result.0", oep_v0_vec_197, sizeof oep_v0_vec_197, 0, oep_v0_rt_fixture_capture_configure_result},
+    {"fixture_capture.configure.result.1", oep_v0_vec_198, sizeof oep_v0_vec_198, 0, oep_v0_rt_fixture_capture_configure_result},
+    {"fixture_capture.configure.result.truncated", oep_v0_vec_199, sizeof oep_v0_vec_199, 1, oep_v0_rt_fixture_capture_configure_result},
+    {"fixture_capture.configure.result.trailing", oep_v0_vec_200, sizeof oep_v0_vec_200, 1, oep_v0_rt_fixture_capture_configure_result},
+    {"fixture_capture.arm.request.0", oep_v0_vec_201, sizeof oep_v0_vec_201 - 1, 0, oep_v0_rt_fixture_capture_arm_request},
+    {"fixture_capture.arm.request.1", oep_v0_vec_202, sizeof oep_v0_vec_202 - 1, 0, oep_v0_rt_fixture_capture_arm_request},
+    {"fixture_capture.arm.request.trailing", oep_v0_vec_203, sizeof oep_v0_vec_203, 1, oep_v0_rt_fixture_capture_arm_request},
+    {"fixture_capture.arm.result.0", oep_v0_vec_204, sizeof oep_v0_vec_204 - 1, 0, oep_v0_rt_fixture_capture_arm_result},
+    {"fixture_capture.arm.result.1", oep_v0_vec_205, sizeof oep_v0_vec_205 - 1, 0, oep_v0_rt_fixture_capture_arm_result},
+    {"fixture_capture.arm.result.trailing", oep_v0_vec_206, sizeof oep_v0_vec_206, 1, oep_v0_rt_fixture_capture_arm_result},
+    {"fixture_capture.status.request.0", oep_v0_vec_207, sizeof oep_v0_vec_207 - 1, 0, oep_v0_rt_fixture_capture_status_request},
+    {"fixture_capture.status.request.1", oep_v0_vec_208, sizeof oep_v0_vec_208 - 1, 0, oep_v0_rt_fixture_capture_status_request},
+    {"fixture_capture.status.request.trailing", oep_v0_vec_209, sizeof oep_v0_vec_209, 1, oep_v0_rt_fixture_capture_status_request},
+    {"fixture_capture.status.result.0", oep_v0_vec_210, sizeof oep_v0_vec_210, 0, oep_v0_rt_fixture_capture_status_result},
+    {"fixture_capture.status.result.1", oep_v0_vec_211, sizeof oep_v0_vec_211, 0, oep_v0_rt_fixture_capture_status_result},
+    {"fixture_capture.status.result.truncated", oep_v0_vec_212, sizeof oep_v0_vec_212, 1, oep_v0_rt_fixture_capture_status_result},
+    {"fixture_capture.status.result.trailing", oep_v0_vec_213, sizeof oep_v0_vec_213, 1, oep_v0_rt_fixture_capture_status_result},
+    {"fixture_capture.read.request.0", oep_v0_vec_214, sizeof oep_v0_vec_214, 0, oep_v0_rt_fixture_capture_read_request},
+    {"fixture_capture.read.request.1", oep_v0_vec_215, sizeof oep_v0_vec_215, 0, oep_v0_rt_fixture_capture_read_request},
+    {"fixture_capture.read.request.truncated", oep_v0_vec_216, sizeof oep_v0_vec_216, 1, oep_v0_rt_fixture_capture_read_request},
+    {"fixture_capture.read.request.trailing", oep_v0_vec_217, sizeof oep_v0_vec_217, 1, oep_v0_rt_fixture_capture_read_request},
+    {"fixture_capture.read.result.0", oep_v0_vec_218, sizeof oep_v0_vec_218, 0, oep_v0_rt_fixture_capture_read_result},
+    {"fixture_capture.read.result.1", oep_v0_vec_219, sizeof oep_v0_vec_219, 0, oep_v0_rt_fixture_capture_read_result},
+    {"p4_i2c_target.configure.request.0", oep_v0_vec_220, sizeof oep_v0_vec_220, 0, oep_v0_rt_p4_i2c_target_configure_request},
+    {"p4_i2c_target.configure.request.1", oep_v0_vec_221, sizeof oep_v0_vec_221, 0, oep_v0_rt_p4_i2c_target_configure_request},
+    {"p4_i2c_target.configure.request.truncated", oep_v0_vec_222, sizeof oep_v0_vec_222, 1, oep_v0_rt_p4_i2c_target_configure_request},
+    {"p4_i2c_target.configure.request.trailing", oep_v0_vec_223, sizeof oep_v0_vec_223, 1, oep_v0_rt_p4_i2c_target_configure_request},
+    {"p4_i2c_target.configure.result.0", oep_v0_vec_224, sizeof oep_v0_vec_224 - 1, 0, oep_v0_rt_p4_i2c_target_configure_result},
+    {"p4_i2c_target.configure.result.1", oep_v0_vec_225, sizeof oep_v0_vec_225 - 1, 0, oep_v0_rt_p4_i2c_target_configure_result},
+    {"p4_i2c_target.configure.result.trailing", oep_v0_vec_226, sizeof oep_v0_vec_226, 1, oep_v0_rt_p4_i2c_target_configure_result},
+    {"p4_i2c_target.arm_rx.request.0", oep_v0_vec_227, sizeof oep_v0_vec_227, 0, oep_v0_rt_p4_i2c_target_arm_rx_request},
+    {"p4_i2c_target.arm_rx.request.1", oep_v0_vec_228, sizeof oep_v0_vec_228, 0, oep_v0_rt_p4_i2c_target_arm_rx_request},
+    {"p4_i2c_target.arm_rx.request.truncated", oep_v0_vec_229, sizeof oep_v0_vec_229, 1, oep_v0_rt_p4_i2c_target_arm_rx_request},
+    {"p4_i2c_target.arm_rx.request.trailing", oep_v0_vec_230, sizeof oep_v0_vec_230, 1, oep_v0_rt_p4_i2c_target_arm_rx_request},
+    {"p4_i2c_target.arm_rx.result.0", oep_v0_vec_231, sizeof oep_v0_vec_231 - 1, 0, oep_v0_rt_p4_i2c_target_arm_rx_result},
+    {"p4_i2c_target.arm_rx.result.1", oep_v0_vec_232, sizeof oep_v0_vec_232 - 1, 0, oep_v0_rt_p4_i2c_target_arm_rx_result},
+    {"p4_i2c_target.arm_rx.result.trailing", oep_v0_vec_233, sizeof oep_v0_vec_233, 1, oep_v0_rt_p4_i2c_target_arm_rx_result},
+    {"p4_i2c_target.read_rx.request.0", oep_v0_vec_234, sizeof oep_v0_vec_234 - 1, 0, oep_v0_rt_p4_i2c_target_read_rx_request},
+    {"p4_i2c_target.read_rx.request.1", oep_v0_vec_235, sizeof oep_v0_vec_235 - 1, 0, oep_v0_rt_p4_i2c_target_read_rx_request},
+    {"p4_i2c_target.read_rx.request.trailing", oep_v0_vec_236, sizeof oep_v0_vec_236, 1, oep_v0_rt_p4_i2c_target_read_rx_request},
+    {"p4_i2c_target.read_rx.result.0", oep_v0_vec_237, sizeof oep_v0_vec_237, 0, oep_v0_rt_p4_i2c_target_read_rx_result},
+    {"p4_i2c_target.read_rx.result.1", oep_v0_vec_238, sizeof oep_v0_vec_238, 0, oep_v0_rt_p4_i2c_target_read_rx_result},
+    {"p4_i2c_target.read_rx.result.truncated", oep_v0_vec_239, sizeof oep_v0_vec_239 - 1, 1, oep_v0_rt_p4_i2c_target_read_rx_result},
+    {"p4_i2c_target.preload_tx.request.0", oep_v0_vec_240, sizeof oep_v0_vec_240, 0, oep_v0_rt_p4_i2c_target_preload_tx_request},
+    {"p4_i2c_target.preload_tx.request.1", oep_v0_vec_241, sizeof oep_v0_vec_241, 0, oep_v0_rt_p4_i2c_target_preload_tx_request},
+    {"p4_i2c_target.preload_tx.result.0", oep_v0_vec_242, sizeof oep_v0_vec_242, 0, oep_v0_rt_p4_i2c_target_preload_tx_result},
+    {"p4_i2c_target.preload_tx.result.1", oep_v0_vec_243, sizeof oep_v0_vec_243, 0, oep_v0_rt_p4_i2c_target_preload_tx_result},
+    {"p4_i2c_target.preload_tx.result.truncated", oep_v0_vec_244, sizeof oep_v0_vec_244 - 1, 1, oep_v0_rt_p4_i2c_target_preload_tx_result},
+    {"p4_i2c_target.preload_tx.result.trailing", oep_v0_vec_245, sizeof oep_v0_vec_245, 1, oep_v0_rt_p4_i2c_target_preload_tx_result},
+    {"p4_i2c_target.status.request.0", oep_v0_vec_246, sizeof oep_v0_vec_246 - 1, 0, oep_v0_rt_p4_i2c_target_status_request},
+    {"p4_i2c_target.status.request.1", oep_v0_vec_247, sizeof oep_v0_vec_247 - 1, 0, oep_v0_rt_p4_i2c_target_status_request},
+    {"p4_i2c_target.status.request.trailing", oep_v0_vec_248, sizeof oep_v0_vec_248, 1, oep_v0_rt_p4_i2c_target_status_request},
+    {"p4_i2c_target.status.result.0", oep_v0_vec_249, sizeof oep_v0_vec_249, 0, oep_v0_rt_p4_i2c_target_status_result},
+    {"p4_i2c_target.status.result.1", oep_v0_vec_250, sizeof oep_v0_vec_250, 0, oep_v0_rt_p4_i2c_target_status_result},
+    {"p4_i2c_target.status.result.truncated", oep_v0_vec_251, sizeof oep_v0_vec_251, 1, oep_v0_rt_p4_i2c_target_status_result},
+    {"p4_i2c_target.status.result.trailing", oep_v0_vec_252, sizeof oep_v0_vec_252, 1, oep_v0_rt_p4_i2c_target_status_result},
+    {"p4_i2c_target.reset.request.0", oep_v0_vec_253, sizeof oep_v0_vec_253 - 1, 0, oep_v0_rt_p4_i2c_target_reset_request},
+    {"p4_i2c_target.reset.request.1", oep_v0_vec_254, sizeof oep_v0_vec_254 - 1, 0, oep_v0_rt_p4_i2c_target_reset_request},
+    {"p4_i2c_target.reset.request.trailing", oep_v0_vec_255, sizeof oep_v0_vec_255, 1, oep_v0_rt_p4_i2c_target_reset_request},
+    {"p4_i2c_target.reset.result.0", oep_v0_vec_256, sizeof oep_v0_vec_256 - 1, 0, oep_v0_rt_p4_i2c_target_reset_result},
+    {"p4_i2c_target.reset.result.1", oep_v0_vec_257, sizeof oep_v0_vec_257 - 1, 0, oep_v0_rt_p4_i2c_target_reset_result},
+    {"p4_i2c_target.reset.result.trailing", oep_v0_vec_258, sizeof oep_v0_vec_258, 1, oep_v0_rt_p4_i2c_target_reset_result},
 };
 #define OEP_V0_VECTOR_COUNT (sizeof oep_v0_vectors / sizeof oep_v0_vectors[0])
 

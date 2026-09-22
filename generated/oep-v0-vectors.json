@@ -1979,6 +1979,277 @@
    "bytes": "a7a8a9aa"
   },
   {
+   "name": "fixture_capture.configure.request.0",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "configure",
+   "direction": "request",
+   "fields": {
+    "sample_rate_hz": 1144201745,
+    "samples": 1161044754
+   },
+   "bytes": "1122334412233445"
+  },
+  {
+   "name": "fixture_capture.configure.request.1",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "configure",
+   "direction": "request",
+   "fields": {
+    "sample_rate_hz": 1262102808,
+    "samples": 1278945817
+   },
+   "bytes": "18293a4b192a3b4c"
+  },
+  {
+   "name": "fixture_capture.configure.request.truncated",
+   "kind": "payload_reject",
+   "definition": "fixture_capture",
+   "operation": "configure",
+   "direction": "request",
+   "bytes": "11223344122334"
+  },
+  {
+   "name": "fixture_capture.configure.request.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_capture",
+   "operation": "configure",
+   "direction": "request",
+   "bytes": "112233441223344500"
+  },
+  {
+   "name": "fixture_capture.configure.result.0",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "configure",
+   "direction": "result",
+   "fields": {
+    "actual_sample_rate_hz": 1144201745,
+    "samples": 1161044754,
+    "lines": 19
+   },
+   "bytes": "112233441223344513"
+  },
+  {
+   "name": "fixture_capture.configure.result.1",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "configure",
+   "direction": "result",
+   "fields": {
+    "actual_sample_rate_hz": 1262102808,
+    "samples": 1278945817,
+    "lines": 26
+   },
+   "bytes": "18293a4b192a3b4c1a"
+  },
+  {
+   "name": "fixture_capture.configure.result.truncated",
+   "kind": "payload_reject",
+   "definition": "fixture_capture",
+   "operation": "configure",
+   "direction": "result",
+   "bytes": "1122334412233445"
+  },
+  {
+   "name": "fixture_capture.configure.result.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_capture",
+   "operation": "configure",
+   "direction": "result",
+   "bytes": "11223344122334451300"
+  },
+  {
+   "name": "fixture_capture.arm.request.0",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "arm",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "fixture_capture.arm.request.1",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "arm",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "fixture_capture.arm.request.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_capture",
+   "operation": "arm",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "fixture_capture.arm.result.0",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "arm",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "fixture_capture.arm.result.1",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "arm",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "fixture_capture.arm.result.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_capture",
+   "operation": "arm",
+   "direction": "result",
+   "bytes": "00"
+  },
+  {
+   "name": "fixture_capture.status.request.0",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "status",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "fixture_capture.status.request.1",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "status",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "fixture_capture.status.request.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_capture",
+   "operation": "status",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "fixture_capture.status.result.0",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "status",
+   "direction": "result",
+   "fields": {
+    "flags": 17,
+    "samples": 1161044754
+   },
+   "bytes": "1112233445"
+  },
+  {
+   "name": "fixture_capture.status.result.1",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "status",
+   "direction": "result",
+   "fields": {
+    "flags": 24,
+    "samples": 1278945817
+   },
+   "bytes": "18192a3b4c"
+  },
+  {
+   "name": "fixture_capture.status.result.truncated",
+   "kind": "payload_reject",
+   "definition": "fixture_capture",
+   "operation": "status",
+   "direction": "result",
+   "bytes": "11122334"
+  },
+  {
+   "name": "fixture_capture.status.result.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_capture",
+   "operation": "status",
+   "direction": "result",
+   "bytes": "111223344500"
+  },
+  {
+   "name": "fixture_capture.read.request.0",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "read",
+   "direction": "request",
+   "fields": {
+    "offset": 1144201745,
+    "maximum": 8978
+   },
+   "bytes": "112233441223"
+  },
+  {
+   "name": "fixture_capture.read.request.1",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "read",
+   "direction": "request",
+   "fields": {
+    "offset": 1262102808,
+    "maximum": 10777
+   },
+   "bytes": "18293a4b192a"
+  },
+  {
+   "name": "fixture_capture.read.request.truncated",
+   "kind": "payload_reject",
+   "definition": "fixture_capture",
+   "operation": "read",
+   "direction": "request",
+   "bytes": "1122334412"
+  },
+  {
+   "name": "fixture_capture.read.request.trailing",
+   "kind": "payload_reject",
+   "definition": "fixture_capture",
+   "operation": "read",
+   "direction": "request",
+   "bytes": "11223344122300"
+  },
+  {
+   "name": "fixture_capture.read.result.0",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "read",
+   "direction": "result",
+   "fields": {
+    "data": [
+     160,
+     161,
+     162
+    ]
+   },
+   "bytes": "a0a1a2"
+  },
+  {
+   "name": "fixture_capture.read.result.1",
+   "kind": "payload",
+   "definition": "fixture_capture",
+   "operation": "read",
+   "direction": "result",
+   "fields": {
+    "data": [
+     167,
+     168,
+     169,
+     170
+    ]
+   },
+   "bytes": "a7a8a9aa"
+  },
+  {
    "name": "p4_i2c_target.configure.request.0",
    "kind": "payload",
    "definition": "p4_i2c_target",
