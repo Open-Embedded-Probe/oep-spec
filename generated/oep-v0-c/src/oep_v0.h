@@ -302,12 +302,15 @@ bool oep_v0_target_control_status_result_unpack(const uint8_t *in, size_t len, s
 
 struct oep_v0_target_control_reset_request {
     uint8_t mode;
+    uint8_t confirm;
 };
 size_t oep_v0_target_control_reset_request_pack(const struct oep_v0_target_control_reset_request *value, uint8_t *out, size_t cap);
 bool oep_v0_target_control_reset_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_reset_request *value);
 
 struct oep_v0_target_control_reset_result {
-    uint8_t unused_;  /* empty payload */
+    uint8_t flags;
+    uint8_t attempts;
+    uint32_t pc;
 };
 size_t oep_v0_target_control_reset_result_pack(const struct oep_v0_target_control_reset_result *value, uint8_t *out, size_t cap);
 bool oep_v0_target_control_reset_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_reset_result *value);

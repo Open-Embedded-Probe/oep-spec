@@ -130,10 +130,17 @@ definitions:
         op: 0x01
         request: []
         result: [{name: flags, type: u8}, {name: start_mode, type: u8}, {name: boot_status, type: u8}]
+      # reset completes only when the probe has evidence that the hart runs
+      # after the reset. DMSTATUS alone is not evidence on CH32X035 (2026-09-22:
+      # allrunning=1 while the sketch never started). mode 0 = system reset then
+      # run. confirm 0 = report the DM view only; 1 = also halt briefly, sample
+      # the PC, resume, and retry the release sequence until the sample succeeds.
+      # flags: bit0 DM reports running, bit1 execution confirmed by a PC sample,
+      # bit2 a re-attach (recovery) was needed, bit3 the confirmation halt failed.
       - name: reset
         op: 0x02
-        request: [{name: mode, type: u8}]
-        result: []
+        request: [{name: mode, type: u8}, {name: confirm, type: u8}]
+        result: [{name: flags, type: u8}, {name: attempts, type: u8}, {name: pc, type: u32}]
       - name: halt
         op: 0x03
         request: []

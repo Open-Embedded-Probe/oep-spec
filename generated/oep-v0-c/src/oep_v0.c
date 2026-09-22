@@ -580,14 +580,17 @@ size_t oep_v0_target_control_reset_request_pack(const struct oep_v0_target_contr
     size_t n = 0;
     if (cap - n < 1u) return 0;
     out[n++] = (uint8_t)value->mode;
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->confirm;
     (void)value; (void)out; (void)cap;
     return n;
 }
 
 bool oep_v0_target_control_reset_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_reset_request *value) {
     size_t n = 0;
-    if (len != 1u) return false;
+    if (len != 2u) return false;
     value->mode = (uint8_t)in[n]; n += 1u;
+    value->confirm = (uint8_t)in[n]; n += 1u;
     (void)n; (void)value;
     (void)in;
     return true;
@@ -595,14 +598,25 @@ bool oep_v0_target_control_reset_request_unpack(const uint8_t *in, size_t len, s
 
 size_t oep_v0_target_control_reset_result_pack(const struct oep_v0_target_control_reset_result *value, uint8_t *out, size_t cap) {
     size_t n = 0;
-
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->flags;
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->attempts;
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->pc;
+    out[n++] = (uint8_t)(value->pc >> 8);
+    out[n++] = (uint8_t)(value->pc >> 16);
+    out[n++] = (uint8_t)(value->pc >> 24);
     (void)value; (void)out; (void)cap;
     return n;
 }
 
 bool oep_v0_target_control_reset_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_control_reset_result *value) {
     size_t n = 0;
-    if (len != 0u) return false;
+    if (len != 6u) return false;
+    value->flags = (uint8_t)in[n]; n += 1u;
+    value->attempts = (uint8_t)in[n]; n += 1u;
+    value->pc = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
     (void)n; (void)value;
     (void)in;
     return true;

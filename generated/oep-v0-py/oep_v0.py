@@ -626,33 +626,44 @@ class TargetControlStatusResult:
 @dataclass
 class TargetControlResetRequest:
     mode: int = 0
+    confirm: int = 0
 
     def pack(self) -> bytes:
         out = bytearray()
         out += struct.pack('B', self.mode)
+        out += struct.pack('B', self.confirm)
         return bytes(out)
 
     @classmethod
     def unpack(cls, data: bytes) -> 'TargetControlResetRequest':
         n = 0
-        if len(data) != 1: raise ValueError('payload length must be 1')
+        if len(data) != 2: raise ValueError('payload length must be 2')
         mode = struct.unpack_from('B', data, n)[0]; n += 1
-        return cls(mode=mode)
+        confirm = struct.unpack_from('B', data, n)[0]; n += 1
+        return cls(mode=mode, confirm=confirm)
 
 
 @dataclass
 class TargetControlResetResult:
-    pass
+    flags: int = 0
+    attempts: int = 0
+    pc: int = 0
 
     def pack(self) -> bytes:
         out = bytearray()
+        out += struct.pack('B', self.flags)
+        out += struct.pack('B', self.attempts)
+        out += struct.pack('<I', self.pc)
         return bytes(out)
 
     @classmethod
     def unpack(cls, data: bytes) -> 'TargetControlResetResult':
         n = 0
-        if len(data) != 0: raise ValueError('payload length must be 0')
-        return cls()
+        if len(data) != 6: raise ValueError('payload length must be 6')
+        flags = struct.unpack_from('B', data, n)[0]; n += 1
+        attempts = struct.unpack_from('B', data, n)[0]; n += 1
+        pc = struct.unpack_from('<I', data, n)[0]; n += 4
+        return cls(flags=flags, attempts=attempts, pc=pc)
 
 
 @dataclass
