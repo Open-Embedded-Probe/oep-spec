@@ -137,4 +137,9 @@ client は confirmation で上限を受け取り、それ以上を送らない�
 - service id / mode id / TLV tag の番号空間と private namespace の encoding。
 - event（非同期通知）を core に入れるか、status polling だけにするか。低スペックでは polling のみで足りる可能性。
 - plan の「同時開始」の精度をどう宣言するか（µs 単位の同時か、順序保証だけか）。
-- 共通 tool の最初の一覧。書込み / verify / reset / memory / GPIO / UART peer を候補にしているが、2 実装目が無い。
+- 共通 tool の最初の一覧。書込み / verify / reset / memory / GPIO / UART peer / capture を候補にしているが、2 実装目が無い。
+- **I2C target の共通化（2026-09-22 の判断: 今は作らない）。** 丸めた契約の候補は「固定長 write 受信 + 固定応答 read、≤ 100 kHz、≤ 32 byte、
+  address 1 つ、clock stretch 無し」で、Pico（PIO）でも ESP32（IDF slave）でも実装できる見込みはある。しかし現時点で実装は P4 の 1 つだけで、
+  §6-3「共通 tool は 2 実装で回す」を満たさない。P4 版（`p4.i2c-target`）は v1 driver の制約（NACK で終わった transaction でも frame が出る、
+  長さ情報が無い）を契約に漏らしており、この癖を丸めた契約に持ち込まないためにも、2 実装目（Pico か S3）が出た時点で共通化を判断する。
+  それまで X035 の I2C 検証は独自 tool + `fixture.capture`（線上の証拠）で行う。
