@@ -78,6 +78,13 @@ DEF_FIXTURE_UART = (0x0000, 0x0021, 0)
 FIXTURE_UART_OP_CONFIGURE = 0x01
 FIXTURE_UART_OP_WRITE = 0x02
 FIXTURE_UART_OP_READ = 0x03
+DEF_P4_I2C_TARGET = (0x0100, 0x0001, 0)
+P4_I2C_TARGET_OP_CONFIGURE = 0x01
+P4_I2C_TARGET_OP_ARM_RX = 0x02
+P4_I2C_TARGET_OP_READ_RX = 0x03
+P4_I2C_TARGET_OP_PRELOAD_TX = 0x04
+P4_I2C_TARGET_OP_STATUS = 0x05
+P4_I2C_TARGET_OP_RESET = 0x06
 
 @dataclass
 class OfferedFunction:
@@ -1167,6 +1174,213 @@ class FixtureUartReadResult:
         return cls(data=data)
 
 
+@dataclass
+class P4I2CTargetConfigureRequest:
+    address: int = 0
+    mode: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.address)
+        out += struct.pack('B', self.mode)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetConfigureRequest':
+        n = 0
+        if len(data) != 2: raise ValueError('payload length must be 2')
+        address = struct.unpack_from('B', data, n)[0]; n += 1
+        mode = struct.unpack_from('B', data, n)[0]; n += 1
+        return cls(address=address, mode=mode)
+
+
+@dataclass
+class P4I2CTargetConfigureResult:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetConfigureResult':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class P4I2CTargetArmRxRequest:
+    length: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<H', self.length)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetArmRxRequest':
+        n = 0
+        if len(data) != 2: raise ValueError('payload length must be 2')
+        length = struct.unpack_from('<H', data, n)[0]; n += 2
+        return cls(length=length)
+
+
+@dataclass
+class P4I2CTargetArmRxResult:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetArmRxResult':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class P4I2CTargetReadRxRequest:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetReadRxRequest':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class P4I2CTargetReadRxResult:
+    pending: int = 0
+    data: bytes = b''
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.pending)
+        out += bytes(self.data)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetReadRxResult':
+        n = 0
+        if len(data) < 1: raise ValueError('short payload')
+        pending = struct.unpack_from('B', data, n)[0]; n += 1
+        data = bytes(data[n:]); n = len(data)
+        return cls(pending=pending, data=data)
+
+
+@dataclass
+class P4I2CTargetPreloadTxRequest:
+    data: bytes = b''
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += bytes(self.data)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetPreloadTxRequest':
+        n = 0
+        if len(data) < 0: raise ValueError('short payload')
+        data = bytes(data[n:]); n = len(data)
+        return cls(data=data)
+
+
+@dataclass
+class P4I2CTargetPreloadTxResult:
+    slots: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.slots)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetPreloadTxResult':
+        n = 0
+        if len(data) != 1: raise ValueError('payload length must be 1')
+        slots = struct.unpack_from('B', data, n)[0]; n += 1
+        return cls(slots=slots)
+
+
+@dataclass
+class P4I2CTargetStatusRequest:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetStatusRequest':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class P4I2CTargetStatusResult:
+    flags: int = 0
+    rx_frames: int = 0
+    tx_slots: int = 0
+    errors: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.flags)
+        out += struct.pack('<I', self.rx_frames)
+        out += struct.pack('B', self.tx_slots)
+        out += struct.pack('<H', self.errors)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetStatusResult':
+        n = 0
+        if len(data) != 8: raise ValueError('payload length must be 8')
+        flags = struct.unpack_from('B', data, n)[0]; n += 1
+        rx_frames = struct.unpack_from('<I', data, n)[0]; n += 4
+        tx_slots = struct.unpack_from('B', data, n)[0]; n += 1
+        errors = struct.unpack_from('<H', data, n)[0]; n += 2
+        return cls(flags=flags, rx_frames=rx_frames, tx_slots=tx_slots, errors=errors)
+
+
+@dataclass
+class P4I2CTargetResetRequest:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetResetRequest':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class P4I2CTargetResetResult:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4I2CTargetResetResult':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
 HEADER_CLASSES = {'request': RequestHeader, 'result': ResultHeader, 'activity_update': ActivityUpdateHeader, 'activity_outcome': ActivityOutcomeHeader, 'notification': NotificationHeader, 'data': DataHeader}
 PAYLOAD_CLASSES = {
     ('core', 'confirm', 'request'): CoreConfirmRequest,
@@ -1219,6 +1433,18 @@ PAYLOAD_CLASSES = {
     ('fixture_uart', 'write', 'result'): FixtureUartWriteResult,
     ('fixture_uart', 'read', 'request'): FixtureUartReadRequest,
     ('fixture_uart', 'read', 'result'): FixtureUartReadResult,
+    ('p4_i2c_target', 'configure', 'request'): P4I2CTargetConfigureRequest,
+    ('p4_i2c_target', 'configure', 'result'): P4I2CTargetConfigureResult,
+    ('p4_i2c_target', 'arm_rx', 'request'): P4I2CTargetArmRxRequest,
+    ('p4_i2c_target', 'arm_rx', 'result'): P4I2CTargetArmRxResult,
+    ('p4_i2c_target', 'read_rx', 'request'): P4I2CTargetReadRxRequest,
+    ('p4_i2c_target', 'read_rx', 'result'): P4I2CTargetReadRxResult,
+    ('p4_i2c_target', 'preload_tx', 'request'): P4I2CTargetPreloadTxRequest,
+    ('p4_i2c_target', 'preload_tx', 'result'): P4I2CTargetPreloadTxResult,
+    ('p4_i2c_target', 'status', 'request'): P4I2CTargetStatusRequest,
+    ('p4_i2c_target', 'status', 'result'): P4I2CTargetStatusResult,
+    ('p4_i2c_target', 'reset', 'request'): P4I2CTargetResetRequest,
+    ('p4_i2c_target', 'reset', 'result'): P4I2CTargetResetResult,
 }
 
 def message_role(msg: bytes) -> int:

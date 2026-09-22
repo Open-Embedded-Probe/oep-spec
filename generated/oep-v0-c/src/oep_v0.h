@@ -100,6 +100,16 @@ extern "C" {
 #define OEP_V0_FIXTURE_UART_OP_WRITE 0x02u
 #define OEP_V0_FIXTURE_UART_OP_READ 0x03u
 
+#define OEP_V0_DEF_P4_I2C_TARGET_OWNER 0x0100u
+#define OEP_V0_DEF_P4_I2C_TARGET_ID 0x0001u
+#define OEP_V0_DEF_P4_I2C_TARGET_REVISION 0u
+#define OEP_V0_P4_I2C_TARGET_OP_CONFIGURE 0x01u
+#define OEP_V0_P4_I2C_TARGET_OP_ARM_RX 0x02u
+#define OEP_V0_P4_I2C_TARGET_OP_READ_RX 0x03u
+#define OEP_V0_P4_I2C_TARGET_OP_PRELOAD_TX 0x04u
+#define OEP_V0_P4_I2C_TARGET_OP_STATUS 0x05u
+#define OEP_V0_P4_I2C_TARGET_OP_RESET 0x06u
+
 struct oep_v0_offered_function {
     uint16_t function;
     uint16_t owner;
@@ -495,6 +505,85 @@ struct oep_v0_fixture_uart_read_result {
 };
 size_t oep_v0_fixture_uart_read_result_pack(const struct oep_v0_fixture_uart_read_result *value, uint8_t *out, size_t cap);
 bool oep_v0_fixture_uart_read_result_unpack(const uint8_t *in, size_t len, struct oep_v0_fixture_uart_read_result *value);
+
+struct oep_v0_p4_i2c_target_configure_request {
+    uint8_t address;
+    uint8_t mode;
+};
+size_t oep_v0_p4_i2c_target_configure_request_pack(const struct oep_v0_p4_i2c_target_configure_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_configure_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_configure_request *value);
+
+struct oep_v0_p4_i2c_target_configure_result {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_i2c_target_configure_result_pack(const struct oep_v0_p4_i2c_target_configure_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_configure_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_configure_result *value);
+
+struct oep_v0_p4_i2c_target_arm_rx_request {
+    uint16_t length;
+};
+size_t oep_v0_p4_i2c_target_arm_rx_request_pack(const struct oep_v0_p4_i2c_target_arm_rx_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_arm_rx_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_arm_rx_request *value);
+
+struct oep_v0_p4_i2c_target_arm_rx_result {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_i2c_target_arm_rx_result_pack(const struct oep_v0_p4_i2c_target_arm_rx_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_arm_rx_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_arm_rx_result *value);
+
+struct oep_v0_p4_i2c_target_read_rx_request {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_i2c_target_read_rx_request_pack(const struct oep_v0_p4_i2c_target_read_rx_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_read_rx_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_read_rx_request *value);
+
+struct oep_v0_p4_i2c_target_read_rx_result {
+    uint8_t pending;
+    const uint8_t *data;
+    uint16_t data_length;
+};
+size_t oep_v0_p4_i2c_target_read_rx_result_pack(const struct oep_v0_p4_i2c_target_read_rx_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_read_rx_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_read_rx_result *value);
+
+struct oep_v0_p4_i2c_target_preload_tx_request {
+    const uint8_t *data;
+    uint16_t data_length;
+};
+size_t oep_v0_p4_i2c_target_preload_tx_request_pack(const struct oep_v0_p4_i2c_target_preload_tx_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_preload_tx_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_preload_tx_request *value);
+
+struct oep_v0_p4_i2c_target_preload_tx_result {
+    uint8_t slots;
+};
+size_t oep_v0_p4_i2c_target_preload_tx_result_pack(const struct oep_v0_p4_i2c_target_preload_tx_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_preload_tx_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_preload_tx_result *value);
+
+struct oep_v0_p4_i2c_target_status_request {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_i2c_target_status_request_pack(const struct oep_v0_p4_i2c_target_status_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_status_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_status_request *value);
+
+struct oep_v0_p4_i2c_target_status_result {
+    uint8_t flags;
+    uint32_t rx_frames;
+    uint8_t tx_slots;
+    uint16_t errors;
+};
+size_t oep_v0_p4_i2c_target_status_result_pack(const struct oep_v0_p4_i2c_target_status_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_status_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_status_result *value);
+
+struct oep_v0_p4_i2c_target_reset_request {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_i2c_target_reset_request_pack(const struct oep_v0_p4_i2c_target_reset_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_reset_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_reset_request *value);
+
+struct oep_v0_p4_i2c_target_reset_result {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_i2c_target_reset_result_pack(const struct oep_v0_p4_i2c_target_reset_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_i2c_target_reset_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_reset_result *value);
 
 /* Returns the role byte of a message, or 0 when it is empty or unknown. */
 uint8_t oep_v0_message_role(const uint8_t *msg, size_t len);
