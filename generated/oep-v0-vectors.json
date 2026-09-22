@@ -872,9 +872,10 @@
    "operation": "reset",
    "direction": "request",
    "fields": {
-    "mode": 17
+    "mode": 17,
+    "confirm": 18
    },
-   "bytes": "11"
+   "bytes": "1112"
   },
   {
    "name": "target_control.reset.request.1",
@@ -883,9 +884,10 @@
    "operation": "reset",
    "direction": "request",
    "fields": {
-    "mode": 24
+    "mode": 24,
+    "confirm": 25
    },
-   "bytes": "18"
+   "bytes": "1819"
   },
   {
    "name": "target_control.reset.request.truncated",
@@ -893,7 +895,7 @@
    "definition": "target_control",
    "operation": "reset",
    "direction": "request",
-   "bytes": ""
+   "bytes": "11"
   },
   {
    "name": "target_control.reset.request.trailing",
@@ -901,7 +903,7 @@
    "definition": "target_control",
    "operation": "reset",
    "direction": "request",
-   "bytes": "1100"
+   "bytes": "111200"
   },
   {
    "name": "target_control.reset.result.0",
@@ -909,8 +911,12 @@
    "definition": "target_control",
    "operation": "reset",
    "direction": "result",
-   "fields": {},
-   "bytes": ""
+   "fields": {
+    "flags": 17,
+    "attempts": 18,
+    "pc": 1177887763
+   },
+   "bytes": "111213243546"
   },
   {
    "name": "target_control.reset.result.1",
@@ -918,8 +924,20 @@
    "definition": "target_control",
    "operation": "reset",
    "direction": "result",
-   "fields": {},
-   "bytes": ""
+   "fields": {
+    "flags": 24,
+    "attempts": 25,
+    "pc": 1295788826
+   },
+   "bytes": "18191a2b3c4d"
+  },
+  {
+   "name": "target_control.reset.result.truncated",
+   "kind": "payload_reject",
+   "definition": "target_control",
+   "operation": "reset",
+   "direction": "result",
+   "bytes": "1112132435"
   },
   {
    "name": "target_control.reset.result.trailing",
@@ -927,7 +945,7 @@
    "definition": "target_control",
    "operation": "reset",
    "direction": "result",
-   "bytes": "00"
+   "bytes": "11121324354600"
   },
   {
    "name": "target_control.halt.request.0",
