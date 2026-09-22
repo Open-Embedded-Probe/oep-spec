@@ -121,6 +121,15 @@ extern "C" {
 #define OEP_V0_P4_I2C_TARGET_OP_READ_HW 0x10u
 #define OEP_V0_P4_I2C_TARGET_OP_SET_STRETCH 0x11u
 
+#define OEP_V0_DEF_P4_SPI_TARGET_OWNER 0x0100u
+#define OEP_V0_DEF_P4_SPI_TARGET_ID 0x0002u
+#define OEP_V0_DEF_P4_SPI_TARGET_REVISION 0u
+#define OEP_V0_P4_SPI_TARGET_OP_CONFIGURE 0x01u
+#define OEP_V0_P4_SPI_TARGET_OP_ARM 0x02u
+#define OEP_V0_P4_SPI_TARGET_OP_READ_RX 0x03u
+#define OEP_V0_P4_SPI_TARGET_OP_STATUS 0x04u
+#define OEP_V0_P4_SPI_TARGET_OP_RESET 0x05u
+
 struct oep_v0_offered_function {
     uint16_t function;
     uint16_t owner;
@@ -682,6 +691,74 @@ struct oep_v0_p4_i2c_target_set_stretch_result {
 };
 size_t oep_v0_p4_i2c_target_set_stretch_result_pack(const struct oep_v0_p4_i2c_target_set_stretch_result *value, uint8_t *out, size_t cap);
 bool oep_v0_p4_i2c_target_set_stretch_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_i2c_target_set_stretch_result *value);
+
+struct oep_v0_p4_spi_target_configure_request {
+    uint8_t mode;
+    uint8_t bit_order;
+};
+size_t oep_v0_p4_spi_target_configure_request_pack(const struct oep_v0_p4_spi_target_configure_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_spi_target_configure_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_configure_request *value);
+
+struct oep_v0_p4_spi_target_configure_result {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_spi_target_configure_result_pack(const struct oep_v0_p4_spi_target_configure_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_spi_target_configure_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_configure_result *value);
+
+struct oep_v0_p4_spi_target_arm_request {
+    uint16_t length;
+    const uint8_t *tx;
+    uint16_t tx_length;
+};
+size_t oep_v0_p4_spi_target_arm_request_pack(const struct oep_v0_p4_spi_target_arm_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_spi_target_arm_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_arm_request *value);
+
+struct oep_v0_p4_spi_target_arm_result {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_spi_target_arm_result_pack(const struct oep_v0_p4_spi_target_arm_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_spi_target_arm_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_arm_result *value);
+
+struct oep_v0_p4_spi_target_read_rx_request {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_spi_target_read_rx_request_pack(const struct oep_v0_p4_spi_target_read_rx_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_spi_target_read_rx_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_read_rx_request *value);
+
+struct oep_v0_p4_spi_target_read_rx_result {
+    uint8_t pending;
+    uint32_t bits;
+    const uint8_t *data;
+    uint16_t data_length;
+};
+size_t oep_v0_p4_spi_target_read_rx_result_pack(const struct oep_v0_p4_spi_target_read_rx_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_spi_target_read_rx_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_read_rx_result *value);
+
+struct oep_v0_p4_spi_target_status_request {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_spi_target_status_request_pack(const struct oep_v0_p4_spi_target_status_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_spi_target_status_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_status_request *value);
+
+struct oep_v0_p4_spi_target_status_result {
+    uint8_t flags;
+    uint32_t transactions;
+    uint16_t errors;
+};
+size_t oep_v0_p4_spi_target_status_result_pack(const struct oep_v0_p4_spi_target_status_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_spi_target_status_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_status_result *value);
+
+struct oep_v0_p4_spi_target_reset_request {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_spi_target_reset_request_pack(const struct oep_v0_p4_spi_target_reset_request *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_spi_target_reset_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_reset_request *value);
+
+struct oep_v0_p4_spi_target_reset_result {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_p4_spi_target_reset_result_pack(const struct oep_v0_p4_spi_target_reset_result *value, uint8_t *out, size_t cap);
+bool oep_v0_p4_spi_target_reset_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_reset_result *value);
 
 /* Returns the role byte of a message, or 0 when it is empty or unknown. */
 uint8_t oep_v0_message_role(const uint8_t *msg, size_t len);

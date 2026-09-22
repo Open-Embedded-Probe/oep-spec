@@ -1694,6 +1694,194 @@ bool oep_v0_p4_i2c_target_set_stretch_result_unpack(const uint8_t *in, size_t le
     return true;
 }
 
+size_t oep_v0_p4_spi_target_configure_request_pack(const struct oep_v0_p4_spi_target_configure_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->mode;
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->bit_order;
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_spi_target_configure_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_configure_request *value) {
+    size_t n = 0;
+    if (len != 2u) return false;
+    value->mode = (uint8_t)in[n]; n += 1u;
+    value->bit_order = (uint8_t)in[n]; n += 1u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_p4_spi_target_configure_result_pack(const struct oep_v0_p4_spi_target_configure_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_spi_target_configure_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_configure_result *value) {
+    size_t n = 0;
+    if (len != 0u) return false;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_p4_spi_target_arm_request_pack(const struct oep_v0_p4_spi_target_arm_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 2u) return 0;
+    out[n++] = (uint8_t)value->length;
+    out[n++] = (uint8_t)(value->length >> 8);
+    if (cap - n < value->tx_length) return 0;
+    if (value->tx_length) memcpy(out + n, value->tx, value->tx_length);
+    n += value->tx_length;
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_spi_target_arm_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_arm_request *value) {
+    size_t n = 0;
+    if (len < 2u) return false;
+    value->length = (uint16_t)in[n] | ((uint16_t)in[n + 1] << 8); n += 2u;
+    if (len - n > 0xFFFFu) return false;
+    value->tx = in + n; value->tx_length = (uint16_t)(len - n); n = len;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_p4_spi_target_arm_result_pack(const struct oep_v0_p4_spi_target_arm_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_spi_target_arm_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_arm_result *value) {
+    size_t n = 0;
+    if (len != 0u) return false;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_p4_spi_target_read_rx_request_pack(const struct oep_v0_p4_spi_target_read_rx_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_spi_target_read_rx_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_read_rx_request *value) {
+    size_t n = 0;
+    if (len != 0u) return false;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_p4_spi_target_read_rx_result_pack(const struct oep_v0_p4_spi_target_read_rx_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->pending;
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->bits;
+    out[n++] = (uint8_t)(value->bits >> 8);
+    out[n++] = (uint8_t)(value->bits >> 16);
+    out[n++] = (uint8_t)(value->bits >> 24);
+    if (cap - n < value->data_length) return 0;
+    if (value->data_length) memcpy(out + n, value->data, value->data_length);
+    n += value->data_length;
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_spi_target_read_rx_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_read_rx_result *value) {
+    size_t n = 0;
+    if (len < 5u) return false;
+    value->pending = (uint8_t)in[n]; n += 1u;
+    value->bits = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    if (len - n > 0xFFFFu) return false;
+    value->data = in + n; value->data_length = (uint16_t)(len - n); n = len;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_p4_spi_target_status_request_pack(const struct oep_v0_p4_spi_target_status_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_spi_target_status_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_status_request *value) {
+    size_t n = 0;
+    if (len != 0u) return false;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_p4_spi_target_status_result_pack(const struct oep_v0_p4_spi_target_status_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->flags;
+    if (cap - n < 4u) return 0;
+    out[n++] = (uint8_t)value->transactions;
+    out[n++] = (uint8_t)(value->transactions >> 8);
+    out[n++] = (uint8_t)(value->transactions >> 16);
+    out[n++] = (uint8_t)(value->transactions >> 24);
+    if (cap - n < 2u) return 0;
+    out[n++] = (uint8_t)value->errors;
+    out[n++] = (uint8_t)(value->errors >> 8);
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_spi_target_status_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_status_result *value) {
+    size_t n = 0;
+    if (len != 7u) return false;
+    value->flags = (uint8_t)in[n]; n += 1u;
+    value->transactions = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    value->errors = (uint16_t)in[n] | ((uint16_t)in[n + 1] << 8); n += 2u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_p4_spi_target_reset_request_pack(const struct oep_v0_p4_spi_target_reset_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_spi_target_reset_request_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_reset_request *value) {
+    size_t n = 0;
+    if (len != 0u) return false;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_p4_spi_target_reset_result_pack(const struct oep_v0_p4_spi_target_reset_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_p4_spi_target_reset_result_unpack(const uint8_t *in, size_t len, struct oep_v0_p4_spi_target_reset_result *value) {
+    size_t n = 0;
+    if (len != 0u) return false;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
 uint8_t oep_v0_message_role(const uint8_t *msg, size_t len) {
     if (!len) return 0;
     switch (msg[0]) {

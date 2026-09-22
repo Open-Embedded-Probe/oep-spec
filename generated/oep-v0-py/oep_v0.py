@@ -93,6 +93,12 @@ P4_I2C_TARGET_OP_STATUS = 0x05
 P4_I2C_TARGET_OP_RESET = 0x06
 P4_I2C_TARGET_OP_READ_HW = 0x10
 P4_I2C_TARGET_OP_SET_STRETCH = 0x11
+DEF_P4_SPI_TARGET = (0x0100, 0x0002, 0)
+P4_SPI_TARGET_OP_CONFIGURE = 0x01
+P4_SPI_TARGET_OP_ARM = 0x02
+P4_SPI_TARGET_OP_READ_RX = 0x03
+P4_SPI_TARGET_OP_STATUS = 0x04
+P4_SPI_TARGET_OP_RESET = 0x05
 
 @dataclass
 class OfferedFunction:
@@ -1627,6 +1633,182 @@ class P4I2CTargetSetStretchResult:
         return cls()
 
 
+@dataclass
+class P4SpiTargetConfigureRequest:
+    mode: int = 0
+    bit_order: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.mode)
+        out += struct.pack('B', self.bit_order)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4SpiTargetConfigureRequest':
+        n = 0
+        if len(data) != 2: raise ValueError('payload length must be 2')
+        mode = struct.unpack_from('B', data, n)[0]; n += 1
+        bit_order = struct.unpack_from('B', data, n)[0]; n += 1
+        return cls(mode=mode, bit_order=bit_order)
+
+
+@dataclass
+class P4SpiTargetConfigureResult:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4SpiTargetConfigureResult':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class P4SpiTargetArmRequest:
+    length: int = 0
+    tx: bytes = b''
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<H', self.length)
+        out += bytes(self.tx)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4SpiTargetArmRequest':
+        n = 0
+        if len(data) < 2: raise ValueError('short payload')
+        length = struct.unpack_from('<H', data, n)[0]; n += 2
+        tx = bytes(data[n:]); n = len(data)
+        return cls(length=length, tx=tx)
+
+
+@dataclass
+class P4SpiTargetArmResult:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4SpiTargetArmResult':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class P4SpiTargetReadRxRequest:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4SpiTargetReadRxRequest':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class P4SpiTargetReadRxResult:
+    pending: int = 0
+    bits: int = 0
+    data: bytes = b''
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.pending)
+        out += struct.pack('<I', self.bits)
+        out += bytes(self.data)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4SpiTargetReadRxResult':
+        n = 0
+        if len(data) < 5: raise ValueError('short payload')
+        pending = struct.unpack_from('B', data, n)[0]; n += 1
+        bits = struct.unpack_from('<I', data, n)[0]; n += 4
+        data = bytes(data[n:]); n = len(data)
+        return cls(pending=pending, bits=bits, data=data)
+
+
+@dataclass
+class P4SpiTargetStatusRequest:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4SpiTargetStatusRequest':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class P4SpiTargetStatusResult:
+    flags: int = 0
+    transactions: int = 0
+    errors: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.flags)
+        out += struct.pack('<I', self.transactions)
+        out += struct.pack('<H', self.errors)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4SpiTargetStatusResult':
+        n = 0
+        if len(data) != 7: raise ValueError('payload length must be 7')
+        flags = struct.unpack_from('B', data, n)[0]; n += 1
+        transactions = struct.unpack_from('<I', data, n)[0]; n += 4
+        errors = struct.unpack_from('<H', data, n)[0]; n += 2
+        return cls(flags=flags, transactions=transactions, errors=errors)
+
+
+@dataclass
+class P4SpiTargetResetRequest:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4SpiTargetResetRequest':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class P4SpiTargetResetResult:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'P4SpiTargetResetResult':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
 HEADER_CLASSES = {'request': RequestHeader, 'result': ResultHeader, 'activity_update': ActivityUpdateHeader, 'activity_outcome': ActivityOutcomeHeader, 'notification': NotificationHeader, 'data': DataHeader}
 PAYLOAD_CLASSES = {
     ('core', 'confirm', 'request'): CoreConfirmRequest,
@@ -1703,6 +1885,16 @@ PAYLOAD_CLASSES = {
     ('p4_i2c_target', 'read_hw', 'result'): P4I2CTargetReadHwResult,
     ('p4_i2c_target', 'set_stretch', 'request'): P4I2CTargetSetStretchRequest,
     ('p4_i2c_target', 'set_stretch', 'result'): P4I2CTargetSetStretchResult,
+    ('p4_spi_target', 'configure', 'request'): P4SpiTargetConfigureRequest,
+    ('p4_spi_target', 'configure', 'result'): P4SpiTargetConfigureResult,
+    ('p4_spi_target', 'arm', 'request'): P4SpiTargetArmRequest,
+    ('p4_spi_target', 'arm', 'result'): P4SpiTargetArmResult,
+    ('p4_spi_target', 'read_rx', 'request'): P4SpiTargetReadRxRequest,
+    ('p4_spi_target', 'read_rx', 'result'): P4SpiTargetReadRxResult,
+    ('p4_spi_target', 'status', 'request'): P4SpiTargetStatusRequest,
+    ('p4_spi_target', 'status', 'result'): P4SpiTargetStatusResult,
+    ('p4_spi_target', 'reset', 'request'): P4SpiTargetResetRequest,
+    ('p4_spi_target', 'reset', 'result'): P4SpiTargetResetResult,
 }
 
 def message_role(msg: bytes) -> int:

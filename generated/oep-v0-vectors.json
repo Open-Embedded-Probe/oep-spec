@@ -2776,6 +2776,328 @@
    "operation": "set_stretch",
    "direction": "result",
    "bytes": "00"
+  },
+  {
+   "name": "p4_spi_target.configure.request.0",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "configure",
+   "direction": "request",
+   "fields": {
+    "mode": 17,
+    "bit_order": 18
+   },
+   "bytes": "1112"
+  },
+  {
+   "name": "p4_spi_target.configure.request.1",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "configure",
+   "direction": "request",
+   "fields": {
+    "mode": 24,
+    "bit_order": 25
+   },
+   "bytes": "1819"
+  },
+  {
+   "name": "p4_spi_target.configure.request.truncated",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "configure",
+   "direction": "request",
+   "bytes": "11"
+  },
+  {
+   "name": "p4_spi_target.configure.request.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "configure",
+   "direction": "request",
+   "bytes": "111200"
+  },
+  {
+   "name": "p4_spi_target.configure.result.0",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "configure",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.configure.result.1",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "configure",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.configure.result.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "configure",
+   "direction": "result",
+   "bytes": "00"
+  },
+  {
+   "name": "p4_spi_target.arm.request.0",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "arm",
+   "direction": "request",
+   "fields": {
+    "length": 8721,
+    "tx": [
+     161,
+     162,
+     163
+    ]
+   },
+   "bytes": "1122a1a2a3"
+  },
+  {
+   "name": "p4_spi_target.arm.request.1",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "arm",
+   "direction": "request",
+   "fields": {
+    "length": 10520,
+    "tx": [
+     168,
+     169,
+     170,
+     171
+    ]
+   },
+   "bytes": "1829a8a9aaab"
+  },
+  {
+   "name": "p4_spi_target.arm.request.truncated",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "arm",
+   "direction": "request",
+   "bytes": "11"
+  },
+  {
+   "name": "p4_spi_target.arm.result.0",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "arm",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.arm.result.1",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "arm",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.arm.result.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "arm",
+   "direction": "result",
+   "bytes": "00"
+  },
+  {
+   "name": "p4_spi_target.read_rx.request.0",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "read_rx",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.read_rx.request.1",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "read_rx",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.read_rx.request.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "read_rx",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "p4_spi_target.read_rx.result.0",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "read_rx",
+   "direction": "result",
+   "fields": {
+    "pending": 17,
+    "bits": 1161044754,
+    "data": [
+     162,
+     163,
+     164
+    ]
+   },
+   "bytes": "1112233445a2a3a4"
+  },
+  {
+   "name": "p4_spi_target.read_rx.result.1",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "read_rx",
+   "direction": "result",
+   "fields": {
+    "pending": 24,
+    "bits": 1278945817,
+    "data": [
+     169,
+     170,
+     171,
+     172
+    ]
+   },
+   "bytes": "18192a3b4ca9aaabac"
+  },
+  {
+   "name": "p4_spi_target.read_rx.result.truncated",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "read_rx",
+   "direction": "result",
+   "bytes": "11122334"
+  },
+  {
+   "name": "p4_spi_target.status.request.0",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "status",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.status.request.1",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "status",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.status.request.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "status",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "p4_spi_target.status.result.0",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "status",
+   "direction": "result",
+   "fields": {
+    "flags": 17,
+    "transactions": 1161044754,
+    "errors": 9235
+   },
+   "bytes": "11122334451324"
+  },
+  {
+   "name": "p4_spi_target.status.result.1",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "status",
+   "direction": "result",
+   "fields": {
+    "flags": 24,
+    "transactions": 1278945817,
+    "errors": 11034
+   },
+   "bytes": "18192a3b4c1a2b"
+  },
+  {
+   "name": "p4_spi_target.status.result.truncated",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "status",
+   "direction": "result",
+   "bytes": "111223344513"
+  },
+  {
+   "name": "p4_spi_target.status.result.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "status",
+   "direction": "result",
+   "bytes": "1112233445132400"
+  },
+  {
+   "name": "p4_spi_target.reset.request.0",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "reset",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.reset.request.1",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "reset",
+   "direction": "request",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.reset.request.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "reset",
+   "direction": "request",
+   "bytes": "00"
+  },
+  {
+   "name": "p4_spi_target.reset.result.0",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "reset",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.reset.result.1",
+   "kind": "payload",
+   "definition": "p4_spi_target",
+   "operation": "reset",
+   "direction": "result",
+   "fields": {},
+   "bytes": ""
+  },
+  {
+   "name": "p4_spi_target.reset.result.trailing",
+   "kind": "payload_reject",
+   "definition": "p4_spi_target",
+   "operation": "reset",
+   "direction": "result",
+   "bytes": "00"
   }
  ]
 }
