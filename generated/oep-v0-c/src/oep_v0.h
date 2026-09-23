@@ -94,6 +94,7 @@ extern "C" {
 #define OEP_V0_TARGET_CONSOLE_OP_CONFIGURE 0x01u
 #define OEP_V0_TARGET_CONSOLE_OP_READ 0x02u
 #define OEP_V0_TARGET_CONSOLE_OP_STATUS 0x03u
+#define OEP_V0_TARGET_CONSOLE_OP_WRITE 0x04u
 
 #define OEP_V0_DEF_FIXTURE_GPIO_OWNER 0x0000u
 #define OEP_V0_DEF_FIXTURE_GPIO_ID 0x0020u
@@ -474,12 +475,14 @@ bool oep_v0_target_flash_verify_crc32_result_unpack(const uint8_t *in, size_t le
 
 struct oep_v0_target_console_configure_request {
     uint8_t enable;
+    uint8_t framing;
 };
 size_t oep_v0_target_console_configure_request_pack(const struct oep_v0_target_console_configure_request *value, uint8_t *out, size_t cap);
 bool oep_v0_target_console_configure_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_configure_request *value);
 
 struct oep_v0_target_console_configure_result {
     uint8_t enabled;
+    uint8_t framing;
 };
 size_t oep_v0_target_console_configure_result_pack(const struct oep_v0_target_console_configure_result *value, uint8_t *out, size_t cap);
 bool oep_v0_target_console_configure_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_configure_result *value);
@@ -510,6 +513,19 @@ struct oep_v0_target_console_status_result {
 };
 size_t oep_v0_target_console_status_result_pack(const struct oep_v0_target_console_status_result *value, uint8_t *out, size_t cap);
 bool oep_v0_target_console_status_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_status_result *value);
+
+struct oep_v0_target_console_write_request {
+    const uint8_t *data;
+    uint16_t data_length;
+};
+size_t oep_v0_target_console_write_request_pack(const struct oep_v0_target_console_write_request *value, uint8_t *out, size_t cap);
+bool oep_v0_target_console_write_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_write_request *value);
+
+struct oep_v0_target_console_write_result {
+    uint16_t queued;
+};
+size_t oep_v0_target_console_write_result_pack(const struct oep_v0_target_console_write_result *value, uint8_t *out, size_t cap);
+bool oep_v0_target_console_write_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_write_result *value);
 
 struct oep_v0_fixture_gpio_configure_request {
     uint8_t channel;

@@ -76,6 +76,7 @@ DEF_TARGET_CONSOLE = (0x0000, 0x0013, 0)
 TARGET_CONSOLE_OP_CONFIGURE = 0x01
 TARGET_CONSOLE_OP_READ = 0x02
 TARGET_CONSOLE_OP_STATUS = 0x03
+TARGET_CONSOLE_OP_WRITE = 0x04
 DEF_FIXTURE_GPIO = (0x0000, 0x0020, 0)
 FIXTURE_GPIO_OP_CONFIGURE = 0x01
 FIXTURE_GPIO_OP_READ_BANK = 0x02
@@ -1034,35 +1035,41 @@ class TargetFlashVerifyCrc32Result:
 @dataclass
 class TargetConsoleConfigureRequest:
     enable: int = 0
+    framing: int = 0
 
     def pack(self) -> bytes:
         out = bytearray()
         out += struct.pack('B', self.enable)
+        out += struct.pack('B', self.framing)
         return bytes(out)
 
     @classmethod
     def unpack(cls, data: bytes) -> 'TargetConsoleConfigureRequest':
         n = 0
-        if len(data) != 1: raise ValueError('payload length must be 1')
+        if len(data) != 2: raise ValueError('payload length must be 2')
         enable = struct.unpack_from('B', data, n)[0]; n += 1
-        return cls(enable=enable)
+        framing = struct.unpack_from('B', data, n)[0]; n += 1
+        return cls(enable=enable, framing=framing)
 
 
 @dataclass
 class TargetConsoleConfigureResult:
     enabled: int = 0
+    framing: int = 0
 
     def pack(self) -> bytes:
         out = bytearray()
         out += struct.pack('B', self.enabled)
+        out += struct.pack('B', self.framing)
         return bytes(out)
 
     @classmethod
     def unpack(cls, data: bytes) -> 'TargetConsoleConfigureResult':
         n = 0
-        if len(data) != 1: raise ValueError('payload length must be 1')
+        if len(data) != 2: raise ValueError('payload length must be 2')
         enabled = struct.unpack_from('B', data, n)[0]; n += 1
-        return cls(enabled=enabled)
+        framing = struct.unpack_from('B', data, n)[0]; n += 1
+        return cls(enabled=enabled, framing=framing)
 
 
 @dataclass
@@ -1135,6 +1142,40 @@ class TargetConsoleStatusResult:
         buffered = struct.unpack_from('<H', data, n)[0]; n += 2
         dropped = struct.unpack_from('<I', data, n)[0]; n += 4
         return cls(enabled=enabled, buffered=buffered, dropped=dropped)
+
+
+@dataclass
+class TargetConsoleWriteRequest:
+    data: bytes = b''
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += bytes(self.data)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetConsoleWriteRequest':
+        n = 0
+        if len(data) < 0: raise ValueError('short payload')
+        data = bytes(data[n:]); n = len(data)
+        return cls(data=data)
+
+
+@dataclass
+class TargetConsoleWriteResult:
+    queued: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<H', self.queued)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetConsoleWriteResult':
+        n = 0
+        if len(data) != 2: raise ValueError('payload length must be 2')
+        queued = struct.unpack_from('<H', data, n)[0]; n += 2
+        return cls(queued=queued)
 
 
 @dataclass
@@ -1967,6 +2008,8 @@ PAYLOAD_CLASSES = {
     ('target_console', 'read', 'result'): TargetConsoleReadResult,
     ('target_console', 'status', 'request'): TargetConsoleStatusRequest,
     ('target_console', 'status', 'result'): TargetConsoleStatusResult,
+    ('target_console', 'write', 'request'): TargetConsoleWriteRequest,
+    ('target_console', 'write', 'result'): TargetConsoleWriteResult,
     ('fixture_gpio', 'configure', 'request'): FixtureGpioConfigureRequest,
     ('fixture_gpio', 'configure', 'result'): FixtureGpioConfigureResult,
     ('fixture_gpio', 'read_bank', 'request'): FixtureGpioReadBankRequest,

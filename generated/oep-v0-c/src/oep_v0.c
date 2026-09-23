@@ -1016,14 +1016,17 @@ size_t oep_v0_target_console_configure_request_pack(const struct oep_v0_target_c
     size_t n = 0;
     if (cap - n < 1u) return 0;
     out[n++] = (uint8_t)value->enable;
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->framing;
     (void)value; (void)out; (void)cap;
     return n;
 }
 
 bool oep_v0_target_console_configure_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_configure_request *value) {
     size_t n = 0;
-    if (len != 1u) return false;
+    if (len != 2u) return false;
     value->enable = (uint8_t)in[n]; n += 1u;
+    value->framing = (uint8_t)in[n]; n += 1u;
     (void)n; (void)value;
     (void)in;
     return true;
@@ -1033,14 +1036,17 @@ size_t oep_v0_target_console_configure_result_pack(const struct oep_v0_target_co
     size_t n = 0;
     if (cap - n < 1u) return 0;
     out[n++] = (uint8_t)value->enabled;
+    if (cap - n < 1u) return 0;
+    out[n++] = (uint8_t)value->framing;
     (void)value; (void)out; (void)cap;
     return n;
 }
 
 bool oep_v0_target_console_configure_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_configure_result *value) {
     size_t n = 0;
-    if (len != 1u) return false;
+    if (len != 2u) return false;
     value->enabled = (uint8_t)in[n]; n += 1u;
+    value->framing = (uint8_t)in[n]; n += 1u;
     (void)n; (void)value;
     (void)in;
     return true;
@@ -1119,6 +1125,42 @@ bool oep_v0_target_console_status_result_unpack(const uint8_t *in, size_t len, s
     value->enabled = (uint8_t)in[n]; n += 1u;
     value->buffered = (uint16_t)in[n] | ((uint16_t)in[n + 1] << 8); n += 2u;
     value->dropped = (uint32_t)in[n] | ((uint32_t)in[n + 1] << 8) | ((uint32_t)in[n + 2] << 16) | ((uint32_t)in[n + 3] << 24); n += 4u;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_target_console_write_request_pack(const struct oep_v0_target_console_write_request *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < value->data_length) return 0;
+    if (value->data_length) memcpy(out + n, value->data, value->data_length);
+    n += value->data_length;
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_target_console_write_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_write_request *value) {
+    size_t n = 0;
+    if (len - n > 0xFFFFu) return false;
+    value->data = in + n; value->data_length = (uint16_t)(len - n); n = len;
+    (void)n; (void)value;
+    (void)in;
+    return true;
+}
+
+size_t oep_v0_target_console_write_result_pack(const struct oep_v0_target_console_write_result *value, uint8_t *out, size_t cap) {
+    size_t n = 0;
+    if (cap - n < 2u) return 0;
+    out[n++] = (uint8_t)value->queued;
+    out[n++] = (uint8_t)(value->queued >> 8);
+    (void)value; (void)out; (void)cap;
+    return n;
+}
+
+bool oep_v0_target_console_write_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_write_result *value) {
+    size_t n = 0;
+    if (len != 2u) return false;
+    value->queued = (uint16_t)in[n] | ((uint16_t)in[n + 1] << 8); n += 2u;
     (void)n; (void)value;
     (void)in;
     return true;
