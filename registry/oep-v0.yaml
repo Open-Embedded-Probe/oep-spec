@@ -225,6 +225,12 @@ definitions:
   # Those same registers carry abstract-command operands, so a probe polls only while
   # the target is attached and running: never while halted, and never in the middle of
   # memory or flash work. Bytes arriving with no room are counted, not silently lost.
+  # Two framings share those registers, and a host reading one sees the other as noise:
+  # framing 0 is ArduinoCore-CH32's SerialSDI, target to host only; framing 1 is its
+  # SerialDMDATA, minichlink's framing, which also carries host to target - three bytes a
+  # frame that way, seven the other. A bench wants framing 1: the console has to work
+  # before any UART does, because the UART is itself under test, so the target and the
+  # runner agree over this channel which port and pins to bring up and only then start.
   - name: target_console
     owner: 0x0000
     id: 0x0013
@@ -232,8 +238,8 @@ definitions:
     operations:
       - name: configure
         op: 0x01
-        request: [{name: enable, type: u8}]
-        result: [{name: enabled, type: u8}]
+        request: [{name: enable, type: u8}, {name: framing, type: u8}]
+        result: [{name: enabled, type: u8}, {name: framing, type: u8}]
       - name: read
         op: 0x02
         request: [{name: maximum, type: u16}]
@@ -242,6 +248,12 @@ definitions:
         op: 0x03
         request: []
         result: [{name: enabled, type: u8}, {name: buffered, type: u16}, {name: dropped, type: u32}]
+      # framing 1 only. Queued, not sent inline: the mailbox is only free when the target
+      # has taken the last frame, and a probe must not block a request waiting for that.
+      - name: write
+        op: 0x04
+        request: [{name: data, type: bytes}]
+        result: [{name: queued, type: u16}]
 
   - name: fixture_gpio
     owner: 0x0000

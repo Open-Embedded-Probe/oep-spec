@@ -1639,9 +1639,10 @@
    "operation": "configure",
    "direction": "request",
    "fields": {
-    "enable": 17
+    "enable": 17,
+    "framing": 18
    },
-   "bytes": "11"
+   "bytes": "1112"
   },
   {
    "name": "target_console.configure.request.1",
@@ -1650,9 +1651,10 @@
    "operation": "configure",
    "direction": "request",
    "fields": {
-    "enable": 24
+    "enable": 24,
+    "framing": 25
    },
-   "bytes": "18"
+   "bytes": "1819"
   },
   {
    "name": "target_console.configure.request.truncated",
@@ -1660,7 +1662,7 @@
    "definition": "target_console",
    "operation": "configure",
    "direction": "request",
-   "bytes": ""
+   "bytes": "11"
   },
   {
    "name": "target_console.configure.request.trailing",
@@ -1668,7 +1670,7 @@
    "definition": "target_console",
    "operation": "configure",
    "direction": "request",
-   "bytes": "1100"
+   "bytes": "111200"
   },
   {
    "name": "target_console.configure.result.0",
@@ -1677,9 +1679,10 @@
    "operation": "configure",
    "direction": "result",
    "fields": {
-    "enabled": 17
+    "enabled": 17,
+    "framing": 18
    },
-   "bytes": "11"
+   "bytes": "1112"
   },
   {
    "name": "target_console.configure.result.1",
@@ -1688,9 +1691,10 @@
    "operation": "configure",
    "direction": "result",
    "fields": {
-    "enabled": 24
+    "enabled": 24,
+    "framing": 25
    },
-   "bytes": "18"
+   "bytes": "1819"
   },
   {
    "name": "target_console.configure.result.truncated",
@@ -1698,7 +1702,7 @@
    "definition": "target_console",
    "operation": "configure",
    "direction": "result",
-   "bytes": ""
+   "bytes": "11"
   },
   {
    "name": "target_console.configure.result.trailing",
@@ -1706,7 +1710,7 @@
    "definition": "target_console",
    "operation": "configure",
    "direction": "result",
-   "bytes": "1100"
+   "bytes": "111200"
   },
   {
    "name": "target_console.read.request.0",
@@ -1844,6 +1848,75 @@
    "operation": "status",
    "direction": "result",
    "bytes": "1112231324354600"
+  },
+  {
+   "name": "target_console.write.request.0",
+   "kind": "payload",
+   "definition": "target_console",
+   "operation": "write",
+   "direction": "request",
+   "fields": {
+    "data": [
+     160,
+     161,
+     162
+    ]
+   },
+   "bytes": "a0a1a2"
+  },
+  {
+   "name": "target_console.write.request.1",
+   "kind": "payload",
+   "definition": "target_console",
+   "operation": "write",
+   "direction": "request",
+   "fields": {
+    "data": [
+     167,
+     168,
+     169,
+     170
+    ]
+   },
+   "bytes": "a7a8a9aa"
+  },
+  {
+   "name": "target_console.write.result.0",
+   "kind": "payload",
+   "definition": "target_console",
+   "operation": "write",
+   "direction": "result",
+   "fields": {
+    "queued": 8721
+   },
+   "bytes": "1122"
+  },
+  {
+   "name": "target_console.write.result.1",
+   "kind": "payload",
+   "definition": "target_console",
+   "operation": "write",
+   "direction": "result",
+   "fields": {
+    "queued": 10520
+   },
+   "bytes": "1829"
+  },
+  {
+   "name": "target_console.write.result.truncated",
+   "kind": "payload_reject",
+   "definition": "target_console",
+   "operation": "write",
+   "direction": "result",
+   "bytes": "11"
+  },
+  {
+   "name": "target_console.write.result.trailing",
+   "kind": "payload_reject",
+   "definition": "target_console",
+   "operation": "write",
+   "direction": "result",
+   "bytes": "112200"
   },
   {
    "name": "fixture_gpio.configure.request.0",
