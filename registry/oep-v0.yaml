@@ -225,10 +225,13 @@ definitions:
   # Those same registers carry abstract-command operands, so a probe polls only while
   # the target is attached and running: never while halted, and never in the middle of
   # memory or flash work. Bytes arriving with no room are counted, not silently lost.
-  # Two framings share those registers, and a host reading one sees the other as noise:
+  # Three framings share those registers, and a host reading one sees the others as noise:
   # framing 0 is ArduinoCore-CH32's SerialSDI, target to host only; framing 1 is its
   # SerialDMDATA, minichlink's framing, which also carries host to target - three bytes a
-  # frame that way, seven the other. A bench wants framing 1: the console has to work
+  # frame that way, seven the other; framing 2 is dmseq (its SerialDMSeq): the same
+  # registers with 1-bit sequence numbers both ways and a CRC-8 on every word, six bytes a
+  # frame out and two in, so a lost or corrupted DMI access neither duplicates nor drops a
+  # byte (docs/target-console-dmseq.ja.md). A bench wants framing 2: the console has to work
   # before any UART does, because the UART is itself under test, so the target and the
   # runner agree over this channel which port and pins to bring up and only then start.
   - name: target_console
@@ -248,7 +251,7 @@ definitions:
         op: 0x03
         request: []
         result: [{name: enabled, type: u8}, {name: buffered, type: u16}, {name: dropped, type: u32}]
-      # framing 1 only. Queued, not sent inline: the mailbox is only free when the target
+      # framings 1 and 2. Queued, not sent inline: the mailbox is only free when the target
       # has taken the last frame, and a probe must not block a request waiting for that.
       - name: write
         op: 0x04
