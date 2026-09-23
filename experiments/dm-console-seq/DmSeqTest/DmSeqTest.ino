@@ -1,7 +1,14 @@
 // EXPERIMENT: exercise the sequenced DM console. RUN streams a fixed text the host knows
 // byte for byte (repeated characters, single-character writes, exactly-full frames);
 // "E <text>" is echoed back as "R <text>".
-#ifdef DMSEQ_BASELINE                     // the same test over today's SerialDMDATA (framing 1)
+#if defined(DMSEQ_LIBRARY)                // the same test over ArduinoCore-CH32's SerialDMSeq
+#include <SerialDMSeq.h>
+#define Con SerialDMSeq
+struct { uint32_t reposts = 0, timeouts = 0; } Stats;
+#define CON_BEGIN() SerialDMSeq.begin(0)
+#define REPOSTS Stats.reposts
+#define TIMEOUTS Stats.timeouts
+#elif defined(DMSEQ_BASELINE)             // the same test over today's SerialDMDATA (framing 1)
 #include <SerialDMDATA.h>
 #define Con SerialDMDATA
 struct { uint32_t reposts = 0, timeouts = 0; } Stats;
