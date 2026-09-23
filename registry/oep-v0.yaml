@@ -210,6 +210,39 @@ definitions:
         request: [{name: address, type: u32}, {name: length, type: u32}]
         result: [{name: crc32, type: u32}]
 
+  # ---- target console over the debug module's data registers (2026-09-23) ----
+  # A CH32 maps the debug module's two abstract data registers into the hart's own
+  # address space - hartinfo reports where - so a sketch can hand bytes to the probe
+  # with no UART, no pin and no wiring, and without ever being halted. That makes a
+  # console available on a target whose console pins are not wired, or not wired to
+  # anything the probe can receive on, which is the usual state of a bench jig.
+  #
+  # Framing, as ArduinoCore-CH32's SerialSDI writes it: the target waits for DATA0 to
+  # read zero, then writes DATA1 = bytes 3..6 and DATA0 = length | bytes 0..2 << 8,
+  # with length 1..7. The probe takes the frame and writes DATA0 back to zero, which
+  # is also the target's flow control - it blocks until the probe has collected.
+  #
+  # Those same registers carry abstract-command operands, so a probe polls only while
+  # the target is attached and running: never while halted, and never in the middle of
+  # memory or flash work. Bytes arriving with no room are counted, not silently lost.
+  - name: target_console
+    owner: 0x0000
+    id: 0x0013
+    revision: 0
+    operations:
+      - name: configure
+        op: 0x01
+        request: [{name: enable, type: u8}]
+        result: [{name: enabled, type: u8}]
+      - name: read
+        op: 0x02
+        request: [{name: maximum, type: u16}]
+        result: [{name: data, type: bytes}]
+      - name: status
+        op: 0x03
+        request: []
+        result: [{name: enabled, type: u8}, {name: buffered, type: u16}, {name: dropped, type: u32}]
+
   - name: fixture_gpio
     owner: 0x0000
     id: 0x0020
