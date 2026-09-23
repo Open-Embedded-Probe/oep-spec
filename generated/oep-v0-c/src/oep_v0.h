@@ -88,6 +88,13 @@ extern "C" {
 #define OEP_V0_TARGET_FLASH_OP_PROGRAM_PAGE 0x03u
 #define OEP_V0_TARGET_FLASH_OP_VERIFY_CRC32 0x04u
 
+#define OEP_V0_DEF_TARGET_CONSOLE_OWNER 0x0000u
+#define OEP_V0_DEF_TARGET_CONSOLE_ID 0x0013u
+#define OEP_V0_DEF_TARGET_CONSOLE_REVISION 0u
+#define OEP_V0_TARGET_CONSOLE_OP_CONFIGURE 0x01u
+#define OEP_V0_TARGET_CONSOLE_OP_READ 0x02u
+#define OEP_V0_TARGET_CONSOLE_OP_STATUS 0x03u
+
 #define OEP_V0_DEF_FIXTURE_GPIO_OWNER 0x0000u
 #define OEP_V0_DEF_FIXTURE_GPIO_ID 0x0020u
 #define OEP_V0_DEF_FIXTURE_GPIO_REVISION 0u
@@ -464,6 +471,45 @@ struct oep_v0_target_flash_verify_crc32_result {
 };
 size_t oep_v0_target_flash_verify_crc32_result_pack(const struct oep_v0_target_flash_verify_crc32_result *value, uint8_t *out, size_t cap);
 bool oep_v0_target_flash_verify_crc32_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_flash_verify_crc32_result *value);
+
+struct oep_v0_target_console_configure_request {
+    uint8_t enable;
+};
+size_t oep_v0_target_console_configure_request_pack(const struct oep_v0_target_console_configure_request *value, uint8_t *out, size_t cap);
+bool oep_v0_target_console_configure_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_configure_request *value);
+
+struct oep_v0_target_console_configure_result {
+    uint8_t enabled;
+};
+size_t oep_v0_target_console_configure_result_pack(const struct oep_v0_target_console_configure_result *value, uint8_t *out, size_t cap);
+bool oep_v0_target_console_configure_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_configure_result *value);
+
+struct oep_v0_target_console_read_request {
+    uint16_t maximum;
+};
+size_t oep_v0_target_console_read_request_pack(const struct oep_v0_target_console_read_request *value, uint8_t *out, size_t cap);
+bool oep_v0_target_console_read_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_read_request *value);
+
+struct oep_v0_target_console_read_result {
+    const uint8_t *data;
+    uint16_t data_length;
+};
+size_t oep_v0_target_console_read_result_pack(const struct oep_v0_target_console_read_result *value, uint8_t *out, size_t cap);
+bool oep_v0_target_console_read_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_read_result *value);
+
+struct oep_v0_target_console_status_request {
+    uint8_t unused_;  /* empty payload */
+};
+size_t oep_v0_target_console_status_request_pack(const struct oep_v0_target_console_status_request *value, uint8_t *out, size_t cap);
+bool oep_v0_target_console_status_request_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_status_request *value);
+
+struct oep_v0_target_console_status_result {
+    uint8_t enabled;
+    uint16_t buffered;
+    uint32_t dropped;
+};
+size_t oep_v0_target_console_status_result_pack(const struct oep_v0_target_console_status_result *value, uint8_t *out, size_t cap);
+bool oep_v0_target_console_status_result_unpack(const uint8_t *in, size_t len, struct oep_v0_target_console_status_result *value);
 
 struct oep_v0_fixture_gpio_configure_request {
     uint8_t channel;

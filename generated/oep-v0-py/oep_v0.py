@@ -72,6 +72,10 @@ TARGET_FLASH_OP_GEOMETRY = 0x01
 TARGET_FLASH_OP_ERASE_PAGE = 0x02
 TARGET_FLASH_OP_PROGRAM_PAGE = 0x03
 TARGET_FLASH_OP_VERIFY_CRC32 = 0x04
+DEF_TARGET_CONSOLE = (0x0000, 0x0013, 0)
+TARGET_CONSOLE_OP_CONFIGURE = 0x01
+TARGET_CONSOLE_OP_READ = 0x02
+TARGET_CONSOLE_OP_STATUS = 0x03
 DEF_FIXTURE_GPIO = (0x0000, 0x0020, 0)
 FIXTURE_GPIO_OP_CONFIGURE = 0x01
 FIXTURE_GPIO_OP_READ_BANK = 0x02
@@ -1028,6 +1032,112 @@ class TargetFlashVerifyCrc32Result:
 
 
 @dataclass
+class TargetConsoleConfigureRequest:
+    enable: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.enable)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetConsoleConfigureRequest':
+        n = 0
+        if len(data) != 1: raise ValueError('payload length must be 1')
+        enable = struct.unpack_from('B', data, n)[0]; n += 1
+        return cls(enable=enable)
+
+
+@dataclass
+class TargetConsoleConfigureResult:
+    enabled: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.enabled)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetConsoleConfigureResult':
+        n = 0
+        if len(data) != 1: raise ValueError('payload length must be 1')
+        enabled = struct.unpack_from('B', data, n)[0]; n += 1
+        return cls(enabled=enabled)
+
+
+@dataclass
+class TargetConsoleReadRequest:
+    maximum: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('<H', self.maximum)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetConsoleReadRequest':
+        n = 0
+        if len(data) != 2: raise ValueError('payload length must be 2')
+        maximum = struct.unpack_from('<H', data, n)[0]; n += 2
+        return cls(maximum=maximum)
+
+
+@dataclass
+class TargetConsoleReadResult:
+    data: bytes = b''
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += bytes(self.data)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetConsoleReadResult':
+        n = 0
+        if len(data) < 0: raise ValueError('short payload')
+        data = bytes(data[n:]); n = len(data)
+        return cls(data=data)
+
+
+@dataclass
+class TargetConsoleStatusRequest:
+    pass
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetConsoleStatusRequest':
+        n = 0
+        if len(data) != 0: raise ValueError('payload length must be 0')
+        return cls()
+
+
+@dataclass
+class TargetConsoleStatusResult:
+    enabled: int = 0
+    buffered: int = 0
+    dropped: int = 0
+
+    def pack(self) -> bytes:
+        out = bytearray()
+        out += struct.pack('B', self.enabled)
+        out += struct.pack('<H', self.buffered)
+        out += struct.pack('<I', self.dropped)
+        return bytes(out)
+
+    @classmethod
+    def unpack(cls, data: bytes) -> 'TargetConsoleStatusResult':
+        n = 0
+        if len(data) != 7: raise ValueError('payload length must be 7')
+        enabled = struct.unpack_from('B', data, n)[0]; n += 1
+        buffered = struct.unpack_from('<H', data, n)[0]; n += 2
+        dropped = struct.unpack_from('<I', data, n)[0]; n += 4
+        return cls(enabled=enabled, buffered=buffered, dropped=dropped)
+
+
+@dataclass
 class FixtureGpioConfigureRequest:
     channel: int = 0
     mode: int = 0
@@ -1851,6 +1961,12 @@ PAYLOAD_CLASSES = {
     ('target_flash', 'program_page', 'result'): TargetFlashProgramPageResult,
     ('target_flash', 'verify_crc32', 'request'): TargetFlashVerifyCrc32Request,
     ('target_flash', 'verify_crc32', 'result'): TargetFlashVerifyCrc32Result,
+    ('target_console', 'configure', 'request'): TargetConsoleConfigureRequest,
+    ('target_console', 'configure', 'result'): TargetConsoleConfigureResult,
+    ('target_console', 'read', 'request'): TargetConsoleReadRequest,
+    ('target_console', 'read', 'result'): TargetConsoleReadResult,
+    ('target_console', 'status', 'request'): TargetConsoleStatusRequest,
+    ('target_console', 'status', 'result'): TargetConsoleStatusResult,
     ('fixture_gpio', 'configure', 'request'): FixtureGpioConfigureRequest,
     ('fixture_gpio', 'configure', 'result'): FixtureGpioConfigureResult,
     ('fixture_gpio', 'read_bank', 'request'): FixtureGpioReadBankRequest,
