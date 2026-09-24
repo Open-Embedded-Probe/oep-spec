@@ -50,6 +50,10 @@ describe result  : more(u8), TLV bytes
 インターフェースごとに 1 往復になる（同 14 往復）。64 byte frame の低スペック probe 相当 12 インターフェースでは
 list 8 + describe 12 = 20 往復（`more` なしでは 30 往復）。
 
+ページは TLV 単位で切るので、**probe は自分の TLV を 1 つずつ、自分の frame に収まる大きさにする**。例えば
+`role_channels` の bitmap は最大 253 byte になり得るが、64 byte frame の probe はピンが少ないので短く済む。長く
+なる場合は、同じ role の `role_channels` を複数に分けて書く（和集合になる）。
+
 ## 2. describe の TLV のタグ空間
 
 v0 の TLV（tag u8、len u8、bit 7 = critical）を保ったまま、tag を二つに分ける。
