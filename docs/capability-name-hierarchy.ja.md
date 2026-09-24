@@ -29,7 +29,7 @@
 | `oep.target.riscv-dm` | connection を使った RISC-V Debug Module へのアクセス。DMI の手順のリスト、速くするための部品（autoexec のブロック読み書き、実行して停止を待つ、halt / resume の再試行） |
 | `oep.target.arm-adi` | connection を使った ARM Debug Interface（ADIv5 / v6）へのアクセス。DP / AP の転送のリスト、ブロック転送 |
 | `oep.target.console` | コンソールのストリーム（下記） |
-| `oep.fixture.*` | target の周りの I/O。役割は probe から見た名前。最初は `gpio`、`uart`（USART を含む）、`capture` だけ（下の 4）。NRST などの線は `gpio` で動かす |
+| `oep.fixture.*` | target の周りの I/O。役割は probe から見た名前。最初は `gpio`、`uart`（USART を含む）、`capture` だけ（下の 4）。NRST のパルスだけなら `gpio` で動かす（リセットしながらの attach は `oep.wire.*`、下の 2） |
 
 - 基本の流れ: `oep.wire.<線>` で attach して connection を受け取り、それを付けて `oep.target.riscv-dm` /
   `oep.target.arm-adi` でアクセスする。
@@ -78,15 +78,21 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
    （autoexec）、実行して停止を待つ、halt / resume（CH32 の再発行・立て直し込み）。部品が使う方法（プログラム
    バッファ + autoexec など）は describe で宣言し、合わない target では host がリストで組む。メモリの手順のリスト
    （実験の `steps`）は標準にしない。CMSIS-DAP の `DAP_Transfer` + `DAP_TransferBlock` と同じ 2 本立て。
-2. （決定、2026-09-24）**NRST 専用の能力も attach の引数も、v1 では作らない。** probe はどのピンが target の
-   リセットかを知らない（配線の知識。治具ならプロファイルがラベルを付け、ばら配線なら host の記録）。debug が
-   つながっていればリセットは debug 経由で足りる（riscv-dm の ndmreset、arm-adi は host が AIRCR の SYSRESETREQ を書く）。
-   線を動かす必要がある場面（PINRSTF を見る UIAPduino のブートローダ、リセットの挙動の試験、debug の無い target の
-   EN / IO0）は `oep.fixture.gpio` のオープンドレインのパルスで行う。実例（2026-09-24）: UIAPduino のブートローダへの
-   切り替えを host 側（oep-client-python `v1/uiapduino.py`）に移し、gpio の NRST のパルス、RAM へのブロック書き込み、
-   DMI の手順のリスト（mstatus = 0、dpc、resumereq）だけで、HID 1209:b803 が現れ、ユーザーモードへの戻しもできた。debug がつながらなくなった target の回復は、電源を
-   切れる治具ができた時点で `oep.fixture.power` の電源の入れ直しを足して対応し、「リセットしながら attach」は実際に
-   困る target が出てから足す（今のベンチには target の電源を切れる治具が無い）。
+2. （決定、2026-09-24、同日に改めた）**リセットの線は、`oep.wire.<線>` の「リセットしながら attach」の引数にする。**
+   - 最初の決定は「NRST 専用の能力も attach の引数も作らない」だった。ch32rv のレビューで、SWD / RVSWD のピンを
+     GPIO にするファームや、すぐ眠るファームからの回復には、リセット（または電源）を離してから µs 単位で halt を
+     打つ必要があり、host の遅延（ms）では間に合わない、と指摘された。gpio のパルスのあとに attach を送る組み合わせ
+     では原理的に届かないので、**probe の 1 操作**（リセットを保持 → attach → 離す → すぐ halt を打ち続ける）にした。
+   - **どのピンかは、基本は host が指定する**（probe はどのピンが target のリセットかを知らない。host は候補を
+     パルスして havereset を見るような探し方で確かめられる）。**決め打ちの probe は既定値を持ってよい**（治具の
+     プロファイルが `NRST` のラベルを付けたチャンネル）。host が指定できるのは、probe が許可したチャンネルだけ
+     （スキャンの許可リストと同じ考え方）。オープンドレインで、high には駆動しない。
+   - debug がつながっていれば、ふだんのリセットは debug 経由（riscv-dm の reset）で足りる。PINRSTF を立てたい場面
+     （UIAPduino のブートローダ）など、リセットの線を動かすだけでよい場面は `oep.fixture.gpio` のオープンドレインの
+     パルスで行う。
+   - まだ回復が必要な target で確かめていない（壊れたファームを入れた target が要る）。ch32rv の `recover` 3 種
+     （unbrick / power-off / nrst）のうち、電源の入れ直しは、電源を切れる治具ができたときに `oep.fixture.power` と
+     組み合わせて考える。
 3. （決定、2026-09-24）**probe 全体の宣言と識別情報は `oep.core`（fn 0）の describe の TLV で返す。** `oep.probe.*` は
    今は作らない。識別情報はファームの版、機種の名前、**個体の番号**（CH340 の classic ESP32 は USB のシリアル番号を
    持たず、UART 直結や IP 経由には USB の記述子が無い。ESP32 の MAC や RP2350 の flash の UID のように probe 自身が
