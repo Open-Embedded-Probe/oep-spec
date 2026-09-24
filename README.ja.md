@@ -13,6 +13,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 - v1 の仮置き（議論の合意。実験してから調整する）
   - [能力の識別方式の比較](docs/capability-identification-comparison.ja.md)
   - [能力の宣言モデル（describe の語彙）](docs/capability-declaration-model.ja.md)
+  - [能力の名前の階層](docs/capability-name-hierarchy.ja.md)
   - [セッションと排他](docs/session-and-exclusivity.ja.md)
   - [コンソールのストリーム](docs/console-stream.ja.md)
   - [target の発見と接続](docs/target-connection-use-cases.ja.md)
