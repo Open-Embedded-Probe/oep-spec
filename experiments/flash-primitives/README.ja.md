@@ -143,6 +143,11 @@ V003 の probe も v1 の仮置きに置き換えた（`oep.wire.swio`、`oep.ta
 - fixture: uart の TX（GPIO21 = V003 の PD6、入力のまま）を capture で観測して 5 byte が復号で一致、GPIO25
   （V003 の PA1）のプルアップ / プルダウンをロックなしで 1, 0, 1 と読めた（`v1_fixture_check.py PORT 21 22 25`）。
 - 1 回の読み出しの最大は probe のフレームに合わせて宣言する（V003 の probe は 480）。
+- UIAPduino のブートローダへの切り替え（v0 ではリセットのモード 1 / 2 として probe の中にあった）を host 側に移した。
+  gpio の NRST のパルス → attach → RAM のペイロード → DMI の手順で resume、で HID 1209:b803 が現れ、戻しのペイロード
+  で消えて DmSeqTest がまた動いた（`v1_uiapduino_check.py`）。
+- 独自の I2C / SPI target（`io.github.ch32-riscv-ug.esp32.*`）は、両方の probe で割り当て・設定・ロックなしの状態の
+  読み出しまで確かめた。実際の転送の試験には、マスタ役の target のスケッチが要る。
 - UART の経路を COBS + CRC-16 のフレームにしたあとも、同じ確かめ方がすべて通った。16 KB の書き込みは 2.96 秒
   （長さの前置きのときは 2.82 秒）、壊れたフレームの検出 0 回、送り直し 0 回。
 
@@ -183,6 +188,8 @@ uv run python <この dir>/v1_session_check.py PORT                     # v1 の
 uv run python <この dir>/v1_console_check.py PORT                     # v1 のコンソール（target は DmSeqTest）
 uv run python <この dir>/v1_fixture_check.py PORT [TX RX PULL]        # v1 の fixture（target を使わない）
 uv run python <この dir>/f5_v003_v1.py PORT IMAGE v003_loader.bin [BYTES_PER_RUN] [--reset]   # V003 を v1 で
+uv run python <この dir>/v1_i2cspi_check.py PORT SDA/SCK SCL/MOSI MISO CS   # 独自の I2C / SPI target の割り当てと状態
+uv run python <この dir>/v1_uiapduino_check.py PORT                   # UIAPduino のブートローダへ入って戻る（host 側の手順）
 # LinkE の基準（工程ごとの時刻を付ける）
 uv run python <この dir>/phase_ts.py ch32rv --probe serial:<SN> --progress ndjson --non-interactive --yes \
     flash --reset none IMAGE
