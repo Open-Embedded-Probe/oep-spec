@@ -57,11 +57,21 @@ LinkE: CH32V003F4P6 + WCH-LinkE（USB）。OEP: UIAPduino（CH32V003）+ classic
 | 方式 | 消去 + 書き込み | 読み戻しの確認 | 全体の実時間 |
 |---|---|---|---|
 | **LinkE + ch32rv**（チップ一括消去） | 約 0.1 + 1.50 秒（2 回とも） | 約 0.33 秒 | **2.03〜2.05 秒** |
-| **OEP F4**（1 回 1024 byte = 16 ページ） | **3.60 秒** | **1.78 秒** | **8.1〜8.2 秒**（Python の起動込み） |
+| OEP F4（ページ消去 + 書き込み + 確認、1 回 1024 byte = 16 ページ） | 3.60 秒 | 1.78 秒 | 8.1〜8.2 秒（Python の起動込み） |
+| **OEP F4（一括消去 1 回 + 書き込みだけ、LinkE と同じ形）** | **2.88 秒**（一括消去 15 ms） | 1.87 秒 | — |
+| OEP F4（同上、ホストとの UART を 921600 bps にした試験） | 1.60 秒 | 64 byte ずつで 1.37 秒（それ以上の長さは落ちた） | — |
 | OEP F4（1 回 1 ページ、先頭 8 ページで測定） | 31 ms / ページ | — | — |
 
-- ローダーの実行は 1 ページ 6.2 ms（16 ページで 98.5 ms）。全面で 1.58 秒で、これだけで LinkE の書き込み全体と同じ。
-  消去 + 書き込み + 確認を 1 ページずつ行うローダーのため。
+- ローダーのフラグ（ローダーのコードを逆アセンブルして読んだ）: bit0 解除、bit1 一括消去、bit2 a2 byte 分の
+  ページ消去、bit3 書き込み、bit4 確認。0x1d は「解除 + ページ消去 + 書き込み + 確認」。LinkE と同じ形は、0x03 を 1 回
+  （一括消去）のあと 0x09（解除 + 書き込み）。書き込みだけのローダーの実行は 16 ページで 46 ms（1 ページ 2.9 ms）、
+  全面で 0.74 秒。
+- 921600 bps の試験は、ビルドで速度を変えた一時的なもの（取り消した）。書き込みは LinkE と同じ 1.6 秒になったが、
+  probe → host の 256 byte 以上の応答で byte が落ち、v0 の probe が 1.5 秒の無通信で target をリセットして手放した
+  （今日の合意で「やめる」と決めた動き）。**速度はビルドで決めず、115200 bps で開いてから取り決める**方針にした
+  （[probe 開発ガイド](../../docs/probe-development-guide.ja.md) §3.5）。
+- 0x1d（ページ消去 + 書き込み + 確認）のときのローダーの実行は 1 ページ 6.2 ms（16 ページで 98.5 ms）、全面で 1.58 秒で、
+  これだけで LinkE の書き込み全体と同じだった。
 - 残りは UART の転送。115200 bps の上限は約 11.5 KB/s で、16 KB は片道だけで 1.4 秒以上かかる。読み戻しも同じ。
 - F4 で実際のスケッチ（DmSeqTest）を書き、リセットで flags 0x03、PC 0x1d4。
 - **一度、読み戻しが化けたのにエラーにならなかった**（1024 byte ずつの 1 回目。全ページ ebreak で終わり、読み直すと
@@ -73,8 +83,9 @@ LinkE: CH32V003F4P6 + WCH-LinkE（USB）。OEP: UIAPduino（CH32V003）+ classic
 1. **host の知識と汎用の部品 2 つ（ブロック書き込み、実行して停止を待つ）で、X035 は LinkE と同等の速さで書ける**
    （消去 + 書き込みはほぼ同じ、読み戻しの確認は OEP の方が速い）。1 語ごとの繰り返しを target の CPU に回させるのが
    効く。probe-rs / CMSIS の flash algorithm や WCH の方式と同じ結論。
-2. **V003 は同じ部品で正しく書けるが、LinkE の 4 倍遅い。** 主な原因は 115200 bps の UART と、1 ページずつ消去する
-   ローダー。部品の形の問題ではない。
+2. **V003 も同じ部品で正しく書ける。** 115200 bps の UART では LinkE の約 2 倍遅い（一括消去 + 書き込み 2.88 秒 対
+   1.6 秒）が、ローダーの時間は 0.74 秒で、差は転送。経路を速くした試験では 1.60 秒で LinkE と並んだ。部品の形の問題
+   ではない。
 3. **「手順のリスト」だけでは遅い。** page buffer のように 1 語ごとに状態を待つ手順は、DM 経由の汎用アクセスでは
    DMI の回数が多すぎる。
 4. `runUntilHalt` では dcsr の ebreakm と **prv = M** を立て、host が mstatus = 0 を渡す。ArduinoCore-CH32 の
@@ -84,8 +95,8 @@ LinkE: CH32V003F4P6 + WCH-LinkE（USB）。OEP: UIAPduino（CH32V003）+ classic
 
 ## 未確認
 
-- V003 で、チップの一括消去 + 書き込みだけのローダーにしたときの速さ（LinkE と同じ条件）。
-- V003 を速い transport（USB の probe）で書いたときの速さ。
+- V003 を USB の probe で書いたときの速さ（今は V003 に USB の probe がつながっていない）。
+- UART の速度の取り決めを実装したうえでの、V003 の読み戻しの速さ。
 - L103 など他の系統、ばら配線の Pico（DMI が化けやすい）での F4 の頑健さ。
 - 低スペック（64 byte フレーム）での F4 のバッファ転送の往復数。
 
@@ -97,7 +108,8 @@ uv run python <この dir>/f1_builtin.py PORT IMAGE                      # 組�
 uv run python <この dir>/f2_host_driven.py PORT a|b PAGES IMAGE
 uv run python <この dir>/f3_steps.py PORT PAGES IMAGE [PAGES_PER_BATCH]
 uv run python <この dir>/f4_loader.py PORT PAGES IMAGE x035_loader.bin [PAGES_PER_BATCH]
-uv run python <この dir>/f4_v003.py PORT IMAGE v003_loader.bin [BYTES_PER_RUN]
+uv run python <この dir>/f4_v003.py PORT IMAGE v003_loader.bin [BYTES_PER_RUN] [FLAGS|mass]
+uv run python <この dir>/read_chunks.py PORT IMAGE CHUNK             # 読み出しの長さごとの経路の確認
 # LinkE の基準（工程ごとの時刻を付ける）
 uv run python <この dir>/phase_ts.py ch32rv --probe serial:<SN> --progress ndjson --non-interactive --yes \
     flash --reset none IMAGE

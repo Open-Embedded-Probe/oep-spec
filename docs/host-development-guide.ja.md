@@ -33,6 +33,12 @@
 - RP2350（arduino-pico）は 1200 bps で開いて閉じると BOOTSEL に入る。probe を 1200 bps で開かない。
 - Windows と macOS では測っていない（Windows も同じという報告はある）。
 
+## 1.5 UART の速度
+
+USB-UART の変換チップ越しの probe は、常に 115200 bps で開き、必要なら速度の変更を取り決める（ビルドで決めた速度を
+host が知っている前提にしない）。取り決めに失敗したら 115200 bps に戻る。手順の案は
+[probe 開発ガイド](probe-development-guide.ja.md) §3.5。
+
 ## 2. 排他
 
 - OS やライブラリの排他を使えるなら使う。2 つ目の open が早く失敗し、利用者に「使用中」と伝えられる。
