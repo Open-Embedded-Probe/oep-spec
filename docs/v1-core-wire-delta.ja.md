@@ -59,6 +59,8 @@ role=0x81 (bit7=1) | corr | fn | op | session_id(u32) | payload     session_id �
 | 0x01 | confirm | magic | magic、revision、max_frame、window、max_inflight | 不要 |
 | 0x02 | list | flags(u8、bit0 = exact)、first(u8)、prefix_len(u8)、prefix | total(u8)、count(u8)、entries | 不要 |
 | 0x03 | describe | fn(u16)、first(u8) | more(u8)、TLV。fn 0 は probe 全体の宣言 | 不要 |
+| 0x04 | plan_apply | role_assignment の TLV（0x90、critical: fn(u16) role(u8) channel(u16)）の並び | — | 必要 |
+| 0x05 | plan_release | — | — | 必要 |
 | 0x10 | open | session_id(u32)、lease_ms(u32)、force(u8) | lease_ms(u32)、boot_id(u32)、resumed(u8) | open がロックを取る |
 | 0x11 | end | — | — | 必要（role 0x81） |
 | 0x12 | keepalive | — | — | 必要（role 0x81） |
@@ -69,6 +71,9 @@ role=0x81 (bit7=1) | corr | fn | op | session_id(u32) | payload     session_id �
 - list の entry: `fn(u16) instance(u16) revision(u8) flags(u8) name_len(u8) name`。件数と開始位置は u8（probe が
   255 を超えるインターフェースを持つことは想定しない。必要になったら広げる）。
 - open の `resumed` は、同じ session_id でロックを立て直した（再開）とき 1。
+- plan は v0 と同じ形（全インターフェースが自分の役割を受け入れたときだけ適用、1 つずつ）。割り当ては probe の状態で、
+  セッションの終わりやロックの期限切れでは解かない（plan_release でだけ解く）。
+- 最初の実装（2026-09-24）では、fixture（gpio / uart / capture）の各操作の payload は v0 のまま。
 - op の番号は仮。
 
 ## 6. 長さの確認（64 byte のフレーム）
