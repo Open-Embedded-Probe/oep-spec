@@ -66,6 +66,10 @@ mark(value)       → host の印を付ける
 write(data)       → 受け付けた byte 数（target への入力。バッファしない）
 ```
 
+**read と marks はロックなしで使える。** 読んでもバッファは消えず、probe は読み手ごとの状態を持たないので、
+他の host のロック中に読んでも混ざらない。clear、mark、write、設定は状態を変えるので session_id を要する
+（[セッションと排他](session-and-exclusivity.ja.md)）。
+
 | 読み始め | 使う場面 |
 |---|---|
 | 最後のマークから | Arduino の書き込み → Monitor。今回の起動の分だけを表示する |
@@ -95,5 +99,5 @@ pluggable monitor と同じ）。戻った Monitor は、session_id が変わっ
 
 1. マークの kind の番号と detail の中身。
 2. 位置と max_read の幅（u32 / u16 で足りるか）。
-3. 読み出しをロックなしで許すか（[セッションと排他](session-and-exclusivity.ja.md) の未決 3）。
+3. （決定: read と marks はロックなし。上記）
 4. 通知（probe から送る）を入れる時期。
