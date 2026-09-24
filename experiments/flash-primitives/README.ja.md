@@ -76,7 +76,27 @@ LinkE: CH32V003F4P6 + WCH-LinkE（USB）。OEP: UIAPduino（CH32V003）+ classic
 - F4 で実際のスケッチ（DmSeqTest）を書き、リセットで flags 0x03、PC 0x1d4。
 - **一度、読み戻しが化けたのにエラーにならなかった**（1024 byte ずつの 1 回目。全ページ ebreak で終わり、読み直すと
   全ページ一致）。v0 のフレームには CRC がなく、USB-UART の変換チップは長い連続送信でバイトを落とすことが分かって
-  いる（2026-09-22）。書き込みの方式ではなく経路の問題で、UART の binding に CRC が要る根拠になる。
+  いる（2026-09-24）。書き込みの方式ではなく経路の問題で、UART の binding に CRC が要る根拠になる。
+
+## F5: v1 の仮置きだけで書く（CH32X035、2026-09-24）
+
+P4 の X035 用 probe を v1 の仮置き（[core wire model v1](../../docs/v1-core-wire-delta.ja.md)）に置き換え、
+`oep.core`（セッション）、`oep.wire.rvswd`（scan / attach）、`oep.target.riscv-dm`（ブロック読み書き、実行して
+停止を待つ、ndmreset）だけで、F4 と同じ host のローダーで書いた（`f5_v1.py`）。要求は 1 つずつ（パイプラインなし）。
+
+| | 準備（open、scan、attach） | 消去 + 書き込み | 読み戻しの確認 | スクリプト内の合計 |
+|---|---|---|---|---|
+| **OEP v1（F5）** 62 KB | 0.04 秒 | 2.51 秒 | 0.54 秒 | **3.09 秒** |
+| 参考: LinkE + ch32rv | — | 約 2.1 秒 | 約 1.1 秒 | 3.28 秒 |
+
+- 読み戻しは全面一致、失敗 0。実際のスケッチ（DmSeqTest）を書いてリセットし、flags 0x3、PC 0x214 で走った。
+- scan は固定の 1 組（SWDIO 2 / SWCLK 54）で DMSTATUS 0xc82 を返した。
+- `dump --port` で、実機が list 1 回と describe 3 回で `oep.core`（個体の番号 30eda0e31108 = board-identify の名前と
+  一致）、`oep.wire.rvswd`、`oep.target.riscv-dm` を宣言した。
+- セッションの規則を実機で確かめた（`v1_session_check.py`、同じポートで 2 つの session_id）: 他の host のロック中は
+  locked と残り時間、ロック中でも list は通る、session_id なしの状態を変える要求は session required、期限切れの
+  あと同じ ID で再開、知らない ID は no session、間に他の host が open したあとは保存した ID が no session。
+- パイプライン（F4 は 8 要求ずつ）はまだ入れていない。入れれば F4 の 1.7〜2.2 秒に近づく見込み。
 
 ## 分かったこと
 
