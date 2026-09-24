@@ -82,7 +82,9 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
    リセットかを知らない（配線の知識。治具ならプロファイルがラベルを付け、ばら配線なら host の記録）。debug が
    つながっていればリセットは debug 経由で足りる（riscv-dm の ndmreset、arm-adi は host が AIRCR の SYSRESETREQ を書く）。
    線を動かす必要がある場面（PINRSTF を見る UIAPduino のブートローダ、リセットの挙動の試験、debug の無い target の
-   EN / IO0）は `oep.fixture.gpio` のオープンドレインのパルスで行う。debug がつながらなくなった target の回復は、電源を
+   EN / IO0）は `oep.fixture.gpio` のオープンドレインのパルスで行う。実例（2026-09-24）: UIAPduino のブートローダへの
+   切り替えを host 側（oep-client-python `v1/uiapduino.py`）に移し、gpio の NRST のパルス、RAM へのブロック書き込み、
+   DMI の手順のリスト（mstatus = 0、dpc、resumereq）だけで、HID 1209:b803 が現れ、ユーザーモードへの戻しもできた。debug がつながらなくなった target の回復は、電源を
    切れる治具ができた時点で `oep.fixture.power` の電源の入れ直しを足して対応し、「リセットしながら attach」は実際に
    困る target が出てから足す（今のベンチには target の電源を切れる治具が無い）。
 3. （決定、2026-09-24）**probe 全体の宣言と識別情報は `oep.core`（fn 0）の describe の TLV で返す。** `oep.probe.*` は
