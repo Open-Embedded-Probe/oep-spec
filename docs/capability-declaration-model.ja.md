@@ -37,6 +37,19 @@ list entry : fn(u16), instance(u16), revision(u8), flags(u8), name_len(u8), name
 - 同じ `instance` の `fn` は、plan を共有する（どれかの `fn` で割り当てた role は、同じインスタンスの他の `fn` にも効く）。
 - describe の TLV でなく list に持たせるのは、仲間を知るのに describe の往復を増やさないため。2 byte で済む。
 
+## 1.5 describe のページ送り
+
+```text
+describe request : fn(u16), first(u8)
+describe result  : more(u8), TLV bytes
+```
+
+`more` = 1 は「このページのあとにも TLV が残っている。`first` にこのページの TLV の数を足して、もう一度聞け」を
+意味する。v0 は `more` を持たず、host は空の応答が返るまでもう一度聞くしかなかったので、インターフェースごとに
+1 往復が無駄になっていた（oep-client-python の `dump` で、P4 相当 14 インターフェースに 26 往復）。`more` を付けると、
+インターフェースごとに 1 往復になる（同 14 往復）。64 byte frame の低スペック probe 相当 12 インターフェースでは
+list 8 + describe 12 = 20 往復（`more` なしでは 30 往復）。
+
 ## 2. describe の TLV のタグ空間
 
 v0 の TLV（tag u8、len u8、bit 7 = critical）を保ったまま、tag を二つに分ける。
@@ -139,6 +152,7 @@ describe(6):
 |---|---|
 | 識別を `owner:id` から名前へ | 登録なしで衝突しない独自拡張 |
 | list の entry に name と instance | 名前での発見、1 インスタンス複数インターフェース |
+| describe の result の先頭に more | ページの終わりを知るための無駄な 1 往復をなくす |
 | list の request に prefix と exact | 名前空間での絞り込み |
 | `channel_candidate` を role_channels に置き換え、channel_group を追加 | 専用ピンの制約を宣言できるように |
 | features と implementation を追加 | 任意機能と実装の種類を試す前に分かるように |
