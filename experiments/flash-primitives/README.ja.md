@@ -115,6 +115,17 @@ P4 の X035 用 probe を v1 の仮置き（[core wire model v1](../../docs/v1-c
   書き込み。target の最初の同期の前後に書くと、dmseq の再同期で host の送りかけの分が捨てられる（規則どおり）
   可能性があるが、未確認。
 
+## v1 の fixture（P4、2026-09-24）
+
+v0 の fixture のサービスを v1 の名前（`oep.fixture.gpio` / `uart` ×2 / `capture`）で出し（操作の payload は v0 のまま、
+describe は v1 の `role_channels` で作り直し）、core に plan_apply / plan_release（v0 と同じ形）を足した。target を
+使わず probe の中で閉じた確かめ方をした（`v1_fixture_check.py`、治具で未使用の GPIO20〜22）。
+
+- uart の TX（GPIO20）と、同じピンを観測する capture の line 0 を 1 つの plan で割り当て、送った 5 byte を 2 MHz の
+  サンプル列から host 側で復号して一致した。
+- gpio の GPIO22 をプルアップ → プルダウン → プルアップに切り替え、セッションなしの別の host がロックなしの read_bank で
+  1, 0, 1 と読めた。
+
 ## 分かったこと
 
 1. **host の知識と汎用の部品 2 つ（ブロック書き込み、実行して停止を待つ）で、X035 は LinkE と同等の速さで書ける**
@@ -150,6 +161,7 @@ uv run python <この dir>/read_chunks.py PORT IMAGE CHUNK             # 読み�
 uv run python <この dir>/f5_v1.py PORT IMAGE x035_loader.bin [--reset] [--batch N]  # v1 の仮置きだけで書く
 uv run python <この dir>/v1_session_check.py PORT                     # v1 のセッションの規則を実機で
 uv run python <この dir>/v1_console_check.py PORT                     # v1 のコンソール（target は DmSeqTest）
+uv run python <この dir>/v1_fixture_check.py PORT                     # v1 の fixture（probe の中で閉じる）
 # LinkE の基準（工程ごとの時刻を付ける）
 uv run python <この dir>/phase_ts.py ch32rv --probe serial:<SN> --progress ndjson --non-interactive --yes \
     flash --reset none IMAGE
