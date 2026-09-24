@@ -63,7 +63,11 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
 
 ## 未決
 
-1. `oep.target.debug.riscv` の「まとめて送る仕組み」の形（DMI の手順のリスト、または実験の `steps` の拡張）。
+1. （決定、2026-09-24）`oep.target.debug.riscv` は **DMI の手順のリスト**（書き、読み、条件を満たすまで読む。最初の
+   失敗で止め、済んだ数と読んだ値を返す）を基本にし、速くするための部品を別の操作で足す: ブロック読み書き
+   （autoexec）、実行して停止を待つ、halt / resume（CH32 の再発行・立て直し込み）。部品が使う方法（プログラム
+   バッファ + autoexec など）は describe で宣言し、合わない target では host がリストで組む。メモリの手順のリスト
+   （実験の `steps`）は標準にしない。CMSIS-DAP の `DAP_Transfer` + `DAP_TransferBlock` と同じ 2 本立て。
 2. NRST などの線を `oep.fixture` に置くか `oep.wire` に置くか。
 3. `oep.probe.*` の中身（identity 以外に何を置くか）。
 4. fixture の名前の一覧（どれを `oep.` の標準にするかは決めない方針のまま）。
