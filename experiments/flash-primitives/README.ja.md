@@ -126,6 +126,24 @@ describe は v1 の `role_channels` で作り直し）、core に plan_apply / p
 - gpio の GPIO22 をプルアップ → プルダウン → プルアップに切り替え、セッションなしの別の host がロックなしの read_bank で
   1, 0, 1 と読めた。
 
+## V003 の probe の v1 化（classic ESP32 + SWIO、UART 115200、フレーム 512 byte、2026-09-24）
+
+V003 の probe も v1 の仮置きに置き換えた（`oep.wire.swio`、`oep.target.riscv-dm`、`oep.target.console`、
+`oep.fixture.gpio` / `uart` / `capture`。GPIO23 は NRST のラベル付きの gpio のチャンネル）。
+
+| V003 16 KB | 消去 + 書き込み | 読み戻しの確認 |
+|---|---|---|
+| **OEP v1**（一括消去 + 書き込みだけ、`f5_v003_v1.py`） | **2.82 秒** | 1.80 秒 |
+| 参考: F4（実験用サービス、同じ形） | 2.88 秒 | 1.87 秒 |
+| 参考: LinkE + ch32rv | 約 1.6 秒 | 約 0.33 秒 |
+
+- 全面一致。実際のスケッチ（DmSeqTest）を書いてリセットし、flags 0x3 で走った。
+- コンソール: 止めずに attach しての受信、エコー、reset / restart のマーク、reset マークからの読み出し、セッション
+  終了後のロックなしの読み出しが、すべて P4 と同じに動いた（`v1_console_check.py PORT oep.wire.swio`）。
+- fixture: uart の TX（GPIO21 = V003 の PD6、入力のまま）を capture で観測して 5 byte が復号で一致、GPIO25
+  （V003 の PA1）のプルアップ / プルダウンをロックなしで 1, 0, 1 と読めた（`v1_fixture_check.py PORT 21 22 25`）。
+- 1 回の読み出しの最大は probe のフレームに合わせて宣言する（V003 の probe は 480）。
+
 ## 分かったこと
 
 1. **host の知識と汎用の部品 2 つ（ブロック書き込み、実行して停止を待つ）で、X035 は LinkE と同等の速さで書ける**
@@ -161,7 +179,8 @@ uv run python <この dir>/read_chunks.py PORT IMAGE CHUNK             # 読み�
 uv run python <この dir>/f5_v1.py PORT IMAGE x035_loader.bin [--reset] [--batch N]  # v1 の仮置きだけで書く
 uv run python <この dir>/v1_session_check.py PORT                     # v1 のセッションの規則を実機で
 uv run python <この dir>/v1_console_check.py PORT                     # v1 のコンソール（target は DmSeqTest）
-uv run python <この dir>/v1_fixture_check.py PORT                     # v1 の fixture（probe の中で閉じる）
+uv run python <この dir>/v1_fixture_check.py PORT [TX RX PULL]        # v1 の fixture（target を使わない）
+uv run python <この dir>/f5_v003_v1.py PORT IMAGE v003_loader.bin [BYTES_PER_RUN] [--reset]   # V003 を v1 で
 # LinkE の基準（工程ごとの時刻を付ける）
 uv run python <この dir>/phase_ts.py ch32rv --probe serial:<SN> --progress ndjson --non-interactive --yes \
     flash --reset none IMAGE
