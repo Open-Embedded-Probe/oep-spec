@@ -98,7 +98,9 @@ host は、probe の宣言と変換チップの対応の重なりから候補を
     消えることも確かめてあり、先に走った hart を見誤ってはいない）。
   - 2026-09-22 に X035 で見た「4〜5 % でリセットベクタに留まる」も同じ原因と見られる。同じ probe で、リセットの速度の
     切り替えだけを外すと 100 回中 3 回留まり、入れると 100 回中 0 回だった（2026-09-24）。「ndmreset の後、書き込みを
-    一回おきに受け付けない」は確かめていない。
+    一回おきに受け付けない」は確かめていない。E159（2026-09-22）の「reset-halt から resume すると約 40 % で SysTick が止まる」
+    は、修正後の probe では再現しなかった（reset-halt → resume、reset とも 20 回中 20 回で millis が進んだ。
+    `experiments/flash-primitives/e159_recheck.py`）。
 - **RVSWD のアイドル中の線の向きは target の性質で、CH32X035 と CH32L103 で逆になる**（2026-09-24、OEP 側での観察。
   `experiments/flash-primitives/idle_matrix.py`。hart を止め、host 側で d だけ待ってから、止まったまま同じ dpc かを見た。各 5 回）。
 
