@@ -37,6 +37,8 @@
     読み直すと flash は正しかった。
 - このような経路では、フレームに CRC を付け、壊れたフレームは捨てて再送する（[UART binding の信頼性モデル
   候補](uart-reliability-model.ja.md)）。host は「応答が来た」ことを正しさの根拠にしない。
+- 実装（2026-09-24）: oep-probe-arduino の `CobsReader` / `writeCobsFrame`（COBS + CRC-16/CCITT-FALSE、仮置き）。
+  V1 の endpoint に `Framing::kCobsCrc` を渡す。classic ESP32 の V003 用 probe がこれを使う。
 - target 側の経路も同じ。RVSWD の DMI parity は 1 bit で、壊れた応答の半分を通す（E156 / E157）。memory read や
   flash の結果は、上位の CRC か読み戻しで確かめる（[開発ガイドライン](development-guidelines.ja.md) §6-6）。
 
