@@ -90,10 +90,9 @@ v0 の `channel_candidate`（role のない平たい一覧）は廃止する。
 
 | インターフェース（例） | bit | 意味 |
 |---|---|---|
-| target.control | 0 | デバッグ経由のシステムリセット |
-| target.control | 1 | NRST の線によるハードウェアリセット（配線あり） |
-| target.control | 2 | リセット直後に停止（reset-halt） |
-| target.console | 0 / 1 / 2 | framing 0（SerialSDI）/ 1（SerialDMDATA）/ 2（dmseq） |
+| target.debug.riscv | 0 | デバッグ経由のシステムリセット（ndmreset） |
+| target.debug.riscv | 1 | リセット直後に停止（reset-halt） |
+| target.console | 0 / 1 / 2 | 方式 SDI / DMDATA / dmseq（debug の connection の上に開く） |
 | fixture.i2c-target | 0 | target からの読み出し（preloaded tx） |
 | fixture.i2c-target | 1 | 意図的な clock stretching |
 
@@ -102,7 +101,13 @@ features ではなく独自インターフェースに移す。
 
 ## 4. target 側の能力
 
-target を扱うインターフェース（例: `oep.target.control`）の describe に、インターフェース固有タグで次を宣言する。
+> 2026-09-24 の合意（仮置き）で、アーキテクチャに中立な `oep.target.control` などは作らないことにした。target への
+> アクセスは `oep.wire.<線>` の attach が返す connection を使い、`oep.target.debug.<arch>` で行う。NRST の線は
+> アーキテクチャに依らないので `oep.fixture` か `oep.wire` の側に置く（未決）。
+> [能力の名前の階層](capability-name-hierarchy.ja.md)。
+
+線や target を扱うインターフェース（`oep.wire.<線>`、`oep.target.debug.<arch>`）の describe に、インターフェース固有
+タグで次を宣言する。
 
 | 宣言 | 値 | 例 |
 |---|---|---|
