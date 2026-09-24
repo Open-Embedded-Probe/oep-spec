@@ -97,7 +97,8 @@ role=0x81 (bit7=1) | corr | fn | op | session_id(u32) | payload     session_id �
 
 - attach は保留中の havereset を先に確認応答する（V00x の DM は確認応答まで DMSTATUS の halt / running を固定する）。
 - attach_under_reset はリセットの線を保持して attach し、離しながら halt を打ち続ける（タイミングが厳しいので probe の
-  1 操作）。host が指定できるのは probe が許可したチャンネルだけ。
+  1 操作）。host が指定できるのは probe が許可したチャンネルだけ。任意の op（持たない probe は unsupported）。
+  持たない probe では、host は `oep.fixture.gpio` の解放と attach をまとめて送って再試行する（窓の縁の競争）。
 
 `oep.target.riscv-dm`（最初の byte は connection）:
 

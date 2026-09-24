@@ -81,8 +81,13 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
 2. （決定、2026-09-24、同日に改めた）**リセットの線は、`oep.wire.<線>` の「リセットしながら attach」の引数にする。**
    - 最初の決定は「NRST 専用の能力も attach の引数も作らない」だった。ch32rv のレビューで、SWD / RVSWD のピンを
      GPIO にするファームや、すぐ眠るファームからの回復には、リセット（または電源）を離してから µs 単位で halt を
-     打つ必要があり、host の遅延（ms）では間に合わない、と指摘された。gpio のパルスのあとに attach を送る組み合わせ
-     では原理的に届かないので、**probe の 1 操作**（リセットを保持 → attach → 離す → すぐ halt を打ち続ける）にした。
+     打つ必要があり、host の遅延（ms）では間に合わない、と指摘された。**probe の中で処理するモード**として 1 操作
+     （リセットを保持 → attach → 離す → すぐ halt を打ち続ける）を置いた。**任意の op** で、持たない probe は
+     unsupported を返す。
+   - 持たない probe では、host が `oep.fixture.gpio` で線を放す要求と attach を **1 回にまとめて送り、再試行する**。
+     窓の縁での競争になる（2026-09-24、V003：まとめて送ると 5 回中 2 回、応答を待ってから送ると 5 回中 0 回。
+     リセットベクタから setup まで約 0.54 ms）。probe の中のモードは haltreq を保持したまま離すので競争にならない
+     （同じ V003 で hold_ms によらず 6 回中 6 回）。
    - **どのピンかは、基本は host が指定する**（probe はどのピンが target のリセットかを知らない。host は候補を
      パルスして havereset を見るような探し方で確かめられる）。**決め打ちの probe は既定値を持ってよい**（治具の
      プロファイルが `NRST` のラベルを付けたチャンネル）。host が指定できるのは、probe が許可したチャンネルだけ
@@ -90,7 +95,7 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
    - debug がつながっていれば、ふだんのリセットは debug 経由（riscv-dm の reset）で足りる。PINRSTF を立てたい場面
      （UIAPduino のブートローダ）など、リセットの線を動かすだけでよい場面は `oep.fixture.gpio` のオープンドレインの
      パルスで行う。
-   - まだ回復が必要な target で確かめていない（壊れたファームを入れた target が要る）。ch32rv の `recover` 3 種
+   - V003 で、SWIO を GPIO にするファームからの回復を確かめた（experiments/v003-reset-flags）。ch32rv の `recover` 3 種
      （unbrick / power-off / nrst）のうち、電源の入れ直しは、電源を切れる治具ができたときに `oep.fixture.power` と
      組み合わせて考える。
 3. （決定、2026-09-24）**probe 全体の宣言と識別情報は `oep.core`（fn 0）の describe の TLV で返す。** `oep.probe.*` は
