@@ -101,6 +101,20 @@ P4 の X035 用 probe を v1 の仮置き（[core wire model v1](../../docs/v1-c
 - パイプラインは host 側だけの変更（`--batch N`、probe が confirm で宣言した同時要求数 8 とウィンドウ 4096 byte を守る）。
   8 ページずつで F4 の最速と並び、LinkE の 6 割弱の時間になった。
 
+## v1 のコンソールのストリーム（CH32X035 + DmSeqTest、2026-09-24）
+
+`oep.target.console` を P4 の probe に足し（v0 の TargetConsole を DM 側の駆動として使い、その上に位置付きのリングと
+マークを載せた）、DmSeqTest を相手に確かめた（`v1_console_check.py`）。
+
+- 止めずに attach して dmseq のストリームを開くと、`dmseq READY` を受け取れた（Monitor だけを使う場合の形）。
+- `riscv-dm` のリセット（実行の確認つき、flags 0x03）のあと、同じ位置に reset と restart（dmseq の再同期で検出）の
+  マークが付き、「最後の reset マークから」読むとリセット後の出力だけが返った。
+- セッションを end したあとも吸い出しは続き、セッションなしの別の host がロックなしで読めた。
+- probe を再起動しない限りストリームは残る（位置 0 から読むと前の回の出力も全部読めた）。
+- エコー（`E hello v1` → `R hello v1`）は 3 回中 2 回返った。返らなかった 1 回は DmSeqTest を書き直した直後の最初の
+  書き込み。target の最初の同期の前後に書くと、dmseq の再同期で host の送りかけの分が捨てられる（規則どおり）
+  可能性があるが、未確認。
+
 ## 分かったこと
 
 1. **host の知識と汎用の部品 2 つ（ブロック書き込み、実行して停止を待つ）で、X035 は LinkE と同等の速さで書ける**
@@ -135,6 +149,7 @@ uv run python <この dir>/f4_v003.py PORT IMAGE v003_loader.bin [BYTES_PER_RUN]
 uv run python <この dir>/read_chunks.py PORT IMAGE CHUNK             # 読み出しの長さごとの経路の確認
 uv run python <この dir>/f5_v1.py PORT IMAGE x035_loader.bin [--reset] [--batch N]  # v1 の仮置きだけで書く
 uv run python <この dir>/v1_session_check.py PORT                     # v1 のセッションの規則を実機で
+uv run python <この dir>/v1_console_check.py PORT                     # v1 のコンソール（target は DmSeqTest）
 # LinkE の基準（工程ごとの時刻を付ける）
 uv run python <この dir>/phase_ts.py ch32rv --probe serial:<SN> --progress ndjson --non-interactive --yes \
     flash --reset none IMAGE
