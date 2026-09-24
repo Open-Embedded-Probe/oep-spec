@@ -10,7 +10,7 @@ v0 では次のことが、実際に試して reject されるまで host に分
 
 - ある機能がどのピンでも動く（ビットバン）のか、特定のピン・組み合わせでしか動かない（専用ペリフェラル）のか。
 - 任意の操作やモード（意図的な clock stretching、リセットの種類、コンソールの framing）があるか。
-- target 側のデバッグ方式（RVSWD、SWIO、ARM SWD）や、NRST の線があるか。
+- target 側のデバッグ方式（RVSWD、SWIO、ARM SWD）。
 
 これを list と describe だけで、試す前に分かるようにする。
 
@@ -102,8 +102,8 @@ features ではなく独自インターフェースに移す。
 ## 4. target 側の能力
 
 > 2026-09-24 の合意（仮置き）で、アーキテクチャに中立な `oep.target.control` などは作らないことにした。target への
-> アクセスは `oep.wire.<線>` の attach が返す connection を使い、`oep.target.riscv-dm` / `oep.target.arm-adi` で行う。NRST の線は
-> アーキテクチャに依らないので `oep.fixture` か `oep.wire` の側に置く（未決）。
+> アクセスは `oep.wire.<線>` の attach が返す connection を使い、`oep.target.riscv-dm` / `oep.target.arm-adi` で行う。NRST 専用の
+> 能力は作らない（線を動かすときは `oep.fixture.gpio`）。
 > [能力の名前の階層](capability-name-hierarchy.ja.md)。
 
 線や target を扱うインターフェース（`oep.wire.<線>`、`oep.target.riscv-dm` / `oep.target.arm-adi`）の describe に、インターフェース固有

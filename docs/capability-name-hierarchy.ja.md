@@ -6,6 +6,9 @@
 
 ## 切り方の規則
 
+- **最初は必要最低限の機能で作り、困ったら追加する**（2026-09-24 の方針）。使う場面が実際に出ていない機能は、
+  名前も操作も先に作らない。
+
 - **名前は host が何に使うかで切る。** probe の MCU のペリフェラル（I2C0 など）は名前に出さない。実装の種類は
   describe の `implementation` で示す。
 - **target の知識は host が持つ。** チップごとの手順（flash の書き込み、ローダー、レジスタの意味）は名前にも probe にも
@@ -26,7 +29,7 @@
 | `oep.target.riscv-dm` | connection を使った RISC-V Debug Module へのアクセス。DMI の手順のリスト、速くするための部品（autoexec のブロック読み書き、実行して停止を待つ、halt / resume の再試行） |
 | `oep.target.arm-adi` | connection を使った ARM Debug Interface（ADIv5 / v6）へのアクセス。DP / AP の転送のリスト、ブロック転送 |
 | `oep.target.console` | コンソールのストリーム（下記） |
-| `oep.fixture.*` | target の周りの I/O。役割は probe から見た名前（`gpio`、`uart`、`i2c-target`、`i2c-controller`、`spi-target`、`capture`、`adc`、`dac`、`power`、NRST などの線） |
+| `oep.fixture.*` | target の周りの I/O。役割は probe から見た名前（`gpio`、`uart`、`i2c-target`、`i2c-controller`、`spi-target`、`capture`、`adc`、`dac`、`power`）。NRST などの線は `gpio` で動かす |
 
 - 基本の流れ: `oep.wire.<線>` で attach して connection を受け取り、それを付けて `oep.target.riscv-dm` /
   `oep.target.arm-adi` でアクセスする。
@@ -75,6 +78,11 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
    （autoexec）、実行して停止を待つ、halt / resume（CH32 の再発行・立て直し込み）。部品が使う方法（プログラム
    バッファ + autoexec など）は describe で宣言し、合わない target では host がリストで組む。メモリの手順のリスト
    （実験の `steps`）は標準にしない。CMSIS-DAP の `DAP_Transfer` + `DAP_TransferBlock` と同じ 2 本立て。
-2. NRST などの線を `oep.fixture` に置くか `oep.wire` に置くか。
+2. （決定、2026-09-24）**NRST 専用の能力も attach の引数も、v1 では作らない。** probe はどのピンが target の
+   リセットかを知らない（配線の知識。治具ならプロファイルがラベルを付け、ばら配線なら host の記録）。debug が
+   つながっていればリセットは debug 経由で足りる（riscv-dm の ndmreset、arm-adi は host が AIRCR の SYSRESETREQ を書く）。
+   線を動かす必要がある場面（PINRSTF を見る UIAPduino のブートローダ、リセットの挙動の試験、debug の無い target の
+   EN / IO0）は `oep.fixture.gpio` のオープンドレインのパルスで行う。debug がつながらなくなった target の回復は、まず
+   `oep.fixture.power` の電源の入れ直しで対応し、「リセットしながら attach」は実際に困る target が出てから足す。
 3. `oep.probe.*` の中身（identity 以外に何を置くか）。
 4. fixture の名前の一覧（どれを `oep.` の標準にするかは決めない方針のまま）。
