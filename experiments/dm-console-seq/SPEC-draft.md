@@ -123,6 +123,12 @@ S, same payload, CRC recomputed) and **leaves it posted**. Later writes are drop
 waiting until a valid answer arrives; a host that attaches later answers that frame, it is
 delivered normally, and the target resumes.
 
+"Leaves it posted" means the target **posts that frame again every short wait (20 ms)** while
+it is latched. A probe attach may rewrite DATA0; if what it leaves has bit 7 set (`0xffffffff`),
+the target would read it as its own frame and wait, and an unsynced host would take it as an
+invalid word and not answer - both stuck. Reposting keeps the frame readable; the host never
+has to write anything to get out of this. (Found by the ch32rv side, 2026-09-24.)
+
 - Host: a TO frame is an ordinary frame (rule 2/4 apply); it is not a reason to resync.
   The host may tell the user that output was dropped while nobody answered.
 - Host: reading only non-frames (CRC wrong, or bit 7 clear) while unsynced for a long time
