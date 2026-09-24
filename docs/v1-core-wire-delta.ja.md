@@ -81,6 +81,56 @@ role=0x81 (bit7=1) | corr | fn | op | session_id(u32) | payload     session_id �
 - 最初の実装（2026-09-24）では、fixture（gpio / uart / capture）の各操作の payload は v0 のまま。
 - op の番号は仮。
 
+## 5.5 `oep.wire.<線>` と `oep.target.riscv-dm` の操作（仮置き、最初の実装の形）
+
+名前の置き方は [能力の名前の階層](capability-name-hierarchy.ja.md)。番号と書式は仮で、ch32rv のレビュー
+（2026-09-24）を受けて足したものを含む。
+
+`oep.wire.rvswd` / `oep.wire.swio`:
+
+| op | 名前 | 要求 | 応答 |
+|---:|---|---|---|
+| 0x01 | scan | — | count(u8)、kind(u8) swdio(u16) swclk(u16) DMSTATUS(u32) の並び（生の値） |
+| 0x02 | attach | method(u8: 0 止めない / 1 止める) | connection(u8)、DMSTATUS(u32)、flags(u8: bit0 保留中の havereset を確認応答した) |
+| 0x03 | detach | connection(u8) | — |
+| 0x04 | attach_under_reset | channel(u16、0xffff = probe の既定値)、hold_ms(u16) | connection(u8)、dpc(u32) |
+
+- attach は保留中の havereset を先に確認応答する（V00x の DM は確認応答まで DMSTATUS の halt / running を固定する）。
+- attach_under_reset はリセットの線を保持して attach し、離しながら halt を打ち続ける（タイミングが厳しいので probe の
+  1 操作）。host が指定できるのは probe が許可したチャンネルだけ。
+
+`oep.target.riscv-dm`（最初の byte は connection）:
+
+| op | 名前 | 要求 | 応答 |
+|---:|---|---|---|
+| 0x01 | dmi | 手順の並び（下表） | done(u16)、status(u8: 0 ok / 1 書式 / 2 アクセス / 3 待ち切れ)、read の値 |
+| 0x02 | halt | — | — |
+| 0x03 | resume | — | — |
+| 0x04 | reset | mode(u8: 0 走らせる / 1 走らせて実行を確認 / 2 最初の命令の前で止める) | flags(u8)、attempts(u8)、pc(u32)（mode 2 では dpc） |
+| 0x05 | read_block | address(u32)、count(u16) | 語の並び |
+| 0x06 | write_block | address(u32)、語の並び | — |
+| 0x07 | run | pc(u32)、timeout_ms(u16)、n(u8)、n × (regno u16、value u32) | stopped(u8)、dpc(u32)、a0(u32)、elapsed_us(u32) |
+| 0x08 | step | — | moved(u8)、dpc_before(u32)、dpc_after(u32) |
+
+DMI の手順:
+
+| kind | 手順 | 引数 |
+|---:|---|---|
+| 0x01 | 書く | address(u8)、value(u32) |
+| 0x02 | 読む | address(u8)（値を応答に足す） |
+| 0x03 | 読む回数を上限に待つ | address(u8)、mask(u32)、value(u32)、max_reads(u16) |
+| 0x04 | 待ち | us(u32) |
+| 0x05 | 時間を上限に待つ | address(u8)、mask(u32)、value(u32)、max_us(u32)（線の速さに依らず同じ意味） |
+
+- reset の mode 2 は haltreq を保ったまま ndmreset を解く。semihosting、gdb の `monitor reset halt`、動いている
+  ウォッチドッグの上からの書き込みに使う（IWDG は hart を止めても数え続ける）。
+- step は dcsr.step を立てて resume を 1 回だけ出し、成否は dpc が動いたかで判定する（L103 は allresumeack を立てず、
+  resume の出し直しは 2 ステップ進めてしまう）。prv は変えない（U モードのスケッチのステップ実行）。
+- run は dcsr の ebreakm と prv = M を立てる（host のローダー用。割り込みは host が mstatus = 0 で止める）。
+  止まった位置が開始位置のままなら、走らなかったとみなして resume を出し直す。
+- 一つの要求は一つの hart の操作で、DMI の手順のリストは probe の都合（線の再試行、立て直し）を書けない。
+  リセットや回復のようにタイミングと線の立て直しが要るものは、部品（reset、attach_under_reset）にする。
+
 ## 6. 長さの確認（64 byte のフレーム）
 
 - list の応答: 見出し 5 + list の見出し 2 + 1 項目（7 + 名前 48）= 62 byte。
