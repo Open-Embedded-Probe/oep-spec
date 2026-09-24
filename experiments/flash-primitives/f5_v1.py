@@ -87,13 +87,30 @@ else:
         back += res.payload
 verify_s = time.perf_counter() - t0
 
+# Pages that failed or read back wrong are written again, one at a time, up to twice (as the v0 host did): the
+# CH32L103 jig's flying leads garble a DMI transfer now and then even at a 500 ns half period (2026-09-23/24).
+rewritten = 0
+for _ in range(2):
+    bad = sorted({int(f["page"], 16) - BASE for f in failures} |
+                 {off for off in range(0, len(image), PAGE) if back[off:off + PAGE] != image[off:off + PAGE]})
+    if not bad:
+        break
+    failures = []
+    for off in bad:
+        rewritten += 1
+        dm.write_block(BUFFER, image[off:off + PAGE])
+        stopped, dpc, a0, us = dm.run(LOADER, run_regs(off))
+        if not (stopped and dpc == DONE_OK and a0 == 0):
+            failures.append({"page": hex(BASE + off), "stopped": stopped, "dpc": hex(dpc), "a0": hex(a0)})
+    back = b"".join(dm.read_block(BASE + off, n // 4) for off, n in chunks)
+
 reset = None
 if do_reset:
     flags, attempts, pc = dm.reset(confirm=True)
     reset = {"flags": hex(flags), "attempts": attempts, "pc": hex(pc)}
 wire.detach(conn)
 h.end()
-print(json.dumps({"batch": batch, "confirm": {k: v for k, v in info.items() if k != "magic"}, "boot_id": hex(opened.boot_id),
+print(json.dumps({"batch": batch, "rewritten_pages": rewritten, "confirm": {k: v for k, v in info.items() if k != "magic"}, "boot_id": hex(opened.boot_id),
                   "scan": [{"pins": f.pins, "dmstatus": hex(f.dmstatus)} for f in found], "attach_dmstatus": hex(dmstatus),
                   "bytes": len(image), "match": back == image, "setup_s": round(t_ready - t_start, 3),
                   "program_s": round(program_s, 3), "verify_s": round(verify_s, 3),
