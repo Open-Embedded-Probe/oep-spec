@@ -24,7 +24,7 @@
 | 名前 | 中身 |
 |---|---|
 | `oep.core` | プロトコル自体（confirm、list、describe、セッション） |
-| `oep.probe.*` | probe 全体のこと（例: `oep.probe.identity`） |
+| `oep.probe.*` | probe 全体への操作。今は無い（再起動などが必要になったら足す）。probe 全体の宣言と識別情報は `oep.core` の describe |
 | `oep.wire.<線>` | target を見つけてつなぐ（scan、attach、detach）。attach は **connection** を返す。`rvswd`、`swio`、`swd`、`jtag` |
 | `oep.target.riscv-dm` | connection を使った RISC-V Debug Module へのアクセス。DMI の手順のリスト、速くするための部品（autoexec のブロック読み書き、実行して停止を待つ、halt / resume の再試行） |
 | `oep.target.arm-adi` | connection を使った ARM Debug Interface（ADIv5 / v6）へのアクセス。DP / AP の転送のリスト、ブロック転送 |
@@ -84,5 +84,11 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
    線を動かす必要がある場面（PINRSTF を見る UIAPduino のブートローダ、リセットの挙動の試験、debug の無い target の
    EN / IO0）は `oep.fixture.gpio` のオープンドレインのパルスで行う。debug がつながらなくなった target の回復は、まず
    `oep.fixture.power` の電源の入れ直しで対応し、「リセットしながら attach」は実際に困る target が出てから足す。
-3. `oep.probe.*` の中身（identity 以外に何を置くか）。
+3. （決定、2026-09-24）**probe 全体の宣言と識別情報は `oep.core`（fn 0）の describe の TLV で返す。** `oep.probe.*` は
+   今は作らない。識別情報はファームの版、機種の名前、**個体の番号**（CH340 の classic ESP32 は USB のシリアル番号を
+   持たず、UART 直結や IP 経由には USB の記述子が無い。ESP32 の MAC や RP2350 の flash の UID のように probe 自身が
+   返せば、transport によらず host の記録と照合できる）。confirm のあと fn 0 の describe を読めば probe について
+   必要なことがそろう。LED は `LED` のラベルを付けたピンとして `oep.fixture.gpio` で動かす。probe の再起動などの
+   probe 全体への操作は、必要になったら `oep.probe.*` として足す（名前は list で見つかるので、あとから足しても
+   壊れない）。
 4. fixture の名前の一覧（どれを `oep.` の標準にするかは決めない方針のまま）。

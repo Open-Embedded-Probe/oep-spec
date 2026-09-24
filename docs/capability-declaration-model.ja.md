@@ -125,13 +125,18 @@ features ではなく独自インターフェースに移す。
 ## 5. probe 全体の能力
 
 v0 の probe_identity は u64 のピンマスク（reserved / fixture）を持つ。これを probe 全体の describe の TLV に移す。
+**probe 全体の describe は `oep.core`（fn 0）の describe とする**（2026-09-24 の合意、仮置き。
+[能力の名前の階層](capability-name-hierarchy.ja.md) の未決 3）。
 
 | 宣言 | 値 |
 |---|---|
+| firmware_version | 文字列または版の番号（表示と不具合の切り分け用） |
+| model | 機種の名前（例: `esp32-p4-devkit`） |
+| unit_id | **個体の番号**（bytes。ESP32 の MAC、RP2350 の flash の UID など）。USB のシリアル番号を持たない変換チップ（CH340）や、USB の記述子が無い transport（UART 直結、IP）でも、host が記録と照合できるように |
 | channel_count | u16 |
 | reserved_channels | base(u16), bitmap（probe 自身が使っていて割り当てられないピン） |
 | profile | 名前（例: `io.github.ch32-riscv-ug.p4-devkit`） |
-| channel_label | channel(u16), 名前（`GPIO5`、`D5`、`PA13`、fixture の端子名など。任意） |
+| channel_label | channel(u16), 名前（`GPIO5`、`D5`、`PA13`、fixture の端子名、`LED`、`NRST` など。任意） |
 | resets_on_open | transport を開くとリセットされる probe だけが宣言する（host は閉じずに 1 セッションで使う） |
 | uart_rates | UART の transport を持つ probe が、自分の UART で設定できる速度を**一覧**で宣言する（u32 の繰り返し。細かい刻みは扱わない）。速度の変更そのものは任意の機能で後回し。変換チップの制約は host が VID:PID から知り、経路の実力は取り決めのときに確かめる（[probe 開発ガイド](probe-development-guide.ja.md) §3.5） |
 
