@@ -1,12 +1,14 @@
-"""The v1 draft fixtures on the P4 probe, closed inside the probe (no target involvement).
+"""The v1 draft fixtures on a probe, checked without the target taking part.
 
   uart + capture: uart TX on an unused pin, capture line 0 observing the same pin (an observer may share a
                   channel in the same plan); the host decodes the sampled bits and compares with what was sent
   gpio:           an unused pin switched between pull-up and pull-down, read with the lock-free read_bank
 
-Pins 20/21/22 are not wired to the X035 on this jig (tests/manual/oep_smoke/targets.py lists the wired ones).
+Default pins 20/21/22 are not wired to the X035 on the P4 jig (tests/manual/oep_smoke/targets.py lists the
+wired ones). On the V003 jig every probe pin reaches the V003; use pins whose V003 side stays an input
+(21 = PD6/RX, 22 = PD5/TX with USART1 off, 25 = PA1).
 
-  usage: v1_fixture_check.py PORT
+  usage: v1_fixture_check.py PORT [TX RX PULL]
 """
 import struct
 import sys
@@ -15,8 +17,8 @@ import time
 from oep_client.v0 import codec
 from oep_client.v1 import host, link, target
 
-TX, RX, PULL = 20, 21, 22
-BAUD, RATE = 115200, 2_000_000
+TX, RX, PULL = (int(a) for a in sys.argv[2:5]) if len(sys.argv) >= 5 else (20, 21, 22)
+BAUD, RATE = 115200, 1_000_000       # a 50 ms window: over a 115200 bps link the write arrives a few ms after arm
 SENT = b"\x55OEP\xa3"
 
 h = host.Host(link.SerialLink(sys.argv[1]).send)
@@ -29,11 +31,11 @@ out = []
 target.plan_apply(h, [(uart, 1, RX), (uart, 2, TX), (cap, 0, TX)])
 h.request(uart, codec.FIXTURE_UART_OP_CONFIGURE, codec.FixtureUartConfigureRequest(baud=BAUD).pack())
 r = codec.FixtureCaptureConfigureResult.unpack(h.request(
-    cap, codec.FIXTURE_CAPTURE_OP_CONFIGURE, codec.FixtureCaptureConfigureRequest(sample_rate_hz=RATE, samples=4000).pack()).payload)
+    cap, codec.FIXTURE_CAPTURE_OP_CONFIGURE, codec.FixtureCaptureConfigureRequest(sample_rate_hz=RATE, samples=50000).pack()).payload)
 rate = r.actual_sample_rate_hz
 h.request(cap, codec.FIXTURE_CAPTURE_OP_ARM, codec.FixtureCaptureArmRequest().pack())
 h.request(uart, codec.FIXTURE_UART_OP_WRITE, codec.FixtureUartWriteRequest(data=SENT).pack())
-for _ in range(50):
+for _ in range(100):
     st = codec.FixtureCaptureStatusResult.unpack(h.request(cap, codec.FIXTURE_CAPTURE_OP_STATUS,
                                                            codec.FixtureCaptureStatusRequest().pack(), locked=False).payload)
     if st.flags & 4:
@@ -43,7 +45,7 @@ samples = b""
 while len(samples) < st.samples:
     samples += codec.FixtureCaptureReadResult.unpack(h.request(
         cap, codec.FIXTURE_CAPTURE_OP_READ,
-        codec.FixtureCaptureReadRequest(offset=len(samples), maximum=900).pack(), locked=False).payload).data
+        codec.FixtureCaptureReadRequest(offset=len(samples), maximum=400).pack(), locked=False).payload).data
 
 # decode 8N1 from line 0: find each start bit (a fall), sample the middle of each bit
 bits = [s & 1 for s in samples]

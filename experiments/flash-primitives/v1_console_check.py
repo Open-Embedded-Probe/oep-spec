@@ -3,7 +3,7 @@
 Attach without halting (the Monitor-only case), open a dmseq stream, read, echo a line, reset through
 riscv-dm, read from the last reset mark, then end the session and keep reading without one.
 
-  usage: v1_console_check.py PORT
+  usage: v1_console_check.py PORT [WIRE_NAME]   (default oep.wire.rvswd; oep.wire.swio for the V003 probe)
 """
 import sys
 import time
@@ -13,7 +13,7 @@ from oep_client.v1 import host, link, target
 lnk = link.SerialLink(sys.argv[1])
 h = host.Host(lnk.send)
 h.open(lease_ms=5000)
-wire = target.Wire(h)
+wire = target.Wire(h, sys.argv[2] if len(sys.argv) > 2 else "oep.wire.rvswd")
 conn, _ = wire.attach(halt=False)
 con = target.Console(h)
 con.open(conn, target.Console.DMSEQ)
