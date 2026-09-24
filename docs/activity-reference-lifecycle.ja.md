@@ -4,6 +4,11 @@
 
 wire上の識別子形式、bit幅、割当algorithm、message typeおよび再接続protocolはまだ決定しない。
 
+> **2026-09-24 の合意で変更（仮置き）:** activity の有効範囲は接続（connection context）ではなく**セッション**とする。
+> host がいなくなっても処理は最後まで進め、同じ session_id で戻れば最後の結果を取り出せる。新しい session_id で
+> ロックが立ったら最後の結果は消す。実行中の長い操作は probe 全体で 1 つ。以下の「再接続後に以前の reference が
+> 有効とはみなさない」は、この合意に置き換わる。[セッションと排他](session-and-exclusivity.ja.md)。
+
 ## Activityを識別する目的
 
 requestが`accepted`になった後は、最終outcomeが同じresponse内には存在しない。そのためhostとprobeは、後続のinteractionがどの継続処理に属するかを区別する必要がある。

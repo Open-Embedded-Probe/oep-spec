@@ -10,6 +10,14 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 
 - [開発ガイドライン（作業版）](docs/development-guidelines.ja.md)
 - [core wire model v0 draft（作業版）](docs/v0-core-wire-model.ja.md)
+- v1 の仮置き（議論の合意。実験してから調整する）
+  - [能力の識別方式の比較](docs/capability-identification-comparison.ja.md)
+  - [能力の宣言モデル（describe の語彙）](docs/capability-declaration-model.ja.md)
+  - [セッションと排他](docs/session-and-exclusivity.ja.md)
+  - [コンソールのストリーム](docs/console-stream.ja.md)
+  - [target の発見と接続](docs/target-connection-use-cases.ja.md)
+  - [target のコンソール: dmseq](docs/target-console-dmseq.ja.md)
+  - [host 開発ガイド](docs/host-development-guide.ja.md)
 - [registry/oep-v0.yaml](registry/oep-v0.yaml) — v0 の wire 上の全数値の唯一の定義。`uv run tools/oepgen.py` が `generated/` に C library、Python module、test vector を生成する（`--check` で同期確認）
 - [プロジェクトの目的と範囲](docs/project-concept.ja.md)
 - [相互運用ユースケース](docs/use-cases.ja.md)
