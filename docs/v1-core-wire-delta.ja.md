@@ -132,6 +132,36 @@ DMI の手順:
 - 一つの要求は一つの hart の操作で、DMI の手順のリストは probe の都合（線の再試行、立て直し）を書けない。
   リセットや回復のようにタイミングと線の立て直しが要るものは、部品（reset、attach_under_reset）にする。
 
+## 5.6 `oep.wire.swd` と `oep.target.arm-adi` の操作（仮置き、2026-09-24 の最初の実装）
+
+`oep.wire.swd`（scan の kind は 0x02 = arm-adi）:
+
+| op | 名前 | 要求 | 応答 |
+|---:|---|---|---|
+| 0x01 | scan | — | count(u8)、kind(u8) swdio(u16) swclk(u16) DPIDR(u32) の並び |
+| 0x02 | attach | [TARGETSEL(u32)]（multidrop のときだけ） | connection(u8)、DPIDR(u32)、flags(u8: bit0 dormant から起こした) |
+| 0x03 | detach | connection(u8) | — |
+
+- attach は JTAG から SWD への切り替えを試し、答えがなければ dormant から起こす（RP2350 の SWD v2 は後者でだけ答える）。
+  電源投入（CTRL/STAT の CDBGPWRUPREQ / CSYSPWRUPREQ）は host が DP の書き込みで行う。
+- attach_under_reset は持たない（任意の op）。
+
+`oep.target.arm-adi`（最初の byte は connection）:
+
+| op | 名前 | 要求 | 応答 |
+|---:|---|---|---|
+| 0x01 | transfer | 転送の並び: req(u8: bit0 APnDP、bit1 RnW、bit2-3 A[3:2]) と、書き込みなら value(u32) | done(u16)、status(u8: 0 ok / 1 書式 / 2 FAULT / 3 応答なし・パリティ / 4 WAIT のまま)、ack(u8)、読んだ値の並び |
+| 0x02 | read_block | address(u32)、count(u16) | 語の並び |
+| 0x03 | write_block | address(u32)、語の並び | — |
+
+- transfer は生の転送で、AP の読み出しが 1 つ遅れて返るのもそのまま（host が RDBUFF か次の AP の読み出しで受け取る）。
+  WAIT は probe の中で再試行する。FAULT で止まるので、host は ABORT で sticky を消す。
+- read_block / write_block は今の MEM-AP の TAR / DRW を使う。SELECT（TAR / DRW のある bank）と CSW（32 bit、単一増加、
+  保護の属性）は host が先に設定する。probe は 1 KiB の境界ごとに TAR を書き直し、1 つ遅れる読み出しを並べ直す。
+- 実測（RP2040-Zero → Pro Micro RP2350、ADIv6、半周期 500 ns）: 読み出し約 47 KiB/s。AP は 0x2000 / 0x4000（Cortex-M33 の
+  AHB-AP、IDR 0x34770008）、0xA000（APB-AP）、0x80000（RP-AP）。AHB-AP は非セキュア（CSW bit 30）で上がってきて、
+  そのままでは SRAM が FAULT になる（セキュアにすると読める）。
+
 ## 6. 長さの確認（64 byte のフレーム）
 
 - list の応答: 見出し 5 + list の見出し 2 + 1 項目（7 + 名前 48）= 62 byte。
