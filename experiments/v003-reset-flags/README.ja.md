@@ -114,3 +114,6 @@ SWIO を止めたファームが載った V003 で、NRST を `oep.fixture.gpio`
   「Ignore delay time 12ms」は、NRST を放した後にリセットを 12 ms 延ばす設定ではない（延ばすなら間に合う）。
 - host から GPIO で狙うなら、まとめて送り、何度か再試行すれば戻せそうである。確実なのは、probe の中で
   NRST を保持したまま haltreq を立てる attach_under_reset のほう（上の 6 巡、すべて 1 回目で成功）。
+- `swio_recover.py --via-gpio`: oep-client-python の `attach_after_gpio_reset`（まとめて送り、最大 20 回）で届いてから
+  reset-halt（dpc 0x0）し、core_api を書き戻せた（2026-09-24、1 巡）。
+- `find_reset.py <port> <wire> <候補,...>`: `Wire.find_reset_line` の実測。V003 では 23、L103（RP2350）では 2 だけが当たった。
