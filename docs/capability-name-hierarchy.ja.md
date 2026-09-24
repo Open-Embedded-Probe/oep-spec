@@ -29,7 +29,7 @@
 | `oep.target.riscv-dm` | connection を使った RISC-V Debug Module へのアクセス。DMI の手順のリスト、速くするための部品（autoexec のブロック読み書き、実行して停止を待つ、halt / resume の再試行） |
 | `oep.target.arm-adi` | connection を使った ARM Debug Interface（ADIv5 / v6）へのアクセス。DP / AP の転送のリスト、ブロック転送 |
 | `oep.target.console` | コンソールのストリーム（下記） |
-| `oep.fixture.*` | target の周りの I/O。役割は probe から見た名前。最初は `gpio`、`uart`（USART を含む）、`capture` だけ（未決 4）。NRST などの線は `gpio` で動かす |
+| `oep.fixture.*` | target の周りの I/O。役割は probe から見た名前。最初は `gpio`、`uart`（USART を含む）、`capture` だけ（下の 4）。NRST などの線は `gpio` で動かす |
 
 - 基本の流れ: `oep.wire.<線>` で attach して connection を受け取り、それを付けて `oep.target.riscv-dm` /
   `oep.target.arm-adi` でアクセスする。
@@ -71,7 +71,7 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
 - Monitor だけを使う場合は、止めずに attach してから dmseq のストリームを開く。書き込みのツールが終わったあとも、
   connection とストリームを残しておけば Monitor は読み続けられる。
 
-## 未決
+## 決めたこと（元の未決）
 
 1. （決定、2026-09-24）`oep.target.riscv-dm` は **DMI の手順のリスト**（書き、読み、条件を満たすまで読む。最初の
    失敗で止め、済んだ数と読んだ値を返す）を基本にし、速くするための部品を別の操作で足す: ブロック読み書き
@@ -82,8 +82,9 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
    リセットかを知らない（配線の知識。治具ならプロファイルがラベルを付け、ばら配線なら host の記録）。debug が
    つながっていればリセットは debug 経由で足りる（riscv-dm の ndmreset、arm-adi は host が AIRCR の SYSRESETREQ を書く）。
    線を動かす必要がある場面（PINRSTF を見る UIAPduino のブートローダ、リセットの挙動の試験、debug の無い target の
-   EN / IO0）は `oep.fixture.gpio` のオープンドレインのパルスで行う。debug がつながらなくなった target の回復は、まず
-   `oep.fixture.power` の電源の入れ直しで対応し、「リセットしながら attach」は実際に困る target が出てから足す。
+   EN / IO0）は `oep.fixture.gpio` のオープンドレインのパルスで行う。debug がつながらなくなった target の回復は、電源を
+   切れる治具ができた時点で `oep.fixture.power` の電源の入れ直しを足して対応し、「リセットしながら attach」は実際に
+   困る target が出てから足す（今のベンチには target の電源を切れる治具が無い）。
 3. （決定、2026-09-24）**probe 全体の宣言と識別情報は `oep.core`（fn 0）の describe の TLV で返す。** `oep.probe.*` は
    今は作らない。識別情報はファームの版、機種の名前、**個体の番号**（CH340 の classic ESP32 は USB のシリアル番号を
    持たず、UART 直結や IP 経由には USB の記述子が無い。ESP32 の MAC や RP2350 の flash の UID のように probe 自身が
