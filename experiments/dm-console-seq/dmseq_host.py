@@ -23,6 +23,9 @@ def main():
     ap.add_argument("--framing", type=int, required=True)
     ap.add_argument("--rounds", type=int, default=3)
     ap.add_argument("--echo", type=int, default=20)
+    ap.add_argument("--late", type=float, default=0,
+                    help="seconds to wait after programming before opening the console "
+                         "(the target times out and latches first)")
     a = ap.parse_args()
     from oep_client.v0.__main__ import open_client
     from oep_client.v0 import codec
@@ -45,6 +48,8 @@ def main():
                 except Exception:
                     pass
             time.sleep(0.5)
+    if a.late:
+        time.sleep(a.late)
     fn = client.find(*codec.DEF_TARGET_CONSOLE[:2])
     con = TargetConsole(client, fn.function)
     for attempt in range(4):
