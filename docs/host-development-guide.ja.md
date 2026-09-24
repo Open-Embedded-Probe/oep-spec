@@ -104,6 +104,21 @@ USB、IP 経由）を選ぶ。以下は速度の変更を仕様化したとき�
 - target の識別: OEP の probe は WCH-Link のような系統の番号を返さない。host は marchid / mimpid（CSR）→ core の世代 →
   ESIG の chip_id / flash 容量 / UID（番地は DB から）の順に読む。
 
+## 4.6 リセットの線
+
+- **どのチャンネルがリセットの線かは、host が探して確かめる。** 候補ごとに attach_under_reset を送り、止まった dpc を見る。
+  本物の線なら最初の命令の前（CH32 は 0x0）で止まり、違う線なら target は走り続けているのでコードの途中で止まる。
+  偶然 0x0 に止まることはまず無いので、候補ごとに数回試し、一度でも 0x0 なら当たりとする（2026-09-24、CH32L103 の
+  本物の NRST が 4 回の探索のうち 1 回外れた。単独で 10 回繰り返すと 10 回とも当たった。原因は未確認）。
+  - probe が許可していないチャンネルは rejected で返るので飛ばす。attach の失敗（completed / failed）は外れとして再試行する。
+  - 候補を一本ずつオープンドレインで low にする。治具の配線で low にしてはいけない線は候補から外す。
+  - 実測: V003（ESP32、15 候補）で 1 回 0.7〜2.1 秒、L103（RP2350、8 候補）で約 3 秒。どちらも本物の線だけが当たった。
+  - oep-client-python: `Wire.find_reset_line(candidates)`。
+- **SWD / SWIO を GPIO にしてしまったファームからの回復は、probe の中のモードを先に使う**（attach_under_reset）。
+  持たない probe（unsupported）では、`oep.fixture.gpio` の解放と attach を 1 回にまとめて送り、再試行する
+  （`attach_after_gpio_reset`）。窓の縁での競争で、V003 では 5 回中 2 回届いた。解放の応答を待ってから attach を
+  送ると届かない。
+
 ## 5. コンソール
 
 - Arduino の書き込みのあとの Monitor は「最後の reset マークから」読む。前回の未取得のログが流れない。
