@@ -101,6 +101,11 @@ USB、IP 経由）を選ぶ。以下は速度の変更を仕様化したとき�
   host 主導の書き込みでは、明示の指示が無ければ止める。
 - **動いているウォッチドッグの上から書かない。** IWDG は hart を止めても数え続け、書き込みの途中で target をリセット
   する（2026-09-24、system_selftest のあとの CH32L103）。書く前に `riscv-dm` の reset（最初の命令の前で止める）を使う。
+- **Cortex-M で target の関数（ROM の flash ルーチンなど）を host から呼ぶときは、割り込みを止め（DHCSR の C_MASKINTS）、
+  呼び終わったら必ず外す。** XIP を切っている間、flash にある割り込みハンドラは読めない。C_MASKINTS は debug の領域に
+  あってリセットを越えて残るので、外し忘れると再起動後の firmware が SysTick / USB の割り込みなしで走り、USB の列挙が
+  終わらない（2026-09-24、RP2350: Windows で「デバイス記述子要求の失敗」）。AIRCR の SYSRESETREQ も DHCSR を消さない。
+  再列挙まで含めて戻すには、ROM の reboot（チップ全体）を割り込みを有効にして呼ぶ。
 - target の識別: OEP の probe は WCH-Link のような系統の番号を返さない。host は marchid / mimpid（CSR）→ core の世代 →
   ESIG の chip_id / flash 容量 / UID（番地は DB から）の順に読む。
 

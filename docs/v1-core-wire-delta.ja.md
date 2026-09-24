@@ -158,6 +158,12 @@ DMI の手順:
   WAIT は probe の中で再試行する。FAULT で止まるので、host は ABORT で sticky を消す。
 - read_block / write_block は今の MEM-AP の TAR / DRW を使う。SELECT（TAR / DRW のある bank）と CSW（32 bit、単一増加、
   保護の属性）は host が先に設定する。probe は 1 KiB の境界ごとに TAR を書き直し、1 つ遅れる読み出しを並べ直す。
+- **flash の書き込みまで通した**（2026-09-24、RP2040-Zero → Pro Micro RP2350）: host が core 0 を止め、DCRSR / DCRDR で
+  レジスタを置き、SRAM の BKPT へ戻る形で boot ROM の flash 関数（connect_internal_flash → exit_xip → range_erase →
+  range_program → flush_cache → enter_cmd_xip）を呼ぶ。98 KiB のイメージを消去 0.3 秒、書き込み 3.0 秒、読み戻しの
+  検証 2.0 秒。ROM の reboot でチップごと再起動し、USB が再列挙して probe の firmware が戻った。target の知識
+  （ROM の表の引き方、関数の並び、CSW のセキュア属性、DHCSR の C_MASKINTS がリセットを越えて残ること）はすべて host 側
+  （oep-client-python の `arm.CortexM`、`rp2350`）。
 - 実測（RP2040-Zero → Pro Micro RP2350、ADIv6、半周期 500 ns）: 読み出し約 47 KiB/s。AP は 0x2000 / 0x4000（Cortex-M33 の
   AHB-AP、IDR 0x34770008）、0xA000（APB-AP）、0x80000（RP-AP）。AHB-AP は非セキュア（CSW bit 30）で上がってきて、
   そのままでは SRAM が FAULT になる（セキュアにすると読める）。
