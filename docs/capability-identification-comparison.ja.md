@@ -57,7 +57,7 @@ v0 はすでに、`list` で見つけた機能にセッション内の 16 bit �
 ### 名前の規則（案）
 
 - 区切りは `.`、各区切りは小文字 ASCII の英数字と `-`。長さは 48 byte 以下（64 byte frame の低スペック probe で
-  list の 1 件が 1 frame に収まる長さ: 名前 48 + 項目の固定部分 7 + 応答の見出し約 8 = 63 byte）。**probe が宣言できる
+  list の 1 件が 1 frame に収まる長さ: 名前 48 + 項目の固定部分 7 + 応答の見出し 5 + list の見出し 2 = 62 byte）。**probe が宣言できる
   frame の最小は 64 byte とし、名前の上限とこの最小は一緒にしか変えない**（CH32V003 を probe にする場合の点検、
   2026-09-24）。
 - 先頭の区切りで名前空間の種類を見分ける。
@@ -124,6 +124,10 @@ list result  : total(u8), entries: array of
 
 **BASIC の能力として何を標準にするかは、まだ決めない。** 下の表は命名の例であり、`oep.` の下にこれらを
 標準として置くことを決めるものではない。決めるのは宣言の仕組み（名前、list、describe）である。
+
+> 2026-09-24 の合意で、この表の多くは置き換わった（`oep.target.control` / `memory` / `flash` は作らず、target への
+> アクセスは `oep.wire.<線>` の connection と `oep.target.riscv-dm` / `oep.target.arm-adi`、probe 全体の宣言は
+> `oep.core` の describe、I2C / SPI target は独自の名前、など）。最新は [能力の名前の階層](capability-name-hierarchy.ja.md)。
 
 | 現行（owner:id） | 名前（案） | 備考 |
 |---|---|---|
