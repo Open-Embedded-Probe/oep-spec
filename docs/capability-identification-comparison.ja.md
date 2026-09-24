@@ -58,9 +58,22 @@ v0 はすでに、`list` で見つけた機能にセッション内の 16 bit �
 
 - 区切りは `.`、各区切りは小文字 ASCII の英数字と `-`。長さは 48 byte 以下（64 byte frame の低スペック probe で
   list の 1 件が 1 frame に収まる長さ）。
-- `oep.` は OEP 標準に予約する。
-- 独自拡張は、自分が持つドメイン名を逆にした接頭辞の下に置く。oep-probe-arduino なら
-  `io.github.ch32-riscv-ug.`。
+- 先頭の区切りで名前空間の種類を見分ける。
+
+| 先頭 | 用途 | 衝突しない根拠 |
+|---|---|---|
+| `oep.` | OEP 標準（予約） | `oep` は実在のトップレベルドメインではないので、逆ドメイン名と重ならない |
+| `com.` `io.` `jp.` など | 自分が持つ実在のドメインを逆にした名前 | ドメインの持ち主 |
+| `io.github.<name>.`、`io.gitlab.<name>.`、`page.codeberg.<name>.` | 自分のドメインを持たない作者（ホスティングが与えるドメインを使う） | ホスティングがその `<name>` を一人にしか与えない |
+| `uuid.<32 桁の小文字 16 進>.` | ドメインがなく、それでも確実に一意にしたい作者 | UUID |
+| `local.` | 手元の実験用。公開しない | 相互運用を保証しない（MIME の `x-` に当たる逃げ道） |
+
+- ホスティングのドメインは、実在するドメインをそのまま逆にする。GitHub なら `io.github.<name>`（GitHub が
+  `<name>.github.io` を与えている）とし、`github.<name>` や `com.github.<name>` は使わない。前者は実在しない
+  トップレベルで、後者は GitHub が `github.com` のサブドメインを利用者に与えていないので持ち主の根拠にならない
+  （Maven Central も `com.github` から `io.github` に切り替えている）。
+- oep-probe-arduino と ch32rv は `io.github.ch32-riscv-ug.` の下に置く（例:
+  `io.github.ch32-riscv-ug.p4.i2c-target`、37 byte）。
 
 ## 層との対応
 
@@ -106,6 +119,9 @@ list result  : total(u8), entries: array of
   2 件程度しか載らないので、絞り込みで往復を減らせる（BLE にも同じ目的の「UUID で絞って探す」操作がある）。
 
 ## 現行 registry からの対応（案）
+
+**BASIC の能力として何を標準にするかは、まだ決めない。** 下の表は命名の例であり、`oep.` の下にこれらを
+標準として置くことを決めるものではない。決めるのは宣言の仕組み（名前、list、describe）である。
 
 | 現行（owner:id） | 名前（案） | 備考 |
 |---|---|---|
