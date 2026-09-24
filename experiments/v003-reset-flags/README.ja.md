@@ -98,3 +98,19 @@ setup の先頭に `ebreak` を置いたスケッチで、最初の命令（dpc 
 - 12 ms の設定が何を広げるのか（NRST を放した後もリセットが続くのか、短いパルスを無視するのか）は確かめていない。
   hold_ms = 1 でも attach_under_reset は通った。
 - attach_under_reset は haltreq を保持したまま NRST を放すので、この窓とは競争しない。
+
+### host から GPIO で NRST を放して、普通の attach で窓に間に合うか（`gpio_nrst_attach.py`）
+
+SWIO を止めたファームが載った V003 で、NRST を `oep.fixture.gpio`（open drain の low → 解放）で操作してから、
+普通の attach（halt 付き）を送った。probe は classic ESP32（CH340、115200 bps の COBS フレーム）。
+
+| 送り方 | 結果 | 所要 |
+|---|---|---|
+| 解放の応答を待ってから attach を送る | 5 回中 0 回 | 解放の往復 5〜6 ms、attach の往復約 11 ms |
+| 解放と attach を 1 回にまとめて送る（pipeline） | 5 回中 2 回 | 合わせて 10〜13 ms |
+
+- 窓の縁での競争になっている。まとめて送ると、probe は解放の直後に attach に取りかかり、ときどき間に合う。
+- 応答を待つと、attach が probe に届くのは解放から数 ms 後で、一度も間に合わなかった。したがって
+  「Ignore delay time 12ms」は、NRST を放した後にリセットを 12 ms 延ばす設定ではない（延ばすなら間に合う）。
+- host から GPIO で狙うなら、まとめて送り、何度か再試行すれば戻せそうである。確実なのは、probe の中で
+  NRST を保持したまま haltreq を立てる attach_under_reset のほう（上の 6 巡、すべて 1 回目で成功）。
