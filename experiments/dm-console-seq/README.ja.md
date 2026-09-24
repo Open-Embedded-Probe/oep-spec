@@ -7,7 +7,7 @@
 ## なぜ
 
 今の `target.console` framing 1(ArduinoCore-CH32 の `SerialDMDATA`、minichlink互換)には通し番号がない。
-probe の答えの DMI 書込みが黙って落ちると target の word がもう一度読まれて**重複**し(CH32L103 の飛び線、
+probe の答えの DMI 書込みが黙って落ちると target の word がもう一度読まれて**重複**し(RP2350 の probe 越しの CH32L103、
 2026-09-23)、それを読み戻しで救おうとすると同じ文字が続く箇所を**取り違えて落とす**(CH32V003、同日)。
 番号があればどちらも区別できる。CRCは化けた word を捨てるためのもの。
 

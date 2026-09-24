@@ -152,7 +152,7 @@ V003 の probe も v1 の仮置きに置き換えた（`oep.wire.swio`、`oep.ta
 - UART の経路を COBS + CRC-16 のフレームにしたあとも、同じ確かめ方がすべて通った。16 KB の書き込みは 2.96 秒
   （長さの前置きのときは 2.82 秒）、壊れたフレームの検出 0 回、送り直し 0 回。
 
-## Pico の probe の v1 化（Pro Micro RP2350 → CH32L103、ばら配線、半周期 500 ns、2026-09-24）
+## Pico の probe の v1 化（Pro Micro RP2350 → CH32L103、半周期 500 ns、2026-09-24）
 
 RP2350 の L103 用 probe も v1 の仮置きに置き換えた（`oep.wire.rvswd`、`oep.target.riscv-dm`、`oep.target.console`、
 `oep.fixture.gpio` / `uart`。GP2 は NRST のラベル付きの gpio のチャンネル。`Serial.ignoreFlowControl(true)` で DTR に
@@ -173,7 +173,7 @@ RP2350 の L103 用 probe も v1 の仮置きに置き換えた（`oep.wire.rvsw
   マーク、セッション終了後のロックなしの読み出しまで通った。
 - LinkE の基準は、LinkE につながっている**別の** CH32L103C8T6 で測った（書き込み 2.13 秒、読み戻しの確認を含めて合計
   3.43 秒、2 回とも同じ）。ベンチの L103 は 2 個あり、UID が違う（Pico の先 `3a6fabcd a284bc48`、LinkE の先
-  `3a6dabcd a282bc48`）。OEP 側の差（書き込み約 5.2 秒）は、ばら配線のために半周期を 500 ns に抑えていることが主。
+  `3a6dabcd a282bc48`）。OEP 側の差（書き込み約 5.2 秒）は、半周期を 500 ns に抑えていることが主。この下限は RP2 の bit-bang の待ちの較正を直す前（2026-09-24）の測定によるもので、測り直しが要る。L103 の配線は他の target と同じで、ときどき起きた失敗の一部は OEP の reset の手順が原因だった（2026-09-25 に作り直した）。
 
 ## 分かったこと
 
@@ -194,7 +194,7 @@ RP2350 の L103 用 probe も v1 の仮置きに置き換えた（`oep.wire.rvsw
 
 - V003 を USB の probe で書いたときの速さ（今は V003 に USB の probe がつながっていない）。
 - UART の速度の取り決めを実装したうえでの、V003 の読み戻しの速さ。
-- L103 など他の系統、ばら配線の Pico（DMI が化けやすい）での F4 の頑健さ。
+- L103 など他の系統、Pico の probe（RP2350 → L103）での F4 の頑健さ。
 - 低スペック（64 byte フレーム）での F4 のバッファ転送の往復数。
 
 ## 実行
