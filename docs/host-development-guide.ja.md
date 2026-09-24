@@ -108,7 +108,7 @@ USB、IP 経由）を選ぶ。以下は速度の変更を仕様化したとき�
   だが RV32EC、V103 は half-word の書き込み + commit、V003 は wlink の 64 byte（RV32EC）。device-data の
   `flash_program_method`（`buffer_load_bits`）、`sram_bytes` で引く。
 - **ローダーは走らせる前に読み戻す。** 化けたローダーは flash コントローラを動かしながら ebreak まで届き、以後の全ページを
-  壊す（2026-09-24、飛び線の CH32L103 で 38 ページ書き直しても合わなかった）。probe の ack は「その内容が入った」証明に
+  壊す（2026-09-24、RP2350 の probe 越しの CH32L103 で 38 ページ書き直しても合わなかった）。probe の ack は「その内容が入った」証明に
   ならない。書き込んだ flash も必ず読み戻す（target 側で CRC を計算するローダーを使えば、遅い経路で速くなる）。
 - **消去後の値は 0xff とは限らない。** V20x / V30x / V407 / X315 / H417 は `0xe339e339` を読む。「全部 0xff のページは
   飛ばす」最適化や blank check は device-data の `erased_word` で判定する。
