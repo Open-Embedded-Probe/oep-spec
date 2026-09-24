@@ -21,6 +21,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
   - [target のコンソール: dmseq](docs/target-console-dmseq.ja.md)
   - [host 開発ガイド](docs/host-development-guide.ja.md)
   - [probe 開発ガイド](docs/probe-development-guide.ja.md)
+- v1 の未合意の案（決めてから上へ移す）: [スキャンで見つけた組への attach と PENDING、fixture の payload](docs/v1-open-proposals.ja.md)
 - [registry/oep-v0.yaml](registry/oep-v0.yaml) — v0 の wire 上の全数値の唯一の定義。`uv run tools/oepgen.py` が `generated/` に C library、Python module、test vector を生成する（`--check` で同期確認）
 - [プロジェクトの目的と範囲](docs/project-concept.ja.md)
 - [相互運用ユースケース](docs/use-cases.ja.md)
