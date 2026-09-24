@@ -114,7 +114,7 @@ attach(wire の fn, channel の組, クロック, 方法) → 結果（成功・
 - 操作できない probe に接続まで進まずに済む。
 - list と fn は起動ごとに固定になり、状態を保つ方針や one-shot CLI と相性がよい（attach のたびに list が変わると、
   host が記録を持ち越しにくい）。
-- どの名前（`oep.target.debug.riscv`、ARM 用など）を載せるかは、probe が話せる線で決まる。target を知らないという
+- どの名前（`oep.target.riscv-dm`、ARM 用など）を載せるかは、probe が話せる線で決まる。target を知らないという
   前提と矛盾しない。
 
 ## flash の書き込み（実験してから決める）

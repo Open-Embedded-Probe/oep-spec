@@ -128,7 +128,7 @@ list result  : total(u8), entries: array of
 | 0:0x0000 core | `oep.core` | `fn` 0 に固定 |
 | 0:0x0001 probe_identity | `oep.probe.identity` | u64 のピンマスクは `oep.probe.capabilities` の TLV へ |
 | 0:0x0010 target_control | `oep.target.control` | reset の mode 1/2（UIAPduino 専用の RAM ペイロード）は独自インターフェースへ |
-| （target_control の read_dmi / read_register） | `oep.target.debug.riscv` | アーキテクチャ別に分ける |
+| （target_control の read_dmi / read_register） | `oep.target.riscv-dm` | アーキテクチャ別に分ける |
 | 0:0x0011 target_memory | `oep.target.memory` | |
 | 0:0x0012 target_flash | `oep.target.flash` | 経路は describe |
 | 0:0x0013 target_console | `oep.target.console` | 対応 framing は describe |

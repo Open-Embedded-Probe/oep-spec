@@ -23,16 +23,23 @@
 | `oep.core` | プロトコル自体（confirm、list、describe、セッション） |
 | `oep.probe.*` | probe 全体のこと（例: `oep.probe.identity`） |
 | `oep.wire.<線>` | target を見つけてつなぐ（scan、attach、detach）。attach は **connection** を返す。`rvswd`、`swio`、`swd`、`jtag` |
-| `oep.target.debug.<arch>` | connection を使った実際のアクセス。`riscv`: DMI の読み書き、それを並べてまとめて送る仕組み、速くするための部品（autoexec のブロック読み書き、実行して停止を待つ、halt / resume の再試行）。`arm`: DP / AP の転送、まとめて送る仕組み、ブロック転送 |
+| `oep.target.riscv-dm` | connection を使った RISC-V Debug Module へのアクセス。DMI の手順のリスト、速くするための部品（autoexec のブロック読み書き、実行して停止を待つ、halt / resume の再試行） |
+| `oep.target.arm-adi` | connection を使った ARM Debug Interface（ADIv5 / v6）へのアクセス。DP / AP の転送のリスト、ブロック転送 |
 | `oep.target.console` | コンソールのストリーム（下記） |
 | `oep.fixture.*` | target の周りの I/O。役割は probe から見た名前（`gpio`、`uart`、`i2c-target`、`i2c-controller`、`spi-target`、`capture`、`adc`、`dac`、`power`、NRST などの線） |
 
-- 基本の流れ: `oep.wire.<線>` で attach して connection を受け取り、それを付けて `oep.target.debug.<arch>` で
-  アクセスする。
-- 線の違いは `oep.wire.*` の中に閉じる。probe が RVSWD しか話せなければ `oep.target.debug.arm` は list に出ない。
+- 基本の流れ: `oep.wire.<線>` で attach して connection を受け取り、それを付けて `oep.target.riscv-dm` /
+  `oep.target.arm-adi` でアクセスする。
+- **名前は命令セットではなくデバッグ仕様で付ける**（2026-09-24 の合意）。中身は「RISC-V の DM を DMI 経由で叩く」
+  「ARM の DP / AP を叩く」ことで、Cortex-M でも Cortex-A でも ADI の層は共通。どの線（RVSWD / SWIO は DMI を直接運び、
+  JTAG は DTM を通す）でつないでも、attach のあとは「DMI にアクセスできる接続」になる。仕様の版（RISC-V Debug
+  0.13 / 1.0、ADIv5 / v6）は名前に入れない（DMSTATUS / DPIDR を読めば分かる）。CH32 の DM は仕様どおりでない部分
+  （QingKe V2 の SWIO、システムバスアクセスが無い、halt の癖）があるが、レジスタの番地と意味は同じなので
+  `riscv-dm` として扱い、違いは host の知識と probe の再試行で吸収する。
+- 線の違いは `oep.wire.*` の中に閉じる。probe が RVSWD しか話せなければ `oep.target.arm-adi` は list に出ない。
   「置けるもの」の違いは list にそのまま現れる。
 - target 用の名前は attach の前から list に出る（[target の発見と接続](target-connection-use-cases.ja.md)）。
-- CH32 の flash は、host が `oep.target.debug.riscv` の部品で組む（[flash の実験](../experiments/flash-primitives/README.ja.md)）。
+- CH32 の flash は、host が `oep.target.riscv-dm` の部品で組む（[flash の実験](../experiments/flash-primitives/README.ja.md)）。
 
 ## コンソールのストリーム
 
@@ -63,7 +70,7 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
 
 ## 未決
 
-1. （決定、2026-09-24）`oep.target.debug.riscv` は **DMI の手順のリスト**（書き、読み、条件を満たすまで読む。最初の
+1. （決定、2026-09-24）`oep.target.riscv-dm` は **DMI の手順のリスト**（書き、読み、条件を満たすまで読む。最初の
    失敗で止め、済んだ数と読んだ値を返す）を基本にし、速くするための部品を別の操作で足す: ブロック読み書き
    （autoexec）、実行して停止を待つ、halt / resume（CH32 の再発行・立て直し込み）。部品が使う方法（プログラム
    バッファ + autoexec など）は describe で宣言し、合わない target では host がリストで組む。メモリの手順のリスト
