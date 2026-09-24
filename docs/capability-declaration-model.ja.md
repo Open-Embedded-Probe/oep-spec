@@ -128,7 +128,7 @@ v0 の probe_identity は u64 のピンマスク（reserved / fixture）を持�
 | profile | 名前（例: `io.github.ch32-riscv-ug.p4-devkit`） |
 | channel_label | channel(u16), 名前（`GPIO5`、`D5`、`PA13`、fixture の端子名など。任意） |
 | resets_on_open | transport を開くとリセットされる probe だけが宣言する（host は閉じずに 1 セッションで使う） |
-| uart_rates | UART の transport を持つ probe が、自分の UART で設定できる速度を宣言する。形（速度の一覧か、範囲と刻みか）は未決。変換チップの制約は host が VID:PID から知り、経路の実力は取り決めのときに確かめる（[probe 開発ガイド](probe-development-guide.ja.md) §3.5） |
+| uart_rates | UART の transport を持つ probe が、自分の UART で設定できる速度を**一覧**で宣言する（u32 の繰り返し。細かい刻みは扱わない）。速度の変更そのものは任意の機能で後回し。変換チップの制約は host が VID:PID から知り、経路の実力は取り決めのときに確かめる（[probe 開発ガイド](probe-development-guide.ja.md) §3.5） |
 
 64 本を超える probe や、ピン以外の資源も表せるようになる。
 
