@@ -29,7 +29,7 @@
 | `oep.target.riscv-dm` | connection を使った RISC-V Debug Module へのアクセス。DMI の手順のリスト、速くするための部品（autoexec のブロック読み書き、実行して停止を待つ、halt / resume の再試行） |
 | `oep.target.arm-adi` | connection を使った ARM Debug Interface（ADIv5 / v6）へのアクセス。DP / AP の転送のリスト、ブロック転送 |
 | `oep.target.console` | コンソールのストリーム（下記） |
-| `oep.fixture.*` | target の周りの I/O。役割は probe から見た名前（`gpio`、`uart`、`i2c-target`、`i2c-controller`、`spi-target`、`capture`、`adc`、`dac`、`power`）。NRST などの線は `gpio` で動かす |
+| `oep.fixture.*` | target の周りの I/O。役割は probe から見た名前。最初は `gpio`、`uart`（USART を含む）、`capture` だけ（未決 4）。NRST などの線は `gpio` で動かす |
 
 - 基本の流れ: `oep.wire.<線>` で attach して connection を受け取り、それを付けて `oep.target.riscv-dm` /
   `oep.target.arm-adi` でアクセスする。
@@ -91,4 +91,18 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
    必要なことがそろう。LED は `LED` のラベルを付けたピンとして `oep.fixture.gpio` で動かす。probe の再起動などの
    probe 全体への操作は、必要になったら `oep.probe.*` として足す（名前は list で見つかるので、あとから足しても
    壊れない）。
-4. fixture の名前の一覧（どれを `oep.` の標準にするかは決めない方針のまま）。
+4. （決定、2026-09-24）v1 を作り始めるときの fixture は、今の試験で使っているものだけにする。BASIC として確定させる
+   意味ではなく、実装を始めるための仮の名前。
+
+   | 名前 | 理由 |
+   |---|---|
+   | `oep.fixture.gpio` | 使う場面（ピンの試験、ADC の入力を H/L で与える）と 2 実装以上がある |
+   | `oep.fixture.uart` | 同上（Serial の試験、UART のコンソール） |
+   | `oep.fixture.capture` | 同上（I2C の線の証拠、PWM の測定） |
+   | `io.github.ch32-riscv-ug.esp32.i2c-target` / `.spi-target`（独自） | 2 実装はあるが、どちらも ESP-IDF のスレーブドライバで、その癖（I2C は NACK で終わった転送でもフレームが出る、など）を引きずる。ESP-IDF でない 2 実装目（Pico の PIO など）が出るまで独自の名前 |
+
+   ADC、DAC、電源、I2C controller は、使う場面が出てから作る。
+
+   **USART は `oep.fixture.uart` の中で扱う。** パリティ、ストップビット、9 bit は設定の引数、半二重と BREAK の
+   送信・検出は features のビット。同期モード（クロックの線）、IrDA、スマートカードは、必要になったら任意の役割
+   `CK` や features のビットで足し、名前は分けない。最初に作るのは非同期の送受信だけ。
