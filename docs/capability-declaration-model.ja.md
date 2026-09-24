@@ -102,11 +102,11 @@ features ではなく独自インターフェースに移す。
 ## 4. target 側の能力
 
 > 2026-09-24 の合意（仮置き）で、アーキテクチャに中立な `oep.target.control` などは作らないことにした。target への
-> アクセスは `oep.wire.<線>` の attach が返す connection を使い、`oep.target.<riscv-dm|arm-adi>` で行う。NRST の線は
+> アクセスは `oep.wire.<線>` の attach が返す connection を使い、`oep.target.riscv-dm` / `oep.target.arm-adi` で行う。NRST の線は
 > アーキテクチャに依らないので `oep.fixture` か `oep.wire` の側に置く（未決）。
 > [能力の名前の階層](capability-name-hierarchy.ja.md)。
 
-線や target を扱うインターフェース（`oep.wire.<線>`、`oep.target.<riscv-dm|arm-adi>`）の describe に、インターフェース固有
+線や target を扱うインターフェース（`oep.wire.<線>`、`oep.target.riscv-dm` / `oep.target.arm-adi`）の describe に、インターフェース固有
 タグで次を宣言する。
 
 | 宣言 | 値 | 例 |
