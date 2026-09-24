@@ -76,3 +76,25 @@ void loop() { Serial.println("swio off"); delay(200); }
   確認の読み出しが届かないため。
 - 実行: `uv run swio_recover.py <上のスケッチを swio_off/swio_off.ino に置いたディレクトリ> [--hold=N] [--recover-only]`
   （ArduinoCore-CH32 の tests/manual/oep_smoke を import する。破壊的: SWIO を止めたファームを書く）。
+
+### 窓の大きさ（リセットからスケッチが SWIO を止めるまで）
+
+setup の先頭に `ebreak` を置いたスケッチで、最初の命令（dpc 0x0）から ebreak（0xc0）までを riscv-dm run の経過 µs で
+計った（`window.py`）。SWIO を止めるスケッチでは、ここが SWIO を止める位置になる。
+
+| 止め方 | 経過（5 回） |
+|---|---|
+| attach_under_reset（NRST） | 541〜549 µs |
+| reset-halt（ndmreset） | 543 µs |
+
+- 約 0.54 ms。probe が resume してから停止を確かめるまでの遅れを含む上限。SystemInit のクロックの切り替えと、
+  .data / .bss の初期化を含む。
+- NRST を放した直後に 0 番地に見えているのはユーザー領域で、BOOT 領域（UIAPduino のブートローダ）ではない
+  （`bootmap.py`。NRST でも ndmreset でも同じ）。option byte の USER = 0xf7、FLASH_STATR = 0x00008000、
+  RCC_RSTSCKR = 0x14000000（PORRSTF と PINRSTF）。V00X の SDK ヘッダ（ch32v00X_flash.h）で読むと、USER の bit5 = 1 は
+  電源投入のときだけ BOOT から起動（`OB_PowerON_Start_Mode_BOOT`）、bit[4:3] = 10 は「NRST 有効、Ignore delay time 12ms」
+  （`OB_RST_EN_DT12ms`）。V003 も同じ配置と仮定している（未確認）。つまり NRST でのリセットはブートローダを通らず、
+  窓は core の起動処理の分だけになる。
+- 12 ms の設定が何を広げるのか（NRST を放した後もリセットが続くのか、短いパルスを無視するのか）は確かめていない。
+  hold_ms = 1 でも attach_under_reset は通った。
+- attach_under_reset は haltreq を保持したまま NRST を放すので、この窓とは競争しない。
