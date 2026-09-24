@@ -47,3 +47,32 @@ uv run python <この dir>/reset_flags.py PORT <bin の dir> iwdg wwdg pd7-low
 uv run python <この dir>/pd7_level.py PORT <bin の dir>/pd7_low.bin   # PD7 のレベルを probe から見る
 uv run python <この dir>/uiap_paths.py PORT                            # ブートローダに入る 3 つの経路
 ```
+
+## NRST を使った attach under reset（SWIO を止めたファームからの復旧、2026-09-24）
+
+SWIO（PD1）を setup の先頭で GPIO にするスケッチ（下）を OEP で書き、普通の attach が届かなくなったところから、
+`oep.wire.swio` の attach_under_reset（リセット線は probe の既定値 = GPIO23 → V003 の NRST）で戻した。
+classic ESP32 の V003 jig、probe は oep-probe-arduino 25be7ce。
+
+```cpp
+void setup() {
+  *(volatile uint32_t *)0x40021018 |= 1u;                      // RCC_APB2PCENR.AFIOEN
+  volatile uint32_t *pcfr1 = (volatile uint32_t *)0x40010004;  // AFIO_PCFR1.SWCFG = 0b100: SDI off
+  *pcfr1 = (*pcfr1 & ~(7u << 24)) | (4u << 24);
+  Serial.begin(115200);
+}
+void loop() { Serial.println("swio off"); delay(200); }
+```
+
+| hold_ms | 普通の attach（書いた後） | attach_under_reset | 止まった dpc | core_api の書き戻し | 普通の attach（戻した後） |
+|---|---|---|---|---|---|
+| 20 / 1 / 5 / 50 / 200 / 500（各 1 巡） | 6 巡とも失敗 | 6 巡とも 1 回目で成功 | 0x0 | 検証まで通る | DMSTATUS 0x400c82 |
+
+- hold_ms によらず 1 回目で止まった。probe は NRST を保持したまま attach して haltreq を立て、それを保持したまま
+  NRST を放すので、hart は最初の命令の前で止まる。「リセット直後の窓に SWIO を差し込む」競争になっていない。
+- V003 の DM は NRST を保持している間も SWIO で答える。答えない target では窓の競争になるので、host は hold_ms や
+  解放後の待ちを変えながら再試行する（利用者の指摘）。V003 では必要なかったため、その再試行はまだ実装していない。
+- SWIO を止めるスケッチを書いた直後の riscv-dm reset（run）は `failed` を返す。走り出したスケッチが SWIO を止め、
+  確認の読み出しが届かないため。
+- 実行: `uv run swio_recover.py <上のスケッチを swio_off/swio_off.ino に置いたディレクトリ> [--hold=N] [--recover-only]`
+  （ArduinoCore-CH32 の tests/manual/oep_smoke を import する。破壊的: SWIO を止めたファームを書く）。
