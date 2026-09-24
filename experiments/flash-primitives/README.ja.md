@@ -1,4 +1,4 @@
-# flash の書き込みを host の知識で行う実験（F1〜F4）
+# flash の書き込みを host の知識で行う実験（F1〜F5）
 
 状態: **非規定の実験**（2026-09-24）。[target の発見と接続](../../docs/target-connection-use-cases.ja.md) の
 「flash の書き込み（実験してから決める）」の入力。どの部品を標準にするかは決めていない。
@@ -130,6 +130,8 @@ uv run python <この dir>/f3_steps.py PORT PAGES IMAGE [PAGES_PER_BATCH]
 uv run python <この dir>/f4_loader.py PORT PAGES IMAGE x035_loader.bin [PAGES_PER_BATCH]
 uv run python <この dir>/f4_v003.py PORT IMAGE v003_loader.bin [BYTES_PER_RUN] [FLAGS|mass]
 uv run python <この dir>/read_chunks.py PORT IMAGE CHUNK             # 読み出しの長さごとの経路の確認
+uv run python <この dir>/f5_v1.py PORT IMAGE x035_loader.bin [--reset]  # v1 の仮置きだけで書く
+uv run python <この dir>/v1_session_check.py PORT                     # v1 のセッションの規則を実機で
 # LinkE の基準（工程ごとの時刻を付ける）
 uv run python <この dir>/phase_ts.py ch32rv --probe serial:<SN> --progress ndjson --non-interactive --yes \
     flash --reset none IMAGE
