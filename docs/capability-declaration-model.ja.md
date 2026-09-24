@@ -113,6 +113,9 @@ target を扱うインターフェース（例: `oep.target.control`）の descr
   （ch32rv の DB など）が持つ。probe は電気的な経路だけを宣言する。
 - デバッグのレジスタを直接読む操作（v0 の read_dmi / read_register）は、アーキテクチャ別のインターフェースに
   分ける（例: `oep.target.debug.riscv`）。ARM SWD の target には別のものが付く。
+- **target を扱うインターフェースは、attach の前から list に出す**（2026-09-24 の合意、仮置き）。能力として見え、
+  操作には attach が返した connection を付ける。未 attach で呼べばエラー。attach のたびに list が変わる形は採らない
+  （[target の発見と接続](target-connection-use-cases.ja.md)）。
 
 ## 5. probe 全体の能力
 
@@ -123,8 +126,13 @@ v0 の probe_identity は u64 のピンマスク（reserved / fixture）を持�
 | channel_count | u16 |
 | reserved_channels | base(u16), bitmap（probe 自身が使っていて割り当てられないピン） |
 | profile | 名前（例: `io.github.ch32-riscv-ug.p4-devkit`） |
+| channel_label | channel(u16), 名前（`GPIO5`、`D5`、`PA13`、fixture の端子名など。任意） |
+| resets_on_open | transport を開くとリセットされる probe だけが宣言する（host は閉じずに 1 セッションで使う） |
 
 64 本を超える probe や、ピン以外の資源も表せるようになる。
+
+channel は probe が振る番号で、同じファームとプロファイルなら起動ごとに同じになる。利用者はラベルで指定し、host が
+channel に直す（2026-09-24 の合意、仮置き。[target の発見と接続](target-connection-use-cases.ja.md)）。
 
 ## 6. 例: P4 の I2C target
 

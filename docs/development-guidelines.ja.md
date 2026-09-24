@@ -85,8 +85,9 @@ RMT のような線ごとの duration 列は 2 本以上の時間軸が揃わな
 ### 3.2 lifecycle は全 service で同じ
 
 `configure(plan) → enable/start → status / read → disable/stop → release`。どの service もこの順で、
-`disable` / host 切断 / watchdog で pin を input へ戻し peripheral を止める。status は設定値・実効値・error・overflow・timestamp を返し、
-client が log を解析して成否を判定する設計にしない。
+明示的な `disable` / `release` で pin を input へ戻し peripheral を止める。**host の切断やロックの期限切れでは戻さない**
+（2026-09-24 の合意。probe の状態は transport を閉じても残る。[セッションと排他](session-and-exclusivity.ja.md)）。
+status は設定値・実効値・error・overflow・timestamp を返し、client が log を解析して成否を判定する設計にしない。
 
 ## 4. capability の表し方
 
@@ -141,7 +142,8 @@ client は confirmation で上限を受け取り、それ以上を送らない�
 - frame の具体形式（length16 + seq + type + payload + CRC の候補。上限は E155 から 512 B〜1 KiB、window 4 KiB byte で起草する。HS bulk では window 16 KiB が最良点、E160）。
 - **応答 backlog の上限**を宣言するか。window は request byte 数で、9 B の read request が 1 KiB の応答を生む。probe の TX buffer（HWCDC 8 KiB、EspUsbDevice vendor 4 KiB）より応答が多く積まれると transport が詰まる。confirm に `max_response_backlog` を足す案。
 - service id / mode id / TLV tag の番号空間と private namespace の encoding。
-- event（非同期通知）を core に入れるか、status polling だけにするか。低スペックでは polling のみで足りる可能性。
+- event（非同期通知）を core に入れるか。2026-09-24 の合意（仮置き）でコンソールと長い操作はポーリングを基本にした
+  （[コンソールのストリーム](console-stream.ja.md)、[セッションと排他](session-and-exclusivity.ja.md)）。通知は将来の拡張。
 - plan の「同時開始」の精度をどう宣言するか（µs 単位の同時か、順序保証だけか）。
 - 共通 tool の最初の一覧。書込み / verify / reset / memory / GPIO / UART peer / capture を候補にしているが、2 実装目が無い。
 - **I2C target の共通化（2026-09-22 の判断: 今は作らない）。** 丸めた契約の候補は「固定長 write 受信 + 固定応答 read、≤ 100 kHz、≤ 32 byte、
