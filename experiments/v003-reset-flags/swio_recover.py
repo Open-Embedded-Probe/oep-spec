@@ -33,7 +33,15 @@ with tempfile.TemporaryDirectory() as tmp:
         except Exception as e:
             print("plain attach after swio_off: fails as expected:", e)
         conn = None
-        holds = [int(a.split("=")[1]) for a in sys.argv if a.startswith("--hold=")] or [20, 1, 5, 50, 100, 200, 2, 10, 500]
+        if "--via-gpio" in sys.argv:
+            lk = bench.host.send.__self__
+            gpio_fn = target.find(bench.host, "oep.fixture.gpio")
+            conn, st = target.attach_after_gpio_reset(bench.host, bench.wire, gpio_fn, bench.nrst,
+                                                      lambda msgs: lk.exchange(msgs, 2, 512), tries=20)
+            print(f"attach_after_gpio_reset: conn {conn} dmstatus {st:#x}")
+            dm = target.RiscvDm(bench.host, conn)
+            print("reset_halt dpc", hex(dm.reset_halt()))
+        holds = [] if conn is not None else ([int(a.split("=")[1]) for a in sys.argv if a.startswith("--hold=")] or [20, 1, 5, 50, 100, 200, 2, 10, 500])
         for hold in holds:
             try:
                 conn, dpc = bench.wire.attach_under_reset(hold_ms=hold)
