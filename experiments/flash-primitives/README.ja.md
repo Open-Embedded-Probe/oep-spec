@@ -86,7 +86,9 @@ P4 の X035 用 probe を v1 の仮置き（[core wire model v1](../../docs/v1-c
 
 | | 準備（open、scan、attach） | 消去 + 書き込み | 読み戻しの確認 | スクリプト内の合計 |
 |---|---|---|---|---|
-| **OEP v1（F5）** 62 KB | 0.04 秒 | 2.51 秒 | 0.54 秒 | **3.09 秒** |
+| OEP v1（F5）62 KB、要求を 1 つずつ | 0.04 秒 | 2.51 秒 | 0.54 秒 | 3.09 秒 |
+| OEP v1（F5）、4 ページずつパイプライン | 0.04 秒 | 1.80 秒 | 0.20 秒 | 2.01 秒 |
+| **OEP v1（F5）、8 ページずつパイプライン** | 0.04 秒 | **1.68 秒** | **0.19 秒** | **1.89 秒** |
 | 参考: LinkE + ch32rv | — | 約 2.1 秒 | 約 1.1 秒 | 3.28 秒 |
 
 - 読み戻しは全面一致、失敗 0。実際のスケッチ（DmSeqTest）を書いてリセットし、flags 0x3、PC 0x214 で走った。
@@ -96,7 +98,8 @@ P4 の X035 用 probe を v1 の仮置き（[core wire model v1](../../docs/v1-c
 - セッションの規則を実機で確かめた（`v1_session_check.py`、同じポートで 2 つの session_id）: 他の host のロック中は
   locked と残り時間、ロック中でも list は通る、session_id なしの状態を変える要求は session required、期限切れの
   あと同じ ID で再開、知らない ID は no session、間に他の host が open したあとは保存した ID が no session。
-- パイプライン（F4 は 8 要求ずつ）はまだ入れていない。入れれば F4 の 1.7〜2.2 秒に近づく見込み。
+- パイプラインは host 側だけの変更（`--batch N`、probe が confirm で宣言した同時要求数 8 とウィンドウ 4096 byte を守る）。
+  8 ページずつで F4 の最速と並び、LinkE の 6 割弱の時間になった。
 
 ## 分かったこと
 
@@ -130,7 +133,7 @@ uv run python <この dir>/f3_steps.py PORT PAGES IMAGE [PAGES_PER_BATCH]
 uv run python <この dir>/f4_loader.py PORT PAGES IMAGE x035_loader.bin [PAGES_PER_BATCH]
 uv run python <この dir>/f4_v003.py PORT IMAGE v003_loader.bin [BYTES_PER_RUN] [FLAGS|mass]
 uv run python <この dir>/read_chunks.py PORT IMAGE CHUNK             # 読み出しの長さごとの経路の確認
-uv run python <この dir>/f5_v1.py PORT IMAGE x035_loader.bin [--reset]  # v1 の仮置きだけで書く
+uv run python <この dir>/f5_v1.py PORT IMAGE x035_loader.bin [--reset] [--batch N]  # v1 の仮置きだけで書く
 uv run python <この dir>/v1_session_check.py PORT                     # v1 のセッションの規則を実機で
 # LinkE の基準（工程ごとの時刻を付ける）
 uv run python <この dir>/phase_ts.py ch32rv --probe serial:<SN> --progress ndjson --non-interactive --yes \
