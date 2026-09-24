@@ -90,8 +90,8 @@ v0 の `channel_candidate`（role のない平たい一覧）は廃止する。
 
 | インターフェース（例） | bit | 意味 |
 |---|---|---|
-| target.debug.riscv | 0 | デバッグ経由のシステムリセット（ndmreset） |
-| target.debug.riscv | 1 | リセット直後に停止（reset-halt） |
+| target.riscv-dm | 0 | デバッグ経由のシステムリセット（ndmreset） |
+| target.riscv-dm | 1 | リセット直後に停止（reset-halt） |
 | target.console | 0 / 1 / 2 | 方式 SDI / DMDATA / dmseq（debug の connection の上に開く） |
 | fixture.i2c-target | 0 | target からの読み出し（preloaded tx） |
 | fixture.i2c-target | 1 | 意図的な clock stretching |
@@ -102,11 +102,11 @@ features ではなく独自インターフェースに移す。
 ## 4. target 側の能力
 
 > 2026-09-24 の合意（仮置き）で、アーキテクチャに中立な `oep.target.control` などは作らないことにした。target への
-> アクセスは `oep.wire.<線>` の attach が返す connection を使い、`oep.target.debug.<arch>` で行う。NRST の線は
+> アクセスは `oep.wire.<線>` の attach が返す connection を使い、`oep.target.<riscv-dm|arm-adi>` で行う。NRST の線は
 > アーキテクチャに依らないので `oep.fixture` か `oep.wire` の側に置く（未決）。
 > [能力の名前の階層](capability-name-hierarchy.ja.md)。
 
-線や target を扱うインターフェース（`oep.wire.<線>`、`oep.target.debug.<arch>`）の describe に、インターフェース固有
+線や target を扱うインターフェース（`oep.wire.<線>`、`oep.target.<riscv-dm|arm-adi>`）の describe に、インターフェース固有
 タグで次を宣言する。
 
 | 宣言 | 値 | 例 |
@@ -117,7 +117,7 @@ features ではなく独自インターフェースに移す。
 - **target の系統（CH32V003 など）は宣言しない。** 系統ごとの知識（flash の形、debug module の癖）は host
   （ch32rv の DB など）が持つ。probe は電気的な経路だけを宣言する。
 - デバッグのレジスタを直接読む操作（v0 の read_dmi / read_register）は、アーキテクチャ別のインターフェースに
-  分ける（例: `oep.target.debug.riscv`）。ARM SWD の target には別のものが付く。
+  分ける（例: `oep.target.riscv-dm`）。ARM SWD の target には別のものが付く。
 - **target を扱うインターフェースは、attach の前から list に出す**（2026-09-24 の合意、仮置き）。能力として見え、
   操作には attach が返した connection を付ける。未 attach で呼べばエラー。attach のたびに list が変わる形は採らない
   （[target の発見と接続](target-connection-use-cases.ja.md)）。
