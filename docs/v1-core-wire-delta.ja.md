@@ -12,11 +12,16 @@ resolution、reject reason 0x01〜0x06、TLV の形、window）は v0 のまま�
 | 部分 | 形 |
 |---|---|
 | フレーム（USB CDC、USB-Serial/JTAG、TCP） | 長さ u16 + メッセージ。CRC なし |
-| フレーム（UART） | COBS + CRC-16、0x00 で区切る |
+| フレーム（UART） | COBS + CRC-16、0x00 で区切る。CRC は仮置きで CRC-16/CCITT-FALSE（多項式 0x1021、初期値 0xFFFF、反転なし、"123456789" → 0x29B1）、メッセージの後ろに little endian で付ける。COBS は 254 byte のブロックに分ける標準の形 |
 | フレーム（USB の Vendor / HID） | 1 回の転送 = 1 メッセージ |
 | 要求 | `role(0x01) corr(u16) fn(u16) op(u8) payload` = 見出し 6 byte |
 | 応答 | `role(0x02) corr(u16) resolution(u8) detail(u8) payload` = 見出し 5 byte |
 | resolution | 0x00 rejected / 0x01 completed / 0x02 accepted |
+
+どちらのフレームを使うかは transport で決まる。probe は自分の transport を知っている（UART の probe は COBS）。host は
+USB の VID:PID で USB-UART の変換チップ（CH340 / CH343 / CP210x / FT232 など）を見分けて COBS を選び、指定で上書きも
+できる。壊れた応答や応答なしのとき、host は session_id の無い要求（読むだけの要求、open）だけを 1 回送り直し、状態を
+変える要求は送り直さない（シーケンスが無いので二重実行になりうる）。
 
 ## 2. 要求の見出しの session_id
 

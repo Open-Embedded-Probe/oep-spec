@@ -25,7 +25,8 @@ image += b"\xff" * (-len(image) % PAGE)
 loader = Path(loader_path).read_bytes()
 
 t_start = time.perf_counter()
-h = host.Host(link.SerialLink(port, timeout=5.0).send)
+lnk = link.SerialLink(port, timeout=5.0)
+h = host.Host(lnk.send)
 info = target.confirm(h)
 block = (info["max_frame"] - 5 - 6 - 4 - 1 - 4) // 4 * 4     # result/request headers, session, conn, address
 h.open(lease_ms=10000)
@@ -75,6 +76,6 @@ if do_reset:
     reset = {"flags": hex(flags), "pc": hex(pc)}
 wire.detach(conn)
 h.end()
-print(json.dumps({"bytes": len(image), "block": block, "match": back == image, "program_s": round(program_s, 3),
+print(json.dumps({"framing": lnk.framing, "corrupt_frames": lnk.corrupt, "resent": lnk.retries, "bytes": len(image), "block": block, "match": back == image, "program_s": round(program_s, 3),
                   "verify_s": round(verify_s, 3), "total_s": round(time.perf_counter() - t_start, 3),
                   "reset": reset, "failures": failures[:5], "failure_count": len(failures)}, indent=1))
