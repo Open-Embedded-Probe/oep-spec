@@ -45,9 +45,10 @@
 | 出来事の kind | fn ごとの空間。0x01〜0x7F はインターフェースが決める（fn 0 は core）、0x80〜0xFF は core が決める全 fn 共通の kind（予約） |
 | TLV の tag | **(fn, op) の文脈ごとの空間**（同じ値でも文脈が違えば別物。例: core の describe の 0x46 と capture の configure の 0x46）。bit 7 は critical（要求の中で意味を持つ）。0x7F は全文脈で ignored（上記）に予約、0xFF は無効 |
 
-**一周する値**: position（u32）、seq（u16）、時刻（µs、u32）は一周する。比べるときは差を符号付きで見る
-（serial number arithmetic: `a - b` を同じ幅の符号付きとして解釈する）。probe は、同時に意味を持つ範囲（リングや
-格納先の大きさ）を、position で 2 GiB、seq で 32768 フレームより十分小さく保つ。host は内部で u64 に伸ばして扱ってよい。
+**一周する値**: seq（u16）、区画や印の通し番号（u32）、時刻（µs、u32。区画の開始時刻は除く）は一周する。比べるときは差を
+符号付きで見る（serial number arithmetic: `a - b` を同じ幅の符号付きとして解釈する）。probe は、同時に意味を持つ範囲を
+seq で 32768 フレームより十分小さく保つ。**ストリームのバイト位置（position）と区画の開始時刻（start_us）は u64 で、一周しない
+ものとして扱う**（2026-09-26 のレビュー 2.6。40 MB/s で u32 は約 107 秒で一周し、遅れた host が欠けの量を決められなかった）。
 
 **名前と revision**（2026-09-26 のレビュー 2.3 で一本化）: インターフェースの payload の**固定部分**の形と意味は
 **(名前, revision) で決まる**（list の entry の revision、u8）。
@@ -172,7 +173,7 @@ host は購読しなければ何も受け取らない。
 ### 形
 
 ```text
-データ   role=0x06 | fn(u16) | seq(u16) | position(u32) | data         見出し 9 byte
+データ   role=0x06 | fn(u16) | seq(u16) | payload                      見出し 5 byte（payload はインターフェースが決める）
 出来事   role=0x05 | fn(u16) | seq(u16) | kind(u8) | payload           見出し 6 byte
 ```
 
@@ -181,8 +182,10 @@ host は購読しなければ何も受け取らない。
   **probe は、生まれた出来事すべてに番号を振る。** probe の中で捨てたもの（割り込みの記録があふれた、送信待ちの
   キューがあふれた）も番号を消費し、host は抜けとして数えられる。
 - fn 0 の出来事は probe 全体のもの。kind 0x01 = ハートビート（payload: boot_id u32、起動からの ms u32）。kind の空間は §0。
-- `position` はその fn のストリームの中のバイト位置（一周する）。前のフレームの終わりと合わなければ、その間は
-  probe の中で押し出された（host や線が遅れた）。
+- **データのフレームの payload はインターフェースが決める**（本体は role、fn、seq まで。2026-09-26 の線引き、
+  [未合意の案](v1-open-proposals.ja.md) §5 の規則 3）。標準インターフェースのストリーム（console、uart、capture）は
+  `position(u64) data` の形にする: `position` はその fn のストリームの中のバイト位置で、前のフレームの終わりと合わなければ、
+  その間は probe の中で押し出された（host や線が遅れた）。
 - 送ったデータを位置指定の読み出し（ポーリング）で読み直せるかは、インターフェースの定義による（2026-09-25 変更。
   コンソールは読める。ロジックのストリーミングは、コピーなしで送る probe がデータを残さないので読めなくてよい。
   読めない位置の読み出しは、gap の印を付けた空の応答）。
@@ -474,8 +477,8 @@ attach の TLV: 0x01 max_speed（u32 Hz、rvswd と同じ）、0x02 targetsel（
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
 | 0x01 | open | connection(u8)、mechanism(u8: 0 SDI / 1 DMDATA / 2 dmseq)、[TLV] | stream(u8)、flags(u8: bit0 既存のストリーム) | 必要 |
-| 0x02 | read | stream(u8)、from(u8)、arg(u32)、max(u16) | start(u32)、flags(u8: bit0 more / bit1 gap)、data | 不要 |
-| 0x03 | marks | stream(u8)、from_serial(u32) | more(u8)、count(u8)、count × (serial u32、position u32、kind u8、time_ms u32、detail u8) | 不要 |
+| 0x02 | read | stream(u8)、from(u8)、arg(u64)、max(u16) | start(u64)、flags(u8: bit0 more / bit1 gap)、data | 不要 |
+| 0x03 | marks | stream(u8)、from_serial(u32) | more(u8)、count(u8)、count × (serial u32、position u64、kind u8、time_ms u32、detail u8) | 不要 |
 | 0x04 | clear | stream(u8) | — | 必要 |
 | 0x05 | mark | stream(u8)、value(u8) | — | 必要 |
 | 0x06 | write | stream(u8)、count(u16)、data | accepted(u16) | 必要 |
@@ -529,8 +532,8 @@ mode:
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
 | 0x01 | configure | baud(u32)、[TLV] | baud(u32、実際の値) | 必要 |
-| 0x02 | read | from(u8)、arg(u32)、max(u16) | start(u32)、flags(u8)、data | 不要 |
-| 0x03 | marks | from_serial(u32) | more(u8)、count(u8)、count × (serial u32、position u32、kind u8、time_ms u32、detail u8) | 不要 |
+| 0x02 | read | from(u8)、arg(u64)、max(u16) | start(u64)、flags(u8)、data | 不要 |
+| 0x03 | marks | from_serial(u32) | more(u8)、count(u8)、count × (serial u32、position u64、kind u8、time_ms u32、detail u8) | 不要 |
 | 0x04 | clear | — | — | 必要 |
 | 0x05 | mark | value(u8) | — | 必要 |
 | 0x06 | write | count(u16)、data | accepted(u16) | 必要 |

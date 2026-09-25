@@ -467,15 +467,15 @@ w とチャネルのビット位置（ロジック）、枠の大きさと値の
 | ストリーミング | probe の都合の区切り（DMA の 1 回ぶんなど）。データは probe が送ってくる（§5.4） |
 
 ```text
-segment : serial(u32), position(u32), samples(u32), start_us(u32), trigger_index(u32), flags(u8)
+segment : serial(u32), position(u64), samples(u32), start_us(u64), trigger_index(u32), flags(u8)      29 byte
 ```
 
 | フィールド | 意味 |
 |---|---|
 | serial | start からの区画の通し番号（0 から） |
-| position | 区画の先頭のバイト位置（start から通し、一周したら 0 に戻る。read と通知の position と同じ空間） |
+| position | 区画の先頭のバイト位置（start から通し、u64 で一周しない。read と通知の position と同じ空間） |
 | samples | 区画のサンプル数（stop で途中で終わった区画は短い） |
-| start_us | 区画の最初のサンプルの時刻（probe の起動からの µs。一周を考慮して比べる） |
+| start_us | 区画の最初のサンプルの時刻（probe の起動からの µs、u64 で一周しない） |
 | trigger_index | 区画の中でトリガが立ったサンプルの番号。トリガを含まない区画は 0xFFFFFFFF |
 | flags | bit0 前の区画との間が空いた（リピートで空き区画がなかった、ストリーミングで押し出された）、bit1 短い（stop で終わった） |
 
@@ -501,8 +501,8 @@ segment : serial(u32), position(u32), samples(u32), start_us(u32), trigger_index
 | 0x02 | start | — | blocking_ms(u32)（0 = 取っている間も答える） | 必要 |
 | 0x03 | stop | — | — | 必要 |
 | 0x04 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
-| 0x05 | status | — | state(u8)、serial_done(u32)、write_pos(u32)、flags(u8) | 不要 |
-| 0x06 | read | position(u32)、max(u32) | position(u32)、flags(u8: bit0 more、bit1 gap)、data | 不要 |
+| 0x05 | status | — | state(u8)、serial_done(u32)、write_pos(u64)、flags(u8) | 不要 |
+| 0x06 | read | position(u64)、max(u32) | position(u64)、flags(u8: bit0 more、bit1 gap)、data | 不要 |
 | 0x07 | segments | from_serial(u32) | count(u8)、区画の情報の並び（§4） | 不要 |
 | 0x08 | release | serial(u32) | —（serial 以前の区画を使い回してよい） | 必要 |
 | 0x09 | query | 設定の TLV（configure と同じ） | 実際の値の TLV（設定はしない） | 不要 |
