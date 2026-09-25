@@ -409,6 +409,79 @@ attach の TLV: 0x01 max_speed（u32 Hz、rvswd と同じ）、0x02 targetsel（
   そのままでは SRAM が FAULT になる（セキュアにすると読める）。
 
 
+## 5.7 `oep.target.console`（revision 1、2026-09-25）
+
+[コンソールのストリーム](console-stream.ja.md) の形を、最初の実装（1 つの fn の中でストリームを開く）に合わせて決める。
+ストリームは debug の connection の上に方式を指定して開くので、fn はインターフェースに 1 つ、ストリームは番号で指す。
+
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x01 | open | connection(u8)、mechanism(u8: 0 SDI / 1 DMDATA / 2 dmseq)、[TLV] | stream(u8) | 必要 |
+| 0x02 | read | stream(u8)、from(u8)、arg(u32)、max(u16) | start(u32)、flags(u8: bit0 more / bit1 gap)、data | 不要 |
+| 0x03 | marks | stream(u8)、from(u32) | count(u8)、count × (position u32、kind u8、time_ms u32、detail u8) | 不要 |
+| 0x04 | clear | stream(u8) | — | 必要 |
+| 0x05 | mark | stream(u8)、value(u8) | — | 必要 |
+| 0x06 | write | stream(u8)、count(u16)、data | accepted(u16) | 必要 |
+| 0x07 | close | stream(u8) | — | 必要 |
+
+- read の from: 0 位置（arg）、1 最古、2 今、3 kind が arg の最後のマーク（arg 0 はどの kind でも）。data は長さの
+  分からない並びなので、read の応答の後ろには何も足せない（§0）。
+- write は受け付けた分だけを返す（バッファしない）。全部受け付けなければ completed partial。
+- マークの kind（0x01〜0x3F 標準、0x40〜0x7F インターフェース固有）: 0x01 reset、0x02 restart、0x03 attach、
+  0x04 detach、0x05 lost、0x06 clear、0x07 host（detail = host の値）、0x08 link-lost。
+- 知らない stream は rejected unavailable。ストリームを開いた connection が失われたら、マーク link-lost を付けて閉じる。
+
+## 5.8 `oep.fixture.gpio` と `oep.fixture.uart`（revision 1、2026-09-25）
+
+revision 0（v0 の payload のまま）から作り直した（[v1 の未決の提案](v1-open-proposals.ja.md) §2、ch32rv セッションの
+意見で B を採った）。plan の役割は変えない（gpio: 1 = 線、uart: 1 = RX、2 = TX）。
+
+`oep.fixture.gpio`（plan で割り当てたチャンネルだけを操作できる）:
+
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x01 | set | n(u8)、n × (channel u16、mode u8) | — | 必要 |
+| 0x02 | read | n(u8)、n × channel(u16) | n × level(u8: 0 / 1) | 不要 |
+
+mode:
+
+| 値 | 意味 |
+|---:|---|
+| 0 | 入力（浮き） |
+| 1 | 入力、プルアップ |
+| 2 | 入力、プルダウン |
+| 3 | 出力 low |
+| 4 | 出力 high |
+| 5 | オープンドレイン low（引く） |
+| 6 | オープンドレインの解放（離す。外部または target のプルアップで high） |
+
+- 並びは要求の順に 1 つずつ行う（NRST を引いてから離す、などを 1 要求で送れる）。割り当てていないチャンネルや
+  扱えない mode があれば、何もせず rejected unavailable（payload にその位置 u8）。
+- plan_release で、そのチャンネルは入力に戻る。
+
+`oep.fixture.uart`（[コンソールのストリーム](console-stream.ja.md) と同じ位置付きのストリーム。ストリームは fn に 1 本）:
+
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x01 | configure | baud(u32)、[TLV] | baud(u32、実際の値) | 必要 |
+| 0x02 | read | from(u8)、arg(u32)、max(u16) | start(u32)、flags(u8)、data | 不要 |
+| 0x03 | marks | from(u32) | count(u8)、count × (position u32、kind u8、time_ms u32、detail u8) | 不要 |
+| 0x04 | clear | — | — | 必要 |
+| 0x05 | mark | value(u8) | — | 必要 |
+| 0x06 | write | count(u16)、data | accepted(u16) | 必要 |
+
+configure の TLV: 0x01 format（u8: bit0-1 データ長 0 = 8 / 1 = 7、bit2-3 パリティ 0 なし / 1 偶数 / 2 奇数、bit4 ストップ
+ビット 0 = 1 / 1 = 2。既定は 8N1）。
+
+- op 0x02〜0x06 は console と同じ番号・同じ意味（stream の byte が無いだけ）。受信は configure から plan_release まで、
+  セッションに関係なく貯める。読んでも消えない（v0 の read は消費していた）。
+- TX の線は、configure の前と plan_release の後も UART の休止（high）に保つ（相手の受信が雑音を拾わないため）。
+
+## 5.9 `oep.fixture.capture`（revision 1）
+
+[ロジックのキャプチャ](logic-capture.ja.md) の基本の形（§3.0、§4、§5）。revision 0（v0 の payload、1 サンプル 1 byte）は
+使わない。アナログは `oep.fixture.analog`（revision 1、同じ文書）。
+
 ## 6. 長さの確認（64 byte のフレーム）
 
 - list の応答: 見出し 5 + list の見出し 3（total u16、count u8）+ 1 項目（7 + 名前 48）= 63 byte。
