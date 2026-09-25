@@ -84,7 +84,7 @@ end は、立て直しの中で確かめずに送ってよい（通知が流れ�
 複数を同時に開いてもよい（vendor bulk は権限の都合で使えない環境があるため。Linux は udev の規則、Windows は WinUSB）。
 **複数の経路はセッションとロックを 1 つ共有する**（どの経路から来た要求も同じものとして扱い、応答はその要求の来た経路に
 返す。push はロックの持ち主が subscribe した経路に送る）。host は USB の interface の名前（iInterface に "OEP"）で経路を
-見分ける。
+見分け、**同じ probe に複数あれば vendor bulk、CDC、HID の順に選ぶ**（速い順。HID は Windows では HID の API で開く）。
 
 どちらのフレームを使うかは transport で決まる。probe は自分の transport を知っている（UART の probe は COBS）。host は
 USB の VID:PID で USB-UART の変換チップ（CH340 / CH343 / CP210x / FT232 など）を見分けて COBS を選び、指定で上書きも
@@ -330,7 +330,9 @@ attach / attach_under_reset の TLV:
   使う設定の項目。§5.10 の bind）が 1 つでもある間は開いている。**detach は、その host の分を外すだけ**で、ほかに使って
   いるものがあれば connection は閉じない（detach の TLV 0x01 force（u8 = 1、critical で送る）で、使っているものがあっても
   閉じる）。**target の reset（riscv-dm の reset、NRST）では connection を閉じない**（probe は havereset を確認応答して保つ）。
-  閉じるのは、使っているものが無くなったとき、force の detach、線が本当に切れたとき（再試行しても応答が無い）だけ。
+  閉じるのは、使っているものが無くなったとき、force の detach、線が本当に切れたとき（最遅の速さで再試行しても
+  **1000 ms 続けて応答が無い**。reset の直後や V00x の DM の立ち上がりの間の数十 ms は数えない）だけ。**ロックの期限が
+  切れたら、そのセッションが使っていた分も外れる**（detach せずに落ちた host の分が残らない）。
   1 コマンド 1 プロセスの host が書き込みの最後に reset して detach しても、口に流しているコンソールは途切れない。
 - **すでに attach している線への attach は、その connection をそのまま返す**（flags bit1。method = 1 なら、動いていれば
   止め、止まっていれば何もしない。method = 0 は動いている hart に触れない。それ以外の副作用なし）。1 コマンド 1 プロセスの
@@ -545,17 +547,22 @@ bind（CDC の口に何を流すか）:
 
 - source: 0 なし、1 fixture.uart（引数 fn u16）、2 target.console（引数 wire_fn u16、mechanism u8。mechanism は
   §5.7 の番号）。
-- attach（source 2 のときに意味を持つ。**必ず明示する**）: 0 host に任せる（host が attach したら、その connection で
+- attach（source 2 のときに意味を持つ。**必ず明示する**。1 / 2 には項目 target が要る。無いまま set すると rejected
+  unavailable）: 0 host に任せる（host が attach したら、その connection で
   コンソールを開いて流す）、1 口が開かれたとき（DTR が立ったら）、2 起動時。1 / 2 の自動の attach は止めない attach
   （method 0）だけで、直後に target の chip_id を読み、項目 target と違えばコンソールを開かずに外して、出来事と describe で
   知らせる。いったん開いたコンソールは、口が閉じられても読み続ける（SerialSDI は読まれないと 1 行ごとに最大 300 ms 止まる。
-  X4）。コンソールが使う connection は bind が使っているものに数える（§5.5 の寿命）。
+  X4）。コンソールが使う connection は bind が使っているものに数える（§5.5 の寿命）。force の detach などで connection を
+  失ったら、bind は次の合図（attach = 0 は host の attach、1 は次に口が開かれたとき、2 は次の起動）まで待つ（すぐに attach
+  し直さない）。
 - flags: bit0 line coding（baud）を fixture.uart に写す、bit1 口が開かれる前も TX を出力にする（既定の扱いではなく、
   host が選ぶ）。立っていなければ、TX は line coding の設定か最初の書き込みまで入力のまま。
 - DTR / RTS / 1200 baud の touch は、bind の attach = 1 の合図（DTR）のほかには何もしない（target の reset に使わない。
   Linux は口を開くたびに DTR を立てる。X1）。CDC は AT コマンドなし（bInterfaceProtocol 0）で宣言する。
-- ロックの持ち主が riscv-dm の操作をその connection に出し始めたら、probe はその connection のコンソールの読みを止め、
-  ロックが外れたら再開する（抽象コマンドと DATA0 を取り合わないため）。
+- probe がその connection のコンソールの読みを止めるのは、**riscv-dm の要求を実行している間と、hart が止まっている間**
+  だけ（止まっていれば target は何も出力しない）。抽象コマンドと DATA0 を取り合わないよう、**host は抽象コマンドの一連
+  （data1 / data0 の書き込み、command、data0 の読み）を 1 つの dmi 要求に入れる**（要求の間にコンソールの読みが挟まっても
+  壊れない）。gdb で走らせたままコンソールを見る使い方がこれで成り立つ。
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
@@ -568,7 +575,9 @@ bind（CDC の口に何を流すか）:
 - **set は、要求に含まれる tag の項目をすべて置き換える**（含まれない tag はそのまま）。同じ tag の項目を消すには、その
   tag を値の長さ 0 で 1 つ送る。plan の置き換えは、plan_release と plan_apply を原子的に行うのと同じ（受け入れられなければ
   何も変えずに rejected）。
-- hash は今の設定（項目の並びを tag の順に並べたもの）の CRC-32。host は get の hash と自分の欲しい設定の hash を比べ、
+- hash は今の設定の**正規形**の CRC-32（IEEE、reflected、init / xorout 0xFFFFFFFF。"123456789" → 0xCBF43926）。正規形 =
+  項目を tag の昇順に、同じ tag の中は最初のキー（label は channel、bind は port）の昇順に並べ、set と同じ TLV の符号化
+  （tag u8、len u8、値）でつないだバイト列。host は自分の欲しい設定から同じ値を計算できる。host は get の hash と自分の欲しい設定の hash を比べ、
   同じなら何もしない（1 コマンド 1 プロセスの host が毎回設定を送らずに済む）。
 - **save は host の明示的な操作だけ**で、今の設定をそのまま保存する（同じ内容なら書かない）。書いている間はほかの要求に
   答えない（応答は書き終えてから）。保存先が足りなければ rejected unavailable（小さい probe は保存しない。起動のたびに host
@@ -581,10 +590,10 @@ describe（このインターフェース）:
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x40 | mode | index(u8)、functions(u8: bit0 vendor bulk、bit1 CDC の OEP の口、bit2 HID の OEP の口、bit3 Mass Storage、bit4 DFU runtime)、ports(u8: データの CDC の口の数)、name（text）。モードごとに 1 つ |
+| 0x40 | mode | index(u8)、functions(u8: bit0 vendor bulk、bit1 CDC の OEP の口、bit2 HID の OEP の口、bit3 Mass Storage（OEP の外。ドラッグ & ドロップの書き込みや設定のファイル）、bit4 DFU runtime（OEP の外。probe 自身の更新）)、ports(u8: データの CDC の口の数)、name（text）。モードごとに 1 つ |
 | 0x41 | current_mode | 今の mode(u8)、次の起動の mode(u8) |
 | 0x42 | port | port(u8)、USB の interface 番号(u8)（OS のポートと結び付けるため。並びは固定） |
-| 0x43 | storage | 保存できる最大 byte(u32、0 = 保存なし)、保存の状態(u8: 0 なし / 1 あり・適用済み / 2 あり・読めない)、保存の hash(u32) |
+| 0x43 | storage | 保存できる最大 byte(u32、0 = 保存なし)、保存の状態(u8: 0 なし / 1 あり・適用済み / 2 あり・読めない)、保存の hash(u32)、save の最長時間(u32 ms)、reboot から再列挙までの最長時間(u32 ms)（host の待ち時間） |
 | 0x44 | cost | ports(u8)、OEP の probe → host の上限の目安(u32 byte/s)（CDC の口が OEP の帯域を削る。X1） |
 
 ## 6. 長さの確認（64 byte のフレーム）
