@@ -83,8 +83,8 @@ seq で 32768 フレームより十分小さく保つ。**ストリームのバ�
 corr が合わない応答、あり得ない長さ（max_frame を超える値。0 は予約の keepalive で、読み飛ばすだけ）、途中で止まった
 フレーム（続きが 200 ms 来ない）を見たら、入力が 50 ms 静かになるまで読み捨て、読むだけの要求（confirm。範囲は 0〜255 で
 よい。自分の corr の応答が返れば区切りは戻っている）で同期を確かめてから再開する。結果の後ろの TLV が途中で切れていたら、
-その結果は壊れている。状態を変える要求は送り直さない。例外として、二度実行しても害のない unsubscribe と
-end は、立て直しの中で確かめずに送ってよい（通知が流れ続けて入力が静かにならないとき、止めるため）。probe は、フレームの
+その結果は壊れている。立て直した後、応答を失った要求は**同じ corr で 1 回送り直してよい**（状態を変える要求も。下の
+「送り直しと重複排除」）。二度実行しても害のない unsubscribe と end は、立て直しの中で確かめずに送ってよい（通知が流れ続けて入力が静かにならないとき、止めるため）。probe は、フレームの
 途中で 200 ms 入力が途切れたら読み取りを最初からやり直す。したがって host は **1 つのフレームを 1 回の書き込みで送り**
 （バイトごとや見出しと本体に分けて書かない。usbipd 越しでは分けた書き込みの間が 100 ms を超えることがある）、途中で
 100 ms 以上止めない。
@@ -99,8 +99,20 @@ end は、立て直しの中で確かめずに送ってよい（通知が流れ�
 
 どちらのフレームを使うかは transport で決まる。probe は自分の transport を知っている（UART の probe は COBS）。host は
 USB の VID:PID で USB-UART の変換チップ（CH340 / CH343 / CP210x / FT232 など）を見分けて COBS を選び、指定で上書きも
-できる。壊れた応答や応答なしのとき、host は session_id の無い要求（読むだけの要求、open）だけを 1 回送り直し、状態を
-変える要求は送り直さない（シーケンスが無いので二重実行になりうる）。
+できる。
+
+**送り直しと重複排除**（2026-09-26 決定、[未合意の案](v1-open-proposals.ja.md) §4、レビュー 2.4）: 壊れた応答や応答なしのとき、
+host は**同じ corr で 1 回送り直してよい**（状態を変える要求も）。
+
+- probe は、ロックを持つ session の要求（session_id 付き）について、直近の max_inflight 個以上の (corr, fn, op, 要求の中身の
+  CRC-32, 結果) を覚えておく。同じ corr の要求が来たら、fn、op、CRC が同じなら**実行せずに覚えた結果を返す**。違えば
+  rejected corr_reused。
+- 覚えておく結果の大きさには上限がある（参照の実装は見出し込み 72 byte）。上限を超えた結果の要求を送り直されたら、
+  実行せずに rejected result_lost（host は状態を読み直して確かめる）。
+- **覚えた表は open（resume を含む）のたびに捨てる**（one-shot の CLI はプロセスごとに同じ session_id で再開し、corr を
+  1 から数え直すため）。session が変わったときの exactly-once は約束しない。
+- 読むだけの要求は重複排除しなくてよい（何度実行しても同じ）。立て直しの中で unsubscribe と end を確かめずに送ったときは、
+  セッションが終わっているので、元の要求は送り直さない。
 
 ## 2. 要求の見出しの session_id
 
@@ -135,6 +147,8 @@ role=0x81 (bit7=1) | corr | fn | op | session_id(u32) | payload     session_id �
 | 0x09 | session required | 状態を変える要求に session_id が無い（role 0x01） | 0 | — |
 | 0x0A | no connection | 要求の connection を probe が知らない（attach していない、probe が再起動した、線や target の reset で失われた）。host は attach からやり直す | 0 | — |
 | 0x0B | unsupported | 要求の critical の TLV（または値）を probe が扱えない | 0 | TLV のときは扱えない tag（u8、受け取ったまま。critical の bit 7 も付いたまま）。固定部分の値（知らない列挙値など）のときは payload なし |
+| 0x0C | result_lost | 送り直された要求の結果を probe が覚えていない（大きすぎた） | 0 | なし。host は状態を読み直す（§1 の送り直しと重複排除） |
+| 0x0D | corr_reused | 同じ corr で、fn、op、要求の中身のどれかが違う要求が来た | 0 | なし（host の番号付けの誤り） |
 
 - rejected の detail は 0（v0 から予約）。追加の情報は payload に置く。
 - boot_id が変わった（open の応答、ハートビート）、または boot_id が 0（不明）の probe で「no session」を受けたら、host は
@@ -289,8 +303,10 @@ host は購読しなければ何も受け取らない。
   最初の entry として数える**。total と first は u16、1 つの応答の count は u8（1 フレームに入る分）。
 - describe の first は TLV の番号（u16）。1 つのインターフェースの宣言が 255 個の TLV を超えてよい（ピンごとのラベル）。
 - open の `resumed` は、同じ session_id でロックを立て直した（再開）とき 1。
-- plan は v0 と同じ形（全インターフェースが自分の役割を受け入れたときだけ適用、1 つずつ）。割り当ては probe の状態で、
-  セッションの終わりやロックの期限切れでは解かない（plan_release でだけ解く）。
+- plan は v0 と同じ形（全インターフェースが自分の役割を受け入れたときだけ適用、1 つずつ）。**plan はそれを適用した session の
+  資源**（2026-09-26 決定、[未合意の案](v1-open-proposals.ja.md) §3）: 明示の end では残して次の session に渡し、lease の期限切れ
+  と force で奪われたときに解く（ピンは解放 = 入力。NRST などを low に保っていた場合、target がリセットから出ることがある）。
+  `oep.probe.config` で入れた plan は probe の設定で、期限切れでも解かない（§5.10）。
 - 最初の実装（2026-09-24）では、fixture（gpio / uart / capture）の各操作の payload は v0 のまま（書き換え中、別の文書）。
 - **core の op の番号は確定**（2026-09-25。範囲は §0）。
 - **link_source / link_sink は線の速さを測るためのもの**（2026-09-25）。host は応答の大きさと同時に出す本数を変えて
@@ -355,6 +371,10 @@ attach / attach_under_reset の TLV:
   切れたら、そのセッションが使っていた分も外れる**（detach せずに落ちた host の分が残らない）。
   **probe は connection を閉じるときもデバッグモジュールを reset しない**（dmactive を残し、haltreq などを下ろして線を寝かせる）。
   reset すると DATA0 の dmseq のフレームが消え、次に開いたコンソールが target のタイムアウト（数秒）まで待たされた（§7.5.1）。
+  **明示の end では host の分を残し**（次の session の attach がそのまま加わる）、lease の期限切れと force で奪われたときに
+  外す（[未合意の案](v1-open-proposals.ja.md) §3 の表、2026-09-26 決定）。**connection の番号は、新しい connection を作るたびに
+  1〜255 を順に進める**（255 の次は使っている番号を飛ばして 1。古い番号の要求は rejected no_connection。同じ boot_id の間だけ
+  有効）。コンソールのストリームの番号も同じ。
   1 コマンド 1 プロセスの host が書き込みの最後に reset して detach しても、口に流しているコンソールは途切れない
   （試作 P6 で確認。[シリアルの口と永続化](probe-cdc-and-persistence.ja.md) §7.5）。probe 自身の自動の attach（§5.10 の bind）も
   使っているものの 1 つで、host の attach はその connection に加わる（flags bit1）。

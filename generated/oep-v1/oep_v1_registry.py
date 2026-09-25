@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "be5181de26d37a44"
+REGISTRY_HASH = "793e2e9dd6996f79"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -14,7 +14,7 @@ TAG_INVALID = 0xFF
 ROLES = {"request": 0x01, "result": 0x02, "event": 0x05, "data": 0x06}
 RESOLUTIONS = {"rejected": 0x00, "completed": 0x01, "accepted": 0x02}
 OUTCOMES = {"success": 0x00, "failed": 0x01, "partial": 0x02}
-REJECT_REASONS = {"unknown_function": 0x01, "unknown_operation": 0x02, "malformed": 0x03, "unavailable": 0x04, "busy": 0x05, "window_exceeded": 0x06, "no_session": 0x07, "locked": 0x08, "session_required": 0x09, "no_connection": 0x0A, "unsupported": 0x0B}
+REJECT_REASONS = {"unknown_function": 0x01, "unknown_operation": 0x02, "malformed": 0x03, "unavailable": 0x04, "busy": 0x05, "window_exceeded": 0x06, "no_session": 0x07, "locked": 0x08, "session_required": 0x09, "no_connection": 0x0A, "unsupported": 0x0B, "result_lost": 0x0C, "corr_reused": 0x0D}
 STATUS = {"ok": 0x00, "wait": 0x01, "line": 0x02, "fault": 0x03, "timeout": 0x04, "state": 0x05}
 DESCRIBE_COMMON = {"role_channels": 0x01, "max_clock_hz": 0x02, "max_length": 0x03, "min_clock_hz": 0x05, "features": 0x06, "implementation": 0x07, "channel_group": 0x08}
 TIMING = {"resync_quiet_ms": 0x32, "probe_frame_gap_ms": 0xC8, "host_frame_pause_max_ms": 0x64, "heartbeat_default_ms": 0x3E8}
