@@ -26,7 +26,7 @@ probe がリセットすると RVSWD の同期が落ち、立て直すと debug 
 ## セッションは 1 つ、使えるのは 1 つの host
 
 - probe は OEP の制御を複数の経路（vendor bulk、HID、CDC、USB-Serial/JTAG、UART）で受けてよいが、**セッションとロックは
-  probe に 1 つ**で、どの経路から来た要求も同じものとして扱う（[v1 wire](v1-core-wire-delta.ja.md) §1。2026-09-25 の試作 P1 で
+  probe に 1 つ**で、どの経路から来た要求も同じものとして扱う（[core](oep-core.ja.md) §3.3。2026-09-25 の試作 P1 で
   確認）。コンソール専用の口（下記）は制御の経路に数えない。
 - 同時に OEP を使えるのは 1 つの host（ロックを持つセッション）だけとする。
 - **排他は session_id で行う。** OS やライブラリの排他（Windows の COM ポート、libusb の claim、pyserial の
@@ -68,7 +68,7 @@ keepalive(session_id)                       → 何もしない（期限を伸�
 | 空き | 違う（open 以外） | 「セッションなし」。host は open からやり直す |
 | 空き | open（任意の ID） | ロックを立てる。最後の session_id を更新する |
 | 自分が保持 | 同じ | 処理する |
-| 他が保持 | 違う | locked（0x08）と残り時間。今の session_id は返さない（[v1 wire](v1-core-wire-delta.ja.md) §3） |
+| 他が保持 | 違う | locked（0x08）と残り時間。今の session_id は返さない（[core](oep-core.ja.md) §4.3） |
 | 他が保持 | open(force) | 奪う。最後の session_id を更新する。前の持ち主の購読は終わる |
 
 - **session_id が変わっていないことは、間に他の host が操作していないことを意味する。** one-shot CLI は
