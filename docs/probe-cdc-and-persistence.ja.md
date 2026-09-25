@@ -326,3 +326,29 @@ P4 は HS ポートだけでつなぐのが主になるので、USB-Serial/JTAG 
 | P4 | 設定の保存（NVS）と起動モードの切り替え（USB の構成が変わる、再列挙、usbipd） |
 | P5 | probe 自身の更新の経路を複数（DFU runtime、Mass Storage、vendor） |
 | P6 | コンソール（dmseq / SDI）を CDC の口に流す、自動の attach、host の detach / reset を越えて続くか |
+
+### 7.1 P1 / P2 の結果（2026-09-25、43c6）
+
+構成: P4 HS の 1 つのデバイスに vendor bulk（direct build）、vendor 定義の HID（511 バイトのレポート、Report ID 6）、
+CDC ACM を載せ、Endpoint 1 つに `addTransport` で 3 つの経路をつないだ（oep-probe-arduino c7a4933、scratch の
+OepShared）。host は oep-client-python c78430d（`open_usb_host` が vendor、HID の順に試す）。
+
+| 確認したこと | 結果 |
+|---|---|
+| vendor で開いたセッションのロックが HID / CDC の lock_state に見える | 合格（remaining 2999 ms） |
+| HID / CDC から別のセッション ID で open | locked で拒否 |
+| HID / CDC から同じセッション ID で open | resumed = 1、ロックの要る要求が通る |
+| 購読（heartbeat）の届き先 | 購読した経路だけ（HID で購読 → [vendor 0, HID 7, CDC 0]）。vendor で購読し直すと vendor へ移る |
+| CDC から end | 共有していたセッションが終わり、vendor から見てロック無し |
+
+link_speed（16368 バイト × 16、1 秒）: vendor 33.3 / 5.6 MB/s、HID 1.07 / 1.01 MB/s、CDC 8.1 / 0.24 MB/s
+（probe → host / host → probe）。host → probe が遅いのは probe の受信側（Stream の 1 バイトずつの read）で、
+仕様ではなく実装の調整の課題。
+
+わかったこと:
+- **HID の Report ID は両方向に付ける**（HID の規則どおり）。EspUsbDevice は、HID クラスが 1 つだけのときは
+  割り込み OUT のレポートを ID ごと渡す（data[0] = 6、長さはレポート + 1）。ID を外すのは HID を複数まとめたときだけ。
+  X6 の host は出力に ID を付けておらず、count の下位バイトが 6 のときに 1 バイト失う不具合を持っていた。
+  probe は「長さがレポート + 1 で先頭が自分の ID なら飛ばす」で両方に対応する。
+- WSL の hidraw は、usbipd で付け直した後、hidapi（OS の HID ドライバー）で開けた。開けない環境では libusb1 に落ちる。
+- 応答は来た経路へ、push とイベントは購読した経路へ、の規則で足りた（経路ごとのセッションや、経路を名指す仕組みは要らない）。
