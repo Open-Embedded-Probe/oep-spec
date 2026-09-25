@@ -330,12 +330,14 @@ attach / attach_under_reset の TLV:
 - speed_hz は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。書き込みが遅い理由の説明に使う。
 - **connection の寿命**（2026-09-25）: connection は、使っているもの（attach した host のセッション、connection を
   使う設定の項目。§5.10 の bind）が 1 つでもある間は開いている。**detach は、その host の分を外すだけ**で、ほかに使って
-  いるものがあれば connection は閉じない（detach の TLV 0x01 force（u8 = 1、critical で送る）で、使っているものがあっても
+  いるものがあれば connection は閉じない（detach の TLV 0x01 force（値の長さ 0、critical で送る）で、使っているものがあっても
   閉じる）。**target の reset（riscv-dm の reset、NRST）では connection を閉じない**（probe は havereset を確認応答して保つ）。
   閉じるのは、使っているものが無くなったとき、force の detach、線が本当に切れたとき（最遅の速さで再試行しても
   **1000 ms 続けて応答が無い**。reset の直後や V00x の DM の立ち上がりの間の数十 ms は数えない）だけ。**ロックの期限が
   切れたら、そのセッションが使っていた分も外れる**（detach せずに落ちた host の分が残らない）。
-  1 コマンド 1 プロセスの host が書き込みの最後に reset して detach しても、口に流しているコンソールは途切れない。
+  1 コマンド 1 プロセスの host が書き込みの最後に reset して detach しても、口に流しているコンソールは途切れない
+  （試作 P6 で確認。[シリアルの口と永続化](probe-cdc-and-persistence.ja.md) §7.5）。probe 自身の自動の attach（§5.10 の bind）も
+  使っているものの 1 つで、host の attach はその connection に加わる（flags bit1）。
 - **すでに attach している線への attach は、その connection をそのまま返す**（flags bit1。method = 1 なら、動いていれば
   止め、止まっていれば何もしない。method = 0 は動いている hart に触れない。それ以外の副作用なし）。1 コマンド 1 プロセスの
   host が、前のプロセスの connection を番号を保存せずに取り戻すため。既存の connection が max_speed より速い速さで動いて
@@ -547,8 +549,10 @@ probe は設定されたとおりに動く。設定されていない項目に�
 
 bind（CDC の口に何を流すか）:
 
-- source: 0 なし、1 fixture.uart（引数 fn u16）、2 target.console（引数 wire_fn u16、mechanism u8。mechanism は
-  §5.7 の番号）。
+- source: 0 なし、1 fixture.uart（引数 fn u16、baud u32、format u8。format は §5.8 の configure の TLV 0x01 と同じ。
+  baud = 0 は「口の line coding が来るまで UART を動かさない」で、flags bit0 が要る）、2 target.console（引数 wire_fn u16、
+  mechanism u8。mechanism は §5.7 の番号）。fixture.uart の bind は、plan に RX / TX がある間だけ動く（plan と bind を
+  保存しておけば、起動時にその baud で UART が動く。baud が無いと再起動の後に UART を掛けるものがなかった。§7.3）。
 - attach（source 2 のときに意味を持つ。**必ず明示する**。1 / 2 には項目 target が要る。無いまま set すると rejected
   unavailable）: 0 host に任せる（host が attach したら、その connection で
   コンソールを開いて流す）、1 口が開かれたとき（DTR が立ったら）、2 起動時。1 / 2 の自動の attach は止めない attach
@@ -557,8 +561,14 @@ bind（CDC の口に何を流すか）:
   X4）。コンソールが使う connection は bind が使っているものに数える（§5.5 の寿命）。force の detach などで connection を
   失ったら、bind は次の合図（attach = 0 は host の attach、1 は次に口が開かれたとき、2 は次の起動）まで待つ（すぐに attach
   し直さない）。
-- flags: bit0 line coding（baud）を fixture.uart に写す、bit1 口が開かれる前も TX を出力にする（既定の扱いではなく、
-  host が選ぶ）。立っていなければ、TX は line coding の設定か最初の書き込みまで入力のまま。
+- flags: bit0 口の line coding（baud、data bits、parity、stop bits）を fixture.uart に写す（最後に来た設定が勝つ。OEP の
+  configure も同じ UART を掛け直す）。ほかの bit は 0（立っていれば rejected unsupported）。TX の扱いは fixture.uart の規則の
+  まま（plan の適用で UART の休止（high）に駆動する。§5.8）。口が開かれる前の TX を入力にしておく案（bit1）は取り消した:
+  plan は host が明示したピンなので、配線を変えたらその host が plan を変える。
+- **口に流すのは、口が開かれている間（DTR）に来たバイトだけ**。閉じている間に来たバイトは stream（OEP の read）にだけ残る。
+  開いたときにまとめて渡す形は、pyserial が open で受信を空にするので消え、端末が raw モードにするまでの echo で target の
+  RX へ戻った（§7.2）。口から来たバイトは、source 1 なら TX に、source 2 なら console の write に、相手が受け取れる分だけ
+  渡す（残りは口に残る）。stream が口より丸ごと先に行ったら、口は一番古いバイトまで飛ぶ（gap）。
 - DTR / RTS / 1200 baud の touch は、bind の attach = 1 の合図（DTR）のほかには何もしない（target の reset に使わない。
   Linux は口を開くたびに DTR を立てる。X1）。CDC は AT コマンドなし（bInterfaceProtocol 0）で宣言する。
 - probe がその connection のコンソールの読みを止めるのは、**riscv-dm の要求を実行している間と、hart が止まっている間**
@@ -575,8 +585,11 @@ bind（CDC の口に何を流すか）:
 | 0x05 | reboot | — | —（応答を送ってから再起動する） | 必要 |
 
 - **set は、要求に含まれる tag の項目をすべて置き換える**（含まれない tag はそのまま）。同じ tag の項目を消すには、その
-  tag を値の長さ 0 で 1 つ送る。plan の置き換えは、plan_release と plan_apply を原子的に行うのと同じ（受け入れられなければ
-  何も変えずに rejected）。
+  tag を値の長さ 0 で 1 つ送る。plan の置き換えは、plan_release と plan_apply を原子的に行うのと同じ。**set は全体で原子的**:
+  plan が受け入れられても bind が結べなければ plan も元に戻し、何も変えない（rejected、または結べなかったときは failed）。
+- **設定は起動モードに依存しない**。bind は、どのモードの口でも名指してよい（port は、どれかのモードの ports の範囲）。
+  今のモードに無い口への bind は保持して何もせず、そのモードで起動したときに結ぶ。最初の試作は、今のモードに無い口への
+  bind を失敗として保存を読めない扱いにし、そのモードで save し直したら bind が消えた（§7.3）。
 - hash は今の設定の**正規形**の CRC-32（IEEE、reflected、init / xorout 0xFFFFFFFF。"123456789" → 0xCBF43926）。正規形 =
   項目を tag の昇順に、同じ tag の中は最初のキー（label は channel、bind は port）の昇順に並べ、set と同じ TLV の符号化
   （tag u8、len u8、値）でつないだバイト列。host は自分の欲しい設定から同じ値を計算できる。host は get の hash と自分の欲しい設定の hash を比べ、
@@ -586,6 +599,11 @@ bind（CDC の口に何を流すか）:
   が set する）。erase は保存を消す（今の設定は変えない）。
 - 起動時は、保存があればそれを今の設定にして、起動モードで列挙し、plan を適用し、bind を結ぶ（attach = 2 の bind だけ
   attach する）。保存を読めない（形が違う、interface の一覧が違う）ときは適用せず、describe で知らせる。
+- **describe の mode には、probe が実際に組める構成だけを出す**（USB のエンドポイントや FIFO の予算で組めない組み合わせが
+  ある。P4 HS で vendor + HID + CDC にデータの口を 2 つ足すと組めなかった。§7.6）。set は describe に無い mode を
+  rejected unsupported で断る。firmware が変わって保存の boot_mode が組めなくなったときは、probe は保存の写しから boot_mode を
+  外して、自分の選ぶモードで起動し直す（USB から戻れなくならないように。外さずに同じモードで起動すると、失敗と再起動を
+  繰り返す）。保存の hash が変わるので、hash を比べる host はそれで気づく。
 - 起動モードの変更（boot_mode の set）は reboot で効く。describe に今の起動モードと、次の起動のモードを出す。
 
 describe（このインターフェース）:
@@ -594,7 +612,7 @@ describe（このインターフェース）:
 |---:|---|---|
 | 0x40 | mode | index(u8)、functions(u8: bit0 vendor bulk、bit1 CDC の OEP の口、bit2 HID の OEP の口、bit3 Mass Storage（OEP の外。ドラッグ & ドロップの書き込みや設定のファイル）、bit4 DFU runtime（OEP の外。probe 自身の更新）)、ports(u8: データの CDC の口の数)、name（text）。モードごとに 1 つ |
 | 0x41 | current_mode | 今の mode(u8)、次の起動の mode(u8) |
-| 0x42 | port | port(u8)、USB の interface 番号(u8)（OS のポートと結び付けるため。並びは固定） |
+| 0x42 | port | port(u8)、USB の interface 番号(u8)（OS のポートと結び付けるため。並びは固定）。今のモードの口だけ |
 | 0x43 | storage | 保存できる最大 byte(u32、0 = 保存なし)、保存の状態(u8: 0 なし / 1 あり・適用済み / 2 あり・読めない)、保存の hash(u32)、save の最長時間(u32 ms)、reboot から再列挙までの最長時間(u32 ms)（host の待ち時間） |
 | 0x44 | cost | ports(u8)、OEP の probe → host の上限の目安(u32 byte/s)（CDC の口が OEP の帯域を削る。X1） |
 
