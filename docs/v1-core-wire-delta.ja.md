@@ -176,8 +176,8 @@ host は購読しなければ何も受け取らない。
 - **購読はロックの持ち主だけができ、ロックと一緒に終わる**（end、期限切れ、**force で他の host に奪われたとき**）。
   host が消えても、期限が来れば probe は送るのをやめる。購読している host は keepalive などでロックを保つ。
 - 送り出さないインターフェースは subscribe を rejected unavailable にする。
-- **まとめて送る条件**: `min_bytes` バイトたまるか、最初のバイトから `max_delay_ms` 経ったら送る（両方 0 なら、
-  あるだけすぐ送る）。3 つのフィールドは省略できない（2026-09-25。§0 の「省略できるフィールドを置かない」）。1 フレームの大きさは、probe の送りかけの上限（下の probe の義務 2）でも区切られる。
+- **まとめて送る条件**: `min_bytes` バイトたまるか、最初のバイトから `max_delay_ms` 経ったら送る。0 は「その条件を
+  使わない」（min_bytes = 0、max_delay_ms = 50 なら 50 ms ごと）。両方 0 なら、あるだけすぐ送る。3 つのフィールドは省略できない（2026-09-25。§0 の「省略できるフィールドを置かない」）。1 フレームの大きさは、probe の送りかけの上限（下の probe の義務 2）でも区切られる。
 - fn 0 を購読するとハートビートが来る。周期は `max_delay_ms`（0 なら 1000 ms）。
 - host が与える予算（クレジット）は持たない。流れの量は、取得を始めるとき（capture の configure など）に決まっているので、
   線に収まるかは host が事前に計算できる。host や線が遅れた分は probe の中で押し出され、position の飛びで分かる。
@@ -296,8 +296,8 @@ host は購読しなければ何も受け取らない。
 
 **attach の規範**: probe は、線の速さを確かめ終えるまで target に書き込まない（読むだけで速さを選ぶ）。速さの合わない
 書き込みは、化けた値を target のレジスタに書きうる（WCH-LinkE の attach はクロックや flash のレジスタを書く。wch-protocols
-の線の記録）。（2026-09-25 に X035C8T6 が応答しなくなった件は、この理由ではなく、option byte の RST_MODE で PA21 が外部 reset
-になっていたのが原因の候補だった。）
+の線の記録）。（2026-09-25 に X035C8T6 が応答しなくなった件は、option byte の RST_MODE で PA21 が外部 reset になっていたのが原因の
+候補だった。ただし復旧の後、誰も触らないまま再び応答しなくなっており、原因は確定していない。）
 
 ## 5.5 `oep.wire.rvswd` / `oep.wire.swio` と `oep.target.riscv-dm`（revision 1）
 
@@ -320,9 +320,10 @@ attach / attach_under_reset の TLV:
 
 - speed_hz は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。書き込みが遅い理由の説明に使う。
 - **すでに attach している線への attach は、その connection をそのまま返す**（flags bit1。method = 1 なら、動いていれば
-  止め、止まっていれば何もしない。それ以外の副作用なし）。1 コマンド 1 プロセスの host が、前のプロセスの connection を
-  番号を保存せずに取り戻すため。既存の connection がすでに max_speed より速い速さで動いていれば、max_speed は値を扱えない
-  TLV として扱う（§0）。
+  止め、止まっていれば何もしない。method = 0 は動いている hart に触れない。それ以外の副作用なし）。1 コマンド 1 プロセスの
+  host が、前のプロセスの connection を番号を保存せずに取り戻すため。既存の connection が max_speed より速い速さで動いて
+  いれば、probe はその connection の速さを max_speed 以下に下げて返す（下げるのは読むだけで確かめられる。応答の speed_hz で
+  分かる）。下げられない probe だけが、値を扱えない TLV として扱う（§0）。
 - attach は保留中の havereset を先に確認応答する（V00x の DM は確認応答まで DMSTATUS の halt / running を固定する）。
 - attach_under_reset はリセットの線を保持して attach し、離しながら halt を打ち続ける（タイミングが厳しいので probe の
   1 操作）。host が指定できるのは probe が許可したチャンネルだけ。任意の op（持たない probe は unknown operation）。
@@ -363,8 +364,9 @@ DMI の手順:
   読む回数・時間を上限に待つ手順（0x03 / 0x05）だけ（待ち 0x04 は足さない）。値の並びの個数は、最初の done 個の手順のうち
   値を足す手順の数に、失敗した手順が 0x03 / 0x05 で**待ち切れた**（status timeout）ならその最後の値の 1 を足したもの。
   線の不良（status line）などで読めずに失敗した手順は、値を足さない。
-- run の timeout_ms は u32（0xFFFFFFFF は上限なし）。止まったら stopped = 1（outcome success）、上限に達したら stopped = 0、
-  status timeout、outcome failed（dpc と値は読めた範囲で入れる）。
+- run の timeout_ms は u32（0xFFFFFFFF は上限なし）。止まったら stopped = 1（outcome success）。上限に達したら probe は
+  hart を止めてから dpc と値を読み、stopped = 0、status timeout、outcome failed で返す（dpc と値はすべて有効）。止められな
+  ければ completed failed と payload `status(u8)` だけ（line か state）。
   n_out が 0 なら値は返らない（ローダーの状態を a0、失敗した番地を a1 に置くなら n_out = 2、regno = 0x100A、0x100B）。
 - reset の mode 2 は haltreq を保ったまま ndmreset を解く。semihosting、gdb の `monitor reset halt`、動いている
   ウォッチドッグの上からの書き込みに使う（IWDG は hart を止めても数え続ける）。
@@ -373,10 +375,12 @@ DMI の手順:
   allresumeack が立てば出し直さない。allresumeack を立てない target（L103）では dpc が変われば出し直さない。dpc が変わらず
   止まったままなら出し直す（V006 / L103 は 1 回では通らないことがある）。すぐ同じ dpc の breakpoint で止まる場合（ebreak の上で
   continue）は「走らなかった」と区別できないので、host は breakpoint の上から continue するときは先に step で 1 命令進める。
-  出し直しても出なければ status state。
-- step は dcsr.step を立てて resume を 1 回だけ出し、成否は dpc が動いたかで判定する（L103 は allresumeack を立てず、
-  resume の出し直しは 2 ステップ進めてしまう）。dpc が動かなければ status state。prv は変えない（U モードのスケッチの
-  ステップ実行）。
+  出し直しても出なければ status state。自分自身へ跳ぶループでは、resume の後 hart は止まらずに走り続けるので、この規則で
+  出し直しにはならない。
+- step は dcsr.step を立てて resume を 1 回だけ出す（L103 は allresumeack を立てず、resume の出し直しは 2 ステップ進めて
+  しまう）。dpc が動かなくても**失敗にしない**（status ok、moved = 0）。自分自身へ跳ぶ命令（`j .`、`while (1) {}`）は正しく
+  1 命令進めても dpc が同じなので、host が dpc の命令を読んで判断する（自分への跳びなら進んだ、そうでなければ走らなかった）。
+  hart が止まらない（debug mode に戻らない）ときは status state。prv は変えない（U モードのスケッチのステップ実行）。
 - run は dcsr の ebreakm と prv = M を立てる（host のローダー用。割り込みは host が mstatus = 0 で止める）。
   止まった位置が開始位置のままなら、走らなかったとみなして resume を出し直す。**gdb の continue には使わない**
   （prv と ebreakm を変えてしまう）。continue は resume と DMSTATUS の待ち（将来は「止まった」の出来事）で組む。
