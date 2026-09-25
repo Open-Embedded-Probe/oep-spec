@@ -287,8 +287,22 @@ P4 は HS ポートだけでつなぐのが主になるので、USB-Serial/JTAG 
 
 案:
 - **OTA は OEP の wire の外**（OEP は target を扱うプロトコルで、probe 自身の更新は USB の標準に任せる）。
-- **DFU runtime の interface を、どの起動モードでも付ける**（endpoint を使わないので、vendor + CDC 3 口の構成でも足せる）。
-  host は標準の `dfu-util` で更新し、壊れたときは DFU runtime から ROM の download loader に入って esptool で復旧する。
-- Mass Storage は、起動モードの 1 つ（更新・設定用のモード）として置く案が合う（endpoint を使うため、常時は載せない）。
+- **どう更新するかは probe の選択**で、仕様には基本の経路を書かない（2026-09-25 のユーザーの方針）。**試作の probe は複数の
+  経路を用意する**（DFU runtime、Mass Storage、vendor の独自コマンドなど）。参考: DFU runtime は endpoint を使わないので
+  vendor + CDC 3 口の構成にも足せ、DFU runtime から ROM の download loader に入れば壊れた firmware からも esptool で戻せる。
+  Mass Storage は endpoint を使うので、起動モードの 1 つに置くのが合う。
 - OEP 側で知らせるのは、describe の firmware の版（core tag 0x40、既存）だけで足りる。更新の経路は USB の記述子で分かる。
 - 要確認: DFU の Windows での扱い（MS OS 2.0 の記述子で WinUSB を割り当てられるか）、usbipd 越しの DFU detach と再列挙。
+
+## 7. 進め方（2026-09-25 のユーザーの方針）
+
+実験と試作を先にし、その結果で仕様を固める。§4 の案と v1 wire §5.10 は、試作で確かめてから直す。
+
+| 番号 | 試作 |
+|---|---|
+| P1 | vendor bulk と HID の両方で OEP を受け、セッションとロックを 1 つ共有する（応答は来た経路へ） |
+| P2 | host の HID の経路（非同期の読み、Windows は HID の API） |
+| P3 | CDC の口に fixture.uart を素通しで流す（line coding、TX を出力にする合図、ModemManager） |
+| P4 | 設定の保存（NVS）と起動モードの切り替え（USB の構成が変わる、再列挙、usbipd） |
+| P5 | probe 自身の更新の経路を複数（DFU runtime、Mass Storage、vendor） |
+| P6 | コンソール（dmseq / SDI）を CDC の口に流す、自動の attach、host の detach / reset を越えて続くか |
