@@ -131,11 +131,16 @@ op = [
 force = 0x01
 [interface.tlv.attach]
 max_speed = 0x01
+pins = 0x03                     # critical: swdio(u16) swclk(u16, 0xFFFF on one wire) - the pair to attach on
 [interface.tlv.attach_under_reset]
 max_speed = 0x01
+pins = 0x03
 [interface.enum.attach_method]
 run = 0
 halt = 1
+[interface.enum.pin_role]       # the roles of the pins in describe's channel_group / role_channels
+swdio = 1
+swclk = 2
 
 [[interface]]
 name = "oep.wire.swio"
@@ -150,11 +155,15 @@ op = [
 force = 0x01
 [interface.tlv.attach]
 max_speed = 0x01
+pins = 0x03                     # critical: swdio(u16) swclk(u16, 0xFFFF on one wire) - the pair to attach on
 [interface.tlv.attach_under_reset]
 max_speed = 0x01
+pins = 0x03
 [interface.enum.attach_method]
 run = 0
 halt = 1
+[interface.enum.pin_role]       # the roles of the pins in describe's channel_group / role_channels
+swdio = 1
 
 [[interface]]
 name = "oep.wire.swd"
@@ -169,6 +178,10 @@ force = 0x01
 [interface.tlv.attach]
 max_speed = 0x01
 targetsel = 0x02
+pins = 0x03                     # critical: swdio(u16) swclk(u16) - the pair to attach on
+[interface.enum.pin_role]       # the roles of the pins in describe's channel_group / role_channels
+swdio = 1
+swclk = 2
 
 [[interface]]
 name = "oep.target.riscv-dm"
