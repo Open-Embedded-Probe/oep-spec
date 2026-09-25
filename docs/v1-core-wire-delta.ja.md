@@ -13,13 +13,16 @@
 
 **末尾の扱い（後から足せるようにする規則）**:
 
-- **応答**: host は、自分の知っている形より後ろのバイトを**無視する**。probe は応答の後ろにフィールドを足してよい
-  （同じ (名前, revision) の中で、足すだけ）。長さが足りない応答は、host が壊れた応答として扱う。
+- **応答**: 各 op の応答の固定部分（と、数の分かる並び）の**後ろは TLV の並び**（`tag(u8) len(u8) value`）。後から
+  足すものはすべてここに TLV で足す（固定部分は (名前, revision) の中で変えない）。host は既知の部分の後ろを TLV として
+  走査し、知らない tag は無視する。長さの分からない並び（読み出したバイト列など）で終わる応答は、後ろに何も足せない。
+  固定部分より短い応答は、host が壊れた応答として扱う。
 - **要求**: 要求の後ろに足せるのは、**critical bit 付きの TLV の並びだけ**（tag の bit 7 = critical、TLV の形は v0 と同じ
   `tag(u8) len(u8) value`）。probe は、知らない critical の TLV があれば rejected unsupported（0x0B、payload に tag）で断り、
   知らない非 critical の TLV は無視して、応答の後ろに ignored（tag 0x7F、値は無視した tag の並び）を付ける。
-  要求の形が可変の並び（DMI の手順、書く語、link_sink のバイト）で終わる op は、後ろに TLV を付けられない
-  （足したくなったら新しい op にする）。固定の部分より短い要求は rejected malformed。
+  **可変の並びは前に数を置く**（DMI の手順、書く語、転送の並び）ので、その後ろにも TLV を付けられる。数を持たない
+  並びで終わる op（link_sink のバイト）だけは後ろに付けられない。固定の部分より短い要求は rejected malformed。
+- tag 0xFF（critical 付きの 0x7F）は無効。要求の中にあれば rejected malformed。
 - host が安全のために足した引数（速さの上限など）は critical にする。古い probe が黙って捨てて、効いたと思い込むのを防ぐ。
 
 **知らない値**:
@@ -37,7 +40,7 @@
 | インターフェースの op | 0x01〜0xEF は定義が決める。0xF0〜0xFF は実験用 |
 | reject reason | 0x01〜0x3F core が決める（全インターフェース共通）、0x40〜0x7F インターフェースが決める、0x80〜0xFF 予約 |
 | 出来事の kind | fn ごとの空間。0x01〜0x7F はインターフェースが決める（fn 0 は core）、0x80〜0xFF は core が決める全 fn 共通の kind（予約） |
-| TLV の tag | **(fn, op) の文脈ごとの空間**（同じ値でも文脈が違えば別物。例: core の describe の 0x46 と capture の configure の 0x46）。bit 7 は critical（要求の中で意味を持つ）。0x7F は全文脈で ignored（上記）に予約 |
+| TLV の tag | **(fn, op) の文脈ごとの空間**（同じ値でも文脈が違えば別物。例: core の describe の 0x46 と capture の configure の 0x46）。bit 7 は critical（要求の中で意味を持つ）。0x7F は全文脈で ignored（上記）に予約、0xFF は無効 |
 
 **一周する値**: position（u32）、seq（u16）、時刻（µs、u32）は一周する。比べるときは差を符号付きで見る
 （serial number arithmetic: `a - b` を同じ幅の符号付きとして解釈する）。probe は、同時に意味を持つ範囲（リングや
@@ -65,8 +68,11 @@
 
 **区切りがずれたときの立て直し**（長さの見出しのフレーム。host）: corr が合わない応答、あり得ない長さ（0 は予約の
 keepalive、max_frame を超える値）、途中で止まったフレームを見たら、入力が 50 ms 静かになるまで読み捨て、読むだけの要求
-（confirm）で同期を確かめてから再開する。状態を変える要求は送り直さない。probe は、フレームの途中で 200 ms 入力が途切れたら
-読み取りを最初からやり直す。したがって host は 1 つのフレームを途中で 100 ms 以上止めない。
+（confirm）で同期を確かめてから再開する。状態を変える要求は送り直さない。例外として、二度実行しても害のない unsubscribe と
+end は、立て直しの中で確かめずに送ってよい（通知が流れ続けて入力が静かにならないとき、止めるため）。probe は、フレームの
+途中で 200 ms 入力が途切れたら読み取りを最初からやり直す。したがって host は **1 つのフレームを 1 回の書き込みで送り**
+（バイトごとや見出しと本体に分けて書かない。usbipd 越しでは分けた書き込みの間が 100 ms を超えることがある）、途中で
+100 ms 以上止めない。
 
 どちらのフレームを使うかは transport で決まる。probe は自分の transport を知っている（UART の probe は COBS）。host は
 USB の VID:PID で USB-UART の変換チップ（CH340 / CH343 / CP210x / FT232 など）を見分けて COBS を選び、指定で上書きも
@@ -245,8 +251,8 @@ host は購読しなければ何も受け取らない。
 
 - **confirm**（2026-09-25 決定）: host は扱える revision の範囲を送り、probe はその中で自分の扱える最大の revision を返す
   （このドキュメントの形は revision 1）。範囲に扱えるものが無ければ rejected unsupported。v0 の probe も同じ要求に
-  `"OEP!"` と revision 0 で答える（v0 の形）ので、host は revision で見分けて、1 以上のときだけ v1 の要求（role 0x81 など）を
-  送る。flags は予約で 0。window は u32（v0 の u16 から広げた。read-ahead に 256 KiB 要る実測がある）。
+  `"OEP!"` と revision 0 で答える（v0 の形。要求の形は v0 と同じ）ので、host は revision で見分けて、1 以上のときだけ v1 の
+  要求（role 0x81 など）を送る。範囲付きの confirm を malformed で断る probe も v1 ではないとみなす。flags は予約で 0。window は u32（v0 の u16 から広げた。read-ahead に 256 KiB 要る実測がある）。
 - list の entry: `fn(u16) instance(u16) revision(u8) flags(u8) name_len(u8) name`。**`oep.core`（fn 0、revision 1）も
   最初の entry として数える**。total と first は u16、1 つの応答の count は u8（1 フレームに入る分）。
 - describe の first は TLV の番号（u16）。1 つのインターフェースの宣言が 255 個の TLV を超えてよい（ピンごとのラベル）。
@@ -314,12 +320,12 @@ attach / attach_under_reset の TLV:
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | dmi | 手順の並び（下表） | done(u16)、status(u8)、値の並び（読む手順と待つ手順の値） |
+| 0x01 | dmi | n(u16)、n 個の手順（下表） | done(u16)、status(u8)、値の並び（読む手順と待つ手順の値） |
 | 0x02 | halt | — | status(u8) |
 | 0x03 | resume | — | status(u8) |
 | 0x04 | reset | mode(u8: 0 走らせる / 1 走らせて実行を確認 / 2 最初の命令の前で止める)、[TLV] | status(u8)、flags(u8)、attempts(u8)、pc(u32)（mode 2 では dpc） |
 | 0x05 | read_block | address(u32)、count(u16) | done(u16)、status(u8)、語の並び（done 個） |
-| 0x06 | write_block | address(u32)、語の並び | done(u16)、status(u8) |
+| 0x06 | write_block | address(u32)、count(u16)、count 個の語 | done(u16)、status(u8) |
 | 0x07 | run | pc(u32)、timeout_ms(u32)、n(u8)、n × (regno u16、value u32)、n_out(u8)、n_out × regno(u16) | status(u8)、stopped(u8)、dpc(u32)、elapsed_us(u32)、n_out × value(u32) |
 | 0x08 | step | — | status(u8)、moved(u8)、dpc_before(u32)、dpc_after(u32) |
 
@@ -374,9 +380,9 @@ attach の TLV: 0x01 max_speed（u32 Hz、rvswd と同じ）、0x02 targetsel（
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | transfer | 転送の並び: req(u8: bit0 APnDP、bit1 RnW、bit2-3 A[3:2]) と、書き込みなら value(u32) | done(u16)、status(u8)、ack(u8)、読んだ値の並び |
+| 0x01 | transfer | n(u16)、n 個の転送: req(u8: bit0 APnDP、bit1 RnW、bit2-3 A[3:2]) と、書き込みなら value(u32) | done(u16)、status(u8)、ack(u8)、読んだ値の並び |
 | 0x02 | read_block | address(u32)、count(u16) | done(u16)、status(u8)、語の並び（done 個） |
-| 0x03 | write_block | address(u32)、語の並び | done(u16)、status(u8) |
+| 0x03 | write_block | address(u32)、count(u16)、count 個の語 | done(u16)、status(u8) |
 
 - status は §5.4 の共通の値（WAIT のまま = wait、FAULT = fault、応答なし・パリティ = line）。ack は最後の転送の生の ACK。
 - transfer は生の転送で、AP の読み出しが 1 つ遅れて返るのもそのまま（host が RDBUFF か次の AP の読み出しで受け取る）。
