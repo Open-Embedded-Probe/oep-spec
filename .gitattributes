@@ -1,0 +1,2 @@
+registry/*.toml text eol=lf
+generated/** text eol=lf
