@@ -294,6 +294,13 @@ P4 は HS ポートだけでつなぐのが主になるので、USB-Serial/JTAG 
 - OEP 側で知らせるのは、describe の firmware の版（core tag 0x40、既存）だけで足りる。更新の経路は USB の記述子で分かる。
 - 要確認: DFU の Windows での扱い（MS OS 2.0 の記述子で WinUSB を割り当てられるか）、usbipd 越しの DFU detach と再列挙。
 
+- **P4 のブートモード（ROM の download loader）**: 動いているスケッチから入れる（CDC の 1200 bps touch、DFU_DETACH、独自の
+  コマンド。EspUsbDevice の `rebootToBootloader()`）。ただし **P4 の loader は USB-Serial/JTAG の口（FS、303a:1001）で応答し、
+  HS の OTG の口では応答しない**（HS コントローラーは専用の PHY を持つ。USB-OTG の ROM DFU は P4 v3.1 以降で不具合があり
+  使えない。EspUsbDevice の ota-over-usb 2.3 節）。**HS の口だけでつなぐ構成では、ブートモード経由の esptool は使えない**
+  ので、アプリの更新の経路（DFU runtime、Mass Storage、vendor、CDC のスクリプト）が要る。FS の口でデバイスを動かす構成
+  なら、同じケーブルが loader として戻り esptool が使える。
+
 ## 7. 進め方（2026-09-25 のユーザーの方針）
 
 実験と試作を先にし、その結果で仕様を固める。§4 の案と v1 wire §5.10 は、試作で確かめてから直す。
