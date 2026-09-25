@@ -73,6 +73,7 @@ heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
 role_channels = 0x01
 max_clock_hz = 0x02
 max_length = 0x03
+min_clock_hz = 0x05
 features = 0x06
 implementation = 0x07
 channel_group = 0x08
@@ -276,6 +277,74 @@ tx = 2
 
 [[interface]]
 name = "oep.fixture.capture"
+revision = 1
+op = [
+  { code = 0x01, name = "configure", lock = true },
+  { code = 0x02, name = "start", lock = true },
+  { code = 0x03, name = "stop", lock = true },
+  { code = 0x04, name = "force", lock = true },
+  { code = 0x05, name = "status", lock = false },
+  { code = 0x06, name = "read", lock = false, closed_tail = true },
+  { code = 0x07, name = "segments", lock = false },
+  { code = 0x08, name = "release", lock = true },
+  { code = 0x09, name = "query", lock = false },
+]
+[interface.tlv.configure]       # also the request of query
+mode = 0x40
+rate = 0x42
+samples = 0x43
+segments = 0x44
+trigger = 0x45
+pretrigger = 0x46
+frontend = 0x47
+[interface.tlv.configure_answer]  # the answer of configure and query
+actual_rate = 0x50
+layout = 0x51
+actual_samples = 0x52
+actual_segments = 0x53
+timing = 0x54
+scale = 0x55
+blocking_ms = 0x56
+[interface.tlv.describe]        # plus the common tags (features 0x06: bit0 query, bit1 force, bit2 notifications)
+mode = 0x40
+rate_range = 0x41
+rate_list = 0x42
+rate_limit = 0x43
+channels = 0x44
+trigger = 0x45
+analog = 0x46
+max_read = 0x47
+segment_ring = 0x48
+[interface.event]
+segment = 0x01
+stopped = 0x02
+triggered = 0x03
+[interface.enum.mode]
+one_shot = 1
+repeat = 2
+streaming = 3
+[interface.enum.trigger]
+immediate = 0
+level = 1
+edge = 2
+cross_up = 3
+cross_down = 4
+[interface.enum.state]
+unconfigured = 0
+configured = 1
+waiting = 2
+capturing = 3
+done = 4
+paused = 5
+error = 6
+[interface.enum.stopped_reason]
+complete = 0
+host = 1
+no_free_segment = 2
+error = 3
+
+[[interface]]
+name = "oep.fixture.analog"            # logic-capture §0.1: the same operations and numbers as oep.fixture.capture, one analog track
 revision = 1
 op = [
   { code = 0x01, name = "configure", lock = true },

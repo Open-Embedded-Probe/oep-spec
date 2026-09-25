@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "6f110e4db2d51acd"
+REGISTRY_HASH = "be5181de26d37a44"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -16,7 +16,7 @@ RESOLUTIONS = {"rejected": 0x00, "completed": 0x01, "accepted": 0x02}
 OUTCOMES = {"success": 0x00, "failed": 0x01, "partial": 0x02}
 REJECT_REASONS = {"unknown_function": 0x01, "unknown_operation": 0x02, "malformed": 0x03, "unavailable": 0x04, "busy": 0x05, "window_exceeded": 0x06, "no_session": 0x07, "locked": 0x08, "session_required": 0x09, "no_connection": 0x0A, "unsupported": 0x0B}
 STATUS = {"ok": 0x00, "wait": 0x01, "line": 0x02, "fault": 0x03, "timeout": 0x04, "state": 0x05}
-DESCRIBE_COMMON = {"role_channels": 0x01, "max_clock_hz": 0x02, "max_length": 0x03, "features": 0x06, "implementation": 0x07, "channel_group": 0x08}
+DESCRIBE_COMMON = {"role_channels": 0x01, "max_clock_hz": 0x02, "max_length": 0x03, "min_clock_hz": 0x05, "features": 0x06, "implementation": 0x07, "channel_group": 0x08}
 TIMING = {"resync_quiet_ms": 0x32, "probe_frame_gap_ms": 0xC8, "host_frame_pause_max_ms": 0x64, "heartbeat_default_ms": 0x3E8}
 
 INTERFACES = {}
@@ -50,6 +50,9 @@ INTERFACES["oep.fixture.uart"] = FIXTURE_UART
 FIXTURE_CAPTURE = _NS(name="oep.fixture.capture", revision=1, op={"configure": 0x01, "start": 0x02, "stop": 0x03, "force": 0x04, "status": 0x05, "read": 0x06, "segments": 0x07, "release": 0x08, "query": 0x09}, lock_free={0x05, 0x06, 0x07, 0x09},
     closed_tail={0x06}, tlv={"configure": {"mode": 0x40, "rate": 0x42, "samples": 0x43, "segments": 0x44, "trigger": 0x45, "pretrigger": 0x46, "frontend": 0x47}, "configure_answer": {"actual_rate": 0x50, "layout": 0x51, "actual_samples": 0x52, "actual_segments": 0x53, "timing": 0x54, "scale": 0x55, "blocking_ms": 0x56}, "describe": {"mode": 0x40, "rate_range": 0x41, "rate_list": 0x42, "rate_limit": 0x43, "channels": 0x44, "trigger": 0x45, "analog": 0x46, "max_read": 0x47, "segment_ring": 0x48}}, event={"segment": 0x01, "stopped": 0x02, "triggered": 0x03}, enum={"mode": {"one_shot": 0x01, "repeat": 0x02, "streaming": 0x03}, "trigger": {"immediate": 0x00, "level": 0x01, "edge": 0x02, "cross_up": 0x03, "cross_down": 0x04}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}}, own={})
 INTERFACES["oep.fixture.capture"] = FIXTURE_CAPTURE
+FIXTURE_ANALOG = _NS(name="oep.fixture.analog", revision=1, op={"configure": 0x01, "start": 0x02, "stop": 0x03, "force": 0x04, "status": 0x05, "read": 0x06, "segments": 0x07, "release": 0x08, "query": 0x09}, lock_free={0x05, 0x06, 0x07, 0x09},
+    closed_tail={0x06}, tlv={"configure": {"mode": 0x40, "rate": 0x42, "samples": 0x43, "segments": 0x44, "trigger": 0x45, "pretrigger": 0x46, "frontend": 0x47}, "configure_answer": {"actual_rate": 0x50, "layout": 0x51, "actual_samples": 0x52, "actual_segments": 0x53, "timing": 0x54, "scale": 0x55, "blocking_ms": 0x56}, "describe": {"mode": 0x40, "rate_range": 0x41, "rate_list": 0x42, "rate_limit": 0x43, "channels": 0x44, "trigger": 0x45, "analog": 0x46, "max_read": 0x47, "segment_ring": 0x48}}, event={"segment": 0x01, "stopped": 0x02, "triggered": 0x03}, enum={"mode": {"one_shot": 0x01, "repeat": 0x02, "streaming": 0x03}, "trigger": {"immediate": 0x00, "level": 0x01, "edge": 0x02, "cross_up": 0x03, "cross_down": 0x04}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}}, own={})
+INTERFACES["oep.fixture.analog"] = FIXTURE_ANALOG
 PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, op={"get": 0x01, "set": 0x02, "save": 0x03, "erase": 0x04, "reboot": 0x05}, lock_free={0x01},
     closed_tail={}, tlv={"item": {"boot_mode": 0x01, "plan": 0x02, "label": 0x03, "bind": 0x04, "target": 0x05}, "describe": {"mode": 0x40, "current_mode": 0x41, "port": 0x42, "storage": 0x43, "cost": 0x44}}, event={}, enum={"bind_source": {"none": 0x00, "fixture_uart": 0x01, "target_console": 0x02}, "bind_attach": {"host": 0x00, "on_open": 0x01, "at_boot": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}}, own={})
 INTERFACES["oep.probe.config"] = PROBE_CONFIG
