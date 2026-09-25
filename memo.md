@@ -80,6 +80,9 @@ The following decisions intentionally remain open:
 10. Conformance levels and test ownership.
 11. The exact PID allocator and approved multi-implementation usage scope.
 12. PID authorization, review, and version/profile compatibility policy.
+13. How a capture declares its data layout: per channel (planar) or as sampled across channels (interleaved).
+    Sending data in the form it was acquired and letting the host repack it probably keeps probes simpler
+    (note of 2026-09-25; [capture proposal](docs/logic-capture.ja.md) §3.4, Japanese).
 
 No numeric registry values should be assigned until the relevant namespace and lifecycle rules are agreed.
 

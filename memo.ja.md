@@ -80,6 +80,9 @@ USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準c
 10. conformance levelとtestの管理主体
 11. PID割当元と、了承された複数実装での利用範囲
 12. PID利用許可、review、version/profile互換性の方針
+13. captureのデータの持ち方の宣言。channelごとに並べる（planar）か、複数channelを同時に取った形のまま
+    sampleごとに並べる（interleaved）か。probeは取得したときの形のまま送って詰め替えず、hostが詰め替える方が
+    probeは楽になる見込み（2026-09-25のメモ。[captureの提案](docs/logic-capture.ja.md) §3.4）
 
 関係するnamespaceとlifecycle規則を合意するまで、数値registry値を割り当てない。
 
