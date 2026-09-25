@@ -64,7 +64,7 @@
 
 | 部分 | 形 |
 |---|---|
-| フレーム（USB CDC、USB-Serial/JTAG、TCP） | 長さ u16 + メッセージ。CRC なし |
+| フレーム（USB CDC、USB-Serial/JTAG、TCP） | 長さ u16 + メッセージ。CRC なし。**TCP は信頼できるローカルの接続か、認証したトンネルの内側でだけ使う**（OEP はロックの force を含めて認証を持たない。そのままネットワークに出すと、誰でも target を書き換え、probe を再起動できる。2026-09-26 のレビュー 3.3） |
 | フレーム（USB の HID、vendor 定義の report） | 長さの見出し付きのフレームのバイト列を report に詰める。**report = count(u16) + count バイト + 0 埋め**（report の大きさは HID の記述子のとおり）。記述子が report ID を宣言していれば、HID の規則どおり **input も output も** report の先頭に ID が付き、count はその後ろから数える（host は output にも必ず付ける）（2026-09-25、[シリアルの口と永続化](probe-cdc-and-persistence.ja.md) X6、§7.1） |
 | フレーム（UART） | COBS + CRC-16、0x00 で区切る。CRC は仮置きで CRC-16/CCITT-FALSE（多項式 0x1021、初期値 0xFFFF、反転なし、"123456789" → 0x29B1）、メッセージの後ろに little endian で付ける。COBS は 254 byte のブロックに分ける標準の形 |
 | フレーム（USB の vendor bulk） | **長さ u16 + メッセージのバイト列**（CDC と同じ。2026-09-25 変更）。1 回の転送に複数のフレームが入ってよく、フレームが転送をまたいでもよい。下の「USB の束ね方」 |
@@ -148,6 +148,10 @@ role=0x81 (bit7=1) | corr | fn | op | session_id(u32) | payload     session_id �
   進捗 `done(u32) total(u32)`（total が分からなければ 0）。
 - 実行中の長い操作は probe 全体で 1 つ。最後の結果は同じ session_id の間だけ取り出せ、新しい session_id でロックが
   立ったら消える。
+- **force でロックを奪うとき**（2026-09-26 のレビュー 2.7）: probe は、(1) 前のセッションの購読を終え、(2) 実行中の長い操作が
+  cancel できれば cancel してから、ロックを渡す。(3) cancel できない長い操作が実行中なら、open(force) を rejected busy で断り、
+  payload にロックの残り時間を返す（その操作が終わるか、期限が切れるまで待つ）。新しいセッションに前のセッションの
+  activity の番号は渡さない（所有が複雑になるため）。
 - v0 の probe から送る role のうち 0x03 activity update、0x04 activity outcome は v1 では使わず、予約として残す。
   0x05 と 0x06 は §4.5 の通知に使う。
 
@@ -193,6 +197,9 @@ host は購読しなければ何も受け取らない。
 - **購読はロックの持ち主だけができ、ロックと一緒に終わる**（end、期限切れ、**force で他の host に奪われたとき**）。
   host が消えても、期限が来れば probe は送るのをやめる。購読している host は keepalive などでロックを保つ。
 - 送り出さないインターフェースは subscribe を rejected unavailable にする。
+- **同じ fn をもう一度 subscribe したら、前の購読をまとめて置き換える**（2026-09-26 のレビュー 3.2）: 送る条件（min_bytes、
+  max_delay_ms）と送り先の経路（その subscribe が来た経路、§1）を原子的に入れ替え、その fn の出来事と push の seq は 0 から
+  数え直す。1 つの fn の購読は 1 つだけ。
 - **まとめて送る条件**: `min_bytes` バイトたまるか、最初のバイトから `max_delay_ms` 経ったら送る。0 は「その条件を
   使わない」（min_bytes = 0、max_delay_ms = 50 なら 50 ms ごと）。両方 0 なら、あるだけすぐ送る。3 つのフィールドは省略できない（2026-09-25。§0 の「省略できるフィールドを置かない」）。1 フレームの大きさは、probe の送りかけの上限（下の probe の義務 2）でも区切られる。
 - fn 0 を購読するとハートビートが来る。周期は `max_delay_ms`（0 なら 1000 ms）。
@@ -605,7 +612,9 @@ bind（CDC の口に何を流すか）:
   bind を失敗として保存を読めない扱いにし、そのモードで save し直したら bind が消えた（§7.3）。
 - hash は今の設定の**正規形**の CRC-32（IEEE、reflected、init / xorout 0xFFFFFFFF。"123456789" → 0xCBF43926）。正規形 =
   項目を tag の昇順に、同じ tag の中は最初のキー（label は channel、bind は port）の昇順に並べ、set と同じ TLV の符号化
-  （tag u8、len u8、値）でつないだバイト列。host は自分の欲しい設定から同じ値を計算できる。host は get の hash と自分の欲しい設定の hash を比べ、
+  （tag u8、len u8、値）でつないだバイト列。host は自分の欲しい設定から同じ値を計算できる。保存と hash の tag には critical の
+  bit を含めない（要求で critical で送られても外して持つ）。1 つの set の中で同じキー（label の channel、bind の port）が
+  2 回出たら、要求全体を rejected malformed にする（送り方で hash が変わらないように。2026-09-26 のレビュー 3.4）。host は get の hash と自分の欲しい設定の hash を比べ、
   同じなら何もしない（1 コマンド 1 プロセスの host が毎回設定を送らずに済む）。
 - **save は host の明示的な操作だけ**で、今の設定をそのまま保存する（同じ内容なら書かない）。書いている間はほかの要求に
   答えない（応答は書き終えてから）。保存先が足りなければ rejected unavailable（小さい probe は保存しない。起動のたびに host
