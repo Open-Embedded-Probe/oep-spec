@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "f6a29b89018c6603"
+REGISTRY_HASH = "6f110e4db2d51acd"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -24,13 +24,13 @@ CORE = _NS(name="oep.core", revision=1, op={"confirm": 0x01, "list": 0x02, "desc
     closed_tail={0x40}, tlv={"plan_apply": {"role_assignment": 0x90}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "uart_rates": 0x48}}, event={"heartbeat": 0x01}, enum={}, own={})
 INTERFACES["oep.core"] = CORE
 WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "attach_under_reset": 0x04}, lock_free={},
-    closed_tail={}, tlv={"attach": {"max_speed": 0x01}, "attach_under_reset": {"max_speed": 0x01}}, event={}, enum={"attach_method": {"run": 0x00, "halt": 0x01}}, own={})
+    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01}, "attach_under_reset": {"max_speed": 0x01}}, event={}, enum={"attach_method": {"run": 0x00, "halt": 0x01}}, own={})
 INTERFACES["oep.wire.rvswd"] = WIRE_RVSWD
 WIRE_SWIO = _NS(name="oep.wire.swio", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "attach_under_reset": 0x04}, lock_free={},
-    closed_tail={}, tlv={"attach": {"max_speed": 0x01}, "attach_under_reset": {"max_speed": 0x01}}, event={}, enum={"attach_method": {"run": 0x00, "halt": 0x01}}, own={})
+    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01}, "attach_under_reset": {"max_speed": 0x01}}, event={}, enum={"attach_method": {"run": 0x00, "halt": 0x01}}, own={})
 INTERFACES["oep.wire.swio"] = WIRE_SWIO
 WIRE_SWD = _NS(name="oep.wire.swd", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03}, lock_free={},
-    closed_tail={}, tlv={"attach": {"max_speed": 0x01, "targetsel": 0x02}}, event={}, enum={}, own={})
+    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "targetsel": 0x02}}, event={}, enum={}, own={})
 INTERFACES["oep.wire.swd"] = WIRE_SWD
 TARGET_RISCV_DM = _NS(name="oep.target.riscv-dm", revision=1, op={"dmi": 0x01, "halt": 0x02, "resume": 0x03, "reset": 0x04, "read_block": 0x05, "write_block": 0x06, "run": 0x07, "step": 0x08}, lock_free={},
     closed_tail={}, tlv={"reset": {"method": 0x01}}, event={}, enum={"dmi_step": {"write": 0x01, "read": 0x02, "poll_reads": 0x03, "wait_us": 0x04, "poll_us": 0x05}, "reset_mode": {"run": 0x00, "run_verified": 0x01, "halt_at_reset": 0x02}, "reset_method": {"probe_default": 0x00, "ndmreset": 0x01, "system_reset": 0x02}}, own={})
@@ -50,3 +50,6 @@ INTERFACES["oep.fixture.uart"] = FIXTURE_UART
 FIXTURE_CAPTURE = _NS(name="oep.fixture.capture", revision=1, op={"configure": 0x01, "start": 0x02, "stop": 0x03, "force": 0x04, "status": 0x05, "read": 0x06, "segments": 0x07, "release": 0x08, "query": 0x09}, lock_free={0x05, 0x06, 0x07, 0x09},
     closed_tail={0x06}, tlv={"configure": {"mode": 0x40, "rate": 0x42, "samples": 0x43, "segments": 0x44, "trigger": 0x45, "pretrigger": 0x46, "frontend": 0x47}, "configure_answer": {"actual_rate": 0x50, "layout": 0x51, "actual_samples": 0x52, "actual_segments": 0x53, "timing": 0x54, "scale": 0x55, "blocking_ms": 0x56}, "describe": {"mode": 0x40, "rate_range": 0x41, "rate_list": 0x42, "rate_limit": 0x43, "channels": 0x44, "trigger": 0x45, "analog": 0x46, "max_read": 0x47, "segment_ring": 0x48}}, event={"segment": 0x01, "stopped": 0x02, "triggered": 0x03}, enum={"mode": {"one_shot": 0x01, "repeat": 0x02, "streaming": 0x03}, "trigger": {"immediate": 0x00, "level": 0x01, "edge": 0x02, "cross_up": 0x03, "cross_down": 0x04}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}}, own={})
 INTERFACES["oep.fixture.capture"] = FIXTURE_CAPTURE
+PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, op={"get": 0x01, "set": 0x02, "save": 0x03, "erase": 0x04, "reboot": 0x05}, lock_free={0x01},
+    closed_tail={}, tlv={"item": {"boot_mode": 0x01, "plan": 0x02, "label": 0x03, "bind": 0x04, "target": 0x05}, "describe": {"mode": 0x40, "current_mode": 0x41, "port": 0x42, "storage": 0x43, "cost": 0x44}}, event={}, enum={"bind_source": {"none": 0x00, "fixture_uart": 0x01, "target_console": 0x02}, "bind_attach": {"host": 0x00, "on_open": 0x01, "at_boot": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}}, own={})
+INTERFACES["oep.probe.config"] = PROBE_CONFIG

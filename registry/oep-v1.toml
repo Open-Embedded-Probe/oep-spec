@@ -124,6 +124,8 @@ op = [
   { code = 0x03, name = "detach", lock = true },
   { code = 0x04, name = "attach_under_reset", lock = true },
 ]
+[interface.tlv.detach]
+force = 0x01
 [interface.tlv.attach]
 max_speed = 0x01
 [interface.tlv.attach_under_reset]
@@ -141,6 +143,8 @@ op = [
   { code = 0x03, name = "detach", lock = true },
   { code = 0x04, name = "attach_under_reset", lock = true },
 ]
+[interface.tlv.detach]
+force = 0x01
 [interface.tlv.attach]
 max_speed = 0x01
 [interface.tlv.attach_under_reset]
@@ -157,6 +161,8 @@ op = [
   { code = 0x02, name = "attach", lock = true },
   { code = 0x03, name = "detach", lock = true },
 ]
+[interface.tlv.detach]
+force = 0x01
 [interface.tlv.attach]
 max_speed = 0x01
 targetsel = 0x02
@@ -335,3 +341,38 @@ complete = 0
 host = 1
 no_free_segment = 2
 error = 3
+
+[[interface]]
+name = "oep.probe.config"
+revision = 1
+op = [
+  { code = 0x01, name = "get", lock = false },
+  { code = 0x02, name = "set", lock = true },
+  { code = 0x03, name = "save", lock = true },
+  { code = 0x04, name = "erase", lock = true },
+  { code = 0x05, name = "reboot", lock = true },
+]
+[interface.tlv.item]            # the items of the configuration (get / set)
+boot_mode = 0x01
+plan = 0x02
+label = 0x03
+bind = 0x04
+target = 0x05
+[interface.tlv.describe]
+mode = 0x40
+current_mode = 0x41
+port = 0x42
+storage = 0x43
+cost = 0x44
+[interface.enum.bind_source]
+none = 0
+fixture_uart = 1
+target_console = 2
+[interface.enum.bind_attach]
+host = 0
+on_open = 1
+at_boot = 2
+[interface.enum.storage_state]
+none = 0
+applied = 1
+unreadable = 2
