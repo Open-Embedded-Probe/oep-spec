@@ -89,6 +89,8 @@ probe の GPIO や ADC で、target の信号を時系列に取る。単体の�
 
 ### 2.2 トラックとミックスドシグナル
 
+（基本では 1 インターフェース = 1 トラック。複数トラックとミックスドシグナルは別の定義、§0.1）
+
 1 回のキャプチャは**トラックの集まり**で、全トラックが 1 本の時間軸（t0 = 取得開始、またはトリガ）を共有する。
 
 - トラックごとに、種類、チャネル、クロック（レート）、サンプルの形、読み出しの位置の空間を持つ。
@@ -131,7 +133,7 @@ probe の GPIO や ADC で、target の信号を時系列に取る。単体の�
 - 揺れの種類（なし / 分数分周 / ソフトウェア）と大きさ（ns）を返す。host がエッジの時刻の誤差を見積もるため。
 - チャネル数によって上限が変わる実装がある。configure の拒否か、問い合わせで分かる。
 
-**外部クロック（ステート）**。target のクロックの線（SPI の SCK、並列バスのストローブ）のエッジで取る。
+**外部クロック（ステート）**（別の定義、§0.1）。target のクロックの線（SPI の SCK、並列バスのストローブ）のエッジで取る。
 
 - クロックの入力ピンは plan の役割（§5.1）で割り当てる。エッジ（立ち上がり / 立ち下がり / 両方）を指定する。
 - 取り込むかどうかを決める**修飾の入力**（並列バスの有効信号など）も持てる。
@@ -173,7 +175,8 @@ probe の GPIO や ADC で、target の信号を時系列に取る。単体の�
 
 ### 2.5 トリガ
 
-トリガは**取得を始める条件**で、どのモードでも最初の 1 回だけ効く（§2.4）。
+トリガは**取得を始める条件**で、どのモードでも最初の 1 回だけ効く（§2.4）。基本は即時、force、1 本のレベル / エッジ
+（アナログは 1 本のしきい値）、プリトリガまで（§5.3）。以下の段と条件の組み合わせは別の定義。
 
 トリガは**段**の並びで、各段は**条件**の組み合わせ。段 1 が成立したら段 2 を待ち、最後の段が成立したらトリガが立つ。
 
@@ -451,147 +454,162 @@ configure の応答で probe が返す値:
 
 ## 4. 区画と印
 
-リピートとストリーミングは、トラックごとの**位置の付いたバイトの並び**として見せる（[コンソールのストリーム](console-stream.ja.md)
-と同じ考え方）。ワンショットは区画が 1 個だけのもの。区画はトラックをまたいで共通。
+1 回のキャプチャは、トラック 1 本の**位置の付いたバイトの並び**（ストリーム、§3.0）で、区画に分かれる。
+
+| モード | 区画 |
+|---|---|
+| ワンショット | 1 個（serial 0）。次の start で消える |
+| リピート | 隙間なく続く。host が解放するまで読める。空き区画がなくなったら取得を止め、次の区画に「止まった」印が付く |
+| ストリーミング | probe の都合の区切り（DMA の 1 回ぶんなど）。データは probe が送ってくる（§5.4） |
 
 ```text
-segment : serial(u32), start_us(u32), trigger_index(u32), flags(u8),
-          [track(u8), position(u32), samples(u32)] × トラック数
+segment : serial(u32), position(u32), samples(u32), start_us(u32), trigger_index(u32), flags(u8)
 ```
 
 | フィールド | 意味 |
 |---|---|
-| serial | 取得開始からの区画の通し番号 |
-| start_us | 区画の最初のサンプルの時刻（probe の起動からの µs、一周を考慮して比べる） |
-| trigger_index | 区画の中でトリガが立ったサンプルの番号（基準のトラックで数える） |
-| flags | bit0 待った（空き区画がなく、前の区画との間が再開時間より長い）、bit1 押し出された、bit2 短い |
-| position | そのトラックでの区画の先頭のバイト位置（取得開始から通し、一周したら 0 に戻る） |
-| samples | そのトラックでの区画のサンプル数 |
+| serial | start からの区画の通し番号（0 から） |
+| position | 区画の先頭のバイト位置（start から通し、一周したら 0 に戻る。read と通知の position と同じ空間） |
+| samples | 区画のサンプル数（stop で途中で終わった区画は短い） |
+| start_us | 区画の最初のサンプルの時刻（probe の起動からの µs。一周を考慮して比べる） |
+| trigger_index | 区画の中でトリガが立ったサンプルの番号。トリガを含まない区画は 0xFFFFFFFF |
+| flags | bit0 前の区画との間が空いた（リピートで空き区画がなかった、ストリーミングで押し出された）、bit1 短い（stop で終わった） |
 
-- ストリーミングでは、区画は probe の都合の区切り（DMA の 1 回ぶんなど）。区画の間が詰まっていれば連続、
-  空いていれば取れなかった時間。
-- 区画の情報は本文とは別の小さなリングにためる。
+- 区画の中は連続を約束する。リピートとストリーミングでは、flags bit0 が立っていない限り、区画は前の区画の直後から続く。
+- 区画の情報は本文とは別の小さなリングにためる（上限は宣言する）。
 
-## 5. OEP への落とし込み（`oep.fixture.capture`）
+## 5. OEP への落とし込み
 
-ロジック、アナログ、ミックスドシグナルを 1 つのインターフェースで扱う。ロジックだけの probe はロジックの
-トラックだけを宣言する。
+**インターフェースは 2 つ**（§0.1）: `oep.fixture.capture`（ロジック）と `oep.fixture.analog`（アナログ）。操作の番号と形は
+同じで、違うのは configure の中身（§5.3）と、応答の layout（§3.0）だけ。1 つのインターフェースは 1 トラック。
 
 ### 5.1 役割（plan）
 
-plan の役割は u8 なので、次のように分ける。1 つのインターフェースで使えるのはロジック 128 本、アナログ 64 本まで。
-それを超える probe は同じインターフェースを複数（instance 違い）出す。
-
-| role | 意味 |
-|---|---|
-| 0x00〜0x7F | ロジックのチャネル 0〜127 |
-| 0x80〜0xBF | アナログのチャネル 0〜63 |
-| 0xC0 | 外部クロック入力（ステート） |
-| 0xC1 | 修飾の入力（有効信号） |
-| 0xC2 | トリガ入力 |
-| 0xC3 | トリガ出力 |
-| 0xC4〜0xDF | 標準の予備 |
-| 0xE0〜0xFF | 拡張 |
+- 役割 k = チャネル k（ロジックは 0〜127、アナログは 0〜63）。チャネルの順は役割の番号の小さい順。
+- ADC のチャネルを持たないピンは、アナログの plan で拒否する。
+- 外部クロック、トリガの入力と出力のピンは基本に入れない（別の定義）。
 
 ### 5.2 操作
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x01 | configure | 設定の TLV の並び（§5.3） | 実際の値の TLV の並び（§5.4） | 必要（問い合わせのみなら不要） |
+| 0x01 | configure | 設定の TLV（§5.3） | 実際の値の TLV（§5.3） | 必要（query を付けたときは不要） |
 | 0x02 | start | — | blocking_ms(u32)（0 = 取っている間も答える） | 必要 |
 | 0x03 | stop | — | — | 必要 |
-| 0x04 | force | — | —（host の条件を成立させる） | 必要 |
-| 0x05 | status | — | state(u8)、serial_done(u32)、flags(u8)、[track(u8)、write_pos(u32)] の並び | 不要 |
-| 0x06 | read | track(u8)、position(u32)、max(u32) | position(u32)、flags(u8: more、gap)、data | 不要 |
-| 0x07 | segments | from_serial(u32) | 区画の情報の並び（§4） | 不要 |
-| 0x08 | ack | serial(u32) | —（この区画までを再利用してよい。リピート） | 必要 |
+| 0x04 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
+| 0x05 | status | — | state(u8)、serial_done(u32)、write_pos(u32)、flags(u8) | 不要 |
+| 0x06 | read | position(u32)、max(u32) | position(u32)、flags(u8: bit0 more、bit1 gap)、data | 不要 |
+| 0x07 | segments | from_serial(u32) | count(u8)、区画の情報の並び（§4） | 不要 |
+| 0x08 | release | serial(u32) | —（serial 以前の区画を使い回してよい） | 必要 |
 
-- state: 0 未設定、1 設定済み、2 トリガ待ち、3 取得中、4 完了、5 待機中（空き区画なし）、6 エラー。
-- read の max は u32。HS で 1 回 16 KiB 以上読むため。
-- read で要求した位置がもう押し出されていれば、応答の position が先に進み、flags の gap が立つ。
+- state: 0 未設定、1 設定済み、2 トリガ待ち、3 取得中、4 完了（ワンショット）、5 止まっている（リピートで空き区画なし）、
+  6 エラー。
+- `serial_done` は終わった区画の数、`write_pos` は取り終えたバイト位置。
+- read で要求した位置がもう使い回されていれば（または押し出されていれば）、応答の position が先に進み、gap が立つ。
+  まだ取れていない位置なら、あるところまで返す（何もなければ空）。
+- release はリピートだけ。ワンショットでは不要（次の start で消える）、ストリーミングでは送った分から probe が使い回す。
+- read の max は u32（1 回で大きく読むため、§7.2）。実際に返す量は、probe の frame と `max_read`（宣言）で決まる。
 
-### 5.3 configure の TLV
+### 5.3 configure
 
-| tag | 名前 | 値 |
+**設定の TLV**（番号は仮。critical を立てた TLV を probe が持たなければ configure 全体を拒否し、立てていなければ無視して
+`ignored` に載せる）:
+
+| tag | 名前 | 値 | 対象 |
+|---|---|---|---|
+| 0x40 | mode | u8: 1 ワンショット、2 リピート、3 ストリーミング（0x40〜 は別の定義） | 両方 |
+| 0x41 | query | —（設定せず、実際の値だけ返す） | 両方 |
+| 0x42 | rate | rate_hz(u32)（アナログはチャネルあたり） | 両方 |
+| 0x43 | samples | u32（1 区画のサンプル数。ストリーミングでは省略してよい） | 両方 |
+| 0x44 | segments | u32（リピートの区画の数。省略すれば probe に任せる） | 両方 |
+| 0x45 | trigger | type(u8)、role(u8)、value(u16) | 両方 |
+| 0x46 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 |
+| 0x47 | frontend | role(u8)、attenuation(u8、実装の値) | アナログ |
+
+- trigger の type: 0 即時（省略時）、1 レベル（value 0 / 1）、2 エッジ（value 0 立ち上がり / 1 立ち下がり / 2 両方）、
+  3 しきい値を上向きに横切る、4 下向きに横切る（value は ADC の値）。1〜2 はロジック、3〜4 はアナログ。
+- トリガは開始の条件だけ。リピートとストリーミングでも、効くのは最初だけ（§2.4）。
+
+**応答の TLV**:
+
+| tag | 名前 | 値 | 対象 |
+|---|---|---|---|
+| 0x50 | actual_rate | num(u32)、den(u32)（実際のレート = num / den Hz） | 両方 |
+| 0x51 | layout | ロジック: w(u8)、C(u8)、pos[C](u8)。アナログ: s(u8)、o(u8)、b(u8)、C(u8)、order[C](u8)（§3.0） | 両方 |
+| 0x52 | actual_samples | u32 | 両方 |
+| 0x53 | actual_segments | u32 | 両方 |
+| 0x54 | timing | jitter_kind(u8: 0 なし / 1 分数分周 / 2 ソフトウェア)、jitter_ns(u32)、skew_ns[C](u32)（アナログ） | 両方 |
+| 0x55 | scale | zero(u32、値)、scale_nv(u32、1 値あたりの nV) | アナログ |
+| 0x56 | blocking_ms | u32（取っている間 probe が答えない時間の見込み。0 なら答える） | 両方 |
+| 0x57 | ignored | tag(u8) の並び | 両方 |
+
+### 5.4 通知（[v1 wire](v1-core-wire-delta.ja.md) §4.5）
+
+ロックの持ち主が subscribe すると、そのインターフェースから次が届く。購読しなければ、status と segments のポーリングで
+同じことが分かる。
+
+| 送るもの | いつ | 中身 |
 |---|---|---|
-| 0x40 | mode | u8（1 ワンショット、2 リピート、3 ストリーミング、0x40〜 拡張） |
-| 0x41 | query | —（設定せずに実際の値だけ返す） |
-| 0x42 | track | track(u8)、kind(u8: 1 ロジック、2 アナログ、0x40〜 拡張)、format(u8)、first_role(u8)、roles(u8) |
-| 0x43 | rate | track(u8)、rate_hz(u32)（アナログはチャネルあたり） |
-| 0x44 | external_clock | track(u8)、edge(u8)、qualifier(u8: 0 なし / 1 High で有効 / 2 Low で有効) |
-| 0x45 | samples | track(u8)、samples(u32)（1 区画あたり。ストリーミングは省略） |
-| 0x46 | segments | u32（リピートの区画の数） |
-| 0x48 | trigger_position | pre(u32)、post(u32)（基準のトラックのサンプル数） |
-| 0x49 | trigger_stage | stage(u8)、combine(u8: 0 すべて / 1 どれか)、count(u32)、timeout_us(u32) |
-| 0x4A | trigger_condition | stage(u8)、type(u8)、target(u8: role か track)、params（type ごと） |
-| 0x4B | trigger_out | role(u8)、pulse_us(u32)、polarity(u8) |
-| 0x4C | analog_frontend | role(u8)、attenuation(u8)、ほか（実装の値） |
+| 出来事 kind 0x01 segment | 区画が終わった（ワンショットの完了も） | 区画の情報（§4） |
+| 出来事 kind 0x02 stopped | 取得が止まった | reason(u8: 0 完了、1 host の stop、2 空き区画なし、3 エラー) |
+| 出来事 kind 0x03 triggered | トリガが立った | serial(u32)、trigger_index(u32) |
+| データ（role 0x06） | ストリーミングの間だけ | position と data（read と同じ位置の空間） |
 
-- ロジックのトラックのチャネルは `first_role` から `roles` 本（plan で割り当てた役割）。
-- **critical を立てた TLV を probe が持たなければ、configure 全体を拒否する**（どの tag かを応答で示す）。
-  立てていなければ無視して、応答の `ignored` に載せる。
-
-### 5.4 configure の応答の TLV
-
-| tag | 名前 | 値 |
-|---|---|---|
-| 0x50 | actual_rate | track(u8)、num(u32)、den(u32) |
-| 0x51 | layout | track(u8)、bits_per_sample(u16)、valid_bits(u8)、format(u8) |
-| 0x52 | timing | track(u8)、offset_ns(i32)、uncertainty_ns(u32)、jitter_ns(u32)、channel_skew_ns(u32) |
-| 0x53 | actual_samples | track(u8)、samples(u32) |
-| 0x54 | blocking_ms | u32（取っている間 probe が答えない時間の見込み。0 なら答える） |
-| 0x55 | ignored | tag(u8) の並び（効かなかった項目） |
+- ストリーミングは subscribe が前提（データは probe が送る）。まとめて送る条件（min_bytes、max_delay_ms）は subscribe で
+  指定する。
+- ワンショットとリピートでは、データは host が read で読む。通知は完了を待つためのもの。
 
 ### 5.5 describe で宣言するもの
 
 | tag | 名前 | 値 |
 |---|---|---|
-| 0x06 | features | 共通のビット。bit1 問い合わせ、bit2 外部クロック、bit3 トリガ出力、bit4 force |
-| 0x40 | modes | mode(u8)、background(u8: 1 = 取っている間も答える) の並び |
-| 0x41 | track_kind | kind(u8)、max_tracks(u8)、max_roles(u8)、formats(ビット)、bits_per_sample の候補 |
-| 0x42 | track_combination | 同時に使えるトラックの組（kind の並び）。書かなければ 1 トラックのみ |
-| 0x43 | rate_range | kind(u8)、min_hz(u32)、max_hz(u32)、steps(u8: 0 ほぼ任意 / 1 源 ÷ 整数 / 2 列挙)。**この間が全部設定できるとは限らない** |
-| 0x44 | buffer | kind(u8)、max_samples(u32、ワンショット)、segment_max(u32)、segment_count(u32)、ring_bytes(u32) |
-| 0x45 | rearm_us | u32（区画の間に止まる時間の目安） |
-| 0x46 | trigger_types | 条件の種類のビット |
-| 0x47 | trigger_limits | max_stages(u8)、max_conditions(u8)、max_pre(u32) |
-| 0x48 | analog | 基準電圧(mV)、測れる範囲、減衰の候補、較正の形、合計レートの上限、同時サンプリングか |
-| 0x03 | max_length | 1 回の read で返せる最大長（共通タグ。ただし u16 なので、超えるなら 0x49 を使う） |
-| 0x49 | max_read | u32 |
+| 0x06 | features | 共通のビット。bit0 query、bit1 force、bit2 通知 |
+| 0x40 | mode | mode(u8)、background(u8)、max_samples(u32、1 区画)、max_segments(u32)（モードごとに 1 つ） |
+| 0x41 | rate_range | min_hz(u32)、max_hz(u32)、exact(u8: 1 = 範囲内の任意の値を指定できる) |
+| 0x42 | rate_list | 代表的なレートの並び（u32）。UI の一覧の候補 |
+| 0x43 | rate_limit | mode(u8)、channels(u8)、max_hz(u32)（条件ごとの上限。繰り返してよい） |
+| 0x44 | channels | max(u8)、layout の候補（ロジック: w のビット集合。アナログ: s の候補） |
+| 0x45 | trigger | type のビット集合、max_pretrigger(u32) |
+| 0x46 | analog | range_min_mv(i32)、range_max_mv(i32)、減衰の候補の並び（アナログ） |
+| 0x47 | max_read | u32 |
+| 0x48 | segment_ring | u16（覚えている区画の情報の数） |
 
-### 5.6 拡張の余地
+- **宣言は目安、configure の応答が正**（§2.10）。宣言に出ていない組み合わせは query で確かめる。
 
-- モード、トラックの種類、形式、トリガの条件の種類は、それぞれ 0x40 以降を拡張に残す。
-- 役割は 0xE0〜0xFF を拡張に残す。
-- configure と describe の TLV は 0x60〜0x7F を拡張に残す。
-- 大きく違う取得方式（プロトコルアナライザのように probe がデコードまでするもの）は、このインターフェースを
-  広げず、別のインターフェースにする。
+### 5.6 別の定義に回したもの
+
+§0.1 の表のとおり。この文書の前の版で configure に入れていた次の TLV は、基本から外した: トラック（複数トラック）、
+外部クロック、多段トリガの段と条件、トリガ出力。役割の 0xC0〜（外部クロック、修飾、トリガ入出力）も同じ。別の定義を
+書くときに、そちらで番号を振る。
+
+- モード、トリガの type、layout の形式は、それぞれ 0x40 以降を別の定義に残す。
+- configure と describe の TLV は 0x60〜0x7F を別の定義に残す。
+- probe がデコードまでするもの（プロトコルアナライザ）は、このインターフェースを広げず、別のインターフェースにする。
 
 ### 5.7 使い方の例
 
 ```text
-ワンショット（P4、ロジック 2 本、20 MHz）
-  plan_apply(capture: role0 = GPIO4, role1 = GPIO5)
-  configure(mode=1, track(0, logic, first_role=0, roles=2), rate(0, 20 MHz), samples(0, 200000))
-    → actual_rate(0, 20000000/1), layout(0, 2 bits), blocking_ms 0
-  start → status をポーリング（state = 4 まで）。その間も他の操作ができる
-  read(0, 0, 16384) を 4 本同時に出して最後まで読む
+ワンショット（ロジック 2 本、20 MHz、テストの自動判定）
+  plan_apply(capture: role0 = GPIO20, role1 = GPIO21)
+  configure(mode=1, rate=20 MHz, samples=200000)
+    → actual_rate 20000000/1, layout w=2 pos=[0,1], blocking_ms 0
+  subscribe(capture)                    （完了の通知を待つ。購読しないなら status をポーリング）
+  start → 出来事 segment（serial 0）→ read(0, 65536) を何本か同時に出して最後まで読む
 
-リピート（I2C のトランザクションを 1 本ずつ）
-  configure(mode=2, track(0, logic, 0, 2), rate(0, 4 MHz), samples(0, 8192), segments(16),
-            trigger_stage(0, all, 1, 0), trigger_condition(0, edge-falling, role1), trigger_position(256, 7936))
-  start → segments(from) で終わった区画を知る → read で読む → ack(serial)
-  ack が遅れると state = 5 になり、次の区画の flags bit0 が立つ
+ワンショット、エッジで開始（SWCLK の最初の立ち下がりの 1000 サンプル前から）
+  configure(mode=1, rate=20 MHz, samples=200000, trigger(edge, role1, fall), pretrigger=1000)
+  start → 出来事 triggered → segment → read
 
-ミックスドシグナル（UART の送信 1 本と電源電圧 1 本）
-  plan_apply(capture: role0 = GPIO4, role0x80 = GPIO16)
-  configure(mode=1, track(0, logic, 0, 1), rate(0, 1 MHz), samples(0, 100000),
-                    track(1, analog, 0x80, 1), rate(1, 48 kHz), samples(1, 4800))
-    → timing(1, offset_ns=..., uncertainty_ns=...) で 2 本を並べる
+リピート（長い時間を切れ目なく、host のペースで）
+  configure(mode=2, rate=4 MHz, samples=65536, segments=8)
+  subscribe → start → 出来事 segment ごとに read → release(serial)
+  release が遅れると取得が止まり（出来事 stopped reason 2）、次の区画の flags bit0 が立つ
 
-アナログのストリーミング（音声 1 ch、48 kHz × 16 ビット = 96 KB/s）
-  configure(mode=3, track(0, analog, 0x80, 1), rate(0, 48000), analog_frontend(0x80, 11 dB))
-  start → read(0, pos, max) で追いかける。USB-Serial/JTAG（810 KiB/s）で余裕、UART 115200（11 KiB/s）では続かない
+ストリーミング（アナログ 1 チャネル、44.1 kHz）
+  plan_apply(analog: role0 = GPIO16)
+  configure(mode=3, rate=44100, frontend(0, 12 dB))
+    → actual_rate 44642/1 など（§7.4 のとおり要求どおりにはならない）、layout s=16 o=0 b=12
+  subscribe(analog, min_bytes=1024, max_delay_ms=20) → start → データが届く
 ```
 
 ## 6. 実装ごとの見込み（どれを選ぶか）
