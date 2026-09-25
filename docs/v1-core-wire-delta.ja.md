@@ -545,7 +545,7 @@ probe は設定されたとおりに動く。設定されていない項目に�
 | 0x02 | plan | role_assignment の並び（fn u16、role u8、channel u16）× n | すぐ（plan_release + plan_apply と同じ） |
 | 0x03 | label | channel(u16)、text（UTF-8） | すぐ（core の describe の label 0x46 に出る） |
 | 0x04 | bind | port(u8)、source(u8)、attach(u8)、flags(u8)、source ごとの引数 | すぐ |
-| 0x05 | target | wire_fn(u16)、chip_id(u32)（WCH の DM 0x7f の値など、target の系統 / SKU）| すぐ（自動の attach の確かめに使う） |
+| 0x05 | target | wire_fn(u16)、chip_id(u32)（WCH の DM 0x7f の値など、target の系統 / SKU。host は ch32rv の DB の chip_id をそのまま使える）| すぐ（自動の attach の確かめに使う） |
 
 bind（CDC の口に何を流すか）:
 
@@ -557,7 +557,10 @@ bind（CDC の口に何を流すか）:
   unavailable）: 0 host に任せる（host が attach したら、その connection で
   コンソールを開いて流す）、1 口が開かれたとき（DTR が立ったら）、2 起動時。1 / 2 の自動の attach は止めない attach
   （method 0）だけで、直後に target の chip_id を読み、項目 target と違えばコンソールを開かずに外して、出来事と describe で
-  知らせる。いったん開いたコンソールは、口が閉じられても読み続ける（SerialSDI は読まれないと 1 行ごとに最大 300 ms 止まる。
+  知らせる。**比べるときは bit [7:4] を無視する**（シリコンのリビジョン。完全一致では、同じ SKU でもリビジョンの違う個体を
+  断ってしまう。ch32rv も AttachChip の chip_id をこの mask で照合している）。**chip_id が 0 か 0xffffffff なら「分からない」**
+  として、自動の attach を断る（WCH の DM 0x7f が chip_id を返すと線で確かめてあるのは L103 / V203 / V003 / X035。X035F8U6 は
+  0x035e0601。V30x、V006 などの V00x、V103 は未確認）。いったん開いたコンソールは、口が閉じられても読み続ける（SerialSDI は読まれないと 1 行ごとに最大 300 ms 止まる。
   X4）。コンソールが使う connection は bind が使っているものに数える（§5.5 の寿命）。force の detach などで connection を
   失ったら、bind は次の合図（attach = 0 は host の attach、1 は次に口が開かれたとき、2 は次の起動）まで待つ（すぐに attach
   し直さない）。
@@ -601,7 +604,8 @@ bind（CDC の口に何を流すか）:
   attach する）。保存を読めない（形が違う、interface の一覧が違う）ときは適用せず、describe で知らせる。
 - **describe の mode には、probe が実際に組める構成だけを出す**（USB のエンドポイントや FIFO の予算で組めない組み合わせが
   ある。P4 HS で vendor + HID + CDC にデータの口を 2 つ足すと組めなかった。§7.6）。set は describe に無い mode を
-  rejected unsupported で断る。firmware が変わって保存の boot_mode が組めなくなったときは、probe は保存の写しから boot_mode を
+  rejected unsupported で断る（host は set の前に describe の mode を見る。組めない値を送り続けても、hash が合わないまま断られ
+  続けるだけになる）。firmware が変わって保存の boot_mode が組めなくなったときは、probe は保存の写しから boot_mode を
   外して、自分の選ぶモードで起動し直す（USB から戻れなくならないように。外さずに同じモードで起動すると、失敗と再起動を
   繰り返す）。保存の hash が変わるので、hash を比べる host はそれで気づく。
 - 起動モードの変更（boot_mode の set）は reboot で効く。describe に今の起動モードと、次の起動のモードを出す。
