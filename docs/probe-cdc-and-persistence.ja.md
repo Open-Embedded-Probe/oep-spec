@@ -197,3 +197,28 @@ X1〜X5 から導いた案。
   target の chip ID。版と hash を付けた 1 つの塊。小さい probe は plan の識別子だけでもよい。
 - 起動時は、起動モードで列挙し、plan を適用し、UART の受信を始める。attach は自動の attach の設定が 2 のときだけ。
 
+### 4.5 ch32rv セッションのレビューを受けた修正（2026-09-25）
+
+- **自動の attach の合図（設定 1）と TX を出力にする合図**: Linux の ModemManager は新しい ttyACM を開いて AT コマンドを
+  送る。DTR だけを合図にすると、利用者以外が開いただけで attach が走り、target の RX に "AT\r" が入る。CDC は
+  bInterfaceProtocol 0（AT コマンドなし）で宣言し、udev の `ID_MM_DEVICE_IGNORE` を案内する。TX を出力にする合図は
+  「line coding の設定か最初の書き込み」にする（DTR だけでは出力にしない）。
+- **自動の attach の後の確かめ**: chip ID は WCH の DM レジスタ 0x7f（LinkE が AttachChip の中で使う。hart を止めずに読める。
+  wch-protocols 6623b14）で読む（ESIG のメモリの読み出しは、系統によっては hart を止めないとできない）。X3 の attach が
+  触ったのは DMSTATUS の読みだけ。比べるのは系統 / SKU まで（UID まで比べると、同じ種類の基板に差し替えただけで止まる。
+  UID は任意）。
+- **読み続けている間**: バッファが一杯になったら古い方から捨てて position を飛ばす（コンソールの今の規則のまま）。その間
+  debug は attach したまま。CH32 は debug がつながっていると低消費電力の状態が変わりうる（推定、WCH の資料で未確認）ので、
+  sleep の電流を測るときは注意、と文書と describe に書く。
+- **host の DMI とコンソールの読みの取り合い**: 抽象コマンドは DATA0 / DATA1 を引数と戻り値に使うので、host が flash や
+  read をしている間に probe がコンソールのために DATA0 を読み書きすると両方が壊れる（dmdata / SDI は失う・重複する。
+  dmseq は通番で立て直せる）。**規範: ロックの持ち主が riscv-dm の操作（dmi / run / block）をその connection に出し始めたら、
+  probe はその connection のコンソールの読みを止め、ロックが外れたら再開する**（コンソールの read / marks の操作だけの
+  host、例えば monitor では止めない）。止めている間、SDI のアプリは遅くなる（X4）が、書き込みの間だけなので許す。
+- **書き込み → Monitor の導線（設定 0）**: 1 コマンド 1 プロセスの host（ch32rv）は、書き込みの最後に reset して detach
+  する。そこで connection が消えると、新しい firmware の最初の出力を取り逃す。**(a) 口に結んだコンソールが使っている
+  connection は、host の detach では閉じない**（host の分の参照を外すだけ。閉じるのは unbind、または detach の force）。
+  **(b) host が OEP の reset で target を reset したら、probe は havereset を確認応答して connection を保つ**（「target の
+  reset で失われる」のは、線が本当に切れたときだけ）。これで「書き込みツールの reset の後の出力」から確実に取れる。
+  v1 wire §5.5 の detach と reset の意味を、この形に直す必要がある（今は detach で connection が消える）。
+- CDC の口の数で OEP のストリーミングの上限が下がることは、describe に数で出す（host が capture の設定を事前に断れる）。
