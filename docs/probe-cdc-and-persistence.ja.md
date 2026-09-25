@@ -353,3 +353,31 @@ link_speed（16368 バイト × 16、1 秒）: vendor 33.3 / 5.6 MB/s、HID 1.07
   probe は「長さがレポート + 1 で先頭が自分の ID なら飛ばす」で両方に対応する。
 - WSL の hidraw は、usbipd で付け直した後、hidapi（OS の HID ドライバー）で開けた。開けない環境では libusb1 に落ちる。
 - 応答は来た経路へ、push とイベントは購読した経路へ、の規則で足りた（経路ごとのセッションや、経路を名指す仕組みは要らない）。
+
+### 7.2 P3 の結果（2026-09-25、43c6）
+
+構成: §7.1 の 3 つの経路に、データの CDC の口（"UART bridge"）を 1 つ足し、oep.fixture.uart（UART1、plan で TX 20 / RX 21）に
+両方向でつないだ（oep-probe-arduino `FixtureUart::setPort` / `setLineCoding`、実験の機能。scratch の OepBridge）。
+線はつながず、GPIO マトリクスで UART1 の RX を自分の TX のパッドから取って折り返した。口をつなぐ・外すのは scratch の
+`oep.test.bridge`（host が決める。既定の結び付けは持たない）。
+
+| 確認したこと | 結果 |
+|---|---|
+| CDC → TX →（折り返し）→ RX → CDC | 一致 |
+| 同じバイトが OEP の read（position stream）にも入る | 入る（CDC の転送は stream とは別の読み位置で、OEP の read を乱さない） |
+| 口の line coding で UART が掛け直される | 921600 → 922190、2000000 → 2000000（最後に来た設定が勝つ。OEP の configure も同じ UART を掛け直す） |
+| 64 KiB の折り返し（host は読みながら書く） | 921600 / 2000000 とも全バイト一致、取りこぼしなし。実効は約 910 kbaud で頭打ち（probe の受信側の調整、P7） |
+| 口が閉じている間に来たバイト | 口には流さない。stream にだけ残る（2 回とも口は空、stream は一致） |
+
+わかったこと:
+- **port → TX は、UART がすぐ受け取れる分（availableForWrite）だけ書く**。TX に書く間待つ作りでは、その間に UART の受信の
+  バッファ（4096）があふれて、64 KiB の折り返しで 5 KB しか戻らなかった。
+- **口が閉じている間のバイトを、開いたときにまとめて渡すのはやめた**。
+  - EspUsbDevice の CDC の write は DTR を見ないので、閉じている間に書いたバイトは USB スタックの FIFO に入り、開いたときに消えた。
+  - stream に残して、DTR が立ってから渡す形にしても、pyserial は open の最後に受信を空にするので消えた。
+  - 端末は、アプリが raw モードにするまでは echo のモードなので、渡したバイトが echo で probe の TX、つまり target の RX へ戻りうる。1 回だけ届いたときは 1 バイト化けていた（'d' → 0xe4）。
+  - そこで、USB-UART のケーブルと同じく「開いている間に来たバイトだけ流す」とした。履歴は OEP の read で取れる。
+- CDC の記述子は bInterfaceProtocol 0（AT コマンドなし）。WSL には ModemManager がいないので、§4.5 の ModemManager の問題は
+  ここでは確かめられない（Linux の実機で P6 と一緒に見る）。
+- TX を出力にする時期は、今は plan の適用で UART の休止（high）に駆動する（v1 の fixture.uart の今の規則）。§4.2 の
+  「口が開かれるまで入力」は、起動時に保存した bind から始める形（P4 の永続化）で要る。
