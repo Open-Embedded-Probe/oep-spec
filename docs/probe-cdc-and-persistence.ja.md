@@ -517,6 +517,12 @@ UART bridge の 64 KiB の折り返し: 921600 / 2 Mbaud とも線の速さま�
     - target のハートは走っていて、uptime は続いている。
     - DATA0 は 0 のまま（プローブも host も同じ値を読む）。
     - 通常の開始（断ることを挟まない）では、すぐ流れる。
-  - 次に見る候補:
-    - 断るときの detach（DMCONTROL = 0 と park）を省いて、connection を開いたままにしたら起きるか。
-    - コンソールの読みの速さ（1 秒に約 7 万回）を落としたら起きるか。
+- **原因（2026-09-26 に特定）**: 断るときの detach が DMCONTROL = 0 を書き、デバッグモジュールをリセットしていた。
+  - 遅れている最中に dmi で見ると、DATA0 は 60 回続けて読んでも 0、CFGR を書き直しても変わらない。
+  - DATA0 に無効な語（0x00000001）を書くと、target はすぐ 0x00000a90（S=0、TO なしの普通の frame）を出し直した。target は答えを待っている最中だった。
+  - 流れ: リセットで DATA0 が 0 に戻り、target の frame が消える。SerialDMSeq は 0 を沈黙と読んでタイムアウトまで待つ。その待ちは target が DATA0 を読む回数で数えるので、probe が DMI を 1 秒に約 7 万回読んでいると 1〜10 s に延びる。
+  - 直し方: `Ch32Dm::detach` は DMCONTROL = 1（dmactive だけを残す）を書く（oep-probe-arduino 901bbd8）。
+    - 直す前はおよそ 3 回に 2 回遅れた。直した後は 8 回 + 5 回とも、すぐ戻った。
+    - oep_smoke x035 / v003 は 14/14、oep_probe_checks は 4/4、6/6。L103 は未確認（RP2350 のプローブがつながっていない）。
+  - 同じ frame は、host の「書き込み → reset → detach」の後にも消えうる。dmseq の仕様と v1 wire §5.5 に「detach でデバッグモジュールを reset しない」を足した。
+  - WCH-LinkE も AttachChip の最後に dmactive を下ろしている（wch-protocols link-to-target §5）ので、LinkE で切り離した後も同じことが起こりうる（未確認）。

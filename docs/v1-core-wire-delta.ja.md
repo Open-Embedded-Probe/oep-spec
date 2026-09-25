@@ -335,6 +335,8 @@ attach / attach_under_reset の TLV:
   閉じるのは、使っているものが無くなったとき、force の detach、線が本当に切れたとき（最遅の速さで再試行しても
   **1000 ms 続けて応答が無い**。reset の直後や V00x の DM の立ち上がりの間の数十 ms は数えない）だけ。**ロックの期限が
   切れたら、そのセッションが使っていた分も外れる**（detach せずに落ちた host の分が残らない）。
+  **probe は connection を閉じるときもデバッグモジュールを reset しない**（dmactive を残し、haltreq などを下ろして線を寝かせる）。
+  reset すると DATA0 の dmseq のフレームが消え、次に開いたコンソールが target のタイムアウト（数秒）まで待たされた（§7.5.1）。
   1 コマンド 1 プロセスの host が書き込みの最後に reset して detach しても、口に流しているコンソールは途切れない
   （試作 P6 で確認。[シリアルの口と永続化](probe-cdc-and-persistence.ja.md) §7.5）。probe 自身の自動の attach（§5.10 の bind）も
   使っているものの 1 つで、host の attach はその connection に加わる（flags bit1）。
