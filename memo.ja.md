@@ -85,6 +85,25 @@ USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準c
     probeは楽になる見込み（2026-09-25のメモ。[captureの提案](docs/logic-capture.ja.md) §3.0, §3.2）
 14. probeから送る通知ができると、割り込み系の出来事も送りたくなる。fixtureのGPIOの割り込み（エッジ）、probeの
     ハートビート（生きていること、再起動したこと）など（2026-09-25のメモ。[v1 wire](docs/v1-core-wire-delta.ja.md) §4.5）
+15. **シリアルをCDCで転送する口**（2026-09-25のメモ）。LinkEからの置き換えを考えると、targetのUART（またはtargetの
+    コンソール）をOSのシリアルポート（CDC）として見せる機能が無いと、今の導線（ArduinoのSerial Monitor、書き込み後の
+    動作確認）に乗らない。OEPのシリアルパケットだけだと、Arduinoとのつなぎ込みや動作確認が面倒。
+    - 既にある考え方: [セッションと排他](docs/session-and-exclusivity.ja.md)の「コンソール専用の口」（OEPの制御の外の
+      CDCで、Monitorが占有する）。中身は固定ピンのUARTの素通し、OEPで割り当てたピン、targetのコンソール（dmseq）の
+      どれでもよい、とだけ書いてあり、**何を流すかを決める操作と、実装が無い**。
+    - 決めること: 口に流すものを選ぶ操作（`oep.fixture.uart`の線、`oep.target.console`のストリーム、のどれを結ぶか。
+      baudの扱い。CDCのline codingをUARTに写すか）、USBの構成（P4 HSならvendor bulkとCDCの複合デバイス）、
+      下の16の永続化との関係（電源を入れたらすぐ前回の結び付けで流れること）。
+16. **設定の永続化**（2026-09-25のメモ）。LinkEのようにピンが固定なら要らないが、自由な配線だと、探してピンを見つける
+    ところまではできても、probeをリセットすると設定が消える。
+    - 候補: CDCの設定（15の結び付け）、前回つないだアダプタ（target）の種類とピン（線の組、NRST）、ピンの目印（ラベル）を
+      probeに保存し、起動時に自動で設定する。
+    - 決めること: 何を保存するか（planそのものか、ラベルと「前回の線」だけか）、いつ書くか（hostの明示的な保存の
+      操作か、成功したattachのたびか）、起動時に自動で何をするか（planの再適用、attachまではしない、など）、
+      保存した内容を読む・消す操作、保存先（NVS / flash）の書き換え回数。describeで宣言するラベル（core tag 0x46）と
+      の関係（保存したラベルを宣言に出す）。
+    - v1 のwireには足すだけで入る見込み（coreの0x01〜0x0Fかセッションの範囲に操作を足す、またはインターフェースを
+      足す）。固める前に番号の置き場だけは確かめる。
 
 関係するnamespaceとlifecycle規則を合意するまで、数値registry値を割り当てない。
 
