@@ -84,7 +84,9 @@ end は、立て直しの中で確かめずに送ってよい（通知が流れ�
 複数を同時に開いてもよい（vendor bulk は権限の都合で使えない環境があるため。Linux は udev の規則、Windows は WinUSB）。
 **複数の経路はセッションとロックを 1 つ共有する**（どの経路から来た要求も同じものとして扱い、応答はその要求の来た経路に
 返す。push はロックの持ち主が subscribe した経路に送る）。host は USB の interface の名前（iInterface に "OEP"）で経路を
-見分け、**同じ probe に複数あれば vendor bulk、CDC、HID の順に選ぶ**（速い順。HID は Windows では HID の API で開く）。
+見分け、**同じ probe に複数あれば vendor bulk、HID、CDC の順に試す**（HID は Windows では HID の API で開く）。**CDC で OEP を
+運ぶのは、ほかに手がないときの口**（CDC の口はシリアルの転送に使うもので、すでに固定の UART の素通しに設定されている
+ことがある。2026-09-25 のユーザーの方針）。
 
 どちらのフレームを使うかは transport で決まる。probe は自分の transport を知っている（UART の probe は COBS）。host は
 USB の VID:PID で USB-UART の変換チップ（CH340 / CH343 / CP210x / FT232 など）を見分けて COBS を選び、指定で上書きも
