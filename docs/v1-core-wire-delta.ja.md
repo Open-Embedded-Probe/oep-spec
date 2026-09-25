@@ -49,8 +49,16 @@
 （serial number arithmetic: `a - b` を同じ幅の符号付きとして解釈する）。probe は、同時に意味を持つ範囲（リングや
 格納先の大きさ）を、position で 2 GiB、seq で 32768 フレームより十分小さく保つ。host は内部で u64 に伸ばして扱ってよい。
 
-**名前と revision**: インターフェースの payload の形は **(名前, revision) で決まる**（list の entry の revision、u8）。
-形を変えるときは revision を上げる。host は知らない revision のインターフェースを使わない。
+**名前と revision**（2026-09-26 のレビュー 2.3 で一本化）: インターフェースの payload の**固定部分**の形と意味は
+**(名前, revision) で決まる**（list の entry の revision、u8）。
+
+- **revision を上げるのは、固定部分の意味か長さを変えるときだけ**。host は知らない revision のインターフェースを使わない。
+- 固定部分を変えずに、任意の request TLV、response TLV、任意の op、任意の event を足すときは、revision を変えない。
+  知らない host は、response TLV を読み飛ばし（§0 の規則）、任意の op と event を使わない。任意の op やモードの有無は
+  describe の features などで宣言する（呼んでみて断られるまで分からない形にしない）。
+- 固定部分を変える revision を入れる probe は、できれば古い revision も別の `fn` として同時に出す（古い host が
+  使い続けられる）。
+- 名前を変えるのは、インターフェースの意味が変わるときだけ（版の番号の代わりにしない）。
 
 ## 1. フレームと経路
 
