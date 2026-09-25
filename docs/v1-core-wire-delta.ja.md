@@ -52,11 +52,12 @@
 **名前と revision**: インターフェースの payload の形は **(名前, revision) で決まる**（list の entry の revision、u8）。
 形を変えるときは revision を上げる。host は知らない revision のインターフェースを使わない。
 
-## 1. v0 のまま使う部分
+## 1. フレームと経路
 
 | 部分 | 形 |
 |---|---|
 | フレーム（USB CDC、USB-Serial/JTAG、TCP） | 長さ u16 + メッセージ。CRC なし |
+| フレーム（USB の HID、vendor 定義の report） | 長さの見出し付きのフレームのバイト列を report に詰める。**report = count(u16) + count バイト + 0 埋め**（report の大きさは HID の記述子のとおり）。input report に report ID が付く形では、その後ろから数える（2026-09-25、[シリアルの口と永続化](probe-cdc-and-persistence.ja.md) X6） |
 | フレーム（UART） | COBS + CRC-16、0x00 で区切る。CRC は仮置きで CRC-16/CCITT-FALSE（多項式 0x1021、初期値 0xFFFF、反転なし、"123456789" → 0x29B1）、メッセージの後ろに little endian で付ける。COBS は 254 byte のブロックに分ける標準の形 |
 | フレーム（USB の vendor bulk） | **長さ u16 + メッセージのバイト列**（CDC と同じ。2026-09-25 変更）。1 回の転送に複数のフレームが入ってよく、フレームが転送をまたいでもよい。下の「USB の束ね方」 |
 | 要求 | `role(0x01) corr(u16) fn(u16) op(u8) payload` = 見出し 6 byte |
@@ -78,6 +79,12 @@ end は、立て直しの中で確かめずに送ってよい（通知が流れ�
 途中で 200 ms 入力が途切れたら読み取りを最初からやり直す。したがって host は **1 つのフレームを 1 回の書き込みで送り**
 （バイトごとや見出しと本体に分けて書かない。usbipd 越しでは分けた書き込みの間が 100 ms を超えることがある）、途中で
 100 ms 以上止めない。
+
+**複数の経路**（2026-09-25）: probe は OEP の制御を vendor bulk、CDC、HID、USB-Serial/JTAG、UART のうち、どれで運んでもよく、
+複数を同時に開いてもよい（vendor bulk は権限の都合で使えない環境があるため。Linux は udev の規則、Windows は WinUSB）。
+**複数の経路はセッションとロックを 1 つ共有する**（どの経路から来た要求も同じものとして扱い、応答はその要求の来た経路に
+返す。push はロックの持ち主が subscribe した経路に送る）。host は USB の interface の名前（iInterface に "OEP"）で経路を
+見分ける。
 
 どちらのフレームを使うかは transport で決まる。probe は自分の transport を知っている（UART の probe は COBS）。host は
 USB の VID:PID で USB-UART の変換チップ（CH340 / CH343 / CP210x / FT232 など）を見分けて COBS を選び、指定で上書きも
@@ -309,7 +316,7 @@ host は購読しなければ何も受け取らない。
 |---:|---|---|---|
 | 0x01 | scan | — | count(u8)、kind(u8) swdio(u16) swclk(u16) DMSTATUS(u32) の並び（生の値） |
 | 0x02 | attach | method(u8: 0 止めない / 1 止める)、[TLV] | connection(u8)、DMSTATUS(u32)、flags(u8: bit0 保留中の havereset を確認応答した、bit1 既存の connection)、speed_hz(u32) |
-| 0x03 | detach | connection(u8) | — |
+| 0x03 | detach | connection(u8)、[TLV 0x01 force] | — |
 | 0x04 | attach_under_reset | channel(u16、0xffff = probe の既定値)、hold_ms(u16)、[TLV] | connection(u8)、dpc(u32)、speed_hz(u32) |
 
 attach / attach_under_reset の TLV:
@@ -319,6 +326,12 @@ attach / attach_under_reset の TLV:
 | 0x01 | max_speed | u32 Hz。probe はこれを超える速さを選ばない（critical で送ると、上限を持てない probe は断る） |
 
 - speed_hz は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。書き込みが遅い理由の説明に使う。
+- **connection の寿命**（2026-09-25）: connection は、使っているもの（attach した host のセッション、connection を
+  使う設定の項目。§5.10 の bind）が 1 つでもある間は開いている。**detach は、その host の分を外すだけ**で、ほかに使って
+  いるものがあれば connection は閉じない（detach の TLV 0x01 force（u8 = 1、critical で送る）で、使っているものがあっても
+  閉じる）。**target の reset（riscv-dm の reset、NRST）では connection を閉じない**（probe は havereset を確認応答して保つ）。
+  閉じるのは、使っているものが無くなったとき、force の detach、線が本当に切れたとき（再試行しても応答が無い）だけ。
+  1 コマンド 1 プロセスの host が書き込みの最後に reset して detach しても、口に流しているコンソールは途切れない。
 - **すでに attach している線への attach は、その connection をそのまま返す**（flags bit1。method = 1 なら、動いていれば
   止め、止まっていれば何もしない。method = 0 は動いている hart に触れない。それ以外の副作用なし）。1 コマンド 1 プロセスの
   host が、前のプロセスの connection を番号を保存せずに取り戻すため。既存の connection が max_speed より速い速さで動いて
@@ -511,6 +524,68 @@ configure の TLV: 0x01 format（u8: bit0-1 データ長 0 = 8 / 1 = 7、bit2-3 
 
 [ロジックのキャプチャ](logic-capture.ja.md) の基本の形（§3.0、§4、§5）。revision 0（v0 の payload、1 サンプル 1 byte）は
 使わない。アナログは `oep.fixture.analog`（revision 1、同じ文書）。
+
+## 5.10 `oep.probe.config`（revision 1、2026-09-25）— probe の設定、起動モード、CDC の口、保存
+
+経緯と実験は [シリアルの口と永続化](probe-cdc-and-persistence.ja.md)。**既定の値は持たない**。項目はすべて host が設定し、
+probe は設定されたとおりに動く。設定されていない項目については何もしない。持たない probe（設定を扱わないもの）は
+このインターフェースを list に出さない。
+
+**設定 = 項目（TLV）の並び**。項目の tag はこの文脈の空間（§0）。同じ tag を複数置く項目（ラベル、bind）がある。
+
+| tag | 項目 | 値 | いつ効くか |
+|---:|---|---|---|
+| 0x01 | boot_mode | mode(u8)（describe の起動モードの番号） | 次の起動（reboot）から |
+| 0x02 | plan | role_assignment の並び（fn u16、role u8、channel u16）× n | すぐ（plan_release + plan_apply と同じ） |
+| 0x03 | label | channel(u16)、text（UTF-8） | すぐ（core の describe の label 0x46 に出る） |
+| 0x04 | bind | port(u8)、source(u8)、attach(u8)、flags(u8)、source ごとの引数 | すぐ |
+| 0x05 | target | wire_fn(u16)、chip_id(u32)（WCH の DM 0x7f の値など、target の系統 / SKU）| すぐ（自動の attach の確かめに使う） |
+
+bind（CDC の口に何を流すか）:
+
+- source: 0 なし、1 fixture.uart（引数 fn u16）、2 target.console（引数 wire_fn u16、mechanism u8。mechanism は
+  §5.7 の番号）。
+- attach（source 2 のときに意味を持つ。**必ず明示する**）: 0 host に任せる（host が attach したら、その connection で
+  コンソールを開いて流す）、1 口が開かれたとき（DTR が立ったら）、2 起動時。1 / 2 の自動の attach は止めない attach
+  （method 0）だけで、直後に target の chip_id を読み、項目 target と違えばコンソールを開かずに外して、出来事と describe で
+  知らせる。いったん開いたコンソールは、口が閉じられても読み続ける（SerialSDI は読まれないと 1 行ごとに最大 300 ms 止まる。
+  X4）。コンソールが使う connection は bind が使っているものに数える（§5.5 の寿命）。
+- flags: bit0 line coding（baud）を fixture.uart に写す、bit1 口が開かれる前も TX を出力にする（既定の扱いではなく、
+  host が選ぶ）。立っていなければ、TX は line coding の設定か最初の書き込みまで入力のまま。
+- DTR / RTS / 1200 baud の touch は、bind の attach = 1 の合図（DTR）のほかには何もしない（target の reset に使わない。
+  Linux は口を開くたびに DTR を立てる。X1）。CDC は AT コマンドなし（bInterfaceProtocol 0）で宣言する。
+- ロックの持ち主が riscv-dm の操作をその connection に出し始めたら、probe はその connection のコンソールの読みを止め、
+  ロックが外れたら再開する（抽象コマンドと DATA0 を取り合わないため）。
+
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x01 | get | first(u16) | more(u8)、hash(u32)、項目の並び（今の設定） | 不要 |
+| 0x02 | set | 項目の並び | hash(u32) | 必要 |
+| 0x03 | save | — | hash(u32) | 必要 |
+| 0x04 | erase | — | — | 必要 |
+| 0x05 | reboot | — | —（応答を送ってから再起動する） | 必要 |
+
+- **set は、要求に含まれる tag の項目をすべて置き換える**（含まれない tag はそのまま）。同じ tag の項目を消すには、その
+  tag を値の長さ 0 で 1 つ送る。plan の置き換えは、plan_release と plan_apply を原子的に行うのと同じ（受け入れられなければ
+  何も変えずに rejected）。
+- hash は今の設定（項目の並びを tag の順に並べたもの）の CRC-32。host は get の hash と自分の欲しい設定の hash を比べ、
+  同じなら何もしない（1 コマンド 1 プロセスの host が毎回設定を送らずに済む）。
+- **save は host の明示的な操作だけ**で、今の設定をそのまま保存する（同じ内容なら書かない）。書いている間はほかの要求に
+  答えない（応答は書き終えてから）。保存先が足りなければ rejected unavailable（小さい probe は保存しない。起動のたびに host
+  が set する）。erase は保存を消す（今の設定は変えない）。
+- 起動時は、保存があればそれを今の設定にして、起動モードで列挙し、plan を適用し、bind を結ぶ（attach = 2 の bind だけ
+  attach する）。保存を読めない（形が違う、interface の一覧が違う）ときは適用せず、describe で知らせる。
+- 起動モードの変更（boot_mode の set）は reboot で効く。describe に今の起動モードと、次の起動のモードを出す。
+
+describe（このインターフェース）:
+
+| tag | 名前 | 値 |
+|---:|---|---|
+| 0x40 | mode | index(u8)、functions(u8: bit0 vendor bulk、bit1 CDC の OEP の口、bit2 HID の OEP の口、bit3 Mass Storage、bit4 DFU runtime)、ports(u8: データの CDC の口の数)、name（text）。モードごとに 1 つ |
+| 0x41 | current_mode | 今の mode(u8)、次の起動の mode(u8) |
+| 0x42 | port | port(u8)、USB の interface 番号(u8)（OS のポートと結び付けるため。並びは固定） |
+| 0x43 | storage | 保存できる最大 byte(u32、0 = 保存なし)、保存の状態(u8: 0 なし / 1 あり・適用済み / 2 あり・読めない)、保存の hash(u32) |
+| 0x44 | cost | ports(u8)、OEP の probe → host の上限の目安(u32 byte/s)（CDC の口が OEP の帯域を削る。X1） |
 
 ## 6. 長さの確認（64 byte のフレーム）
 
