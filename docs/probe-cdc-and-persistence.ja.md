@@ -523,6 +523,6 @@ UART bridge の 64 KiB の折り返し: 921600 / 2 Mbaud とも線の速さま�
   - 流れ: リセットで DATA0 が 0 に戻り、target の frame が消える。SerialDMSeq は 0 を沈黙と読んでタイムアウトまで待つ。その待ちは target が DATA0 を読む回数で数えるので、probe が DMI を 1 秒に約 7 万回読んでいると 1〜10 s に延びる。
   - 直し方: `Ch32Dm::detach` は DMCONTROL = 1（dmactive だけを残す）を書く（oep-probe-arduino 901bbd8）。
     - 直す前はおよそ 3 回に 2 回遅れた。直した後は 8 回 + 5 回とも、すぐ戻った。
-    - oep_smoke x035 / v003 は 14/14、oep_probe_checks は 4/4、6/6。L103 は未確認（RP2350 のプローブがつながっていない）。
+    - oep_smoke x035 / v003 / l103 はどれも 14/14、oep_probe_checks は 4/4、6/6、6/6（L103 は 2026-09-26 に RP2350 のプローブがつながってから確認）。
   - 同じ frame は、host の「書き込み → reset → detach」の後にも消えうる。dmseq の仕様と v1 wire §5.5 に「detach でデバッグモジュールを reset しない」を足した。
   - WCH-LinkE は DetachChip で dmactive を下ろす（AttachChip ではない。wch-protocols の訂正、link-to-target §5）。次の AttachChip が ESIG を読んで DATA0 に 0 でない語を残すので、target はすぐ出し直し、LinkE の host（ch32rv、7 系統）には空白が出ない。OEP の probe の attach は DATA0 に何も書かないので、0 が残って待たされた。DATA0 がリセットで消えるのを確かめたのは X035 だけ。
