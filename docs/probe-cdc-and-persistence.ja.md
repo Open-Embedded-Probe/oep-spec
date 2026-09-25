@@ -525,4 +525,4 @@ UART bridge の 64 KiB の折り返し: 921600 / 2 Mbaud とも線の速さま�
     - 直す前はおよそ 3 回に 2 回遅れた。直した後は 8 回 + 5 回とも、すぐ戻った。
     - oep_smoke x035 / v003 は 14/14、oep_probe_checks は 4/4、6/6。L103 は未確認（RP2350 のプローブがつながっていない）。
   - 同じ frame は、host の「書き込み → reset → detach」の後にも消えうる。dmseq の仕様と v1 wire §5.5 に「detach でデバッグモジュールを reset しない」を足した。
-  - WCH-LinkE も AttachChip の最後に dmactive を下ろしている（wch-protocols link-to-target §5）。一方、LinkE の attach の後の L103 / V203 では DATA0 に ESIG の語が残っていた（ch32rv wch-link.ja.md §7a）。系統によってはデバッグモジュールの reset で DATA0 が消えないのかもしれない。消えるのを確かめたのは X035 だけ（未確認）。ch32rv は dmseq で 1 s 前後の空白を見ていない（7 系統）。
+  - WCH-LinkE は DetachChip で dmactive を下ろす（AttachChip ではない。wch-protocols の訂正、link-to-target §5）。次の AttachChip が ESIG を読んで DATA0 に 0 でない語を残すので、target はすぐ出し直し、LinkE の host（ch32rv、7 系統）には空白が出ない。OEP の probe の attach は DATA0 に何も書かないので、0 が残って待たされた。DATA0 がリセットで消えるのを確かめたのは X035 だけ。
