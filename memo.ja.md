@@ -141,6 +141,10 @@ USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準c
       だけ、実行中はほかの要求を受けない（completedまで待たせる）と書く。同じ内容なら書かないことに加え、saveの回数を
       describeか応答で数えられると、hostが書きすぎを警告できる（任意）。
 
+17. **起動モード（プロファイル）**（2026-09-25のメモ）。ロジアナ特化、LinkEのRVSWD用 / SWD用のようなモードを持たせる。
+    ピン固定の製品でもSipeed SLogic Combo 8のように構成を切り替えられるものがある。CDCの口の数と帯域の取り合い（X1）を
+    モードで分けられる。詳細は[シリアルの口と永続化](docs/probe-cdc-and-persistence.ja.md) §2.5。
+
 関係するnamespaceとlifecycle規則を合意するまで、数値registry値を割り当てない。
 
 ## 推奨する作業順序
