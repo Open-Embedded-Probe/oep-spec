@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "793e2e9dd6996f79"
+REGISTRY_HASH = "c216865dc14fed05"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -24,13 +24,13 @@ CORE = _NS(name="oep.core", revision=1, op={"confirm": 0x01, "list": 0x02, "desc
     closed_tail={0x40}, tlv={"plan_apply": {"role_assignment": 0x90}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "uart_rates": 0x48}}, event={"heartbeat": 0x01}, enum={}, own={})
 INTERFACES["oep.core"] = CORE
 WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "attach_under_reset": 0x04}, lock_free={},
-    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01}, "attach_under_reset": {"max_speed": 0x01}}, event={}, enum={"attach_method": {"run": 0x00, "halt": 0x01}}, own={})
+    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "pins": 0x03}, "attach_under_reset": {"max_speed": 0x01, "pins": 0x03}}, event={}, enum={"attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02}}, own={})
 INTERFACES["oep.wire.rvswd"] = WIRE_RVSWD
 WIRE_SWIO = _NS(name="oep.wire.swio", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "attach_under_reset": 0x04}, lock_free={},
-    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01}, "attach_under_reset": {"max_speed": 0x01}}, event={}, enum={"attach_method": {"run": 0x00, "halt": 0x01}}, own={})
+    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "pins": 0x03}, "attach_under_reset": {"max_speed": 0x01, "pins": 0x03}}, event={}, enum={"attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01}}, own={})
 INTERFACES["oep.wire.swio"] = WIRE_SWIO
 WIRE_SWD = _NS(name="oep.wire.swd", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03}, lock_free={},
-    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "targetsel": 0x02}}, event={}, enum={}, own={})
+    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "targetsel": 0x02, "pins": 0x03}}, event={}, enum={"pin_role": {"swdio": 0x01, "swclk": 0x02}}, own={})
 INTERFACES["oep.wire.swd"] = WIRE_SWD
 TARGET_RISCV_DM = _NS(name="oep.target.riscv-dm", revision=1, op={"dmi": 0x01, "halt": 0x02, "resume": 0x03, "reset": 0x04, "read_block": 0x05, "write_block": 0x06, "run": 0x07, "step": 0x08}, lock_free={},
     closed_tail={}, tlv={"reset": {"method": 0x01}}, event={}, enum={"dmi_step": {"write": 0x01, "read": 0x02, "poll_reads": 0x03, "wait_us": 0x04, "poll_us": 0x05}, "reset_mode": {"run": 0x00, "run_verified": 0x01, "halt_at_reset": 0x02}, "reset_method": {"probe_default": 0x00, "ndmreset": 0x01, "system_reset": 0x02}}, own={})

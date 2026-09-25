@@ -350,7 +350,7 @@ host は購読しなければ何も受け取らない。
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | scan | — | count(u8)、kind(u8) swdio(u16) swclk(u16) DMSTATUS(u32) の並び（生の値） |
+| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | count(u8)、kind(u8) swdio(u16) swclk(u16) DMSTATUS(u32) の並び（生の値） |
 | 0x02 | attach | method(u8: 0 止めない / 1 止める)、[TLV] | connection(u8)、DMSTATUS(u32)、flags(u8: bit0 保留中の havereset を確認応答した、bit1 既存の connection)、speed_hz(u32) |
 | 0x03 | detach | connection(u8)、[TLV 0x01 force] | — |
 | 0x04 | attach_under_reset | channel(u16、0xffff = probe の既定値)、hold_ms(u16)、[TLV] | connection(u8)、dpc(u32)、speed_hz(u32) |
@@ -360,6 +360,18 @@ attach / attach_under_reset の TLV:
 | tag | 名前 | 値 |
 |---:|---|---|
 | 0x01 | max_speed | u32 Hz。probe はこれを超える速さを選ばない（critical で送ると、上限を持てない probe は断る） |
+| 0x03 | pins | swdio(u16)、swclk(u16。1 本の線（SWIO）は 0xFFFF)。この組で attach する。**critical で送る** |
+
+**ピンの組**（2026-09-26、レビュー 2.5、[未合意の案](v1-open-proposals.ja.md) §1 を採用）:
+
+- probe が使える組は describe の共通タグで宣言する: 決まった組は channel_group（役 1 = SWDIO、2 = SWCLK。registry の
+  `pin_role`）、どのピンにも割り当てられるなら role_channels。
+- scan の要求は、試す組の並び。**count = 0 は probe が許すすべての組**を試す。応答の組は、そのまま attach の pins に渡せる。
+- attach / attach_under_reset は pins で組を指定する。pins が無ければ、probe の許す組が 1 つだけのときはその組で、2 つ以上なら
+  rejected unavailable（host が選ぶ）。
+- **許していない組は、何も実行せずに rejected unavailable**（scan は要求の中に 1 つでもあれば全体を断る）。
+- 1 つの wire のインターフェースの connection は 1 つ。生きている connection と違う組の attach は rejected unavailable。
+- 長くかかる scan（全組み合わせで 1 秒を超える見込み）に PENDING（§4）を使うかは、実測してから決める。
 
 - speed_hz は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。書き込みが遅い理由の説明に使う。
 - **connection の寿命**（2026-09-25）: connection は、使っているもの（attach した host のセッション、connection を
@@ -454,11 +466,11 @@ DMI の手順:
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | scan | — | count(u8)、kind(u8) swdio(u16) swclk(u16) DPIDR(u32) の並び |
+| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | count(u8)、kind(u8) swdio(u16) swclk(u16) DPIDR(u32) の並び |
 | 0x02 | attach | [TLV]（下表） | connection(u8)、DPIDR(u32)、flags(u8: bit0 dormant から起こした、bit1 既存の connection)、speed_hz(u32) |
 | 0x03 | detach | connection(u8) | — |
 
-attach の TLV: 0x01 max_speed（u32 Hz、rvswd と同じ）、0x02 targetsel（u32、multidrop のときだけ）。
+attach の TLV: 0x01 max_speed（u32 Hz、rvswd と同じ）、0x02 targetsel（u32、multidrop のときだけ）、0x03 pins（rvswd と同じ。ピンの組の規則も §5.5 と同じ）。
 
 - attach は JTAG から SWD への切り替えを試し、答えがなければ dormant から起こす（RP2350 の SWD v2 は後者でだけ答える）。
   電源投入（CTRL/STAT の CDBGPWRUPREQ / CSYSPWRUPREQ）は host が DP の書き込みで行う。
