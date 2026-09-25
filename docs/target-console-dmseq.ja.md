@@ -132,8 +132,10 @@ payload は同じ、CRC は計算し直す）、**出したままにする**。�
   が 0 に戻り、target が出していたフレームが消える。target は 0 を沈黙と読んでタイムアウトまで待つ。その待ちは target が
   DATA0 を読んだ回数で数えるので、debugger が DMI を速く読んでいると延びる。OEP の probe では、断った自動の attach の後に
   コンソールが戻るまで 1〜10 s かかった。dmactive を残すとすぐ戻った（2026-09-26、oep-spec probe-cdc-and-persistence
-  §7.5.1）。WCH-LinkE は AttachChip の最後に dmactive を下ろしている（wch-protocols link-to-target §5）ので、LinkE で切り
-  離した後も同じことが起こりうる（未確認）。
+  §7.5.1）。DATA0 が消えるのを確かめたのは CH32X035 だけ。WCH-LinkE の attach の後の L103 / V203 では、DATA0 に最後に
+  読んだ ESIG の語が残っていた（ch32rv wch-link.ja.md §7a）。LinkE は AttachChip の最後に dmactive を下ろすと線上で見えて
+  いる（wch-protocols link-to-target §5）ので、系統によってはデバッグモジュールの reset で DATA0 が消えないのかもしれない
+  （未確認）。
 - host: TO フレームは普通のフレームとして扱う（規則 2/4 が適用される）。再同期の理由にはしない。
   host は「誰も答えていない間の出力が捨てられた」と利用者に伝えてよい。
 - host: 未同期のまま、フレームでない word（CRC 不一致、または bit 7 が 0）だけを長く読み続けた
