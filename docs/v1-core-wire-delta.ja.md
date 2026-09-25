@@ -22,7 +22,10 @@
   知らない非 critical の TLV は無視して、応答の後ろに ignored（tag 0x7F、値は無視した tag の並び）を付ける。
   **可変の並びは前に数を置く**（DMI の手順、書く語、転送の並び）ので、その後ろにも TLV を付けられる。数を持たない
   並びで終わる op（link_sink のバイト）だけは後ろに付けられない。固定の部分より短い要求は rejected malformed。
-- tag 0xFF（critical 付きの 0x7F）は無効。要求の中にあれば rejected malformed。
+- tag 0xFF（critical 付きの 0x7F）は無効。0x7F は応答の ignored 専用。要求の中にどちらかがあれば rejected malformed。
+- 知っている TLV でも、その**値**を扱えなければ、critical なら rejected unsupported（payload に tag）、そうでなければ
+  無視して ignored に載せる（知らない TLV と同じ扱い）。
+- 固定部分に「省略できるフィールド」は置かない（後ろの TLV と長さで区別できないため）。省略したい値は TLV にする。
 - host が安全のために足した引数（速さの上限など）は critical にする。古い probe が黙って捨てて、効いたと思い込むのを防ぐ。
 
 **知らない値**:
@@ -167,15 +170,15 @@ host は購読しなければ何も受け取らない。
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x30 | subscribe | fn(u16)、[min_bytes(u16)、max_delay_ms(u16)] | — | 必要 |
+| 0x30 | subscribe | fn(u16)、min_bytes(u16)、max_delay_ms(u16)、[TLV] | — | 必要 |
 | 0x32 | unsubscribe | fn(u16) | — | 必要 |
 
 - **購読はロックの持ち主だけができ、ロックと一緒に終わる**（end、期限切れ、**force で他の host に奪われたとき**）。
   host が消えても、期限が来れば probe は送るのをやめる。購読している host は keepalive などでロックを保つ。
 - 送り出さないインターフェースは subscribe を rejected unavailable にする。
-- **まとめて送る条件**: `min_bytes` バイトたまるか、最初のバイトから `max_delay_ms` 経ったら送る（省略または 0 なら、
-  あるだけすぐ送る）。1 フレームの大きさは、probe の送りかけの上限（下の probe の義務 2）でも区切られる。
-- fn 0 を購読するとハートビートが来る。周期は `max_delay_ms`（省略または 0 なら 1000 ms）。
+- **まとめて送る条件**: `min_bytes` バイトたまるか、最初のバイトから `max_delay_ms` 経ったら送る（両方 0 なら、
+  あるだけすぐ送る）。3 つのフィールドは省略できない（2026-09-25。§0 の「省略できるフィールドを置かない」）。1 フレームの大きさは、probe の送りかけの上限（下の probe の義務 2）でも区切られる。
+- fn 0 を購読するとハートビートが来る。周期は `max_delay_ms`（0 なら 1000 ms）。
 - host が与える予算（クレジット）は持たない。流れの量は、取得を始めるとき（capture の configure など）に決まっているので、
   線に収まるかは host が事前に計算できる。host や線が遅れた分は probe の中で押し出され、position の飛びで分かる。
 
@@ -316,8 +319,10 @@ attach / attach_under_reset の TLV:
 | 0x01 | max_speed | u32 Hz。probe はこれを超える速さを選ばない（critical で送ると、上限を持てない probe は断る） |
 
 - speed_hz は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。書き込みが遅い理由の説明に使う。
-- **すでに attach している線への attach は、その connection をそのまま返す**（flags bit1。副作用なし。method = 1 でも
-  止まっていれば何もしない）。1 コマンド 1 プロセスの host が、前のプロセスの connection を番号を保存せずに取り戻すため。
+- **すでに attach している線への attach は、その connection をそのまま返す**（flags bit1。method = 1 なら、動いていれば
+  止め、止まっていれば何もしない。それ以外の副作用なし）。1 コマンド 1 プロセスの host が、前のプロセスの connection を
+  番号を保存せずに取り戻すため。既存の connection がすでに max_speed より速い速さで動いていれば、max_speed は値を扱えない
+  TLV として扱う（§0）。
 - attach は保留中の havereset を先に確認応答する（V00x の DM は確認応答まで DMSTATUS の halt / running を固定する）。
 - attach_under_reset はリセットの線を保持して attach し、離しながら halt を打ち続ける（タイミングが厳しいので probe の
   1 操作）。host が指定できるのは probe が許可したチャンネルだけ。任意の op（持たない probe は unknown operation）。
@@ -353,6 +358,7 @@ DMI の手順:
 | 0x05 | 時間を上限に待つ | address(u8)、mask(u32)、value(u32)、max_us(u32)（線の速さに依らず同じ意味） | 最後に読んだ値(u32) |
 
 - kind 0x10〜0x1F は、番地を広くした同じ手順（address u32。複数の DM や abits の大きい DTM 用）に予約する。
+  知らない kind の手順は長さが分からず読めないので、要求全体を rejected malformed にする（手順は全部確かめてから実行する）。
 - **done は最後まで済んだ手順の数**（失敗したときは、失敗した手順の 0 起点の番号と同じ）。値を足すのは読む手順（0x02）と
   読む回数・時間を上限に待つ手順（0x03 / 0x05）だけ（待ち 0x04 は足さない）。値の並びの個数は、最初の done 個の手順のうち
   値を足す手順の数に、失敗した手順が 0x03 / 0x05 で**待ち切れた**（status timeout）ならその最後の値の 1 を足したもの。
@@ -369,7 +375,8 @@ DMI の手順:
   continue）は「走らなかった」と区別できないので、host は breakpoint の上から continue するときは先に step で 1 命令進める。
   出し直しても出なければ status state。
 - step は dcsr.step を立てて resume を 1 回だけ出し、成否は dpc が動いたかで判定する（L103 は allresumeack を立てず、
-  resume の出し直しは 2 ステップ進めてしまう）。prv は変えない（U モードのスケッチのステップ実行）。
+  resume の出し直しは 2 ステップ進めてしまう）。dpc が動かなければ status state。prv は変えない（U モードのスケッチの
+  ステップ実行）。
 - run は dcsr の ebreakm と prv = M を立てる（host のローダー用。割り込みは host が mstatus = 0 で止める）。
   止まった位置が開始位置のままなら、走らなかったとみなして resume を出し直す。**gdb の continue には使わない**
   （prv と ebreakm を変えてしまう）。continue は resume と DMSTATUS の待ち（将来は「止まった」の出来事）で組む。
