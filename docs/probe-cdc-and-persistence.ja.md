@@ -326,6 +326,7 @@ P4 は HS ポートだけでつなぐのが主になるので、USB-Serial/JTAG 
 | P4 | 設定の保存（NVS）と起動モードの切り替え（USB の構成が変わる、再列挙、usbipd） |
 | P5 | probe 自身の更新の経路を複数（DFU runtime、Mass Storage、vendor） |
 | P6 | コンソール（dmseq / SDI）を CDC の口に流す、自動の attach、host の detach / reset を越えて続くか |
+| P7 | （2026-09-25 の追記）X035 の治具の P4 で P3 を回し直したら、921600 の 64 KiB の折り返しが 3 回中 2 回、gap（stream の 8 KiB があふれた）で失敗した（実効 63 kbaud。2 Mbaud は 3 回とも通過。43c6 では 3 回とも通過）。CDC の IN が 90 ms 以上吸い出されなかったと見られる（usbip の遅れの疑い、未切り分け）。stream を大きくするか、口に流す前の緩衝を持つかを、チューニングで見る |
 | P7 | （ユーザーの依頼、2026-09-25）probe の受信のチューニングの後、USB の構成別（vendor だけ、vendor + HID、vendor + HID + CDC 1〜3 口など）に、経路ごとの速さ（link_source / link_sink、往復）と capture のストリーミングの上限を測る |
 
 ### 7.1 P1 / P2 の結果（2026-09-25、43c6）
