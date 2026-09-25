@@ -57,7 +57,7 @@
 | 部分 | 形 |
 |---|---|
 | フレーム（USB CDC、USB-Serial/JTAG、TCP） | 長さ u16 + メッセージ。CRC なし |
-| フレーム（USB の HID、vendor 定義の report） | 長さの見出し付きのフレームのバイト列を report に詰める。**report = count(u16) + count バイト + 0 埋め**（report の大きさは HID の記述子のとおり）。input report に report ID が付く形では、その後ろから数える（2026-09-25、[シリアルの口と永続化](probe-cdc-and-persistence.ja.md) X6） |
+| フレーム（USB の HID、vendor 定義の report） | 長さの見出し付きのフレームのバイト列を report に詰める。**report = count(u16) + count バイト + 0 埋め**（report の大きさは HID の記述子のとおり）。記述子が report ID を宣言していれば、HID の規則どおり **input も output も** report の先頭に ID が付き、count はその後ろから数える（host は output にも必ず付ける）（2026-09-25、[シリアルの口と永続化](probe-cdc-and-persistence.ja.md) X6、§7.1） |
 | フレーム（UART） | COBS + CRC-16、0x00 で区切る。CRC は仮置きで CRC-16/CCITT-FALSE（多項式 0x1021、初期値 0xFFFF、反転なし、"123456789" → 0x29B1）、メッセージの後ろに little endian で付ける。COBS は 254 byte のブロックに分ける標準の形 |
 | フレーム（USB の vendor bulk） | **長さ u16 + メッセージのバイト列**（CDC と同じ。2026-09-25 変更）。1 回の転送に複数のフレームが入ってよく、フレームが転送をまたいでもよい。下の「USB の束ね方」 |
 | 要求 | `role(0x01) corr(u16) fn(u16) op(u8) payload` = 見出し 6 byte |
