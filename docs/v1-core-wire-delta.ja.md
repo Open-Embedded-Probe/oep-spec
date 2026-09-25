@@ -288,8 +288,9 @@ host は購読しなければ何も受け取らない。
   rejected malformed。connection を知らなければ rejected no connection（0x0A）。
 
 **attach の規範**: probe は、線の速さを確かめ終えるまで target に書き込まない（読むだけで速さを選ぶ）。速さの合わない
-書き込みは target の状態を壊しうる（2026-09-25: クロックを下げた X035C8T6 に WCH-LinkE が速い設定で attach し、以後
-debug にも UART にも応答しなくなった例。原因は未確定）。
+書き込みは、化けた値を target のレジスタに書きうる（WCH-LinkE の attach はクロックや flash のレジスタを書く。wch-protocols
+の線の記録）。（2026-09-25 に X035C8T6 が応答しなくなった件は、この理由ではなく、option byte の RST_MODE で PA21 が外部 reset
+になっていたのが原因の候補だった。）
 
 ## 5.5 `oep.wire.rvswd` / `oep.wire.swio` と `oep.target.riscv-dm`（revision 1）
 
