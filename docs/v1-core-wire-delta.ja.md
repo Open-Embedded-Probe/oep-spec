@@ -282,7 +282,7 @@ host は購読しなければ何も受け取らない。
 | 4 | timeout | 待つ手順や run の上限に達した | 上限を見直す |
 | 5 | state | 前提の状態でない（止まっていない hart に止まっている前提の操作など） | 状態を整えてから |
 
-- 0x40〜0x7F はインターフェースが決める。知らない値は失敗として扱う（§0）。
+- 0x06〜0x3F は共通の値として予約、0x40〜0x7F はインターフェースが決める。知らない値は失敗として扱う（§0）。
 - **失敗は completed で返す**（§3）。outcome は、何も進まなければ failed、途中まで進めば partial。payload の形は成功のとき
   と同じで、`done`（進んだ手順・語の数）と `status` で分かる。書式の誤り（手順の並びが壊れている、長さが合わない）は
   rejected malformed。connection を知らなければ rejected no connection（0x0A）。
@@ -326,7 +326,7 @@ attach / attach_under_reset の TLV:
 | 0x04 | reset | mode(u8: 0 走らせる / 1 走らせて実行を確認 / 2 最初の命令の前で止める)、[TLV] | status(u8)、flags(u8)、attempts(u8)、pc(u32)（mode 2 では dpc） |
 | 0x05 | read_block | address(u32)、count(u16) | done(u16)、status(u8)、語の並び（done 個） |
 | 0x06 | write_block | address(u32)、count(u16)、count 個の語 | done(u16)、status(u8) |
-| 0x07 | run | pc(u32)、timeout_ms(u32)、n(u8)、n × (regno u16、value u32)、n_out(u8)、n_out × regno(u16) | status(u8)、stopped(u8)、dpc(u32)、elapsed_us(u32)、n_out × value(u32) |
+| 0x07 | run | pc(u32)、timeout_ms(u32)、n(u8)、n × (regno u16、value u32)、n_out(u8)、n_out × regno(u16)、[TLV] | status(u8)、stopped(u8)、dpc(u32)、elapsed_us(u32)、n_out × value(u32) |
 | 0x08 | step | — | status(u8)、moved(u8)、dpc_before(u32)、dpc_after(u32) |
 
 reset の TLV:
@@ -346,15 +346,24 @@ DMI の手順:
 | 0x05 | 時間を上限に待つ | address(u8)、mask(u32)、value(u32)、max_us(u32)（線の速さに依らず同じ意味） | 最後に読んだ値(u32) |
 
 - kind 0x10〜0x1F は、番地を広くした同じ手順（address u32。複数の DM や abits の大きい DTM 用）に予約する。
-- 待ち切れたら status timeout、done はその手順の番号（その手順の最後の値は足してある）。
+- **done は最後まで済んだ手順の数**（失敗したときは、失敗した手順の 0 起点の番号と同じ）。値の並びの個数は、
+  最初の done 個の手順のうち読む・待つ手順の数に、失敗した手順が待つ手順（0x03 / 0x05）ならその最後の値の 1 を足したもの。
+  待ち切れたら status timeout。書く手順が線の不良で失敗したら status line で、値は足さない。
 - run の timeout_ms は u32（0xFFFFFFFF は上限なし）。止まったら stopped = 1、上限に達したら stopped = 0 と status timeout。
   n_out が 0 なら値は返らない（ローダーの状態を a0、失敗した番地を a1 に置くなら n_out = 2、regno = 0x100A、0x100B）。
 - reset の mode 2 は haltreq を保ったまま ndmreset を解く。semihosting、gdb の `monitor reset halt`、動いている
   ウォッチドッグの上からの書き込みに使う（IWDG は hart を止めても数え続ける）。
+- **halt** は、すでに止まっていれば何もせず ok（冪等）。
+- **resume** の ok は「hart が一度でも debug mode を出た」こと（すぐ breakpoint でまた止まっても ok）。probe は、
+  allresumeack が立てば出し直さない。allresumeack を立てない target（L103）では dpc が変われば出し直さない。dpc が変わらず
+  止まったままなら出し直す（V006 / L103 は 1 回では通らないことがある）。すぐ同じ dpc の breakpoint で止まる場合（ebreak の上で
+  continue）は「走らなかった」と区別できないので、host は breakpoint の上から continue するときは先に step で 1 命令進める。
+  出し直しても出なければ status state。
 - step は dcsr.step を立てて resume を 1 回だけ出し、成否は dpc が動いたかで判定する（L103 は allresumeack を立てず、
   resume の出し直しは 2 ステップ進めてしまう）。prv は変えない（U モードのスケッチのステップ実行）。
 - run は dcsr の ebreakm と prv = M を立てる（host のローダー用。割り込みは host が mstatus = 0 で止める）。
-  止まった位置が開始位置のままなら、走らなかったとみなして resume を出し直す。
+  止まった位置が開始位置のままなら、走らなかったとみなして resume を出し直す。**gdb の continue には使わない**
+  （prv と ebreakm を変えてしまう）。continue は resume と DMSTATUS の待ち（将来は「止まった」の出来事）で組む。
 - 一つの要求は一つの hart の操作で、DMI の手順のリストは probe の都合（線の再試行、立て直し）を書けない。
   リセットや回復のようにタイミングと線の立て直しが要るものは、部品（reset、attach_under_reset）にする。
 - read_block / write_block は語（32 bit）単位。どの方式（抽象コマンドのメモリアクセスか program buffer か）で読むかは
