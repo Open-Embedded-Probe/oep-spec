@@ -1,0 +1,327 @@
+# OEP v1 registry: every number on the wire, in one place (2026-09-25, working toward the freeze).
+# The spec text is docs/v1-core-wire-delta.ja.md (and logic-capture.ja.md for the capture). tools/oepgen1.py generates
+# the C++ header and the Python module from this file; `oepgen1.py --check` fails when the committed outputs drift.
+# Numbers only: payload layouts stay in the spec tables. TLV tags live in the context of one (interface, op) or one
+# declaration; the same value in another context is another tag (v1 wire §0).
+# Per op: `lock` = needs the session lock; `closed_tail = true` = the response ends with a list of unknown length
+# (read bytes), so nothing can be appended after it (v1 wire §0). The key `fields` is reserved on ops for payload
+# layouts later (encoders / decoders generated from here).
+
+[registry]
+schema = 1
+
+[protocol]
+name = "oep"
+revision = 1
+byte_order = "little"
+
+[constants]
+confirm_request_magic = "OEP?"
+confirm_result_magic = "OEP!"
+role_session_flag = 0x80        # bit 7 of a request's role: a session id follows the header
+tag_critical = 0x80             # bit 7 of a TLV tag in a request: the probe must honour it or refuse
+tag_ignored = 0x7F              # in every context: a response TLV listing the non-critical tags the probe ignored
+tag_invalid = 0xFF
+
+[roles]
+request = 0x01
+result = 0x02
+event = 0x05
+data = 0x06
+
+[resolutions]
+rejected = 0x00
+completed = 0x01
+accepted = 0x02
+
+[outcomes]                      # the detail byte of a completed result
+success = 0x00
+failed = 0x01
+partial = 0x02
+
+[reject_reasons]                # 0x01-0x3F core, 0x40-0x7F per interface, 0x80-0xFF reserved
+unknown_function = 0x01
+unknown_operation = 0x02
+malformed = 0x03
+unavailable = 0x04
+busy = 0x05
+window_exceeded = 0x06
+no_session = 0x07
+locked = 0x08
+session_required = 0x09
+no_connection = 0x0A
+unsupported = 0x0B
+
+[status]                        # wire and target operations (v1 wire §5.4); 0x06-0x3F reserved, 0x40-0x7F per interface
+ok = 0
+wait = 1
+line = 2
+fault = 3
+timeout = 4
+state = 5
+
+[describe_common]               # declaration tags every interface's describe may use (capability-declaration-model §3)
+role_channels = 0x01
+max_clock_hz = 0x02
+max_length = 0x03
+features = 0x06
+implementation = 0x07
+channel_group = 0x08
+
+# ---- interfaces ------------------------------------------------------------------------------------------------
+
+[[interface]]
+name = "oep.core"
+fn = 0
+revision = 1
+op = [
+  { code = 0x01, name = "confirm", lock = false },
+  { code = 0x02, name = "list", lock = false },
+  { code = 0x03, name = "describe", lock = false },
+  { code = 0x04, name = "plan_apply", lock = true },
+  { code = 0x05, name = "plan_release", lock = true },
+  { code = 0x10, name = "open", lock = false },
+  { code = 0x11, name = "end", lock = true },
+  { code = 0x12, name = "keepalive", lock = true },
+  { code = 0x13, name = "lock_state", lock = false },
+  { code = 0x20, name = "status", lock = false },
+  { code = 0x21, name = "cancel", lock = true },
+  { code = 0x30, name = "subscribe", lock = true },
+  { code = 0x32, name = "unsubscribe", lock = true },
+  { code = 0x40, name = "link_source", lock = false, closed_tail = true },
+  { code = 0x41, name = "link_sink", lock = false },
+]
+[interface.tlv.plan_apply]
+role_assignment = 0x90          # critical: fn(u16) role(u8) channel(u16)
+[interface.tlv.describe]        # the probe itself (fn 0)
+firmware = 0x40
+model = 0x41
+unit_id = 0x42
+channels = 0x43
+reserved = 0x44
+profile = 0x45
+label = 0x46
+resets_on_open = 0x47
+uart_rates = 0x48
+[interface.event]
+heartbeat = 0x01                # boot_id(u32), uptime_ms(u32)
+
+[[interface]]
+name = "oep.wire.rvswd"
+revision = 1
+op = [
+  { code = 0x01, name = "scan", lock = true },
+  { code = 0x02, name = "attach", lock = true },
+  { code = 0x03, name = "detach", lock = true },
+  { code = 0x04, name = "attach_under_reset", lock = true },
+]
+[interface.tlv.attach]
+max_speed = 0x01
+[interface.tlv.attach_under_reset]
+max_speed = 0x01
+[interface.enum.attach_method]
+run = 0
+halt = 1
+
+[[interface]]
+name = "oep.wire.swio"
+revision = 1
+op = [
+  { code = 0x01, name = "scan", lock = true },
+  { code = 0x02, name = "attach", lock = true },
+  { code = 0x03, name = "detach", lock = true },
+  { code = 0x04, name = "attach_under_reset", lock = true },
+]
+[interface.tlv.attach]
+max_speed = 0x01
+[interface.tlv.attach_under_reset]
+max_speed = 0x01
+[interface.enum.attach_method]
+run = 0
+halt = 1
+
+[[interface]]
+name = "oep.wire.swd"
+revision = 1
+op = [
+  { code = 0x01, name = "scan", lock = true },
+  { code = 0x02, name = "attach", lock = true },
+  { code = 0x03, name = "detach", lock = true },
+]
+[interface.tlv.attach]
+max_speed = 0x01
+targetsel = 0x02
+
+[[interface]]
+name = "oep.target.riscv-dm"
+revision = 1
+op = [
+  { code = 0x01, name = "dmi", lock = true },
+  { code = 0x02, name = "halt", lock = true },
+  { code = 0x03, name = "resume", lock = true },
+  { code = 0x04, name = "reset", lock = true },
+  { code = 0x05, name = "read_block", lock = true },
+  { code = 0x06, name = "write_block", lock = true },
+  { code = 0x07, name = "run", lock = true },
+  { code = 0x08, name = "step", lock = true },
+]
+[interface.tlv.reset]
+method = 0x01
+[interface.enum.dmi_step]       # 0x10-0x1F reserved for the same steps with a u32 address
+write = 0x01
+read = 0x02
+poll_reads = 0x03
+wait_us = 0x04
+poll_us = 0x05
+[interface.enum.reset_mode]
+run = 0
+run_verified = 1
+halt_at_reset = 2
+[interface.enum.reset_method]
+probe_default = 0
+ndmreset = 1
+system_reset = 2
+
+[[interface]]
+name = "oep.target.arm-adi"
+revision = 1
+op = [
+  { code = 0x01, name = "transfer", lock = true },
+  { code = 0x02, name = "read_block", lock = true },
+  { code = 0x03, name = "write_block", lock = true },
+]
+
+[[interface]]
+name = "oep.target.console"
+revision = 1
+op = [
+  { code = 0x01, name = "open", lock = true },
+  { code = 0x02, name = "read", lock = false, closed_tail = true },
+  { code = 0x03, name = "marks", lock = false },
+  { code = 0x04, name = "clear", lock = true },
+  { code = 0x05, name = "mark", lock = true },
+  { code = 0x06, name = "write", lock = true },
+  { code = 0x07, name = "close", lock = true },
+]
+[interface.enum.mechanism]
+sdi = 0
+dmdata = 1
+dmseq = 2
+[interface.enum.read_from]
+position = 0
+oldest = 1
+now = 2
+last_mark = 3
+[interface.enum.mark_kind]      # 0x01-0x3F standard, 0x40-0x7F per interface
+reset = 0x01
+restart = 0x02
+attach = 0x03
+detach = 0x04
+lost = 0x05
+clear = 0x06
+host = 0x07
+link_lost = 0x08
+
+[[interface]]
+name = "oep.fixture.gpio"
+revision = 1
+op = [
+  { code = 0x01, name = "set", lock = true },
+  { code = 0x02, name = "read", lock = false },
+]
+[interface.enum.role]
+line = 1
+[interface.enum.mode]
+input = 0
+input_pullup = 1
+input_pulldown = 2
+output_low = 3
+output_high = 4
+open_drain_low = 5
+open_drain_release = 6
+
+[[interface]]
+name = "oep.fixture.uart"
+revision = 1
+op = [
+  { code = 0x01, name = "configure", lock = true },
+  { code = 0x02, name = "read", lock = false, closed_tail = true },
+  { code = 0x03, name = "marks", lock = false },
+  { code = 0x04, name = "clear", lock = true },
+  { code = 0x05, name = "mark", lock = true },
+  { code = 0x06, name = "write", lock = true },
+]
+[interface.tlv.configure]
+format = 0x01
+[interface.enum.role]
+rx = 1
+tx = 2
+
+[[interface]]
+name = "oep.fixture.capture"
+revision = 1
+op = [
+  { code = 0x01, name = "configure", lock = true },
+  { code = 0x02, name = "start", lock = true },
+  { code = 0x03, name = "stop", lock = true },
+  { code = 0x04, name = "force", lock = true },
+  { code = 0x05, name = "status", lock = false },
+  { code = 0x06, name = "read", lock = false, closed_tail = true },
+  { code = 0x07, name = "segments", lock = false },
+  { code = 0x08, name = "release", lock = true },
+  { code = 0x09, name = "query", lock = false },
+]
+[interface.tlv.configure]       # also the request of query
+mode = 0x40
+rate = 0x42
+samples = 0x43
+segments = 0x44
+trigger = 0x45
+pretrigger = 0x46
+frontend = 0x47
+[interface.tlv.configure_answer]  # the answer of configure and query
+actual_rate = 0x50
+layout = 0x51
+actual_samples = 0x52
+actual_segments = 0x53
+timing = 0x54
+scale = 0x55
+blocking_ms = 0x56
+[interface.tlv.describe]
+features = 0x06
+mode = 0x40
+rate_range = 0x41
+rate_list = 0x42
+rate_limit = 0x43
+channels = 0x44
+trigger = 0x45
+analog = 0x46
+max_read = 0x47
+segment_ring = 0x48
+[interface.event]
+segment = 0x01
+stopped = 0x02
+triggered = 0x03
+[interface.enum.mode]
+one_shot = 1
+repeat = 2
+streaming = 3
+[interface.enum.trigger]
+immediate = 0
+level = 1
+edge = 2
+cross_up = 3
+cross_down = 4
+[interface.enum.state]
+unconfigured = 0
+configured = 1
+waiting = 2
+capturing = 3
+done = 4
+paused = 5
+error = 6
+[interface.enum.stopped_reason]
+complete = 0
+host = 1
+no_free_segment = 2
+error = 3
