@@ -156,7 +156,7 @@ DUT は 1 行ごとに PA0 を反転し、SerialSDI 版と SerialDMSeq 版で、
 - classic ESP32 / ESP32-P4 / RP2350: NVS（ESP32）や flash の末尾（RP2350）に数 KiB は置ける。
 - したがって「plan の中身ごと」と「plan の識別子だけ」の 2 段を認めるのが現実的（ch32rv の意見どおり）。
 
-## 4. 決めたこと（提案、2026-09-25。ユーザーの判断待ち）
+## 4. 案（2026-09-25。§5 のユーザーの方針で見直す）
 
 X1〜X5 から導いた案。
 
@@ -222,3 +222,33 @@ X1〜X5 から導いた案。
   reset で失われる」のは、線が本当に切れたときだけ）。これで「書き込みツールの reset の後の出力」から確実に取れる。
   v1 wire §5.5 の detach と reset の意味を、この形に直す必要がある（今は detach で connection が消える）。
 - CDC の口の数で OEP のストリーミングの上限が下がることは、describe に数で出す（host が capture の設定を事前に断れる）。
+
+## 5. ユーザーの方針（2026-09-25）
+
+- **既定の値という考え方は持たない。設定の項目はすべて host が設定する**。probe は設定されたとおりに動き、設定されて
+  いない項目については何もしない（「既定は attach しない」のような既定の振る舞いを仕様に書かない。§4.1 の表の「既定」は
+  取り消し）。
+- **USB の機能は vendor bulk のほか、HID や Mass Storage も候補にする**。vendor bulk は権限の問題で使えない環境がある
+  （Linux は udev の規則、Windows は WinUSB の割り当て）。どの機能を開くかは probe の選択（起動モード）。
+- **最初の約 170 ms を取れないのは仕方ない**。自動の attach でもよい。開発用の probe なので、probe の再起動で target が
+  再起動することがあっても、最悪問題ない。
+- **今は破壊的な変更を入れてよい**。仕様をシンプルに、拡張しやすい形で固める（v1 wire の connection の寿命、reset の
+  扱いを含む）。
+
+### 5.1 権限の整理（机上）
+
+| 経路 | Linux | Windows | macOS | ブラウザ |
+|---|---|---|---|---|
+| vendor bulk | udev の規則が要る | WinUSB（MS OS 2.0 の記述子で自動） | そのまま | WebUSB |
+| HID（vendor 定義） | hidraw は既定で root だけ。udev の規則（または uaccess）が要る | ドライバ不要 | そのまま | WebHID |
+| CDC | dialout のグループ（多くの環境で済んでいる） | 自動（usbser） | そのまま | WebSerial |
+
+→ OEP の制御の口を、vendor bulk / CDC / HID のどれでも運べるようにする（probe がどれを開くかを選ぶ）。Linux では CDC が
+いちばん壁が低く、Windows では HID がドライバなしで使える。Mass Storage は OEP の制御ではなく、ドラッグ＆ドロップの
+書き込み（DAPLink のような）や設定のファイルに使う候補（別の論点として残す）。
+
+### 5.2 次の実験
+
+| 番号 | 問い |
+|---|---|
+| X6 | OEP を CDC と HID で運んだときの速さ（link_source / link_sink）と遅れ。vendor bulk と比べる |
