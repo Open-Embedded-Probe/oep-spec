@@ -8,13 +8,7 @@
 # layouts later (encoders / decoders generated from here).
 # The hash embedded in the generated files is the sha256 of this file with line endings normalized to LF.
 # Per interface: `reserved.<enum or "op">` = ranges [[lo, hi]] no value may use; `status` / `reject_reasons` = the
-# interface's own values (0x40-0x7F). Common describe tags ([timing]                        # values host and probe both implement (v1 wire §1, §4.5)
-resync_quiet_ms = 50            # host: read and discard until the input is this quiet, then confirm
-probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restarts its reader
-host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
-heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
-
-[describe_common]) are not repeated in an interface.
+# interface's own values (0x40-0x7F). Common describe tags ([describe_common]) are not repeated in an interface.
 
 [registry]
 schema = 1
@@ -68,6 +62,12 @@ line = 2
 fault = 3
 timeout = 4
 state = 5
+
+[timing]                        # values host and probe both implement (v1 wire §1, §4.5)
+resync_quiet_ms = 50            # host: read and discard until the input is this quiet, then confirm
+probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restarts its reader
+host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
+heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
 
 [describe_common]               # declaration tags every interface's describe may use (capability-declaration-model §3)
 role_channels = 0x01
