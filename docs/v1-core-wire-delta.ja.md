@@ -66,9 +66,11 @@
 - probe → host: 送り終えて後ろに何も続かないとき、最後の転送が wMaxPacketSize の倍数なら、ZLP を送るか、最後の 1 byte を
   別の転送に分ける（ZLP を送れない USB スタックがある）。続きがすぐ来るとき（ストリーミング）は倍数のままでよい。
 
-**区切りがずれたときの立て直し**（長さの見出しのフレーム。host）: corr が合わない応答、あり得ない長さ（0 は予約の
-keepalive、max_frame を超える値）、途中で止まったフレームを見たら、入力が 50 ms 静かになるまで読み捨て、読むだけの要求
-（confirm）で同期を確かめてから再開する。状態を変える要求は送り直さない。例外として、二度実行しても害のない unsubscribe と
+**区切りがずれたときの立て直し**（長さの見出しのフレーム。host。COBS は CRC で壊れたフレームを捨てられるので要らない）:
+corr が合わない応答、あり得ない長さ（max_frame を超える値。0 は予約の keepalive で、読み飛ばすだけ）、途中で止まった
+フレーム（続きが 200 ms 来ない）を見たら、入力が 50 ms 静かになるまで読み捨て、読むだけの要求（confirm。範囲は 0〜255 で
+よい。自分の corr の応答が返れば区切りは戻っている）で同期を確かめてから再開する。結果の後ろの TLV が途中で切れていたら、
+その結果は壊れている。状態を変える要求は送り直さない。例外として、二度実行しても害のない unsubscribe と
 end は、立て直しの中で確かめずに送ってよい（通知が流れ続けて入力が静かにならないとき、止めるため）。probe は、フレームの
 途中で 200 ms 入力が途切れたら読み取りを最初からやり直す。したがって host は **1 つのフレームを 1 回の書き込みで送り**
 （バイトごとや見出しと本体に分けて書かない。usbipd 越しでは分けた書き込みの間が 100 ms を超えることがある）、途中で
@@ -111,7 +113,7 @@ role=0x81 (bit7=1) | corr | fn | op | session_id(u32) | payload     session_id �
 | 0x08 | locked | 他のセッションがロック中 | 0 | 残り時間 ms（u32）。今の session_id は返さない |
 | 0x09 | session required | 状態を変える要求に session_id が無い（role 0x01） | 0 | — |
 | 0x0A | no connection | 要求の connection を probe が知らない（attach していない、probe が再起動した、線や target の reset で失われた）。host は attach からやり直す | 0 | — |
-| 0x0B | unsupported | 要求の critical の TLV（または値）を probe が扱えない | 0 | TLV のときは扱えない tag（u8）。固定部分の値（知らない列挙値など）のときは payload なし |
+| 0x0B | unsupported | 要求の critical の TLV（または値）を probe が扱えない | 0 | TLV のときは扱えない tag（u8、受け取ったまま。critical の bit 7 も付いたまま）。固定部分の値（知らない列挙値など）のときは payload なし |
 
 - rejected の detail は 0（v0 から予約）。追加の情報は payload に置く。
 - boot_id が変わった（open の応答、ハートビート）、または boot_id が 0（不明）の probe で「no session」を受けたら、host は
@@ -286,6 +288,8 @@ host は購読しなければ何も受け取らない。
 - **失敗は completed で返す**（§3）。outcome は、何も進まなければ failed、途中まで進めば partial。payload の形は成功のとき
   と同じで、`done`（進んだ手順・語の数）と `status` で分かる。書式の誤り（手順の並びが壊れている、長さが合わない）は
   rejected malformed。connection を知らなければ rejected no connection（0x0A）。
+- 成功の形に done / status が無い op（scan、attach、attach_under_reset、detach）の失敗は、completed failed と
+  payload `status(u8)` だけ（例: target が応答しない attach は status line）。
 
 **attach の規範**: probe は、線の速さを確かめ終えるまで target に書き込まない（読むだけで速さを選ぶ）。速さの合わない
 書き込みは、化けた値を target のレジスタに書きうる（WCH-LinkE の attach はクロックや flash のレジスタを書く。wch-protocols
@@ -349,10 +353,12 @@ DMI の手順:
 | 0x05 | 時間を上限に待つ | address(u8)、mask(u32)、value(u32)、max_us(u32)（線の速さに依らず同じ意味） | 最後に読んだ値(u32) |
 
 - kind 0x10〜0x1F は、番地を広くした同じ手順（address u32。複数の DM や abits の大きい DTM 用）に予約する。
-- **done は最後まで済んだ手順の数**（失敗したときは、失敗した手順の 0 起点の番号と同じ）。値の並びの個数は、
-  最初の done 個の手順のうち読む・待つ手順の数に、失敗した手順が待つ手順（0x03 / 0x05）ならその最後の値の 1 を足したもの。
-  待ち切れたら status timeout。書く手順が線の不良で失敗したら status line で、値は足さない。
-- run の timeout_ms は u32（0xFFFFFFFF は上限なし）。止まったら stopped = 1、上限に達したら stopped = 0 と status timeout。
+- **done は最後まで済んだ手順の数**（失敗したときは、失敗した手順の 0 起点の番号と同じ）。値を足すのは読む手順（0x02）と
+  読む回数・時間を上限に待つ手順（0x03 / 0x05）だけ（待ち 0x04 は足さない）。値の並びの個数は、最初の done 個の手順のうち
+  値を足す手順の数に、失敗した手順が 0x03 / 0x05 で**待ち切れた**（status timeout）ならその最後の値の 1 を足したもの。
+  線の不良（status line）などで読めずに失敗した手順は、値を足さない。
+- run の timeout_ms は u32（0xFFFFFFFF は上限なし）。止まったら stopped = 1（outcome success）、上限に達したら stopped = 0、
+  status timeout、outcome failed（dpc と値は読めた範囲で入れる）。
   n_out が 0 なら値は返らない（ローダーの状態を a0、失敗した番地を a1 に置くなら n_out = 2、regno = 0x100A、0x100B）。
 - reset の mode 2 は haltreq を保ったまま ndmreset を解く。semihosting、gdb の `monitor reset halt`、動いている
   ウォッチドッグの上からの書き込みに使う（IWDG は hart を止めても数え続ける）。
@@ -397,6 +403,7 @@ attach の TLV: 0x01 max_speed（u32 Hz、rvswd と同じ）、0x02 targetsel（
 | 0x03 | write_block | address(u32)、count(u16)、count 個の語 | done(u16)、status(u8) |
 
 - status は §5.4 の共通の値（WAIT のまま = wait、FAULT = fault、応答なし・パリティ = line）。ack は最後の転送の生の ACK。
+  読んだ値の並びは、最初の done 個の転送のうち読み出しの数だけ。
 - transfer は生の転送で、AP の読み出しが 1 つ遅れて返るのもそのまま（host が RDBUFF か次の AP の読み出しで受け取る）。
   WAIT は probe の中で再試行する。FAULT で止まるので、host は ABORT で sticky を消す。
 - read_block / write_block は今の MEM-AP の TAR / DRW を使う。SELECT（TAR / DRW のある bank）と CSW（32 bit、単一増加、
@@ -485,7 +492,8 @@ configure の TLV: 0x01 format（u8: bit0-1 データ長 0 = 8 / 1 = 7、bit2-3 
 ビット 0 = 1 / 1 = 2。既定は 8N1）。
 
 - op 0x02〜0x06 は console と同じ番号・同じ意味（stream の byte が無いだけ）。受信は configure から plan_release まで、
-  セッションに関係なく貯める。読んでも消えない（v0 の read は消費していた）。
+  セッションに関係なく貯める。読んでも消えない（v0 の read は消費していた）。configure をやり直しても貯めた分と位置は
+  そのまま（消すのは clear。configure のときにマーク host は付かないので、境目が要るなら host が mark を付ける）。
 - TX の線は、configure の前と plan_release の後も UART の休止（high）に保つ（相手の受信が雑音を拾わないため）。
 
 ## 5.9 `oep.fixture.capture`（revision 1）
