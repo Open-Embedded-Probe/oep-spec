@@ -411,3 +411,26 @@ link_speed（16368 バイト × 16、1 秒）: vendor 33.3 / 5.6 MB/s、HID 1.07
   - bit0 を立てない bind でも使えるようにするなら、bind の引数に baud と format を持たせる（または fixture.uart の configure を項目にする）。
 - **erase は保存だけを消し、今の設定は変えない**（仕様どおり）。host が「まっさらにする」には、erase と、全 tag を長さ 0 で送る set が要る。
 - reboot の応答は、送ってから 100 ms 後に再起動して届いた。host の待ち時間（describe storage の再列挙の最長）は、usbipd の attach を含めずに 5000 ms とした。
+
+### 7.4 P5 の結果（2026-09-25、43c6）
+
+構成: §7.3 の試作に、probe 自身の更新の経路を 2 つ足した（OEP の外。EspUsbDevice 2.5.1 の機能）。
+
+- DFU（ダウンロード形、EP0 だけ）を両方のモードに入れた。
+- Mass Storage のファームウェアのディスク（.bin をコピーする）を mode 0 に入れた。
+
+どちらも予備の OTA パーティションに書き、確かめてから再起動する。起動して USB が上がったら markValid する（そうしないとブートローダーが元に戻す）。
+
+mode 0 は 8 インターフェースになった: HID、vendor、CDC（OEP）、CDC（UART bridge）、MSC、DFU。
+
+| 経路 | host | 結果 |
+|---|---|---|
+| DFU | pyusb で書いた DFU 1.1 のダウンロード（WSL に dfu-util が無いため）。wTransferSize 1024 | 451 KB を 5.4 s（83 kB/s）。manifest の後に再起動し、11 s で再列挙。新しいビルドで動く |
+| Mass Storage | usbipd から外し、Windows がマウントしたドライブ（E:、FAT 1.3 MB、README.TXT が見える）へ PowerShell でコピー | コピー 6.1 s。再起動して新しいビルドで動く。ボリュームラベルは Get-Volume に出なかった |
+
+わかったこと:
+- 更新の経路は、OEP の制御の経路（vendor / HID / CDC）と同じデバイスに並べても干渉しない。DFU は EP0 だけなので、どのモードにも入れられる。
+- WSL では、Mass Storage は disk グループの権限が要り、DFU には dfu-util が要る。どちらも標準では使えない。Windows では Mass Storage が道具なしで使える。
+  - 開発用の probe では、DFU（Linux / macOS の標準の道具）と Mass Storage（Windows / macOS で道具なし）の両方を持つのがよい。
+  - OEP の vendor の経路で更新する独自のコマンドは、今回は作っていない（OEP の外なので、要るときに probe が決める）。
+- P4 の ROM のブートモード（USJ の esptool）は、43c6 の USJ の口がつながっている構成ではいつでも使える（§6）。
