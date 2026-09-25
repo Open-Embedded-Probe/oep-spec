@@ -82,7 +82,7 @@ USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準c
 12. PID利用許可、review、version/profile互換性の方針
 13. captureのデータの持ち方の宣言。channelごとに並べる（planar）か、複数channelを同時に取った形のまま
     sampleごとに並べる（interleaved）か。probeは取得したときの形のまま送って詰め替えず、hostが詰め替える方が
-    probeは楽になる見込み（2026-09-25のメモ。[captureの提案](docs/logic-capture.ja.md) §3.4）
+    probeは楽になる見込み（2026-09-25のメモ。[captureの提案](docs/logic-capture.ja.md) §3.0, §3.2）
 14. probeから送る通知ができると、割り込み系の出来事も送りたくなる。fixtureのGPIOの割り込み（エッジ）、probeの
     ハートビート（生きていること、再起動したこと）など（2026-09-25のメモ。[v1 wire](docs/v1-core-wire-delta.ja.md) §4.5）
 
