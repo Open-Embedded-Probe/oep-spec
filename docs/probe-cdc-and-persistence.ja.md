@@ -381,3 +381,33 @@ link_speed（16368 バイト × 16、1 秒）: vendor 33.3 / 5.6 MB/s、HID 1.07
   ここでは確かめられない（Linux の実機で P6 と一緒に見る）。
 - TX を出力にする時期は、今は plan の適用で UART の休止（high）に駆動する（v1 の fixture.uart の今の規則）。§4.2 の
   「口が開かれるまで入力」は、起動時に保存した bind から始める形（P4 の永続化）で要る。
+
+### 7.3 P4 の結果（2026-09-25、43c6）
+
+構成: oep.probe.config の最小の実装（oep-probe-arduino 35f624d `ProbeConfig`、ESP32 は NVS）。項目は boot_mode、plan（Endpoint が持つ plan そのもの）、bind（source は fixture.uart だけ）。label と target は持たず、set すると rejected unsupported になる。起動モードは 2 つ（scratch の OepConfigProto）。
+
+- mode 0 "debug": vendor + HID + CDC（OEP）+ データの口 1 つ
+- mode 1 "logic": vendor だけ
+
+保存が無いときは sketch 自身の選択で mode 0 から始める。
+
+| 確認したこと | 結果 |
+|---|---|
+| set の hash と、host が同じ項目から計算した正規形の CRC-32 | 一致（0x9b2c1a7e）。空の設定は 0 |
+| save | 2 ms（NVS）。同じ内容の 2 回目は書かない（0.4 ms） |
+| reboot → Windows に再列挙 | 1.4〜1.6 s。usbipd は毎回 Shared に戻るので attach し直す（WSL に来るまで計 6〜8.5 s） |
+| 再起動後 | 保存した plan と bind が戻る。口を開くと line coding（bind の flags bit0）で UART が動き、折り返しが通る |
+| boot_mode 1 を保存して reboot | インターフェースが vendor の 1 つだけで列挙される。describe の current_mode = (1, 1) |
+| mode 1 から boot_mode 0 に戻す | 6 インターフェースに戻り、bind も残っていてブリッジが動く |
+
+わかったこと（仕様 §5.10 に入れる点）:
+- **設定は起動モードに依存しない**。
+  - 最初の実装は、今のモードに無い口への bind を適用の失敗とし、保存を「読めない」にした。ところが plan はその前に適用されていて（set が原子的でなかった）、mode 1 で save し直すと bind が消えた。
+  - 直した形: 今のモードに無い口への bind は保持し、何もしない（そのモードに戻ると結ぶ）。describe の port は今のモードの口だけを出す。
+  - set は、bind が結べなければ plan も元に戻して何も変えない。
+- **fixture.uart の bind には baud の出どころが要る**。
+  - plan と bind だけを保存しても、再起動後に UART を掛けるものがない。
+  - 試作は flags bit0（口の line coding を写す）で、口が開かれたときに掛けた。
+  - bit0 を立てない bind でも使えるようにするなら、bind の引数に baud と format を持たせる（または fixture.uart の configure を項目にする）。
+- **erase は保存だけを消し、今の設定は変えない**（仕様どおり）。host が「まっさらにする」には、erase と、全 tag を長さ 0 で送る set が要る。
+- reboot の応答は、送ってから 100 ms 後に再起動して届いた。host の待ち時間（describe storage の再列挙の最長）は、usbipd の attach を含めずに 5000 ms とした。
