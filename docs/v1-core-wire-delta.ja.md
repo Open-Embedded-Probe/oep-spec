@@ -84,7 +84,9 @@ host は購読しなければ何も受け取らない。
 - fn 0 の出来事は probe 全体のもの。kind 0x01 = ハートビート（payload: boot_id u32、起動からの ms u32）。
 - `position` はその fn のストリームの中のバイト位置（一周する）。前のフレームの終わりと合わなければ、その間は
   probe の中で押し出された（host や線が遅れた）。
-- 送ったデータは、そのインターフェースの位置指定の読み出し（ポーリング）でも読めるようにする（コンソールと同じ）。
+- 送ったデータを位置指定の読み出し（ポーリング）で読み直せるかは、インターフェースの定義による（2026-09-25 変更。
+  コンソールは読める。ロジックのストリーミングは、コピーなしで送る probe がデータを残さないので読めなくてよい。
+  読めない位置の読み出しは、gap の印を付けた空の応答）。
 
 ### 購読（core の操作、番号は仮）
 
@@ -172,6 +174,8 @@ host は購読しなければ何も受け取らない。
 | 0x13 | lock_state | — | locked(u8)、remaining_ms(u32) | 不要 |
 | 0x20 | status | activity(u16) | 上記 §4 | 不要 |
 | 0x21 | cancel | activity(u16) | —（止められなければ rejected unavailable） | 必要 |
+| 0x40 | link_source | length(u32) | length バイト（1 フレームに入る分まで）。k バイト目は k & 0xff | 不要 |
+| 0x41 | link_sink | 任意のバイト | 受け取った長さ(u32) | 不要 |
 
 - list の entry: `fn(u16) instance(u16) revision(u8) flags(u8) name_len(u8) name`。件数と開始位置は u8（probe が
   255 を超えるインターフェースを持つことは想定しない。必要になったら広げる）。
@@ -180,6 +184,11 @@ host は購読しなければ何も受け取らない。
   セッションの終わりやロックの期限切れでは解かない（plan_release でだけ解く）。
 - 最初の実装（2026-09-24）では、fixture（gpio / uart / capture）の各操作の payload は v0 のまま。
 - op の番号は仮。
+- **link_source / link_sink は線の速さを測るためのもの**（2026-09-25）。host は応答の大きさと同時に出す本数を変えて
+  両方向の要求・応答の速さを測り、キャプチャのストリーミングが続くか（logic-capture §5）や、書き込みにかかる時間の
+  見積もりに使う。状態を変えないのでロックは要らない。source の応答は 1 フレームの上限（max_frame）で切ってよい。
+  実測（P4 HS、direct build、usbipd）: probe → host は 16 KiB × 16 本で 31 MB/s、host → probe は 5.5 MB/s
+  （logic-capture §7.10）。
 
 ## 5.5 `oep.wire.<線>` と `oep.target.riscv-dm` の操作（仮置き、最初の実装の形）
 
