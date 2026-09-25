@@ -295,11 +295,24 @@ P4 は HS ポートだけでつなぐのが主になるので、USB-Serial/JTAG 
 - 要確認: DFU の Windows での扱い（MS OS 2.0 の記述子で WinUSB を割り当てられるか）、usbipd 越しの DFU detach と再列挙。
 
 - **P4 のブートモード（ROM の download loader）**: 動いているスケッチから入れる（CDC の 1200 bps touch、DFU_DETACH、独自の
-  コマンド。EspUsbDevice の `rebootToBootloader()`）。ただし **P4 の loader は USB-Serial/JTAG の口（FS、303a:1001）で応答し、
-  HS の OTG の口では応答しない**（HS コントローラーは専用の PHY を持つ。USB-OTG の ROM DFU は P4 v3.1 以降で不具合があり
-  使えない。EspUsbDevice の ota-over-usb 2.3 節）。**HS の口だけでつなぐ構成では、ブートモード経由の esptool は使えない**
-  ので、アプリの更新の経路（DFU runtime、Mass Storage、vendor、CDC のスクリプト）が要る。FS の口でデバイスを動かす構成
-  なら、同じケーブルが loader として戻り esptool が使える。
+  コマンド。EspUsbDevice の `rebootToBootloader()`）。その loader が HS の口でも使えるかは**未確定**。
+  - Espressif の FAQ（esp-faq, peripherals/usb「Is the High-Speed USB of ESP32-P4 available for programming?」）は
+    「download mode に入れば High-Speed USB で書き込める」としている。EspUsbDevice の ota-over-usb 2.3 節の「P4 の loader は
+    USB-Serial/JTAG でだけ応答する」はこれと食い違う。
+  - P4 の ROM は DWC-OTG の CDC-ACM と DFU を持つ（esp32p4.rom.ld の `cdc_acm_*`、`usb_dfu_*`、`chip_usb_set_persist_flags`）。
+    eFuse の DIS_USB_OTG_DOWNLOAD_MODE は 43c6 で 0。
+  - Windows の PnP 履歴に `USB\VID_303A&PID_0012\80:F1:B2:D0:B2:61`（製品名 "ESP32-P4"、Composite、rev 0912）が残っている。
+    80f1 で 2026-09-15 に 6 秒だけ列挙された。80f1 は CH340 の自動リセット（GPIO35 の strap）で download mode に入る
+    ボードなので、strap で入ったときの ROM の OTG デバイスと見られる（入り方の記録は無い）。
+  - 43c6（rev v1.3、ROM esp32p4-eco2-20240710）で、USJ 経由の esptool、スケッチからの force download、persist フラグ
+    （bit 30 / bit 31 / 両方）を試したが、HS の口は Windows で列挙が完了しなかった（USB Tree View で
+    `0x09 Device is enumerating` のまま。ハブ 3 段、USB 機器の接続過多で環境が不安定だった）。**環境が壊れかねないため
+    実験は中断**（2026-09-25）。
+  - 副産物: スケッチから force download（`LP_SYSTEM_REG_SYS_CTRL_REG` bit 2）で再起動すると、P4 の ROM はこのビットを
+    消さない。USJ のチップリセットや esptool の hard reset でも download mode に戻り続ける。
+    `esptool write-mem 0x50110008 0 0x4` で消してからリセットすると戻る。
+  - 結論が出るまでは、HS の口だけのプローブにはアプリの更新の経路（DFU runtime、Mass Storage、vendor、CDC のスクリプト）
+    を用意する。FS の口でデバイスを動かす構成なら、同じケーブルが USJ の loader として戻り esptool が使える。
 
 ## 7. 進め方（2026-09-25 のユーザーの方針）
 
