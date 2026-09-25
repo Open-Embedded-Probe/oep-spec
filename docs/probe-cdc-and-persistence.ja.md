@@ -326,6 +326,7 @@ P4 は HS ポートだけでつなぐのが主になるので、USB-Serial/JTAG 
 | P4 | 設定の保存（NVS）と起動モードの切り替え（USB の構成が変わる、再列挙、usbipd） |
 | P5 | probe 自身の更新の経路を複数（DFU runtime、Mass Storage、vendor） |
 | P6 | コンソール（dmseq / SDI）を CDC の口に流す、自動の attach、host の detach / reset を越えて続くか |
+| P7 | （ユーザーの依頼、2026-09-25）probe の受信のチューニングの後、USB の構成別（vendor だけ、vendor + HID、vendor + HID + CDC 1〜3 口など）に、経路ごとの速さ（link_source / link_sink、往復）と capture のストリーミングの上限を測る |
 
 ### 7.1 P1 / P2 の結果（2026-09-25、43c6）
 
