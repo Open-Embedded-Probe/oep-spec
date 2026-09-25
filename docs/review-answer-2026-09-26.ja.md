@@ -1,0 +1,257 @@
+# Open Embedded Probe v1 仕様レビューへの回答
+
+状態: **レビュー結果**（2026-09-26）。この文書は仕様そのものではなく、
+[レビューの手引き](review-guide.ja.md)に沿って現在の OEP v1 候補を確認した結果と、v1 を固める前に推奨する変更をまとめたもの。
+
+## 1. 結論
+
+OEP の基本方針は妥当であり、実用性につながる設計上の強みも多い。
+
+- target 固有の知識を host に置き、probe は線と debug transport の癖に集中する責任分担
+- interface を名前で発見し、セッション中は短い `fn` で操作する方式
+- critical TLV、未知の応答 TLV、未知の status を安全側に扱う拡張規則
+- request の不受理と、実行を開始した後の失敗を分ける結果モデル
+- 読んでも消費しない位置付きの console / UART stream
+- attach、capture、USB 構成などを実測してから仕様へ反映する進め方
+- registry と code generation を wire 上の番号の中心に置く方針
+
+一方、現在の文書群は、独立した host と probe の実装者が同じ挙動を一意に実装できる状態にはまだ達していない。
+主な理由は、規範となる文書が分散して相互に食い違っていること、revision と再送の規則が将来の相互運用を損なうこと、
+connection、stream、session、activity の寿命が一つの状態機械として定義されていないことである。
+
+したがって、現段階では v1 の freeze は推奨しない。ただし利用者がまだおらず破壊的変更が可能なので、以下の点を直すには
+適切な時期である。
+
+## 2. freeze 前に解決する問題
+
+### 2.1 P0: v1 の規範文書を一つに定める
+
+レビューの手引きは、v0 は v1 で置き換え済みであり、`v1-core-wire-delta.ja.md` が v1 の本体であるとしている。
+しかし v1 本体は、記載していない request / result header、resolution、TLV の形を v0 に委ねている。
+
+また、現行として案内されている文書間にも次の食い違いがある。
+
+- `session-and-exclusivity.ja.md` は OEP の制御口を一つに限定する。
+- `v1-core-wire-delta.ja.md` は複数の制御 transport を同時に開ける。
+- `capability-declaration-model.ja.md` の `describe.first` は `u8` である。
+- `v1-core-wire-delta.ja.md` の同じフィールドは `u16` である。
+
+差分文書を規範にすると、変更のたびに「v0 のどの規則が残っているか」を判断する必要があり、独立実装間で解釈が分かれる。
+
+推奨する変更:
+
+1. wire format、状態機械、全 core operation、標準 interface を含む単独の `oep-v1-spec.ja.md` を作る。
+2. 比較、実験、採用理由、過去の案は非規定文書として分離する。
+3. 規範文書内では「別文書を優先する」という上書き関係を作らない。
+4. `review-guide.ja.md` は、規範文書と設計資料を明確に分けて案内する。
+
+### 2.2 P0: connection、stream、session の寿命を統一する
+
+現行文書には、次の規則が同時に存在する。
+
+- lease 切れや transport 切断では attach を解かない。
+- lease が切れたら、その session が connection を使用していた分を外す。
+- console stream は session や lease の終了では終わらない。
+
+bind のない通常の console stream で lease が切れた場合、connection が閉じて stream も閉じるのか、stream 自身が
+connection を保持するのかが一意に決まらない。
+
+connection は参照を持つ資源として定義し、少なくとも次を参照元として列挙する必要がある。
+
+- session が行った attach
+- 開いている console stream
+- 永続設定の bind
+- 将来 connection を利用する interface
+
+各 operation と事象について、参照を追加・削除するかを表にする。console stream を lease 終了後も残すなら、stream 自身を
+connection の利用者として数えるのが自然である。最後の参照がなくなったときだけ connection を閉じる形にすれば、bind と
+one-shot CLI の両方を同じ規則で扱える。
+
+`connection(u8)` と `stream(u8)` の再利用規則も必要である。古い handle が別の target や stream を指さないよう、少なくとも
+同じ `boot_id` の間に古い handle をいつ再利用できるかを規定する。長期的には generation を含む `u16` 以上の handle の方が
+安全である。
+
+### 2.3 P0: revision の互換性規則を一本化する
+
+能力識別の文書では、後方互換な optional TLV や末尾フィールドの追加でも revision を上げ、非互換変更では名前を変えるとしている。
+一方、v1 wire は payload の形を `(name, revision)` で決め、host は未知の revision を使用しないとしている。
+
+この組み合わせでは、optional TLV を一つ追加しただけで古い host が interface 全体を使用しなくなる。これは、末尾 TLV によって
+既存機能の相互運用を維持する目的と矛盾する。
+
+v1 では、次の単純な規則を推奨する。
+
+- 固定部分を変えず、optional request TLV、response TLV、任意 operation、任意 event を追加する場合は revision を変えない。
+- 固定部分の意味や長さを変える場合だけ revision を上げる。
+- breaking revision を導入する probe は、可能なら旧 revision も別の `fn` として同時に公開する。
+- interface 名は意味が変わった場合だけ変更し、単なる版番号の代用にはしない。
+
+これにより、revision は互換性境界、TLV と feature bit は互換な機能追加という役割に分かれる。
+
+### 2.4 P0: 状態変更 request の重複排除を全 transport 共通にする
+
+UART は COBS と CRC により破損を検出できるが、request の重複を識別する sequence がまだない。現行規則では、応答が来なかった
+状態変更 request は二重実行を避けるため再送できない。
+
+この場合、応答だけが失われると、host は request が実行済みか未実行かを判断できない。`reset`、`write_block`、config の
+`set` / `save` などで実害がある。CRC は破損の検出には有効だが、request を実行した後の応答喪失を解決しない。
+
+UART binding だけの特殊な sequence にせず、全 transport 共通で `(session_id, request_seq)` による短期的な重複排除を入れる
+ことを推奨する。
+
+- host は状態変更 request に単調増加する `request_seq` を付ける。
+- probe は session ごとに、直近の sequence と結果を小さな範囲だけ保持する。
+- 同じ sequence を再受信したら再実行せず、以前の result を返す。
+- session が変わった場合の exactly-once は保証しない。
+
+これなら USB、UART、HID、将来の network transport で同じ host 実装を使える。
+
+### 2.5 P1: scan で見つけたピンの組へ attach できるようにする
+
+現行 wire の `scan` request には候補の指定がなく、`attach` request にも SWDIO / SWCLK などのピンの組がない。一方、target の
+発見ユースケースでは、host が候補の部分集合を指定し、scan で見つけた組へ attach することを前提としている。
+
+このままでは、任意のピンを使える汎用 probe が scan の結果を実際の接続に利用できない。
+
+`v1-open-proposals.ja.md` の案を採用することを推奨する。
+
+- `scan`: `count` とピン組の並びを request に持つ。`count = 0` は許可された全候補。
+- `attach`: ピン組を固定部分または critical TLV で指定する。
+- 指定した組が describe の許可リストにない場合は、実行前に reject する。
+- scan result には、attach へそのまま渡せる形でピン組を返す。
+
+PENDING を使用するかは実測時間で決めてよいが、ピン組の指定は v1 の基本用途に必要である。
+
+### 2.6 P1: capture の position を u64 にする
+
+共通規則と capture は byte position に `u32` を使い、serial number arithmetic で比較する。40 MB/s の capture では約107秒で
+一周し、符号付き比較で安全に扱える半周は約54秒である。host がそれ以上遅れた場合、欠損量を一意に判断できない。
+
+また、capture は `samples(u32)` と最大32 bit/sampleを許しており、理論上の区画サイズは4 GiBを超える。設定可能な長さと
+`position(u32)` で参照できる長さが一致していない。
+
+次の形を推奨する。
+
+- console と低速 UART stream は現在の `u32 position`を維持してよい。
+- `oep.fixture.capture` の `position`、`write_pos`、通知の position は `u64` にする。
+- 長時間の区画比較が必要なら `start_us` も `u64` にする。
+- もし `u32` を残すなら、1回のcapture全体を2 GiB未満に制限し、describeとconfigureで明示的に拒否する。
+
+高速転送では4 byteの追加は小さく、曖昧な欠損検出を避ける方が重要である。
+
+### 2.7 P1: force takeover と activity の所有権を決める
+
+長い操作は host がいなくなっても続き、最後の結果は同じ session だけが取得できる。一方、新しい session が force で lock を
+奪った場合の実行中 activity の扱いが定義されていない。
+
+無期限の `run` などの途中で takeover されると、新しい host は activity ID を知らず、probe は busy のままになる可能性がある。
+
+単純な規則として、次を推奨する。
+
+1. `open(force)` は、以前の session の購読を終了する。
+2. cancel 可能な activity があれば cancel する。
+3. cancel できない activity が実行中なら、`open(force)` を busy で拒否し、残りの状態を返す。
+4. activity の最終結果は、所有 session が同じ間だけ取得できる。
+
+別案として新しい session に activity ID を公開することもできるが、操作の結果に旧 session の情報が含まれ得るため、所有権が
+複雑になる。
+
+### 2.8 P1: registry を wire 上の番号の完全な定義にする
+
+`review-guide.ja.md` は `registry/oep-v1.toml` を wire 上の全数値の唯一の定義としているが、文書にあり registry にない値がある。
+
+- describe の `exclusive_group = 0x04`
+- describe の `min_clock_hz = 0x05`
+- plan の `start_together = 0x91`
+- 文書で revision 1 として扱われる `oep.fixture.analog`
+
+仕様から外す値は文書から削除し、採用する値は registry に追加する必要がある。特に `start_together` は mixed-signal capture の
+説明でも前提になっており、単なる未使用値ではない。
+
+また、registry は現在主に番号だけを定義している。独立実装の一致を検証するため、次の段階では payload layout と golden test
+vector も生成対象にすることを推奨する。
+
+## 3. 実用性のために再検討する点
+
+### 3.1 plan と GPIO 状態を無期限に残すか
+
+現在は one-shot CLI のため、session や lease が終わっても plan とピン状態を戻さない方針である。しかし host が異常終了した
+場合に、reset を low に保持し続けたり、GPIO を出力にしたまま残したりする危険がある。
+
+「保存された構成」と「一時的な操作」を分ける方が安全である。
+
+- 通常の `plan_apply` は session または専用 lease に属し、期限切れで安全状態へ戻す。
+- `oep.probe.config` で保存した plan / bind は永続状態として残す。
+- 一時 plan を意図的に残したい場合だけ critical な `persistent` 指定を使う。
+- 各 channel の安全状態を describe で宣言できるようにする。
+
+これなら既定は安全で、治具や常設 console の用途だけを明示的に永続化できる。
+
+### 3.2 subscribe の再設定規則
+
+同じ session が同じ `fn` を再度 subscribe した場合に、既存購読を置き換えるのか、追加するのか、reject するのかが明記されて
+いない。複数 transport を同時に開けるため、通知先の経路も変わり得る。
+
+「同じ session / fn の subscribe は一つだけで、再度の subscribe は条件と送信経路を原子的に置き換え、`seq` を0へ戻す」と
+定義するのが単純である。
+
+### 3.3 network transport の信頼境界
+
+TCP が transport の候補に含まれる一方、session lock の `force` は誰でも使用でき、認証を目的としていない。USB直結では妥当でも、
+networkへそのまま公開するとtargetの書き換えやprobeの再起動を第三者が行える。
+
+暗号や認証をOEP coreへ入れない場合でも、TCP transportは「信頼されたローカル接続または認証済みトンネルの内側でのみ使う」
+ことを規範として明示すべきである。
+
+### 3.4 config の正規形
+
+config hash の正規形について、requestで受け取ったcritical bitを保存・hashへ含めるか、同じkeyのlabel / bindが重複した場合に
+どうするかが明確でない。
+
+設定値として保存するtagからcritical bitを除き、keyの重複はrequest全体をmalformedとして拒否するのがよい。同じ意味の設定が
+hostの送信方法によって異なるhashにならないようにする必要がある。
+
+## 4. 維持したい設計判断
+
+今回の指摘を直す際にも、次の性質は維持する価値が高い。
+
+1. **target の知識は host が持つ。** flash algorithmやchip固有registerをprobeへ戻さない。
+2. **probeは低レベルのタイミングと回復を持つ。** attach under reset、DMI / SWDの再試行、線速度の選択はprobeに置く。
+3. **固定部分は小さく保つ。** optionalな追加はTLVに置く。
+4. **失敗を安全側に解釈する。** 未知のstatusを成功扱いしない。
+5. **低スペックprobeも同じprotocolを使う。** 小さい`max_frame`、window、少ないinterfaceで表現する。
+6. **実測を仕様の根拠にする。** ただし、測定結果そのものは規範文から分離する。
+7. **通知を購読制にする。** 購読していないhostへ非同期frameを送らない。
+8. **consoleを非消費型streamにする。** monitorの再接続とクラッシュ直前のlog回収に有効である。
+
+## 5. 推奨する作業順序
+
+v1 freeze に向けて、次の順で進めることを推奨する。
+
+1. 単独の規範的なv1仕様書を作る。
+2. revisionと互換な拡張の規則を確定する。
+3. session、connection、stream、subscription、activityの状態遷移表を作る。
+4. request sequenceと重複排除を全transportへ入れる。
+5. scan / attachのピン指定を確定する。
+6. captureのposition幅を確定する。
+7. registryを規範文書と一致させる。
+8. 各operationについて、成功、reject、partial、timeout、再送、lease切れのgolden vectorを作る。
+9. reference実装とは別の最小hostと最小probeで相互接続試験を行う。
+
+freeze の最低条件は、少なくとも次の通りと考える。
+
+- 規範文書だけを読んで、第三者がcodecと状態機械を実装できる。
+- 同じ入力に対するprobeの応答が、文書上で一意に決まる。
+- 応答喪失後に、状態変更requestの結果を安全に確定できる。
+- 古いhostと新しいprobeが、共有する既知機能を引き続き利用できる。
+- lease切れ、force、再起動、target切断時の資源の寿命が試験できる。
+- registry、生成物、仕様中の番号が自動検査で一致する。
+
+## 6. 総評
+
+OEPは、単なるdebug probeの共通コマンドではなく、debug、console、fixture、capture、外部bindingを同じ発見・排他・拡張の
+仕組みで扱おうとしている。この方向には十分な実用性がある。一方、現在の複雑さの多くは機能数そのものではなく、同じ決定が
+複数文書に異なる世代の形で残っていることから生じている。
+
+機能を大きく削るより先に、規範を一つにし、寿命と再送の状態機械を小さく明示する方が、単純さと拡張性の両方に効く。
+破壊的変更が可能な現在は、field幅、handle、revision、request sequenceを修正する最後の良い機会である。
