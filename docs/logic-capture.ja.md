@@ -480,7 +480,7 @@ segment : serial(u32), position(u32), samples(u32), start_us(u32), trigger_index
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x01 | configure | 設定の TLV（§5.3） | 実際の値の TLV（§5.3） | 必要（query を付けたときは不要） |
+| 0x01 | configure | 設定の TLV（§5.3） | 実際の値の TLV（§5.3） | 必要 |
 | 0x02 | start | — | blocking_ms(u32)（0 = 取っている間も答える） | 必要 |
 | 0x03 | stop | — | — | 必要 |
 | 0x04 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
@@ -488,6 +488,7 @@ segment : serial(u32), position(u32), samples(u32), start_us(u32), trigger_index
 | 0x06 | read | position(u32)、max(u32) | position(u32)、flags(u8: bit0 more、bit1 gap)、data | 不要 |
 | 0x07 | segments | from_serial(u32) | count(u8)、区画の情報の並び（§4） | 不要 |
 | 0x08 | release | serial(u32) | —（serial 以前の区画を使い回してよい） | 必要 |
+| 0x09 | query | 設定の TLV（configure と同じ） | 実際の値の TLV（設定はしない） | 不要 |
 
 - state: 0 未設定、1 設定済み、2 トリガ待ち、3 取得中、4 完了（ワンショット）、5 止まっている（リピートで空き区画なし）、
   6 エラー。
@@ -505,7 +506,6 @@ segment : serial(u32), position(u32), samples(u32), start_us(u32), trigger_index
 | tag | 名前 | 値 | 対象 |
 |---|---|---|---|
 | 0x40 | mode | u8: 1 ワンショット、2 リピート、3 ストリーミング（0x40〜 は別の定義） | 両方 |
-| 0x41 | query | —（設定せず、実際の値だけ返す） | 両方 |
 | 0x42 | rate | rate_hz(u32)（アナログはチャネルあたり） | 両方 |
 | 0x43 | samples | u32（1 区画のサンプル数。ストリーミングでは省略してよい） | 両方 |
 | 0x44 | segments | u32（リピートの区画の数。省略すれば probe に任せる） | 両方 |
@@ -513,6 +513,8 @@ segment : serial(u32), position(u32), samples(u32), start_us(u32), trigger_index
 | 0x46 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 |
 | 0x47 | frontend | role(u8)、attenuation(u8、実装の値) | アナログ |
 
+- **問い合わせは別の操作（0x09）**。configure の TLV のフラグにすると、probe はロックの要否を操作の番号で決めるので、
+  ロックなしの問い合わせができない（試作で踏んだ、§7.8）。問い合わせは今の設定と取ったデータを壊さない。
 - trigger の type: 0 即時（省略時）、1 レベル（value 0 / 1）、2 エッジ（value 0 立ち上がり / 1 立ち下がり / 2 両方）、
   3 しきい値を上向きに横切る、4 下向きに横切る（value は ADC の値）。1〜2 はロジック、3〜4 はアナログ。
 - トリガは開始の条件だけ。リピートとストリーミングでも、効くのは最初だけ（§2.4）。
@@ -550,7 +552,7 @@ segment : serial(u32), position(u32), samples(u32), start_us(u32), trigger_index
 
 | tag | 名前 | 値 |
 |---|---|---|
-| 0x06 | features | 共通のビット。bit0 query、bit1 force、bit2 通知 |
+| 0x06 | features | 共通のビット。bit0 query（op 0x09）、bit1 force、bit2 通知 |
 | 0x40 | mode | mode(u8)、background(u8)、max_samples(u32、1 区画)、max_segments(u32)（モードごとに 1 つ） |
 | 0x41 | rate_range | min_hz(u32)、max_hz(u32)、exact(u8: 1 = 範囲内の任意の値を指定できる) |
 | 0x42 | rate_list | 代表的なレートの並び（u32）。UI の一覧の候補 |
@@ -809,6 +811,27 @@ X035 に USART4 で `OEP capture line N` を出し続ける sketch を書き込�
 - 今の capture は 1 本でも 1 サンプル 1 バイトで送る（PARLIO が取った形は 1 サンプル 1 ビット）。**8 倍の量を送っており、
   読み出しの 0.7 s の大半はこれ。** 取得した形のまま送れば 1/8 になる。
 
+### 7.8 基本の形の試作（2026-09-25、メインの P4 `30eda0e343c6`、oep-probe-arduino `OepV1Capture`）
+
+P4 の PARLIO で、基本の形のロジックのキャプチャを試作した。この実装が選んだもの: ワンショットのみ、トリガは即時のみ、
+通知あり（宣言にそのとおり出る）。GPIO 4 に LEDC の 1 MHz・25% を出し、GPIO 4 と 5（何もつながっていない）を plan で
+割り当てて取った。
+
+- configure の応答: actual_rate 20000000/1、layout w = 2 pos [0, 1]、samples 200,192（キャッシュ行にそろえて切り上げ）、
+  blocking_ms 0。
+- 購読して start すると、10.0〜10.2 ms 後に出来事 segment（serial 0）と stopped（完了）が届いた（200,192 / 20 MHz = 10 ms）。
+- 50,048 バイトを 59〜60 ms で読めた。GPIO 4 は周期がすべて 20 サンプル、High がすべて 5 サンプル。GPIO 5 はすべて 0。
+  host で `.sr` にして sigrok の pwm デコーダにかけると 25.000000%。
+- critical 付きの持たないトリガ（エッジ）は rejected unavailable（payload に tag 0x45）、critical なしなら ignored に 0x45。
+- **問い合わせ**: configure の TLV のフラグにしたところ、ロックなしで送ると session required で断られた（ロックの要否は操作の
+  番号で決まる）。別の操作（0x09）に分けた。PARLIO の RX は 1 ユニットなので、問い合わせで作り直すと今の設定が消える。
+  そこでハードウェアに触らず、ドライバと同じ HAL の関数（`hal_utils_calc_clk_div_frac_accurate`）で分周を計算して答える
+  ようにした。15 のレート（627,451 / 700,000 / 1 M / 1.5 M / 3 M / 7 M / 12,345,678 / 20 M / 33 M / 48 M / 60 M /
+  99,999,999 / 100 M / 150 M / 160 M Hz）で、問い合わせの答えと、configure で分周レジスタから読み戻した値がすべて一致した。
+  範囲外（600 kHz、170 MHz）は拒否。設定済みの状態で問い合わせても設定は残った。
+- 試作の途中で、ESP-IDF のログが OEP と同じ USB-Serial/JTAG に出てフレームを壊した（LEDC の設定エラー）。OEP の口に
+  ログを出す probe は、ログを止める必要がある（probe-development-guide に書く候補）。
+
 ## 8. 未決（検討・実験が必要）
 
 この文書の名前、モードの分け方、各モードが要るかどうかは、どれも決まっていない。
@@ -827,7 +850,7 @@ X035 に USART4 で `OEP capture line N` を出し続ける sketch を書き込�
 3. リピートとストリーミングを 1 つのモードにまとめ、あふれたときの方針（止める / 上書き）だけを選ぶ形にできるか。
 4. （案、§0.1）ロジックとアナログは別の基本インターフェース（操作の形は同じ）、ミックスドシグナルは別の定義。
    この線引きでよいか。
-5. レートの問い合わせを configure のフラグにするか、別の op にするか。
+5. （2026-09-25 決定、§5.3 / §7.8）問い合わせは別の op（0x09、ロック不要）。
 6. 区画の開始時刻の分解能（µs で足りるか。区画どうしをサンプル単位で並べたい場面があるか）。
 7. トリガの段と条件の表し方（TLV の形、params の中身）。
 8. 役割の割り振り（ロジック 128 本、アナログ 64 本の分け方でよいか）。
