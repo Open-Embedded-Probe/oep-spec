@@ -252,3 +252,43 @@ X1〜X5 から導いた案。
 | 番号 | 問い |
 |---|---|
 | X6 | OEP を CDC と HID で運んだときの速さ（link_source / link_sink）と遅れ。vendor bulk と比べる |
+
+### 5.3 結果 X6: OEP を CDC と HID で運ぶ（2026-09-25、`30eda0e343c6`、1 つの USB デバイスに vendor / CDC / HID の 3 つの口）
+
+HID は vendor 定義（report 511 byte）。scratch の束ね方: output report = 長さ(u16) + 長さの見出し付きのフレームのバイト列、
+input report は先頭に report ID（6）が付く（EspUsbDevice の HID vendor の形）。
+
+| 経路 | probe → host（16 KiB × 16） | host → probe | 往復（lock_state） |
+|---|---|---|---|
+| vendor bulk（direct build） | 37.4 MB/s | 5.5 MB/s | 0.37 ms |
+| CDC | 8.2 MB/s | 0.23 MB/s | 0.60 ms |
+| HID（511 byte） | 0.84 MB/s | 0.96 MB/s | 0.66 ms |
+
+- どの経路でも制御（往復 1 ms 未満）には足りる。大きなデータ（キャプチャのストリーミング）は vendor bulk だけ。
+- HID はホストが 1 report ずつ同期で読んだ値。EspUsbDevice の CR-8 では非同期の読みで 4.03 MB/s。CDC の host → probe は
+  scratch の Stream の中継が 1 byte ずつ読むため（改善の余地）。
+- WSL（Linux）では hidraw が root だけ（`crw------- root`）で、libusb でカーネルのドライバを外して使った（権限の表のとおり）。
+- HID の probe の送信は、前の report が送り終わっていないと sendInput が失敗する。捨てると区切りが崩れる（待って送り直す）。
+- 3 つの経路にそれぞれ Endpoint を置いたが、OEP の制御の口は probe に 1 つという前提（セッションと排他）と合わない。
+  複数の経路を開くなら、1 つのセッションとロックを共有する（どの経路から来た要求も同じ Endpoint で扱う）形にする。
+
+## 6. probe 自身の firmware の更新（OTA）（2026-09-25、ユーザーの問い）
+
+P4 は HS ポートだけでつなぐのが主になるので、USB-Serial/JTAG の esptool に頼らない更新の経路が要る。
+
+| 経路 | endpoint | host に要るもの | 備考 |
+|---|---|---|---|
+| USB DFU（runtime + DFU mode） | 0（EP0 だけ） | `dfu-util`（標準） | EspUsbDevice の FirmwareDFU。endpoint 予算を使い切った構成にも足せる |
+| Mass Storage（.bin を放り込む） | bulk 1 組 | なし（ファイルマネージャ） | FirmwareMSC。いちばん敷居が低いが endpoint を使う（CDC / vendor の FIFO 予算とぶつかる） |
+| vendor の独自コマンド | bulk 1 組 | 自作のツール | FirmwareVendor。最速 |
+| CDC のスクリプト | CDC 1 口 | 自作 | FirmwareCDC |
+| ROM の download loader | — | esptool | FirmwareBootMode。DFU runtime から入れる。壊れた firmware からの復旧用 |
+| HTTP（CDC-NCM） | 数本 | ブラウザ | FirmwareHTTP |
+
+案:
+- **OTA は OEP の wire の外**（OEP は target を扱うプロトコルで、probe 自身の更新は USB の標準に任せる）。
+- **DFU runtime の interface を、どの起動モードでも付ける**（endpoint を使わないので、vendor + CDC 3 口の構成でも足せる）。
+  host は標準の `dfu-util` で更新し、壊れたときは DFU runtime から ROM の download loader に入って esptool で復旧する。
+- Mass Storage は、起動モードの 1 つ（更新・設定用のモード）として置く案が合う（endpoint を使うため、常時は載せない）。
+- OEP 側で知らせるのは、describe の firmware の版（core tag 0x40、既存）だけで足りる。更新の経路は USB の記述子で分かる。
+- 要確認: DFU の Windows での扱い（MS OS 2.0 の記述子で WinUSB を割り当てられるか）、usbipd 越しの DFU detach と再列挙。
