@@ -261,48 +261,88 @@ host は購読しなければ何も受け取らない。
   実測（P4 HS、direct build、usbipd）: probe → host は 16 KiB × 16 本で 31 MB/s、host → probe は 5.5 MB/s
   （logic-capture §7.10）。
 
-## 5.5 `oep.wire.<線>` と `oep.target.riscv-dm` の操作（仮置き、最初の実装の形）
+## 5.4 線と target の操作に共通の形（2026-09-25、revision 1）
 
-名前の置き方は [能力の名前の階層](capability-name-hierarchy.ja.md)。番号と書式は仮で、ch32rv のレビュー
-（2026-09-24）を受けて足したものを含む。
+`oep.wire.*` と `oep.target.*` は revision 1 でこの形になる（revision 0 は最初の実装の形で、使わない）。
+
+**status**（線と target の操作の応答に入る、何が起きたか）:
+
+| 値 | 名前 | 意味 | host の判断の目安 |
+|---:|---|---|---|
+| 0 | ok | 最後まで進んだ | — |
+| 1 | wait | target が「待て」を返し続けた（DMI の busy、SWD の WAIT）。probe の中の再試行を使い切った | 間を置いて続きから |
+| 2 | line | 線の応答が無い、パリティの誤り（線が悪い、target が止まった・速さが合わない） | 速さを下げて attach し直す |
+| 3 | fault | target が拒否した（DMI の op の失敗、SWD の FAULT、抽象コマンドの cmderr） | 原因を読んで消す（ABORT、cmderr のクリア） |
+| 4 | timeout | 待つ手順や run の上限に達した | 上限を見直す |
+| 5 | state | 前提の状態でない（止まっていない hart に止まっている前提の操作など） | 状態を整えてから |
+
+- 0x40〜0x7F はインターフェースが決める。知らない値は失敗として扱う（§0）。
+- **失敗は completed で返す**（§3）。outcome は、何も進まなければ failed、途中まで進めば partial。payload の形は成功のとき
+  と同じで、`done`（進んだ手順・語の数）と `status` で分かる。書式の誤り（手順の並びが壊れている、長さが合わない）は
+  rejected malformed。connection を知らなければ rejected no connection（0x0A）。
+
+**attach の規範**: probe は、線の速さを確かめ終えるまで target に書き込まない（読むだけで速さを選ぶ）。速さの合わない
+書き込みは target の状態を壊しうる（2026-09-25: クロックを下げた X035C8T6 に WCH-LinkE が速い設定で attach し、以後
+debug にも UART にも応答しなくなった例。原因は未確定）。
+
+## 5.5 `oep.wire.rvswd` / `oep.wire.swio` と `oep.target.riscv-dm`（revision 1）
+
+名前の置き方は [能力の名前の階層](capability-name-hierarchy.ja.md)。
 
 `oep.wire.rvswd` / `oep.wire.swio`:
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
 | 0x01 | scan | — | count(u8)、kind(u8) swdio(u16) swclk(u16) DMSTATUS(u32) の並び（生の値） |
-| 0x02 | attach | method(u8: 0 止めない / 1 止める) | connection(u8)、DMSTATUS(u32)、flags(u8: bit0 保留中の havereset を確認応答した) |
+| 0x02 | attach | method(u8: 0 止めない / 1 止める)、[TLV] | connection(u8)、DMSTATUS(u32)、flags(u8: bit0 保留中の havereset を確認応答した)、speed_hz(u32) |
 | 0x03 | detach | connection(u8) | — |
-| 0x04 | attach_under_reset | channel(u16、0xffff = probe の既定値)、hold_ms(u16) | connection(u8)、dpc(u32) |
+| 0x04 | attach_under_reset | channel(u16、0xffff = probe の既定値)、hold_ms(u16)、[TLV] | connection(u8)、dpc(u32)、speed_hz(u32) |
 
+attach / attach_under_reset の TLV:
+
+| tag | 名前 | 値 |
+|---:|---|---|
+| 0x01 | max_speed | u32 Hz。probe はこれを超える速さを選ばない（critical で送ると、上限を持てない probe は断る） |
+
+- speed_hz は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。書き込みが遅い理由の説明に使う。
 - attach は保留中の havereset を先に確認応答する（V00x の DM は確認応答まで DMSTATUS の halt / running を固定する）。
 - attach_under_reset はリセットの線を保持して attach し、離しながら halt を打ち続ける（タイミングが厳しいので probe の
-  1 操作）。host が指定できるのは probe が許可したチャンネルだけ。任意の op（持たない probe は unsupported）。
+  1 操作）。host が指定できるのは probe が許可したチャンネルだけ。任意の op（持たない probe は unknown operation）。
   持たない probe では、host は `oep.fixture.gpio` の解放と attach をまとめて送って再試行する（窓の縁の競争）。
 
-`oep.target.riscv-dm`（最初の byte は connection）:
+`oep.target.riscv-dm`（要求の最初の byte は connection）:
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | dmi | 手順の並び（下表） | done(u16)、status(u8: 0 ok / 1 書式 / 2 アクセス / 3 待ち切れ)、read の値 |
-| 0x02 | halt | — | — |
-| 0x03 | resume | — | — |
-| 0x04 | reset | mode(u8: 0 走らせる / 1 走らせて実行を確認 / 2 最初の命令の前で止める) | flags(u8)、attempts(u8)、pc(u32)（mode 2 では dpc） |
-| 0x05 | read_block | address(u32)、count(u16) | 語の並び |
-| 0x06 | write_block | address(u32)、語の並び | — |
-| 0x07 | run | pc(u32)、timeout_ms(u16)、n(u8)、n × (regno u16、value u32) | stopped(u8)、dpc(u32)、a0(u32)、elapsed_us(u32) |
-| 0x08 | step | — | moved(u8)、dpc_before(u32)、dpc_after(u32) |
+| 0x01 | dmi | 手順の並び（下表） | done(u16)、status(u8)、値の並び（読む手順と待つ手順の値） |
+| 0x02 | halt | — | status(u8) |
+| 0x03 | resume | — | status(u8) |
+| 0x04 | reset | mode(u8: 0 走らせる / 1 走らせて実行を確認 / 2 最初の命令の前で止める)、[TLV] | status(u8)、flags(u8)、attempts(u8)、pc(u32)（mode 2 では dpc） |
+| 0x05 | read_block | address(u32)、count(u16) | done(u16)、status(u8)、語の並び（done 個） |
+| 0x06 | write_block | address(u32)、語の並び | done(u16)、status(u8) |
+| 0x07 | run | pc(u32)、timeout_ms(u32)、n(u8)、n × (regno u16、value u32)、n_out(u8)、n_out × regno(u16) | status(u8)、stopped(u8)、dpc(u32)、elapsed_us(u32)、n_out × value(u32) |
+| 0x08 | step | — | status(u8)、moved(u8)、dpc_before(u32)、dpc_after(u32) |
+
+reset の TLV:
+
+| tag | 名前 | 値 |
+|---:|---|---|
+| 0x01 | method | u8: 0 probe が選ぶ、1 ndmreset、2 target のシステムリセット（PFIC など、host が DMI の手順で書く代わりに probe が行う） |
 
 DMI の手順:
 
-| kind | 手順 | 引数 |
-|---:|---|---|
-| 0x01 | 書く | address(u8)、value(u32) |
-| 0x02 | 読む | address(u8)（値を応答に足す） |
-| 0x03 | 読む回数を上限に待つ | address(u8)、mask(u32)、value(u32)、max_reads(u16) |
-| 0x04 | 待ち | us(u32) |
-| 0x05 | 時間を上限に待つ | address(u8)、mask(u32)、value(u32)、max_us(u32)（線の速さに依らず同じ意味） |
+| kind | 手順 | 引数 | 応答に足す値 |
+|---:|---|---|---|
+| 0x01 | 書く | address(u8)、value(u32) | — |
+| 0x02 | 読む | address(u8) | 読んだ値(u32) |
+| 0x03 | 読む回数を上限に待つ | address(u8)、mask(u32)、value(u32)、max_reads(u16) | 最後に読んだ値(u32)（成功でも待ち切れでも） |
+| 0x04 | 待ち | us(u32) | — |
+| 0x05 | 時間を上限に待つ | address(u8)、mask(u32)、value(u32)、max_us(u32)（線の速さに依らず同じ意味） | 最後に読んだ値(u32) |
 
+- kind 0x10〜0x1F は、番地を広くした同じ手順（address u32。複数の DM や abits の大きい DTM 用）に予約する。
+- 待ち切れたら status timeout、done はその手順の番号（その手順の最後の値は足してある）。
+- run の timeout_ms は u32（0xFFFFFFFF は上限なし）。止まったら stopped = 1、上限に達したら stopped = 0 と status timeout。
+  n_out が 0 なら値は返らない（ローダーの状態を a0、失敗した番地を a1 に置くなら n_out = 2、regno = 0x100A、0x100B）。
 - reset の mode 2 は haltreq を保ったまま ndmreset を解く。semihosting、gdb の `monitor reset halt`、動いている
   ウォッチドッグの上からの書き込みに使う（IWDG は hart を止めても数え続ける）。
 - step は dcsr.step を立てて resume を 1 回だけ出し、成否は dpc が動いたかで判定する（L103 は allresumeack を立てず、
@@ -311,29 +351,34 @@ DMI の手順:
   止まった位置が開始位置のままなら、走らなかったとみなして resume を出し直す。
 - 一つの要求は一つの hart の操作で、DMI の手順のリストは probe の都合（線の再試行、立て直し）を書けない。
   リセットや回復のようにタイミングと線の立て直しが要るものは、部品（reset、attach_under_reset）にする。
+- read_block / write_block は語（32 bit）単位。どの方式（抽象コマンドのメモリアクセスか program buffer か）で読むかは
+  describe で宣言する。8 / 16 bit のアクセスは dmi の手順で組む。
 
-## 5.6 `oep.wire.swd` と `oep.target.arm-adi` の操作（仮置き、2026-09-24 の最初の実装）
+## 5.6 `oep.wire.swd` と `oep.target.arm-adi`（revision 1）
 
 `oep.wire.swd`（scan の kind は 0x02 = arm-adi）:
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
 | 0x01 | scan | — | count(u8)、kind(u8) swdio(u16) swclk(u16) DPIDR(u32) の並び |
-| 0x02 | attach | [TARGETSEL(u32)]（multidrop のときだけ） | connection(u8)、DPIDR(u32)、flags(u8: bit0 dormant から起こした) |
+| 0x02 | attach | [TLV]（下表） | connection(u8)、DPIDR(u32)、flags(u8: bit0 dormant から起こした)、speed_hz(u32) |
 | 0x03 | detach | connection(u8) | — |
+
+attach の TLV: 0x01 max_speed（u32 Hz、rvswd と同じ）、0x02 targetsel（u32、multidrop のときだけ）。
 
 - attach は JTAG から SWD への切り替えを試し、答えがなければ dormant から起こす（RP2350 の SWD v2 は後者でだけ答える）。
   電源投入（CTRL/STAT の CDBGPWRUPREQ / CSYSPWRUPREQ）は host が DP の書き込みで行う。
 - attach_under_reset は持たない（任意の op）。
 
-`oep.target.arm-adi`（最初の byte は connection）:
+`oep.target.arm-adi`（要求の最初の byte は connection）:
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | transfer | 転送の並び: req(u8: bit0 APnDP、bit1 RnW、bit2-3 A[3:2]) と、書き込みなら value(u32) | done(u16)、status(u8: 0 ok / 1 書式 / 2 FAULT / 3 応答なし・パリティ / 4 WAIT のまま)、ack(u8)、読んだ値の並び |
-| 0x02 | read_block | address(u32)、count(u16) | 語の並び |
-| 0x03 | write_block | address(u32)、語の並び | — |
+| 0x01 | transfer | 転送の並び: req(u8: bit0 APnDP、bit1 RnW、bit2-3 A[3:2]) と、書き込みなら value(u32) | done(u16)、status(u8)、ack(u8)、読んだ値の並び |
+| 0x02 | read_block | address(u32)、count(u16) | done(u16)、status(u8)、語の並び（done 個） |
+| 0x03 | write_block | address(u32)、語の並び | done(u16)、status(u8) |
 
+- status は §5.4 の共通の値（WAIT のまま = wait、FAULT = fault、応答なし・パリティ = line）。ack は最後の転送の生の ACK。
 - transfer は生の転送で、AP の読み出しが 1 つ遅れて返るのもそのまま（host が RDBUFF か次の AP の読み出しで受け取る）。
   WAIT は probe の中で再試行する。FAULT で止まるので、host は ABORT で sticky を消す。
 - read_block / write_block は今の MEM-AP の TAR / DRW を使う。SELECT（TAR / DRW のある bank）と CSW（32 bit、単一増加、
@@ -348,9 +393,10 @@ DMI の手順:
   AHB-AP、IDR 0x34770008）、0xA000（APB-AP）、0x80000（RP-AP）。AHB-AP は非セキュア（CSW bit 30）で上がってきて、
   そのままでは SRAM が FAULT になる（セキュアにすると読める）。
 
+
 ## 6. 長さの確認（64 byte のフレーム）
 
-- list の応答: 見出し 5 + list の見出し 2 + 1 項目（7 + 名前 48）= 62 byte。
+- list の応答: 見出し 5 + list の見出し 3（total u16、count u8）+ 1 項目（7 + 名前 48）= 63 byte。
 - 状態を変える要求の見出し: 6 + 4 = 10 byte。payload に 54 byte 使える。
 
 ## 未決
