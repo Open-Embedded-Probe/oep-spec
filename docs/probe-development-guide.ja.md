@@ -27,6 +27,14 @@
 - P4 の USB-Serial/JTAG は、outstanding byte が device の ring（8 KiB）を超えるとデータを落とした（E155）。window は
   device の ring の半分（4 KiB）で宣言している。
 - 長い処理の間も受信を吸える作り（割り込み・DMA で受ける、処理を分けて poll を回す）にする。
+- **受信は 1 byte ごとに重い処理をしない。** frame の読み取りが 1 byte ごとに時計（ESP32 の `millis()`）を読むと、
+  1 byte 約 1.2 µs かかり、HS USB でも host → probe が 0.8 MB/s で頭打ちになった（2026-09-25、P4）。届いている分を
+  まとめて読み、時計は 1 回だけ読み、本文はまとめて写す（oep-probe-arduino の `FrameReader::feed`）。Arduino の
+  `Stream::readBytes` の既定の実装も 1 byte ごとに時計を読むので使わない。
+- **宣言した max_frame の要求を丸ごと受けられるようにする。** 受信バッファ（frame 1 つ分）と、USB などの受け口の
+  ring（下の層が 1 回に置く量 × 2 以上）の両方。足りないと frame の途中がこぼれ、以後の区切りがずれる
+  （P4 の direct build で、8 KiB の ring に 16 KiB の要求が来てこぼれた）。
+- 線の速さは core の link_source / link_sink（v1 wire §5）で測れる。受信・送信の経路を変えたら測り直す。
 
 ## 2.5 OEP の口にほかのものを出さない・誰も読まない口で止まらない
 
