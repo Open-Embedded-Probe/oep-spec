@@ -66,8 +66,8 @@ keepalive(session_id)                       → 何もしない（期限を伸�
 | 空き | 違う（open 以外） | 「セッションなし」。host は open からやり直す |
 | 空き | open（任意の ID） | ロックを立てる。最後の session_id を更新する |
 | 自分が保持 | 同じ | 処理する |
-| 他が保持 | 違う | BUSY と残り時間。今の session_id は返さない |
-| 他が保持 | open(force) | 奪う。最後の session_id を更新する |
+| 他が保持 | 違う | locked（0x08）と残り時間。今の session_id は返さない（[v1 wire](v1-core-wire-delta.ja.md) §3） |
+| 他が保持 | open(force) | 奪う。最後の session_id を更新する。前の持ち主の購読は終わる |
 
 - **session_id が変わっていないことは、間に他の host が操作していないことを意味する。** one-shot CLI は
   session_id を保存しておき（probe の個体ごと）、次のコマンドで同じ ID を使う。通れば「前のコマンドのあと誰も触って
