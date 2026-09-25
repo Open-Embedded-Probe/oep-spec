@@ -40,7 +40,7 @@ list entry : fn(u16), instance(u16), revision(u8), flags(u8), name_len(u8), name
 ## 1.5 describe のページ送り
 
 ```text
-describe request : fn(u16), first(u8)
+describe request : fn(u16), first(u16)
 describe result  : more(u8), TLV bytes
 ```
 
@@ -73,13 +73,11 @@ v0 の TLV（tag u8、len u8、bit 7 = critical）を保ったまま、tag を�
 | 0x01 | role_channels | role(u8), base(u16), bitmap(bytes) | **role ごとのピン候補**。bit i が立っていれば channel `base+i` をその role に使える。同じ role を複数回書いてよい（和集合） |
 | 0x02 | max_clock_hz | u32 | 上限（v0 と同じ） |
 | 0x03 | max_length | u16 | 1 回に扱える最大長（v0 と同じ） |
-| 0x04 | exclusive_group | u16、繰り返し | 同じ group の機能は同時に使えない（資源の共有）。v0 と同じ |
-| 0x05 | min_clock_hz | u32 | 下限（v0 と同じ） |
+| 0x05 | min_clock_hz | u32 | 下限（v0 と同じ）。0x04 は v0 の exclusive_group で、v1 では使わない（資源の取り合いは plan で断る。2026-09-26 のレビュー） |
 | 0x06 | features | u32 | **任意機能のビット**。各 bit の意味はインターフェースの定義が決める |
 | 0x07 | implementation | u8 | 参考情報。0 = 未指定、1 = ソフトウェア（ビットバン）、2 = 専用ペリフェラル、3 = ペリフェラル + DMA/PIO。host はこれで動作を変えず、表示と診断に使う |
 | 0x08 | channel_group | group(u8), [role(u8), channel(u16)] × n | **ピンの組の制約**。この group を使うなら、各 role はここに書いた channel に固定される。group が一つ以上ある機能では、plan はいずれか一つの group に完全に一致しなければならない |
 | 0x90 | role_assignment | function(u16), role(u8), channel(u16) | plan 用（v0 と同じ、critical） |
-| 0x91 | start_together | function(u16)、繰り返し | plan 用（v0 と同じ、critical） |
 
 ### role_channels と channel_group の使い分け
 
