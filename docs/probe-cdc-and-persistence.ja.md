@@ -466,3 +466,39 @@ mode 0 は 8 インターフェースになった: HID、vendor、CDC（OEP）�
   - 断るときに DM に触る量を減らせるか（0x7f を読むだけで DATA0 は触らない）は、dmseq の文書と合わせて見る。
 - 試作の段階で、bind の attach は chip_id の確かめまでを含めて 5 つの状態で足りた: なし / コンソール中 / 不一致 / attach 失敗、それに口の DTR。
 - 未実装: lease の失効で host の分の利用を外すこと（§0 の寿命の規則）、host の riscv-dm の要求の間のコンソールの読みの停止（1 本のループなので、要求の途中には挟まらない）。
+
+### 7.6 P7 の結果（2026-09-26、X035 の治具の P4 30eda0e31108。43c6 がつながっていないため）
+
+チューニング（oep-probe-arduino 8abd078）:
+- Endpoint は各経路を 2 KiB ずつまとめて読む（`Stream::readBytes`）。DirectBulkStream と試作の CDC / HID の Stream は、まとめて写す readBytes を持つ。
+- FixtureUart は UART をまとめて読み、P4 では stream を 32 KiB にした。
+- 試作に、USB の構成ごとの起動モードを足した（`host/usb_configs.py` がモードを切り替えて測る）。
+
+link_speed（16368 バイト × 16、1 秒ずつ）と、lock_state の往復（200 回の平均）:
+
+| モード | USB の構成 | vendor（probe→host / host→probe、往復） | HID | CDC（OEP） |
+|---:|---|---|---|---|
+| 1 | vendor | 36.1 / 10.2 MB/s、0.43 ms | - | - |
+| 2 | vendor + HID | 36.2 / 10.0、0.42 | 1.07 / 1.03、0.65 | - |
+| 3 | vendor + HID + CDC | 36.0 / 9.7、0.39 | 0.94 / 1.03、0.65 | 8.5 / 6.8、0.49 |
+| 0 | vendor + HID + CDC + データの口 1 + MSC | 25.2 / 9.8、0.42 | 1.07 / 1.04、0.62 | 9.0 / 6.7、0.41 |
+| 4 / 5 | vendor + HID + CDC + データの口 2 / 3 | USB の構成が組めない（`usbDevice.begin` が ESP_ERR_INVALID_SIZE） | | |
+
+チューニング前（§5.3 X6、§7.1）との比較:
+
+| 経路 | host→probe の前 | host→probe の後 |
+|---|---|---|
+| vendor | 5.5 MB/s | 約 10 MB/s |
+| CDC | 0.23 MB/s | 6.7 MB/s |
+| HID | 約 1.0 MB/s | 変わらず（report の往復が上限） |
+
+UART bridge の 64 KiB の折り返し: 921600 / 2 Mbaud とも線の速さまで出て、取りこぼしも無い（2 回とも）。実効は 1003 / 2174 kbaud で、線の速さを上回って見えるのは WSL の時計が遅れるため。前は 2 Mbaud でも約 880 kbaud で頭打ちだった。921600 で stream があふれた件（§7 P7 の追記）は、32 KiB で 3 回とも起きなかった。
+
+わかったこと:
+- **probe → host（vendor）は、データの口と MSC を足すと 36 → 25 MB/s に落ちた**。HID と CDC を足しただけでは落ちない。X1 の「CDC を 2 口以上にすると 150 MHz のストリーミングが崩れる」と同じ傾向。
+- **vendor + HID + CDC にデータの口を 2 つ以上足した構成は、EspUsbDevice が受け付けない**（エンドポイントか FIFO の予算の不足）。X1 では HID なしで vendor + CDC 3 口まで入っていた。
+  - 起動モードの組み合わせは、probe が組めるものだけを describe に出す必要がある。
+  - 保存されたモードが組めないときに USB から戻れなくならないよう、試作では保存した起動モードを捨てて、自分の選んだモードで起動し直すようにした（`ProbeConfig::forgetBootMode`）。仕様では describe の storage の状態（読めない）で知らせる形になる。
+- 往復はどの経路・構成でも 0.4〜0.65 ms で、制御にはどれでも足りる。
+- 再起動から再列挙までは約 4 s だった（再起動後の Windows では usbipd が自動で付け直していた）。
+- capture のストリーミングの上限は、構成ごとには測り直していない。以前の試験のスクリプトが再起動で消えたため。必要なら試作に capture を足して測る。
