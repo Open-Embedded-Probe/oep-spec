@@ -318,6 +318,11 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 
 0x04 は予約。role の番号はインターフェースが定める。
 
+- どのピンにも割り当てられる機能は role_channels に候補を並べ、ピンの組が決まっている機能は channel_group を組の数だけ書く。
+  両方を書いた場合、plan は channel_group のどれかに一致し、かつ role_channels の候補にも入っていなければならない。
+- 同じ宣言は、plan を使わずにピンを引数で選ぶインターフェース（線の attach の pins など）でも、選べるピンの宣言として使う。
+- plan の要求の role_assignment（0x90）は plan_apply の文脈の tag（§8）で、describe の tag ではない。
+
 ### 7.5 probe 全体の宣言（fn 0 の describe、0x40〜）
 
 | tag | 名前 | 値 |
@@ -337,7 +342,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 - **plan_apply**: role_assignment の TLV（0x90、critical: fn(u16)、role(u8)、channel(u16)）の並び。各インターフェースが自分の
   役割を副作用なしで確かめ、**全部が受け入れたときだけ適用する**（1 つでも断れば何も変えずに rejected）。plan は 1 つずつ
   （適用中の plan があれば rejected unavailable）。
-- **plan_release**: plan を解き、ピンを解放する（入力）。
+- **plan_release**: plan を解き、ピンを解放する（入力。解放したピンの状態をインターフェースが別に定めていればそれに従う。例: `oep.fixture.uart` の TX は休止の high）。
 - 同じ instance の fn は plan を共有する。
 - plan の寿命は §9。
 
@@ -352,7 +357,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | force で奪われる | 外す（期限切れと同じ） |
 | probe の再起動 | 無くなる（boot_id が変わる） |
 
-- 本体の資源: **plan**（外すとピンは解放 = 入力。target の線を plan で保っていた場合、target の状態が変わりうる）、通知の購読
+- 本体の資源: **plan**（外すとピンは plan_release と同じく解放。target の線を plan で保っていた場合、target の状態が変わりうる）、通知の購読
   （§11。購読は end でも終わる）、§5.2 の表。
 - インターフェースが作る資源（debug の connection、ストリームなど）の寿命は、インターフェースの文書が、この規則の上で定める
   （誰が使っているか、いつ閉じるか）。

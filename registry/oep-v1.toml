@@ -1,10 +1,10 @@
 # OEP v1 registry: every number on the wire, in one place (2026-09-25, working toward the freeze).
-# The spec text is docs/v1-core-wire-delta.ja.md (and logic-capture.ja.md for the capture). tools/oepgen1.py generates
+# The spec text is docs/oep-core.ja.md (the core) and docs/oep-if-*.ja.md (the standard interfaces). tools/oepgen1.py generates
 # the C++ header and the Python module from this file; `oepgen1.py --check` fails when the committed outputs drift.
 # Numbers only: payload layouts stay in the spec tables. TLV tags live in the context of one (interface, op) or one
-# declaration; the same value in another context is another tag (v1 wire §0).
+# declaration; the same value in another context is another tag (core §2.2).
 # Per op: `lock` = needs the session lock; `closed_tail = true` = the response ends with a list of unknown length
-# (read bytes), so nothing can be appended after it (v1 wire §0). The key `fields` is reserved on ops for payload
+# (read bytes), so nothing can be appended after it (core §2.3). The key `fields` is reserved on ops for payload
 # layouts later (encoders / decoders generated from here).
 # The hash embedded in the generated files is the sha256 of this file with line endings normalized to LF.
 # Per interface: `reserved.<enum or "op">` = ranges [[lo, hi]] no value may use; `status` / `reject_reasons` = the
@@ -57,7 +57,7 @@ unsupported = 0x0B
 result_lost = 0x0C              # a request sent again whose result was too large to keep (read it again)
 corr_reused = 0x0D              # a request sent again with the same corr but another fn, op or payload
 
-[status]                        # wire and target operations (v1 wire §5.4); 0x06-0x3F reserved, 0x40-0x7F per interface
+[status]                        # wire and target operations (oep-if-common §3); 0x06-0x3F reserved, 0x40-0x7F per interface
 ok = 0
 wait = 1
 line = 2
@@ -65,13 +65,13 @@ fault = 3
 timeout = 4
 state = 5
 
-[timing]                        # values host and probe both implement (v1 wire §1, §4.5)
+[timing]                        # values host and probe both implement (core §3.2, §5.1, §11)
 resync_quiet_ms = 50            # host: read and discard until the input is this quiet, then confirm
 probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restarts its reader
 host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
 heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
 
-[describe_common]               # declaration tags every interface's describe may use (capability-declaration-model §3)
+[describe_common]               # declaration tags every interface's describe may use (core §7.4)
 role_channels = 0x01
 max_clock_hz = 0x02
 max_length = 0x03
