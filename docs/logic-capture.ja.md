@@ -516,8 +516,8 @@ segment : serial(u32), position(u32), samples(u32), start_us(u32), trigger_index
 
 ### 5.3 configure
 
-**設定の TLV**（ロジックは確定、2026-09-25。critical を立てた TLV を probe が持たなければ configure 全体を拒否し、立てていなければ無視して
-`ignored` に載せる）:
+**設定の TLV**（ロジックは確定、2026-09-25。critical を立てた TLV（または値）を probe が扱えなければ configure 全体を
+rejected unsupported（0x0B、payload に tag）で断り、立てていなければ無視して応答の `ignored`（0x7F）に載せる。v1 wire §0）:
 
 | tag | 名前 | 値 | 対象 |
 |---|---|---|---|
@@ -546,7 +546,7 @@ segment : serial(u32), position(u32), samples(u32), start_us(u32), trigger_index
 | 0x54 | timing | jitter_kind(u8: 0 なし / 1 分数分周 / 2 ソフトウェア)、jitter_ns(u32)、skew_ns[C](u32)（アナログ） | 両方 |
 | 0x55 | scale | zero(u32、値)、scale_nv(u32、1 値あたりの nV) | アナログ |
 | 0x56 | blocking_ms | u32（取っている間 probe が答えない時間の見込み。0 なら答える） | 両方 |
-| 0x57 | ignored | tag(u8) の並び | 両方 |
+| 0x7F | ignored | tag(u8) の並び（v1 wire §0 の全文脈共通の ignored。2026-09-25 に 0x57 から移した） | 両方 |
 
 ### 5.4 通知（[v1 wire](v1-core-wire-delta.ja.md) §4.5）
 

@@ -111,7 +111,7 @@ role=0x81 (bit7=1) | corr | fn | op | session_id(u32) | payload     session_id �
 | 0x08 | locked | 他のセッションがロック中 | 0 | 残り時間 ms（u32）。今の session_id は返さない |
 | 0x09 | session required | 状態を変える要求に session_id が無い（role 0x01） | 0 | — |
 | 0x0A | no connection | 要求の connection を probe が知らない（attach していない、probe が再起動した、線や target の reset で失われた）。host は attach からやり直す | 0 | — |
-| 0x0B | unsupported | 要求の critical の TLV（または値）を probe が扱えない | 0 | 扱えない tag（u8） |
+| 0x0B | unsupported | 要求の critical の TLV（または値）を probe が扱えない | 0 | TLV のときは扱えない tag（u8）。固定部分の値（知らない列挙値など）のときは payload なし |
 
 - rejected の detail は 0（v0 から予約）。追加の情報は payload に置く。
 - boot_id が変わった（open の応答、ハートビート）、または boot_id が 0（不明）の probe で「no session」を受けたら、host は
@@ -300,7 +300,7 @@ debug にも UART にも応答しなくなった例。原因は未確定）。
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
 | 0x01 | scan | — | count(u8)、kind(u8) swdio(u16) swclk(u16) DMSTATUS(u32) の並び（生の値） |
-| 0x02 | attach | method(u8: 0 止めない / 1 止める)、[TLV] | connection(u8)、DMSTATUS(u32)、flags(u8: bit0 保留中の havereset を確認応答した)、speed_hz(u32) |
+| 0x02 | attach | method(u8: 0 止めない / 1 止める)、[TLV] | connection(u8)、DMSTATUS(u32)、flags(u8: bit0 保留中の havereset を確認応答した、bit1 既存の connection)、speed_hz(u32) |
 | 0x03 | detach | connection(u8) | — |
 | 0x04 | attach_under_reset | channel(u16、0xffff = probe の既定値)、hold_ms(u16)、[TLV] | connection(u8)、dpc(u32)、speed_hz(u32) |
 
@@ -311,6 +311,8 @@ attach / attach_under_reset の TLV:
 | 0x01 | max_speed | u32 Hz。probe はこれを超える速さを選ばない（critical で送ると、上限を持てない probe は断る） |
 
 - speed_hz は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。書き込みが遅い理由の説明に使う。
+- **すでに attach している線への attach は、その connection をそのまま返す**（flags bit1。副作用なし。method = 1 でも
+  止まっていれば何もしない）。1 コマンド 1 プロセスの host が、前のプロセスの connection を番号を保存せずに取り戻すため。
 - attach は保留中の havereset を先に確認応答する（V00x の DM は確認応答まで DMSTATUS の halt / running を固定する）。
 - attach_under_reset はリセットの線を保持して attach し、離しながら halt を打ち続ける（タイミングが厳しいので probe の
   1 操作）。host が指定できるのは probe が許可したチャンネルだけ。任意の op（持たない probe は unknown operation）。
@@ -376,7 +378,7 @@ DMI の手順:
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
 | 0x01 | scan | — | count(u8)、kind(u8) swdio(u16) swclk(u16) DPIDR(u32) の並び |
-| 0x02 | attach | [TLV]（下表） | connection(u8)、DPIDR(u32)、flags(u8: bit0 dormant から起こした)、speed_hz(u32) |
+| 0x02 | attach | [TLV]（下表） | connection(u8)、DPIDR(u32)、flags(u8: bit0 dormant から起こした、bit1 既存の connection)、speed_hz(u32) |
 | 0x03 | detach | connection(u8) | — |
 
 attach の TLV: 0x01 max_speed（u32 Hz、rvswd と同じ）、0x02 targetsel（u32、multidrop のときだけ）。
@@ -416,9 +418,9 @@ attach の TLV: 0x01 max_speed（u32 Hz、rvswd と同じ）、0x02 targetsel（
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x01 | open | connection(u8)、mechanism(u8: 0 SDI / 1 DMDATA / 2 dmseq)、[TLV] | stream(u8) | 必要 |
+| 0x01 | open | connection(u8)、mechanism(u8: 0 SDI / 1 DMDATA / 2 dmseq)、[TLV] | stream(u8)、flags(u8: bit0 既存のストリーム) | 必要 |
 | 0x02 | read | stream(u8)、from(u8)、arg(u32)、max(u16) | start(u32)、flags(u8: bit0 more / bit1 gap)、data | 不要 |
-| 0x03 | marks | stream(u8)、from(u32) | count(u8)、count × (position u32、kind u8、time_ms u32、detail u8) | 不要 |
+| 0x03 | marks | stream(u8)、from_serial(u32) | more(u8)、count(u8)、count × (serial u32、position u32、kind u8、time_ms u32、detail u8) | 不要 |
 | 0x04 | clear | stream(u8) | — | 必要 |
 | 0x05 | mark | stream(u8)、value(u8) | — | 必要 |
 | 0x06 | write | stream(u8)、count(u16)、data | accepted(u16) | 必要 |
@@ -427,9 +429,17 @@ attach の TLV: 0x01 max_speed（u32 Hz、rvswd と同じ）、0x02 targetsel（
 - read の from: 0 位置（arg）、1 最古、2 今、3 kind が arg の最後のマーク（arg 0 はどの kind でも）。data は長さの
   分からない並びなので、read の応答の後ろには何も足せない（§0）。
 - write は受け付けた分だけを返す（バッファしない）。全部受け付けなければ completed partial。
+- **同じ (connection, mechanism) のストリームがあれば、open はそれを返す**（flags bit0。位置もマークもそのまま）。
+  1 コマンド 1 プロセスの host（書き込みの後に Monitor を開き直す）が、続きから読めるようにするため。
+- マークはストリームごとに通し番号（serial、u32、一周する）を持つ。marks は serial で続きを読む（同じ位置に複数の
+  マークが付いても落ちも重複もしない）。more は、まだ続きがあること。マークの時刻 time_ms は probe の起動からの **ms**
+  （u32、約 49.7 日で一周。出来事の µs とは単位が違う）。
 - マークの kind（0x01〜0x3F 標準、0x40〜0x7F インターフェース固有）: 0x01 reset、0x02 restart、0x03 attach、
   0x04 detach、0x05 lost、0x06 clear、0x07 host（detail = host の値）、0x08 link-lost。
-- 知らない stream は rejected unavailable。ストリームを開いた connection が失われたら、マーク link-lost を付けて閉じる。
+- 知らない stream は rejected unavailable、知らない mechanism は rejected unsupported（payload なし）。
+- ストリームを開いた connection が失われたら、マーク link-lost を付けて閉じる。**閉じたストリームも、同じ mechanism で
+  次に open されるまで読める**（read / marks。write / mark / clear は rejected unavailable）。線が落ちる直前の出力を回収
+  するため。
 
 ## 5.8 `oep.fixture.gpio` と `oep.fixture.uart`（revision 1、2026-09-25）
 
@@ -465,7 +475,7 @@ mode:
 |---:|---|---|---|---|
 | 0x01 | configure | baud(u32)、[TLV] | baud(u32、実際の値) | 必要 |
 | 0x02 | read | from(u8)、arg(u32)、max(u16) | start(u32)、flags(u8)、data | 不要 |
-| 0x03 | marks | from(u32) | count(u8)、count × (position u32、kind u8、time_ms u32、detail u8) | 不要 |
+| 0x03 | marks | from_serial(u32) | more(u8)、count(u8)、count × (serial u32、position u32、kind u8、time_ms u32、detail u8) | 不要 |
 | 0x04 | clear | — | — | 必要 |
 | 0x05 | mark | value(u8) | — | 必要 |
 | 0x06 | write | count(u16)、data | accepted(u16) | 必要 |
