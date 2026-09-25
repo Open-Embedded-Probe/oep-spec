@@ -511,4 +511,12 @@ UART bridge の 64 KiB の折り返し: 921600 / 2 Mbaud とも線の速さま�
   - target の SerialDMSeq は、0 の語を沈黙として扱い、20 ms ごとに frame を出し直すはずなので、target の DATA0 への書き込みが効いていないと見られる。
 - 候補の原因: 断るときの detach が DMCONTROL = 0（dmactive = 0）を書き、デバッグモジュールをリセットする。次の attach は CFGR（WCH の 0x7d / 0x7e、"allow output from slave"）を dmactive を立てる前に書くので、それが効かず、ハートの出力が許されないままになる。
   - コンソールの読みがバスを休ませないので、アイドル後に CFGR を書き直す処理も走らず、何かの拍子に書き直されるまで止まる（遅れがばらつくことと合う）。
-  - dmactive を立てた後にも CFGR を書くように直した。確認は治具を借りて行う。
+  - dmactive を立てた後にも CFGR を書くように直した（LinkE も線上でこの順。wch-protocols link-to-target §5）。
+    **直らなかった**: 5 回中 2 回は 8 s 以上戻らず、残りも 7.4 s かかった。遅れている間は DATA0 = 0 のまま。oep_smoke x035 14/14 は保つので、変更は残した。
+  - 原因は未確定。わかっていること:
+    - target のハートは走っていて、uptime は続いている。
+    - DATA0 は 0 のまま（プローブも host も同じ値を読む）。
+    - 通常の開始（断ることを挟まない）では、すぐ流れる。
+  - 次に見る候補:
+    - 断るときの detach（DMCONTROL = 0 と park）を省いて、connection を開いたままにしたら起きるか。
+    - コンソールの読みの速さ（1 秒に約 7 万回）を落としたら起きるか。
