@@ -94,6 +94,16 @@ USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準c
     - 決めること: 口に流すものを選ぶ操作（`oep.fixture.uart`の線、`oep.target.console`のストリーム、のどれを結ぶか。
       baudの扱い。CDCのline codingをUARTに写すか）、USBの構成（P4 HSならvendor bulkとCDCの複合デバイス）、
       下の16の永続化との関係（電源を入れたらすぐ前回の結び付けで流れること）。
+    - **ch32rvセッションの意見**（2026-09-25）: coreではなく独立したインターフェース（例 `oep.probe.cdc`、revision 1）に
+      して、持たないprobeはlistに出さない。操作は`bind(port, source, …)`の1つ（source: 0 なし / 1 fixture.uart / 2
+      target.console（connection、mechanism）/ 3 固定ピンの素通し、ロック要）。consoleもuartの受信も読んでも消えないので、
+      CDCは読み手が1人増えるだけでOEPのhostの読みとぶつからない（この性質は崩さない）。line codingはfixture.uartを
+      結んだときだけUARTに写し、bindのflagで「line codingに従う / configureのまま」を選ぶ（開いただけで別のhostの
+      baudを変えないため）。**DTR / RTSは転送を止めない・targetをresetしない（既定）**、resetに使うならbindのflagで明示。
+      1200 baudのtouchも特別扱いしない（LinkEはDTRでSDIの転送を止める実例あり）。PC → targetはCDCとOEPのwriteが
+      混ざったときの順序を未定義とする。describeにCDCのUSB interface番号と今のbindを出し、複合デバイスのinterfaceの
+      並びは固定（hostがOSのポートとprobeを結び付けるため）。ch32rvのmonitor / runはOEPのconsole / uartのreadを使う
+      予定で、CDCはArduinoのSerial Monitorと人が端末で見る用途。
 16. **設定の永続化**（2026-09-25のメモ）。LinkEのようにピンが固定なら要らないが、自由な配線だと、探してピンを見つける
     ところまではできても、probeをリセットすると設定が消える。
     - 候補: CDCの設定（15の結び付け）、前回つないだアダプタ（target）の種類とピン（線の組、NRST）、ピンの目印（ラベル）を
@@ -104,6 +114,14 @@ USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準c
       の関係（保存したラベルを宣言に出す）。
     - v1 のwireには足すだけで入る見込み（coreの0x01〜0x0Fかセッションの範囲に操作を足す、またはインターフェースを
       足す）。固める前に番号の置き場だけは確かめる。
+    - **ch32rvセッションの意見**（2026-09-25）: 書くのは**hostの明示的な保存だけ**（attachのたびに書くと書き換えが増え、
+      試しの誤ったピンが残る。同じ内容なら書かない）。**起動時の自動の動作はplanの再適用とCDCのbindまで。attachはせず、
+      targetの線に能動的な信号を出さない**（NRSTも駆動しない。E164のようにattachだけで止まるtargetがある。配線を
+      変えた後の古いplanで出力を駆動するとぶつかる）。保存はplan + ラベル + CDCのbindを1つの塊にし、形式の版とhashを
+      付ける。firmwareの更新で読めなくなったら適用せず、describeで「保存はあるが読めない」と出す。操作はsave / read /
+      eraseの3つとdescribeの「保存あり・適用済み・hash」。hostはhashを比べて同じなら何もしない（1コマンド1プロセスの
+      hostが毎回planを送らずに済む）。保存したラベルはdescribeのラベル（core 0x46）に出し、hostは`label:<name>`で
+      probeを選べるようにできる。独立したインターフェース（例 `oep.probe.config`）にして、保存先の無いprobeは持たない。
 
 関係するnamespaceとlifecycle規則を合意するまで、数値registry値を割り当てない。
 
