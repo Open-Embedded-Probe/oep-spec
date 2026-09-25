@@ -70,6 +70,41 @@ attach の中身も分ける: **止めない attach（method 0）** は、動い
 | X4 | SDI / DMSEQ の target は、probe がいない間と attach の直後にどう振る舞うか | probe を attach しない状態で出力させ、途中から attach する。取り逃がす量、アプリの遅れ | 「CDC を開いたとき attach」で最初の出力を取り逃がすか |
 | X5 | 小さい probe（V003）に何が保存できるか | flash の page、option byte の Data0 / Data1 | plan の識別子だけにするか |
 
+### 3.1 結果 X1: P4 の vendor bulk + CDC の複合デバイス（2026-09-25、`30eda0e343c6`、EspUsbDevice 2.5.1）
+
+- vendor（OEP、interface 0）+ CDC 3 口（interface 1 / 3 / 5、名前 "OEP port 0/1/2"）で列挙できた。P4 HS の制御以外の
+  IN endpoint は 7 本で、vendor 1 + CDC 2 本ずつ（通知 + データ）なので、OEP と一緒なら CDC は 3 口まで。
+- Linux の `/dev/serial/by-id/` はシリアル番号と interface 番号で名前が付く（`…-30eda0e343c6-hs-if01` など）。並びが同じなら
+  名前も変わらない。usbipd の共有も、シリアル番号が同じならそのまま効いた（構成が変わっても bind し直し不要）。
+- 口ごとに baud と DTR / RTS を持ち、開いたまま baud を変えると通知が来る。**Linux の cdc-acm は開くときに DTR / RTS を
+  必ず一度立てる**（pyserial で DTR を下げて開いても、dtr=1 → dtr=0 と 2 回通知が来た）。閉じると 3 口とも dtr=0 rts=0。
+  → DTR を reset などに使うと、開くたびに一瞬反応してしまう。DTR は「開かれている」の目安にしかならない。
+- **CDC を持つと OEP の速さが落ちる**: bulk IN が 3 本以上になると vendor の送信 FIFO を 2 packet にできない
+  （EspUsbDevice の自動判定）。
+
+| CDC の口 | link_source（16 KiB × 16） | 2 本 150 MHz のストリーミング | 160 MHz |
+|---:|---|---|---|
+| 0 | 35.3 MB/s | 欠けなし | 欠けなし |
+| 1 | 33.6 MB/s | 欠けなし | 欠けなし |
+| 2 | 25.6 MB/s | 欠け（29.9 MB/s） | 欠け |
+| 3 | 26.0 MB/s | 欠け（29.9 MB/s） | —（未測） |
+
+### 3.2 結果 X2: 線を駆動せずに target の有無が分かるか（2026-09-25）
+
+内蔵プルアップ / プルダウンを掛けて 16 回読み、何もつながっていないピンと比べた（`scratchpad/PinProbe`）。
+
+| 治具 | 線 | プルアップ | プルダウン |
+|---|---|---|---|
+| X035（P4 `30eda0e31108`） | SWDIO（PC18）、SWCLK（PC19）、DUT の PA0 / PA5、何もつながっていない 20〜23 | すべて high | すべて low |
+| V003（classic ESP32） | SWIO（PD1）、DUT の PA1 / PC0、何もつながっていない 2 / 15 | すべて high | すべて low |
+| V003 | NRST | high | **high**（基板のプルアップが勝つ） |
+
+- **CH32 の debug の線は probe の内蔵プルに勝たないので、プルだけでは target の有無は分からない**（何もつながっていない
+  ピンと同じに見える）。NRST は基板のプルアップが強ければ分かるが、基板しだい。RP2350 は E9 の errata でプルの読みが
+  当てにならない（pico-bench の記録）。
+- したがって「前回のピンに target がいるか」を確かめるには、線を駆動する操作（DMSTATUS を読むなど）が要る。
+  target のアプリがその線を GPIO として使っている場合は、駆動すると出力とぶつかる。
+
 ## 4. 決めたこと
 
 （実験の後に書く）
