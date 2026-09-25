@@ -1,6 +1,6 @@
 # Open Embedded Probe — コンソールのストリーム
 
-状態: 方針と考え方の文書。**番号と書式は [v1 wire](v1-core-wire-delta.ja.md) §5.7（console）と §5.8（uart）で決めた**（2026-09-25）。
+状態: 方針と考え方の文書（規範ではない）。**規範は [共通部品](oep-if-common.ja.md) §1（位置つきのストリーム）、[コンソール](oep-if-console.ja.md)、[fixture](oep-if-fixture.ja.md) §2（uart）**（2026-09-26 に移した）。
 
 制御の口が 1 本しかない probe（CH340 の classic ESP32、P4 の USB-Serial/JTAG）で、target のコンソールや fixture の
 UART を OEP の中で運ぶ形を決める。コンソール専用の口を持つ probe は、その口を OEP の外に置いて Monitor に占有させる

@@ -11,18 +11,23 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 - [レビューの手引き（どこに何が書いてあるか、読む順番）](docs/review-guide.ja.md)
 - [開発ガイドライン（作業版）](docs/development-guidelines.ja.md)
 - [core wire model v0 draft（作業版）](docs/v0-core-wire-model.ja.md)
-- v1 の仮置き（議論の合意。実験してから調整する）
+- **v1 の規範**（固める候補。2026-09-26 に本体と標準インターフェースに分けた）
+  - [OEP core（本体）](docs/oep-core.ja.md) — 層と線引きの規則、フレーム、メッセージ、セッション、発見、plan、寿命、通知、インターフェースの書き方
+  - 標準インターフェース: [共通部品](docs/oep-if-common.ja.md)、[線とデバッグ](docs/oep-if-debug.ja.md)、[コンソール](docs/oep-if-console.ja.md)（framing: [dmseq](docs/target-console-dmseq.ja.md)）、[fixture](docs/oep-if-fixture.ja.md)、[キャプチャ](docs/oep-if-capture.ja.md)、[probe の設定](docs/oep-if-probe-config.ja.md)
+  - [registry/oep-v1.toml](registry/oep-v1.toml) — v1 の wire 上の全数値の唯一の定義（`uv run tools/oepgen1.py --check`）
+- v1 の理由・実測・実務（規範ではない）
   - [能力の識別方式の比較](docs/capability-identification-comparison.ja.md)
   - [能力の宣言モデル（describe の語彙）](docs/capability-declaration-model.ja.md)
   - [能力の名前の階層](docs/capability-name-hierarchy.ja.md)
-  - [core wire model v1（v0 からの差分）](docs/v1-core-wire-delta.ja.md)
   - [セッションと排他](docs/session-and-exclusivity.ja.md)
   - [コンソールのストリーム](docs/console-stream.ja.md)
   - [target の発見と接続](docs/target-connection-use-cases.ja.md)
-  - [target のコンソール: dmseq](docs/target-console-dmseq.ja.md)
+  - [キャプチャ（設計と実測）](docs/logic-capture.ja.md)
+  - [シリアルの口と永続化](docs/probe-cdc-and-persistence.ja.md)
   - [host 開発ガイド](docs/host-development-guide.ja.md)
   - [probe 開発ガイド](docs/probe-development-guide.ja.md)
-- v1 の未合意の案（決めてから上へ移す）: [スキャンで見つけた組への attach と PENDING、fixture の payload](docs/v1-open-proposals.ja.md)
+  - [core wire model v1（v0 からの差分、経緯）](docs/v1-core-wire-delta.ja.md)
+- v1 の案と決めた経緯: [v1 の未合意の案](docs/v1-open-proposals.ja.md)、[第三者レビュー（2026-09-26）](docs/review-answer-2026-09-26.ja.md)
 - [registry/oep-v0.yaml](registry/oep-v0.yaml) — v0 の wire 上の全数値の唯一の定義。`uv run tools/oepgen.py` が `generated/` に C library、Python module、test vector を生成する（`--check` で同期確認）
 - [プロジェクトの目的と範囲](docs/project-concept.ja.md)
 - [相互運用ユースケース](docs/use-cases.ja.md)

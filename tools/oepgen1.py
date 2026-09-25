@@ -2,7 +2,7 @@
 # requires-python = ">=3.11"
 # ///
 """Generate the OEP v1 constants (C++ header, Python module) from registry/oep-v1.toml, after checking the numbering
-rules of docs/v1-core-wire-delta.ja.md §0.
+rules of docs/oep-core.ja.md §2.
 
 Usage:
   uv run tools/oepgen1.py            # write into generated/oep-v1/

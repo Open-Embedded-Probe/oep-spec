@@ -19,7 +19,10 @@ flash の書き方やチップ固有の手順は host にある。
 ## 2. 今の状態
 
 - **v1 を「固める候補」として詰めている段階**です。
-  - 合意した規則は `docs/v1-core-wire-delta.ja.md` にあり、実装（probe と client）はそれに合わせてあります。
+  - 規範は、本体の `docs/oep-core.ja.md` と、標準インターフェースごとの `docs/oep-if-*.ja.md` です（2026-09-26 に分けた）。
+    実装（probe と client）はそれに合わせてあります。
+  - 本体と標準インターフェースの線引きは `oep-core.ja.md` §0 の規則です（本体は、インターフェースの名前を知る前に要るもの
+    と、すべてのインターフェースにまたがるものだけ。ロジアナなどは本体の仕組みだけで定義した標準の例）。
   - ただし、まだ公開した仕様ではなく、**破壊的な変更を前提**にしています（利用者はまだいない）。
 - 決め方は「**先に実験・試作をして、その結果で仕様を固める**」。仕様の文書には、実験の番号（X1、P3 など）や日付がそのまま残っています。
 - 文書は**日本語が先**です。英語版は固まってから作ります（既存の英語の文書は古い）。
@@ -30,15 +33,16 @@ flash の書き方やチップ固有の手順は host にある。
 | 順 | PATH（oep-spec） | 何が分かるか |
 |---:|---|---|
 | 1 | `docs/project-concept.ja.md` | 目的と範囲（上流の合意）。短い |
-| 2 | `docs/v1-core-wire-delta.ja.md` | **v1 の本体**。§0 共通の規則（番号、TLV、失敗の返し方、connection の寿命）、§1 フレームと経路（USB vendor / HID / CDC / UART）、§2〜§4 セッション・reject・長い操作・通知、§5 core とインターフェースごとの op（線、RISC-V DM、ARM、コンソール、fixture、capture、probe の設定） |
-| 3 | `docs/session-and-exclusivity.ja.md` | セッション、ロック、lease の考え方 |
-| 4 | `docs/capability-identification-comparison.ja.md`、`docs/capability-declaration-model.ja.md`、`docs/capability-name-hierarchy.ja.md` | 機能（interface）を名前で探す方式、describe の語彙、名前の付け方 |
-| 5 | `docs/console-stream.ja.md`、`docs/target-console-dmseq.ja.md` | target のコンソールを位置つきのストリームで読む形と、デバッグモジュールのデータレジスタで双方向に運ぶ framing（dmseq） |
-| 6 | `docs/target-connection-use-cases.ja.md` | target の発見と接続の使い方 |
-| 7 | `docs/logic-capture.ja.md` | キャプチャ（ロジック / アナログ）。長い（約 1000 行）。§3〜§5 が基本の形 |
-| 8 | `docs/probe-cdc-and-persistence.ja.md` | USB の複数の経路、シリアル転送（CDC）、設定の保存、起動モード、probe 自身の更新。§7 に試作 P1〜P7 の結果（v1 §5.5 / §5.10 の根拠） |
+| 2 | `docs/oep-core.ja.md` | **本体（規範）**。§0 層と線引きの規則、§2 共通の規則（TLV、知らない値、番号の空間、revision）、§3 経路とフレーム、§4 メッセージと reject reason、§5 立て直しと送り直し（重複排除）、§6 セッション、§7 発見（confirm / list / describe）、§8 plan、§9 資源の寿命、§10 長い操作、§11 通知、§12 core の op、§13 インターフェースの書き方 |
+| 3 | `docs/oep-if-common.ja.md` | 標準インターフェースの共通部品（位置つきのストリーム、debug の connection、線と target の status） |
+| 4 | `docs/oep-if-debug.ja.md`、`docs/oep-if-console.ja.md`、`docs/oep-if-fixture.ja.md`、`docs/oep-if-capture.ja.md`、`docs/oep-if-probe-config.ja.md` | 標準インターフェース（規範）: 線と RISC-V DM / ARM ADI、target のコンソール、GPIO / UART、ロジック / アナログのキャプチャ、probe の設定 |
+| 5 | `docs/target-console-dmseq.ja.md` | コンソールの framing（dmseq）: デバッグモジュールのデータレジスタで、通番と CRC つきで双方向に運ぶ（target と host の規範） |
+| 6 | `docs/session-and-exclusivity.ja.md`、`docs/capability-identification-comparison.ja.md`、`docs/capability-declaration-model.ja.md`、`docs/capability-name-hierarchy.ja.md`、`docs/console-stream.ja.md`、`docs/target-connection-use-cases.ja.md` | 決めた理由（セッションとロック、名前で探す方式、describe の語彙、名前の付け方、ストリームの考え方、target の発見と接続） |
+| 7 | `docs/logic-capture.ja.md` | キャプチャの設計と実測（ロジアナとしての設計、基本と拡張の線引き、§7 の根拠）。長い |
+| 8 | `docs/probe-cdc-and-persistence.ja.md` | USB の複数の経路、シリアル転送（CDC）、設定の保存、起動モード、probe 自身の更新。§7 に試作 P1〜P7 の結果（debug の寿命と probe の設定の根拠） |
 | 9 | `docs/host-development-guide.ja.md`、`docs/probe-development-guide.ja.md` | host と probe を書く人への実務の約束（フレームの送り方、立て直し、USB-UART の扱いなど） |
-| 10 | `docs/v1-open-proposals.ja.md` | まだ合意していない案（スキャンした組への attach、PENDING など） |
+| 10 | `docs/v1-open-proposals.ja.md`、`docs/review-answer-2026-09-26.ja.md` | 決める前の案と決めた経緯、前回の第三者レビュー |
+| — | `docs/v1-core-wire-delta.ja.md` | 分ける前の v0 からの差分（経緯）。通知と link の速さの実測は、ここに残っている |
 
 ## 4. oep-spec（仕様、番号の表、実験）
 
@@ -46,7 +50,8 @@ flash の書き方やチップ固有の手順は host にある。
 
 | 状態 | PATH（`docs/`） |
 |---|---|
-| **v1 の現行**（上の表の 2〜10） | `v1-core-wire-delta`、`session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-console-dmseq`、`target-connection-use-cases`、`logic-capture`、`probe-cdc-and-persistence`、`host-development-guide`、`probe-development-guide`、`v1-open-proposals` |
+| **v1 の規範** | `oep-core`、`oep-if-*`（6 つ）、`target-console-dmseq` |
+| v1 の理由・実測・実務（上の表の 6〜10） | `session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-connection-use-cases`、`logic-capture`、`probe-cdc-and-persistence`、`host-development-guide`、`probe-development-guide`、`v1-open-proposals`、`review-answer-2026-09-26`、`v1-core-wire-delta`（経緯） |
 | 上流の合意（目的・要求・モデル） | `project-concept`（英語版 `project-concept.md` もあるが古い）、`use-cases`、`project-requirements`、`conceptual-model`、`responsibility-boundaries`、`development-guidelines`（作業版） |
 | v0 以前の設計の比較と候補（経緯。v1 の決定の理由をたどるとき） | `common-protocol-behavior`、`information-model`、`interaction-patterns`、`message-model-candidates`、`message-routing-model`、`message-header-layout-comparison`、`request-correlation-lifecycle`、`implicit-correlation-comparison`、`correlation-width-comparison`、`correlation-retirement-model`、`request-completion-semantics`、`activity-reference-lifecycle`、`connection-binding-design-inputs`、`minimal-connection-channel`、`bootstrap-*`（3 つ）、`uart-*`（5 つ） |
 | v0（v1 で置き換え済み） | `v0-core-wire-model`、`v003-destructive-prototype` |
@@ -57,7 +62,7 @@ flash の書き方やチップ固有の手順は host にある。
 | PATH | 中身 |
 |---|---|
 | `registry/oep-v1.toml` | **v1 の wire 上の全数値の唯一の定義**（op、TLV の tag、reject reason、status、enum、インターフェースの名前と revision） |
-| `tools/oepgen1.py` | registry から C++ ヘッダと Python モジュールを生成し、番号の規則（§0）を検査する。`uv run tools/oepgen1.py --check` で同期を確かめる |
+| `tools/oepgen1.py` | registry から C++ ヘッダと Python モジュールを生成し、番号の規則（core §2）を検査する。`uv run tools/oepgen1.py --check` で同期を確かめる |
 | `generated/oep-v1/oep_v1_registry.h`、`generated/oep-v1/oep_v1_registry.py` | 生成物。probe と client はこれを写して使う（`OepV1Registry.h`、`oep_client/v1/registry.py`） |
 | `tests/registry_v1/test_registry_v1.py` | registry と生成物の試験 |
 | `registry/oep-v0.yaml`、`tools/oepgen.py`、`generated/oep-v0-*` | v0 の同じもの（経緯） |
@@ -73,8 +78,7 @@ flash の書き方やチップ固有の手順は host にある。
 
 ## 5. oep-probe-arduino（probe の実装、Arduino ライブラリ）
 
-注意: **`README.ja.md` は v0 のころのままで、今の実装と合っていない**（「まだ無いもの」に書かれた多くは v1 で実装済み）。
-下の表と、各ファイルの冒頭のコメントを見てください。
+`README.ja.md` に構成と使い方がある。各ファイルの冒頭のコメントに、対応する仕様の節が書いてある。
 
 ### 5.1 `src/`
 
@@ -130,7 +134,7 @@ flash の書き方やチップ固有の手順は host にある。
 | `src/oep_client/v1/fake.py`、`endpoint.py` | ハードウェアなしの偽の probe（試験用） |
 | `src/oep_client/v1/target.py` | 主なものを 1 か所から import する入口 |
 | `src/oep_client/v0/` | v0 の client（経緯） |
-| `tests/test_v1_*.py` | ハードウェアなしの試験（`uv run pytest`、134 件） |
+| `tests/test_v1_*.py` | ハードウェアなしの試験（`uv run pytest`、135 件） |
 
 ## 7. 周辺のリポジトリ（参考）
 
@@ -159,7 +163,7 @@ flash の書き方やチップ固有の手順は host にある。
 - 仕様の文書に、実験の番号（X1〜X6、P1〜P7、E1xx）、日付、「ユーザーの方針」がそのまま入っている。決定の根拠を残すため
   で、規範は「〜する」「〜しない」の文。
 - 「未確定」「未確認」と書いたものは、まだ確かめていない。
-- 同じことを別の文書で古い形で書いていることがある（v0 以前の比較の文書など）。v1 では `v1-core-wire-delta.ja.md`
-  が優先で、そこからリンクした文書がその次。
+- 同じことを別の文書で古い形で書いていることがある（v0 以前の比較の文書、`v1-core-wire-delta.ja.md` など）。v1 では
+  `oep-core.ja.md` と `oep-if-*.ja.md` が正しく、番号は `registry/oep-v1.toml` が正しい。
 - 実装の振る舞いを確かめたいときは、probe は `src/OepV1*.cpp`、client は `src/oep_client/v1/` を見るのが早い。どちらも
   冒頭のコメントに、対応する仕様の節が書いてある。

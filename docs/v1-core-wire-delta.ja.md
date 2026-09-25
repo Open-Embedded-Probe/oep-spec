@@ -1,8 +1,9 @@
 # Open Embedded Probe — core wire model v1（v0 からの差分）
 
-状態: **固める途中**（2026-09-25〜。ch32rv セッションのレビューを受けながら進める）。§0 の共通の規則と §1〜§5 の core は
-固める候補、§5.5 以降（線と target）は書き換え中。土台は [core wire model v0 draft](v0-core-wire-model.ja.md)。
-ここに書いていない部分（要求と応答の見出し、resolution、TLV の形）は v0 のまま。
+状態: **経緯（規範ではない）**。2026-09-26 に、本体は [OEP core](oep-core.ja.md)、標準インターフェースは `oep-if-*.ja.md`
+（[core](oep-core.ja.md) §14 の一覧）へ書き直した。規範はそちらで、この文書と食い違えばそちらが正しい。ここに残すのは、
+v0 からの差分として固めていった順の記録と、各節の実験（通知の実測 §4.5、link の速さ §5 など）。土台は
+[core wire model v0 draft](v0-core-wire-model.ja.md)。
 
 関連: [セッションと排他](session-and-exclusivity.ja.md)、[能力の宣言モデル](capability-declaration-model.ja.md)、
 [能力の名前の階層](capability-name-hierarchy.ja.md)、[コンソールのストリーム](console-stream.ja.md)。
