@@ -54,6 +54,8 @@ locked = 0x08
 session_required = 0x09
 no_connection = 0x0A
 unsupported = 0x0B
+result_lost = 0x0C              # a request sent again whose result was too large to keep (read it again)
+corr_reused = 0x0D              # a request sent again with the same corr but another fn, op or payload
 
 [status]                        # wire and target operations (v1 wire §5.4); 0x06-0x3F reserved, 0x40-0x7F per interface
 ok = 0
