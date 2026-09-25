@@ -435,3 +435,34 @@ mode 0 は 8 インターフェースになった: HID、vendor、CDC（OEP）�
   - 開発用の probe では、DFU（Linux / macOS の標準の道具）と Mass Storage（Windows / macOS で道具なし）の両方を持つのがよい。
   - OEP の vendor の経路で更新する独自のコマンドは、今回は作っていない（OEP の外なので、要るときに probe が決める）。
 - P4 の ROM のブートモード（USJ の esptool）は、43c6 の USJ の口がつながっている構成ではいつでも使える（§6）。
+
+### 7.5 P6 の結果（2026-09-25、X035 の治具）
+
+構成: 治具の P4（30eda0e31108、OEP は USJ）に HS の CDC の口 "Target console" を 1 つ足した（oep-probe-arduino
+`examples/Esp32P4X035ConsolePrototype`、eef626d の WIP を試験した）。
+
+- oep.probe.config の bind（source 2 = target.console、mechanism 2 = dmseq）で、その口にコンソールを流す。
+- connection に利用者（host / bind）を持たせた。host の detach は host の分だけを外し、force の TLV か、利用者がいなくなったときに切る。
+- X035 には、コアの例 HelloDMSeq（1 秒ごとに uptime、入力を大文字で返す）を、oep_smoke と同じ host 側の書き込みで焼いた。
+
+| 確認したこと | 結果 |
+|---|---|
+| attach 0（host に任せる）: host が attach するまで | 口には何も来ない |
+| host が attach（止めない） | 口にコンソールが流れる。users = host + bind |
+| host の普通の detach | 線は残る（users = bind）。コンソールも続く |
+| 口に打った文字 | target に届き、大文字で返る（口 → dmseq → target） |
+| host が attach し直して riscv-dm の reset | connection とコンソールが続き、reset 後の最初の出力（"hello from the debug module"）から取れる |
+| force の detach | connection が切れ、口も止まる |
+| attach 1（口を開いたとき）、target の項目が違う chip_id | attach して DM 0x7f を読み（0x035e0601、ESIG と同じ値）、違うので外す（state = 不一致） |
+| attach 1、正しい chip_id | DTR で attach し、コンソールが口に流れる。口を閉じても読み続ける |
+| attach 2（起動時）を保存して reboot | host なしで自分で attach し、口に流れる。uptime は続いていて、probe の再起動で target は再起動しない |
+
+わかったこと:
+- **§4.5 の (a)(b) の形で動く**: 口に結んだコンソールの connection は host の detach では閉じず、host の reset でも保たれる。
+  書き込み → Monitor の導線（1 コマンド 1 プロセスの host が reset して detach した後の出力を取る）が成り立つ。
+- **違う chip_id で断った直後は、正しい target で開いてもコンソールが戻るまで 1〜6 s かかった**。
+  - probe の再 attach の間隔（250 ms）では説明できない。
+  - target の SerialDMSeq（ホストの応答が 1 s 途切れると諦め、以後の書き込みを捨てる）のやり直しと、attach が DATA0 に残す値（0xffffffff）との相互作用と見られる（未確定。コアは凍結中なので target 側は触っていない）。
+  - 断るときに DM に触る量を減らせるか（0x7f を読むだけで DATA0 は触らない）は、dmseq の文書と合わせて見る。
+- 試作の段階で、bind の attach は chip_id の確かめまでを含めて 5 つの状態で足りた: なし / コンソール中 / 不一致 / attach 失敗、それに口の DTR。
+- 未実装: lease の失効で host の分の利用を外すこと（§0 の寿命の規則）、host の riscv-dm の要求の間のコンソールの読みの停止（1 本のループなので、要求の途中には挟まらない）。
