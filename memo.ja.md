@@ -104,6 +104,16 @@ USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準c
       混ざったときの順序を未定義とする。describeにCDCのUSB interface番号と今のbindを出し、複合デバイスのinterfaceの
       並びは固定（hostがOSのポートとprobeを結び付けるため）。ch32rvのmonitor / runはOEPのconsole / uartのreadを使う
       予定で、CDCはArduinoのSerial Monitorと人が端末で見る用途。
+    - **ユーザーの前提（2026-09-25、ch32rvセッション経由）**: CDCは複数作れて、物理UARTのほかにSDIやDMSEQなど、いろいろな
+      ものを繋げられる想定。これを受けたch32rvの意見: 口の数はUSBのenumerationで決まるので、describeに口の数と口ごとの
+      USB interface番号を出し、bindは口に何を流すかを変えるだけ。sourceは 0 なし / 1 fixture.uart（番号）/ 2 targetの
+      console（connection + mechanism。mechanismはconsoleの番号をそのまま使うので、SDI、DMDATA、DMSEQ、RTTが新しい番号
+      なしで入る）。**同じconnectionでDMのmailbox（DATA0 / DATA1）を使うmechanismは1つだけ**（dmdata / dmseq / sdiは
+      同時に成り立たない）なので、開いているconsoleと違うmechanismを求めるbindはrejected。同じstreamを複数の口とOEPの
+      readで読むのは「消えない読み」でそのまま成り立つ。SDIのようにprobeがDMをpollingするmechanismはhostのDMI操作と
+      線を取り合うので、hostのdmi / runの間はpollingを止めるか間に挟むかを規範にする。起動直後や、connectionを失った
+      後は、consoleを結んだ口は閉じずに保留（connectionができてconsoleが開けば流れる。Serial Monitorを開いたままtargetを
+      resetしても流れ続ける）。bit-bangのlow-speed USBのprobe（V003）はbulkが規格外でCDCを持てないので、口の数0と出す。
 16. **設定の永続化**（2026-09-25のメモ）。LinkEのようにピンが固定なら要らないが、自由な配線だと、探してピンを見つける
     ところまではできても、probeをリセットすると設定が消える。
     - 候補: CDCの設定（15の結び付け）、前回つないだアダプタ（target）の種類とピン（線の組、NRST）、ピンの目印（ラベル）を
@@ -122,6 +132,14 @@ USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準c
       eraseの3つとdescribeの「保存あり・適用済み・hash」。hostはhashを比べて同じなら何もしない（1コマンド1プロセスの
       hostが毎回planを送らずに済む）。保存したラベルはdescribeのラベル（core 0x46）に出し、hostは`label:<name>`で
       probeを選べるようにできる。独立したインターフェース（例 `oep.probe.config`）にして、保存先の無いprobeは持たない。
+    - **ユーザーの前提（2026-09-25、ch32rvセッション経由）**: 永続化しにくいV003などもあるので、そこも考慮する。これを受けた
+      ch32rvの意見: 保存は「ある / なし / 小さい」を認め、describeに保存できる最大byte数を出す（0 = 保存なし。V003は
+      flash 16 KiBでEEPROM / NVSが無く、書けるのはflashのpage（64 B）かoption byteのData0 / Data1の2 byteくらい）。
+      **小さいprobeは「planの識別子」（hostが選ぶu32のplan_id、またはhashの先頭）だけを保存**し、planの中身はhostが持つ
+      （describeのplan_idが違えばhostがplanを送り直す。大きいprobeは中身ごと保存して、hostが無くても起動時に再適用できる）。
+      自分のflashを書く間はprobeの仕事（USBを含む。bit-bang USBのV003では特に）が止まるので、saveは明示的な操作のとき
+      だけ、実行中はほかの要求を受けない（completedまで待たせる）と書く。同じ内容なら書かないことに加え、saveの回数を
+      describeか応答で数えられると、hostが書きすぎを警告できる（任意）。
 
 関係するnamespaceとlifecycle規則を合意するまで、数値registry値を割り当てない。
 
