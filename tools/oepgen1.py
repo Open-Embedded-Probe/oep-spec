@@ -24,7 +24,8 @@ OUT = ROOT / "generated" / "oep-v1"
 
 
 def load() -> tuple[dict, str]:
-    raw = REGISTRY.read_bytes()
+    # the hash is over the file with line endings normalized to LF (a CRLF checkout must give the same value)
+    raw = REGISTRY.read_bytes().replace(b"\r\n", b"\n")
     return tomllib.loads(raw.decode()), hashlib.sha256(raw).hexdigest()[:16]
 
 
@@ -39,6 +40,7 @@ def check(reg: dict) -> list[str]:
     for name, code in reg["status"].items():
         if not 0 <= code <= 0x3F:
             errors.append(f"status {name} = {code:#x} outside the common range")
+    common = reg.get("describe_common", {})
     names = set()
     for iface in reg["interface"]:
         n = iface["name"]
@@ -70,6 +72,22 @@ def check(reg: dict) -> list[str]:
                     errors.append(f"{n}: tlv {context}.{tag_name} = {tag:#x} is reserved")
                 if tag & 0x80 and not (n == "oep.core" and context == "plan_apply"):
                     errors.append(f"{n}: tlv {context}.{tag_name} = {tag:#x} has the critical bit set in the registry")
+        for group in ("status", "reject_reasons"):
+            for v_name, v in iface.get(group, {}).items():
+                if not 0x40 <= v <= 0x7F:
+                    errors.append(f"{n}: {group} {v_name} = {v:#x} outside the interface range 0x40-0x7F")
+        for tag_name, tag in iface.get("tlv", {}).get("describe", {}).items():
+            if tag in common.values() or tag_name in common:
+                errors.append(f"{n}: describe tag {tag_name} = {tag:#x} repeats a common tag ([describe_common])")
+        for what, ranges in iface.get("reserved", {}).items():
+            values = codes if what == "op" else iface.get("enum", {}).get(what)
+            if values is None:
+                errors.append(f"{n}: reserved.{what} names no enum")
+                continue
+            items = values.items() if what == "op" else ((v, k) for k, v in values.items())
+            for v, v_name in items:
+                if any(lo <= v <= hi for lo, hi in ranges):
+                    errors.append(f"{n}: {what} {v_name} = {v:#x} is in a reserved range")
         for kind_name, kind in iface.get("event", {}).items():
             if not 0x01 <= kind <= 0x7F:
                 errors.append(f"{n}: event {kind_name} = {kind:#x} outside the interface range 0x01-0x7F")
@@ -97,6 +115,9 @@ def cpp(reg: dict, digest: str) -> str:
         L.append("")
         for k, v in reg[group].items():
             L.append(f"constexpr uint8_t k{prefix}{camel(k)} = 0x{v:02X};")
+    L.append("")
+    for k, v in reg["timing"].items():
+        L.append(f"constexpr uint32_t k{camel(k)} = {v};")
     for iface in reg["interface"]:
         ns = ident(iface["name"].removeprefix("oep."))
         L += ["", f"namespace {ns} {{", f'constexpr const char *kName = "{iface["name"]}";',
@@ -110,6 +131,9 @@ def cpp(reg: dict, digest: str) -> str:
                 L.append(f"constexpr uint8_t kTlv{camel(context)}{camel(k)} = 0x{v:02X};")
         for k, v in iface.get("event", {}).items():
             L.append(f"constexpr uint8_t kEvent{camel(k)} = 0x{v:02X};")
+        for group, prefix in (("status", "Status"), ("reject_reasons", "Reject")):
+            for k, v in iface.get(group, {}).items():
+                L.append(f"constexpr uint8_t k{prefix}{camel(k)} = 0x{v:02X};")
         for enum, values in iface.get("enum", {}).items():
             for k, v in values.items():
                 L.append(f"constexpr uint8_t k{camel(enum)}{camel(k)} = 0x{v:02X};")
@@ -125,7 +149,7 @@ def py(reg: dict, digest: str) -> str:
          f"PROTOCOL_REVISION = {reg['protocol']['revision']}"]
     for k, v in reg["constants"].items():
         L.append(f"{k.upper()} = {v!r}" if isinstance(v, str) else f"{k.upper()} = 0x{v:02X}")
-    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common"):
+    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing"):
         L.append(f"{group.upper()} = {{" + ", ".join(f'"{k}": 0x{v:02X}' for k, v in reg[group].items()) + "}")
     L += ["", "INTERFACES = {}"]
     for iface in reg["interface"]:
@@ -138,8 +162,9 @@ def py(reg: dict, digest: str) -> str:
         ev = ", ".join(f'"{k}": 0x{v:02X}' for k, v in iface.get("event", {}).items())
         en = ", ".join(f'"{e}": {{' + ", ".join(f'"{k}": 0x{v:02X}' for k, v in vals.items()) + "}"
                        for e, vals in iface.get("enum", {}).items())
+        own = ", ".join(f'"{k}": 0x{v:02X}' for g in ("status", "reject_reasons") for k, v in iface.get(g, {}).items())
         L += [f'{var} = _NS(name="{iface["name"]}", revision={iface["revision"]}, op={{{ops}}}, lock_free={{{free}}},',
-              f"    closed_tail={{{closed}}}, tlv={{{tlv}}}, event={{{ev}}}, enum={{{en}}})",
+              f"    closed_tail={{{closed}}}, tlv={{{tlv}}}, event={{{ev}}}, enum={{{en}}}, own={{{own}}})",
               f'INTERFACES["{iface["name"]}"] = {var}']
     return "\n".join(L) + "\n"
 

@@ -6,6 +6,15 @@
 # Per op: `lock` = needs the session lock; `closed_tail = true` = the response ends with a list of unknown length
 # (read bytes), so nothing can be appended after it (v1 wire §0). The key `fields` is reserved on ops for payload
 # layouts later (encoders / decoders generated from here).
+# The hash embedded in the generated files is the sha256 of this file with line endings normalized to LF.
+# Per interface: `reserved.<enum or "op">` = ranges [[lo, hi]] no value may use; `status` / `reject_reasons` = the
+# interface's own values (0x40-0x7F). Common describe tags ([timing]                        # values host and probe both implement (v1 wire §1, §4.5)
+resync_quiet_ms = 50            # host: read and discard until the input is this quiet, then confirm
+probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restarts its reader
+host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
+heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
+
+[describe_common]) are not repeated in an interface.
 
 [registry]
 schema = 1
@@ -167,7 +176,9 @@ op = [
 ]
 [interface.tlv.reset]
 method = 0x01
-[interface.enum.dmi_step]       # 0x10-0x1F reserved for the same steps with a u32 address
+[interface.reserved]
+dmi_step = [[0x10, 0x1F]]       # the same steps with a u32 address
+[interface.enum.dmi_step]
 write = 0x01
 read = 0x02
 poll_reads = 0x03
@@ -287,8 +298,7 @@ actual_segments = 0x53
 timing = 0x54
 scale = 0x55
 blocking_ms = 0x56
-[interface.tlv.describe]
-features = 0x06
+[interface.tlv.describe]        # plus the common tags (features 0x06: bit0 query, bit1 force, bit2 notifications)
 mode = 0x40
 rate_range = 0x41
 rate_list = 0x42
