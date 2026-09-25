@@ -83,6 +83,9 @@ The following decisions intentionally remain open:
 13. How a capture declares its data layout: per channel (planar) or as sampled across channels (interleaved).
     Sending data in the form it was acquired and letting the host repack it probably keeps probes simpler
     (note of 2026-09-25; [capture proposal](docs/logic-capture.ja.md) §3.4, Japanese).
+14. Once probes can send notifications, interrupt-like events become wanted too: fixture GPIO interrupts (edges), a
+    probe heartbeat (alive, restarted), and so on (note of 2026-09-25; [v1 wire](docs/v1-core-wire-delta.ja.md) §4.5,
+    Japanese).
 
 No numeric registry values should be assigned until the relevant namespace and lifecycle rules are agreed.
 
