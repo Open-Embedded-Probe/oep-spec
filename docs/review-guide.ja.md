@@ -108,7 +108,6 @@ flash の書き方やチップ固有の手順は host にある。
 | `examples/Esp32P4X035Probe/` | ESP32-P4 + CH32X035 の治具（OEP は USB-Serial/JTAG） |
 | `examples/Esp32V003Probe/` | classic ESP32 + CH32V003（UIAPduino）の治具（SWIO） |
 | `examples/Rp2350L103Probe/`、`examples/Rp2040ZeroProbe/` | RP2350 / RP2040 の probe（RVSWD、SWD） |
-| `examples/Esp32P4HsProbe/` | ESP32-P4 の HS USB（vendor bulk）の probe（v0 のまま） |
 | `examples/Esp32P4CaptureProbe/` | ESP32-P4 のキャプチャの probe（HS、コピーなしのストリーミング）と、確認のスクリプト `host/stream_test.py` |
 | `examples/Esp32P4HsPrototype/` | 試作 P1〜P5 / P7（複数の経路、UART の素通し、設定と起動モード、DFU / Mass Storage での更新、USB 構成ごとの速さ）と、その host 側のスクリプト（`host/`） |
 | `examples/Esp32P4X035ConsolePrototype/` | 試作 P6（コンソールを CDC の口に流す、自動 attach、connection の寿命）と host 側のスクリプト |
@@ -119,7 +118,6 @@ flash の書き方やチップ固有の手順は host にある。
 | PATH | 中身 |
 |---|---|
 | `docs/*.ja.md` | 日付入りの作業記録（評価、進め方、ピンの予約、Pico の机、X035 のリリースの作業表）。経緯 |
-| `tests/hil/` | v0 の HIL 試験（**古い**。v1 の実機の回帰は ArduinoCore-CH32 の `tests/manual/oep_smoke/` で行っている） |
 | `library.properties` | Arduino ライブラリの定義 |
 
 ## 6. oep-client-python（host の実装、Python）
