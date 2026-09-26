@@ -6,6 +6,12 @@ Open Embedded Probe (OEP) is a project that aims to let embedded-development pro
 
 Only the project name is settled at this time. Everything in this repository—including the purpose, scope, requirements, technical approach, and governance—is an exploratory draft, not a released protocol specification.
 
+**Update (2026-09-26):** a v1 candidate specification now exists, in Japanese first: the normative core
+[docs/oep-core.ja.md](docs/oep-core.ja.md), the standard interfaces `docs/oep-if-*.ja.md`, and the number registry
+[registry/oep-v1.toml](registry/oep-v1.toml). The implementations follow it and are checked on hardware. It is not a released
+specification and may still change incompatibly. English versions will follow once it settles; the English documents below
+predate it. A map of the documents is [docs/review-guide.ja.md](docs/review-guide.ja.md) (Japanese).
+
 The work begins by defining the problem, purpose, meaning of interoperability, scope, and success criteria. Function classification, protocol structure, connection methods, and the treatment of USB and PIDs will be considered incrementally from that upstream agreement.
 
 - [Project purpose and scope](docs/project-concept.md)

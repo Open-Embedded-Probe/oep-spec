@@ -4,13 +4,15 @@
 
 Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機能を共通の意味で公開し、異なるprobe実装とhost softwareの間で相互利用できる状態を目指すprojectです。
 
-現在、project名、相互運用を中心とする目的、機能に必要な通信経路をOEP native pathまたは明示的なexternal bindingとして扱う原則、および非互換な派生をOEPとして識別しない原則までを合意しています。その他の目的の文言、範囲、要求、技術方式、運用方針は検討中であり、このrepositoryにはまだ公開済みのprotocol仕様はありません。
+現在は **v1 を固める候補の仕様**があります（2026-09-26）。規範は、本体の [OEP core](docs/oep-core.ja.md) と、標準インターフェース
+の `docs/oep-if-*.ja.md`、番号の唯一の定義の [registry/oep-v1.toml](registry/oep-v1.toml) です。実装（[oep-probe-arduino](https://github.com/Open-Embedded-Probe/oep-probe-arduino)、
+[oep-client-python](https://github.com/Open-Embedded-Probe/oep-client-python)）はこれに合わせてあり、実機で確かめています。まだ公開した
+仕様ではなく、破壊的な変更を前提にしています。文書は日本語が先で、英語版は固まってから作ります。
 
-まず、解決したい問題、projectの目的、相互運用の意味、対象範囲、成功条件を定義します。機能の分類、protocol構造、接続方法、USBやPIDの扱いなどは、その上流の合意から段階的に検討します。
+上流の合意（project名、相互運用を中心とする目的、機能に必要な通信経路を OEP native path または明示的な external binding として
+扱う原則、非互換な派生を OEP として識別しない原則）は、下の「プロジェクトの目的と範囲」などにあります。
 
 - [レビューの手引き（どこに何が書いてあるか、読む順番）](docs/review-guide.ja.md)
-- [開発ガイドライン（作業版）](docs/development-guidelines.ja.md)
-- [core wire model v0 draft（作業版）](docs/v0-core-wire-model.ja.md)
 - **v1 の規範**（固める候補。2026-09-26 に本体と標準インターフェースに分けた）
   - [OEP core（本体）](docs/oep-core.ja.md) — 層と線引きの規則、フレーム、メッセージ、セッション、発見、plan、寿命、通知、インターフェースの書き方
   - 標準インターフェース: [共通部品](docs/oep-if-common.ja.md)、[線とデバッグ](docs/oep-if-debug.ja.md)、[コンソール](docs/oep-if-console.ja.md)（framing: [dmseq](docs/target-console-dmseq.ja.md)）、[fixture](docs/oep-if-fixture.ja.md)、[キャプチャ](docs/oep-if-capture.ja.md)、[probe の設定](docs/oep-if-probe-config.ja.md)
@@ -22,44 +24,49 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
   - [セッションと排他](docs/session-and-exclusivity.ja.md)
   - [コンソールのストリーム](docs/console-stream.ja.md)
   - [target の発見と接続](docs/target-connection-use-cases.ja.md)
-  - [キャプチャ（設計と実測）](docs/logic-capture.ja.md)
+  - [キャプチャ（設計と実測）](docs/logic-capture.ja.md)、[キャプチャの机上調査](docs/capture-survey.ja.md)
   - [シリアルの口と永続化](docs/probe-cdc-and-persistence.ja.md)
   - [host 開発ガイド](docs/host-development-guide.ja.md)
   - [probe 開発ガイド](docs/probe-development-guide.ja.md)
   - [core wire model v1（v0 からの差分、経緯）](docs/v1-core-wire-delta.ja.md)
-- v1 の案と決めた経緯: [v1 の未合意の案](docs/v1-open-proposals.ja.md)、[第三者レビュー（2026-09-26）](docs/review-answer-2026-09-26.ja.md)
-- [registry/oep-v0.yaml](registry/oep-v0.yaml) — v0 の wire 上の全数値の唯一の定義。`uv run tools/oepgen.py` が `generated/` に C library、Python module、test vector を生成する（`--check` で同期確認）
-- [プロジェクトの目的と範囲](docs/project-concept.ja.md)
-- [相互運用ユースケース](docs/use-cases.ja.md)
-- [Project要求](docs/project-requirements.ja.md)
-- [概念モデル](docs/conceptual-model.ja.md)
-- [責任境界](docs/responsibility-boundaries.ja.md)
-- [共通protocolの抽象的な振る舞い](docs/common-protocol-behavior.ja.md)
-- [共通protocolの情報model](docs/information-model.ja.md)
-- [最小interaction pattern](docs/interaction-patterns.ja.md)
-- [共通message model候補](docs/message-model-candidates.ja.md)
-- [Message routing model候補](docs/message-routing-model.ja.md)
-- [Message header構成比較](docs/message-header-layout-comparison.ja.md)
-- [Request correlationのscopeとlifecycle](docs/request-correlation-lifecycle.ja.md)
-- [明示correlationと暗黙対応の比較](docs/implicit-correlation-comparison.ja.md)
-- [Request correlation幅と再利用の比較](docs/correlation-width-comparison.ja.md)
-- [Request correlationのretire条件](docs/correlation-retirement-model.ja.md)
-- [Requestの受理と完了](docs/request-completion-semantics.ja.md)
-- [Activityの参照とlifecycle](docs/activity-reference-lifecycle.ja.md)
-- [Connection binding設計入力](docs/connection-binding-design-inputs.ja.md)
-- [最小connection channel候補](docs/minimal-connection-channel.ja.md)
-- [Bootstrap layout候補](docs/bootstrap-layout-candidates.ja.md)
-- [Bootstrap具体layout実験案](docs/bootstrap-concrete-layout-experiment.ja.md)
-- [Bootstrap layout比較実装（非規定）](experiments/bootstrap-layout/README.ja.md)
-- [Message routing比較実装（非規定）](experiments/message-routing/README.ja.md)
-- [UART bindingの信頼性model候補](docs/uart-reliability-model.ja.md)
-- [UART connection epoch同期候補](docs/uart-connection-epoch.ja.md)
-- [UART timeoutと回復model候補](docs/uart-timeout-recovery-model.ja.md)
-- [UART duplexとflow control候補](docs/uart-duplex-flow-control.ja.md)
-- [UART frame layout比較](docs/uart-frame-layout-comparison.ja.md)
-- [UART binding比較実装（非規定）](experiments/uart-binding/README.ja.md)
+- v1 の案と決めた経緯: [案と決めた経緯](docs/v1-open-proposals.ja.md)、第三者レビュー（2026-09-26）の [1](docs/review-answer-2026-09-26.ja.md) と [2（移植性）](docs/review-answer-portability-2026-09-26.ja.md)、[レビューへの対応](docs/review-response-2026-09-26.ja.md)
+- 上流の合意（目的・要求・モデル）
+  - [プロジェクトの目的と範囲](docs/project-concept.ja.md)
+  - [相互運用ユースケース](docs/use-cases.ja.md)
+  - [Project要求](docs/project-requirements.ja.md)
+  - [概念モデル](docs/conceptual-model.ja.md)
+  - [責任境界](docs/responsibility-boundaries.ja.md)
+  - [開発ガイドライン（作業版）](docs/development-guidelines.ja.md)
+- 経緯（v0 以前の検討。規範ではない。各文書の冒頭にそう書いてある）
+  - [core wire model v0 draft（作業版）](docs/v0-core-wire-model.ja.md)
+  - [registry/oep-v0.yaml](registry/oep-v0.yaml) — v0 の wire 上の全数値の唯一の定義。`uv run tools/oepgen.py` が `generated/` に C library、Python module、test vector を生成する（`--check` で同期確認）
+  - [共通protocolの抽象的な振る舞い](docs/common-protocol-behavior.ja.md)
+  - [共通protocolの情報model](docs/information-model.ja.md)
+  - [最小interaction pattern](docs/interaction-patterns.ja.md)
+  - [共通message model候補](docs/message-model-candidates.ja.md)
+  - [Message routing model候補](docs/message-routing-model.ja.md)
+  - [Message header構成比較](docs/message-header-layout-comparison.ja.md)
+  - [Request correlationのscopeとlifecycle](docs/request-correlation-lifecycle.ja.md)
+  - [明示correlationと暗黙対応の比較](docs/implicit-correlation-comparison.ja.md)
+  - [Request correlation幅と再利用の比較](docs/correlation-width-comparison.ja.md)
+  - [Request correlationのretire条件](docs/correlation-retirement-model.ja.md)
+  - [Requestの受理と完了](docs/request-completion-semantics.ja.md)
+  - [Activityの参照とlifecycle](docs/activity-reference-lifecycle.ja.md)
+  - [Connection binding設計入力](docs/connection-binding-design-inputs.ja.md)
+  - [最小connection channel候補](docs/minimal-connection-channel.ja.md)
+  - [Bootstrap layout候補](docs/bootstrap-layout-candidates.ja.md)
+  - [Bootstrap具体layout実験案](docs/bootstrap-concrete-layout-experiment.ja.md)
+  - [Bootstrap layout比較実装（非規定）](experiments/bootstrap-layout/README.ja.md)
+  - [Message routing比較実装（非規定）](experiments/message-routing/README.ja.md)
+  - [UART bindingの信頼性model候補](docs/uart-reliability-model.ja.md)
+  - [UART connection epoch同期候補](docs/uart-connection-epoch.ja.md)
+  - [UART timeoutと回復model候補](docs/uart-timeout-recovery-model.ja.md)
+  - [UART duplexとflow control候補](docs/uart-duplex-flow-control.ja.md)
+  - [UART frame layout比較](docs/uart-frame-layout-comparison.ja.md)
+  - [UART binding比較実装（非規定）](experiments/uart-binding/README.ja.md)
+  - [V003開発プローブ破壊的prototype](docs/v003-destructive-prototype.ja.md)
+  
 - [実験実装の検証環境](tests/README.ja.md)
-- [V003開発プローブ破壊的prototype](docs/v003-destructive-prototype.ja.md)
 - [調査・移行メモ](memo.ja.md)
 
 検討中の実装repository構成:
