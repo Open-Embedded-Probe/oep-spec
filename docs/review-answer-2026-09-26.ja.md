@@ -255,3 +255,131 @@ OEPは、単なるdebug probeの共通コマンドではなく、debug、console
 
 機能を大きく削るより先に、規範を一つにし、寿命と再送の状態機械を小さく明示する方が、単純さと拡張性の両方に効く。
 破壊的変更が可能な現在は、field幅、handle、revision、request sequenceを修正する最後の良い機会である。
+
+## 7. 更新後の仕様の再レビュー（2026-09-26）
+
+`oep-core.ja.md` と `oep-if-*.ja.md` へ規範を分けた更新後に、前回の指摘を再確認した。
+
+### 7.1 解消した指摘
+
+次の点は、更新後の規範で解消されている。
+
+- `oep-core.ja.md` が単独の規範的な本体となり、古い差分文書と設計資料は非規範になった。
+- 複数の制御経路は一つのlockを共有する規則に統一された。
+- `describe.first` は `u16` に統一された。
+- revisionは固定部分を壊すときだけ上げ、optional TLV / op / eventの追加では上げない規則になった。
+- 状態変更requestを同じcorrで再送し、probeが重複を除く仕組みが追加された。
+- force takeover時の、cancelできるactivityとcancelできないactivityの扱いが追加された。
+- scanの候補とattachのpins指定が規範へ入った。
+- streamとcaptureのposition、captureの時刻が`u64`になった。
+- subscribeの再設定、通知先の経路、seqの再開始が定義された。
+- TCPは信頼済み接続または認証済みトンネル内でだけ使うと明記された。
+- config hashからcritical bitを外すことと、同じkeyの重複をmalformedにすることが定義された。
+- registryに`min_clock_hz`、pins、`oep.fixture.analog`、新しいreject reasonが追加され、生成物との同期も取れている。
+
+規範と理由を分けた構成は、前版より大幅に読みやすく、第三者実装にも適した形になっている。
+
+### 7.2 P0: corrの再利用規則と重複排除表が矛盾する
+
+core §4.1 は、corrの重複を禁止する範囲を「未解決の要求の間」だけとしている。この規則なら、応答を受け取ったhostは同じcorrを
+次のrequestへ再利用できる。一方、core §5.2 は、解決済みrequestを重複排除表に残し、同じcorrで内容が違うrequestを
+`corr_reused`で拒否する。
+
+probeが表をいつ捨てたかをhostは知ることができないため、現在の規則では、仕様に従ってcorrを再利用したhostが正当なrequestを
+拒否され得る。
+
+さらに、重複判定にpayloadのCRC-32を使うため、CRCが衝突した異なるrequestを同じrequestとして扱う可能性がある。CRCは伝送誤りの
+検出には適するが、状態変更requestのidentityを決める値にはしない方がよい。
+
+最も単純な修正は、corrを`request_id(u32)`へ広げ、同じsession内では再利用しないことである。requestとresponseの対応付けと
+重複排除を一つの番号で行え、payload hashとretire windowが不要になる。u16を維持する場合は、少なくともhostが再利用してよい
+条件と、probeの表から消えたことを知る方法が必要である。
+
+### 7.3 P0: endの再送でlockが復活し得る
+
+`end`の応答が失われた場合を考える。
+
+1. 最初の`end`がlockを解く。
+2. hostが同じcorrで`end`を再送する。
+3. core §6.2により、空きlockへ最後と同じsession_idが来たためsessionが再開する。
+4. core §5.2により、`end`は再実行されず、覚えていた応答だけが返る。
+
+この順で実装すると、hostはendが成功した応答を受け取るが、probeではlockが再び立ったままになる。重複判定とsession再開の判定の
+順序が規定されていないため、実装によって結果が変わる。
+
+重複した`end`は、lockを再開せずに以前の応答を返す、と明記する必要がある。一般には、session状態を変える前にduplicate requestを
+判定するか、`end`を特別な冪等操作として定義する。
+
+### 7.4 P0: status(activity)のsession識別ができない
+
+core §10 は、activityの最後の結果を同じsession_idだけが取得できるとしている。しかしcore §12の`status`はロック不要で、通常の
+role 0x01にはsession_idが無い。probeは、問い合わせたhostがactivityを作ったsessionかどうか判定できない。
+
+`status(activity)`は、少なくともsession_id付きのrole 0x81を必須にする必要がある。lockを現在持っていることまで要求するか、lease
+切れ後に同じsession_idで結果だけを回収できるかは別に決められるが、所有sessionを識別する情報は必要である。
+
+activity番号の再利用条件も定義する。古いstatusが新しいactivityへ当たらないよう、同じsession内では単調な番号を使い、結果を
+捨てるまで再利用しない形がよい。
+
+### 7.5 P1: lease期限切れ中のactivityの扱いが残っている
+
+forceは実行中activityをcancelする規則になったが、自然なlease期限切れで同じ後始末をするかは明記されていない。cancelできない
+無期限activityが旧sessionに属したまま動くと、新しいhostはactivity番号を知らず、probe全体がbusyのままになる可能性がある。
+
+lease期限切れでもforceと同じ順序を使うことを推奨する。
+
+- cancel可能ならcancelして資源を外す。
+- cancel不能なら、完了まで「終了処理中」のlockを残し、新しいopenをbusyで断る。
+- activityが終わったらlockと旧sessionの資源を外す。
+
+### 7.6 P1: end後に残した資源の所有権移転を明記する
+
+core §9 は、end後の資源を「次のセッションに渡す」としているが、どの時点で新sessionの資源になるかが明記されていない。
+特に、session Aがconnectionとstreamを残してendし、session Bがopenしただけでattachせず、その後Bのleaseが切れた場合に、Aが作った
+資源を外すかが一意に決まらない。
+
+「end後に残った資源は、次に成功したopenでそのsessionへ原子的に移り、そのsessionのlease切れまたはforceで外れる」と定義すると
+明確になる。引き継ぎを望まないhostは、end前にdetach / close / plan_releaseを行う。
+
+### 7.7 P1: u8の資源番号は一周後に古いhandleへ別資源を割り当てる
+
+core §9 は資源番号を1〜255で順に再利用する。再利用前は閉じた番号を`no_connection`にできるが、一周後には古いhandleが新しい
+connectionまたはstreamを指す。probeを再起動していなくても、古い非同期処理や保存された状態が別targetへ作用し得る。
+
+connectionとstreamはgenerationを含む`u16`以上にすることを引き続き推奨する。u8を維持するなら、同じboot_idの間は番号を再利用
+しないため、256個目の作成を`unavailable`で断る方が安全である。
+
+### 7.8 P1: scan結果が1フレームに収まらない場合の継続方法がない
+
+scanはcount=0で許可された全組を試せるが、応答は`count(u8)`と見つかった組の並びを1フレームで返す形である。低スペックprobeの
+64 byte frameでは、数件の結果しか返せない。複数targetや誤応答があると、結果をすべて返す方法がない。
+
+単純さを優先するなら、scan requestを一度に1組へ制限し、全組の走査はhostが行う方法が最も小さい。probe内で全組を高速に走査
+する利点を残すなら、結果に`more`と`first`を入れるか、activityの最終結果をページで読む操作が必要である。
+
+### 7.9 P1: request TLVのcritical規則を修正する
+
+core §2.3 は「hostはcriticalのbitを付けて送る」と読めるが、同じ節はnon-critical TLVを無視して`ignored`へ載せる規則を持つ。
+captureのconfigureも、hostが項目ごとにcriticalかnon-criticalかを選ぶことを前提としている。
+
+ここは「hostは、その項目が満たされなければ操作に意味がない場合にcriticalを付ける。non-criticalで送ってもよい」と直す必要が
+ある。速度上限やpinsなど、安全条件として仕様がcriticalを要求するTLVだけは必須とする。
+
+### 7.10 P2: アナログscaleの単位が一致していない
+
+`oep-if-capture.ja.md` §1.2 はscaleをµV / 1値としているが、configure応答のTLV 0x55は`scale_nv`（nV / 1値）としている。
+1000倍の差になるため、どちらかに統一する必要がある。整数精度を保てるnVを採用し、換算式側をnVへ直すのが扱いやすい。
+
+### 7.11 更新後の判定
+
+前回の構造上の大きな問題は解消され、仕様はfreeze候補にかなり近づいた。残る主なblockerは、重複排除とsession再開の状態遷移、
+activityの所有者確認、resource handleの再利用である。この3点は正常系の実装試験だけでは見つかりにくいため、次のtest vectorを
+freeze条件へ追加することを推奨する。
+
+- 状態変更requestの応答だけを落とし、同じrequestを再送する。
+- `end`の応答を落として`end`を再送する。
+- request完了後、同じcorrを別requestへ再利用する。
+- activity実行中にlease切れ、force、同じsessionの再開を行う。
+- end後に別sessionが資源を引き継ぎ、そのleaseを切らす。
+- connection / stream番号を一周させ、古いhandleを送る。
+- scan結果をmax_frameより多く発生させる。
