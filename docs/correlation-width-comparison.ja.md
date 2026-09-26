@@ -1,6 +1,6 @@
 # Open Embedded Probe — Request correlation幅と再利用の比較
 
-状態: **非規定の比較案**。この文書は、初期共通logical protocolで明示するrequest correlationについて、8、16および32 bitの候補と安全な再利用条件を比較する。
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **非規定の比較案**。この文書は、初期共通logical protocolで明示するrequest correlationについて、8、16および32 bitの候補と安全な再利用条件を比較する。
 
 field位置、byte order、初期値、予約値および採用幅はまだ決定しない。
 

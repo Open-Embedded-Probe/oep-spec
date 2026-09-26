@@ -1,6 +1,6 @@
 # Open Embedded Probe — 能力の名前の階層
 
-状態: **仮置き**（2026-09-24 の議論の合意）。実験してから調整する。名前の規則（`oep.` は予約、独自は逆 DNS）は
+状態: **理由（規範ではない）**。ここで採った形は [OEP core](oep-core.ja.md) §7 と `oep-if-*.ja.md` に移した。食い違えば規範が正しい。当時の状態: **仮置き**（2026-09-24 の議論の合意）。実験してから調整する。名前の規則（`oep.` は予約、独自は逆 DNS）は
 [能力の識別方式の比較](capability-identification-comparison.ja.md)、宣言の語彙は
 [能力の宣言モデル](capability-declaration-model.ja.md)。
 

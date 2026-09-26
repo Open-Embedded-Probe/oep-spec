@@ -1,6 +1,6 @@
 # Open Embedded Probe — UART timeoutと回復model候補
 
-状態: **UART bindingのtiming設計候補**。この文書は、UART control channelのtimeoutを、baud rate、frame長、queueおよび処理遅延から扱うための基準と、timeout後の回復境界を整理する。
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **UART bindingのtiming設計候補**。この文書は、UART control channelのtimeoutを、baud rate、frame長、queueおよび処理遅延から扱うための基準と、timeout後の回復境界を整理する。
 
 既定baud rate、具体的なmillisecond値、retry回数およびbackoffはまだ決定しない。
 

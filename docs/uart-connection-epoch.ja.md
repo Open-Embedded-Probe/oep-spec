@@ -1,6 +1,6 @@
 # Open Embedded Probe — UART connection epoch同期候補
 
-状態: **UART bindingの振る舞い候補**。この文書は、明確な接続開始を持たないUART byte streamで、hostとprobeが同じtransport sequence状態を開始するためのconnection epoch同期を整理する。
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **UART bindingの振る舞い候補**。この文書は、明確な接続開始を持たないUART byte streamで、hostとprobeが同じtransport sequence状態を開始するためのconnection epoch同期を整理する。
 
 frame type、field配置、epoch token幅、timeoutおよびretry回数はまだ決定しない。
 

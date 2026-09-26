@@ -1,6 +1,6 @@
 # Open Embedded Probe — 共通message model候補
 
-状態: **比較検討中のprotocol設計案**。この文書は、[最小interaction pattern](interaction-patterns.ja.md)をwire protocolへ対応付けるための共通message model候補を比較する。現時点では候補を採用せず、messageのencoding、field配置、数値、framingおよびconnection bindingを規定しない。
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **比較検討中のprotocol設計案**。この文書は、[最小interaction pattern](interaction-patterns.ja.md)をwire protocolへ対応付けるための共通message model候補を比較する。現時点では候補を採用せず、messageのencoding、field配置、数値、framingおよびconnection bindingを規定しない。
 
 ここでいうmessageの役割は論理的な分類である。将来、一つのwire形式に統合すること、複数の形式に分けること、またはconnection binding上で一部を最適化することを妨げない。
 

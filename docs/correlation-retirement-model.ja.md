@@ -1,6 +1,6 @@
 # Open Embedded Probe — Request correlationのretire条件
 
-状態: **検討中の論理protocol案**。この文書は、解決済みまたは結果不明のrequest correlationを、古いresultを新しいrequestへ誤適用せず再利用可能にする条件を整理する。
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中の論理protocol案**。この文書は、解決済みまたは結果不明のrequest correlationを、古いresultを新しいrequestへ誤適用せず再利用可能にする条件を整理する。
 
 具体的な保持時間、duplicate window、connection APIおよび回復messageは決定しない。
 

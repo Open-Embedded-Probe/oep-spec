@@ -1,6 +1,6 @@
 # Open Embedded Probe — UART duplexとflow control候補
 
-状態: **UART bindingの通信方向・queue設計候補**。この文書は、DATA、ACKおよびSYNC controlが近接または同時に発生した場合の扱いと、full-duplex UARTでdeadlockを避けるための責任を整理する。
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **UART bindingの通信方向・queue設計候補**。この文書は、DATA、ACKおよびSYNC controlが近接または同時に発生した場合の扱いと、full-duplex UARTでdeadlockを避けるための責任を整理する。
 
 half-duplexのturnaround形式、TX queue API、priority値および明示的なBUSY frameはまだ決定しない。
 
