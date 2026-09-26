@@ -47,7 +47,7 @@ PSRAM）まで、同じ core が動く**」ことである。そのために cor
 
 昇格の流れ: 独自 tool として実装・実測 → 2 実装目が同じ試験を通る → 共通 tool の revision として取り込む。
 
-実例（2026-09-22）: `registry/oep-v0.yaml` の owner `0x0100`（oep-probe-arduino）に `p4_i2c_target` を置いた。mode を
+実例（2026-09-22、v0 のとき。v0 の registry は 2026-09-26 に消し、今は独自インターフェース `io.github.ch32-riscv-ug.esp32.i2c-target`）: v0 の registry の owner `0x0100`（oep-probe-arduino）に `p4_i2c_target` を置いた。mode を
 fixed-rx / framed-rx / preloaded-tx の 3 つに限定し、上限は describe の TLV（`max_length` 128、`max_clock_hz` 1 MHz）で返す。
 ESP-IDF slave v1 の「受信 job は正確な長さで arm」「slot 末尾に filler 1 byte」という都合は wire に出さず、mode の契約として閉じた。
 同じ firmware に共通 `fixture.uart` / `fixture.gpio` が並んでおり、lease は同じ plan で扱う。
