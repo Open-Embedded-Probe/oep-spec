@@ -146,6 +146,10 @@ seq（u16）と、インターフェースが定める通し番号や時刻の�
   ものとして扱い、応答はその要求の来た経路に返す。通知は subscribe が来た経路に送る（§11.4）。
 - host は、同じ probe に複数の経路があれば vendor bulk、HID、CDC の順に試す。CDC で OEP を運ぶのは、ほかに手がないときに限る
   （CDC の口はシリアルの転送にも使われる）。
+- **USB の OEP の口の見分け方**: OEP を運ぶ USB の interface は、interface の文字列（iInterface）を `OEP` で始める（vendor bulk、
+  HID、CDC のどれでも）。host はこれで口を選ぶ。文字列を持てない probe は、host が経路を外から指定する前提になる。
+  confirm と describe は口を開いた後にしか使えないので、口の選び方はこの規則による。
+- **max_frame は両方向の上限**: probe は max_frame を超える message を送らず、host は max_frame を超える message を送らない。
 
 ## 4. メッセージ
 
@@ -299,7 +303,7 @@ entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
 
 - prefix に前方一致（exact なら完全一致）する名前を、first 番目から 1 フレームに入る分だけ返す。`oep.core`（fn 0）も最初の
   entry として数える。
-- 同じ instance の fn は同じ実体（plan を共有する、§8）。flags は予約（0）。
+- instance は、同じ名前のインターフェースが複数あるときの見分け（0 から）。flags は予約（0）。
 - fn は probe の起動の間は変わらない。host は boot_id が同じ間、名前から fn への対応を覚えてよい。
 
 ### 7.3 describe
@@ -347,12 +351,25 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 
 ## 8. plan
 
-- **plan_apply**: role_assignment の TLV（0x90、critical: fn(u16)、role(u8)、channel(u16)）の並び。各インターフェースが自分の
-  役割を副作用なしで確かめ、**全部が受け入れたときだけ適用する**（1 つでも断れば何も変えずに rejected）。plan は 1 つずつ
-  （適用中の plan があれば rejected unavailable）。
-- **plan_release**: plan を解き、ピンを解放する（入力。解放したピンの状態をインターフェースが別に定めていればそれに従う。例: `oep.fixture.uart` の TX は休止の high）。
-- 同じ instance の fn は plan を共有する。
-- plan の寿命は §9。
+plan は **fn ごと**に持つ。
+
+- **plan_apply**: role_assignment の TLV（0x90、critical: fn(u16)、role(u8)、channel(u16)）の並び。**要求に出てくる fn の割り当てだけを
+  原子的に置き換え**、ほかの fn の plan はそのまま保つ。置き換える fn の今の割り当てを外したものとして、各インターフェースが
+  副作用なしで確かめ（§8.1 の取り合いの確かめを含む）、全部が受け入れたときだけ適用する。1 つでも断れば、何も変えずに
+  rejected（置き換えるはずだった fn の今の plan も残る）。
+- **plan_release**: `n(u8)、n × fn(u16)`。挙げた fn の plan を解く（n = 0 はすべての fn）。plan の無い fn は無視する。
+- 解いたピンは、**probe の設定がそのピンの空きのときの状態を決めていればその状態、決めていなければ Hi-Z（入力、プルなし）**
+  にする。インターフェースは、解いた後もピンを駆動し続けてはならない（空きの状態の設定は `oep.probe.config` の idle、
+  [probe の設定](oep-if-probe-config.ja.md)）。
+- plan の寿命は §9（fn ごと）。
+
+### 8.1 資源の取り合い
+
+- probe の資源（ピン、ペリフェラル、DMA、タイマーなど）を取るものはすべて、取る前に、今ある plan、connection、設定から入れた
+  資源（bind など）とぶつからないか確かめる。ぶつかれば rejected unavailable で断り、**今ある機能の状態は何も変えない**。
+  取るもの: plan_apply、線の attach（pins）、設定の set、インターフェースが定める資源を作る操作。
+- どの内部の資源（DMA の番号など）を使うかは host に見せなくてよい。共有して安全な使い方（同じピンを 2 つの機能が入力として
+  読むなど）は、probe が明示的に許すときだけ許す。
 
 ## 9. 資源の寿命（一般の規則）
 
@@ -435,7 +452,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 | 0x02 | list | §7.2 | §7.2 | 不要 |
 | 0x03 | describe | §7.3 | §7.3 | 不要 |
 | 0x04 | plan_apply | role_assignment の TLV の並び | — | 必要 |
-| 0x05 | plan_release | — | — | 必要 |
+| 0x05 | plan_release | n(u8)、n × fn(u16) | — | 必要 |
 | 0x10 | open | session_id(u32)、lease_ms(u32)、force(u8) | lease_ms(u32)、boot_id(u32)、resumed(u8) | open がロックを取る（role 0x01） |
 | 0x11 | end | — | — | 必要 |
 | 0x12 | keepalive | — | — | 必要 |
@@ -460,8 +477,9 @@ link_source / link_sink は線の速さを測るためのもので、状態を�
 4. **失敗**: 受け付けなかったものは rejected、受け付けて失敗したものは completed failed / partial（§4.2）。
 5. **ロックなしの op は状態を変えない**（§6.3）。
 6. **版**: §2.7。
-7. **独自のタグを標準インターフェースに混ぜない。** 独自の情報は独自のインターフェースに置く（同じ instance に別の fn として出す）。
-8. **target の知識は host が持つ。** チップごとの手順（flash の書き方など）を probe のインターフェースに入れない。
+7. **独自のタグを標準インターフェースに混ぜない。** 独自の情報は独自のインターフェースに置く（別の fn として出す）。
+8. **target の知識は host が持つ。** チップごとの手順（flash の書き方など）を probe のインターフェースに入れない。target 固有の
+   手順（その系統でだけ要る回避など）が要るときは、条件と対象を明記した限定の規則にし、標準の判定を置き換えない。
 9. 標準インターフェースの番号は registry に載せる。独自のインターフェースの番号は、その定義が管理する。
 
 ## 14. 標準インターフェースの文書

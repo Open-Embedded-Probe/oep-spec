@@ -38,18 +38,23 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   （core §2.3）。
 - `speed_hz` は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。
 - max_speed（TLV 0x01、u32 Hz）: probe はこれを超える速さを選ばない。host は critical で送る。
+- **target の識別子**: attach の応答の後ろに、probe が読めた target の識別子を TLV 0x10 target_id（scheme(u8)、値）で付けてよい。
+  scheme は識別子の取り方で、wire ごとに registry が定める。probe は読めなかったとき（scheme が「無い」と定める値だったときを含む）
+  は付けない。値の意味（どのビットが系統で、どれがリビジョンか）は host が知っている。probe は解釈しない。
 
-## 2. connection の寿命
+## 2. connection の寿命（全 wire）
 
 [共通部品](oep-if-common.ja.md) §2 に加えて:
 
 - **detach は、その host のセッションの分を外すだけ**。ほかに使っているものがあれば connection は閉じない。detach の TLV 0x01
   force（長さ 0、critical で送る）で、使っているものがあっても閉じる。
-- **target の reset（riscv-dm の reset、NRST）では connection を閉じない**（probe は havereset を確認応答して保つ）。
-- 線が切れたとみなすのは、最遅の速さで再試行しても **1000 ms 続けて応答が無い**とき。reset の直後や DM の立ち上がりの間の
-  数十 ms は数えない。
-- **probe は connection を閉じるときもデバッグモジュールを reset しない**（dmactive を残し、haltreq などを下ろす）。reset すると
-  DATA0 の dmseq のフレームが消え、次に開いたコンソールが target のタイムアウトまで待たされる。
+- **target の reset では connection を閉じない**。probe は、reset の後も同じ connection で使えるように保つ（wire ごとの手順は
+  §4.6 など、target を扱うインターフェースの節）。
+- 線が切れたとみなすのは、最遅の速さで再試行しても **1000 ms 続けて応答が無い**とき。probe が reset を出している間、reset の線を
+  probe が保っている間（plan、attach_under_reset）、その解放から target の debug が戻るまでの時間は数えない。それより長く応答
+  しない target（電源を切った、長い reset を外から掛けた）は、切れたとみなしてよい。
+- **probe は connection を閉じるとき、target の状態を必要以上に変えない**（target を reset しない。止めていた hart は、閉じる前の
+  host の操作のままにする）。
 - probe 自身の自動の attach（`oep.probe.config` の bind）も使っているものの 1 つで、host の attach はその connection に加わる
   （flags bit1）。
 
@@ -64,7 +69,6 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 
 - swio の組は swclk = 0xFFFF（1 本の線）。scan の kind は 0x01 = riscv-dm。値は生の値。
 - attach の flags: bit0 保留中の havereset を確認応答した、bit1 既存の connection。
-- attach は保留中の havereset を先に確認応答する（V00x の DM は確認応答まで DMSTATUS の halt / running を固定する）。
 - attach_under_reset は任意の op（持たない probe は unknown_operation）。リセットの線（channel。probe が許可したものだけ）を
   保持して attach し、離しながら halt を打ち続ける。持たない probe では、host は `oep.fixture.gpio` の解放と attach をまとめて
   送って再試行する。
@@ -76,10 +80,20 @@ TLV:
 | attach、attach_under_reset | 0x01 | max_speed | u32 Hz |
 | attach、attach_under_reset | 0x03 | pins | swdio(u16)、swclk(u16) |
 | detach | 0x01 | force | 長さ 0 |
+| attach、attach_under_reset の応答 | 0x10 | target_id | scheme(u8)、値 |
+
+target_id の scheme（rvswd / swio）: 1 = WCH の DM の DMI 0x7F を読んだ u32。0 と 0xFFFFFFFF は「無い」（付けない）。
 
 ## 4. `oep.target.riscv-dm`
 
 要求の先頭は connection(u16)。
+
+- **必須の op は dmi、halt、resume**。reset、read_block / write_block、run、step は任意で、describe の features で宣言する
+  （bit0 read_block / write_block、bit1 run、bit2 reset、bit3 step）。宣言していない op は unknown_operation。host は、任意の op が
+  無くても dmi で同じことを組める。
+- **dmi 以外の op（高水準の op）の範囲**: RV32 の hart 0 だけを扱う（番地、レジスタの値、pc は u32）。probe は高水準の op の中で
+  DMCONTROL の hartsel を 0 にする。ほかの hart と RV64 は、host が dmi で扱う（DMI の値が u32 なのは DMI の形で、RV32 に限る
+  意味ではない）。dmi の中で host が選んだ hartsel は、次の高水準の op までしか保たれない。
 
 | op | 名前 | 要求（connection の後ろ） | 応答 |
 |---:|---|---|---|
@@ -114,9 +128,12 @@ TLV:
 ### 4.2 halt、resume、step
 
 - **halt** は、すでに止まっていれば何もせず ok。
-- **resume** の ok は「hart が一度でも debug mode を出た」こと。probe は、allresumeack が立てば出し直さない。allresumeack を
-  立てない target では dpc が変われば出し直さない。dpc が変わらず止まったままなら出し直す。出し直しても出なければ status
-  state。host は breakpoint の上から continue するときは先に step で 1 命令進める。
+- **resume** の ok は「hart が一度でも debug mode を出た」ことで、DMSTATUS の allresumeack（または allrunning で halted でない）で
+  判断する。resumereq は 1 回出す。出なければ status state。
+  - CH32 の限定の規則: allresumeack を立てない target（CH32L103）と、1 回の resumereq で出ないことがある target（CH32V006）の
+    ために、probe は、allresumeack も running も見えず、止まったまま dpc が変わらないときに限り、resumereq を出し直してよい
+    （rvswd / swio の probe だけ）。hart が走って同じ dpc で止まった場合と区別できないので、host は breakpoint の上から continue
+    するときは先に step で 1 命令進める。
 - **step** は dcsr.step を立てて resume を 1 回だけ出す。dpc が動かなくても失敗にしない（status ok、moved = 0。自分自身へ
   跳ぶ命令は正しく進んでも dpc が同じなので、host が命令を読んで判断する）。hart が debug mode に戻らないときは status state。
   prv は変えない。
@@ -129,20 +146,33 @@ TLV:
 | 1 | 走らせて、実行を確認する |
 | 2 | 最初の命令の前で止める（haltreq を保ったまま ndmreset を解く） |
 
-TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset、2 target のシステムリセット（PFIC など）。
+TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target のシステムリセットには共通の手順が無いので、host が dmi で
+組む）。
 
 ### 4.4 run
 
-- host のローダーを呼ぶためのもの。probe は dcsr の ebreakm と prv = M を立て、pc から走らせ、止まるのを待つ。止まった位置が
-  開始位置のままなら、走らなかったとみなして resume を出し直す。**gdb の continue には使わない**（prv と ebreakm を変える）。
-- timeout_ms の 0xFFFFFFFF は上限なし。止まったら stopped = 1（success）。上限に達したら probe は hart を止めてから dpc と値を
-  読み、stopped = 0、status timeout、outcome failed で返す（dpc と値はすべて有効）。止められなければ completed failed と
-  payload `status(u8)` だけ。
+- host のローダーを呼ぶためのもの。probe は dcsr の ebreakm と prv = M を立て、pc から走らせ、止まるのを待つ。**probe は run を
+  出し直さない**（止まった位置が開始位置のままでも、走って戻った場合と区別できない）。走らなかったかどうかは host が dpc で
+  判断し、ローダーを二度走らせてよいときだけやり直す。**gdb の continue には使わない**（prv と ebreakm を変える）。
+- timeout_ms は有限（0xFFFFFFFF は rejected unsupported）。run の応答を返すまで、probe はほかの要求に答えない（lease は応答の
+  後から数える）。host は、lease と応答の待ち時間より十分短い timeout を使う。止まったら stopped = 1（success）。上限に達したら
+  probe は hart を止めてから dpc と値を読み、stopped = 0、status timeout、outcome failed で返す（dpc と値はすべて有効）。
+  止められなければ completed failed と payload `status(u8)` だけ。
 - regno は RISC-V の抽象レジスタ番号（a0 = 0x100A）。
 
 ### 4.5 read_block、write_block
 
-語（32 bit）単位。8 / 16 bit のアクセスは dmi の手順で組む。
+- 語（32 bit）単位。8 / 16 bit のアクセスは dmi の手順で組む。
+- **前提**: hart が止まっていること（止まっていなければ status state）。番地は、止まっている hart が M モードで使う番地。
+- **副作用**: probe は GPR、program buffer、DATA のレジスタを使ってよく、元に戻さない。使う GPR は describe の clobbers
+  （tag 0x40、regno(u16) の並び）で宣言する。abstractauto は 0 に戻す。host は、残したい値を前後で保存する。
+
+### 4.6 RISC-V の connection の扱い
+
+- attach は保留中の havereset を先に確認応答する（V00x の DM は確認応答まで DMSTATUS の halt / running を固定する）。
+- target の reset（reset の op、NRST）の後、probe は havereset を確認応答して、同じ connection を保つ。
+- **probe は connection を閉じるときもデバッグモジュールを reset しない**（dmactive を残し、haltreq などを下ろす）。reset すると
+  DATA0 の dmseq のフレームが消え、次に開いたコンソールが target のタイムアウトまで待たされる。
 
 ## 5. `oep.wire.swd`
 
@@ -156,7 +186,11 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset、2 target のシステ�
 - attach の TLV: 0x01 max_speed、0x02 targetsel（u32、multidrop のときだけ）、0x03 pins。detach の TLV: 0x01 force。
 - attach は JTAG から SWD への切り替えを試し、答えがなければ dormant から起こす。電源投入（CTRL/STAT の CDBGPWRUPREQ /
   CSYSPWRUPREQ）は host が DP の書き込みで行う。
-- attach_under_reset は持たない。
+- **connection の同一性には targetsel を含める**。生きている connection と targetsel（無しを含む）が違う attach は rejected
+  unavailable（host が先に detach する）。同じなら、その connection をそのまま返す。
+- attach_under_reset と reset の線の操作は、revision 1 では持たない。NRST は `oep.fixture.gpio` で動かす（reset の解放と attach の
+  間は host の往復の遅れに依存する）。固定のデバッグ端子の probe 向けに、reset の線を扱う任意の op を後から足す（revision を
+  変えずに足せる）。
 
 ## 6. `oep.target.arm-adi`
 

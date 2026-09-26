@@ -135,6 +135,10 @@ pins = 0x03                     # critical: swdio(u16) swclk(u16, 0xFFFF on one 
 [interface.tlv.attach_under_reset]
 max_speed = 0x01
 pins = 0x03
+[interface.tlv.attach_answer]   # the attach / attach_under_reset result's tail
+target_id = 0x10                # scheme(u8) value: what the probe read of the target's identity (oep-if-debug §1)
+[interface.enum.target_id_scheme]
+wch_dmi_7f = 1                  # the u32 at DMI 0x7F of a WCH debug module; 0 and all ones = none (not sent)
 [interface.enum.attach_method]
 run = 0
 halt = 1
@@ -159,6 +163,10 @@ pins = 0x03                     # critical: swdio(u16) swclk(u16, 0xFFFF on one 
 [interface.tlv.attach_under_reset]
 max_speed = 0x01
 pins = 0x03
+[interface.tlv.attach_answer]   # the attach / attach_under_reset result's tail
+target_id = 0x10                # scheme(u8) value: what the probe read of the target's identity (oep-if-debug §1)
+[interface.enum.target_id_scheme]
+wch_dmi_7f = 1                  # the u32 at DMI 0x7F of a WCH debug module; 0 and all ones = none (not sent)
 [interface.enum.attach_method]
 run = 0
 halt = 1
@@ -196,6 +204,8 @@ op = [
   { code = 0x07, name = "run", lock = true },
   { code = 0x08, name = "step", lock = true },
 ]
+[interface.tlv.describe]        # plus the common tags (features 0x06: bit0 block read/write, bit1 run, bit2 reset, bit3 step)
+clobbers = 0x40                 # regno(u16) list: the GPRs block read / write leave changed
 [interface.tlv.reset]
 method = 0x01
 [interface.reserved]
@@ -213,7 +223,7 @@ halt_at_reset = 2
 [interface.enum.reset_method]
 probe_default = 0
 ndmreset = 1
-system_reset = 2
+system_reset = 2                # reserved: no common procedure (oep-if-debug §4.3)
 
 [[interface]]
 name = "oep.target.arm-adi"
@@ -262,6 +272,8 @@ op = [
   { code = 0x01, name = "set", lock = true },
   { code = 0x02, name = "read", lock = false },
 ]
+[interface.tlv.describe]
+modes = 0x40                    # u8 bit set: bit n = mode n is supported (0 input required)
 [interface.enum.role]
 line = 1
 [interface.enum.mode]
@@ -286,6 +298,8 @@ op = [
 ]
 [interface.tlv.configure]
 format = 0x01
+[interface.tlv.describe]
+formats = 0x40                  # u8 list: configure format values supported (0 = 8N1 required)
 [interface.enum.role]
 rx = 1
 tx = 2
@@ -320,6 +334,7 @@ actual_segments = 0x53
 timing = 0x54
 scale = 0x55
 blocking_ms = 0x56
+skew = 0x57                     # analog: role(u8) skew_ns(u32), one per channel
 [interface.tlv.describe]        # plus the common tags (features 0x06: bit0 query, bit1 force, bit2 notifications)
 mode = 0x40
 rate_range = 0x41
@@ -327,9 +342,10 @@ rate_list = 0x42
 rate_limit = 0x43
 channels = 0x44
 trigger = 0x45
-analog = 0x46
+frontend = 0x46                 # analog: frontend(u8) range_min_mv(i32) range_max_mv(i32), one per input range
 max_read = 0x47
 segment_ring = 0x48
+frontend_shared = 0x49          # analog: u8 1 = every channel takes the same frontend
 [interface.event]
 segment = 0x01
 stopped = 0x02
@@ -388,6 +404,7 @@ actual_segments = 0x53
 timing = 0x54
 scale = 0x55
 blocking_ms = 0x56
+skew = 0x57                     # analog: role(u8) skew_ns(u32), one per channel
 [interface.tlv.describe]        # plus the common tags (features 0x06: bit0 query, bit1 force, bit2 notifications)
 mode = 0x40
 rate_range = 0x41
@@ -395,9 +412,10 @@ rate_list = 0x42
 rate_limit = 0x43
 channels = 0x44
 trigger = 0x45
-analog = 0x46
+frontend = 0x46                 # analog: frontend(u8) range_min_mv(i32) range_max_mv(i32), one per input range
 max_read = 0x47
 segment_ring = 0x48
+frontend_shared = 0x49          # analog: u8 1 = every channel takes the same frontend
 [interface.event]
 segment = 0x01
 stopped = 0x02
@@ -441,13 +459,26 @@ boot_mode = 0x01
 plan = 0x02
 label = 0x03
 bind = 0x04
-target = 0x05
+target = 0x05                   # wire_fn(u16) scheme(u8) mask(n) value(n): the target_id an automatic attach must match
+idle = 0x06                     # channel(u16) mode(u8): the state of a free pin
 [interface.tlv.describe]
 mode = 0x40
 current_mode = 0x41
 port = 0x42
 storage = 0x43
 cost = 0x44
+items = 0x45                    # u8 list: the item tags this probe takes
+bind_state = 0x46               # port(u8) state(u8), one per bind
+[interface.enum.idle_mode]
+hi_z = 0
+pull_up = 1
+pull_down = 2
+[interface.enum.bind_state]
+waiting = 0
+streaming = 1
+target_mismatch = 2
+attach_failed = 3
+no_target_id = 4
 [interface.enum.bind_source]
 none = 0
 fixture_uart = 1

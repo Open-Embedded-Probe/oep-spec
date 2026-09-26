@@ -29,7 +29,8 @@
 
 - 並びは要求の順に 1 つずつ行う（NRST を引いてから離す、などを 1 要求で送れる）。
 - 割り当てていないチャンネルや扱えない mode があれば、何もせず rejected unavailable（payload にその位置 u8）。
-- plan を解いたら、そのチャンネルは入力に戻る。
+- 扱える mode は describe の modes（tag 0x40、u8 のビット集合、bit n = mode n）で宣言する。0（入力）は必須。
+- plan を解いたら、そのチャンネルは core §8 の空きの状態に戻る。
 
 ## 2. `oep.fixture.uart`
 
@@ -49,5 +50,10 @@
   ビット（0 = 1、1 = 2）。無ければ 8N1。
 - 受信は configure から plan を解くまで、セッションに関係なく貯める。configure をやり直しても貯めた分と位置はそのまま
   （境目が要るなら host が mark を付ける）。
-- **TX の線は、configure の前と plan を解いた後も UART の休止（high）に保つ**（相手の受信が雑音を拾わないため。core §8 の「解放 = 入力」の例外）。
+- **TX の線は、plan で割り当てている間（configure の前も）UART の休止（high）に保つ**（相手の受信が雑音を拾わないため）。plan を
+  解いたら駆動をやめ、core §8 の空きの状態にする。解いた後も相手の入力を浮かせたくない治具は、`oep.probe.config` の idle で
+  そのピンをプルアップの入力に決めて保存する。
+- 扱える format は describe の formats（tag 0x40、configure の TLV 0x01 の値の並び、u8）で宣言する。8N1（0）は必須。
+- 片方向だけの UART（RX だけ、TX だけ）は、plan で片方の role だけを割り当てる。ピンの組が決まっている probe は、RX だけの組と
+  TX だけの組も channel_group に別々に書く（channel_group は完全一致なので）。
 - revision 1 は通知を送らない（subscribe は rejected unavailable）。後から足すときは、データの payload を共通部品 §1.5 の形にする。
