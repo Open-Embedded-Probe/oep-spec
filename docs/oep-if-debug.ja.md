@@ -128,12 +128,10 @@ target_id の scheme（rvswd / swio）: 1 = WCH の DM の DMI 0x7F を読んだ
 ### 4.2 halt、resume、step
 
 - **halt** は、すでに止まっていれば何もせず ok。
-- **resume** の ok は「hart が一度でも debug mode を出た」ことで、DMSTATUS の allresumeack（または allrunning で halted でない）で
-  判断する。resumereq は 1 回出す。出なければ status state。
-  - CH32 の限定の規則: allresumeack を立てない target（CH32L103）と、1 回の resumereq で出ないことがある target（CH32V006）の
-    ために、probe は、allresumeack も running も見えず、止まったまま dpc が変わらないときに限り、resumereq を出し直してよい
-    （rvswd / swio の probe だけ）。hart が走って同じ dpc で止まった場合と区別できないので、host は breakpoint の上から continue
-    するときは先に step で 1 命令進める。
+- **resume** の ok は「hart が debug mode を出た」ことで、DMSTATUS の allresumeack（または allrunning で halted でない）で判断する。
+  resumereq は 1 回だけ出し、出し直さない。見えなければ status state。
+  - target によっては、これで足りない（allresumeack を立てない target がすぐ breakpoint で止まり直す、1 回の resumereq で出ない
+    ことがある）。その扱い（dpc を読んで、動いていなければもう一度 resume する、など）は target を知っている host が行う。
 - **step** は dcsr.step を立てて resume を 1 回だけ出す。dpc が動かなくても失敗にしない（status ok、moved = 0。自分自身へ
   跳ぶ命令は正しく進んでも dpc が同じなので、host が命令を読んで判断する）。hart が debug mode に戻らないときは status state。
   prv は変えない。
