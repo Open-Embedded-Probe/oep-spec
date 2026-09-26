@@ -284,6 +284,7 @@ output_low = 3
 output_high = 4
 open_drain_low = 5
 open_drain_release = 6
+input_pullup_pulldown = 7        # both pulls at once: a weak mid level (a rough ADC reference on an unwired line)
 
 [[interface]]
 name = "oep.fixture.uart"

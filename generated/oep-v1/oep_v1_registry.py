@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "4caa69217ec561fe"
+REGISTRY_HASH = "7332852a45fc78e4"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -42,7 +42,7 @@ TARGET_CONSOLE = _NS(name="oep.target.console", revision=1, op={"open": 0x01, "r
     closed_tail={0x02}, tlv={}, event={}, enum={"mechanism": {"sdi": 0x00, "dmdata": 0x01, "dmseq": 0x02}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08}}, own={})
 INTERFACES["oep.target.console"] = TARGET_CONSOLE
 FIXTURE_GPIO = _NS(name="oep.fixture.gpio", revision=1, op={"set": 0x01, "read": 0x02}, lock_free={0x02},
-    closed_tail={}, tlv={"describe": {"modes": 0x40}}, event={}, enum={"role": {"line": 0x01}, "mode": {"input": 0x00, "input_pullup": 0x01, "input_pulldown": 0x02, "output_low": 0x03, "output_high": 0x04, "open_drain_low": 0x05, "open_drain_release": 0x06}}, own={})
+    closed_tail={}, tlv={"describe": {"modes": 0x40}}, event={}, enum={"role": {"line": 0x01}, "mode": {"input": 0x00, "input_pullup": 0x01, "input_pulldown": 0x02, "output_low": 0x03, "output_high": 0x04, "open_drain_low": 0x05, "open_drain_release": 0x06, "input_pullup_pulldown": 0x07}}, own={})
 INTERFACES["oep.fixture.gpio"] = FIXTURE_GPIO
 FIXTURE_UART = _NS(name="oep.fixture.uart", revision=1, op={"configure": 0x01, "read": 0x02, "marks": 0x03, "clear": 0x04, "mark": 0x05, "write": 0x06}, lock_free={0x02, 0x03},
     closed_tail={0x02}, tlv={"configure": {"format": 0x01}, "describe": {"formats": 0x40}}, event={}, enum={"role": {"rx": 0x01, "tx": 0x02}}, own={})
