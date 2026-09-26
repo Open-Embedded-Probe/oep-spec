@@ -16,19 +16,19 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x01 | open | connection(u8)、mechanism(u8)、[TLV] | stream(u8)、flags(u8: bit0 既存のストリーム) | 必要 |
-| 0x02 | read | stream(u8)、from(u8)、arg(u64)、max(u16) | start(u64)、flags(u8)、data | 不要 |
-| 0x03 | marks | stream(u8)、from_serial(u32) | more(u8)、count(u8)、count × mark | 不要 |
-| 0x04 | clear | stream(u8) | — | 必要 |
-| 0x05 | mark | stream(u8)、value(u8) | — | 必要 |
-| 0x06 | write | stream(u8)、count(u16)、data | accepted(u16) | 必要 |
-| 0x07 | close | stream(u8) | — | 必要 |
+| 0x01 | open | connection(u16)、mechanism(u8)、[TLV] | stream(u16)、flags(u8: bit0 既存のストリーム) | 必要 |
+| 0x02 | read | stream(u16)、from(u8)、arg(u64)、max(u16) | start(u64)、flags(u8)、data | 不要 |
+| 0x03 | marks | stream(u16)、from_serial(u32) | more(u8)、count(u8)、count × mark | 不要 |
+| 0x04 | clear | stream(u16) | — | 必要 |
+| 0x05 | mark | stream(u16)、value(u8) | — | 必要 |
+| 0x06 | write | stream(u16)、count(u16)、data | accepted(u16) | 必要 |
+| 0x07 | close | stream(u16) | — | 必要 |
 
 - read、marks、clear、mark、write は [共通部品](oep-if-common.ja.md) §1 の形（先頭に stream）。
 - mechanism: 0 SDI、1 DMDATA、2 dmseq（framing は [target-console-dmseq](target-console-dmseq.ja.md)）。知らない mechanism は
   rejected unsupported（payload なし）。
 - 知らない stream は rejected unavailable。
-- ストリームの番号は core §9 の規則で振る（新しいストリームのたびに 1〜255 を進める）。
+- ストリームの番号（u16）は core §9 の規則で振る（新しいストリームのたびに 1 から進め、同じ boot_id の間は再利用しない）。
 - revision 1 は通知を送らない（subscribe は rejected unavailable）。後から足すときは、データの payload を共通部品 §1.5 の形にする。
 
 ## 2. ストリームの規則

@@ -35,7 +35,7 @@ data = 0x06
 [resolutions]
 rejected = 0x00
 completed = 0x01
-accepted = 0x02
+accepted = 0x02                 # reserved: v1 has no long operations (core §10); a host treats it as a failure
 
 [outcomes]                      # the detail byte of a completed result
 success = 0x00
@@ -47,7 +47,7 @@ unknown_function = 0x01
 unknown_operation = 0x02
 malformed = 0x03
 unavailable = 0x04
-busy = 0x05
+busy = 0x05                     # reserved with the long operations (core §10)
 window_exceeded = 0x06
 no_session = 0x07
 locked = 0x08
@@ -96,8 +96,6 @@ op = [
   { code = 0x11, name = "end", lock = true },
   { code = 0x12, name = "keepalive", lock = true },
   { code = 0x13, name = "lock_state", lock = false },
-  { code = 0x20, name = "status", lock = false },
-  { code = 0x21, name = "cancel", lock = true },
   { code = 0x30, name = "subscribe", lock = true },
   { code = 0x32, name = "unsubscribe", lock = true },
   { code = 0x40, name = "link_source", lock = false, closed_tail = true },
@@ -117,6 +115,8 @@ resets_on_open = 0x47
 uart_rates = 0x48
 [interface.event]
 heartbeat = 0x01                # boot_id(u32), uptime_ms(u32)
+[interface.reserved]
+op = [[0x20, 0x2F]]             # the long operations (core §10)
 
 [[interface]]
 name = "oep.wire.rvswd"
