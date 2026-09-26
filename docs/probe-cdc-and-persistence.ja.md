@@ -1,6 +1,9 @@
 # Open Embedded Probe — シリアルの口（CDC）と設定の永続化
 
-状態: **検討中**（2026-09-25〜）。論点と選択肢を並べ、実験で決めてから [v1 wire](v1-core-wire-delta.ja.md) に足す。
+状態: **実験と経緯（規範ではない）**。ここで決めたことは [probe の設定](oep-if-probe-config.ja.md)、[fixture](oep-if-fixture.ja.md)、
+[線とデバッグ](oep-if-debug.ja.md) §2 に移した。その後に変わった主な点: 自動 attach の照合は chip_id の決め打ちから target_id と
+mask / value の照合に（oep-if-probe-config §1.1）、fixture.uart の TX は plan を解いたら駆動をやめて idle の状態に（core §8）、
+設定はキーごとの置き換え（oep-if-probe-config §2）。当時の状態: **検討中**（2026-09-25〜）。論点と選択肢を並べ、実験で決めてから [v1 wire](v1-core-wire-delta.ja.md) に足す。
 発端は [memo](../memo.ja.md) の 15 / 16（ユーザーの発案と ch32rv セッションの意見）。
 
 ## 0. 何のためか

@@ -1,6 +1,6 @@
 # Open Embedded Probe — レビューの手引き（どこに何が書いてあるか）
 
-状態: 2026-09-26 時点の地図。OEP をまだ知らない人がレビューするときに、どこから読めばよいか、どの PATH に何があるかをまとめる。
+状態: 2026-09-26 時点の地図（2 つのレビューの反映と文書の整理の後）。OEP をまだ知らない人がレビューするときに、どこから読めばよいか、どの PATH に何があるかをまとめる。
 PATH は各リポジトリの根からの相対。
 
 ## 1. OEP とは
@@ -33,7 +33,7 @@ flash の書き方やチップ固有の手順は host にある。
 | 順 | PATH（oep-spec） | 何が分かるか |
 |---:|---|---|
 | 1 | `docs/project-concept.ja.md` | 目的と範囲（上流の合意）。短い |
-| 2 | `docs/oep-core.ja.md` | **本体（規範）**。§0 層と線引きの規則、§2 共通の規則（TLV、知らない値、番号の空間、revision）、§3 経路とフレーム、§4 メッセージと reject reason、§5 立て直しと送り直し（重複排除）、§6 セッション、§7 発見（confirm / list / describe）、§8 plan、§9 資源の寿命、§10 長い操作、§11 通知、§12 core の op、§13 インターフェースの書き方 |
+| 2 | `docs/oep-core.ja.md` | **本体（規範）**。§0 層と線引きの規則、§2 共通の規則（TLV、知らない値、番号の空間、revision）、§3 経路とフレーム、§4 メッセージと reject reason、§5 立て直しと送り直し（重複排除）、§6 セッション、§7 発見（confirm / list / describe）、§8 plan（fn ごと、資源の取り合い）、§9 資源の寿命、§10 長い操作（予約）、§11 通知、§12 core の op、§13 インターフェースの書き方 |
 | 3 | `docs/oep-if-common.ja.md` | 標準インターフェースの共通部品（位置つきのストリーム、debug の connection、線と target の status） |
 | 4 | `docs/oep-if-debug.ja.md`、`docs/oep-if-console.ja.md`、`docs/oep-if-fixture.ja.md`、`docs/oep-if-capture.ja.md`、`docs/oep-if-probe-config.ja.md` | 標準インターフェース（規範）: 線と RISC-V DM / ARM ADI、target のコンソール、GPIO / UART、ロジック / アナログのキャプチャ、probe の設定 |
 | 5 | `docs/target-console-dmseq.ja.md` | コンソールの framing（dmseq）: デバッグモジュールのデータレジスタで、通番と CRC つきで双方向に運ぶ（target と host の規範） |
@@ -41,7 +41,7 @@ flash の書き方やチップ固有の手順は host にある。
 | 7 | `docs/logic-capture.ja.md` | キャプチャの設計と実測（ロジアナとしての設計、基本と拡張の線引き、§7 の根拠）。長い |
 | 8 | `docs/probe-cdc-and-persistence.ja.md` | USB の複数の経路、シリアル転送（CDC）、設定の保存、起動モード、probe 自身の更新。§7 に試作 P1〜P7 の結果（debug の寿命と probe の設定の根拠） |
 | 9 | `docs/host-development-guide.ja.md`、`docs/probe-development-guide.ja.md` | host と probe を書く人への実務の約束（フレームの送り方、立て直し、USB-UART の扱いなど） |
-| 10 | `docs/v1-open-proposals.ja.md`、`docs/review-answer-2026-09-26.ja.md` | 決める前の案と決めた経緯、前回の第三者レビュー |
+| 10 | `docs/review-response-2026-09-26.ja.md`、`docs/review-answer-2026-09-26.ja.md`、`docs/review-answer-portability-2026-09-26.ja.md`、`docs/v1-open-proposals.ja.md` | 前回の 2 つの第三者レビュー（全体、移植性）と、各項目をどう決めて規範のどこに入れ、実機で確かめたかの対応表。決める前の案と決めた経緯 |
 | — | `docs/v1-core-wire-delta.ja.md` | 分ける前の v0 からの差分（経緯）。通知と link の速さの実測は、ここに残っている |
 
 ## 4. oep-spec（仕様、番号の表、実験）
@@ -51,9 +51,9 @@ flash の書き方やチップ固有の手順は host にある。
 | 状態 | PATH（`docs/`） |
 |---|---|
 | **v1 の規範** | `oep-core`、`oep-if-*`（6 つ）、`target-console-dmseq` |
-| v1 の理由・実測・実務（上の表の 6〜10） | `session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-connection-use-cases`、`logic-capture`、`probe-cdc-and-persistence`、`host-development-guide`、`probe-development-guide`、`v1-open-proposals`、`review-answer-2026-09-26`、`v1-core-wire-delta`（経緯） |
+| v1 の理由・実測・実務（上の表の 6〜10） | `session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-connection-use-cases`、`logic-capture`、`probe-cdc-and-persistence`、`host-development-guide`、`probe-development-guide`、`v1-open-proposals`、`review-answer-*`（2 つ）、`review-response-2026-09-26`、`capture-survey`、`v1-core-wire-delta`（経緯） |
 | 上流の合意（目的・要求・モデル） | `project-concept`（英語版 `project-concept.md` もあるが古い）、`use-cases`、`project-requirements`、`conceptual-model`、`responsibility-boundaries`、`development-guidelines`（作業版） |
-| v0 以前の設計の比較と候補（経緯。v1 の決定の理由をたどるとき） | `common-protocol-behavior`、`information-model`、`interaction-patterns`、`message-model-candidates`、`message-routing-model`、`message-header-layout-comparison`、`request-correlation-lifecycle`、`implicit-correlation-comparison`、`correlation-width-comparison`、`correlation-retirement-model`、`request-completion-semantics`、`activity-reference-lifecycle`、`connection-binding-design-inputs`、`minimal-connection-channel`、`bootstrap-*`（3 つ）、`uart-*`（5 つ） |
+| v0 以前の設計の比較と候補（経緯。冒頭の状態にそう書いてある。v1 の決定の理由をたどるとき） | `common-protocol-behavior`、`information-model`、`interaction-patterns`、`message-model-candidates`、`message-routing-model`、`message-header-layout-comparison`、`request-correlation-lifecycle`、`implicit-correlation-comparison`、`correlation-width-comparison`、`correlation-retirement-model`、`request-completion-semantics`、`activity-reference-lifecycle`、`connection-binding-design-inputs`、`minimal-connection-channel`、`bootstrap-*`（3 つ）、`uart-*`（5 つ） |
 | v0（v1 で置き換え済み） | `v0-core-wire-model`、`v003-destructive-prototype` |
 | 調査 | `capture-survey`（sigrok、市販のロジアナ、ESP32 / RP2 の机上調査） |
 
@@ -84,7 +84,8 @@ flash の書き方やチップ固有の手順は host にある。
 
 | PATH | 中身 | 世代 |
 |---|---|---|
-| `src/OepV1.h` | v1 の共通の部品（Interface の基底、TLV、describe、Tail の解析） | v1 |
+| `src/OepV1.h` | v1 の本体の部品（Interface の基底、TLV、describe、Tail の解析） | v1 |
+| `src/OepV1Debug.h` | 線と target のインターフェースの共通部品（status、ピンの組） | v1 |
 | `src/OepV1Endpoint.*` | フレームの受け口、名前で探すインターフェース、セッションのロック、通知、plan、複数の経路（`addTransport`） | v1 |
 | `src/OepV1Registry.h` | oep-spec の生成物の写し | v1 |
 | `src/OepV1Target.*` | `oep.wire.rvswd` / `oep.wire.swio`（attach / detach、connection の利用者）と `oep.target.riscv-dm` | v1 |
@@ -107,7 +108,8 @@ flash の書き方やチップ固有の手順は host にある。
 | `examples/Esp32P4X035Probe/` | ESP32-P4 + CH32X035 の治具（OEP は USB-Serial/JTAG） |
 | `examples/Esp32V003Probe/` | classic ESP32 + CH32V003（UIAPduino）の治具（SWIO） |
 | `examples/Rp2350L103Probe/`、`examples/Rp2040ZeroProbe/` | RP2350 / RP2040 の probe（RVSWD、SWD） |
-| `examples/Esp32P4HsProbe/` | ESP32-P4 の HS USB（vendor bulk）の probe |
+| `examples/Esp32P4HsProbe/` | ESP32-P4 の HS USB（vendor bulk）の probe（v0 のまま） |
+| `examples/Esp32P4CaptureProbe/` | ESP32-P4 のキャプチャの probe（HS、コピーなしのストリーミング）と、確認のスクリプト `host/stream_test.py` |
 | `examples/Esp32P4HsPrototype/` | 試作 P1〜P5 / P7（複数の経路、UART の素通し、設定と起動モード、DFU / Mass Storage での更新、USB 構成ごとの速さ）と、その host 側のスクリプト（`host/`） |
 | `examples/Esp32P4X035ConsolePrototype/` | 試作 P6（コンソールを CDC の口に流す、自動 attach、connection の寿命）と host 側のスクリプト |
 | `examples/PicoDebugPortSurvey/` | Pico でのデバッグポートの調査用 |
@@ -134,7 +136,7 @@ flash の書き方やチップ固有の手順は host にある。
 | `src/oep_client/v1/fake.py`、`endpoint.py` | ハードウェアなしの偽の probe（試験用） |
 | `src/oep_client/v1/target.py` | 主なものを 1 か所から import する入口 |
 | `src/oep_client/v0/` | v0 の client（経緯） |
-| `tests/test_v1_*.py` | ハードウェアなしの試験（`uv run pytest`、135 件） |
+| `tests/test_v1_*.py` | ハードウェアなしの試験（`uv run pytest`、134 件） |
 
 ## 7. 周辺のリポジトリ（参考）
 
