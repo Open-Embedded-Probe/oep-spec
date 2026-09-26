@@ -70,7 +70,7 @@ configure の応答で probe が返す値:
    ビットは未定義（host は無視する）。
 2. サンプル i は、枠 `i·C` から `i·C + C − 1` まで。m 番目の枠がチャネル `order[m]`。
 3. 区画の長さは `N·C·s/8` バイト。
-4. 電圧 = （値 − `zero`）× `scale`。`zero`（値）と `scale`（µV / 1 値）は configure の応答で返す（1 次式。曲線の較正は
+4. 電圧 = （値 − `zero`）× `scale_nv`。`zero`（値）と `scale_nv`（nV / 1 値）は configure の応答で返す（1 次式。曲線の較正は
    別の定義）。
 5. チャネル m の時刻は、サンプルの時刻から `skew[m]` ns 遅れる（順番に切り替える ADC の場合）。
 
