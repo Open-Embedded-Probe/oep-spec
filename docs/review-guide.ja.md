@@ -65,7 +65,6 @@ flash の書き方やチップ固有の手順は host にある。
 | `tools/oepgen1.py` | registry から C++ ヘッダと Python モジュールを生成し、番号の規則（core §2）を検査する。`uv run tools/oepgen1.py --check` で同期を確かめる |
 | `generated/oep-v1/oep_v1_registry.h`、`generated/oep-v1/oep_v1_registry.py` | 生成物。probe と client はこれを写して使う（`OepV1Registry.h`、`oep_client/v1/registry.py`） |
 | `tests/registry_v1/test_registry_v1.py` | registry と生成物の試験 |
-| `registry/oep-v0.yaml`、`tools/oepgen.py`、`generated/oep-v0-*` | v0 の同じもの（経緯） |
 
 ### 4.3 そのほか
 
