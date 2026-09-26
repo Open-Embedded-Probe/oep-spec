@@ -25,6 +25,9 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   - probe が使える組は describe の共通タグ（core §7.4）で宣言する。決まった組は channel_group、どのピンにも割り当てられる
     なら role_channels。役の番号は `pin_role`（1 = SWDIO、2 = SWCLK）。
   - scan の要求は試す組の並び。**count = 0 は probe が許すすべての組**。応答の組は、そのまま attach の pins に渡せる。
+  - scan の応答の `tried` は、要求の並び（count = 0 なら probe が許す組を、describe に出した順に並べたもの）の先頭から試し
+    終えた組の数。見つかった組で応答が 1 フレームに入らなくなりそうなら、probe はそこで止める。tried が並びの数より少なければ、
+    host は残りの組でもう一度 scan を送る（count = 0 で始めたときは、残りの組を並べて送る）。
   - attach / attach_under_reset は pins（TLV 0x03、critical）で組を指定する。pins が無ければ、許す組が 1 つだけならその組、
     2 つ以上なら rejected unavailable（host が選ぶ）。
   - **許していない組は、何も実行せずに rejected unavailable**（scan は要求の中に 1 つでもあれば全体を断る）。
@@ -54,10 +57,10 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、DMSTATUS(u32)) |
-| 0x02 | attach | method(u8: 0 止めない / 1 止める)、[TLV] | connection(u8)、DMSTATUS(u32)、flags(u8)、speed_hz(u32) |
-| 0x03 | detach | connection(u8)、[TLV] | — |
-| 0x04 | attach_under_reset | channel(u16、0xFFFF = probe の既定値)、hold_ms(u16)、[TLV] | connection(u8)、dpc(u32)、speed_hz(u32) |
+| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、DMSTATUS(u32)) |
+| 0x02 | attach | method(u8: 0 止めない / 1 止める)、[TLV] | connection(u16)、DMSTATUS(u32)、flags(u8)、speed_hz(u32) |
+| 0x03 | detach | connection(u16)、[TLV] | — |
+| 0x04 | attach_under_reset | channel(u16、0xFFFF = probe の既定値)、hold_ms(u16)、[TLV] | connection(u16)、dpc(u32)、speed_hz(u32) |
 
 - swio の組は swclk = 0xFFFF（1 本の線）。scan の kind は 0x01 = riscv-dm。値は生の値。
 - attach の flags: bit0 保留中の havereset を確認応答した、bit1 既存の connection。
@@ -76,7 +79,7 @@ TLV:
 
 ## 4. `oep.target.riscv-dm`
 
-要求の最初の byte は connection。
+要求の先頭は connection(u16)。
 
 | op | 名前 | 要求（connection の後ろ） | 応答 |
 |---:|---|---|---|
@@ -145,9 +148,9 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset、2 target のシステ�
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、DPIDR(u32)) |
-| 0x02 | attach | [TLV] | connection(u8)、DPIDR(u32)、flags(u8: bit0 dormant から起こした、bit1 既存の connection)、speed_hz(u32) |
-| 0x03 | detach | connection(u8)、[TLV] | — |
+| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、DPIDR(u32)) |
+| 0x02 | attach | [TLV] | connection(u16)、DPIDR(u32)、flags(u8: bit0 dormant から起こした、bit1 既存の connection)、speed_hz(u32) |
+| 0x03 | detach | connection(u16)、[TLV] | — |
 
 - scan の kind は 0x02 = arm-adi。
 - attach の TLV: 0x01 max_speed、0x02 targetsel（u32、multidrop のときだけ）、0x03 pins。detach の TLV: 0x01 force。
@@ -157,7 +160,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset、2 target のシステ�
 
 ## 6. `oep.target.arm-adi`
 
-要求の最初の byte は connection。
+要求の先頭は connection(u16)。
 
 | op | 名前 | 要求（connection の後ろ） | 応答 |
 |---:|---|---|---|

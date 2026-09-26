@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "22e57e642ceba863"
+REGISTRY_HASH = "d99aa5dcac15dcf6"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -20,7 +20,7 @@ DESCRIBE_COMMON = {"role_channels": 0x01, "max_clock_hz": 0x02, "max_length": 0x
 TIMING = {"resync_quiet_ms": 0x32, "probe_frame_gap_ms": 0xC8, "host_frame_pause_max_ms": 0x64, "heartbeat_default_ms": 0x3E8}
 
 INTERFACES = {}
-CORE = _NS(name="oep.core", revision=1, op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "plan_apply": 0x04, "plan_release": 0x05, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13, "status": 0x20, "cancel": 0x21, "subscribe": 0x30, "unsubscribe": 0x32, "link_source": 0x40, "link_sink": 0x41}, lock_free={0x01, 0x02, 0x03, 0x10, 0x13, 0x20, 0x40, 0x41},
+CORE = _NS(name="oep.core", revision=1, op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "plan_apply": 0x04, "plan_release": 0x05, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13, "subscribe": 0x30, "unsubscribe": 0x32, "link_source": 0x40, "link_sink": 0x41}, lock_free={0x01, 0x02, 0x03, 0x10, 0x13, 0x40, 0x41},
     closed_tail={0x40}, tlv={"plan_apply": {"role_assignment": 0x90}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "uart_rates": 0x48}}, event={"heartbeat": 0x01}, enum={}, own={})
 INTERFACES["oep.core"] = CORE
 WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "attach_under_reset": 0x04}, lock_free={},

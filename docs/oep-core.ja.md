@@ -13,7 +13,7 @@ OEP は 3 つの層からなる。
 
 | 層 | 中身 | 名前 | 版 |
 |---|---|---|---|
-| **本体（この文書）** | どの probe と host も、機能に関係なく実装するもの: 経路とフレーム、メッセージ、セッションと排他、発見（confirm / list / describe）、plan、資源の寿命の一般の規則、長い操作、通知の仕組み、拡張の規則 | `oep.core`（fn 0） | プロトコルの revision（confirm） |
+| **本体（この文書）** | どの probe と host も、機能に関係なく実装するもの: 経路とフレーム、メッセージ、セッションと排他、発見（confirm / list / describe）、plan、資源の寿命の一般の規則、通知の仕組み、拡張の規則 | `oep.core`（fn 0） | プロトコルの revision（confirm） |
 | **標準インターフェース** | 本体の仕組みだけで定義した、名前つきの機能 | `oep.` で始まる名前 | インターフェースごとの revision |
 | **拡張** | 標準インターフェースの任意機能と別の定義、独自のインターフェース | `oep.` の別の定義、または逆 DNS の名前 | それぞれ |
 
@@ -48,7 +48,6 @@ OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、
 | lease | ロックの期限。keepalive などの要求で延びる |
 | channel | probe のピンの番号（u16） |
 | plan | どのインターフェースのどの役（role）に、どの channel を使うかの割り当て |
-| activity | 長い操作（§10）の番号（u16） |
 
 ## 2. 共通の規則
 
@@ -71,7 +70,9 @@ tag(u8) | len(u8) | value(len byte)
 - **応答**: 各 op の応答の固定部分（と、前に数を置いた並び）の後ろは TLV の並び。後から足すものはすべてここに TLV で足す。
   host は知らない tag を読み飛ばす。長さの分からない並び（読み出したバイト列など）で終わる応答は、後ろに何も足せない。
   固定部分より短い応答は壊れた応答として扱う。
-- **要求**: 要求の後ろに足せるのは TLV の並びだけで、host は **critical の bit を付けて送る**。probe は、知らない critical の
+- **要求**: 要求の後ろに足せるのは TLV の並びだけ。host は、その項目が効かなければ要求に意味がないときに **critical の bit を
+  付ける**（効かなくても構わない項目は付けずに送ってよい）。インターフェースの定義が critical で送ると決めた TLV（速さの上限、
+  pins など、安全のための項目）は必ず付ける。probe は、知らない critical の
   TLV があれば rejected unsupported（payload に受け取ったままの tag）で断る。知らない非 critical の TLV は無視し、応答の
   後ろに ignored（tag 0x7F、値は無視した tag の並び）を付ける。
 - 知っている TLV でも、その値を扱えなければ、critical なら rejected unsupported、そうでなければ無視して ignored に載せる。
@@ -92,7 +93,7 @@ tag(u8) | len(u8) | value(len byte)
 | 空間 | 範囲 |
 |---|---|
 | role | 0x01 要求、0x02 応答、0x05 出来事、0x06 データ。0x03 / 0x04 は予約、0x07〜0x7F は予約。bit 7 は要求だけの意味（session_id あり、§4.1）。probe → host のフレームでは bit 7 は 0 |
-| core（fn 0）の op | 0x01〜0x0F 発見と plan、0x10〜0x1F セッション、0x20〜0x2F 長い操作、0x30〜0x3F 通知、0x40〜0x4F 線の試験、0x50〜0xEF 予約、0xF0〜0xFF 実験用（出荷する probe は使わない） |
+| core（fn 0）の op | 0x01〜0x0F 発見と plan、0x10〜0x1F セッション、0x20〜0x2F 予約（長い操作、§10）、0x30〜0x3F 通知、0x40〜0x4F 線の試験、0x50〜0xEF 予約、0xF0〜0xFF 実験用（出荷する probe は使わない） |
 | インターフェースの op | 0x01〜0xEF はインターフェースの定義が決める。0xF0〜0xFF は実験用 |
 | reject reason | 0x01〜0x3F 本体（全インターフェース共通）、0x40〜0x7F インターフェース、0x80〜0xFF 予約 |
 | outcome | 0 success、1 failed、2 partial。ほかは予約 |
@@ -155,7 +156,8 @@ role=0x01 | corr(u16) | fn(u16) | op(u8) | payload                      見出�
 role=0x81 | corr(u16) | fn(u16) | op(u8) | session_id(u32) | payload    見出し 10 byte（session_id あり）
 ```
 
-- `corr`: host が振る番号。同じ probe の未解決の要求の間で重複させない。0 は使わない。
+- `corr`: host が振る番号。**host は要求ごとに 1 ずつ進める**（role 0x01 の要求も数える。65535 の次は 1。0 は使わない）。
+  同じ番号をもう一度使うのは、§5.2 の送り直しのときだけ。probe は、送り直しと、覚えていない古い要求の見分けにこの順序を使う。
 - 状態を変える要求は role 0x81 で送る（§6.3）。ロックなしで使える要求は 0x01 で送ってよい（0x81 で送れば lease が延びる）。
 - host は、confirm の応答が revision 1 以上だった probe にだけ role 0x81 を送る。
 
@@ -169,7 +171,7 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出�
 |---|---:|---|---|
 | rejected | 0x00 | reject reason（§4.3） | reason が定める補助の情報 |
 | completed | 0x01 | outcome（0 success、1 failed、2 partial） | op が定める |
-| accepted | 0x02 | 0 | activity（u16）と op が定める初期の情報（§10） |
+| — | 0x02 | — | 予約（長い操作、§10）。host は失敗として扱う |
 
 - 要求ごとに応答はちょうど 1 つ。応答はその要求の来た経路に、同じ corr で返す。fn と op は返さない。
 - **rejected は「要求を受け付けなかった」ときだけ**（書式、番号、セッション、今の状態で受けられない）。受け付けて実行した
@@ -183,7 +185,7 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出�
 | 0x02 | unknown_operation | その fn にその op は無い | — |
 | 0x03 | malformed | 長さ・値域の誤り | — |
 | 0x04 | unavailable | 今の状態・資源では受けられない | インターフェースが定める |
-| 0x05 | busy | 長い操作が実行中で、ぶつかる | open(force) のときはロックの残り時間 ms（u32） |
+| 0x05 | busy | 予約（長い操作、§10） | — |
 | 0x06 | window_exceeded | window / max_inflight を超えた | — |
 | 0x07 | no_session | ロックは空いているが、この session_id は最後の ID ではない。host は open からやり直す | — |
 | 0x08 | locked | 他のセッションがロックを持つ | 残り時間 ms（u32） |
@@ -217,14 +219,21 @@ unsubscribe と end を確かめずに送ってよい（二度実行しても害
 
 - 応答が壊れたか来なかったとき、host は**同じ corr で 1 回送り直してよい**（状態を変える要求も）。立て直しの中で unsubscribe
   と end を送ったときは、セッションが終わっているので、元の要求は送り直さない。
-- probe は、ロックを持つセッションの要求（role 0x81）について、直近の max_inflight 個以上の (corr, fn, op, 要求の payload の
-  CRC-32, 応答) を覚えておく。同じ corr の要求が来たら:
-  - fn、op、CRC が同じなら、**実行せずに覚えた応答を返す**。
-  - 違えば rejected corr_reused。
+- probe は、最後のセッションの要求（role 0x81）について、直近の max_inflight 個以上の (corr, fn, op, 要求の payload の CRC-32,
+  応答) と、そのセッションで最も新しい corr を覚えておく。**要求の同一性は corr だけで決まる**（§4.1 の順序）。CRC は host の
+  番号付けの誤りを見つけるためだけのもの。
+- 最後のセッションの session_id を持つ要求は、**§6.2 の判定より先に**次のとおり見る（ロックが空いていても同じ）:
+  - 表に同じ corr があり、fn、op、CRC が同じなら、**実行せずに覚えた応答を返す**。ロックの状態も lease も変えない（送り直した
+    end でロックが立ち直ることはない）。
+  - 表に同じ corr があり、どれかが違えば rejected corr_reused。
+  - 表に無く、corr が最も新しい corr より新しくない（差を u16 の符号付きで見て 0 以下）なら、実行せずに rejected result_lost
+    （表から落ちた古い要求の送り直し。host は状態を読み直して確かめる）。
+  - それ以外は新しい要求として §6.2 へ進む。
 - 覚えておく応答の大きさには上限を置いてよい。上限を超えて覚えていない応答の要求を送り直されたら、実行せずに rejected
-  result_lost（host は状態を読み直して確かめる）。
-- **覚えた表は open（resume を含む）のたびに捨てる。** セッションが変わったときの exactly-once は約束しない。
-- 読むだけの要求は重複排除しなくてよい。
+  result_lost。
+- **覚えた表と最も新しい corr は open（resume を含む）のたびに捨てる**（end では捨てない）。セッションが変わったときの
+  exactly-once は約束しない。
+- 読むだけの要求（role 0x01）は重複排除しない。
 - CRC-32 は IEEE（reflected、多項式 0xEDB88320、初期値と最終の XOR 0xFFFFFFFF。"123456789" → 0xCBF43926）。
 
 ## 6. セッションと排他
@@ -250,7 +259,7 @@ unsubscribe と end を確かめずに送ってよい（二度実行しても害
 ### 6.3 ロックの要る要求
 
 状態を変える要求はすべてロックが要る（role 0x81）。ロックなしで使えるのは、状態を変えない読むだけの要求に限る
-（confirm、list、describe、lock_state、status、link_source / link_sink、インターフェースが定める読むだけの op）。インターフェース
+（confirm、list、describe、lock_state、link_source / link_sink、インターフェースが定める読むだけの op）。インターフェース
 がロックなしとする op は、状態を変えてはならない。
 
 ### 6.4 open、end、keepalive、force
@@ -260,9 +269,8 @@ unsubscribe と end を確かめずに送ってよい（二度実行しても害
 - **end**: ロックを離す。セッションの資源は残す（§9）。
 - **keepalive**: lease を延ばすだけ。
 - **lock_state**: ロックの有無と残り時間。
-- **force**: 他のセッションがロックを持っていても奪う。probe は、前のセッションに対して期限切れと同じ後始末をし（§9）、実行中の
-  長い操作を cancel できれば cancel してからロックを渡す。cancel できない長い操作が実行中なら rejected busy（payload に残り
-  時間）で断る。force は認証ではなく、取り違えを防ぐだけのものである。
+- **force**: 他のセッションがロックを持っていても奪う。probe は、前のセッションに対して期限切れと同じ後始末をしてから（§9）
+  ロックを渡す。force は認証ではなく、取り違えを防ぐだけのものである。
 
 ### 6.5 boot_id
 
@@ -352,27 +360,27 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 
 | 出来事 | セッションが作った資源 |
 |---|---|
-| end | 残る（次のセッションがそのまま使える） |
+| end | 残る。次に成功した open で、そのセッションの資源に原子的に移る |
 | lease の期限切れ | 外す |
 | force で奪われる | 外す（期限切れと同じ） |
 | probe の再起動 | 無くなる（boot_id が変わる） |
 
+- end の後に残った資源は、次に成功した open（別の session_id でも、同じ session_id の再開でも）でそのセッションのものになり、
+  そのセッションの lease の期限切れか force で外れる。引き継がせたくない host は、end の前に自分で外す（detach、close、
+  plan_release など）。
 - 本体の資源: **plan**（外すとピンは plan_release と同じく解放。target の線を plan で保っていた場合、target の状態が変わりうる）、通知の購読
   （§11。購読は end でも終わる）、§5.2 の表。
 - インターフェースが作る資源（debug の connection、ストリームなど）の寿命は、インターフェースの文書が、この規則の上で定める
   （誰が使っているか、いつ閉じるか）。
 - 保存した設定（インターフェースが定める）から入れた資源は、セッションの資源ではない。
-- インターフェースが資源に番号を振るときは、新しい資源を作るたびに 1〜255 を順に進める（255 の次は、使っている番号を
-  飛ばして 1）。閉じた資源の番号を使った要求は rejected no_connection。番号は同じ boot_id の間だけ有効。
+- インターフェースが資源に番号を振るときは u16 にし、新しい資源を作るたびに 1 から順に進め、**同じ boot_id の間は再利用しない**
+  （65535 個を使い切ったら、新しい資源は rejected unavailable）。閉じた資源の番号を使った要求は rejected no_connection。
 
-## 10. 長い操作
+## 10. 長い操作（予約）
 
-- 時間のかかる op は accepted（activity の番号、u16）で応答してよい。
-- host は `status(activity)` を送る。応答は completed（最終の結果。payload はその op の結果）か、accepted と進捗
-  `done(u32) total(u32)`（total が分からなければ 0）。
-- `cancel(activity)` で止める。止められなければ rejected unavailable。
-- 実行中の長い操作は probe 全体で 1 つ。ぶつかる要求には rejected busy をすぐ返す。
-- 最後の結果は同じ session_id の間だけ取り出せ、新しい session_id でロックが立ったら消える。
+v1 は長い操作を持たない。すべての op は 1 つの応答で完了する。resolution 0x02、reject reason 0x05 busy、core の op 0x20〜0x2F は、
+長い操作を定めるときのために予約する（そのときに、結果を取り出せるセッション、番号の振り方、lease の期限切れと force での
+扱いを一緒に決める）。
 
 ## 11. 通知
 
@@ -432,8 +440,6 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 | 0x11 | end | — | — | 必要 |
 | 0x12 | keepalive | — | — | 必要 |
 | 0x13 | lock_state | — | locked(u8)、remaining_ms(u32) | 不要 |
-| 0x20 | status | activity(u16) | §10 | 不要 |
-| 0x21 | cancel | activity(u16) | — | 必要 |
 | 0x30 | subscribe | §11.3 | — | 必要 |
 | 0x32 | unsubscribe | §11.3 | — | 必要 |
 | 0x40 | link_source | length(u32) | length バイト（1 フレームに入る分まで。k バイト目は k & 0xFF） | 不要 |

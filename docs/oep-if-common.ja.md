@@ -22,7 +22,7 @@
 ### 1.2 read
 
 ```text
-要求: [stream(u8)]、from(u8)、arg(u64)、max(u16)
+要求: [stream(u16)]、from(u8)、arg(u64)、max(u16)
 応答: start(u64)、flags(u8: bit0 more、bit1 gap)、data
 ```
 
@@ -62,7 +62,7 @@ mark : serial(u32)、position(u64)、kind(u8)、time_ms(u32)、detail(u8)       
 - マークは本文とは別の小さなリングにためる。あふれたら古いものから捨てる。
 
 ```text
-marks  要求: [stream(u8)]、from_serial(u32)
+marks  要求: [stream(u16)]、from_serial(u32)
        応答: more(u8)、count(u8)、count × mark
 ```
 
@@ -72,9 +72,9 @@ marks はロックなしで使える。
 
 | 操作 | 要求 | 応答 | 意味 |
 |---|---|---|---|
-| clear | [stream(u8)] | — | 貯めたバイトを捨て、マーク clear を付ける |
-| mark | [stream(u8)]、value(u8) | — | マーク host（detail = value）を付ける |
-| write | [stream(u8)]、count(u16)、data | accepted(u16) | 相手への入力。受け付けた分だけ返す（バッファしない）。全部受け付けなければ completed partial |
+| clear | [stream(u16)] | — | 貯めたバイトを捨て、マーク clear を付ける |
+| mark | [stream(u16)]、value(u8) | — | マーク host（detail = value）を付ける |
+| write | [stream(u16)]、count(u16)、data | accepted(u16) | 相手への入力。受け付けた分だけ返す（バッファしない）。全部受け付けなければ completed partial |
 
 どれもロックが要る。
 
@@ -94,9 +94,9 @@ read で読み直せるかはインターフェースが決める。
 使うもの: `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（作る）、`oep.target.riscv-dm`、`oep.target.arm-adi`、
 `oep.target.console`（使う）、`oep.probe.config` の bind（使う）。
 
-- **connection** は、線の attach が作る、ある target への接続。番号（u8）で指し、target の操作の要求は最初の byte に
+- **connection** は、線の attach が作る、ある target への接続。番号（u16）で指し、target の操作の要求は先頭に
   connection を置く。
-- 番号は core §9 の規則で振る（新しい connection のたびに 1〜255 を進める。閉じた番号は rejected no_connection）。
+- 番号（u16）は core §9 の規則で振る（新しい connection のたびに 1 から進め、同じ boot_id の間は再利用しない。閉じた番号は rejected no_connection）。
 - connection は、**使っているもの**が 1 つでもある間は開いている。使っているもの:
   - attach した host のセッション（セッションごとに 1 つ）
   - connection を使う設定（`oep.probe.config` の bind）
