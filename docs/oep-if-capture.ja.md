@@ -70,9 +70,9 @@ configure の応答で probe が返す値:
    ビットは未定義（host は無視する）。
 2. サンプル i は、枠 `i·C` から `i·C + C − 1` まで。m 番目の枠がチャネル `order[m]`。
 3. 区画の長さは `N·C·s/8` バイト。
-4. 電圧 = （値 − `zero`）× `scale_nv`。`zero`（値）と `scale_nv`（nV / 1 値）は configure の応答で返す（1 次式。曲線の較正は
+4. チャネル k の電圧 = （値 − `zero[k]`）× `scale_nv[k]`。`zero` と `scale_nv`（nV / 1 値）は configure の応答でチャネルごとに返す（1 次式。曲線の較正は
    別の定義）。
-5. チャネル m の時刻は、サンプルの時刻から `skew[m]` ns 遅れる（順番に切り替える ADC の場合）。
+5. チャネル k の時刻は、サンプルの時刻から `skew_ns[k]` 遅れる（順番に切り替える ADC の場合）。
 
 例:
 
@@ -155,7 +155,7 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | 0x44 | segments | u32（リピートの区画の数。省略すれば probe に任せる） | 両方 |
 | 0x45 | trigger | type(u8)、role(u8)、value(u16) | 両方 |
 | 0x46 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 |
-| 0x47 | frontend | role(u8)、attenuation(u8、実装の値) | アナログ |
+| 0x47 | frontend | role(u8)、frontend(u8: describe の frontend の番号) | アナログ |
 
 - **問い合わせは別の操作（0x09）**。configure の TLV のフラグにすると、probe はロックの要否を操作の番号で決めるので、
   ロックなしの問い合わせができない（試作で踏んだ、[設計](logic-capture.ja.md) §7.8）。問い合わせは今の設定と取ったデータを壊さない。
@@ -171,8 +171,9 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | 0x51 | layout | ロジック: w(u8)、C(u8)、pos[C](u8)。アナログ: s(u8)、o(u8)、b(u8)、C(u8)、order[C](u8)（§1） | 両方 |
 | 0x52 | actual_samples | u32 | 両方 |
 | 0x53 | actual_segments | u32 | 両方 |
-| 0x54 | timing | jitter_kind(u8: 0 なし / 1 分数分周 / 2 ソフトウェア)、jitter_ns(u32)、skew_ns[C](u32)（アナログ） | 両方 |
-| 0x55 | scale | zero(u32、値)、scale_nv(u32、1 値あたりの nV) | アナログ |
+| 0x54 | timing | jitter_kind(u8: 0 なし / 1 分数分周 / 2 ソフトウェア)、jitter_ns(u32) | 両方 |
+| 0x57 | skew | role(u8)、skew_ns(u32)。チャネルごとに 1 つ（遅れが 0 のチャネルは省いてよい） | アナログ |
+| 0x55 | scale | role(u8)、zero(u32、値)、scale_nv(u32、1 値あたりの nV)。チャネルごとに 1 つ | アナログ |
 | 0x56 | blocking_ms | u32（取っている間 probe が答えない時間の見込み。0 なら答える） | 両方 |
 | 0x7F | ignored | tag(u8) の並び（core §2.3 の全文脈共通の ignored） | 両方 |
 
@@ -203,7 +204,8 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | 0x43 | rate_limit | mode(u8)、channels(u8)、max_hz(u32)（条件ごとの上限。繰り返してよい） |
 | 0x44 | channels | max(u8)、layout の候補（ロジック: w のビット集合。アナログ: s の候補） |
 | 0x45 | trigger | type のビット集合、max_pretrigger(u32) |
-| 0x46 | analog | range_min_mv(i32)、range_max_mv(i32)、減衰の候補の並び（アナログ） |
+| 0x46 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)。入力範囲の候補ごとに 1 つ（アナログ）。番号は configure の frontend で選ぶ。候補が 1 つだけの probe はそれだけ書く |
+| 0x49 | frontend_shared | u8: 1 = すべてのチャネルが同じ frontend しか使えない（違う指定は configure で断る） |
 | 0x47 | max_read | u32 |
 | 0x48 | segment_ring | u16（覚えている区画の情報の数） |
 
@@ -240,7 +242,7 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 
 ストリーミング（アナログ 1 チャネル、44.1 kHz）
   plan_apply(analog: role0 = GPIO16)
-  configure(mode=3, rate=44100, frontend(0, 12 dB))
+  configure(mode=3, rate=44100, frontend(role 0, 番号 2))
     → actual_rate 44642/1 など（[設計](logic-capture.ja.md) §7.4 のとおり要求どおりにはならない）、layout s=16 o=0 b=12
   subscribe(analog, min_bytes=1024, max_delay_ms=20) → start → データが届く
 ```

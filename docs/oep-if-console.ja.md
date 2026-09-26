@@ -44,3 +44,32 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
   open されるまで読める**（read / marks。write / mark / clear は rejected unavailable）。線が落ちる直前の出力を回収するため。
 - ストリームが使う connection は、そのストリームを開いたセッション（または bind）が使っているものとして数える。
 - write は、方式が 1 回に運べる分だけを受け付ける（dmseq は 2 byte まで）。残りは host が送り直す。
+
+## 3. 方式（mechanism）
+
+どれも debug module の DATA0（DMI 0x04）と DATA1（0x05）を郵便受けに使う。hart は止めない。probe は DATA0 を読んで、方式の
+規則で受け取る。
+
+| mechanism | 名前 | 向き | 定義 |
+|---:|---|---|---|
+| 0 | SDI | target → host | 下の 3.1 |
+| 1 | DMDATA | 両方向 | 下の 3.2 |
+| 2 | dmseq | 両方向 | [target-console-dmseq](target-console-dmseq.ja.md)（通番と CRC つき） |
+
+### 3.1 SDI（WCH の SDI printf）
+
+- target は DATA0 が 0 になるのを待ち、DATA1 = バイト 3〜6、DATA0 = 長さ（1〜7）| バイト 0〜2 << 8 を書く（little endian、
+  DATA0 を最後に書く）。
+- probe は DATA0 の下位 byte が 1〜7 なら、DATA1 も読んで、長さの分のバイトを受け取り、DATA0 に 0 を書く（受け取った印）。
+  下位 byte が 0 は何も無い。8 以上は枠ではない（読み捨てない）。
+- host → target の向きは無い（write は何も受け付けない: accepted 0、completed failed）。
+
+### 3.2 DMDATA（minichlink の framing）
+
+- DATA0 の下位 byte が状態の byte。bit 7 = 1 は target の枠、下位 6 bit は長さ + 4。
+- target の枠（bit 7 = 1）で長さ + 4 が 5 以上なら、DATA1 も読んで長さ（1〜7）の分を受け取る（並びは SDI と同じ）。4 は target の
+  空の枠（「郵便受けは host の番」）。
+- probe は target の枠 1 つにちょうど 1 回答える: 送るバイトがあれば DATA0 = (n + 4) | バイト 0〜2 << 8（n は 1〜3、bit 7 = 0）、
+  無ければ DATA0 = 0。bit 7 が 0 の word（host の枠がまだ取られていない、または答えたばかり）には書かない。
+- 空の枠は、次の読みでもそのままのときだけ答える（target が空の枠を置いた直後に本当の枠を重ねることがあり、すぐ答えると
+  その枠を消す）。
