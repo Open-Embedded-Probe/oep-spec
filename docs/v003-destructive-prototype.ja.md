@@ -1,6 +1,6 @@
 # V003開発プローブ破壊的prototype
 
-状態: **非規定・破壊的変更前提の実装計画**。このprototypeはOEP仕様への適合性や後方互換性を
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **非規定・破壊的変更前提の実装計画**。このprototypeはOEP仕様への適合性や後方互換性を
 主張しない。実装からprotocol上の不足が見つかった場合、wire形式、service境界、repository内の
 APIおよび保存dataをすべて破棄して作り直してよい。
 

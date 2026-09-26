@@ -1,6 +1,6 @@
 # Open Embedded Probe — Message routing model候補
 
-状態: **検討中の論理protocol案**。この文書は、共通message modelの各roleを正しいscopeへ配送し、標準機能と独自機能のpayloadを取り違えないために、共通protocolが論理上識別する情報を整理する。
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中の論理protocol案**。この文書は、共通message modelの各roleを正しいscopeへ配送し、標準機能と独自機能のpayloadを取り違えないために、共通protocolが論理上識別する情報を整理する。
 
 wire header、field順序、識別子幅、数値割当、encodingおよびすべての情報を毎messageへ明示するかは決定しない。connection contextや直前のexchangeから一意に導出できる情報を省略する可能性を残す。
 

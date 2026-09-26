@@ -1,6 +1,6 @@
 # Open Embedded Probe — 最小interaction pattern
 
-状態: **検討中のprotocol設計入力**。この文書は、[共通protocolの情報model](information-model.ja.md)を使ってhostとprobeが行う最小限のinteraction patternを整理する。
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中のprotocol設計入力**。この文書は、[共通protocolの情報model](information-model.ja.md)を使ってhostとprobeが行う最小限のinteraction patternを整理する。
 
 patternは論理的なやり取りを示す。各patternを一つのmessage、commandまたはround tripとして実装することは要求しない。複数patternの統合、既知情報の省略、batch化およびconnection binding固有の最適化は将来の設計で決める。
 

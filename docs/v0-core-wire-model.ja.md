@@ -1,6 +1,6 @@
 # Open Embedded Probe — core wire model v0 draft
 
-状態: **作業版 draft**（2026-09-22）。これは実装して実測するための最初の具体案であり、正式な wire format ではない。
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **作業版 draft**（2026-09-22）。これは実装して実測するための最初の具体案であり、正式な wire format ではない。
 既存の検討（[共通message model候補](message-model-candidates.ja.md) 候補 C、[Message header構成比較](message-header-layout-comparison.ja.md) 候補 B、
 [Request correlation](request-correlation-lifecycle.ja.md) 16 bit、[Requestの受理と完了](request-completion-semantics.ja.md)）を前提にし、
 数値は [E153](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/experiments/e153_p4_x035_rvswd_dedic_ceiling/README.ja.md)・

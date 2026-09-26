@@ -1,6 +1,6 @@
 # Open Embedded Probe — 最小connection channel候補
 
-状態: **実装事実に基づく検討案**。この文書は、CH32V003 software USB HIDとArduino Uno R3級UARTを最小実装の検証候補として、connection bindingがOEP共通protocolへ渡す最小channelを整理する。
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **実装事実に基づく検討案**。この文書は、CH32V003 software USB HIDとArduino Uno R3級UARTを最小実装の検証候補として、connection bindingがOEP共通protocolへ渡す最小channelを整理する。
 
 この二つのplatformへの対応、最小message長、framing、CRC、識別子幅およびwire encodingはまだ決定しない。記載する実装値をOEP全体の固定上限として採用しない。
 

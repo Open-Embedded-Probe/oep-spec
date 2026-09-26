@@ -1,6 +1,7 @@
 # target.console framing 2: dmseq
 
-状態: `target.console`（owner 0x0000, id 0x0013）の framing 2 として規定する。
+状態: **規範**。`oep.target.console` の mechanism 2（[コンソール](oep-if-console.ja.md) §3）の framing を規定する（v0 のときは target.console
+（owner 0x0000、id 0x0013）の framing 2 と呼んでいた）。
 根拠と実測は [experiments/dm-console-seq](../experiments/dm-console-seq/SPEC-draft.md)。
 ch32rv 側のレビュー 2 回を経て合意済み（2026-09-24）。
 

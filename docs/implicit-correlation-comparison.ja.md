@@ -1,6 +1,6 @@
 # Open Embedded Probe — 明示correlationと暗黙対応の比較
 
-状態: **検討中の論理protocol方針**。この文書は、request/resultを直列に一件ずつ扱うprofileでcorrelation fieldを省略できるかを、HID、UARTおよび順序付きstreamのfailure境界から比較する。
+状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中の論理protocol方針**。この文書は、request/resultを直列に一件ずつ扱うprofileでcorrelation fieldを省略できるかを、HID、UARTおよび順序付きstreamのfailure境界から比較する。
 
 correlationのbit幅、field位置、数値割当および最終encodingは決定しない。
 
