@@ -374,6 +374,10 @@ complete = 0
 host = 1
 no_free_segment = 2
 error = 3
+[interface.enum.segment_flag]      # segment flags (oep-if-capture §2)
+gap = 0x01
+short = 0x02
+slipped = 0x04                     # the time base bent inside the segment (samples later than the timing answer)
 
 [[interface]]
 name = "oep.fixture.analog"            # logic-capture §0.1: the same operations and numbers as oep.fixture.capture, one analog track
@@ -444,6 +448,10 @@ complete = 0
 host = 1
 no_free_segment = 2
 error = 3
+[interface.enum.segment_flag]      # segment flags (oep-if-capture §2)
+gap = 0x01
+short = 0x02
+slipped = 0x04                     # the time base bent inside the segment (samples later than the timing answer)
 
 [[interface]]
 name = "oep.probe.config"
