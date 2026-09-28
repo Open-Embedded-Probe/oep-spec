@@ -42,6 +42,7 @@ flash の書き方やチップ固有の手順は host にある。
 | 8 | `docs/probe-cdc-and-persistence.ja.md` | USB の複数の経路、シリアル転送（CDC）、設定の保存、起動モード、probe 自身の更新。§7 に試作 P1〜P7 の結果（debug の寿命と probe の設定の根拠） |
 | 9 | `docs/host-development-guide.ja.md`、`docs/probe-development-guide.ja.md` | host と probe を書く人への実務の約束（フレームの送り方、立て直し、USB-UART の扱いなど） |
 | 10 | `docs/review-response-2026-09-26.ja.md`、`docs/review-answer-2026-09-26.ja.md`、`docs/review-answer-portability-2026-09-26.ja.md`、`docs/v1-open-proposals.ja.md` | 前回の 2 つの第三者レビュー（全体、移植性）と、各項目をどう決めて規範のどこに入れ、実機で確かめたかの対応表。決める前の案と決めた経緯 |
+| 11 | `docs/hardware-source-review-2026-09-26.ja.md`、`docs/review-answer-core-standard-portability-2026-09-26.ja.md`、`docs/v1-operation-test-audit-2026-09-26.ja.md`、`docs/v1-open-issues-research-2026-09-26.ja.md` | 2026-09-26 版への 2 回目のレビュー（実機とソース、移植性と復旧性、操作と試験の監査）と、未決事項（IP、復旧）の事前調査。**まだ対応していない** |
 | — | `docs/v1-core-wire-delta.ja.md` | 分ける前の v0 からの差分（経緯）。通知と link の速さの実測は、ここに残っている |
 
 ## 4. oep-spec（仕様、番号の表、実験）
@@ -51,7 +52,7 @@ flash の書き方やチップ固有の手順は host にある。
 | 状態 | PATH（`docs/`） |
 |---|---|
 | **v1 の規範** | `oep-core`、`oep-if-*`（6 つ）、`target-console-dmseq` |
-| v1 の理由・実測・実務（上の表の 6〜10） | `session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-connection-use-cases`、`logic-capture`、`probe-cdc-and-persistence`、`host-development-guide`、`probe-development-guide`、`v1-open-proposals`、`review-answer-*`（2 つ）、`review-response-2026-09-26`、`capture-survey`、`v1-core-wire-delta`（経緯） |
+| v1 の理由・実測・実務（上の表の 6〜10） | `session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-connection-use-cases`、`logic-capture`、`probe-cdc-and-persistence`、`host-development-guide`、`probe-development-guide`、`v1-open-proposals`、`review-answer-*`（3 つ）、`review-response-2026-09-26`、`hardware-source-review-2026-09-26`、`v1-operation-test-audit-2026-09-26`、`v1-open-issues-research-2026-09-26`、`capture-survey`、`v1-core-wire-delta`（経緯） |
 | 上流の合意（目的・要求・モデル） | `project-concept`（英語版 `project-concept.md` もあるが古い）、`use-cases`、`project-requirements`、`conceptual-model`、`responsibility-boundaries`、`development-guidelines`（作業版） |
 | v0 以前の設計の比較と候補（経緯。冒頭の状態にそう書いてある。v1 の決定の理由をたどるとき） | `common-protocol-behavior`、`information-model`、`interaction-patterns`、`message-model-candidates`、`message-routing-model`、`message-header-layout-comparison`、`request-correlation-lifecycle`、`implicit-correlation-comparison`、`correlation-width-comparison`、`correlation-retirement-model`、`request-completion-semantics`、`activity-reference-lifecycle`、`connection-binding-design-inputs`、`minimal-connection-channel`、`bootstrap-*`（3 つ）、`uart-*`（5 つ） |
 | v0（v1 で置き換え済み） | `v0-core-wire-model`、`v003-destructive-prototype` |

@@ -53,8 +53,23 @@ client の対応するコミットは、そのコミットの前後にある）�
 | R13 target の知識の範囲 | 特化したものは名前で分かるインターフェースに置く（標準でも独自でも）。汎用の名前には入れない | core §13 規則 8 | 64b34ce、3c97446 | — |
 | R14 小さい同期実装と接続の条件 | run の上限なしを断る。USB の OEP の口は iInterface で見分ける。max_frame は両方向 | oep-if-debug §4.4、core §3.3 | 900741b | — |
 
+## 2026-09-26 のあとの変更（レビューの項目ではないもの）
+
+| 変更 | 規範 | oep-spec | 実機 |
+|---|---|---|---|
+| v0 をすべて消した（probe の v0 の部品と codec、client の `oep_client.v0`、spec の v0 の registry と生成器）。ESP32 の I2C / SPI の target は独自インターフェース revision 1 に作り直した | — | f867043（probe af1ab35、client b98e09d） | x035 / v003 の smoke 14/14 |
+| ArduinoCore-CH32 の周辺のトレース試験 6 本を v1 に移した（`tests/manual/oep_smoke/trace_kit.py`） | — | — | x035 / v003（各試験の README） |
+| 移す途中で見つけた client の不具合: キャプチャの読み出しの見出しの長さ、パイプラインの送り直し、長い読み出しの間の lease | core §5.2、§4.1 | —（client 2a8721a、1a65cc3、7db4bee） | x035 / v003 の i2c、periph |
+| gpio の mode 7（プルアップとプルダウンを両方）。表現できないことを理由に試験の確認を外さない | oep-if-fixture §1 | 6aaf618 | x035 の adc の中間電圧 452〜464 |
+
+2026-09-26 版（2ff1d62 / 3160dee / 75ee13e）への 2 回目のレビューと調査（[実機・ソース](hardware-source-review-2026-09-26.ja.md)、
+[移植性と復旧性](review-answer-core-standard-portability-2026-09-26.ja.md)、[操作と試験の監査](v1-operation-test-audit-2026-09-26.ja.md)、
+[未決事項の事前調査](v1-open-issues-research-2026-09-26.ja.md)）には、**まだ対応していない**。
+
 ## 確かめていないこと
 
 - 保存した設定が、firmware の変更（interface の一覧の違い）で適用されない場合。
 - SWD の targetsel の違いの拒否、アナログのキャプチャ（実装が無い）。
 - L103 で新しく attach(halt) すると、8 回に 1 回ほど status line になる（線の揺れと見ているが、原因は未確認）。
+- x035 の gpio_matrix で PB11 のプルダウンの idle が 1 になる（v0 のときは通っていた）。x035 の adc のばらつきが v0 のときより大きい。
+  v003 の adc の試験用スケッチが RAM に入らない。
