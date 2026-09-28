@@ -98,8 +98,8 @@ flash の書き方やチップ固有の手順は host にある。
 | `src/OepCh32Dm.*`、`src/OepDmiPhy.h` | CH32 のデバッグモジュールの操作（halt / resume / reset、ブロック転送） | 共通 |
 | `src/OepRvswdPhy.*`、`src/OepSwioPhy.*`、`src/OepRvswdFrame.h`、`src/OepSwdFrame.h`、`src/OepRp2BitBang.h` | 線の物理層（RVSWD、SWIO、SWD の bit-bang） | 共通 |
 | `src/OepDmConsole.*` | コンソールの framing（SerialSDI / SerialDMDATA / dmseq） | 共通 |
-| `src/OepFrame.*`、`src/OepPlatform.h`、`src/OepFixtureServices.*`、`src/OepP4I2cTarget.*`、`src/OepP4SpiTarget.*` | フレーム、Arduino の core の差、ピンの表、ESP-IDF の I2C / SPI スレーブ | 共通 |
-| `src/OepEndpoint.*`、`src/OepService.h`、`src/OepProbeIdentity.h`、`src/OepFixtureCapture.*`、`src/OepBulkStream.h`、`src/oep_v0.*`、`src/OEP_V0_CODEC_SOURCE.txt` | v0 の endpoint と codec | v0（経緯） |
+| `src/OepFrame.*`、`src/OepPlatform.h`、`src/OepPinTable.h` | フレーム、Arduino の core の差、ピンの表と空きの状態 | 共通 |
+| `src/OepP4I2cTarget.*`、`src/OepP4SpiTarget.*` | 独自インターフェース `io.github.ch32-riscv-ug.esp32.i2c-target` / `spi-target`（ESP-IDF の I2C / SPI スレーブ） | v1 |
 
 ### 5.2 `examples/`（probe のファームウェア）
 
@@ -133,8 +133,8 @@ flash の書き方やチップ固有の手順は host にある。
 | `src/oep_client/v1/ch32_flash.py`、`rp2350.py`、`uiapduino.py` | target の知識（CH32 の書き込み、RP2350 の boot ROM、UIAPduino のブートローダ）。host が持つ分担の実例 |
 | `src/oep_client/v1/fake.py`、`endpoint.py` | ハードウェアなしの偽の probe（試験用） |
 | `src/oep_client/v1/target.py` | 主なものを 1 か所から import する入口 |
-| `src/oep_client/v0/` | v0 の client（経緯） |
-| `tests/test_v1_*.py` | ハードウェアなしの試験（`uv run pytest`、134 件） |
+| `src/oep_client/v1/esp32_targets.py`、`decode.py` | ESP32 の I2C / SPI の target の client、キャプチャのチャネルの復号（I2C） |
+| `tests/test_v1_*.py` | ハードウェアなしの試験（`uv run pytest`、134 件。v0 の client は 2026-09-26 に消した） |
 
 ## 7. 周辺のリポジトリ（参考）
 
