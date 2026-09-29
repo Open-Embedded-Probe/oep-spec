@@ -41,8 +41,9 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 - probe がコンソールの読みを止めるのは、**その connection の riscv-dm の要求を実行している間と、hart が止まっている間**
   だけ。抽象コマンドと DATA0 を取り合わないよう、host は抽象コマンドの一連を 1 つの dmi 要求に入れる
   （[線とデバッグ](oep-if-debug.ja.md) §4.1）。
-- ストリームを開いた connection が失われたら、マーク link-lost を付けて閉じる。**閉じたストリームも、同じ mechanism で次に
-  open されるまで読める**（read / marks。write / mark / clear は rejected unavailable）。線が落ちる直前の出力を回収するため。
+- ストリームを開いた connection が失われたら、マーク link-lost を付けて閉じる。**閉じたストリームも、同じ接続の場所（同じ wire の
+  同じピンの組）で同じ mechanism が次に open されるまで読める**（read / marks。write / mark / clear は rejected unavailable）。線が
+  落ちる直前の出力を回収するため。別の場所の open では消えない。
 - ストリームが使う connection は、そのストリームを開いたセッション（または `oep.probe.config` のスロット）が使っているものとして数える。
 - write は、方式が 1 回に運べる分だけを受け付ける（dmseq は 2 byte まで）。残りは host が送り直す。
 
