@@ -102,13 +102,12 @@ core §3.4 の規則を守るための作り（2026-09-29）。
 ネイティブ USB を持つ probe（ESP32-P4 の HS の口、RP2350 など）の推奨の形:
 
 - **OEP の専用の VID:PID で列挙する**（pid.codes で取る。まだ取っていない）。**PID を取るまでの間は、host の discovery は USB の
-  interface の名前（iInterface が `OEP` で始まる）で OEP の probe を見分ける**ので、discovery に出したい口の iInterface を `OEP` で
-  始める（PID を取ったら名前での判定は無くなる）。この形で列挙する probe は、fn 0 の describe の oep_pid を 1 にする
-  （USB-Serial/JTAG のように別の口から開かれても、host がそれで分かる）。
-  - 参照 probe（ESP32-P4、EspUsbDevice 2.5.1）は、VID:PID は仮に 303a:0002（arduino-esp32 の TinyUSB の既定）、CDC を「OEP console」
-    と名付けている。EspUsbDevice 2.5.1 は vendor と HID の interface に名前を付けられない。
-- interface は **vendor bulk（OEP）、HID（OEP）、CDC（シリアルの口、コンソール用）** の組。どれも iInterface を `OEP` で始める
-  （core §3.3）。
+  device の名前（iProduct が `OEP` で始まる）で OEP の probe を見分ける**ので、iProduct を `OEP` で始める（PID を取ったら名前での
+  判定は無くなる）。device の中の口は interface の種類で決まる（core §3.3: CDC はすべてシリアルの口）。この形で列挙する probe
+  は、fn 0 の describe の oep_pid を 1 にする（USB-Serial/JTAG のように別の口から開かれても、host がそれで分かる）。
+  - 参照 probe（ESP32-P4、EspUsbDevice 2.5.1）は、VID:PID は仮に 303a:0002（arduino-esp32 の TinyUSB の既定）、iProduct を
+    「OEP probe (P4 HS)」にしている（CDC の「OEP console」は表示のための名前）。
+- interface は **vendor bulk（OEP）、HID（OEP）、CDC（シリアルの口）** の組（core §3.3）。
   - vendor bulk は host の主な経路（速い）。
   - HID は、他の道具が vendor や CDC を握っていても読める口で、discovery がロックなしの describe / get でスロットと状態を読むのに
     使う。OS のドライバも要らない。

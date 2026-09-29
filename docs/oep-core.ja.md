@@ -30,8 +30,7 @@ OEP は 3 つの層からなる。
    文書が定める。
 6. 版は層ごとに独立する（§2.7）。
 
-OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、OEP の制御に使わない USB の機能（コンソール専用の CDC の口
-など）、USB の記述子の細部。
+OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、USB の記述子の細部。
 
 ## 1. 用語
 
@@ -158,9 +157,12 @@ UART を USB-UART の変換チップで出したもの、USB CDC、USB-Serial/JT
   ものとして扱い、応答はその要求の来た経路に返す。通知は subscribe が来た経路に送る（§11.4）。
 - host は、同じ probe に複数の経路があれば vendor bulk、HID、シリアルの口の順に試す（シリアルの口は生のバイトの転送にも
   使われる、§3.4）。probe の経路の一覧は fn 0 の describe の transport（§7.5）で分かる。
-- **USB の OEP の口の見分け方**: OEP を運ぶ USB の interface は、interface の文字列（iInterface）を `OEP` で始める（vendor bulk、
-  HID、CDC のどれでも）。host はこれで口を選ぶ。文字列を持てない probe は、host が経路を外から指定する前提になる。
-  confirm と describe は口を開いた後にしか使えないので、口の選び方はこの規則による。
+- **USB の OEP の probe と口の見分け方**: OEP の probe は、OEP の専用の VID:PID で列挙する（取るまでの間は、device の文字列
+  iProduct を `OEP` で始める）。host はこれで probe を見分け、その device の口を interface の種類で選ぶ: CDC（ACM）は
+  すべてシリアルの口（§3.4。どれも OEP を受ける）、vendor class の bulk の組は vendor bulk、vendor 定義の HID は HID。ほかの機能
+  （DFU、Mass Storage など）は OEP の外。interface の文字列は表示のためのもので、見分けには使わない。VID:PID も iProduct も
+  選べない口（USB-Serial/JTAG、USB-UART の変換チップ）は、host が経路を外から指定する前提になる。confirm と describe は口を
+  開いた後にしか使えないので、口の選び方はこの規則による。
 - **max_frame は両方向の上限**: probe は max_frame を超える message を送らず、host は max_frame を超える message を送らない。
 - **confirm の前**: どの probe も 64 byte（registry の `min_max_frame`）までの message を受ける（confirm の max_frame は 64 以上）。
   host は confirm の応答を受けるまで、64 byte を超える message を送らない。host は probe から長さ 65535 byte までの message を
@@ -391,7 +393,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x46 | label | channel(u16)、text。channel の名前（NRST など） |
 | 0x47 | resets_on_open | u8。経路を開くと probe がリセットするか |
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8: USB の interface 番号、0xFF は USB でない)。probe の経路ごとに 1 つ。**必須** |
-| 0x4A | oep_pid | u8。1 = probe が host の discovery の一覧に出る形でも列挙している（今の経路がそうでなくても）: OEP の専用の VID:PID（取るまでは、iInterface が `OEP` で始まる USB の interface、§3.3） |
+| 0x4A | oep_pid | u8。1 = probe が host の discovery の一覧に出る形でも列挙している（今の経路がそうでなくても）: OEP の専用の VID:PID（取るまでは、iProduct が `OEP` で始まる device、§3.3） |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 USB-Serial/JTAG、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
   1〜3 がシリアルの口（§3.4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
