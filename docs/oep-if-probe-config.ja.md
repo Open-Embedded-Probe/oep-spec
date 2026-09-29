@@ -1,70 +1,106 @@
 # OEP 標準インターフェース: probe の設定 v1
 
-状態: **規範**（2026-09-26）。本体は [OEP core](oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。経緯と実験は
-[シリアルの口と永続化](probe-cdc-and-persistence.ja.md)。
+状態: **規範**（2026-09-29 に組み直し）。本体は [OEP core](oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。経緯と
+実験は [シリアルの口と永続化](probe-cdc-and-persistence.ja.md)。
 
 | 名前 | revision | 役割 |
 |---|---:|---|
-| `oep.probe.config` | 1 | probe の設定（起動モード、plan、ラベル、CDC の口に流すもの）と、その保存 |
+| `oep.probe.config` | 1 | probe の設定（plan、ラベル、空きのピン、スロット、シリアルの口に流すもの）と、その保存 |
 
 - **既定の値は持たない。** 項目はすべて host が設定し、probe は設定されたとおりに動く。設定されていない項目については何もしない。
 - 設定を扱わない probe は、このインターフェースを list に出さない。
-- 設定から入れた plan と bind はセッションの資源ではない（core §9）。lease の期限切れでも外さない。
-- mode、port、bind、cost など USB の構成に関わる describe は、USB を持つ probe だけが出す。
+- 設定から入れた plan、スロットの接続、bind はセッションの資源ではない（core §9）。lease の期限切れでも外さない。
+- **起動の型（モード）は持たない。** 設定はどの経路からでも同じ操作で行い、set したものはすぐ効く。設定のための再起動は要らない。
 
 ## 1. 項目
 
 **設定 = 項目（TLV）の並び**。tag はこの文脈の空間。項目ごとに**キー**があり、同じ tag の項目はキーで見分ける。
 
-| tag | 項目 | 値 | キー | いつ効くか |
-|---:|---|---|---|---|
-| 0x01 | boot_mode | mode(u8)（describe の mode の番号） | —（1 つだけ） | 次の起動から |
-| 0x02 | plan | fn(u16)、role(u8)、channel(u16)（1 項目 1 割り当て） | fn（同じ fn の項目で、その fn の plan になる） | すぐ（その fn の plan_apply と同じ） |
-| 0x03 | label | channel(u16)、text | channel | すぐ（core の describe の label 0x46 に出る） |
-| 0x04 | bind | port(u8)、source(u8)、attach(u8)、flags(u8)、source ごとの引数 | port | すぐ |
-| 0x05 | target | wire_fn(u16)、scheme(u8)、mask(n byte)、value(n byte) | wire_fn | すぐ（自動の attach の確かめに使う） |
-| 0x06 | idle | channel(u16)、mode(u8: 0 Hi-Z、1 プルアップの入力、2 プルダウンの入力) | channel | すぐ（そのピンが空いている間） |
+| tag | 項目 | 値 | キー |
+|---:|---|---|---|
+| 0x01 | plan | fn(u16)、role(u8)、channel(u16)（1 項目 1 割り当て） | fn（同じ fn の項目で、その fn の plan になる） |
+| 0x02 | label | channel(u16)、text | channel |
+| 0x03 | idle | channel(u16)、mode(u8: 0 Hi-Z、1 プルアップの入力、2 プルダウンの入力) | channel |
+| 0x04 | slot | §1.1 | slot |
+| 0x05 | bind | §1.2 | port |
 
-- **USB に関わる項目（boot_mode、bind）は任意の群**。USB を持たない probe は label、plan、idle だけを扱ってよい。扱う項目は
-  describe の items で宣言し、宣言していない項目の set は rejected unsupported。
-- **idle**: plan にも connection にも使われていないピンの状態。起動時と、そのピンが解放されるたび（core §8）に、この状態にする。
+- どの項目もすぐ効く。扱う項目は describe の items で宣言し、宣言していない項目の set は rejected unsupported。
+- **plan**: その fn の plan_apply と同じ（core §8）。
+- **label**: core の describe の label（0x46）に出る。
+- **idle**: plan にも接続にも使われていないピンの状態。起動時と、そのピンが解放されるたび（core §8）に、この状態にする。
   idle が無いピンは Hi-Z。治具の配線で相手の入力が浮くピン（相手の RX につながる TX など）は、host が idle で明示し、保存する。
 
-### 1.1 bind（CDC の口に何を流すか）
+### 1.1 slot（スロット）
 
-| source | 意味 | 引数 |
-|---:|---|---|
-| 0 | なし | — |
-| 1 | `oep.fixture.uart` | fn(u16)、baud(u32)、format(u8) |
-| 2 | `oep.target.console` | wire_fn(u16)、mechanism(u8)、swdio(u16)、swclk(u16)、max_speed(u32) |
+スロットは、target のつながる**場所**の登録である（チップの登録ではない。チップを付け替えても登録は直さない）。
 
-- source 1: format は `oep.fixture.uart` の configure の TLV 0x01 と同じ。baud = 0 は「口の line coding が来るまで UART を動かさ
-  ない」で、flags bit0 が要る。fixture.uart の bind は、plan に RX / TX がある間だけ動く。
-- source 2: swdio / swclk は attach の pins と同じ組（1 本の線は swclk = 0xFFFF）、max_speed は attach の max_speed と同じ（0 は
-  上限なし）。自動の attach は、この組と上限で、[線とデバッグ](oep-if-debug.ja.md) §1 の規則どおりに行う。
-- source 2 の attach（**必ず明示する**）:
+```text
+slot(u8)、wire_fn(u16)、swdio(u16)、swclk(u16)、attach(u8)、retry_s(u16)、mechanism(u8)、name_len(u8)、name、
+lock_scheme(u8)、lock_mask(n byte)、lock_value(n byte)
+```
 
-  | attach | 意味 |
-  |---:|---|
-  | 0 | host に任せる（host が attach したら、その connection でコンソールを開いて流す） |
-  | 1 | 口が開かれたとき（DTR が立ったら）自動で attach する |
-  | 2 | 起動時に自動で attach する |
+| フィールド | 意味 |
+|---|---|
+| slot | スロットの番号（キー）。0 から、describe の slots_max 未満 |
+| wire_fn | 線のインターフェース（`oep.wire.rvswd` / `oep.wire.swio`）の fn |
+| swdio、swclk | ピンの組。attach の pins と同じ（1 本の線は swclk = 0xFFFF）。その線が許す組でなければ rejected unavailable |
+| attach | attach の方針: 0 host、1 at boot（§3.1） |
+| retry_s | at boot のスロットで、いないときに attach をやり直す間隔（秒）。0 はやり直さない。at boot でなければ 0（ほかは rejected malformed） |
+| mechanism | コンソールの方式（`oep.target.console` の mechanism）。その probe の console が宣言しない方式は rejected unsupported |
+| name | スロットの名前。1〜32 byte で、使える文字は `a-z 0-9 - _` だけ（ほかは rejected malformed）。probe の中で重ならない（重なれば rejected malformed）。host がスロットを名指すのに使い（IDE の address `oep://<probe>/<name>` にそのまま入る）、mixed の行の印（§1.2）にも使う |
+| lock_scheme | 錠: 0 は錠なし（後ろに何も付けない）。ほかは target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1） |
+| lock_mask、lock_value | 錠があるときだけ。同じ長さ n（≥ 1）。n は項目の残りの長さの半分。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
 
-  1 / 2 には、同じ wire_fn の項目 target が要る（無いまま set すると rejected unavailable）。自動の attach は止めない attach
-  （method 0）だけで、その応答の target_id（[線とデバッグ](oep-if-debug.ja.md) §1）を target の項目と比べる: scheme が同じで、
-  target_id の値と mask のビットごとの AND が value と一致したときだけコンソールを開く。**target_id が無い、scheme が違う、一致
-  しないときは、コンソールを開かずに外し、describe の bind_state で知らせる。** 比べ方（どのビットを無視するか）は host が mask で
+- 同じ wire_fn と同じピンの組のスロットを 2 つ作れない（rejected unavailable）。
+- **スロットの接続**: 生きている接続のうち、wire_fn が同じでピンの組がスロットと一致するもの（誰が attach したかは問わない）。
+- **錠**: スロットの接続の target_id（attach の応答の TLV 0x10）が、scheme が lock_scheme と同じで、値と lock_mask のビットごとの
+  AND が lock_value と一致するときだけ、錠が合う。錠の無いスロットは常に合う。比べ方（どのビットを無視するか）は host が mask で
   決める（例: WCH の chip_id でリビジョンのビット [7:4] を無視するなら mask 0xFFFFFF0F）。
-- いったん開いたコンソールは、口が閉じられても読み続ける。コンソールが使う connection は bind が使っているものに数える
-  （[共通部品](oep-if-common.ja.md) §2）。connection を失ったら、bind は次の合図（attach 0 は host の attach、1 は次に口が
-  開かれたとき、2 は次の起動）まで待つ。
-- flags: bit0 口の line coding（baud、data bits、parity、stop bits）を fixture.uart に写す（最後に来た設定が勝つ。OEP の
-  configure も同じ UART を掛け直す）。ほかの bit は 0（立っていれば rejected unsupported）。
-- **口に流すのは、口が開かれている間（DTR）に来たバイトだけ**。閉じている間に来たバイトはストリーム（OEP の read）にだけ残る。
-  口から来たバイトは、source 1 なら TX に、source 2 なら console の write に、相手が受け取れる分だけ渡す（残りは口に残る）。
-  ストリームが口より丸ごと先に行ったら、口は一番古いバイトまで飛ぶ。
-- DTR / RTS / 1200 baud の touch は、attach 1 の合図（DTR）のほかには何もしない（target の reset に使わない）。CDC は AT コマンド
-  なし（bInterfaceProtocol 0）で宣言する。
+- **at boot のスロットの数は、wire_fn ごとに、その線の max_connections まで**（[線とデバッグ](oep-if-debug.ja.md) §1）。超える set
+  は rejected unavailable。スロットの並びの順は意味を持たない。
+- 登録できる数は probe が describe の slots_max で宣言する。
+
+### 1.2 bind（シリアルの口に何を流すか）
+
+```text
+port(u8)、mode(u8)、selected(u8)、n(u8)、n × (kind(u8)、id(u16))
+```
+
+| フィールド | 意味 |
+|---|---|
+| port | シリアルの口の番号（core の describe の transport の index）。シリアルの口でなければ rejected unavailable |
+| mode | 0 last-reset、1 manual、2 mixed（下）。describe の bind_modes に無い mode は rejected unsupported |
+| selected | manual の選択（並びの中の番号、n 未満。外れていれば rejected malformed）。last-reset と mixed では 0 を送り、probe は見ない |
+| n、並び | 流すストリーム（n ≥ 1）。kind 1 = スロットのコンソール（id = slot）、kind 2 = fixture UART の受信（id = `oep.fixture.uart` の fn）。無いスロットや fn を指せば rejected unavailable |
+
+| mode | 口に流すもの | 口から来た生のバイト |
+|---|---|---|
+| **last-reset** | 選ばれているストリーム。選択は、並びの中のスロットの target を host が reset したときにそのスロットへ替わる（下）。起動時と set の直後は並びの先頭 | 選ばれているストリームへ |
+| **manual** | selected のストリーム。替えるのは bind の set だけ | 選ばれているストリームへ |
+| **mixed** | 並びのすべて。ストリームごとに行をため、行が閉じたら `[name] ` を前に付けて流す | 捨てる（受信専用） |
+
+- **host の reset として数えるもの**: スロットの接続の上の `oep.target.riscv-dm` の reset と、`oep.wire.*` の attach_under_reset
+  （[線とデバッグ](oep-if-debug.ja.md)）。probe 自身の attach、target の自己リセット、dmi で書いた ndmreset、`oep.fixture.gpio`
+  などで動かしたリセットの線は数えない。選ばれた target の接続が切れても、選択は替えない。
+- 並びが 1 つなら、どの mode でもそれが流れる（1 つのときと 2 つ以上のときで動きが変わらない）。
+- **mixed の行**: LF で閉じる。閉じない出力は、probe が決めた量（目安 128 byte）か静けさ（目安 100 ms）で閉じる。name はスロットの
+  name。fixture UART は、その fn の plan の RX の channel に label（§1）があればその label、無ければ `uart<fn>`（fn は 10 進）。
+  label を印にするとき、probe は `]` と 0x20 未満のバイト（CR、LF など）を `_` に置き換える（label の項目そのものは制限しない）。
+  行の前後は、target どうしでは行が閉じた順（機械で読む用途には向かない）。
+- **口から来た生のバイト**（core §3.4 の、フレームの外のバイト）は、選ばれているストリームの相手（コンソールなら console の write、
+  fixture UART なら TX）に、相手が受け取れる分だけ渡す。受け取れない分は捨ててよい。
+- **口の位置**: probe は bind ごとに、流すストリームの中の位置を持つ。口が受け取れる分だけ進め、口が読まれていなくても
+  ストリームは捨てない。ストリームが口より丸ごと先に行ったら（あふれ）、口は残っている一番古いバイトまで飛ぶ。
+- **セッションの間**（core §3.4 で生の転送を止めた口）: 位置は進めない。セッションが終わったら、流すストリームごとに、
+  **そのセッションで host が最後に reset した時点の位置**から再開する（上の「host の reset として数えるもの」のどれか。コンソールの
+  ストリームではその reset のマーク（[共通部品](oep-if-common.ja.md) §1.3）の位置、fixture UART ではその時点の受信の位置）。
+  そのセッションで reset が無ければ今から。mode に関係なく同じ。
+- スロットのストリームは、そのスロットがどれかの bind の並びにあり、スロットの接続があって錠が合う間、probe がその接続で
+  コンソールを開いて流す。どの bind にも無いスロットのコンソールを probe は開かない。同じ connection と mechanism のストリームが
+  あればそれを使う（[コンソール](oep-if-console.ja.md) §2）。bind はどの接続にも乗る（host が attach した接続にも）。この開いたコンソールは、スロットがその接続を使っているものに数える（[共通部品](oep-if-common.ja.md) §2）。
+- fixture UART のストリームは、接続が無くても、その fn の plan に RX がある間は流れる。
+- DTR / RTS / 1200 baud の touch では何もしない（target も probe も reset せず、attach もしない）。CDC は AT コマンドなし
+  （bInterfaceProtocol 0）で宣言する。
 
 ## 2. 操作
 
@@ -74,17 +110,15 @@
 | 0x02 | set | 項目の並び | hash(u32) | 必要 |
 | 0x03 | save | — | hash(u32) | 必要 |
 | 0x04 | erase | — | — | 必要 |
-| 0x05 | reboot | — | —（応答を送ってから再起動する） | 必要 |
 
 - **set は、要求に含まれる項目のキーごとに置き換える**（含まれないキーはそのまま。何回かの set に分けて積み上げられる）。
-  キーの項目を消すには、そのキーだけを持つ項目を送る（label は channel だけ、bind は port だけ、plan は fn だけ、target は wire_fn
-  だけ、idle は channel だけ、boot_mode は長さ 0）。plan の項目は fn ごとにまとめて、その fn の plan を置き換える。
+  キーの項目を消すには、そのキーだけを持つ項目を送る（plan は fn だけ、label と idle は channel だけ、slot は slot だけ、bind は
+  port だけ）。plan の項目は fn ごとにまとめて、その fn の plan を置き換える。
 - 1 つの set の中で同じキー（plan は (fn, role)）が 2 回出たら、要求全体を rejected malformed。
-- **set の原子性は、設定の検証と資源の予約（plan の適用、bind の確かめ）まで**。どれかが受け入れられなければ、何も変えずに
-  rejected。自動の attach とコンソールを開くこと（外の状態を変えること）は、set が済んだ後に行い、その結果は describe の
-  bind_state で分かる（巻き戻さない）。
-- **設定は起動モードに依存しない。** bind はどのモードの口でも名指してよい（port は、どれかのモードの ports の範囲）。今のモードに
-  無い口への bind は保持して何もせず、そのモードで起動したときに結ぶ。
+- set の結果の設定全体が §1 の規則を満たさなければ（bind が消したスロットを指す、など）、何も変えずに rejected。
+- **set の原子性は、設定の検証と資源の予約（plan の適用、ピンの取り合いの確かめ）まで**。どれかが受け入れられなければ、何も変え
+  ずに rejected。自動の attach とコンソールを開くこと（外の状態を変えること）は、set が済んだ後に行い、その結果は describe の
+  slot_state と bind_state で分かる（巻き戻さない）。
 - **hash** は今の設定の正規形の CRC-32（core §5.2 と同じ IEEE）。正規形 = 項目を tag の昇順に、同じ tag の中はキー（plan は
   (fn, role)）の昇順に並べ、TLV（tag u8、len u8、値）でつないだバイト列。tag には critical の bit を含めない（要求で critical で
   送られても外して持つ）。host は自分の欲しい設定から同じ値を計算し、get の hash と同じなら何もしない。
@@ -92,24 +126,46 @@
   保存先が足りなければ rejected unavailable。erase は保存を消す（今の設定は変えない）。
 - **保存には、保存したときの interface の一覧の識別値を付ける**（list の entry（fn、instance、revision、name）を fn の順につないだ
   バイト列の CRC-32）。起動時に今の一覧の識別値と違えば、保存を適用しない（fn の番号が別の機能を指しているかもしれないため。
-  storage の状態は「あり・読めない」）。boot_mode だけは、組める mode なら一覧が違っても使ってよい（USB から戻れるように）。
-- 起動時は、保存を今の設定にして（上の確かめを通ったとき）、idle を掛け、起動モードで列挙し、plan を適用し、bind を結ぶ。保存を
-  読めないときは適用せず、describe で知らせる。
-- **describe の mode には、probe が実際に組める構成だけを出す。** set は describe に無い mode を rejected unsupported で断る。
-  firmware が変わって保存の boot_mode が組めなくなったときは、probe は保存から boot_mode を外して、自分の選ぶモードで起動し直す
-  （USB から戻れなくならないように）。保存の hash が変わるので、host はそれで気づく。
+  storage の状態は「あり・読めない」）。
+- 起動時は、保存を今の設定にして（上の確かめを通ったとき）、idle を掛け、plan を適用し、at boot のスロットの attach を始め、
+  bind を結ぶ。保存を読めないときは適用せず、describe で知らせる。
 
-## 3. describe
+## 3. スロットの接続と状態
+
+### 3.1 attach の方針
+
+| attach | 接続を作る契機 |
+|---:|---|
+| 0 host | probe は自分から attach しない。host の attach でスロットの接続ができたら、bind はそれに乗る |
+| 1 at boot | 起動時と、そのスロットの項目を set した直後。いなければ retry_s ごとにやり直す（0 ならやり直さない） |
+
+- **自動の attach（at boot）は止めない attach（method 0）だけ**で、スロットのピンの組で、[線とデバッグ](oep-if-debug.ja.md)
+  §1 の規則どおりに行う。錠が合わなければ、コンソールを開かずに自分の分を外す（状態は錠に不一致）。
+- 自動の attach は、接続に時間のかかる場合を先に払っておくもの。外れていれば、host は使うときに自分で attach する。
+- 席が埋まっていて host の attach がスロットの接続を閉じた（[線とデバッグ](oep-if-debug.ja.md) §1）とき、そのスロットはそのままに
+  する（at boot でもやり直さない）。次の接続は、次の起動、そのスロットの set、または host の attach でできる。
+- 接続が切れた（線が落ちた）スロットは、at boot なら retry_s ごとにやり直す。
+- policy が host のスロットを、probe は確かめない（線を駆動しない）。
+
+### 3.2 状態
+
+describe の slot_state（§4）はロックなしで読める。host が線を駆動せずに target の有無を知る方法はこれだけである（線を駆動しないと
+つながっているかは分からない）。
+
+| state | 意味 |
+|---:|---|
+| 0 | 接続あり（錠が合う） |
+| 1 | いない（接続が無い。last_try は最後に自動の attach を試してからの時間） |
+| 2 | 錠に不一致（接続はあるか、自動の attach で見つけて外した。target_id は見えたもの） |
+| 3 | target_id が読めない（錠のあるスロットで、接続の target_id が無い） |
+
+## 4. describe
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x40 | mode | index(u8)、functions(u8)、ports(u8: データの CDC の口の数)、name（text）。モードごとに 1 つ |
-| 0x41 | current_mode | 今の mode(u8)、次の起動の mode(u8) |
-| 0x42 | port | port(u8)、USB の interface 番号(u8)。今のモードの口だけ |
-| 0x43 | storage | 保存できる最大 byte(u32、0 = 保存なし)、保存の状態(u8: 0 なし / 1 あり・適用済み / 2 あり・読めない)、保存の hash(u32)、save の最長時間(u32 ms)、reboot から再列挙までの最長時間(u32 ms) |
-| 0x44 | cost | ports(u8)、OEP の probe → host の上限の目安(u32 byte/s) |
-| 0x45 | items | 扱う項目の tag の並び（u8） |
-| 0x46 | bind_state | port(u8)、state(u8: 0 待っている、1 流している、2 target が一致しない、3 attach できなかった、4 target_id が無い)。bind ごとに 1 つ |
-
-mode の functions: bit0 vendor bulk、bit1 CDC の OEP の口、bit2 HID の OEP の口、bit3 Mass Storage（OEP の外）、bit4 DFU runtime
-（OEP の外）。
+| 0x40 | storage | 保存できる最大 byte(u32、0 = 保存なし)、保存の状態(u8: 0 なし / 1 あり・適用済み / 2 あり・読めない)、保存の hash(u32)、save の最長時間(u32 ms) |
+| 0x41 | items | 扱う項目の tag の並び（u8） |
+| 0x42 | slots_max | u8。登録できるスロットの数（0 はスロットを扱わない） |
+| 0x43 | bind_modes | u8 のビット: bit0 last-reset、bit1 manual、bit2 mixed。bind を扱う probe は bit0 と bit1 を必ず立てる |
+| 0x44 | slot_state | slot(u8)、state(u8、§3.2)、connection(u16、無ければ 0)、last_try_ms(u32: 最後に自動の attach を試してからの ms、0xFFFFFFFF は試していない)、tid_scheme(u8、0 は無し)、tid_len(u8)、tid。登録したスロットごとに 1 つ |
+| 0x45 | bind_state | port(u8)、mode(u8)、selected(u8: 今選ばれている並びの番号。mixed では 0xFF)、flow(u8: 0 流すものが無い / 1 流している / 2 セッションで止めている)。bind ごとに 1 つ |

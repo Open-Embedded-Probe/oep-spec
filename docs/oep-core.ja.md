@@ -40,7 +40,8 @@ OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、
 | probe | OEP を話す装置（デバッガ、治具、ロジアナなど） |
 | host | probe を使うソフトウェア |
 | target | probe がつながる相手（開発中のマイコンなど） |
-| 経路（transport） | OEP のフレームを運ぶもの（USB の vendor bulk、HID、CDC、USB-Serial/JTAG、UART、TCP） |
+| 経路（transport） | OEP のフレームを運ぶもの（UART bridge、USB CDC、USB-Serial/JTAG、USB の vendor bulk、HID、TCP） |
+| シリアルの口（serial port） | 経路のうち OS からシリアルデバイスに見えるもの（UART bridge、USB CDC、USB-Serial/JTAG）。OEP と生のバイトを共用する（§3.4） |
 | インターフェース | probe が名前で出す機能。list で見つけ、fn で呼ぶ |
 | fn | そのセッションの間、インターフェースを指す番号（u16）。fn 0 は `oep.core` |
 | op | インターフェースの中の操作の番号（u8） |
@@ -121,19 +122,30 @@ seq（u16）と、インターフェースが定める通し番号や時刻の�
 
 ### 3.1 フレーム
 
+経路の種類は 2 つに分かれる。**シリアルの口（serial port）** は OS からシリアルデバイスに見える経路（UART bridge = probe の
+UART を USB-UART の変換チップで出したもの、USB CDC、USB-Serial/JTAG）で、OEP とシリアルの生のバイトを同じ口で運ぶ（§3.4）。
+ほかの経路（USB の vendor bulk、HID、TCP）は OEP だけを運ぶ。
+
 | 経路 | フレーム |
 |---|---|
-| USB CDC、USB-Serial/JTAG、TCP | `length(u16) message`。CRC なし。length 0 は予約（keepalive。読み飛ばす） |
-| USB の vendor bulk | CDC と同じ `length(u16) message` のバイト列。1 回の転送に複数のフレームが入ってよく、フレームが転送をまたいでもよい |
+| シリアルの口（UART bridge、USB CDC、USB-Serial/JTAG） | COBS + CRC-16、0x00 で区切る（下） |
+| USB の vendor bulk、TCP | `length(u16) message`。CRC なし。length 0 は予約（keepalive。読み飛ばす）。vendor bulk では 1 回の転送に複数のフレームが入ってよく、フレームが転送をまたいでもよい |
 | USB の HID（vendor 定義の report） | 長さつきのフレームのバイト列を report に詰める。report = `count(u16)`、count バイト、0 埋め（report の大きさは HID の記述子のとおり）。記述子が report ID を宣言していれば、input も output も report の先頭に ID が付き、count はその後ろから数える |
-| UART（USB-UART の変換チップ越しを含む） | COBS + CRC-16、0x00 で区切る。CRC は CRC-16/CCITT-FALSE（多項式 0x1021、初期値 0xFFFF、反転なし、"123456789" → 0x29B1）を message の後ろに little endian で付ける。COBS は 254 byte のブロックに分ける標準の形 |
 
+- **COBS のフレーム**: message の後ろに CRC-16/CCITT-FALSE（多項式 0x1021、初期値 0xFFFF、反転なし、"123456789" → 0x29B1）を
+  little endian で付け、COBS（254 byte のブロックに分ける標準の形）で符号にし、**前後を 0x00 で囲んで送る**（`0x00 <COBS> 0x00`）。
+  probe も host も前の 0x00 を省かない。最後のブロックが 254 byte の data を持つ（code 0xFF）とき、符号にする側は後ろに空のブロックを付けず、解く側は
+  付いた形も付かない形も受ける。空のフレーム（0x00 の連続）は読み飛ばす。
+- **host の受け方（COBS）**: 口を開いた直後から最初の 0x00 までと、0x00 から次の 0x00 までを、どちらもフレームの候補として解く
+  （開く前に送られたバイトや、開いた直後に落ちたバイトで前の 0x00 が届かないことがある）。解けない候補、CRC の合わない候補、
+  role か corr の合わないフレーム（§11.1）は、シリアルの生のバイト（雑音）として捨てる。応答が来ないことは時間切れだけで判断する。
 - **USB の束ね方**（vendor bulk）: host は、書き込みの長さが wMaxPacketSize の倍数なら長さ 0 の転送を続ける。probe は、送り
   終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか最後の 1 byte を別の転送に分ける。
   続きがすぐ来るときは倍数のままでよい。
-- どのフレームを使うかは経路で決まる。host は USB の VID:PID で USB-UART の変換チップを見分けて COBS を選び、指定で上書き
-  できる。
+- どのフレームを使うかは経路の種類だけで決まる（VID:PID で選ばない）。
 - **TCP は、信頼できるローカルの接続か、認証したトンネルの内側でだけ使う。** OEP は認証を持たない（§6.4 の force を含む）。
+  1 つの probe を複数の host で使うときは、host の側のブローカーが 1 つのセッションに束ねる（ブローカーは host の実装で、この
+  仕様の外。probe から見える経路とセッションは変わらない）。
 
 ### 3.2 フレームの送り方
 
@@ -144,12 +156,32 @@ seq（u16）と、インターフェースが定める通し番号や時刻の�
 
 - probe は OEP の制御を複数の経路で受けてよい。**複数の経路はセッションとロックを 1 つ共有する**。どの経路から来た要求も同じ
   ものとして扱い、応答はその要求の来た経路に返す。通知は subscribe が来た経路に送る（§11.4）。
-- host は、同じ probe に複数の経路があれば vendor bulk、HID、CDC の順に試す。CDC で OEP を運ぶのは、ほかに手がないときに限る
-  （CDC の口はシリアルの転送にも使われる）。
+- host は、同じ probe に複数の経路があれば vendor bulk、HID、シリアルの口の順に試す（シリアルの口は生のバイトの転送にも
+  使われる、§3.4）。probe の経路の一覧は fn 0 の describe の transport（§7.5）で分かる。
 - **USB の OEP の口の見分け方**: OEP を運ぶ USB の interface は、interface の文字列（iInterface）を `OEP` で始める（vendor bulk、
   HID、CDC のどれでも）。host はこれで口を選ぶ。文字列を持てない probe は、host が経路を外から指定する前提になる。
   confirm と describe は口を開いた後にしか使えないので、口の選び方はこの規則による。
 - **max_frame は両方向の上限**: probe は max_frame を超える message を送らず、host は max_frame を超える message を送らない。
+- **confirm の前**: どの probe も 64 byte（registry の `min_max_frame`）までの message を受ける（confirm の max_frame は 64 以上）。
+  host は confirm の応答を受けるまで、64 byte を超える message を送らない。host は probe から長さ 65535 byte までの message を
+  受けられるようにする。
+
+### 3.4 シリアルの口の共用
+
+シリアルの口は、OEP のフレームと生のバイト（target のコンソールなど）を同じ口で運ぶ。probe はどの口でもいつでも OEP を受ける
+（口を OEP 専用にする設定や、起動の型は持たない）。
+
+- **probe の受け方**: 0x00 が来たら次の 0x00 までためて解く。解けて CRC が合えば OEP の要求。解けない、CRC が合わない、または
+  次の 0x00 の前に 200 ms 途切れた（§3.2）ときは、ためた分（前の 0x00 を含む）を生のバイトとして扱う。候補を閉じた 0x00 は
+  次の候補の始まりになる（1 byte も捨てない）。0x00 の外で来たバイトはすぐ生のバイトとして扱う。
+- **生のバイトの行き先**: probe がその口に結んだ流れ（どの流れを結ぶかは probe の設定が決める。結んでいなければ捨てる）。
+- **probe の送り方**: 応答と通知は `0x00 <COBS> 0x00`。1 つの口の送信は 1 つの書き手が行い、フレームの途中に生のバイトを挟ま
+  ない（フレームは生のバイトより先に出してよく、生のバイトどうしの順は保つ）。
+- **生の転送を止める口**: ロックを持つセッションの要求（ロックを取った open と、その session_id の role 0x81 の要求）が 1 つでも
+  来た口では、そのセッションが終わる（end、lease の期限切れ、force で奪われる）まで、probe は生のバイトを送らず、口から来た
+  生のバイトを捨てる。ロックの要らない要求だけが来た口と、ほかの経路でセッションが動いている口は止めない。セッションが終わった
+  後、どこから生の転送を再開するかは、口に結んだ流れを定める設定が決める。
+- host は、生のバイトの中に正しいフレームに見えるものが偶然現れても、role と corr の照合（§11.1）で捨てる。
 
 ## 4. メッセージ
 
@@ -192,7 +224,7 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出�
 | 0x05 | busy | 予約（長い操作、§10） | — |
 | 0x06 | window_exceeded | window / max_inflight を超えた | — |
 | 0x07 | no_session | ロックは空いているが、この session_id は最後の ID ではない。host は open からやり直す | — |
-| 0x08 | locked | 他のセッションがロックを持つ | 残り時間 ms（u32） |
+| 0x08 | locked | 他のセッションがロックを持つ | 残り時間 ms（u32）、[TLV owner（§6.4）] |
 | 0x09 | session_required | 状態を変える要求に session_id が無い | — |
 | 0x0A | no_connection | 要求の資源（connection など）を probe が知らない。host は作り直す | — |
 | 0x0B | unsupported | critical の TLV か固定部分の値を扱えない | TLV のときは受け取ったままの tag（u8）、固定部分の値のときは無し |
@@ -213,8 +245,8 @@ rejected の detail は reason で、そのほかの情報は payload に置く�
 
 ### 5.1 区切りの立て直し（長さつきのフレーム）
 
-host は、corr の合わない応答、あり得ない長さ（max_frame を超える）、途中で止まったフレーム（続きが 200 ms 来ない）を見たら、
-入力が 50 ms 静かになるまで読み捨て、confirm（範囲は 0〜255 でよい）を送って自分の corr の応答が返ることを確かめてから
+長さつきのフレーム（vendor bulk、HID、TCP）で、host は、corr の合わない応答、あり得ない長さ（max_frame を超える）、途中で
+止まったフレーム（続きが 200 ms 来ない）を見たら、入力が 50 ms 静かになるまで読み捨て、confirm（範囲は 0〜255 でよい）を送って自分の corr の応答が返ることを確かめてから
 再開する。応答の末尾の TLV が途中で切れていたら、その応答は壊れている。通知が流れ続けて入力が静かにならないときは、
 unsubscribe と end を確かめずに送ってよい（二度実行しても害がない）。COBS のフレームは CRC で壊れたものを捨てられるので、
 この手順は要らない。
@@ -257,7 +289,7 @@ unsubscribe と end を確かめずに送ってよい（二度実行しても害
 | 空き | 違う（open 以外） | rejected no_session |
 | 空き | open（任意の ID） | ロックを立て、最後の session_id を更新する |
 | 自分が持つ | 同じ | 処理する |
-| 他が持つ | 違う | rejected locked と残り時間 |
+| 他が持つ | 違う | rejected locked と残り時間（と owner） |
 | 他が持つ | open(force) | 奪う（§6.4） |
 
 ### 6.3 ロックの要る要求
@@ -270,9 +302,17 @@ unsubscribe と end を確かめずに送ってよい（二度実行しても害
 
 - **open**（session_id、lease_ms、force）: ロックを取る。応答は lease_ms（probe が決めた値）、boot_id、resumed（同じ session_id
   で立て直したとき 1）。open のたびに §5.2 の表を捨てる。
+- **lease_ms**: 0 は「probe の既定」。probe は 1000〜60000 ms の要求をそのまま受け、範囲の外は probe が丸める（既定と丸めの幅は
+  probe が決める）。host は応答の lease_ms を正とする。
 - **end**: ロックを離す。セッションの資源は残す（§9）。
 - **keepalive**: lease を延ばすだけ。
-- **lock_state**: ロックの有無と残り時間。
+- **lock_state**: ロックの有無と残り時間。locked は「どのセッションであれロックが持たれている」（lock_state はセッションを
+  持たずに送れるので、probe には誰が聞いたかは分からない。自分が持っているかは host が自分の状態で知る）。
+- **owner**: open の TLV 0x01 owner（text、1〜32 byte、非 critical）で、host は持ち主の名前（例 "ch32rv monitor pid 1234"）を
+  付けてよい。probe は最後の session_id と一緒に owner を覚え（別の session_id の open で置き換わり、同じ session_id の再開では
+  owner が付いていれば置き換え、無ければ前のまま）、ロックが持たれている間、lock_state の応答と rejected locked の payload の後ろに
+  TLV 0x01 owner で付ける（owner が無ければ付けない）。**session_id は返さない**（返すと他の host がその ID で再開でき、force なしで奪える）。owner は表示のためだけのもので、
+  probe は解釈しない。
 - **force**: 他のセッションがロックを持っていても奪う。probe は、前のセッションに対して期限切れと同じ後始末をしてから（§9）
   ロックを渡す。force は認証ではなく、取り違えを防ぐだけのものである。
 
@@ -301,7 +341,10 @@ rejected unsupported。flags は予約（0）。
 entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
 ```
 
-- prefix に前方一致（exact なら完全一致）する名前を、first 番目から 1 フレームに入る分だけ返す。`oep.core`（fn 0）も最初の
+- prefix に一致する名前を、first 番目から 1 フレームに入る分だけ返す。**一致は label（`.` で区切った部分）の境界で見る**:
+  名前が prefix と同じか、`prefix + "."` で始まれば一致（`oep.fixture.uart` は `oep.fixture.uart` と `oep.fixture.uart.stream` に
+  一致し、`oep.fixture.uart2` には一致しない）。prefix は label の並びで、末尾に `.` を付けない（`oep.` は何にも一致しない。
+  `oep` と書く）。空の prefix はすべてに一致する。exact なら完全一致だけ（空の prefix は何にも一致しない）。`oep.core`（fn 0）も最初の
   entry として数える。
 - instance は、同じ名前のインターフェースが複数あるときの見分け（0 から）。flags は予約（0）。
 - fn は probe の起動の間は変わらない。host は boot_id が同じ間、名前から fn への対応を覚えてよい。
@@ -341,13 +384,20 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 |---:|---|---|
 | 0x40 | firmware | text |
 | 0x41 | model | text |
-| 0x42 | unit_id | 個体の ID（バイト列） |
+| 0x42 | unit_id | 個体の ID（バイト列）。**必須**。同じ probe の経路を host がまとめるのに使うので、どの経路の describe でも同じ値を返す |
 | 0x43 | channels | u16。channel の数 |
 | 0x44 | reserved | base(u16)、bitmap。probe が自分で使っていてインターフェースに割り当てない channel |
 | 0x45 | profile | text。治具などの配線の名前 |
 | 0x46 | label | channel(u16)、text。channel の名前（NRST など） |
 | 0x47 | resets_on_open | u8。経路を開くと probe がリセットするか |
-| 0x48 | uart_rates | u32 の並び |
+| 0x49 | transport | index(u8)、kind(u8)、interface(u8: USB の interface 番号、0xFF は USB でない)。probe の経路ごとに 1 つ。**必須** |
+| 0x4A | oep_pid | u8。1 = probe が OEP の専用の VID:PID でも列挙している（今の経路がそうでなくても） |
+
+- transport の kind: 1 UART bridge、2 USB CDC、3 USB-Serial/JTAG、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
+  1〜3 がシリアルの口（§3.4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
+  使う。probe の起動の間は変わらない。
+- host は transport の数で、ロックの奪い方を決めてよい（経路がシリアルの口 1 つだけなら、口を排他で開けた時点で前の持ち主は
+  いない。[host 開発ガイド](host-development-guide.ja.md)）。
 
 ## 8. plan
 
@@ -406,7 +456,8 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 ### 11.1 host の義務（全 host）
 
 - 受け取ったフレームを role で振り分ける。corr で照合するのは role 0x02 だけ（0x05 / 0x06 のバイト 1〜2 は fn）。
-- 知らない role のフレームは捨てる。
+- 知らない role のフレームと、待っていない corr の応答は捨てる（シリアルの口では、生のバイトが偶然フレームに見えたものもこれで
+  捨てる、§3.4）。
 - 通知が届き続けても、応答を待つ処理と受信を読む処理が締め切りどおりに終わるようにする。
 
 ### 11.2 形
@@ -453,10 +504,10 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 | 0x03 | describe | §7.3 | §7.3 | 不要 |
 | 0x04 | plan_apply | role_assignment の TLV の並び | — | 必要 |
 | 0x05 | plan_release | n(u8)、n × fn(u16) | — | 必要 |
-| 0x10 | open | session_id(u32)、lease_ms(u32)、force(u8) | lease_ms(u32)、boot_id(u32)、resumed(u8) | open がロックを取る（role 0x01） |
+| 0x10 | open | session_id(u32)、lease_ms(u32)、force(u8)、[TLV owner] | lease_ms(u32)、boot_id(u32)、resumed(u8) | open がロックを取る（role 0x01） |
 | 0x11 | end | — | — | 必要 |
 | 0x12 | keepalive | — | — | 必要 |
-| 0x13 | lock_state | — | locked(u8)、remaining_ms(u32) | 不要 |
+| 0x13 | lock_state | — | locked(u8)、remaining_ms(u32)、[TLV owner] | 不要 |
 | 0x30 | subscribe | §11.3 | — | 必要 |
 | 0x32 | unsubscribe | §11.3 | — | 必要 |
 | 0x40 | link_source | length(u32) | length バイト（1 フレームに入る分まで。k バイト目は k & 0xFF） | 不要 |

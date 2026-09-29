@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "64d63208c31c4091"
+REGISTRY_HASH = "7ba704094c2898d2"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -11,6 +11,7 @@ ROLE_SESSION_FLAG = 0x80
 TAG_CRITICAL = 0x80
 TAG_IGNORED = 0x7F
 TAG_INVALID = 0xFF
+MIN_MAX_FRAME = 0x40
 ROLES = {"request": 0x01, "result": 0x02, "event": 0x05, "data": 0x06}
 RESOLUTIONS = {"rejected": 0x00, "completed": 0x01, "accepted": 0x02}
 OUTCOMES = {"success": 0x00, "failed": 0x01, "partial": 0x02}
@@ -21,16 +22,16 @@ TIMING = {"resync_quiet_ms": 0x32, "probe_frame_gap_ms": 0xC8, "host_frame_pause
 
 INTERFACES = {}
 CORE = _NS(name="oep.core", revision=1, op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "plan_apply": 0x04, "plan_release": 0x05, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13, "subscribe": 0x30, "unsubscribe": 0x32, "link_source": 0x40, "link_sink": 0x41}, lock_free={0x01, 0x02, 0x03, 0x10, 0x13, 0x40, 0x41},
-    closed_tail={0x40}, tlv={"plan_apply": {"role_assignment": 0x90}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "uart_rates": 0x48}}, event={"heartbeat": 0x01}, enum={}, own={})
+    closed_tail={0x40}, tlv={"plan_apply": {"role_assignment": 0x90}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "transport": 0x49, "oep_pid": 0x4A}}, event={"heartbeat": 0x01}, enum={"transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}}, own={})
 INTERFACES["oep.core"] = CORE
-WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "attach_under_reset": 0x04}, lock_free={},
-    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "pins": 0x03}, "attach_under_reset": {"max_speed": 0x01, "pins": 0x03}, "attach_answer": {"target_id": 0x10}}, event={}, enum={"target_id_scheme": {"wch_dmi_7f": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02}}, own={})
+WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "attach_under_reset": 0x04, "connections": 0x05}, lock_free={0x05},
+    closed_tail={}, tlv={"describe": {"max_connections": 0x40}, "detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "pins": 0x03}, "attach_under_reset": {"max_speed": 0x01, "pins": 0x03}, "attach_answer": {"target_id": 0x10}}, event={}, enum={"connection_users": {"host_session": 0x01, "slot": 0x02}, "target_id_scheme": {"wch_dmi_7f": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02}}, own={})
 INTERFACES["oep.wire.rvswd"] = WIRE_RVSWD
-WIRE_SWIO = _NS(name="oep.wire.swio", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "attach_under_reset": 0x04}, lock_free={},
-    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "pins": 0x03}, "attach_under_reset": {"max_speed": 0x01, "pins": 0x03}, "attach_answer": {"target_id": 0x10}}, event={}, enum={"target_id_scheme": {"wch_dmi_7f": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01}}, own={})
+WIRE_SWIO = _NS(name="oep.wire.swio", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "attach_under_reset": 0x04, "connections": 0x05}, lock_free={0x05},
+    closed_tail={}, tlv={"describe": {"max_connections": 0x40}, "detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "pins": 0x03}, "attach_under_reset": {"max_speed": 0x01, "pins": 0x03}, "attach_answer": {"target_id": 0x10}}, event={}, enum={"connection_users": {"host_session": 0x01, "slot": 0x02}, "target_id_scheme": {"wch_dmi_7f": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01}}, own={})
 INTERFACES["oep.wire.swio"] = WIRE_SWIO
-WIRE_SWD = _NS(name="oep.wire.swd", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03}, lock_free={},
-    closed_tail={}, tlv={"detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "targetsel": 0x02, "pins": 0x03}}, event={}, enum={"pin_role": {"swdio": 0x01, "swclk": 0x02}}, own={})
+WIRE_SWD = _NS(name="oep.wire.swd", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "connections": 0x05}, lock_free={0x05},
+    closed_tail={}, tlv={"describe": {"max_connections": 0x40}, "detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "targetsel": 0x02, "pins": 0x03}}, event={}, enum={"connection_users": {"host_session": 0x01, "slot": 0x02}, "pin_role": {"swdio": 0x01, "swclk": 0x02}}, own={})
 INTERFACES["oep.wire.swd"] = WIRE_SWD
 TARGET_RISCV_DM = _NS(name="oep.target.riscv-dm", revision=1, op={"dmi": 0x01, "halt": 0x02, "resume": 0x03, "reset": 0x04, "read_block": 0x05, "write_block": 0x06, "run": 0x07, "step": 0x08}, lock_free={},
     closed_tail={}, tlv={"describe": {"clobbers": 0x40}, "reset": {"method": 0x01}}, event={}, enum={"dmi_step": {"write": 0x01, "read": 0x02, "poll_reads": 0x03, "wait_us": 0x04, "poll_us": 0x05}, "reset_mode": {"run": 0x00, "run_verified": 0x01, "halt_at_reset": 0x02}, "reset_method": {"probe_default": 0x00, "ndmreset": 0x01, "system_reset": 0x02}}, own={})
@@ -39,7 +40,7 @@ TARGET_ARM_ADI = _NS(name="oep.target.arm-adi", revision=1, op={"transfer": 0x01
     closed_tail={}, tlv={}, event={}, enum={}, own={})
 INTERFACES["oep.target.arm-adi"] = TARGET_ARM_ADI
 TARGET_CONSOLE = _NS(name="oep.target.console", revision=1, op={"open": 0x01, "read": 0x02, "marks": 0x03, "clear": 0x04, "mark": 0x05, "write": 0x06, "close": 0x07}, lock_free={0x02, 0x03},
-    closed_tail={0x02}, tlv={}, event={}, enum={"mechanism": {"sdi": 0x00, "dmdata": 0x01, "dmseq": 0x02}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08}}, own={})
+    closed_tail={0x02}, tlv={"describe": {"mechanisms": 0x40}}, event={}, enum={"mechanism": {"sdi": 0x00, "dmdata": 0x01, "dmseq": 0x02}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08}}, own={})
 INTERFACES["oep.target.console"] = TARGET_CONSOLE
 FIXTURE_GPIO = _NS(name="oep.fixture.gpio", revision=1, op={"set": 0x01, "read": 0x02}, lock_free={0x02},
     closed_tail={}, tlv={"describe": {"modes": 0x40}}, event={}, enum={"role": {"line": 0x01}, "mode": {"input": 0x00, "input_pullup": 0x01, "input_pulldown": 0x02, "output_low": 0x03, "output_high": 0x04, "open_drain_low": 0x05, "open_drain_release": 0x06, "input_pullup_pulldown": 0x07}}, own={})
@@ -53,6 +54,6 @@ INTERFACES["oep.fixture.capture"] = FIXTURE_CAPTURE
 FIXTURE_ANALOG = _NS(name="oep.fixture.analog", revision=1, op={"configure": 0x01, "start": 0x02, "stop": 0x03, "force": 0x04, "status": 0x05, "read": 0x06, "segments": 0x07, "release": 0x08, "query": 0x09}, lock_free={0x05, 0x06, 0x07, 0x09},
     closed_tail={0x06}, tlv={"configure": {"mode": 0x40, "rate": 0x42, "samples": 0x43, "segments": 0x44, "trigger": 0x45, "pretrigger": 0x46, "frontend": 0x47}, "configure_answer": {"actual_rate": 0x50, "layout": 0x51, "actual_samples": 0x52, "actual_segments": 0x53, "timing": 0x54, "scale": 0x55, "blocking_ms": 0x56, "skew": 0x57}, "describe": {"mode": 0x40, "rate_range": 0x41, "rate_list": 0x42, "rate_limit": 0x43, "channels": 0x44, "trigger": 0x45, "frontend": 0x46, "max_read": 0x47, "segment_ring": 0x48, "frontend_shared": 0x49}}, event={"segment": 0x01, "stopped": 0x02, "triggered": 0x03}, enum={"mode": {"one_shot": 0x01, "repeat": 0x02, "streaming": 0x03}, "trigger": {"immediate": 0x00, "level": 0x01, "edge": 0x02, "cross_up": 0x03, "cross_down": 0x04}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}, "segment_flag": {"gap": 0x01, "short": 0x02, "slipped": 0x04}}, own={})
 INTERFACES["oep.fixture.analog"] = FIXTURE_ANALOG
-PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, op={"get": 0x01, "set": 0x02, "save": 0x03, "erase": 0x04, "reboot": 0x05}, lock_free={0x01},
-    closed_tail={}, tlv={"item": {"boot_mode": 0x01, "plan": 0x02, "label": 0x03, "bind": 0x04, "target": 0x05, "idle": 0x06}, "describe": {"mode": 0x40, "current_mode": 0x41, "port": 0x42, "storage": 0x43, "cost": 0x44, "items": 0x45, "bind_state": 0x46}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02}, "bind_state": {"waiting": 0x00, "streaming": 0x01, "target_mismatch": 0x02, "attach_failed": 0x03, "no_target_id": 0x04}, "bind_source": {"none": 0x00, "fixture_uart": 0x01, "target_console": 0x02}, "bind_attach": {"host": 0x00, "on_open": 0x01, "at_boot": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}}, own={})
+PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, op={"get": 0x01, "set": 0x02, "save": 0x03, "erase": 0x04}, lock_free={0x01},
+    closed_tail={}, tlv={"item": {"plan": 0x01, "label": 0x02, "idle": 0x03, "slot": 0x04, "bind": 0x05}, "describe": {"storage": 0x40, "items": 0x41, "slots_max": 0x42, "bind_modes": 0x43, "slot_state": 0x44, "bind_state": 0x45}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02}, "slot_attach": {"host": 0x00, "at_boot": 0x01}, "slot_state": {"connected": 0x00, "absent": 0x01, "lock_mismatch": 0x02, "no_target_id": 0x03}, "bind_mode": {"last_reset": 0x00, "manual": 0x01, "mixed": 0x02}, "bind_stream": {"slot_console": 0x01, "fixture_uart": 0x02}, "bind_flow": {"idle": 0x00, "streaming": 0x01, "held": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}}, own={})
 INTERFACES["oep.probe.config"] = PROBE_CONFIG
