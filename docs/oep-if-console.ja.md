@@ -25,8 +25,9 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 | 0x07 | close | stream(u16) | — | 必要 |
 
 - read、marks、clear、mark、write は [共通部品](oep-if-common.ja.md) §1 の形（先頭に stream）。
-- mechanism: 0 SDI、1 DMDATA、2 dmseq（framing は [target-console-dmseq](target-console-dmseq.ja.md)）。知らない mechanism は
-  rejected unsupported（payload なし）。
+- mechanism: 0 SDI、1 DMDATA、2 dmseq（framing は [target-console-dmseq](target-console-dmseq.ja.md)）。知らない mechanism と、
+  describe の mechanisms に無い mechanism は rejected unsupported（payload なし）。
+- describe: tag 0x40 mechanisms（u8 の並び。その probe が開ける mechanism）。必ず出す。
 - 知らない stream は rejected unavailable。
 - ストリームの番号（u16）は core §9 の規則で振る（新しいストリームのたびに 1 から進め、同じ boot_id の間は再利用しない）。
 - revision 1 は通知を送らない（subscribe は rejected unavailable）。後から足すときは、データの payload を共通部品 §1.5 の形にする。
@@ -42,7 +43,7 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
   （[線とデバッグ](oep-if-debug.ja.md) §4.1）。
 - ストリームを開いた connection が失われたら、マーク link-lost を付けて閉じる。**閉じたストリームも、同じ mechanism で次に
   open されるまで読める**（read / marks。write / mark / clear は rejected unavailable）。線が落ちる直前の出力を回収するため。
-- ストリームが使う connection は、そのストリームを開いたセッション（または bind）が使っているものとして数える。
+- ストリームが使う connection は、そのストリームを開いたセッション（または `oep.probe.config` のスロット）が使っているものとして数える。
 - write は、方式が 1 回に運べる分だけを受け付ける（dmseq は 2 byte まで）。残りは host が送り直す。
 
 ## 3. 方式（mechanism）

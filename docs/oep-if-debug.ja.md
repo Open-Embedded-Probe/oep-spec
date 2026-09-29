@@ -15,7 +15,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 - `oep.wire.*` は connection を作り、`oep.target.*` は connection の上で target を操作する。target を扱うインターフェースは
   attach の前から list に出し、connection の無い要求は rejected no_connection。
 - **target の系統（チップの型）は宣言しない。** チップごとの知識（flash の書き方、DM の癖）は host が持つ。
-- すべての op はロックが要る。
+- connections のほかの op はすべてロックが要る。
 
 ## 1. attach の規範（全 wire）
 
@@ -31,7 +31,14 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   - attach / attach_under_reset は pins（TLV 0x03、critical）で組を指定する。pins が無ければ、許す組が 1 つだけならその組、
     2 つ以上なら rejected unavailable（host が選ぶ）。
   - **許していない組は、何も実行せずに rejected unavailable**（scan は要求の中に 1 つでもあれば全体を断る）。
-  - 1 つの wire のインターフェースの connection は 1 つ。生きている connection と違う組の attach は rejected unavailable。
+- **同時に持てる接続の数**: wire のインターフェースは describe の max_connections（tag 0x40、u8）で宣言する。宣言が無ければ 1。
+  ロックは probe に 1 つのまま（接続ごとのロックは無い）。
+- **scan と生きている接続**: 生きている接続の組は、scan で線を初めからやり直さず、その接続で読んだ値（DMSTATUS など）で見つかった
+  組として返す（動いている接続を scan で壊さない）。
+- **席の規則**: 生きている接続と違う組への attach（attach_under_reset を含む）は、席が空いていれば新しい connection を作る。席が埋まっていれば、使っているものが
+  スロットだけ（host のセッションが使っていない、[共通部品](oep-if-common.ja.md) §2）の接続のうち最も古く作られたものを閉じて席を
+  空ける。そういう接続が無ければ rejected unavailable。閉じた接続に載っていたストリームは、接続を失ったときと同じく閉じる。
+  違う wire のインターフェースどうしのピンの取り合いは core §8.1 のとおり断る。
 - **すでに attach している線への attach は、その connection をそのまま返す**（flags bit1）。method = 1 なら、動いていれば
   止め、止まっていれば何もしない。method = 0 は動いている hart に触れない。既存の connection が max_speed より速ければ、
   probe はその connection の速さを max_speed 以下に下げて返す。下げられない probe は、扱えない TLV の値として扱う
@@ -55,8 +62,21 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   しない target（電源を切った、長い reset を外から掛けた）は、切れたとみなしてよい。
 - **probe は connection を閉じるとき、target の状態を必要以上に変えない**（target を reset しない。止めていた hart は、閉じる前の
   host の操作のままにする）。
-- probe 自身の自動の attach（`oep.probe.config` の bind）も使っているものの 1 つで、host の attach はその connection に加わる
+- probe 自身の自動の attach（`oep.probe.config` のスロット）も使っているものの 1 つで、host の attach はその connection に加わる
   （flags bit1）。
+
+### 2.1 connections（接続の一覧）
+
+```text
+要求: —
+応答: count(u8)、count × entry
+entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、slot(u8)、tid_scheme(u8)、tid_len(u8)、tid
+```
+
+- そのインターフェースの生きている接続を、作られた順に返す。ロックなしで使える。
+- users: bit0 host のセッションが使っている、bit1 スロットが使っている（自動の attach か bind のコンソール）。
+- slot は、その接続がスロットの接続（`oep.probe.config` §1.1）ならスロットの番号、そうでなければ 0xFF。
+- tid は attach のときに読めた target_id（無ければ tid_scheme 0、tid_len 0）。swd は tid_scheme 0（DPIDR は attach の応答で返る）。
 
 ## 3. `oep.wire.rvswd` / `oep.wire.swio`
 
@@ -66,6 +86,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 | 0x02 | attach | method(u8: 0 止めない / 1 止める)、[TLV] | connection(u16)、DMSTATUS(u32)、flags(u8)、speed_hz(u32) |
 | 0x03 | detach | connection(u16)、[TLV] | — |
 | 0x04 | attach_under_reset | channel(u16、0xFFFF = probe の既定値)、hold_ms(u16)、[TLV] | connection(u16)、dpc(u32)、speed_hz(u32) |
+| 0x05 | connections | — | §2.1（ロック不要） |
 
 - swio の組は swclk = 0xFFFF（1 本の線）。scan の kind は 0x01 = riscv-dm。値は生の値。
 - attach の flags: bit0 保留中の havereset を確認応答した、bit1 既存の connection。
@@ -144,6 +165,20 @@ target_id の scheme（rvswd / swio）: 1 = WCH の DM の DMI 0x7F を読んだ
 | 1 | 走らせて、実行を確認する |
 | 2 | 最初の命令の前で止める（haltreq を保ったまま ndmreset を解く） |
 
+応答:
+
+| フィールド | 意味 |
+|---|---|
+| flags bit0 | 要求した mode の状態に達した（mode 0 / 1 は走っている、mode 2 は止まっている） |
+| flags bit1 | pc を読んで実行を確かめた（mode 1 だけ） |
+| flags bit2 | reset の手順をやり直した |
+| flags bit3 | 確認のための halt / resume が失敗した |
+| attempts | 行った reset の手順の回数（1 から） |
+| pc | mode 1 で確かめた pc、mode 2 では dpc。ほかは 0 |
+
+- outcome success の条件は、mode 0 と 2 では flags bit0、mode 1 では bit1。満たさなければ completed failed（形は同じ）。
+- flags のほかの bit は 0。
+
 TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target のシステムリセットには共通の手順が無いので、host が dmi で
 組む）。
 
@@ -161,6 +196,10 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 ### 4.5 read_block、write_block
 
 - 語（32 bit）単位。8 / 16 bit のアクセスは dmi の手順で組む。
+- **1 回の長さ**: read_block / write_block を持つ probe は、describe の共通 tag max_length（core §7.4）を必ず出す。単位は **byte 数**
+  （4 の倍数）で、count × 4 はこれを超えない（超えれば rejected malformed）。
+- **読みの意味**: read_block は target のバスを通して読む。probe の側に写しを持たない（直前の write_block、dmi、run で target が
+  書いたものを反映する）。保証するのは probe の側だけで、target 自身の cache や prefetch の像は範囲の外（host のチップの知識の側）。
 - **前提**: hart が止まっていること（止まっていなければ status state）。番地は、止まっている hart が M モードで使う番地。
 - **副作用**: probe は GPR、program buffer、DATA のレジスタを使ってよく、元に戻さない。使う GPR は describe の clobbers
   （tag 0x40、regno(u16) の並び）で宣言する。abstractauto は 0 に戻す。host は、残したい値を前後で保存する。
@@ -179,13 +218,14 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 | 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、DPIDR(u32)) |
 | 0x02 | attach | [TLV] | connection(u16)、DPIDR(u32)、flags(u8: bit0 dormant から起こした、bit1 既存の connection)、speed_hz(u32) |
 | 0x03 | detach | connection(u16)、[TLV] | — |
+| 0x05 | connections | — | §2.1（ロック不要） |
 
 - scan の kind は 0x02 = arm-adi。
 - attach の TLV: 0x01 max_speed、0x02 targetsel（u32、multidrop のときだけ）、0x03 pins。detach の TLV: 0x01 force。
 - attach は JTAG から SWD への切り替えを試し、答えがなければ dormant から起こす。電源投入（CTRL/STAT の CDBGPWRUPREQ /
   CSYSPWRUPREQ）は host が DP の書き込みで行う。
-- **connection の同一性には targetsel を含める**。生きている connection と targetsel（無しを含む）が違う attach は rejected
-  unavailable（host が先に detach する）。同じなら、その connection をそのまま返す。
+- **connection の同一性には targetsel を含める**。同じピンの組の生きている connection と targetsel（無しを含む）が違う attach は
+  rejected unavailable（host が先に detach する）。同じなら、その connection をそのまま返す。
 - attach_under_reset と reset の線の操作は、revision 1 では持たない。NRST は `oep.fixture.gpio` で動かす（reset の解放と attach の
   間は host の往復の遅れに依存する）。固定のデバッグ端子の probe 向けに、reset の線を扱う任意の op を後から足す（revision を
   変えずに足せる）。
@@ -203,5 +243,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 - ack は最後の転送の生の ACK。読んだ値は、最初の done 個の転送のうち読み出しの数だけ。
 - transfer は生の転送で、AP の読み出しが 1 つ遅れて返るのもそのまま（host が RDBUFF か次の AP の読み出しで受け取る）。
   WAIT は probe の中で再試行する。FAULT で止まるので、host は ABORT で sticky を消す。
+- read_block / write_block の 1 回の長さと読みの意味は riscv-dm（§4.5）と同じ: describe の max_length（byte 数、4 の倍数）を必ず
+  出し、count × 4 はこれを超えない。read_block は target のバスを通して読み、probe の側に写しを持たない。
 - read_block / write_block は今の MEM-AP の TAR / DRW を使う。SELECT と CSW（32 bit、単一増加）は host が先に設定する。probe は
   1 KiB の境界ごとに TAR を書き直し、1 つ遅れる読み出しを並べ直す。

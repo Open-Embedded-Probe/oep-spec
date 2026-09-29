@@ -62,38 +62,62 @@
 - target 側の経路も同じ。RVSWD の DMI parity は 1 bit で、壊れた応答の半分を通す（E156 / E157）。memory read や
   flash の結果は、上位の CRC か読み戻しで確かめる（[開発ガイドライン](development-guidelines.ja.md) §6-6）。
 
-## 3.5 UART の速度は取り決める（ビルドで決めない）
+## 3.5 UART bridge の速さは 115200 固定
 
-**速度はビルドで決めない。** host が probe の速度を知らなくても開けるように、次の形にする（2026-09-24 の方針）。
+UART bridge（probe の UART を USB-UART の変換チップで出したもの）の probe は、**115200 bps 固定**にする（2026-09-29 の決定）。
 
-1. probe は起動時、常に **115200 bps** で待つ。host も 115200 bps で開く。
-2. host が速度の変更を要求する。
-3. 取り決めに失敗したら、両側とも **115200 bps に戻る**。
+- 設定で変えられるようにすると、忘れたときに入れなくなる。自動の速度検出は、生のバイトと OEP が混ざる口（core §3.4）では危うい。
+- dmseq のコンソールと書き込みには足りる（classic ESP32 + CH340 の V003 治具で、14 KB の書き込み + 確認が 4.1 秒）。速さが要る
+  なら、USB CDC / USB-Serial/JTAG / vendor bulk を持つ probe を使う。USB CDC と USB-Serial/JTAG では baud は数字が渡るだけで、
+  速さに関係しない。
+- 参考（2026-09-24、速度ごとにビルドし直した実験用の probe）: 460800 bps から先は SWIO の側が上限で速くならず、230400 は
+  変換チップの経路で通らず、2 Mbps 以上は大きなフレームで壊れた（`experiments/uart-binding/uart_rate.py`）。
 
-**設定できる速度は能力として開示する。** 速度を決める要素は 3 つあり、知っている者が違う。
+## 3.6 シリアルの口の共用の作り
 
-| 要素 | 違いの例 | 知っている者 |
-|---|---|---|
-| probe の MCU の UART | ESP32 は分周が細かく数 Mbps までほぼ任意。刻みの粗い MCU もある | probe。describe で宣言する（`uart_rates`、[能力の宣言モデル](capability-declaration-model.ja.md) §5） |
-| USB-UART の変換チップ | CH340 / CH343 / CP2102 / FT232 で、設定できる速度の一覧と上限が違う | host。USB の VID:PID から分かる。probe は自分の手前に何があるかを知らない |
-| 経路の実力（変換チップのバッファ、usbip など） | CH340 + usbip は 921600 bps で長い応答を落とした（2026-09-24） | 誰も事前には知らない。試して確かめる |
+core §3.4 の規則を守るための作り（2026-09-29）。
 
-host は、probe の宣言と変換チップの対応の重なりから候補を選び、確認で経路の実力を確かめる。
+- **受信**: 口ごとに 1 つの読み手が、0x00 の外のバイトはすぐ生のバイトの行き先（bind、[probe の設定](oep-if-probe-config.ja.md)
+  §1.2）へ渡し、0x00 から次の 0x00 までを候補としてためる。候補が解けないか CRC が合わない、または 200 ms 途切れたら、ためた分を
+  生のバイトとして渡す。候補のバッファは max_frame の COBS の長さ + 2 を持つ（超えたら、その時点で生のバイトとして渡す）。
+- **送信のキュー**: 口ごとに送信を 1 つにまとめる。単位はフレーム丸ごとか、生のバイトの塊（64 byte 程度）。1 つの書き手が単位を
+  割らずに出す。フレームは塊より先に出してよい。塊は位置つきのストリームから読むので、口が詰まっても捨てずに待てる（位置を
+  進めないだけ）。Arduino の `HardwareSerial::write` は呼び出しの単位でしか排他しないので、endpoint がフレームを `Serial` に
+  直接書き、別の処理が同じ口に生のバイトを書く形にしない。
+- **口に OEP 以外のものを書かない**（§2.5）。ログは OEP のフレームを壊す。生のバイトとして出してよいのは bind の流れだけ。
 
-- **`uart_rates` は設定できる速度の一覧で宣言する。** 細かい刻みは扱わない（範囲と刻みの形は採らない）。
-- **速度の変更は任意の機能で、後回しにする。** 必要になるのは、ESP32 のようにメガバイト単位のイメージを書く場合
-  くらいで、それ以外は 115200 bps のまま待てばよい。速さが要る場合は、USB-UART より速い transport（probe の
-  ネイティブ USB、IP 経由）を選ぶ手もある。
-- **仕様化するときは、事故を防ぐために時間の規則を細かく決める。** 速度が食い違ったまま残ると、次の host が
-  115200 bps で開いても通じない。決める項目:
-  - 切り替えの手順: 誰がいつ切り替えるか（probe は今の速度で「受け付けた」と答えてから切り替える、など）。
-  - 確認: 新しい速度で何を往復させれば「使える」とするか。**最大の長さの応答で確かめる**（2026-09-24、classic
-    ESP32 + CH340 + usbip は 921600 bps で host → probe は通り、probe → host の 256 byte 以上の応答で byte が落ちた。
-    64 byte は通った。短い確認では誤って「使える」と判断する）。
-  - 確認が来ないときに 115200 bps へ戻るまでの時間（probe 側と host 側）。
-  - 使っている最中に戻る条件: 無通信の時間、CRC エラーの回数、UART の BREAK を合図にするか。
-  - 戻ったことを host がどう知るか。
-  - 速度は transport の状態で、target や attach の状態（閉じても残す）とは分けて扱うこと。
+## 3.7 probe の再起動の抑止
+
+口を開閉しても probe が再起動しないようにする（§1）。
+
+| 口 | 止め方 |
+|---|---|
+| ESP32-P4 などの USB-Serial/JTAG | `USB_DEVICE_CHIP_RST_REG` の `USB_UART_CHIP_RST_DIS`（bit2）を立てる。arduino-esp32 3.3.12 の HWCDC に API は無いので、レジスタに直接書く |
+| TinyUSB の CDC（arduino-esp32 の `USBCDC`） | `enableReboot(false)`（DTR / RTS の並びと 1200 baud の touch での再起動を止める） |
+| EspUsbDevice の CDC（P4 の HS） | 元から持たない |
+| classic ESP32 などの UART bridge | 変換チップの先の自動リセット回路なので、firmware では止められない。host が DTR と RTS を両方立てて開く（host 開発ガイド §1）。止められないものは describe の resets_on_open で宣言する |
+
+## 3.8 推奨の USB の作り（専用 PID と HID の口）
+
+ネイティブ USB を持つ probe（ESP32-P4 の HS の口、RP2350 など）の推奨の形:
+
+- **OEP の専用の VID:PID で列挙する**（pid.codes で取る。取得は未決）。専用 PID で列挙する probe は、fn 0 の describe の oep_pid を
+  1 にする（USB-Serial/JTAG のように別の VID:PID の口から開かれても、host がそれで分かる）。
+- interface は **vendor bulk（OEP）、HID（OEP）、CDC（シリアルの口、コンソール用）** の組。どれも iInterface を `OEP` で始める
+  （core §3.3）。
+  - vendor bulk は host の主な経路（速い）。
+  - HID は、他の道具が vendor や CDC を握っていても読める口で、discovery がロックなしの describe / get でスロットと状態を読むのに
+    使う。OS のドライバも要らない。
+  - CDC は IDE や端末から見えるシリアルの口。OEP も受けるが（core §3.4）、主にはコンソールを流す。
+- fn 0 の describe の transport に、実際に出している経路をすべて並べる。unit_id はどの経路からでも同じ値を返す。
+
+## 3.9 ロックの奪い方に probe が答えること
+
+host は transport の数でロックの奪い方を決める（host 開発ガイド §2）。probe は次を守る。
+
+- transport の一覧を正しく出す（シリアルの口が 1 つだけの probe は、そう見えるように）。
+- lease の期限を守って空ける（期限切れの後始末、core §9）。lock_state の残り時間を正しく返す。
+- 1000〜60000 ms の lease の要求は、そのまま受ける（lease の範囲の規則は core §6.4）。
 
 ## 4. target を扱う部品
 

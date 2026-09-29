@@ -92,14 +92,14 @@ read で読み直せるかはインターフェースが決める。
 ## 2. debug の connection
 
 使うもの: `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（作る）、`oep.target.riscv-dm`、`oep.target.arm-adi`、
-`oep.target.console`（使う）、`oep.probe.config` の bind（使う）。
+`oep.target.console`（使う）、`oep.probe.config` のスロット（使う）。
 
 - **connection** は、線の attach が作る、ある target への接続。番号（u16）で指し、target の操作の要求は先頭に
   connection を置く。
 - 番号（u16）は core §9 の規則で振る（新しい connection のたびに 1 から進め、同じ boot_id の間は再利用しない。閉じた番号は rejected no_connection）。
 - connection は、**使っているもの**が 1 つでもある間は開いている。使っているもの:
   - attach した host のセッション（セッションごとに 1 つ）
-  - connection を使う設定（`oep.probe.config` の bind）
+  - スロット（`oep.probe.config` §1.1。probe の自動の attach と、bind が開いたコンソール）
 - セッションの分は core §9 の寿命に従う: 明示の end では残り（次のセッションの attach がそのまま加わる）、lease の期限切れと
   force で奪われたときに外れる。
 - 閉じるのは、使っているものが無くなったとき、force の detach、線が本当に切れたとき（インターフェースの文書が決める）だけ。

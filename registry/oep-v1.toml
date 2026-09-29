@@ -25,6 +25,7 @@ role_session_flag = 0x80        # bit 7 of a request's role: a session id follow
 tag_critical = 0x80             # bit 7 of a TLV tag in a request: the probe must honour it or refuse
 tag_ignored = 0x7F              # in every context: a response TLV listing the non-critical tags the probe ignored
 tag_invalid = 0xFF
+min_max_frame = 64              # every probe takes messages this long; a host sends no longer message before confirm answers (core §3.3)
 
 [roles]
 request = 0x01
@@ -103,6 +104,12 @@ op = [
 ]
 [interface.tlv.plan_apply]
 role_assignment = 0x90          # critical: fn(u16) role(u8) channel(u16)
+[interface.tlv.open]
+owner = 0x01                    # text (1-32 bytes): who holds the lock, for display (core §6.4)
+[interface.tlv.lock_state_answer]
+owner = 0x01                    # the lock holder's owner text, when its open gave one
+[interface.tlv.locked_payload]  # the rejected locked payload's tail, after remaining_ms(u32)
+owner = 0x01
 [interface.tlv.describe]        # the probe itself (fn 0)
 firmware = 0x40
 model = 0x41
@@ -112,7 +119,15 @@ reserved = 0x44
 profile = 0x45
 label = 0x46
 resets_on_open = 0x47
-uart_rates = 0x48
+transport = 0x49                # index(u8) kind(u8) interface(u8, 0xFF not USB): one per transport; required
+oep_pid = 0x4A                  # u8: 1 = the probe also enumerates with the OEP VID:PID
+[interface.enum.transport_kind] # describe transport (core §7.5); 1-3 are serial ports (core §3.4)
+uart_bridge = 1
+usb_cdc = 2
+usb_serial_jtag = 3
+vendor_bulk = 4
+hid = 5
+tcp = 6
 [interface.event]
 heartbeat = 0x01                # boot_id(u32), uptime_ms(u32)
 [interface.reserved]
@@ -126,7 +141,13 @@ op = [
   { code = 0x02, name = "attach", lock = true },
   { code = 0x03, name = "detach", lock = true },
   { code = 0x04, name = "attach_under_reset", lock = true },
+  { code = 0x05, name = "connections", lock = false },
 ]
+[interface.tlv.describe]
+max_connections = 0x40          # u8: live connections at once (absent = 1; oep-if-debug §1)
+[interface.enum.connection_users] # connections entry users bits (oep-if-debug §2.1)
+host_session = 0x01
+slot = 0x02
 [interface.tlv.detach]
 force = 0x01
 [interface.tlv.attach]
@@ -154,7 +175,13 @@ op = [
   { code = 0x02, name = "attach", lock = true },
   { code = 0x03, name = "detach", lock = true },
   { code = 0x04, name = "attach_under_reset", lock = true },
+  { code = 0x05, name = "connections", lock = false },
 ]
+[interface.tlv.describe]
+max_connections = 0x40          # u8: live connections at once (absent = 1; oep-if-debug §1)
+[interface.enum.connection_users] # connections entry users bits (oep-if-debug §2.1)
+host_session = 0x01
+slot = 0x02
 [interface.tlv.detach]
 force = 0x01
 [interface.tlv.attach]
@@ -180,7 +207,13 @@ op = [
   { code = 0x01, name = "scan", lock = true },
   { code = 0x02, name = "attach", lock = true },
   { code = 0x03, name = "detach", lock = true },
+  { code = 0x05, name = "connections", lock = false },
 ]
+[interface.tlv.describe]
+max_connections = 0x40          # u8: live connections at once (absent = 1; oep-if-debug §1)
+[interface.enum.connection_users] # connections entry users bits (oep-if-debug §2.1)
+host_session = 0x01
+slot = 0x02
 [interface.tlv.detach]
 force = 0x01
 [interface.tlv.attach]
@@ -246,6 +279,8 @@ op = [
   { code = 0x06, name = "write", lock = true },
   { code = 0x07, name = "close", lock = true },
 ]
+[interface.tlv.describe]
+mechanisms = 0x40               # u8 list: the mechanisms this probe opens (required; oep-if-console §1)
 [interface.enum.mechanism]
 sdi = 0
 dmdata = 1
@@ -461,41 +496,43 @@ op = [
   { code = 0x02, name = "set", lock = true },
   { code = 0x03, name = "save", lock = true },
   { code = 0x04, name = "erase", lock = true },
-  { code = 0x05, name = "reboot", lock = true },
 ]
 [interface.tlv.item]            # the items of the configuration (get / set)
-boot_mode = 0x01
-plan = 0x02
-label = 0x03
-bind = 0x04
-target = 0x05                   # wire_fn(u16) scheme(u8) mask(n) value(n): the target_id an automatic attach must match
-idle = 0x06                     # channel(u16) mode(u8): the state of a free pin
+plan = 0x01                     # fn(u16) role(u8) channel(u16)
+label = 0x02                    # channel(u16) text
+idle = 0x03                     # channel(u16) mode(u8): the state of a free pin
+slot = 0x04                     # a place a target is wired to (oep-if-probe-config §1.1)
+bind = 0x05                     # what a serial port carries (oep-if-probe-config §1.2)
 [interface.tlv.describe]
-mode = 0x40
-current_mode = 0x41
-port = 0x42
-storage = 0x43
-cost = 0x44
-items = 0x45                    # u8 list: the item tags this probe takes
-bind_state = 0x46               # port(u8) state(u8), one per bind
+storage = 0x40
+items = 0x41                    # u8 list: the item tags this probe takes
+slots_max = 0x42                # u8
+bind_modes = 0x43               # u8 bits of bind_mode; last_reset and manual always
+slot_state = 0x44               # one per registered slot (oep-if-probe-config §3.2)
+bind_state = 0x45               # port(u8) mode(u8) selected(u8) flow(u8), one per bind
 [interface.enum.idle_mode]
 hi_z = 0
 pull_up = 1
 pull_down = 2
-[interface.enum.bind_state]
-waiting = 0
-streaming = 1
-target_mismatch = 2
-attach_failed = 3
-no_target_id = 4
-[interface.enum.bind_source]
-none = 0
-fixture_uart = 1
-target_console = 2
-[interface.enum.bind_attach]
+[interface.enum.slot_attach]
 host = 0
-on_open = 1
-at_boot = 2
+at_boot = 1
+[interface.enum.slot_state]
+connected = 0
+absent = 1
+lock_mismatch = 2
+no_target_id = 3
+[interface.enum.bind_mode]
+last_reset = 0
+manual = 1
+mixed = 2
+[interface.enum.bind_stream]
+slot_console = 1
+fixture_uart = 2
+[interface.enum.bind_flow]
+idle = 0
+streaming = 1
+held = 2                        # a session on this port holds the raw transfer (core §3.4)
 [interface.enum.storage_state]
 none = 0
 applied = 1
