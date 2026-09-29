@@ -95,7 +95,14 @@ session は未同期で始まる。**target を reset した host は新しい s
 5. `pending` があり A == `h` なら届いている: `h` := not `h`、`pending` を空にする。
    `pending` が空なら次の最大 2 byte を入れる。K = S、H = `h`、M = len(`pending`)、CRC で答える。
 
-## target の規則（フレームを出している間に bit 7 が 0 を読んだとき）
+## target の規則（フレームを出している間に DATA0 を読んだとき）
+
+0. **bit 7 が 1 で、自分が出した語と違う**（probe の attach が残した `0xffffffff` など）なら、答えを待たずに**すぐ同じ
+   フレームを出し直す**。タイムアウトの前でも後でも同じ。bit 7 が 1 の語は host の番なので、放っておくと、未同期の host は
+   無効な word として答えず、target は「まだ自分のフレーム」と読んで待ち、双方が止まる（WCH-LinkE の AttachChip は ESIG を
+   読んだ後に DATA0 に 0xffffffff を残す。V006 / X035 で開き直したコンソールが流れなかった、2026-09-29）。
+
+bit 7 が 0 を読んだとき:
 
 1. 無効（M > 2、または CRC 不一致。CRC の位置を求める前に M を見る）、または K != S なら、
    同じフレームを出し直す（host は重複として扱う）。
@@ -124,10 +131,13 @@ payload は同じ、CRC は計算し直す）、**出したままにする**。�
 元に戻る。
 
 **出したままにする**とは、待っている間 **短い方の待ち時間（20 ms）ごとにそのフレームを出し直し
-続ける**ことである。probe の attach は DATA0 を書き換えることがあり、bit 7 が 1 の値
-（`0xffffffff` など）が残ると、target は「まだ自分のフレーム」と読んで待ち、未同期の host は
-無効な word として答えないので、双方が止まる。target が自分から出し直していれば、host は
-次の poll でそのフレームを読める。host がこれのために何かを書く必要はない。
+続ける**ことである。答えを待っている間に DATA0 が自分の語でなくなったとき（bit 7 が 1 の別の語）は、タイムアウトを待たずに
+すぐ出し直す（target の規則 0）。host はこれのために何かを書く必要はない。
+
+- host（任意の保険）: 規則 0 を持たない古い target のために、未同期の host は、`0xffffffff` を 3 回続けて読んだら、DATA0 に
+  bit 7 が 0 の無効な語（例 `0x7f7f7f7f`、CRC が合わない）を書いてよい。bit 7 が 1 の語は host の番なので所有権の規則に
+  反せず、target は規則 1 でそれを無効な答えと読んで出し直す。`0xffffffff` は N = 7 で有効なフレームになり得ないので、
+  本物のフレームを消すことはない。
 
 - host（debugger）: **切り離すときにデバッグモジュールを reset しない**（DMCONTROL.dmactive を下ろさない）。下ろすと DATA0
   が 0 に戻り、target が出していたフレームが消える。target は 0 を沈黙と読んでタイムアウトまで待つ。その待ちは target が
@@ -135,9 +145,9 @@ payload は同じ、CRC は計算し直す）、**出したままにする**。�
   コンソールが戻るまで 1〜10 s かかった。dmactive を残すとすぐ戻った（2026-09-26、oep-spec probe-cdc-and-persistence
   §7.5.1）。DATA0 が消えるのを確かめたのは CH32X035（ほかの系統は未確認）。WCH-LinkE は DetachChip で dmactive を下ろす
   （`W dmcontrol 0x40000001` → `R dmstatus` → `W dmcontrol 0x40000000`、L103 / V203 / V003 / X035 で同じ。wch-protocols
-  link-to-target §5）が、次の AttachChip が ESIG を読んで DATA0 に 0 でない語（0xffffffff、V203 は 0xe339e339）を残すので、
-  target はそれを答えの検査に通らない語と読んですぐ出し直す。LinkE の host（ch32rv）に空白が出ないのはこのため。DATA0 に
-  何も書かない attach（OEP の probe）の後では、0 が残って待たされた。
+  link-to-target §5）が、次の AttachChip が ESIG を読んで DATA0 に 0 でない語を残す。bit 7 が 0 の語（V203 の 0xe339e339）なら target は
+  規則 1 で答えの検査に通らない語と読んですぐ出し直し、bit 7 が 1 の語（V006 / X035 の 0xffffffff）なら規則 0 で出し直す
+  （規則 0 の無い target はここで止まっていた）。DATA0 に何も書かない attach（OEP の probe）の後では、0 が残って待たされた。
 - host: TO フレームは普通のフレームとして扱う（規則 2/4 が適用される）。再同期の理由にはしない。
   host は「誰も答えていない間の出力が捨てられた」と利用者に伝えてよい。
 - host: 未同期のまま、フレームでない word（CRC 不一致、または bit 7 が 0）だけを長く読み続けた
