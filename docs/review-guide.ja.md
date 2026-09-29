@@ -64,7 +64,7 @@ flash の書き方やチップ固有の手順は host にある。
 |---|---|
 | `registry/oep-v1.toml` | **v1 の wire 上の全数値の唯一の定義**（op、TLV の tag、reject reason、status、enum、インターフェースの名前と revision） |
 | `tools/oepgen1.py` | registry から C++ ヘッダと Python モジュールを生成し、番号の規則（core §2）を検査する。`uv run tools/oepgen1.py --check` で同期を確かめる |
-| `generated/oep-v1/oep_v1_registry.h`、`generated/oep-v1/oep_v1_registry.py` | 生成物。probe と client はこれを写して使う（`OepV1Registry.h`、`oep_client/v1/registry.py`） |
+| `generated/oep-v1/oep_v1_registry.h`、`generated/oep-v1/oep_v1_registry.py` | 生成物。probe と client はこれを写して使う（`OepRegistry.h`、`oep_client/registry.py`） |
 | `tests/registry_v1/test_registry_v1.py` | registry と生成物の試験 |
 
 ### 4.3 そのほか
@@ -84,16 +84,17 @@ flash の書き方やチップ固有の手順は host にある。
 
 | PATH | 中身 | 世代 |
 |---|---|---|
-| `src/OepV1.h` | v1 の本体の部品（Interface の基底、TLV、describe、Tail の解析） | v1 |
-| `src/OepV1Debug.h` | 線と target のインターフェースの共通部品（status、ピンの組） | v1 |
-| `src/OepV1Endpoint.*` | フレームの受け口、名前で探すインターフェース、セッションのロック、通知、plan、複数の経路（`addTransport`） | v1 |
-| `src/OepV1Registry.h` | oep-spec の生成物の写し | v1 |
-| `src/OepV1Target.*` | `oep.wire.rvswd` / `oep.wire.swio`（attach / detach、connection の利用者）と `oep.target.riscv-dm` | v1 |
-| `src/OepV1Swd.*` | `oep.wire.swd` / `oep.target.arm-adi` | v1 |
-| `src/OepV1Console.*`、`src/OepV1Stream.h` | `oep.target.console`、位置つきのストリーム、CDC の口への転送（`StreamPort`） | v1 |
-| `src/OepV1Fixture.*` | `oep.fixture.gpio` / `oep.fixture.uart`（CDC の口への素通しを含む） | v1 |
-| `src/OepV1Capture.*`、`src/OepV1Sampler.*` | `oep.fixture.capture`（P4 の PARLIO、classic ESP32 のソフトウェアのサンプラ） | v1 |
-| `src/OepV1Config.*` | `oep.probe.config`（設定、起動モード、NVS への保存）。試作の段階 | v1（試作） |
+| `src/Oep.h` | 本体の部品（Interface の基底、TLV、describe、Tail の解析） | v1 |
+| `src/OepDebug.h` | 線と target のインターフェースの共通部品（status、ピンの組） | v1 |
+| `src/OepEndpoint.*` | フレームの受け口、シリアルの口の共用（core §3.4）、名前で探すインターフェース、セッションのロック、通知、plan、複数の経路（`addTransport`、describe の transport） | v1 |
+| `src/OepBind.*` | シリアルの口に流すもの（bind: last-reset / manual / mixed） | v1 |
+| `src/OepRegistry.h` | oep-spec の生成物の写し | v1 |
+| `src/OepTarget.*` | `oep.wire.rvswd` / `oep.wire.swio`（attach / detach、connection の利用者、connections）と `oep.target.riscv-dm` | v1 |
+| `src/OepSwd.*` | `oep.wire.swd` / `oep.target.arm-adi` | v1 |
+| `src/OepConsole.*`、`src/OepStream.h` | `oep.target.console`、位置つきのストリーム、bind が運ぶストリーム（`BindSource`） | v1 |
+| `src/OepFixture.*` | `oep.fixture.gpio` / `oep.fixture.uart` | v1 |
+| `src/OepCapture.*`、`src/OepSampler.*` | `oep.fixture.capture`（P4 の PARLIO、classic ESP32 のソフトウェアのサンプラ） | v1 |
+| `src/OepConfig.*` | `oep.probe.config`（スロット、bind、NVS への保存） | v1 |
 | `src/OepDirectBulkStream.h` | EspUsbDevice の vendor bulk をゼロコピーで使う transport（キャプチャのストリーミング用） | v1 |
 | `src/OepCh32Dm.*`、`src/OepDmiPhy.h` | CH32 のデバッグモジュールの操作（halt / resume / reset、ブロック転送） | 共通 |
 | `src/OepRvswdPhy.*`、`src/OepSwioPhy.*`、`src/OepRvswdFrame.h`、`src/OepSwdFrame.h`、`src/OepRp2BitBang.h` | 線の物理層（RVSWD、SWIO、SWD の bit-bang） | 共通 |
@@ -125,15 +126,15 @@ flash の書き方やチップ固有の手順は host にある。
 | PATH | 中身 |
 |---|---|
 | `README.ja.md` | モジュールの一覧と使い方（v1 の現行） |
-| `src/oep_client/v1/host.py` | セッションの規則、要求と結果、エラーの階層、pipeline |
-| `src/oep_client/v1/link.py`、`frames.py`、`cobs.py`、`usb_stream.py`、`hid_stream.py` | transport（シリアル、USB vendor bulk、vendor HID）、フレーム、COBS + CRC、立て直し。`open_usb_host()` は vendor、HID の順に試す |
-| `src/oep_client/v1/message.py`、`registry.py` | メッセージの形、oep-spec の番号の表の写し |
-| `src/oep_client/v1/core.py`、`catalog.py`、`names.py`、`interfaces.py`、`dump.py` | インターフェースを名前で探す、describe、plan、表示 |
-| `src/oep_client/v1/riscv.py`、`arm.py`、`console.py`、`fixture.py`、`capture.py` | インターフェースごとの client |
-| `src/oep_client/v1/ch32_flash.py`、`rp2350.py`、`uiapduino.py` | target の知識（CH32 の書き込み、RP2350 の boot ROM、UIAPduino のブートローダ）。host が持つ分担の実例 |
-| `src/oep_client/v1/fake.py`、`endpoint.py` | ハードウェアなしの偽の probe（試験用） |
-| `src/oep_client/v1/target.py` | 主なものを 1 か所から import する入口 |
-| `src/oep_client/v1/esp32_targets.py`、`decode.py` | ESP32 の I2C / SPI の target の client、キャプチャのチャネルの復号（I2C） |
+| `src/oep_client/host.py` | セッションの規則、要求と結果、エラーの階層、pipeline |
+| `src/oep_client/link.py`、`frames.py`、`cobs.py`、`usb_stream.py`、`hid_stream.py` | transport（シリアル、USB vendor bulk、vendor HID）、フレーム、COBS + CRC、立て直し。`open_usb_host()` は vendor、HID の順に試す |
+| `src/oep_client/message.py`、`registry.py` | メッセージの形、oep-spec の番号の表の写し |
+| `src/oep_client/core.py`、`catalog.py`、`names.py`、`interfaces.py`、`dump.py` | インターフェースを名前で探す、describe、plan、表示 |
+| `src/oep_client/riscv.py`、`arm.py`、`console.py`、`fixture.py`、`capture.py` | インターフェースごとの client |
+| `src/oep_client/ch32_flash.py`、`rp2350.py`、`uiapduino.py` | target の知識（CH32 の書き込み、RP2350 の boot ROM、UIAPduino のブートローダ）。host が持つ分担の実例 |
+| `src/oep_client/fake.py`、`endpoint.py`、`fake_serial.py`、`fake_serve.py` | ハードウェアなしの偽の probe（動く spec。`python -m oep_client.fake_serve` で pty / TCP に出す） |
+| `src/oep_client/target.py` | 主なものを 1 か所から import する入口 |
+| `src/oep_client/esp32_targets.py`、`decode.py` | ESP32 の I2C / SPI の target の client、キャプチャのチャネルの復号（I2C） |
 | `tests/test_v1_*.py` | ハードウェアなしの試験（`uv run pytest`、134 件。v0 の client は 2026-09-26 に消した） |
 
 ## 7. 周辺のリポジトリ（参考）
@@ -165,5 +166,5 @@ flash の書き方やチップ固有の手順は host にある。
 - 「未確定」「未確認」と書いたものは、まだ確かめていない。
 - 同じことを別の文書で古い形で書いていることがある（v0 以前の比較の文書、`v1-core-wire-delta.ja.md` など）。v1 では
   `oep-core.ja.md` と `oep-if-*.ja.md` が正しく、番号は `registry/oep-v1.toml` が正しい。
-- 実装の振る舞いを確かめたいときは、probe は `src/OepV1*.cpp`、client は `src/oep_client/v1/` を見るのが早い。どちらも
+- 実装の振る舞いを確かめたいときは、probe は `src/Oep*.cpp`、client は `src/oep_client/` を見るのが早い。どちらも
   冒頭のコメントに、対応する仕様の節が書いてある。
