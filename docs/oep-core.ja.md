@@ -391,7 +391,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x46 | label | channel(u16)、text。channel の名前（NRST など） |
 | 0x47 | resets_on_open | u8。経路を開くと probe がリセットするか |
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8: USB の interface 番号、0xFF は USB でない)。probe の経路ごとに 1 つ。**必須** |
-| 0x4A | oep_pid | u8。1 = probe が OEP の専用の VID:PID でも列挙している（今の経路がそうでなくても） |
+| 0x4A | oep_pid | u8。1 = probe が host の discovery の一覧に出る形でも列挙している（今の経路がそうでなくても）: OEP の専用の VID:PID（取るまでは、iInterface が `OEP` で始まる USB の interface、§3.3） |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 USB-Serial/JTAG、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
   1〜3 がシリアルの口（§3.4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
