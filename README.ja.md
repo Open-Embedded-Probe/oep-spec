@@ -9,6 +9,10 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 [oep-client-python](https://github.com/Open-Embedded-Probe/oep-client-python)）はこれに合わせてあり、実機で確かめています。まだ公開した
 仕様ではなく、破壊的な変更を前提にしています。文書は日本語が先で、英語版は固まってから作ります。
 
+2026-09-29 に、シリアルの口で OEP のフレームと target のコンソールを 1 本で運ぶ形（core §3.4）と、スロットと bind の登録
+（`oep.probe.config`）を入れました。実装は、Arduino のライブラリ `OpenEmbeddedProbe`（oep-probe-arduino）と、Python の host
+（`pip install oep-client-python`、`import oep_client`、`oep` の命令と偽の probe）です。
+
 上流の合意（project名、相互運用を中心とする目的、機能に必要な通信経路を OEP native path または明示的な external binding として
 扱う原則、非互換な派生を OEP として識別しない原則）は、下の「プロジェクトの目的と範囲」などにあります。
 

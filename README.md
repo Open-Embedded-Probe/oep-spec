@@ -17,10 +17,11 @@ The work begins by defining the problem, purpose, meaning of interoperability, s
 - [Project purpose and scope](docs/project-concept.md)
 - [Research and transition memo](memo.md)
 
-Implementation-repository structure currently under consideration:
+**Update (2026-09-29):** serial ports now carry OEP frames and a target's console on one line (core §3.4), and probes
+register slots and binds (`oep.probe.config`). Implementations:
 
-- [oep-probe-arduino](https://github.com/Open-Embedded-Probe/oep-probe-arduino) — Arduino probe implementation
-- [oep-client-python](https://github.com/Open-Embedded-Probe/oep-client-python) — Python client library and reference CLI
+- [oep-probe-arduino](https://github.com/Open-Embedded-Probe/oep-probe-arduino) — the Arduino library `OpenEmbeddedProbe` and probe firmware
+- [oep-client-python](https://github.com/Open-Embedded-Probe/oep-client-python) — the Python host (`pip install oep-client-python`, `import oep_client`), the `oep` command and a fake probe
 
 ## Current documentation and language approach
 
