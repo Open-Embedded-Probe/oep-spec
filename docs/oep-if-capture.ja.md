@@ -8,9 +8,16 @@
 |---|---:|---|
 | `oep.fixture.capture` | 1 | ロジック（1 トラック） |
 | `oep.fixture.analog` | 1 | アナログ（1 トラック） |
+| `oep.fixture.capture-group` | 1 | 複数のトラックを一緒に始める（ミックスドシグナル、§4） |
 
-2 つは**操作の番号と形が同じ**で、違うのは configure の中身（§3.3）とデータの layout（§1）だけ。複数トラックの同時開始と時刻
-合わせ（ミックスドシグナル）、外部クロック、多段トリガなどは、この 2 つを広げず別の定義にする（[設計](logic-capture.ja.md) §0.1）。
+capture と analog は**操作の番号と形が同じ**で、違うのは configure の中身（§3.3）、データの layout（§1）、アナログだけの
+calibration（§3.8）だけ。複数トラックの同時開始と時刻合わせは、この 2 つを広げず、トラックを束ねる別のインターフェース
+（capture-group、§4）にする。外部クロック、多段トリガなどは別の定義（[設計](logic-capture.ja.md) §0.1）。
+
+**時刻**: どのトラックの時刻も、probe の 1 本の時計（起動からの ns、u64 で一周しない）で表す。インターフェースが違っても同じ
+時計なので、host は時刻の引き算でトラックを並べられる。時刻は**推定値と不確かさ**で返す。probe は知っている補正（ドライバが最初の
+変換フレームを捨てる、など）を済ませた値を返し、それ以上の精度は約束しない。最後の合わせ込み（トラック間のオフセットと時間の
+倍率）は host の分析の仕事（同じ信号を 2 つのトラックで取る、目印のパルスを全部のトラックで取る、など）。
 モード（ワンショット、リピート、ストリーミング）の意味は [設計](logic-capture.ja.md) §2.4、レートの決め方は同 §2.10。
 
 ## 1. データの形
@@ -97,7 +104,7 @@ configure の応答で probe が返す値:
 | ストリーミング | probe の都合の区切り（DMA の 1 回ぶんなど）。データは probe が送ってくる（§3.4） |
 
 ```text
-segment : serial(u32), position(u64), samples(u32), start_us(u64), trigger_index(u32), flags(u8)      29 byte
+segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncertainty_ns(u32), trigger_index(u32), flags(u8)   33 byte
 ```
 
 | フィールド | 意味 |
@@ -105,7 +112,8 @@ segment : serial(u32), position(u64), samples(u32), start_us(u64), trigger_index
 | serial | start からの区画の通し番号（0 から） |
 | position | 区画の先頭のバイト位置（start から通し、u64 で一周しない。read と通知の position と同じ空間） |
 | samples | 区画のサンプル数（stop で途中で終わった区画は短い） |
-| start_us | 区画の最初のサンプルの時刻（probe の起動からの µs、u64 で一周しない） |
+| start_ns | 区画の最初のサンプルの時刻の推定値（probe の時計: 起動からの ns、u64 で一周しない）。probe が知っている補正を済ませた値 |
+| start_uncertainty_ns | start_ns の不確かさ（±ns）。probe が見積もれる範囲の目安で、保証ではない |
 | trigger_index | 区画の中でトリガが立ったサンプルの番号。トリガを含まない区画は 0xFFFFFFFF |
 | flags | bit0 前の区画との間が空いた（リピートで空き区画がなかった、ストリーミングで押し出された）、bit1 短い（stop で終わった）、bit2 区画の中でサンプルの時刻が configure の timing（jitter_ns）を超えてずれた（ソフトウェアの歩調で遅れたサンプルがある） |
 
@@ -135,6 +143,7 @@ segment : serial(u32), position(u64), samples(u32), start_us(u64), trigger_index
 | 0x07 | segments | from_serial(u32) | count(u8)、区画の情報の並び（§2） | 不要 |
 | 0x08 | release | serial(u32) | —（serial 以前の区画を使い回してよい） | 必要 |
 | 0x09 | query | 設定の TLV（configure と同じ） | 実際の値の TLV（設定はしない） | 不要 |
+| 0x0A | calibration | — | 較正の情報の TLV（§3.8）。アナログだけ（ロジックは unknown_operation） | 不要 |
 
 - state: 0 未設定、1 設定済み、2 トリガ待ち、3 取得中、4 完了（ワンショット）、5 止まっている（リピートで空き区画なし）、
   6 エラー。
@@ -177,6 +186,8 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | 0x57 | skew | role(u8)、skew_ns(u32)。チャネルごとに 1 つ（遅れが 0 のチャネルは省いてよい） | アナログ |
 | 0x55 | scale | role(u8)、zero(u32、値)、scale_nv(u32、1 値あたりの nV)。チャネルごとに 1 つ | アナログ |
 | 0x56 | blocking_ms | u32（取っている間 probe が答えない時間の見込み。0 なら答える） | 両方 |
+| 0x58 | frontend_used | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。値の意味（測れる範囲、減衰）はその frontend の宣言で決まる | アナログ |
+| 0x59 | reference | source(u8: 0 電源、1 内部、2 外部)、mv(u32)、how(u8: 0 公称、1 測った)。ADC の基準電圧。電源が基準の ADC では、同じ生の値の意味が電源電圧で変わる。scale の 1 次式はこの電圧を前提にした換算 | アナログ |
 | 0x7F | ignored | tag(u8) の並び（core §2.3 の全文脈共通の ignored） | 両方 |
 
 ### 3.4 通知（core §11）
@@ -188,7 +199,7 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 |---|---|---|
 | 出来事 kind 0x01 segment | 区画が終わった（ワンショットの完了も。ストリーミングでは送らない） | 区画の情報（§2） |
 | 出来事 kind 0x02 stopped | 取得が止まった | reason(u8: 0 完了、1 host の stop、2 空き区画なし、3 エラー) |
-| 出来事 kind 0x03 triggered | トリガが立った | serial(u32)、trigger_index(u32) |
+| 出来事 kind 0x03 triggered | トリガが立った | serial(u32)、trigger_index(u32)、trigger_ns(u64: probe の時計でトリガが立った時刻の推定値) |
 | データ（role 0x06） | ストリーミングの間だけ | position(u64) と data（[共通部品](oep-if-common.ja.md) §1.5 の形。read と同じ位置の空間） |
 
 - ストリーミングは subscribe が前提（データは probe が送る）。まとめて送る条件（min_bytes、max_delay_ms）は subscribe で
@@ -206,7 +217,7 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | 0x43 | rate_limit | mode(u8)、channels(u8)、max_hz(u32)（条件ごとの上限。繰り返してよい） |
 | 0x44 | channels | max(u8)、layout の候補（ロジック: w のビット集合。アナログ: s の候補） |
 | 0x45 | trigger | type のビット集合、max_pretrigger(u32) |
-| 0x46 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)。入力範囲の候補ごとに 1 つ（アナログ）。番号は configure の frontend で選ぶ。候補が 1 つだけの probe はそれだけ書く |
+| 0x46 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)、attenuation_mdb(u32: 前段の減衰、ミリ dB。0 は減衰なし、0xFFFFFFFF は減衰で表せない前段)。入力範囲の候補ごとに 1 つ（アナログ）。番号は configure の frontend で選ぶ。候補が 1 つだけの probe はそれだけ書く |
 | 0x49 | frontend_shared | u8: 1 = すべてのチャネルが同じ frontend しか使えない（違う指定は configure で断る） |
 | 0x47 | max_read | u32 |
 | 0x48 | segment_ring | u16（覚えている区画の情報の数） |
@@ -215,8 +226,8 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 
 ### 3.6 別の定義に回したもの
 
-[設計](logic-capture.ja.md) §0.1 の表のとおり。この文書の前の版で configure に入れていた次の TLV は、基本から外した: トラック（複数トラック）、
-外部クロック、多段トリガの段と条件、トリガ出力。役割の 0xC0〜（外部クロック、修飾、トリガ入出力）も同じ。別の定義を
+[設計](logic-capture.ja.md) §0.1 の表のとおり。この文書の前の版で configure に入れていた次の TLV は、基本から外した: トラック（複数トラック。
+今は capture-group、§4）、外部クロック、多段トリガの段と条件、トリガ出力。役割の 0xC0〜（外部クロック、修飾、トリガ入出力）も同じ。別の定義を
 書くときに、そちらで番号を振る。
 
 - モード、トリガの type、layout の形式は、それぞれ 0x40 以降を別の定義に残す。
@@ -247,5 +258,92 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
   configure(mode=3, rate=44100, frontend(role 0, 番号 2))
     → actual_rate 44642/1 など（[設計](logic-capture.ja.md) §7.4 のとおり要求どおりにはならない）、layout s=16 o=0 b=12
   subscribe(analog, min_bytes=1024, max_delay_ms=20) → start → データが届く
+```
+
+### 3.8 calibration（アナログ）
+
+ADC の値を電圧に換算するための、probe が持っている情報を**生のまま**返す。probe は補正を適用しない（read の値はいつも生の値。
+換算は host が選ぶ。曲線の補正は測れる範囲の上下を削ることがあり、保存の段階で強制しない）。持たない情報は返さない。
+
+| tag | 名前 | 値 |
+|---|---:|---|
+| 0x01 | factory | frontend(u8)、scheme_len(u8)、scheme(text)、raw(残り)。出荷時の較正の値（ESP32 の eFuse など）を、読んだまま。scheme は形式の名前で、形式の持ち主の名前空間に置く（例 `com.espressif.esp32.two-point`、`com.espressif.esp32p4.curve-fitting.v1`）。raw の解釈は scheme の定義に従う。frontend ごとに 1 つ（frontend に依らないものは 0xFF） |
+| 0x02 | vrefint | raw(u32)、ns(u64)。内部の基準電圧（Vrefint など）を、最後の start の直後に同じ ADC で測った生の値と、その時刻。基準電圧が電源の ADC で、実際の電源電圧を逆算するのに使う。測れない probe は返さない |
+
+- チップの型番とリビジョンは core の describe の chip（core §7.5）、firmware の版は同じく firmware。
+- frontend ごとの減衰と測れる範囲は describe の frontend（§3.5）、チャネルごとに選ばれた frontend は configure の応答の
+  frontend_used、基準電圧は reference（§3.3）。
+
+## 4. `oep.fixture.capture-group`（複数のトラックを一緒に始める）
+
+ロジックとアナログ、アナログ同士（2 つの ADC）など、**別々のインターフェースのトラックを、1 回のキャプチャとして一緒に始める**。
+各トラックは今までどおり自分の configure を持ち、データも自分で読む（read、segments、release、status）。組が持つのは、どの
+トラックを束ねるか、どのトラックのトリガで始めるか、組の開始と停止だけ。時刻はどのトラックも probe の 1 本の時計（冒頭の「時刻」）
+なので、組の開始（start_ns）と各トラックの区画の start_ns の差が、そのトラックのずれになる。
+
+### 4.1 操作
+
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x01 | bind | n(u8)、n × fn(u16)、[TLV] | — | 必要 |
+| 0x02 | start | — | blocking_ms(u32)、start_ns(u64) | 必要 |
+| 0x03 | stop | — | — | 必要 |
+| 0x04 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
+| 0x05 | status | — | state(u8)、start_ns(u64)、trigger_ns(u64)、trigger_fn(u16) | 不要 |
+
+bind の TLV:
+
+| tag | 名前 | 値 |
+|---:|---|---|
+| 0x01 | trigger_track | fn(u16)。組の開始の条件を持つトラック（そのトラックの configure の trigger と pretrigger）。無ければ即時 |
+
+- **bind** は、configure 済みのトラック（`oep.fixture.capture` / `oep.fixture.analog` の fn）を束ねる。n = 0 で解く。束ねられない組
+  （宣言に無い fn、同じ fn の重複、configure していない、モードが揃っていない、trigger_track 以外が即時でないトリガを持つ、
+  budget を超える）は、何も変えずに rejected unavailable。束ねている間、各トラックの configure、start、stop、force は
+  rejected unavailable（組の op を使う。configure し直すときは、いったん n = 0 で解く）。
+- **start** は、束ねたトラックをできるだけ同時に始め、組の開始の時刻 start_ns（probe の時計）を返す。トラック k の最初の区画の
+  start_ns − 組の start_ns が、そのトラックのずれ（推定値。不確かさは区画の start_uncertainty_ns）。
+- **トリガ**: trigger_track の条件が立つと、組の全トラックが取得を始める（各トラックの pretrigger は、そのトラック自身の
+  サンプル数で残す）。立った時刻 trigger_ns は status と出来事 triggered で返し、**全トラックの、その時刻を含む区画の
+  trigger_index を、そのトラックでその時刻に最も近いサンプルにする**（probe が各トラックの時間軸に写す）。host はどのトラックでも
+  同じ瞬間の位置を知る。
+- **stop** は全トラックを止める。区画はトラックごとに（短い区画は flags bit1）。
+- status の state は capture と同じ値（§3.2）で、組全体の状態（全トラックが完了したら完了）。trigger_ns は立っていなければ
+  0xFFFFFFFFFFFFFFFF、trigger_fn は 0。
+- モードは全トラックで同じ（ワンショット、リピート、ストリーミング）。リピートの release とストリーミングの push は、トラック
+  ごとに今までどおり。
+
+### 4.2 通知
+
+組の fn を subscribe すると、組の出来事が届く（各トラックの出来事は、そのトラックを subscribe したときに届く）。
+
+| 送るもの | いつ | 中身 |
+|---|---|---|
+| 出来事 kind 0x01 triggered | trigger_track の条件が立った | trigger_fn(u16)、trigger_ns(u64) |
+| 出来事 kind 0x02 stopped | 全トラックが止まった | reason(u8: capture の stopped と同じ) |
+
+### 4.3 describe で宣言するもの
+
+| tag | 名前 | 値 |
+|---|---|---|
+| 0x40 | tracks | n × fn(u16)。束ねられるトラック |
+| 0x41 | max_tracks | u8。1 つの組に入れられるトラックの数 |
+| 0x42 | budget | max_rate(u32、チャネル数 × レートの合計の上限、sample/s)、n × fn(u16)。挙げた fn を一緒に束ねたときに分け合う上限（繰り返してよい。例: 1 つの ADC を 2 つのトラックで使う、DMA を分け合う） |
+| 0x43 | start_skew | fn(u16)、typical_ns(u32)。そのトラックの開始が組の開始から遅れる目安（区画の start_ns で実際の値が分かるので、表示のため） |
+
+- どのトラックの組が束ねられるかは tracks と budget で宣言し、確かめたいときは bind を試す（断られても何も変わらない）。
+- 1 つのトラックの中の複数チャネル（1 つの ADC を順番に切り替える）は今までどおり、そのトラックの order と skew（§1.2、§3.3）。
+
+### 4.4 使い方の例
+
+```text
+ロジック 2 本（20 MHz）とアナログ 1 本（48 kHz）を一緒に、ロジックの ch1 の立ち下がりで（1000 サンプル前から）
+  plan_apply(capture: role0 = GPIO20, role1 = GPIO21; analog: role0 = GPIO16)
+  capture.configure(mode=1, rate=20 MHz, samples=200000, trigger(edge, role1, fall), pretrigger=1000)
+  analog.configure(mode=1, rate=48000, samples=4800, pretrigger=48)
+  group.bind(capture, analog, trigger_track=capture)
+  group.start → start_ns
+  出来事 triggered(capture, trigger_ns) → 各トラックの segment（trigger_index はどちらも trigger_ns の位置）
+  各トラックを read → host は start_ns の差と trigger_index で並べる
 ```
 

@@ -122,6 +122,7 @@ resets_on_open = 0x47
 transport = 0x49                # index(u8) kind(u8) interface(u8, 0xFF not USB): one per transport; required
 oep_pid = 0x4A                  # u8: 1 = the probe also enumerates with the OEP VID:PID
 plan_roles = 0x4B               # u16: the most role assignments the plan holds at once, every fn together (core §8)
+chip = 0x4C                     # text: the probe MCU's part and revision (optional)
 [interface.enum.transport_kind] # describe transport (core §7.5); 1-3 are serial ports (core §3.4)
 uart_bridge = 1
 usb_cdc = 2
@@ -440,6 +441,7 @@ op = [
   { code = 0x07, name = "segments", lock = false },
   { code = 0x08, name = "release", lock = true },
   { code = 0x09, name = "query", lock = false },
+  { code = 0x0A, name = "calibration", lock = false },
 ]
 [interface.tlv.configure]       # also the request of query
 mode = 0x40
@@ -458,6 +460,11 @@ timing = 0x54
 scale = 0x55
 blocking_ms = 0x56
 skew = 0x57                     # analog: role(u8) skew_ns(u32), one per channel
+frontend_used = 0x58            # role(u8) frontend(u8): the frontend each channel took, one per channel
+reference = 0x59                # source(u8: 0 supply / 1 internal / 2 external) mv(u32) how(u8: 0 nominal / 1 measured)
+[interface.tlv.calibration_answer]   # oep-if-capture §3.8: raw, never applied by the probe
+factory = 0x01                  # frontend(u8, 0xFF any) scheme_len(u8) scheme(text) raw(rest)
+vrefint = 0x02                  # raw(u32) ns(u64): the internal reference measured at the last start
 [interface.tlv.describe]        # plus the common tags (features 0x06: bit0 query, bit1 force, bit2 notifications)
 mode = 0x40
 rate_range = 0x41
@@ -465,7 +472,7 @@ rate_list = 0x42
 rate_limit = 0x43
 channels = 0x44
 trigger = 0x45
-frontend = 0x46                 # analog: frontend(u8) range_min_mv(i32) range_max_mv(i32), one per input range
+frontend = 0x46                 # analog: frontend(u8) range_min_mv(i32) range_max_mv(i32) attenuation_mdb(u32), one per input range
 max_read = 0x47
 segment_ring = 0x48
 frontend_shared = 0x49          # analog: u8 1 = every channel takes the same frontend
@@ -483,6 +490,10 @@ level = 1
 edge = 2
 cross_up = 3
 cross_down = 4
+[interface.enum.reference_source]
+supply = 0
+internal = 1
+external = 2
 [interface.enum.state]
 unconfigured = 0
 configured = 1
@@ -500,6 +511,27 @@ error = 3
 gap = 0x01
 short = 0x02
 slipped = 0x04                     # the time base bent inside the segment (samples later than the timing answer)
+
+[[interface]]
+name = "oep.fixture.capture-group"     # oep-if-capture §4: capture / analog tracks started together (mixed signal)
+revision = 1
+op = [
+  { code = 0x01, name = "bind", lock = true },
+  { code = 0x02, name = "start", lock = true },
+  { code = 0x03, name = "stop", lock = true },
+  { code = 0x04, name = "force", lock = true },
+  { code = 0x05, name = "status", lock = false },
+]
+[interface.tlv.bind]
+trigger_track = 0x01            # fn(u16): the track whose configure trigger starts the group (absent: immediate)
+[interface.tlv.describe]
+tracks = 0x40                   # n x fn(u16): the tracks it can bind
+max_tracks = 0x41               # u8
+budget = 0x42                   # max_rate(u32, channels x rate summed, sample/s) n x fn(u16): shared when bound together
+start_skew = 0x43               # fn(u16) typical_ns(u32): how late that track starts after the group (display)
+[interface.event]
+triggered = 0x01                # trigger_fn(u16) trigger_ns(u64)
+stopped = 0x02                  # reason(u8): as the capture's stopped
 
 [[interface]]
 name = "oep.probe.config"
