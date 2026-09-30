@@ -378,6 +378,8 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 
 - どのピンにも割り当てられる機能は role_channels に候補を並べ、ピンの組が決まっている機能は channel_group を組の数だけ書く。
   両方を書いた場合、plan は channel_group のどれかに一致し、かつ role_channels の候補にも入っていなければならない。
+  role_channels が縛るのは、それが挙げる role だけである（role_channels に無い role は channel_group だけで決まり、channel_group に
+  無い role は role_channels だけで決まる）。
 - 同じ宣言は、plan を使わずにピンを引数で選ぶインターフェース（線の attach の pins など）でも、選べるピンの宣言として使う。
 - plan の要求の role_assignment（0x90）は plan_apply の文脈の tag（§8）で、describe の tag ではない。
 
