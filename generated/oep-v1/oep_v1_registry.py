@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "d6a6cc497163f99f"
+REGISTRY_HASH = "a16eaef3ddc6da64"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -64,5 +64,5 @@ FIXTURE_CAPTURE_GROUP = _NS(name="oep.fixture.capture-group", revision=1, op={"b
     closed_tail={}, tlv={"bind": {"trigger_track": 0x01}, "describe": {"tracks": 0x40, "max_tracks": 0x41, "budget": 0x42, "start_skew": 0x43}}, event={"triggered": 0x01, "stopped": 0x02}, enum={}, own={})
 INTERFACES["oep.fixture.capture-group"] = FIXTURE_CAPTURE_GROUP
 PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, op={"get": 0x01, "set": 0x02, "save": 0x03, "erase": 0x04}, lock_free={0x01},
-    closed_tail={}, tlv={"item": {"plan": 0x01, "label": 0x02, "idle": 0x03, "slot": 0x04, "bind": 0x05}, "describe": {"storage": 0x40, "items": 0x41, "slots_max": 0x42, "bind_modes": 0x43, "slot_state": 0x44, "bind_state": 0x45}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02}, "slot_attach": {"host": 0x00, "at_boot": 0x01}, "slot_state": {"connected": 0x00, "absent": 0x01, "lock_mismatch": 0x02, "no_target_id": 0x03}, "bind_mode": {"last_reset": 0x00, "manual": 0x01, "mixed": 0x02}, "bind_stream": {"slot_console": 0x01, "fixture_uart": 0x02}, "bind_flow": {"idle": 0x00, "streaming": 0x01, "held": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}}, own={})
+    closed_tail={}, tlv={"item": {"plan": 0x01, "label": 0x02, "idle": 0x03, "slot": 0x04, "bind": 0x05}, "describe": {"storage": 0x40, "items": 0x41, "slots_max": 0x42, "bind_modes": 0x43, "slot_state": 0x44, "bind_state": 0x45}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02}, "slot_attach": {"host": 0x00, "at_boot": 0x01}, "slot_state": {"connected": 0x00, "absent": 0x01, "lock_mismatch": 0x02, "no_target_id": 0x03}, "bind_mode": {"last_reset": 0x00, "manual": 0x01, "mixed": 0x02}, "bind_stream": {"slot_console": 0x01, "fixture_uart": 0x02}, "bind_flow": {"idle": 0x00, "streaming": 0x01, "held": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}, "storage_unreadable": {"form": 0x01, "interface": 0x02, "refused": 0x03}}, own={})
 INTERFACES["oep.probe.config"] = PROBE_CONFIG
