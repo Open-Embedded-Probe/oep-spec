@@ -33,7 +33,8 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
     取ろうとすれば rejected unavailable（core §8.1）。
   - scan の応答の `tried` は、要求の並び（count = 0 なら上の count = 0 の並び。channel_group の線では describe に出した順）の
     先頭から試し終えた組の数。1 回に試すのは多くても 255 組（tried は u8）。見つかった組で応答が 1 フレームに入らなくなりそう
-    なら、probe はそこで止める。組を並べた要求で tried が並びの数より少なければ、host は残りの組でもう一度 scan を送る。
+    なら、probe はそこで止める。**1 回の応答に時間を掛けすぎるときも、probe は途中で止めてよい**（目安 500 ms。応答が遅れると
+    host の時間切れになる。bit-bang で 1 組ずつ試す probe は、全部の組に数秒かかる）。tried ≥ 1 なら、host は続きを送る。組を並べた要求で tried が並びの数より少なければ、host は残りの組でもう一度 scan を送る。
   - **count = 0 の続き**: count = 0 の要求は TLV skip（0x01、u16）で、count = 0 の並びの先頭から飛ばす数を渡せる（無ければ 0）。
     host は skip に今までの tried の和を渡して続け、**tried = 0 が返ったら終わり**。並びは要求のときの持たれ方で決まるので、
     途中で plan などが変われば、組が抜けたり重なったりしうる（host は scan の間ほかを変えない）。count > 0 に skip を付けた
