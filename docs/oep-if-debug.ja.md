@@ -164,6 +164,13 @@ target_id の scheme（rvswd / swio）: 1 = WCH の DM の DMI 0x7F を読んだ
   resumereq は 1 回だけ出し、出し直さない。見えなければ status state。
   - target によっては、これで足りない（allresumeack を立てない target がすぐ breakpoint で止まり直す、1 回の resumereq で出ない
     ことがある）。その扱い（dpc を読んで、動いていなければもう一度 resume する、など）は target を知っている host が行う。
+- **DATA0 / DATA1 は target のものとして返す**: hart が止まっている間に probe が abstract command（read_block など）で
+  DATA0 / DATA1 を使うと、target がそこに出していた語（dmseq などのコンソールのフレームや答え）が消え、target は resume の後、
+  自分の語が無いのを沈黙と読んでタイムアウトまで待つ（X035、別の client の halt → read_block → resume の後にコンソールが
+  数秒黙った、2026-09-30）。probe は、hart が止まったのを最初に見たとき（halt、またはすでに止まっていた hart への halt）の
+  DATA0 / DATA1 を覚えておき、resume（と step）で hart を走らせる前に、DATA1、DATA0 の順に書き戻す。reset（reset の op、
+  attach_under_reset）は target を始めからやり直させるので、覚えた値を捨てる。host が raw の DMI（dmi の op）で走らせた
+  ときは書き戻さない（probe は覚えた値を捨てる）。
 - **step** は dcsr.step を立てて resume を 1 回だけ出す。dpc が動かなくても失敗にしない（status ok、moved = 0。自分自身へ
   跳ぶ命令は正しく進んでも dpc が同じなので、host が命令を読んで判断する）。hart が debug mode に戻らないときは status state。
   prv は変えない。
