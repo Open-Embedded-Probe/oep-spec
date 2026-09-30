@@ -384,6 +384,7 @@ actual_segments = 0x53
 timing = 0x54
 scale = 0x55
 blocking_ms = 0x56
+rate_accuracy = 0x5A            # how(u8: 0 computed / 1 measured) ppm(u32, 0 unknown)
 skew = 0x57                     # analog: role(u8) skew_ns(u32), one per channel
 [interface.tlv.describe]        # plus the common tags (features 0x06: bit0 query, bit1 force, bit2 notifications)
 mode = 0x40
@@ -460,6 +461,7 @@ timing = 0x54
 scale = 0x55
 blocking_ms = 0x56
 skew = 0x57                     # analog: role(u8) skew_ns(u32), one per channel
+rate_accuracy = 0x5A            # how(u8: 0 computed / 1 measured) ppm(u32, 0 unknown)
 frontend_used = 0x58            # role(u8) frontend(u8): the frontend each channel took, one per channel
 reference = 0x59                # source(u8: 0 supply / 1 internal / 2 external) mv(u32) how(u8: 0 nominal / 1 measured)
 [interface.tlv.calibration_answer]   # oep-if-capture §3.8: raw, never applied by the probe
