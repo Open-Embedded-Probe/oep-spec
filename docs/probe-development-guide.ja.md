@@ -35,6 +35,11 @@
   ring（下の層が 1 回に置く量 × 2 以上）の両方。足りないと frame の途中がこぼれ、以後の区切りがずれる
   （P4 の direct build で、8 KiB の ring に 16 KiB の要求が来てこぼれた）。
 - 線の速さは core の link_source / link_sink（[core](oep-core.ja.md) §12）で測れる。受信・送信の経路を変えたら測り直す。
+- **vendor bulk の OUT を、ZLP で終わる大きな転送として受けない。** host は packet の倍数の書き込みの後に ZLP を続ける
+  （core §3.1）が、ESP32-P4（TinyUSB の dwc2、EspUsbDevice の direct build）で 16 KiB の OUT の転送を張り ZLP を終わりの印に
+  すると（`CFG_TUD_VENDOR_RX_NEED_ZLP=1`）、ちょうど 512 byte の倍数で終わる要求の完了が次の OUT まで遅れ、probe は答えなかった
+  （2026-09-30、X035 の治具、1024 byte の write_block）。packet ごとに受ければ（`=0`）、どの packet もすぐ届き、ZLP は長さ 0 の
+  完了として読み飛ばされる。
 
 ## 2.5 OEP の口にほかのものを出さない・誰も読まない口で止まらない
 
