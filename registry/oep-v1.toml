@@ -170,6 +170,9 @@ halt = 1
 swdio = 1
 swclk = 2
 reset = 3                       # a channel attach_under_reset may take; no default (oep-if-debug §3)
+[interface.enum.idle_clock]     # the idle_clock TLV and probe.config's slot field
+high = 0
+low = 1
 
 [[interface]]
 name = "oep.wire.swio"
