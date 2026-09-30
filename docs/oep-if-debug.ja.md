@@ -38,8 +38,9 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
     host は skip に今までの tried の和を渡して続け、**tried = 0 が返ったら終わり**。並びは要求のときの持たれ方で決まるので、
     途中で plan などが変われば、組が抜けたり重なったりしうる（host は scan の間ほかを変えない）。count > 0 に skip を付けた
     要求は rejected malformed。
-  - attach / attach_under_reset は pins（TLV 0x03、critical）で組を指定する。pins が無ければ、許す組が 1 つだけならその組、
-    2 つ以上なら rejected unavailable（host が選ぶ）。
+  - attach / attach_under_reset は pins（TLV 0x03、critical）で組を指定する。pins が無ければ、その線の生きている接続が 1 つ
+    だけならその組（既存の接続に乗る。スロットが持っている接続でもよい）、生きている接続が無く許す組が 1 つだけならその組、
+    それ以外（生きている接続が 2 つ以上、または接続が無く許す組が 2 つ以上）は rejected unavailable（host が選ぶ）。
   - **許していない組は、何も実行せずに rejected unavailable**（scan は要求の中に 1 つでもあれば全体を断る）。
 - **同時に持てる接続の数**: wire のインターフェースは describe の max_connections（tag 0x40、u8）で宣言する。宣言が無ければ 1。
   ロックは probe に 1 つのまま（接続ごとのロックは無い）。
