@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "049bd156b4775990"
+REGISTRY_HASH = "dd6d527421bb6206"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -34,7 +34,7 @@ WIRE_SWD = _NS(name="oep.wire.swd", revision=1, op={"scan": 0x01, "attach": 0x02
     closed_tail={}, tlv={"describe": {"max_connections": 0x40}, "detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "targetsel": 0x02, "pins": 0x03}}, event={}, enum={"connection_users": {"host_session": 0x01, "slot": 0x02}, "pin_role": {"swdio": 0x01, "swclk": 0x02}}, own={})
 INTERFACES["oep.wire.swd"] = WIRE_SWD
 TARGET_RISCV_DM = _NS(name="oep.target.riscv-dm", revision=1, op={"dmi": 0x01, "halt": 0x02, "resume": 0x03, "reset": 0x04, "read_block": 0x05, "write_block": 0x06, "run": 0x07, "step": 0x08}, lock_free={},
-    closed_tail={}, tlv={"describe": {"clobbers": 0x40}, "reset": {"method": 0x01}}, event={}, enum={"dmi_step": {"write": 0x01, "read": 0x02, "poll_reads": 0x03, "wait_us": 0x04, "poll_us": 0x05}, "reset_mode": {"run": 0x00, "run_verified": 0x01, "halt_at_reset": 0x02}, "reset_method": {"probe_default": 0x00, "ndmreset": 0x01, "system_reset": 0x02}}, own={})
+    closed_tail={}, tlv={"describe": {}, "reset": {"method": 0x01}}, event={}, enum={"dmi_step": {"write": 0x01, "read": 0x02, "poll_reads": 0x03, "wait_us": 0x04, "poll_us": 0x05}, "reset_mode": {"run": 0x00, "run_verified": 0x01, "halt_at_reset": 0x02}, "reset_method": {"probe_default": 0x00, "ndmreset": 0x01, "system_reset": 0x02}}, own={})
 INTERFACES["oep.target.riscv-dm"] = TARGET_RISCV_DM
 TARGET_ARM_ADI = _NS(name="oep.target.arm-adi", revision=1, op={"transfer": 0x01, "read_block": 0x02, "write_block": 0x03}, lock_free={},
     closed_tail={}, tlv={}, event={}, enum={}, own={})

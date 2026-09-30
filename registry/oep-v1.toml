@@ -246,7 +246,6 @@ op = [
   { code = 0x08, name = "step", lock = true },
 ]
 [interface.tlv.describe]        # plus the common tags (features 0x06: bit0 block read/write, bit1 run, bit2 reset, bit3 step)
-clobbers = 0x40                 # regno(u16) list: the GPRs block read / write leave changed
 [interface.tlv.reset]
 method = 0x01
 [interface.reserved]

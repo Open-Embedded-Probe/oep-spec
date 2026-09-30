@@ -219,8 +219,13 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 - **読みの意味**: read_block は target のバスを通して読む。probe の側に写しを持たない（直前の write_block、dmi、run で target が
   書いたものを反映する）。保証するのは probe の側だけで、target 自身の cache や prefetch の像は範囲の外（host のチップの知識の側）。
 - **前提**: hart が止まっていること（止まっていなければ status state）。番地は、止まっている hart が M モードで使う番地。
-- **副作用**: probe は GPR、program buffer、DATA のレジスタを使ってよく、元に戻さない。使う GPR は describe の clobbers
-  （tag 0x40、regno(u16) の並び）で宣言する。abstractauto は 0 に戻す。host は、残したい値を前後で保存する。
+- **副作用**: probe は GPR、program buffer、DATA のレジスタを使ってよい。ただし **hart を走らせる前（resume、step）に、止まって
+  いた間に使った GPR を、止まったときの値に戻す**（DATA は §4.2 のとおり）。host が何も保存しなくても、halt → read_block →
+  resume で target の状態は変わらない。戻さないと、target は止まった場所によってはレジスタを壊されて走り続ける（X035、
+  sketch のループに 10 ms おきの halt → read_block → resume を 109 回挟むと sketch が死んだ、2026-09-30）。program buffer は
+  戻さない（target は使わない）。abstractauto は 0 に戻す。reset は覚えた値を捨てる（§4.2 と同じ）。
+- run（§4.4）は host の指定したレジスタで host のローダーを走らせるもので、その間に変わった GPR、dcsr は戻さない（host の責任）。
+  run の前に block の op が使った GPR は、run の後の resume で戻す。
 
 ### 4.6 RISC-V の connection の扱い
 
