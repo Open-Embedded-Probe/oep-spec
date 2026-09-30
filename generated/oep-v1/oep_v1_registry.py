@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "7ba704094c2898d2"
+REGISTRY_HASH = "bb6820106b9d08a6"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -22,7 +22,7 @@ TIMING = {"resync_quiet_ms": 0x32, "probe_frame_gap_ms": 0xC8, "host_frame_pause
 
 INTERFACES = {}
 CORE = _NS(name="oep.core", revision=1, op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "plan_apply": 0x04, "plan_release": 0x05, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13, "subscribe": 0x30, "unsubscribe": 0x32, "link_source": 0x40, "link_sink": 0x41}, lock_free={0x01, 0x02, 0x03, 0x10, 0x13, 0x40, 0x41},
-    closed_tail={0x40}, tlv={"plan_apply": {"role_assignment": 0x90}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "transport": 0x49, "oep_pid": 0x4A}}, event={"heartbeat": 0x01}, enum={"transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}}, own={})
+    closed_tail={0x40}, tlv={"plan_apply": {"role_assignment": 0x90}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "transport": 0x49, "oep_pid": 0x4A, "plan_roles": 0x4B}}, event={"heartbeat": 0x01}, enum={"transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}}, own={})
 INTERFACES["oep.core"] = CORE
 WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "attach_under_reset": 0x04, "connections": 0x05}, lock_free={0x05},
     closed_tail={}, tlv={"describe": {"max_connections": 0x40}, "detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "pins": 0x03}, "attach_under_reset": {"max_speed": 0x01, "pins": 0x03}, "attach_answer": {"target_id": 0x10}}, event={}, enum={"connection_users": {"host_session": 0x01, "slot": 0x02}, "target_id_scheme": {"wch_dmi_7f": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02}}, own={})

@@ -395,6 +395,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x47 | resets_on_open | u8。経路を開くと probe がリセットするか |
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8: USB の interface 番号、0xFF は USB でない)。probe の経路ごとに 1 つ。**必須** |
 | 0x4A | oep_pid | u8。1 = probe が host の discovery の一覧に出る形でも列挙している（今の経路がそうでなくても）: OEP の専用の VID:PID（取るまでは、iProduct が `OEP` で始まる device、§3.3） |
+| 0x4B | plan_roles | u16。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 USB-Serial/JTAG、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
   1〜3 がシリアルの口（§3.4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
@@ -410,6 +411,9 @@ plan は **fn ごと**に持つ。
   原子的に置き換え**、ほかの fn の plan はそのまま保つ。置き換える fn の今の割り当てを外したものとして、各インターフェースが
   副作用なしで確かめ（§8.1 の取り合いの確かめを含む）、全部が受け入れたときだけ適用する。1 つでも断れば、何も変えずに
   rejected（置き換えるはずだった fn の今の plan も残る）。
+- **割り当ての数**: probe の plan が一度に持てる role_assignment の数（すべての fn の合計）は describe の plan_roles（§7.5）。置き換えた後の
+  合計がそれを超える plan_apply（と設定の set）は、何も変えずに rejected unavailable（資源が足りない。§8.1 と同じ断り方。要求の形は
+  正しいので malformed ではない）。
 - **plan_release**: `n(u8)、n × fn(u16)`。挙げた fn の plan を解く（n = 0 はすべての fn）。plan の無い fn は無視する。
 - **設定の plan はセッションのものではない**: probe の設定（`oep.probe.config` の plan の項目）が入れた fn の plan は、設定だけが
   変える。plan_release はその fn を解かずに無視し（n = 0 でも）、plan_apply がその fn を挙げたら何も変えずに rejected
