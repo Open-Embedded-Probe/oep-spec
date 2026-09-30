@@ -32,6 +32,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
   - [シリアルの口と永続化](docs/probe-cdc-and-persistence.ja.md)
   - [host 開発ガイド](docs/host-development-guide.ja.md)
   - [probe 開発ガイド](docs/probe-development-guide.ja.md)
+  - [USB の識別](docs/usb-identity.ja.md)（PID を取るまでの見分け方、取った後に直す所）と [pid.codes への申請の資料](docs/pid-codes-application/README.ja.md)
   - [core wire model v1（v0 からの差分、経緯）](docs/v1-core-wire-delta.ja.md)
 - v1 の案と決めた経緯: [案と決めた経緯](docs/v1-open-proposals.ja.md)、第三者レビュー（2026-09-26）の [1](docs/review-answer-2026-09-26.ja.md) と [2（移植性）](docs/review-answer-portability-2026-09-26.ja.md)、[レビューへの対応](docs/review-response-2026-09-26.ja.md)
 - 2026-09-26 版（oep-spec 2ff1d62、probe 3160dee、client 75ee13e）へのレビューと調査（未対応）: [実機・ソース・テスト項目レビュー](docs/hardware-source-review-2026-09-26.ja.md)、[コア・標準インターフェースの移植性と復旧性レビュー](docs/review-answer-core-standard-portability-2026-09-26.ja.md)、[操作・状態遷移・テスト監査](docs/v1-operation-test-audit-2026-09-26.ja.md)、[未決事項（IP 経路、設定からの復旧）の事前調査](docs/v1-open-issues-research-2026-09-26.ja.md)

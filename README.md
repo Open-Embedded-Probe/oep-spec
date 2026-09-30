@@ -23,6 +23,10 @@ register slots and binds (`oep.probe.config`). Implementations:
 - [oep-probe-arduino](https://github.com/Open-Embedded-Probe/oep-probe-arduino) — the Arduino library `OpenEmbeddedProbe` and probe firmware
 - [oep-client-python](https://github.com/Open-Embedded-Probe/oep-client-python) — the Python host (`pip install oep-client-python`, `import oep_client`), the `oep` command and a fake probe
 
+USB identity: until a pid.codes PID is granted, hosts know an OEP probe by an iProduct starting `OEP`; the application and the
+plan for the PID are in [docs/usb-identity.ja.md](docs/usb-identity.ja.md) and [docs/pid-codes-application/](docs/pid-codes-application/README.ja.md)
+(Japanese; the pid.codes files themselves are English).
+
 ## Current documentation and language approach
 
 The current documents are written in English and Japanese. English files use `.md`, their Japanese counterparts use `.ja.md`, and each translated pair links to the other language. Whether this becomes a formal project rule remains undecided.

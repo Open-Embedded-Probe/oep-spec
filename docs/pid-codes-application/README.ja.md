@@ -1,0 +1,45 @@
+# pid.codes への申請の資料
+
+状態: **申請の前の案**（2026-09-30）。ここにあるファイルを、そのまま [pid.codes](https://pid.codes/howto/) のリポジトリ
+（`pidcodes/pidcodes.github.com`）への pull request に入れる。PID の使い方の規則は oep-probe-arduino の
+[PID-USE.md](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/PID-USE.md)、host から見た見分け方と、割り当て後に
+変える所は [USB の識別](../usb-identity.ja.md)。
+
+## 何を申請するか
+
+- **1 つの PID**（VID は pid.codes の `0x1209`）。対象は「OpenEmbeddedProbe ライブラリから作った firmware を動かす device」。基板や
+  example ごとには分けない（何ができるかは describe で分かるので、ID は OEP の probe であることだけを示せばよい）。
+- 申請の site / source は Arduino ライブラリのリポジトリ（oep-probe-arduino。Arduino の Library Manager に `OpenEmbeddedProbe` で
+  載っている）。
+
+## pid.codes の条件と、満たしているか
+
+| 条件（https://pid.codes/howto/） | 状況 |
+|---|---|
+| 公開されたソースのリポジトリ | https://github.com/Open-Embedded-Probe/oep-probe-arduino |
+| USB の interface を持つ device のソース（または PCB の設計） | firmware のソース（USB の vendor bulk、HID、CDC）。基板は市販の ESP32-P4 / RP2350 / RP2040 の開発ボード |
+| 認められた OSS のライセンスと、リポジトリの LICENSE | MIT、LICENSE あり |
+| ハードとソフトの両方なら、両方に OSS / OSHW のライセンス | ソフトだけ（自作の基板は無い） |
+
+## ファイル
+
+| ファイル | 入れる場所（pid.codes のリポジトリ） |
+|---|---|
+| [org/Open-Embedded-Probe/index.md](org/Open-Embedded-Probe/index.md) | `org/Open-Embedded-Probe/index.md` |
+| [1209/XXXX/index.md](1209/XXXX/index.md) | `1209/<PID>/index.md`（XXXX を選んだ番号に） |
+
+## 手順
+
+1. PID の番号を選ぶ。pid.codes のリポジトリの `1209/` に無い番号で、開いている pull request にも出ていないもの。
+   2026-09-30 の時点で 982 個が使われていて、`0x0E00`〜`0x0E0F` などは空いている（前後も空いている）。
+   `0x0000`〜`0x000F` は pid.codes の予約（`0x0001` は試験用）なので避ける。
+2. `pidcodes/pidcodes.github.com` を fork し、上の 2 つのファイルを置く（`XXXX` を番号に）。
+3. commit message の例: `Add Open Embedded Probe and 1209:<PID> (OEP probe, OpenEmbeddedProbe firmware)`。pull request を出す。
+4. 認められたら、[USB の識別](../usb-identity.ja.md) §4 の一覧の所を直す（spec、ライブラリ、client、ch32rv、ArduinoCore-CH32）。
+
+## 申請の前に済ませておくこと
+
+- [x] oep-probe-arduino の README に、OEP とは何かと仕様へのリンク
+- [x] oep-probe-arduino に PID-USE.md（英語と日本語）
+- [ ] PID-USE.md を oep-probe-arduino の main に入れる（申請の本文がリンクする）
+- [ ] org の名前 `Open-Embedded-Probe`、PID の title、説明文を、持ち主（ユーザー）が確かめる

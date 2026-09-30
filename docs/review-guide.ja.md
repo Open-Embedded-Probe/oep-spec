@@ -41,6 +41,7 @@ flash の書き方やチップ固有の手順は host にある。
 | 7 | `docs/logic-capture.ja.md` | キャプチャの設計と実測（ロジアナとしての設計、基本と拡張の線引き、§7 の根拠）。長い |
 | 8 | `docs/probe-cdc-and-persistence.ja.md` | USB の複数の経路、シリアル転送（CDC）、設定の保存、起動モード、probe 自身の更新。§7 に試作 P1〜P7 の結果（debug の寿命と probe の設定の根拠） |
 | 9 | `docs/host-development-guide.ja.md`、`docs/probe-development-guide.ja.md` | host と probe を書く人への実務の約束（フレームの送り方、立て直し、USB-UART の扱いなど） |
+| — | `docs/usb-identity.ja.md`、`docs/pid-codes-application/` | USB の識別（今の iProduct の形、PID を取った後、切り替える所）と、pid.codes への申請の資料 |
 | 10 | `docs/review-response-2026-09-26.ja.md`、`docs/review-answer-2026-09-26.ja.md`、`docs/review-answer-portability-2026-09-26.ja.md`、`docs/v1-open-proposals.ja.md` | 前回の 2 つの第三者レビュー（全体、移植性）と、各項目をどう決めて規範のどこに入れ、実機で確かめたかの対応表。決める前の案と決めた経緯 |
 | 11 | `docs/hardware-source-review-2026-09-26.ja.md`、`docs/review-answer-core-standard-portability-2026-09-26.ja.md`、`docs/v1-operation-test-audit-2026-09-26.ja.md`、`docs/v1-open-issues-research-2026-09-26.ja.md` | 2026-09-26 版への 2 回目のレビュー（実機とソース、移植性と復旧性、操作と試験の監査）と、未決事項（IP、復旧）の事前調査。**まだ対応していない** |
 | — | `docs/v1-core-wire-delta.ja.md` | 分ける前の v0 からの差分（経緯）。通知と link の速さの実測は、ここに残っている |
