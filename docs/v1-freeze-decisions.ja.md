@@ -11,6 +11,7 @@
 `unavailable_payload`、console の no_connection）、5（名前、status の flags、rate、scale、logic-capture §8）、6（core §11.3）、
 7（oep-if-fixture §3 / §4、registry）、8（console）、10（core §7.5）。残りは実装だけ: 9（firmware.yml）、12（probe が label を受ける）、
 13（client の API）、11（予約は今の文書のまま）。
+1 の bind の並びは漏れていて、2026-10-01 に probe-config §1.2 に入れた（応答の並びと同じく各要素の前に len）。
 
 ## A. 横断（決めると他が動ける）
 

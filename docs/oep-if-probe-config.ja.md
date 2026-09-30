@@ -73,7 +73,7 @@ lock_len は錠の部分（lock_scheme から lock_value まで）の長さ。0 
 ### 1.2 bind（シリアルの口に何を流すか）
 
 ```text
-port(u8)、mode(u8)、selected(u8)、n(u8)、n × (kind(u8)、id(u16))
+port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
 ```
 
 | フィールド | 意味 |
@@ -81,7 +81,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (kind(u8)、id(u16))
 | port | シリアルの口の番号（core の describe の transport の index）。シリアルの口でなければ rejected unavailable |
 | mode | 0 last-reset、1 manual、2 mixed（下）。describe の bind_modes に無い mode は rejected unsupported |
 | selected | manual の選択（並びの中の番号、n 未満。外れていれば rejected malformed）。last-reset と mixed では 0 を送り、probe は見ない |
-| n、並び | 流すストリーム（n ≥ 1）。kind 1 = スロットのコンソール（id = slot）、kind 2 = fixture UART の受信（id = `oep.fixture.uart` の fn）。無いスロットや fn を指せば rejected unavailable |
+| n、並び | 流すストリーム（n ≥ 1）。各要素の前に要素の長さ len を置く（応答の並びと同じ形、core §2.3）。len は 3 以上（3 未満は rejected malformed）で、probe は 3 byte より後ろを読み飛ばす。host は今は 3 を送る。kind 1 = スロットのコンソール（id = slot）、kind 2 = fixture UART の受信（id = `oep.fixture.uart` の fn）。無いスロットや fn を指せば rejected unavailable |
 
 | mode | 口に流すもの | 口から来た生のバイト |
 |---|---|---|
