@@ -316,6 +316,12 @@ P4 は HS ポートだけでつなぐのが主になるので、USB-Serial/JTAG 
     `esptool write-mem 0x50110008 0 0x4` で消してからリセットすると戻る。
   - 結論が出るまでは、HS の口だけのプローブにはアプリの更新の経路（DFU runtime、Mass Storage、vendor、CDC のスクリプト）
     を用意する。FS の口でデバイスを動かす構成なら、同じケーブルが USJ の loader として戻り esptool が使える。
+- **決めた形（2026-09-30、oep-probe-arduino の Firmware/OepProbe esp32p4）**: HS の口の **DFU の download モード**
+  （EspUsbDeviceDfu、EP0 だけ、インターフェース 4）。`dfu-util -D OepProbe-esp32p4-<version>.bin`（Release の app の image）で、
+  もう一方の app の領域に書いて確かめ、再起動する。設定（NVS）は残る（消すのは oep.probe.config の erase）。新しい firmware は
+  HS の口が列挙されたら確定し（ブートローダの rollback）、そこまで進まなければ次のリセットで前に戻る。ROM の loader の HS
+  での確認はしない（EspUsbDevice の資料と Espressif の案内: P4 の ROM loader は USJ、ROM DFU は v3.1 以降に不具合）。空の
+  flash と壊れた firmware の復旧は USJ の esptool（治具の BOOT の strap か、USJ を一時的に出す）。
 
 ## 7. 進め方（2026-09-25 のユーザーの方針）
 
