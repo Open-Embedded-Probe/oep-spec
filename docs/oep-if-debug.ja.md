@@ -83,7 +83,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 
 ```text
 要求: —
-応答: count(u8)、count × entry
+応答: count(u8)、count × (len(u8)、entry)（core §2.3）
 entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、slot(u8)、tid_scheme(u8)、tid_len(u8)、tid
 ```
 
@@ -96,7 +96,7 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、DMSTATUS(u32)) |
+| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (len(u8)、kind(u8)、swdio(u16)、swclk(u16)、DMSTATUS(u32)) |
 | 0x02 | attach | method(u8: 0 止めない / 1 止める)、[TLV] | connection(u16)、DMSTATUS(u32)、flags(u8)、speed_hz(u32) |
 | 0x03 | detach | connection(u16)、[TLV] | — |
 | 0x04 | attach_under_reset | channel(u16)、hold_ms(u16)、[TLV] | connection(u16)、dpc(u32)、speed_hz(u32) |
@@ -253,7 +253,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、DPIDR(u32)) |
+| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (len(u8)、kind(u8)、swdio(u16)、swclk(u16)、DPIDR(u32)) |
 | 0x02 | attach | [TLV] | connection(u16)、DPIDR(u32)、flags(u8: bit0 dormant から起こした、bit1 既存の connection)、speed_hz(u32) |
 | 0x03 | detach | connection(u16)、[TLV] | — |
 | 0x05 | connections | — | §2.1（ロック不要） |

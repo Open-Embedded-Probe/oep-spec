@@ -13,10 +13,12 @@ USB の VID:PID で見分けるのは、「OEP の probe か」だけである�
 ## 2. 今（PID を取るまで）
 
 - 参照の firmware（OpenEmbeddedProbe の P4 の HS の口）は `303a:0002`（arduino-esp32 の TinyUSB の既定）で列挙する。
-  serial number は `<MAC>-hs`。
-- host は、**iProduct が `OEP` で始まる device** を OEP の probe とみなす（core §3.3）。参照の firmware は `OEP probe (P4 HS)`。
-- device の中の口は、interface の種類で選ぶ（CDC はすべてシリアルの口、vendor class の bulk、vendor 定義の HID）。interface の
-  文字列は表示のためだけ。
+  serial number は unit_id（core §7.5: チップの固有の番号の小文字の 16 進。2026-09-30 までは `<MAC>-hs`）。
+- host は、**iProduct が `OEP` で始まる device** を OEP の probe とみなす（core §3.3）。参照の firmware は `OEP probe (ESP32-P4)`、`OEP probe (RP2040)` など。
+- device の中の口は、interface の種類で選ぶ（CDC はすべてシリアルの口、class 0xFF の bulk の組、vendor 定義の usage page の HID）。
+  interface の文字列は表示のためだけ。
+- host が probe を覚えるとき（IDE、sketch.yaml、bench の設定）は、VID:PID ではなく unit_id（= USB の serial number）で覚える。
+  PID を取ったときに VID:PID が変わっても、覚えた値はそのまま使える。
 - fn 0 の describe の `oep_pid = 1` は、「host の discovery に出る形でも列挙している」という意味（USB-Serial/JTAG のように別の口から
   開かれたときにも分かる）。
 - VID:PID も iProduct も選べない口（USB-Serial/JTAG、USB-UART の変換チップ）は、利用者が口を選ぶ。

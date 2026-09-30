@@ -38,8 +38,11 @@
 ```text
 slot(u8)、wire_fn(u16)、swdio(u16)、swclk(u16)、attach(u8)、retry_s(u16)、max_speed(u32)、idle_clock(u8)、mechanism(u8)、
 name_len(u8)、name、
-lock_scheme(u8)、lock_mask(n byte)、lock_value(n byte)
+lock_len(u8)、lock_scheme(u8)、lock_mask(n byte)、lock_value(n byte)
 ```
+
+lock_len は錠の部分（lock_scheme から lock_value まで）の長さ。0 は錠なし（lock_scheme 以降を置かない）。錠の後ろは、後から
+足すフィールドの場所（core §2.3。読む側は知らない後ろを飛ばす）。
 
 | フィールド | 意味 |
 |---|---|
@@ -51,9 +54,10 @@ lock_scheme(u8)、lock_mask(n byte)、lock_value(n byte)
 | max_speed | そのスロットの attach に渡す線の速さの上限（Hz、attach の max_speed と同じ）。0 は上限なし。その線が守れない上限（決まった速さがそれより速い）は rejected unsupported |
 | idle_clock | そのスロットの attach に渡す線の休ませ方（attach の idle_clock と同じ: 0 = high、1 = low）。`oep.wire.rvswd` だけが 1 を持てる（ほかの線で 1 は rejected malformed） |
 | mechanism | コンソールの方式（`oep.target.console` の mechanism）。その probe の console が宣言しない方式は rejected unsupported |
-| name | スロットの名前。1〜32 byte で、使える文字は `a-z 0-9 - _` だけ（ほかは rejected malformed）。probe の中で重ならない（重なれば rejected malformed）。host がスロットを名指すのに使い（IDE の address `oep://<probe>/<name>` にそのまま入る）、mixed の行の印（§1.2）にも使う |
-| lock_scheme | 錠: 0 は錠なし（後ろに何も付けない）。ほかは target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1） |
-| lock_mask、lock_value | 錠があるときだけ。同じ長さ n（≥ 1）。n は項目の残りの長さの半分。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
+| name | スロットの名前。1〜32 byte で、使える文字は `a-z 0-9 - _` だけ（ほかは rejected malformed）。probe の中で重ならない（重なれば rejected malformed）。host がスロットを名指すのに使い（IDE の address `oep://<unit_id>/<name>` にそのまま入る。unit_id は core §7.5。どちらも URL の中で encode が要らない文字だけ）、mixed の行の印（§1.2）にも使う |
+| lock_len | 錠の部分の長さ。0（錠なし）か 1 + 2n（n ≥ 1）。ほかは rejected malformed |
+| lock_scheme | 錠があるときだけ。target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1）。0 は置かない（錠なしは lock_len 0） |
+| lock_mask、lock_value | 錠があるときだけ。同じ長さ n = (lock_len − 1) / 2。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
 
 - max_speed と idle_clock は target の性質で（[線とデバッグ](oep-if-debug.ja.md) §3）、probe が自分でスロットを attach するとき
   （at boot、やり直し）に使う。host の attach はそれぞれの TLV で自分の値を渡す（スロットの値は使わない）。
@@ -130,9 +134,11 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (kind(u8)、id(u16))
   送られても外して持つ）。host は自分の欲しい設定から同じ値を計算し、get の hash と同じなら何もしない。
 - **save は host の明示的な操作だけ**で、今の設定をそのまま保存する（同じ内容なら書かない）。書いている間はほかの要求に答えない。
   保存先が足りなければ rejected unavailable。erase は保存を消す（今の設定は変えない）。
-- **保存には、保存したときの interface の一覧の識別値を付ける**（list の entry（fn、instance、revision、name）を fn の順につないだ
-  バイト列の CRC-32）。起動時に今の一覧の識別値と違えば、保存を適用しない（fn の番号が別の機能を指しているかもしれないため。
-  storage の状態は「あり・読めない」）。
+- **保存は、項目が指す interface を (name、instance、revision) で持つ**（fn の番号は起動ごとに変わりうるため）。指す fn は、plan の
+  fn、slot の wire_fn、bind の kind 2 の id。起動時に、その組を今の list で探して fn を読み替えてから適用する（set と get の形は
+  fn のまま）。指す interface が無いか、revision が違えば、**保存全体を適用しない**（一部だけ入れると治具が半端に動く。storage の
+  状態は「あり・読めない」、理由 2）。指していない interface の追加・削除・並べ替えは、保存に影響しない。
+- 保存の形（probe の中の持ち方）は probe が決める。読み替えの規則だけが規範。
 - 起動時は、保存を今の設定にして（上の確かめを通ったとき）、idle を掛け、plan を適用し、at boot のスロットの attach を始め、
   bind を結ぶ。保存を読めないときは適用せず、describe で知らせる。
 
@@ -169,7 +175,7 @@ describe の slot_state（§4）はロックなしで読める。host が線を�
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x40 | storage | 保存できる最大 byte(u32、0 = 保存なし)、保存の状態(u8: 0 なし / 1 あり・適用済み / 2 あり・読めない)、保存の hash(u32)、save の最長時間(u32 ms) |
+| 0x40 | storage | 保存できる最大 byte(u32、0 = 保存なし)、保存の状態(u8: 0 なし / 1 あり・適用済み / 2 あり・読めない)、保存の hash(u32)、save の最長時間(u32 ms)、読めない理由(u8: 0 なし、1 形が読めない（壊れた、別の版の形）、2 指す interface が無い・revision が違う、3 適用が断られた（資源がぶつかる）) |
 | 0x41 | items | 扱う項目の tag の並び（u8） |
 | 0x42 | slots_max | u8。登録できるスロットの数（0 はスロットを扱わない） |
 | 0x43 | bind_modes | u8 のビット: bit0 last-reset、bit1 manual、bit2 mixed。bind を扱う probe は bit0 と bit1 を必ず立てる |

@@ -110,6 +110,11 @@ owner = 0x01                    # text (1-32 bytes): who holds the lock, for dis
 owner = 0x01                    # the lock holder's owner text, when its open gave one
 [interface.tlv.locked_payload]  # the rejected locked payload's tail, after remaining_ms(u32)
 owner = 0x01
+[interface.tlv.unavailable_payload]   # the rejected unavailable payload (core §4.3), every fn; 0x40+ per interface
+cause = 0x01                    # u8, enum unavailable_cause
+channel = 0x02                  # u16, may repeat
+holder_fn = 0x03                # u16
+holder_kind = 0x04              # u8, enum holder_kind
 [interface.tlv.describe]        # the probe itself (fn 0)
 firmware = 0x40
 model = 0x41
@@ -123,6 +128,19 @@ transport = 0x49                # index(u8) kind(u8) interface(u8, 0xFF not USB)
 oep_pid = 0x4A                  # u8: 1 = the probe also enumerates with the OEP VID:PID
 plan_roles = 0x4B               # u16: the most role assignments the plan holds at once, every fn together (core §8)
 chip = 0x4C                     # text: the probe MCU's part and revision (optional)
+[interface.enum.unavailable_cause]
+pin_in_use = 1
+limit = 2
+storage_full = 3
+bound_in_group = 4
+held_by_settings = 5
+wrong_state = 6
+[interface.enum.holder_kind]
+plan = 1
+connection = 2
+slot = 3
+bind = 4
+settings_plan = 5
 [interface.enum.transport_kind] # describe transport (core §7.5); 1-3 are serial ports (core §3.4)
 uart_bridge = 1
 usb_cdc = 2
@@ -355,7 +373,43 @@ rx = 1
 tx = 2
 
 [[interface]]
-name = "oep.fixture.capture"
+name = "oep.fixture.i2c-target"
+revision = 1
+op = [
+  { code = 0x01, name = "configure", lock = true },
+  { code = 0x02, name = "arm_rx", lock = true },
+  { code = 0x03, name = "read_rx", lock = true, closed_tail = true },
+  { code = 0x04, name = "preload_tx", lock = true },
+  { code = 0x05, name = "status", lock = false },
+  { code = 0x06, name = "reset", lock = true },
+  { code = 0x07, name = "stretch", lock = true },
+]
+[interface.enum.role]
+sda = 1
+scl = 2
+[interface.enum.mode]
+fixed_rx = 1
+framed_rx = 2
+preloaded_tx = 3
+
+[[interface]]
+name = "oep.fixture.spi-target"
+revision = 1
+op = [
+  { code = 0x01, name = "configure", lock = true },
+  { code = 0x02, name = "arm", lock = true },
+  { code = 0x03, name = "read_rx", lock = true, closed_tail = true },
+  { code = 0x04, name = "status", lock = false },
+  { code = 0x05, name = "reset", lock = true },
+]
+[interface.enum.role]
+sck = 1
+mosi = 2
+miso = 3
+cs = 4
+
+[[interface]]
+name = "oep.fixture.logic"
 revision = 1
 op = [
   { code = 0x01, name = "configure", lock = true },
@@ -430,7 +484,7 @@ short = 0x02
 slipped = 0x04                     # the time base bent inside the segment (samples later than the timing answer)
 
 [[interface]]
-name = "oep.fixture.analog"            # logic-capture §0.1: the same operations and numbers as oep.fixture.capture, one analog track
+name = "oep.fixture.analog"            # logic-capture §0.1: the same operations and numbers as oep.fixture.logic, one analog track
 revision = 1
 op = [
   { code = 0x01, name = "configure", lock = true },

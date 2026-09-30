@@ -18,17 +18,18 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 |---:|---|---|---|---|
 | 0x01 | open | connection(u16)、mechanism(u8)、[TLV] | stream(u16)、flags(u8: bit0 既存のストリーム) | 必要 |
 | 0x02 | read | stream(u16)、from(u8)、arg(u64)、max(u16) | start(u64)、flags(u8)、data | 不要 |
-| 0x03 | marks | stream(u16)、from_serial(u32) | more(u8)、count(u8)、count × mark | 不要 |
+| 0x03 | marks | stream(u16)、from_serial(u32) | more(u8)、count(u8)、count × (len(u8)、mark) | 不要 |
 | 0x04 | clear | stream(u16) | — | 必要 |
 | 0x05 | mark | stream(u16)、value(u8) | — | 必要 |
 | 0x06 | write | stream(u16)、count(u16)、data | accepted(u16) | 必要 |
 | 0x07 | close | stream(u16) | — | 必要 |
 
 - read、marks、clear、mark、write は [共通部品](oep-if-common.ja.md) §1 の形（先頭に stream）。
-- mechanism: 0 SDI、1 DMDATA、2 dmseq（framing は [target-console-dmseq](target-console-dmseq.ja.md)）。知らない mechanism と、
+- mechanism: 0 SDI、1 DMDATA、2 dmseq（framing は [target-console-dmseq](target-console-dmseq.ja.md)）。**mechanism の番号が方式を
+  正確に決める**（版を持たない）。方式を変えるときは新しい番号（3 以降、registry に足す）にし、古い番号の意味は変えない。知らない mechanism と、
   describe の mechanisms に無い mechanism は rejected unsupported（payload なし）。
 - describe: tag 0x40 mechanisms（u8 の並び。その probe が開ける mechanism）。必ず出す。
-- 知らない stream は rejected unavailable。
+- 知らない stream は rejected no_connection（core §4.3）。
 - ストリームの番号（u16）は core §9 の規則で振る（新しいストリームのたびに 1 から進め、同じ boot_id の間は再利用しない）。
 - revision 1 は通知を送らない（subscribe は rejected unavailable）。後から足すときは、データの payload を共通部品 §1.5 の形にする。
 

@@ -1,12 +1,12 @@
 # OEP 標準インターフェース: キャプチャ v1
 
-状態: **規範**（2026-09-26。ロジックは実機で確かめた形、アナログは実測がまだなく番号は仮）。本体は [OEP core](oep-core.ja.md)。
+状態: **規範**（2026-09-26。2026-09-30 に凍結前の決定を入れた: 名前 `oep.fixture.logic`、アナログの番号を確定）。本体は [OEP core](oep-core.ja.md)。
 番号の唯一の定義は `registry/oep-v1.toml`。ロジアナとしての設計、基本と拡張の線引き、根拠の実測は
 [キャプチャ（設計と実測）](logic-capture.ja.md)。
 
 | 名前 | revision | 役割 |
 |---|---:|---|
-| `oep.fixture.capture` | 1 | ロジック（1 トラック） |
+| `oep.fixture.logic` | 1 | ロジック（1 トラック） |
 | `oep.fixture.analog` | 1 | アナログ（1 トラック） |
 | `oep.fixture.capture-group` | 1 | 複数のトラックを一緒に始める（ミックスドシグナル、§4） |
 
@@ -149,7 +149,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | 0x04 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
 | 0x05 | status | — | state(u8)、serial_done(u32)、write_pos(u64)、flags(u8) | 不要 |
 | 0x06 | read | position(u64)、max(u32) | position(u64)、flags(u8: bit0 more、bit1 gap)、data | 不要 |
-| 0x07 | segments | from_serial(u32) | count(u8)、区画の情報の並び（§2） | 不要 |
+| 0x07 | segments | from_serial(u32) | count(u8)、count × (len(u8)、区画の情報（§2）) | 不要 |
 | 0x08 | release | serial(u32) | —（serial 以前の区画を使い回してよい） | 必要 |
 | 0x09 | query | 設定の TLV（configure と同じ） | 実際の値の TLV（設定はしない） | 不要 |
 | 0x0A | calibration | — | 較正の情報の TLV（§3.8）。アナログだけ（ロジックは unknown_operation） | 不要 |
@@ -157,6 +157,8 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 - state: 0 未設定、1 設定済み、2 トリガ待ち、3 取得中、4 完了（ワンショット）、5 止まっている（リピートで空き区画なし）、
   6 エラー。
 - `serial_done` は終わった区画の数、`write_pos` は取り終えたバイト位置。
+- status の `flags`: bit0 probe の中でデータを落とした（取り込みのキューやリングがあふれた）、bit1 時間の基準が曲がった
+  （区画の slipped と同じ）。ほかのビットは予約（0）。
 - read で要求した位置がもう使い回されていれば（または押し出されていれば）、応答の position が先に進み、gap が立つ。
   まだ取れていない位置なら、あるところまで返す（何もなければ空）。
 - release はリピートだけ。ワンショットでは不要（次の start で消える）、ストリーミングでは送った分から probe が使い回す。
@@ -170,7 +172,7 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | tag | 名前 | 値 | 対象 |
 |---|---|---|---|
 | 0x40 | mode | u8: 1 ワンショット、2 リピート、3 ストリーミング（0x40〜 は別の定義） | 両方 |
-| 0x42 | rate | rate_hz(u32)（アナログはチャネルあたり） | 両方 |
+| 0x42 | rate | rate_hz(u32)（アナログはチャネルあたり。1 Hz 以上。それより遅い記録は host の問い合わせの範囲で、v1 には入れない） | 両方 |
 | 0x43 | samples | u32（1 区画のサンプル数。ストリーミングでは省略してよい） | 両方 |
 | 0x44 | segments | u32（リピートの区画の数。省略すれば probe に任せる） | 両方 |
 | 0x45 | trigger | type(u8)、role(u8)、value(u16) | 両方 |
@@ -193,7 +195,7 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | 0x53 | actual_segments | u32 | 両方 |
 | 0x54 | timing | jitter_kind(u8: 0 なし / 1 分数分周 / 2 ソフトウェア)、jitter_ns(u32) | 両方 |
 | 0x57 | skew | role(u8)、skew_ns(u32)。チャネルごとに 1 つ（遅れが 0 のチャネルは省いてよい） | アナログ |
-| 0x55 | scale | role(u8)、zero(u32、値)、scale_nv(u32、1 値あたりの nV)。チャネルごとに 1 つ | アナログ |
+| 0x55 | scale | role(u8)、zero(i32、値)、scale_nv(i32、1 値あたりの nV。負は反転する frontend)。チャネルごとに 1 つ | アナログ |
 | 0x56 | blocking_ms | u32（取っている間 probe が答えない時間の見込み。0 なら答える） | 両方 |
 | 0x58 | frontend_used | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。値の意味（測れる範囲、減衰）はその frontend の宣言で決まる | アナログ |
 | 0x5A | rate_accuracy | how(u8: 0 分周から計算した公称値、1 測った値)、ppm(u32: actual_rate の不確かさの目安、0 は不明)。トラック間で時間の倍率を合わせ込むべきかの目安 | 両方 |
@@ -307,7 +309,7 @@ bind の TLV:
 |---:|---|---|
 | 0x01 | trigger_track | fn(u16)。組の開始の条件を持つトラック（そのトラックの configure の trigger と pretrigger）。無ければ即時 |
 
-- **bind** は、configure 済みのトラック（`oep.fixture.capture` / `oep.fixture.analog` の fn）を束ねる。n = 0 で解く。束ねられない組
+- **bind** は、configure 済みのトラック（`oep.fixture.logic` / `oep.fixture.analog` の fn）を束ねる。n = 0 で解く。束ねられない組
   （宣言に無い fn、同じ fn の重複、configure していない、モードが揃っていない、trigger_track 以外が即時でないトリガを持つ、
   budget を超える）は、何も変えずに rejected unavailable。束ねている間、各トラックの configure、start、stop、force は
   rejected unavailable（組の op を使う。configure し直すときは、いったん n = 0 で解く）。
