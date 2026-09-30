@@ -36,7 +36,8 @@
 スロットは、target のつながる**場所**の登録である（チップの登録ではない。チップを付け替えても登録は直さない）。
 
 ```text
-slot(u8)、wire_fn(u16)、swdio(u16)、swclk(u16)、attach(u8)、retry_s(u16)、mechanism(u8)、name_len(u8)、name、
+slot(u8)、wire_fn(u16)、swdio(u16)、swclk(u16)、attach(u8)、retry_s(u16)、max_speed(u32)、idle_clock(u8)、mechanism(u8)、
+name_len(u8)、name、
 lock_scheme(u8)、lock_mask(n byte)、lock_value(n byte)
 ```
 
@@ -47,11 +48,15 @@ lock_scheme(u8)、lock_mask(n byte)、lock_value(n byte)
 | swdio、swclk | ピンの組。attach の pins と同じ（1 本の線は swclk = 0xFFFF）。その線が許す組でなければ rejected unavailable |
 | attach | attach の方針: 0 host、1 at boot（§3.1） |
 | retry_s | at boot のスロットで、いないときに attach をやり直す間隔（秒）。0 はやり直さない。at boot でなければ 0（ほかは rejected malformed） |
+| max_speed | そのスロットの attach に渡す線の速さの上限（Hz、attach の max_speed と同じ）。0 は上限なし |
+| idle_clock | そのスロットの attach に渡す線の休ませ方（attach の idle_clock と同じ: 0 = high、1 = low）。`oep.wire.rvswd` だけが 1 を持てる（ほかの線で 1 は rejected malformed） |
 | mechanism | コンソールの方式（`oep.target.console` の mechanism）。その probe の console が宣言しない方式は rejected unsupported |
 | name | スロットの名前。1〜32 byte で、使える文字は `a-z 0-9 - _` だけ（ほかは rejected malformed）。probe の中で重ならない（重なれば rejected malformed）。host がスロットを名指すのに使い（IDE の address `oep://<probe>/<name>` にそのまま入る）、mixed の行の印（§1.2）にも使う |
 | lock_scheme | 錠: 0 は錠なし（後ろに何も付けない）。ほかは target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1） |
 | lock_mask、lock_value | 錠があるときだけ。同じ長さ n（≥ 1）。n は項目の残りの長さの半分。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
 
+- max_speed と idle_clock は target の性質で（[線とデバッグ](oep-if-debug.ja.md) §3）、probe が自分でスロットを attach するとき
+  （at boot、やり直し）に使う。host の attach はそれぞれの TLV で自分の値を渡す（スロットの値は使わない）。
 - 同じ wire_fn と同じピンの組のスロットを 2 つ作れない（rejected unavailable）。
 - **スロットの接続**: 生きている接続のうち、wire_fn が同じでピンの組がスロットと一致するもの（誰が attach したかは問わない）。
 - **錠**: スロットの接続の target_id（attach の応答の TLV 0x10）が、scheme が lock_scheme と同じで、値と lock_mask のビットごとの

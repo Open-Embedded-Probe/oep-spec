@@ -85,13 +85,16 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 | 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、DMSTATUS(u32)) |
 | 0x02 | attach | method(u8: 0 止めない / 1 止める)、[TLV] | connection(u16)、DMSTATUS(u32)、flags(u8)、speed_hz(u32) |
 | 0x03 | detach | connection(u16)、[TLV] | — |
-| 0x04 | attach_under_reset | channel(u16、0xFFFF = probe の既定値)、hold_ms(u16)、[TLV] | connection(u16)、dpc(u32)、speed_hz(u32) |
+| 0x04 | attach_under_reset | channel(u16)、hold_ms(u16)、[TLV] | connection(u16)、dpc(u32)、speed_hz(u32) |
 | 0x05 | connections | — | §2.1（ロック不要） |
 
 - swio の組は swclk = 0xFFFF（1 本の線）。scan の kind は 0x01 = riscv-dm。値は生の値。
 - attach の flags: bit0 保留中の havereset を確認応答した、bit1 既存の connection。
-- attach_under_reset は任意の op（持たない probe は unknown_operation）。リセットの線（channel。probe が許可したものだけ）を
-  保持して attach し、離しながら halt を打ち続ける。持たない probe では、host は `oep.fixture.gpio` の解放と attach をまとめて
+- attach_under_reset は任意の op（持たない probe は unknown_operation）。リセットの線（channel）を保持して attach し、離しながら
+  halt を打ち続ける。
+- **reset の線に既定は無い**: どの線を reset に使うかは host が毎回 channel で明示する（線を取り違えた reset は target や治具を
+  壊しうる）。probe が reset に使ってよい channel は describe の role_channels の role 3（reset）で宣言する。宣言していない
+  channel は、何も実行せずに rejected unavailable。今ある plan や接続が持つ channel も、§8.1 の取り合いとして rejected unavailable。持たない probe では、host は `oep.fixture.gpio` の解放と attach をまとめて
   送って再試行する。
 
 TLV:
@@ -100,10 +103,18 @@ TLV:
 |---|---:|---|---|
 | attach、attach_under_reset | 0x01 | max_speed | u32 Hz |
 | attach、attach_under_reset | 0x03 | pins | swdio(u16)、swclk(u16) |
+| attach、attach_under_reset（rvswd だけ） | 0x04 | idle_clock | u8。線を休ませる間の SWCLK: 0 = high（無いときと同じ）、1 = low。host は critical で送る |
 | detach | 0x01 | force | 長さ 0 |
 | attach、attach_under_reset の応答 | 0x10 | target_id | scheme(u8)、値 |
 
 target_id の scheme（rvswd / swio）: 1 = WCH の DM の DMI 0x7F を読んだ u32。0 と 0xFFFFFFFF は「無い」（付けない）。
+
+- **線の設定は target の性質で、host が持つ**: 線の速さの上限（max_speed）と休ませ方（idle_clock）は、target（チップ）が
+  求めるものである（例: CH32L103 は SWCLK が high で休むと debug の線を reset し、reset 直後の遅いクロックでは 1 MHz を超えると
+  書き込みの確かめが落ちる、2026-09-23〜25）。probe はそれを既定値として持たない。host が attach ごとに渡し、host 無しで attach する
+  スロットは、スロットの項目に同じ値を持つ（[probe の設定](oep-if-probe-config.ja.md) §1.1）。
+- 既存の connection への attach で idle_clock が今と違えば、probe はその connection の休ませ方を替えて返す。替えられない probe は、
+  扱えない TLV の値として扱う（core §2.3）。
 
 ## 4. `oep.target.riscv-dm`
 

@@ -154,9 +154,11 @@ force = 0x01
 [interface.tlv.attach]
 max_speed = 0x01
 pins = 0x03                     # critical: swdio(u16) swclk(u16, 0xFFFF on one wire) - the pair to attach on
+idle_clock = 0x04               # critical, u8: SWCLK while the line rests, 0 high / 1 low (oep-if-debug §3)
 [interface.tlv.attach_under_reset]
 max_speed = 0x01
 pins = 0x03
+idle_clock = 0x04               # critical, u8: SWCLK while the line rests, 0 high / 1 low (oep-if-debug §3)
 [interface.tlv.attach_answer]   # the attach / attach_under_reset result's tail
 target_id = 0x10                # scheme(u8) value: what the probe read of the target's identity (oep-if-debug §1)
 [interface.enum.target_id_scheme]
@@ -167,6 +169,7 @@ halt = 1
 [interface.enum.pin_role]       # the roles of the pins in describe's channel_group / role_channels
 swdio = 1
 swclk = 2
+reset = 3                       # a channel attach_under_reset may take; no default (oep-if-debug §3)
 
 [[interface]]
 name = "oep.wire.swio"
@@ -200,6 +203,7 @@ run = 0
 halt = 1
 [interface.enum.pin_role]       # the roles of the pins in describe's channel_group / role_channels
 swdio = 1
+reset = 3                       # a channel attach_under_reset may take; no default (oep-if-debug §3)
 
 [[interface]]
 name = "oep.wire.swd"
