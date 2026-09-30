@@ -25,7 +25,8 @@
 | 0x05 | bind | §1.2 | port |
 
 - どの項目もすぐ効く。扱う項目は describe の items で宣言し、宣言していない項目の set は rejected unsupported。
-- **plan**: その fn の plan_apply と同じ（core §8）。
+- **plan**: その fn の plan_apply と同じ（core §8）。設定の plan は設定だけが変える: セッションの plan_release（n = 0 を含む）
+  はそれを解かず、plan_apply がその fn を挙げたら rejected unavailable（core §8）。
 - **label**: core の describe の label（0x46）に出る。
 - **idle**: plan にも接続にも使われていないピンの状態。起動時と、そのピンが解放されるたび（core §8）に、この状態にする。
   idle が無いピンは Hi-Z。治具の配線で相手の入力が浮くピン（相手の RX につながる TX など）は、host が idle で明示し、保存する。
