@@ -42,4 +42,5 @@ USB の VID:PID で見分けるのは、「OEP の probe か」だけである�
 | oep-client-python `link.USB_VID` / `USB_PID` | 既定の番号 |
 | ch32rv の discovery（`is_oep_device`） | `1209:4F45` を足し、iProduct の判定は移行の後に外す |
 | ArduinoCore-CH32 の oep-workflow §3.3 | 同じ |
+| ArduinoCore-CH32 の dfu.py | serial（unit_id）で探すのが本筋。serial が無いときの既定の `303a:0002` を `1209:4F45` に |
 | bench の usbipd の bind | VID:PID が変わるので、焼き直した後に bind し直す（管理者の操作） |
