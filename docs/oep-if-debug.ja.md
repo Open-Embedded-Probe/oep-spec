@@ -31,9 +31,13 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
     channel があれば、§8.1 のとおり全体を rejected unavailable。
   - 線は、生きている接続が使っている組の channel を持つ（接続が無くなれば放す）。持っている間、その channel を plan や設定が
     取ろうとすれば rejected unavailable（core §8.1）。
-  - scan の応答の `tried` は、要求の並び（count = 0 なら probe が許す組を、describe に出した順に並べたもの）の先頭から試し
-    終えた組の数。見つかった組で応答が 1 フレームに入らなくなりそうなら、probe はそこで止める。tried が並びの数より少なければ、
-    host は残りの組でもう一度 scan を送る（count = 0 で始めたときは、残りの組を並べて送る）。
+  - scan の応答の `tried` は、要求の並び（count = 0 なら上の count = 0 の並び。channel_group の線では describe に出した順）の
+    先頭から試し終えた組の数。1 回に試すのは多くても 255 組（tried は u8）。見つかった組で応答が 1 フレームに入らなくなりそう
+    なら、probe はそこで止める。組を並べた要求で tried が並びの数より少なければ、host は残りの組でもう一度 scan を送る。
+  - **count = 0 の続き**: count = 0 の要求は TLV skip（0x01、u16）で、count = 0 の並びの先頭から飛ばす数を渡せる（無ければ 0）。
+    host は skip に今までの tried の和を渡して続け、**tried = 0 が返ったら終わり**。並びは要求のときの持たれ方で決まるので、
+    途中で plan などが変われば、組が抜けたり重なったりしうる（host は scan の間ほかを変えない）。count > 0 に skip を付けた
+    要求は rejected malformed。
   - attach / attach_under_reset は pins（TLV 0x03、critical）で組を指定する。pins が無ければ、許す組が 1 つだけならその組、
     2 つ以上なら rejected unavailable（host が選ぶ）。
   - **許していない組は、何も実行せずに rejected unavailable**（scan は要求の中に 1 つでもあれば全体を断る）。
@@ -107,6 +111,7 @@ TLV:
 
 | op | tag | 名前 | 値 |
 |---|---:|---|---|
+| scan（count = 0 だけ） | 0x01 | skip | u16。count = 0 の並びの先頭から飛ばす組の数 |
 | attach、attach_under_reset | 0x01 | max_speed | u32 Hz |
 | attach、attach_under_reset | 0x03 | pins | swdio(u16)、swclk(u16) |
 | attach、attach_under_reset（rvswd だけ） | 0x04 | idle_clock | u8。線を休ませる間の SWCLK: 0 = high（無いときと同じ）、1 = low。host は critical で送る |
@@ -250,7 +255,8 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 | 0x05 | connections | — | §2.1（ロック不要） |
 
 - scan の kind は 0x02 = arm-adi。
-- attach の TLV: 0x01 max_speed、0x02 targetsel（u32、multidrop のときだけ）、0x03 pins。detach の TLV: 0x01 force。
+- scan の TLV: 0x01 skip（§1）。attach の TLV: 0x01 max_speed、0x02 targetsel（u32、multidrop のときだけ）、0x03 pins。
+  detach の TLV: 0x01 force。
 - attach は JTAG から SWD への切り替えを試し、答えがなければ dormant から起こす。電源投入（CTRL/STAT の CDBGPWRUPREQ /
   CSYSPWRUPREQ）は host が DP の書き込みで行う。
 - **connection の同一性には targetsel を含める**。同じピンの組の生きている connection と targetsel（無しを含む）が違う attach は
