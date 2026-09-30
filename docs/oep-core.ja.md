@@ -398,6 +398,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8: USB の interface 番号、0xFF は USB でない)。probe の経路ごとに 1 つ。**必須** |
 | 0x4A | oep_pid | u8。1 = probe が host の discovery の一覧に出る形でも列挙している（今の経路がそうでなくても）: OEP の専用の VID:PID（取るまでは、iProduct が `OEP` で始まる device、§3.3） |
 | 0x4B | plan_roles | u16。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
+| 0x4C | chip | text。probe の MCU の型番とリビジョン（例 `esp32p4 v1.0`、`rp2350 A2`）。取ったデータに、どのチップで取ったかを残すため（任意） |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 USB-Serial/JTAG、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
   1〜3 がシリアルの口（§3.4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
