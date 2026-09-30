@@ -218,7 +218,7 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | 0x41 | rate_range | min_hz(u32)、max_hz(u32)、exact(u8: 1 = 範囲内の任意の値を指定できる) |
 | 0x42 | rate_list | 代表的なレートの並び（u32）。UI の一覧の候補 |
 | 0x43 | rate_limit | mode(u8)、channels(u8)、max_hz(u32)（条件ごとの上限。繰り返してよい） |
-| 0x44 | channels | max(u8)、layout の候補（ロジック: w のビット集合。アナログ: s の候補） |
+| 0x44 | channels | max(u8)、layout の候補(u8: ビット i が立っていれば 2^i を選べる。ロジックは w（1〜32: ビット 0〜5）、アナログは s（8、16、32: ビット 3〜5）） |
 | 0x45 | trigger | type のビット集合、max_pretrigger(u32) |
 | 0x46 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)、attenuation_mdb(u32: 前段の減衰、ミリ dB。0 は減衰なし、0xFFFFFFFF は減衰で表せない前段)。入力範囲の候補ごとに 1 つ（アナログ）。番号は configure の frontend で選ぶ。候補が 1 つだけの probe はそれだけ書く |
 | 0x49 | frontend_shared | u8: 1 = すべてのチャネルが同じ frontend しか使えない（違う指定は configure で断る） |
