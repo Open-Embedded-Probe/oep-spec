@@ -36,7 +36,7 @@ USB の VID:PID で見分けるのは、「OEP の probe か」だけである�
 | oep-spec core §3.3 | 「専用の VID:PID（取るまでは iProduct が `OEP`）」の括弧の中を、移行の期限つきの書き方に。番号を書く |
 | oep-spec core §7.5（oep_pid）、probe 開発ガイド §3.8 | 同じ |
 | oep-spec docs/pid-codes-application | 割り当ての記録（番号、日付、pull request） |
-| oep-probe-arduino `examples/Firmware/OepProbe`（`Esp32P4.h` の `kUsbVid` / `kUsbPid`、`Rp2.h` の `USB.setVIDPID`） | 番号（PID-USE.md はもう `1209:4F45` と書いてあり、「申請中」を外す） |
+| oep-probe-arduino `examples/Firmware/OepProbe`（`Esp32P4.h` の `kUsbVid` / `kUsbPid`、`Rp2.h` に `USB.setVIDPID` を足す。今はボードの既定の VID:PID） | 番号（PID-USE.md はもう `1209:4F45` と書いてあり、「申請中」を外す） |
 | oep-client-python `link.USB_VID` / `USB_PID` | 既定の番号 |
 | ch32rv の discovery（`is_oep_device`） | `1209:4F45` を足し、iProduct の判定は移行の後に外す |
 | ArduinoCore-CH32 の oep-workflow §3.3 | 同じ |
