@@ -112,7 +112,7 @@ read(stream, from, max) / marks(stream, ...)   方式に関係なく同じ
    |---|---|
    | `oep.fixture.gpio` | 使う場面（ピンの試験、ADC の入力を H/L で与える）と 2 実装以上がある |
    | `oep.fixture.uart` | 同上（Serial の試験、UART のコンソール） |
-   | `oep.fixture.capture` | 同上（I2C の線の証拠、PWM の測定） |
+   | `oep.fixture.logic` | 同上（I2C の線の証拠、PWM の測定） |
    | `io.github.ch32-riscv-ug.esp32.i2c-target` / `.spi-target`（独自） | 2 実装はあるが、どちらも ESP-IDF のスレーブドライバで、その癖（I2C は NACK で終わった転送でもフレームが出る、など）を引きずる。ESP-IDF でない 2 実装目（Pico の PIO など）が出るまで独自の名前 |
 
    ADC、DAC、電源、I2C controller は、使う場面が出てから作る。

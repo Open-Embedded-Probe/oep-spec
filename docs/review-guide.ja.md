@@ -94,7 +94,7 @@ flash の書き方やチップ固有の手順は host にある。
 | `src/OepSwd.*` | `oep.wire.swd` / `oep.target.arm-adi` | v1 |
 | `src/OepConsole.*`、`src/OepStream.h` | `oep.target.console`、位置つきのストリーム、bind が運ぶストリーム（`BindSource`） | v1 |
 | `src/OepFixture.*` | `oep.fixture.gpio` / `oep.fixture.uart` | v1 |
-| `src/OepCapture.*`、`src/OepSampler.*` | `oep.fixture.capture`（P4 の PARLIO、classic ESP32 のソフトウェアのサンプラ） | v1 |
+| `src/OepCapture.*`、`src/OepSampler.*` | `oep.fixture.logic`（P4 の PARLIO、classic ESP32 のソフトウェアのサンプラ） | v1 |
 | `src/OepConfig.*` | `oep.probe.config`（スロット、bind、NVS への保存） | v1 |
 | `src/OepDirectBulkStream.h` | EspUsbDevice の vendor bulk をゼロコピーで使う transport（キャプチャのストリーミング用） | v1 |
 | `src/OepCh32Dm.*`、`src/OepDmiPhy.h` | CH32 のデバッグモジュールの操作（halt / resume / reset、ブロック転送） | 共通 |

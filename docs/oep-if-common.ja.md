@@ -6,7 +6,7 @@
 
 ## 1. 位置つきのストリーム
 
-使うもの: `oep.target.console`、`oep.fixture.uart`、`oep.fixture.capture` / `oep.fixture.analog`（区画つき。それぞれの文書）。
+使うもの: `oep.target.console`、`oep.fixture.uart`、`oep.fixture.logic` / `oep.fixture.analog`（区画つき。それぞれの文書）。
 
 ### 1.1 位置
 
@@ -63,7 +63,7 @@ mark : serial(u32)、position(u64)、kind(u8)、time_ms(u32)、detail(u8)       
 
 ```text
 marks  要求: [stream(u16)]、from_serial(u32)
-       応答: more(u8)、count(u8)、count × mark
+       応答: more(u8)、count(u8)、count × (len(u8)、mark)（core §2.3）
 ```
 
 marks はロックなしで使える。
