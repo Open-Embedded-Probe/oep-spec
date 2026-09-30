@@ -25,6 +25,12 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   - probe が使える組は describe の共通タグ（core §7.4）で宣言する。決まった組は channel_group、どのピンにも割り当てられる
     なら role_channels。役の番号は `pin_role`（1 = SWDIO、2 = SWCLK）。
   - scan の要求は試す組の並び。**count = 0 は probe が許すすべての組**。応答の組は、そのまま attach の pins に渡せる。
+  - role_channels で宣言した線では、許す組は「role 1 の候補 × role 2 の候補（1 本の線は role 1 だけ）で、同じ channel を 2 度
+    使わないもの」。count = 0 の並びは swdio の昇順、その中で swclk の昇順とし、**今ほかのもの（plan、ほかの線の接続、設定の
+    資源）が持っている channel を含む組は並べない**（count = 0 は動かしてよい組だけを試す）。組を並べた要求に、持たれている
+    channel があれば、§8.1 のとおり全体を rejected unavailable。
+  - 線は、生きている接続が使っている組の channel を持つ（接続が無くなれば放す）。持っている間、その channel を plan や設定が
+    取ろうとすれば rejected unavailable（core §8.1）。
   - scan の応答の `tried` は、要求の並び（count = 0 なら probe が許す組を、describe に出した順に並べたもの）の先頭から試し
     終えた組の数。見つかった組で応答が 1 フレームに入らなくなりそうなら、probe はそこで止める。tried が並びの数より少なければ、
     host は残りの組でもう一度 scan を送る（count = 0 で始めたときは、残りの組を並べて送る）。
