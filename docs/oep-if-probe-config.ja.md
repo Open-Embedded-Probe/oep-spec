@@ -48,7 +48,7 @@ lock_scheme(u8)、lock_mask(n byte)、lock_value(n byte)
 | swdio、swclk | ピンの組。attach の pins と同じ（1 本の線は swclk = 0xFFFF）。その線が許す組でなければ rejected unavailable |
 | attach | attach の方針: 0 host、1 at boot（§3.1） |
 | retry_s | at boot のスロットで、いないときに attach をやり直す間隔（秒）。0 はやり直さない。at boot でなければ 0（ほかは rejected malformed） |
-| max_speed | そのスロットの attach に渡す線の速さの上限（Hz、attach の max_speed と同じ）。0 は上限なし |
+| max_speed | そのスロットの attach に渡す線の速さの上限（Hz、attach の max_speed と同じ）。0 は上限なし。その線が守れない上限（決まった速さがそれより速い）は rejected unsupported |
 | idle_clock | そのスロットの attach に渡す線の休ませ方（attach の idle_clock と同じ: 0 = high、1 = low）。`oep.wire.rvswd` だけが 1 を持てる（ほかの線で 1 は rejected malformed） |
 | mechanism | コンソールの方式（`oep.target.console` の mechanism）。その probe の console が宣言しない方式は rejected unsupported |
 | name | スロットの名前。1〜32 byte で、使える文字は `a-z 0-9 - _` だけ（ほかは rejected malformed）。probe の中で重ならない（重なれば rejected malformed）。host がスロットを名指すのに使い（IDE の address `oep://<probe>/<name>` にそのまま入る）、mixed の行の印（§1.2）にも使う |
