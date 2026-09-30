@@ -121,6 +121,7 @@ label = 0x46
 resets_on_open = 0x47
 transport = 0x49                # index(u8) kind(u8) interface(u8, 0xFF not USB): one per transport; required
 oep_pid = 0x4A                  # u8: 1 = the probe also enumerates with the OEP VID:PID
+plan_roles = 0x4B               # u16: the most role assignments the plan holds at once, every fn together (core §8)
 [interface.enum.transport_kind] # describe transport (core §7.5); 1-3 are serial ports (core §3.4)
 uart_bridge = 1
 usb_cdc = 2
