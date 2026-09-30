@@ -149,6 +149,8 @@ max_connections = 0x40          # u8: live connections at once (absent = 1; oep-
 [interface.enum.connection_users] # connections entry users bits (oep-if-debug §2.1)
 host_session = 0x01
 slot = 0x02
+[interface.tlv.scan]
+skip = 0x01                     # u16, count 0 only: pairs of the count-0 list to skip (oep-if-debug §1)
 [interface.tlv.detach]
 force = 0x01
 [interface.tlv.attach]
@@ -189,6 +191,8 @@ max_connections = 0x40          # u8: live connections at once (absent = 1; oep-
 [interface.enum.connection_users] # connections entry users bits (oep-if-debug §2.1)
 host_session = 0x01
 slot = 0x02
+[interface.tlv.scan]
+skip = 0x01                     # u16, count 0 only: pairs of the count-0 list to skip (oep-if-debug §1)
 [interface.tlv.detach]
 force = 0x01
 [interface.tlv.attach]
@@ -222,6 +226,8 @@ max_connections = 0x40          # u8: live connections at once (absent = 1; oep-
 [interface.enum.connection_users] # connections entry users bits (oep-if-debug §2.1)
 host_session = 0x01
 slot = 0x02
+[interface.tlv.scan]
+skip = 0x01                     # u16, count 0 only: pairs of the count-0 list to skip (oep-if-debug §1)
 [interface.tlv.detach]
 force = 0x01
 [interface.tlv.attach]
