@@ -18,6 +18,8 @@ calibration（§3.8）だけ。複数トラックの同時開始と時刻合わ�
 時計なので、host は時刻の引き算でトラックを並べられる。時刻は**推定値と不確かさ**で返す。probe は知っている補正（ドライバが最初の
 変換フレームを捨てる、など）を済ませた値を返し、それ以上の精度は約束しない。最後の合わせ込み（トラック間のオフセットと時間の
 倍率）は host の分析の仕事（同じ信号を 2 つのトラックで取る、目印のパルスを全部のトラックで取る、など）。
+時計は起動から数えるので、比べられるのは同じ起動の中だけ。host は open の応答の boot_id（core §6.5）が同じかで、同じ時計かを
+判断する。
 モード（ワンショット、リピート、ストリーミング）の意味は [設計](logic-capture.ja.md) §2.4、レートの決め方は同 §2.10。
 
 ## 1. データの形
@@ -187,6 +189,7 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | 0x55 | scale | role(u8)、zero(u32、値)、scale_nv(u32、1 値あたりの nV)。チャネルごとに 1 つ | アナログ |
 | 0x56 | blocking_ms | u32（取っている間 probe が答えない時間の見込み。0 なら答える） | 両方 |
 | 0x58 | frontend_used | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。値の意味（測れる範囲、減衰）はその frontend の宣言で決まる | アナログ |
+| 0x5A | rate_accuracy | how(u8: 0 分周から計算した公称値、1 測った値)、ppm(u32: actual_rate の不確かさの目安、0 は不明)。トラック間で時間の倍率を合わせ込むべきかの目安 | 両方 |
 | 0x59 | reference | source(u8: 0 電源、1 内部、2 外部)、mv(u32)、how(u8: 0 公称、1 測った)。ADC の基準電圧。電源が基準の ADC では、同じ生の値の意味が電源電圧で変わる。scale の 1 次式はこの電圧を前提にした換算 | アナログ |
 | 0x7F | ignored | tag(u8) の並び（core §2.3 の全文脈共通の ignored） | 両方 |
 
@@ -268,7 +271,7 @@ ADC の値を電圧に換算するための、probe が持っている情報を*
 | tag | 名前 | 値 |
 |---|---:|---|
 | 0x01 | factory | frontend(u8)、scheme_len(u8)、scheme(text)、raw(残り)。出荷時の較正の値（ESP32 の eFuse など）を、読んだまま。scheme は形式の名前で、形式の持ち主の名前空間に置く（例 `com.espressif.esp32.two-point`、`com.espressif.esp32p4.curve-fitting.v1`）。raw の解釈は scheme の定義に従う。frontend ごとに 1 つ（frontend に依らないものは 0xFF） |
-| 0x02 | vrefint | raw(u32)、ns(u64)。内部の基準電圧（Vrefint など）を、最後の start の直後に同じ ADC で測った生の値と、その時刻。基準電圧が電源の ADC で、実際の電源電圧を逆算するのに使う。測れない probe は返さない |
+| 0x02 | vrefint | raw(u32)、ns(u64)。内部の基準電圧（Vrefint など）を、最後の start（capture-group の start を含む）の直後に同じ ADC で測った生の値と、その時刻。基準電圧が電源の ADC で、実際の電源電圧を逆算するのに使う。測れない probe は返さない |
 
 - チップの型番とリビジョンは core の describe の chip（core §7.5）、firmware の版は同じく firmware。
 - frontend ごとの減衰と測れる範囲は describe の frontend（§3.5）、チャネルごとに選ばれた frontend は configure の応答の
