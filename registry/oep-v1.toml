@@ -640,3 +640,7 @@ held = 2                        # a session on this port holds the raw transfer 
 none = 0
 applied = 1
 unreadable = 2
+[interface.enum.storage_unreadable]   # the storage describe's last byte: why the saved items were not applied (§4)
+form = 1                        # not readable (damaged, another firmware's form)
+interface = 2                   # an interface they name is gone or of another revision
+refused = 3                     # applying them was refused (resources clash)
