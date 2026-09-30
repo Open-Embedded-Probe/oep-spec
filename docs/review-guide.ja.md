@@ -108,10 +108,9 @@ flash の書き方やチップ固有の手順は host にある。
 | PATH | 中身 |
 |---|---|
 | `examples/Firmware/OepProbe/` | チップごとに 1 本の firmware（profile rp2040 / rp2350 / esp32p4 / esp32）。ピンはすべて host が選び、治具は設定（oep.probe.config）で表す |
-| `examples/01.Basics/`、`examples/02.Interfaces/` | 学ぶための example（MinimalProbe、FixtureProbe、CustomInterface） |
+| `examples/01.Basics/`〜`06.Settings/` | 学ぶための example: MinimalProbe、FixtureProbe、CustomInterface（独自のインターフェース）、MultipleTransports、Rvswd / Swio / SwdDebugProbe、LogicCapture（P4 の全速のキャプチャと `host/stream_test.py`）、ProbeConfig |
+| `examples/Tools/SwdPinSurvey/` | 立ち上げの道具（OEP ではなく Serial に文字で出す）: どのピンが debug port か |
 | `examples/Rp2350L103Probe/`、`examples/Rp2040ZeroProbe/` | RP2350 / RP2040 の治具の probe（RVSWD、SWD）。`Firmware/OepProbe` がベンチで確かめられたら消す |
-| `examples/Esp32P4CaptureProbe/` | ESP32-P4 のキャプチャの probe（HS、コピーなしのストリーミング）と、確認のスクリプト `host/stream_test.py` |
-| `examples/PicoDebugPortSurvey/` | Pico でのデバッグポートの調査用 |
 
 ### 5.3 そのほか
 
