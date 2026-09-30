@@ -1,6 +1,6 @@
 # v1 凍結前の決定（2026-09-30）
 
-状態: **案**（ユーザーの確認待ち。決まった項目から規範の文書に移す）。発端は bench（arduinocore）がエコシステム全体を洗い出した
+状態: **決定**（2026-09-30。★ の 3 つはユーザーが選んだ。ほかは案のとおりで進め、規範の文書に移す）。発端は bench（arduinocore）がエコシステム全体を洗い出した
 「凍結前に壊さないと後で直せない所」のうち OEP の分（13 項目）。凍結前なので、どれも revision を上げずに形を変え、全ツールが
 一度に追う（[開発の方針](development-guidelines.ja.md)）。
 
@@ -42,9 +42,10 @@
 
 ### 3. USB の識別と `oep://` のアドレス ★
 
-- **(a) アドレスの probe 部** ★: 案は **unit_id**（describe の unit id。どの経路でも同じ）。USB の probe は **serial number を
+- **(a) アドレスの probe 部** ★ **決定: unit_id**。案は **unit_id**（describe の unit id。どの経路でも同じ）。USB の probe は **serial number を
   unit_id と同じにする**（開かずに解決できる）。P4 の `-hs` は付けない（USJ は VID:PID が違うので serial が重なっても区別できる）。
   アドレスは `oep://<unit_id>/<slot の名前>`。host は serial で探し、見つからなければ describe の unit id で探す。
+  **unit_id は 1〜32 byte の `a-z 0-9 -`**（slot の名前は今も `a-z 0-9 - _`）。どちらも URL の中で encode が要らない。
 - **(b) vendor bulk の経路**: `bInterfaceClass 0xFF` で、`iInterface` が `OEP` で始まるインターフェースの bulk IN / OUT 1 組、と
   core §3.3 に書く（今の client は「最初の bulk 対」を掴んでいて、DFU や CDC が先にあると外れる）。
 - **(c) HID の経路**: usage page / usage、report ID、report の長さを core §3.3 に書く（今の実装の値で固める）。
@@ -68,7 +69,7 @@
 
 ### 5. capture の族 ★
 
-- **名前** ★: 案は `oep.fixture.logic` / `oep.fixture.analog` / `oep.fixture.capture-group`（今は logic だけ
+- **名前** ★ **決定**: `oep.fixture.logic` / `oep.fixture.analog` / `oep.fixture.capture-group`（今は logic だけ
   `oep.fixture.capture` で非対称）。
 - `oep-if-capture` 冒頭の「アナログは番号仮」を消し、logic-capture.ja.md §8 の未決（名前、mode の統合、trigger の段、role の分け方）を
   「v1 はこの形」で閉じる: mode は 3 つ、trigger は 1 チャネル 1 段（段と組み合わせは 0x40 以降の type で後から）、role は 1 本 1 役。
@@ -86,8 +87,8 @@
 
 ### 7. I2C / SPI のデバイスの名前 ★
 
-案: `io.github.open-embedded-probe.i2c-target` / `.spi-target` に替える（独自のまま、持ち主の名前空間を直す。"esp32" を外す）。
-標準（`oep.fixture.*`）にするのは v1 の後、仕様を書いてから。
+**決定: 標準にする**: `oep.fixture.i2c-target` / `oep.fixture.spi-target`。ちゃんと支える機能なので、凍結前に規範の文書
+（oep-if-fixture に節を足す）を書き、registry に入れる。今の独自のインターフェースの op と形を土台にし、"esp32" に依る所を外す。
 
 追随: probe、client、bench。
 
