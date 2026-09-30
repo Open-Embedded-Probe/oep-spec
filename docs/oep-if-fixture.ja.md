@@ -31,7 +31,8 @@
 | 7 | 入力、プルアップとプルダウンを両方（弱い中間の電圧。何もつながっていない線の、目安の電圧の基準） |
 
 - 並びは要求の順に 1 つずつ行う（NRST を引いてから離す、などを 1 要求で送れる）。
-- 割り当てていないチャンネルや扱えない mode があれば、何もせず rejected unavailable（payload にその位置 u8）。
+- 割り当てていないチャンネルや扱えない mode があれば、何もせず rejected unavailable。payload は core §4.3 の TLV の並びで、
+  channel（0x02）とその並びの位置（tag 0x40 index、u8）を付ける。
 - 扱える mode は describe の modes（tag 0x40、u8 のビット集合、bit n = mode n）で宣言する。0（入力）は必須。
 - plan を解いたら、そのチャンネルは core §8 の空きの状態に戻る。
 

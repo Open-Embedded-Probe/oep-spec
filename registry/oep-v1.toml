@@ -341,6 +341,8 @@ op = [
 ]
 [interface.tlv.describe]
 modes = 0x40                    # u8 bit set: bit n = mode n is supported (0 input required)
+[interface.tlv.unavailable_payload]   # set's refusal, after the core TLVs (core §4.3)
+index = 0x40                    # u8: the position in set's list
 [interface.enum.role]
 line = 1
 [interface.enum.mode]
