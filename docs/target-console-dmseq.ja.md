@@ -148,6 +148,9 @@ payload は同じ、CRC は計算し直す）、**出したままにする**。�
   link-to-target §5）が、次の AttachChip が ESIG を読んで DATA0 に 0 でない語を残す。bit 7 が 0 の語（V203 の 0xe339e339）なら target は
   規則 1 で答えの検査に通らない語と読んですぐ出し直し、bit 7 が 1 の語（V006 / X035 の 0xffffffff）なら規則 0 で出し直す
   （規則 0 の無い target はここで止まっていた）。DATA0 に何も書かない attach（OEP の probe）の後では、0 が残って待たされた。
+- host（debugger、hart を止める側）: 止めている間に abstract command で DATA0 / DATA1 を使ったら、走らせる前に、止めたときの
+  DATA1、DATA0 を書き戻す。書き戻さないと、target の出していたフレーム（または host の答え）が消え、target はタイムアウトまで
+  待つ。OEP の probe は riscv-dm の halt / resume でこれを行う（oep-if-debug §4.2）。
 - host: TO フレームは普通のフレームとして扱う（規則 2/4 が適用される）。再同期の理由にはしない。
   host は「誰も答えていない間の出力が捨てられた」と利用者に伝えてよい。
 - host: 未同期のまま、フレームでない word（CRC 不一致、または bit 7 が 0）だけを長く読み続けた
