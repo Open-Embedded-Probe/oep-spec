@@ -6,6 +6,12 @@
 
 各項目: **案**、変わる所、追随するもの。★ はユーザーに選んでもらう項目。
 
+**規範への反映（2026-09-30、1b7c93c）**: 1（core §2.3、§2.7、list / scan / connections / marks / segments の要素の長さ）、2（probe-config
+§2、storage の理由）、3（core §3.3、§7.5 unit_id、probe-config の address、usb-identity）、4（core §4.3、registry
+`unavailable_payload`、console の no_connection）、5（名前、status の flags、rate、scale、logic-capture §8）、6（core §11.3）、
+7（oep-if-fixture §3 / §4、registry）、8（console）、10（core §7.5）。残りは実装だけ: 9（firmware.yml）、12（probe が label を受ける）、
+13（client の API）、11（予約は今の文書のまま）。
+
 ## A. 横断（決めると他が動ける）
 
 ### 1. 固定の形の伸ばし方（core §2）
