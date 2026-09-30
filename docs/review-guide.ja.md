@@ -107,12 +107,10 @@ flash の書き方やチップ固有の手順は host にある。
 
 | PATH | 中身 |
 |---|---|
-| `examples/Esp32P4X035Probe/` | ESP32-P4 + CH32X035 の治具（OEP は USB-Serial/JTAG） |
-| `examples/Esp32V003Probe/` | classic ESP32 + CH32V003（UIAPduino）の治具（SWIO） |
-| `examples/Rp2350L103Probe/`、`examples/Rp2040ZeroProbe/` | RP2350 / RP2040 の probe（RVSWD、SWD） |
+| `examples/Firmware/OepProbe/` | チップごとに 1 本の firmware（profile rp2040 / rp2350 / esp32p4 / esp32）。ピンはすべて host が選び、治具は設定（oep.probe.config）で表す |
+| `examples/01.Basics/`、`examples/02.Interfaces/` | 学ぶための example（MinimalProbe、FixtureProbe、CustomInterface） |
+| `examples/Rp2350L103Probe/`、`examples/Rp2040ZeroProbe/` | RP2350 / RP2040 の治具の probe（RVSWD、SWD）。`Firmware/OepProbe` がベンチで確かめられたら消す |
 | `examples/Esp32P4CaptureProbe/` | ESP32-P4 のキャプチャの probe（HS、コピーなしのストリーミング）と、確認のスクリプト `host/stream_test.py` |
-| `examples/Esp32P4HsPrototype/` | 試作 P1〜P5 / P7（複数の経路、UART の素通し、設定と起動モード、DFU / Mass Storage での更新、USB 構成ごとの速さ）と、その host 側のスクリプト（`host/`） |
-| `examples/Esp32P4X035ConsolePrototype/` | 試作 P6（コンソールを CDC の口に流す、自動 attach、connection の寿命）と host 側のスクリプト |
 | `examples/PicoDebugPortSurvey/` | Pico でのデバッグポートの調査用 |
 
 ### 5.3 そのほか
