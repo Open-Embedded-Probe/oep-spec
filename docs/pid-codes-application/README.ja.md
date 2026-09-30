@@ -26,15 +26,14 @@
 | ファイル | 入れる場所（pid.codes のリポジトリ） |
 |---|---|
 | [org/Open-Embedded-Probe/index.md](org/Open-Embedded-Probe/index.md) | `org/Open-Embedded-Probe/index.md` |
-| [1209/XXXX/index.md](1209/XXXX/index.md) | `1209/<PID>/index.md`（XXXX を選んだ番号に） |
+| [1209/4F45/index.md](1209/4F45/index.md) | `1209/4F45/index.md` |
 
 ## 手順
 
-1. PID の番号を選ぶ。pid.codes のリポジトリの `1209/` に無い番号で、開いている pull request にも出ていないもの。
-   2026-09-30 の時点で 982 個が使われていて、`0x0E00`〜`0x0E0F` などは空いている（前後も空いている）。
-   `0x0000`〜`0x000F` は pid.codes の予約（`0x0001` は試験用）なので避ける。
-2. `pidcodes/pidcodes.github.com` を fork し、上の 2 つのファイルを置く（`XXXX` を番号に）。
-3. commit message の例: `Add Open Embedded Probe and 1209:<PID> (OEP probe, OpenEmbeddedProbe firmware)`。pull request を出す。
+1. PID の番号は **`0x4F45`**（ASCII の "OE"）。2026-09-30 に、pid.codes の `1209/` に無く、開いている 37 本の pull request にも
+   出ていないことを確かめた。出す直前にもう一度確かめる（取られていたら、空いている別の番号に。`0x0000`〜`0x000F` は予約）。
+2. `pidcodes/pidcodes.github.com` を fork し、上の 2 つのファイルを置く。
+3. commit message の例: `Add Open Embedded Probe and 1209:4F45 (OEP probe, OpenEmbeddedProbe firmware)`。pull request を出す。
 4. 認められたら、[USB の識別](../usb-identity.ja.md) §4 の一覧の所を直す（spec、ライブラリ、client、ch32rv、ArduinoCore-CH32）。
 
 ## 申請の前に済ませておくこと
@@ -42,4 +41,4 @@
 - [x] oep-probe-arduino の README に、OEP とは何かと仕様へのリンク
 - [x] oep-probe-arduino に PID-USE.md（英語と日本語）
 - [ ] PID-USE.md を oep-probe-arduino の main に入れる（申請の本文がリンクする）
-- [ ] org の名前 `Open-Embedded-Probe`、PID の title、説明文を、持ち主（ユーザー）が確かめる
+- [x] 持ち主は個人ではなく OEP（org `Open-Embedded-Probe`、ライブラリの author も "Open Embedded Probe contributors"）

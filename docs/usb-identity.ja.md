@@ -23,11 +23,11 @@ USB の VID:PID で見分けるのは、「OEP の probe か」だけである�
 
 ## 3. PID を取った後
 
-- OpenEmbeddedProbe の firmware は `1209:<PID>` で列挙する。iProduct は `OEP` で始めたまま（表示と、変換期の host のため）。
-- host は `1209:<PID>` で OEP の probe とみなす。iProduct での判定は、移行が済んだら消す（core §3.3 の「取るまでの間」）。
+- OpenEmbeddedProbe の firmware は `1209:4F45` で列挙する。iProduct は `OEP` で始めたまま（表示と、変換期の host のため）。
+- host は `1209:4F45` で OEP の probe とみなす。iProduct での判定は、移行が済んだら消す（core §3.3 の「取るまでの間」）。
 - 独立した別の実装は、自分の VID:PID を使う。host は、その実装の ID を知らなくても、口を利用者が選べば OEP を話せる
   （confirm で確かめる）。discovery に出したい実装は、host の側に自分の ID を登録してもらうか、自分の PID の規則で
-  `1209:<PID>` の条件を満たす。
+  `1209:4F45` の条件を満たす。
 
 ## 4. 割り当てられたら直す所
 
@@ -36,8 +36,8 @@ USB の VID:PID で見分けるのは、「OEP の probe か」だけである�
 | oep-spec core §3.3 | 「専用の VID:PID（取るまでは iProduct が `OEP`）」の括弧の中を、移行の期限つきの書き方に。番号を書く |
 | oep-spec core §7.5（oep_pid）、probe 開発ガイド §3.8 | 同じ |
 | oep-spec docs/pid-codes-application | 割り当ての記録（番号、日付、pull request） |
-| oep-probe-arduino `examples/Esp32P4X035Probe`（`kUsbVid` / `kUsbPid`）、PID-USE.md（`XXXX`） | 番号 |
+| oep-probe-arduino `examples/Esp32P4X035Probe`（`kUsbVid` / `kUsbPid`） | 番号（PID-USE.md はもう `1209:4F45` と書いてあり、「申請中」を外す） |
 | oep-client-python `link.USB_VID` / `USB_PID` | 既定の番号 |
-| ch32rv の discovery（`is_oep_device`） | `1209:<PID>` を足し、iProduct の判定は移行の後に外す |
+| ch32rv の discovery（`is_oep_device`） | `1209:4F45` を足し、iProduct の判定は移行の後に外す |
 | ArduinoCore-CH32 の oep-workflow §3.3 | 同じ |
 | bench の usbipd の bind | VID:PID が変わるので、焼き直した後に bind し直す（管理者の操作） |
