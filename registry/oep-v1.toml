@@ -156,6 +156,7 @@ op = [
   { code = 0x11, name = "end", lock = true },
   { code = 0x12, name = "keepalive", lock = true },
   { code = 0x13, name = "lock_state", lock = false },
+  { code = 0x14, name = "port_speed", lock = true },   # optional: a UART bridge's speed raised for the session (core §3.5)
   { code = 0x30, name = "subscribe", lock = true },
   { code = 0x32, name = "unsubscribe", lock = true },
   { code = 0x40, name = "link_source", lock = false, closed_tail = true },
@@ -193,6 +194,7 @@ discoverable = 0x4A             # u8: 1 = the probe also enumerates as a USB dev
 plan_roles = 0x4B               # u32: the most role assignments the plan holds at once, every fn together (core §8)
 chip = 0x4C                     # text: the probe MCU's part and revision (optional)
 max_op_ms = 0x4D                # u32: the longest one request may take; required (core §7.5)
+port_speed = 0x4E               # u8 1: the probe takes op port_speed (core §3.5)
 [interface.enum.unavailable_cause]
 pin_in_use = 1
 limit = 2
@@ -214,6 +216,10 @@ usb_serial_jtag = 3
 vendor_bulk = 4
 hid = 5
 tcp = 6
+[interface.enum.port_speed_step]   # op port_speed's step (core §3.5)
+try = 0
+commit = 1
+revert = 2
 [interface.enum.resumed]        # open's answer (core §6.4)
 new = 0
 resumed = 1                     # the same session id, resources kept
