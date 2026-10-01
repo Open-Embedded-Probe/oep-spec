@@ -24,6 +24,7 @@
 | 0x04 | slot | §1.1 | slot |
 | 0x05 | bind | §1.2 | port |
 | 0x06 | uart | fn(u16)、baud(u32)、format(u8)（`oep.fixture.uart` の configure と同じ値） | fn |
+| 0x07 | disable | channel(u16) | channel |
 
 - どの項目もすぐ効く。扱う項目は describe の items で宣言し、宣言していない項目の set は rejected unsupported。tag 0x7E は応答の
   メタ情報のために予約。
@@ -37,6 +38,16 @@
   format は configure の TLV format と同じ値（未定義のビットは rejected malformed）。ピンの無い fn の configure は今どおり
   rejected unavailable（項目があっても変わらない）。CDC の口の line coding は fixture UART に写さない（OEP の configure とこの項目
   だけが効く）。
+- **disable**: その channel を probe が**一切使わない**ようにする（ボードに出ていないピン、ほかの部品につながっているピン）。利用者が
+  自分のボードに合わせて明示する。firmware が使えると宣言した channel（describe の role_channels など）を減らすだけで、firmware が
+  使えないとしたピンを使えるようにはできない（それは自前のビルドで行う）。
+  - 無効にした channel を指す要求（plan_apply、設定の plan、線の attach の pins と reset、scan の組、gpio など）は rejected unavailable
+    （cause 5 設定が持つ、channel 付き）。scan の count = 0 の並びには入れない。
+  - probe はその channel の pin を駆動も設定もしない（起動時と解放時の空きの状態にもしない。リセットの後のまま）。
+  - いま使われている channel（plan、接続、スロット）を無効にする set は rejected unavailable（cause 1）。同じ channel の idle と
+    disable を両方持つ設定は malformed。
+  - describe は宣言だけなので変わらない（core §7.3）。host は get の disable を合わせて、使える channel を知る。
+  - 保存すれば起動時に、空きの状態を掛けるより先に適用する。
 - **idle**: plan にも接続にも使われていないピンの状態。起動時と、そのピンが解放されるたび（core §8）に、この状態にする。
   idle が無いピンは Hi-Z。治具の配線で相手の入力が浮くピン（相手の RX につながる TX など）は、host が idle で明示し、保存する。
 
