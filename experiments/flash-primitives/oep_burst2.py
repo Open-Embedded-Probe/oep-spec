@@ -4,7 +4,7 @@
 # ///
 """burst_obs on the Pico's L103: the host touches the DM with pauses (no console), then reads g_report from RAM."""
 import pathlib, subprocess, sys, tempfile, time
-REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32")
+REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32RV")
 sys.path.insert(0, str(REPO / "tests" / "manual" / "oep_smoke"))
 sys.path.insert(0, "/home/mt/dev_oep/oep-client-python/src")
 import oep_smoke, targets

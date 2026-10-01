@@ -5,7 +5,7 @@
 """Destructive: flash a sketch that disables SWIO on the V003, show plain attach fails, recover through
 attach_under_reset (NRST = probe default) by flashing core_api, show plain attach works again."""
 import pathlib, sys, tempfile
-REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32")
+REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32RV")
 sys.path.insert(0, str(REPO / "tests" / "manual" / "oep_smoke"))
 sys.path.insert(0, "/home/mt/dev_oep/oep-client-python/src")
 import oep_smoke, targets

@@ -4,7 +4,7 @@
 # ///
 """rest_obs (OBS_PRINT=0) on the Pico's L103: reset, rest `rest` s attached, one DMI read, wait, halt, read g_line."""
 import pathlib, subprocess, sys, tempfile, time
-REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32")
+REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32RV")
 sys.path.insert(0, str(REPO / "tests" / "manual" / "oep_smoke"))
 sys.path.insert(0, "/home/mt/dev_oep/oep-client-python/src")
 import oep_smoke, targets
