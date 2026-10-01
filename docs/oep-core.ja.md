@@ -292,7 +292,7 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 | 0x01 | cause | u8: 1 ピンが使われている、2 数の上限（plan_roles、スロット、接続など）、3 保存先が足りない、4 組（capture-group）に束ねられている、5 設定が持つ（設定の plan、スロット）、6 状態が違う（configure していない、動いている、など） |
 | 0x02 | channel | u16。ぶつかった channel（繰り返してよい） |
 | 0x03 | holder_fn | u16。その資源を持っている fn |
-| 0x04 | holder_kind | u8: 1 plan、2 線の接続、3 スロット、4 bind、5 設定の plan |
+| 0x04 | holder_kind | u8: 1 plan、2 線の接続、3 スロット、4 bind、5 設定の plan、6 設定の disable |
 
 インターフェースは 0x40 以降に自分の tag を足せる。
 
