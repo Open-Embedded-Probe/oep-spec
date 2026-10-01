@@ -47,8 +47,9 @@ picotool / uf2、oep_client）でできる。firmware のリポジトリは Ardu
 4. 線（接続している target があれば）: scan、attach（reset TLV を含む）、halt → read_block → resume の往復（block op の自己完結）。
 5. fixture: gpio の set / read、uart の configure / write / read（ループバックの配線があれば）。
 6. port_speed（UART bridge の probe だけ）: `linktest` の matrix を既定の条件（今の速さと候補の速さ、in / out / duplex、同時 1 と max）で
-   回し、結果を記録する。**起動時の速さで同じ matrix を先に測って基準とし**、候補の壊れ・失われの割合を基準と比べる（CH340 は 115200 でも
-   1〜3 % 落とすので、絶対数の閾値では判定できない。[リンクの計測](link-measurements.ja.md) §1.4）。
+   回し、結果を記録する。**起動時の速さで同じ matrix（同じ n）を先に測って基準とし**、候補の壊れ・失われの割合を基準と比べる（CH340 は
+   115200 でも 1〜3 % 落とすので、絶対数では判定できない。[リンクの計測](link-measurements.ja.md) §1.4）。基準の取り方と閾値は
+   [host 開発ガイド](host-development-guide.ja.md) §7.3（参考の手順。core §3.5 は握手だけを決める）。
 7. セッション: lease の期限切れ、expired、force の往復。
 8. シリアルの口（CDC、USB-Serial/JTAG、UART bridge）の host の受けの上限: 未解決の応答の見込み量（同時数 × フレーム長）を client の上限
    （6 KiB、core §3.4 の注）まで上げた `linktest` in で 1 つも失われないこと（Linux の cdc_acm の 8 KiB を踏んでいないことの確かめ）。
