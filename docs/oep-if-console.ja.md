@@ -23,17 +23,18 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 | 0x05 | mark | stream(u16)、value(u8) | — | 必要 |
 | 0x06 | write | stream(u16)、count(u16)、data | accepted(u16)、[TLV] | 必要 |
 | 0x07 | close | stream(u16) | — | 必要 |
-| 0x08 | streams | — | count(u8)、count × (len(u8)、stream(u16)、connection(u16)、mechanism(u8)、users(u8)、state(u8))、[TLV] | 不要 |
+| 0x08 | streams | first(u8) | more(u8)、count(u8)、count × (len(u8)、stream(u16)、connection(u16)、mechanism(u8)、users(u8)、state(u8))、[TLV] | 不要 |
 
 - read、marks、clear、mark、write は [共通部品](oep-if-common.ja.md) §1 の形（先頭に stream）。
 - mechanism: 0 SDI、1 DMDATA、2 dmseq（framing は [target-console-dmseq](target-console-dmseq.ja.md)）。**mechanism の番号が方式を
   正確に決める**（版を持たない）。方式を変えるときは新しい番号（3 以降、registry に足す）にし、古い番号の意味は変えない。知らない mechanism と、
-  describe の mechanisms に無い mechanism は rejected unsupported（payload なし）。
+  describe の mechanisms に無い mechanism は rejected unsupported（payload `0x00`、core §4.3）。
 - describe: tag 0x40 mechanisms（u8 の並び。その probe が開ける mechanism）。必ず出す。
 - 知らない stream は rejected no_connection（core §4.3）。別の種類の資源の番号（connection の番号を stream に）は rejected unavailable
   cause 6。arm-adi（swd）の connection への open も rejected unavailable cause 6（[線とデバッグ](oep-if-debug.ja.md) §5）。
 - ストリームの番号（u16）は core §9 の規則で振る（probe で 1 つの空間、1 から進めて一周する。同じ場所の再 open は番号を消費しない、§2）。
-- **streams** は生きているストリームと、閉じたがまだ読めるストリームの一覧（`stream_state`: 0 open、1 closed）。users は bit0 host の
+- **streams** は生きているストリームと、閉じたがまだ読めるストリームの一覧（`stream_state`: 0 open、1 closed）。作られた順に first 番目から
+  1 フレームに入る分を返し、more = 1 なら続きがある（connections と同じ形）。users は bit0 host の
   セッション、bit1 スロット（bind）。ロック無しの host（Monitor）が番号を得るための op。
 - 閉じたストリームへの close は何もせず成功。
 - revision 1 は通知を送らない（subscribe は rejected unsupported）。後から足すときは、データの payload を core §11.2 の形にする。

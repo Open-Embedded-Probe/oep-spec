@@ -268,7 +268,7 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出�
 | 0x0B | unsupported | 定義にはあるが、この probe が扱えない（critical の TLV、固定部分の値、任意の op の機能） | `tag(u8)`、[TLV]。tag は critical の TLV なら受け取ったままの値、固定部分の値なら 0x00。どの要素かを示すときは後ろに TLV（unavailable と同じ tag の空間: channel、index） |
 | 0x0C | result_lost | 送り直された要求の結果を覚えていない（§5.2） | — |
 | 0x0D | corr_reused | 同じ corr で fn、op、中身のどれかが違う要求が来た（§5.2） | — |
-| 0x0E | expired | この session_id のロックは lease の期限切れか force で終わり、資源は外した（§9）。host は open からやり直す | — |
+| 0x0E | expired | この session_id のロックは lease の期限切れで終わり、資源は外した（§9）。host は open からやり直す（force で奪われた側は、奪った側が持つ間は locked、その後は no_session になる: probe は最後の session_id しか覚えない） | — |
 
 rejected の detail は reason で、そのほかの情報は payload に置く。
 
@@ -354,8 +354,8 @@ probe は、ロックの有無、最後の session_id、その ID のロック�
 |---|---|---|
 | 空き（end で離した） | 最後の session_id と同じ、open 以外 | ロックを立て直して処理する（再開。lease は前の open の値、資源は残っている、§9） |
 | 空き（end で離した） | 最後の session_id と同じ open | ロックを立て直し、resumed = 1 |
-| 空き（期限切れ・force で外した） | 最後の session_id と同じ、open 以外 | **rejected expired**（資源は外した。host は open からやり直す） |
-| 空き（期限切れ・force で外した） | 最後の session_id と同じ open | ロックを立て、resumed = 2（資源を外した後の再開） |
+| 空き（期限切れで外した） | 最後の session_id と同じ、open 以外 | **rejected expired**（資源は外した。host は open からやり直す） |
+| 空き（期限切れで外した） | 最後の session_id と同じ open | ロックを立て、resumed = 2（資源を外した後の再開） |
 | 空き | 違う ID、open 以外 | rejected no_session |
 | 空き | 違う ID の open（force の有無を問わない） | ロックを立て、最後の session_id と owner を更新、resumed = 0 |
 | 自分が持つ | 同じ、open 以外 | 処理する |
@@ -543,7 +543,7 @@ plan は **fn ごと**に持つ。
 |---|---|---|---|---|
 | end | 残る。次に成功した open で、そのセッションの資源に原子的に移る | 終わる | 残る | 再開して処理（§6.2） |
 | lease の期限切れ | 外す | 終わる | 残る | rejected expired、open で resumed = 2 |
-| force で奪われる | 外す（期限切れと同じ） | 終わる | 残る | rejected expired、open で resumed = 2 |
+| force で奪われる | 外す（期限切れと同じ） | 終わる | 捨てる（奪った open が捨てる） | 奪った側が持つ間は locked、その後は no_session（最後の ID は奪った側） |
 | 同じ ID の open（保持中） | 残る | 残る（送り先はその経路） | 捨てる | — |
 | probe の再起動 | 無くなる（boot_id が変わる） | 無くなる | 無くなる | no_session |
 
