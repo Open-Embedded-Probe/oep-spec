@@ -44,6 +44,19 @@ vendor bulk / HID（長さ付きフレーム）には適用しない。
 - **CDC** は OS のドライバで開ける利点のため。上の 6 KiB の決まりを守れば 500〜650 KB/s。
 - **USJ**（FS）は 200〜550 KB/s。ESP32-P4 の USJ は OEP の運び方としても使え、消去 → 焼き直しの経路でもある。
 
+### 1.3 線の op はリンクではなく線の速さで決まる（X035 治具、RVSWD）
+
+同じ P4 で、CH32X035 に attach して halt → read_block → resume（50 回、s0 / s1 / a0 / a1 が変わらないことを確認）:
+
+| 運び方 | read_block 64 語（256 B） | read_block 240 語（960 B） |
+|---|---|---|
+| vendor bulk | 8.1 ms / 回、31.5 KB/s | 20.2 ms、47.5 KB/s |
+| USB CDC | 8.5 ms / 回、30.1 KB/s | 21.7 ms、44.1 KB/s |
+
+リンクが 10 倍速くても 5 % しか違わない: block op の時間は RVSWD の DMI の往復（abstract command、語ごとの DATA0 読み）で
+決まる。線の速さを上げるなら、probe の DMI の往復を減らす（sysbus、abstractauto、まとめ読み）のが先で、リンクの速さは
+キャプチャ・大量転送・コンソールのため。block op の自己完結（GPR / DATA / abstractauto を戻す）はどちらの運び方でも成立。
+
 ## 2. 環境
 
 - host: WSL2、usbipd-win 経由。pyserial の low latency ON。
