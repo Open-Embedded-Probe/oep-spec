@@ -109,7 +109,7 @@ core §3.4 の規則を守るための作り（2026-09-29）。
 - **OEP の専用の VID:PID で列挙する**（pid.codes で取る。まだ取っていない）。**PID を取るまでの間は、host の discovery は USB の
   device の名前（iProduct が `OEP` で始まる）で OEP の probe を見分ける**ので、iProduct を `OEP` で始める（PID を取ったら名前での
   判定は無くなる）。device の中の口は interface の種類で決まる（core §3.3: CDC はすべてシリアルの口）。この形で列挙する probe
-  は、fn 0 の describe の oep_pid を 1 にする（USB-Serial/JTAG のように別の口から開かれても、host がそれで分かる）。
+  は、fn 0 の describe の discoverable を 1 にする（USB-Serial/JTAG のように別の口から開かれても、host がそれで分かる）。
   - 参照 probe（ESP32-P4、EspUsbDevice 2.5.1）は、VID:PID は仮に 303a:0002（arduino-esp32 の TinyUSB の既定）、iProduct を
     「OEP probe (P4 HS)」にしている（CDC の「OEP console」は表示のための名前）。
 - interface は **vendor bulk（OEP）、HID（OEP）、CDC（シリアルの口）** の組（core §3.3）。
