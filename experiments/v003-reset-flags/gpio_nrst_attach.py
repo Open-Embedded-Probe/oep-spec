@@ -5,7 +5,7 @@
 """Can the host win the V003's reset window with fixture.gpio on NRST plus a plain attach (no attach-under-reset)?
 The target runs firmware that turns SWIO into a GPIO (swio_off), so a plain attach only works inside the window."""
 import pathlib, struct, sys, tempfile, time
-REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32")
+REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32RV")
 sys.path.insert(0, str(REPO / "tests" / "manual" / "oep_smoke"))
 sys.path.insert(0, "/home/mt/dev_oep/oep-client-python/src")
 import oep_smoke, targets

@@ -6,7 +6,7 @@
 an OEP probe, open target.console with the given framing, and check RUN and ECHO byte for byte."""
 import argparse, difflib, pathlib, random, re, sys, time
 
-REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32")
+REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32RV")
 sys.path.insert(0, str(REPO / "tests" / "manual" / "oep_smoke"))
 sys.path.insert(0, "/home/mt/dev_oep/oep-client-python/src")
 from targets import TARGETS                      # noqa: E402

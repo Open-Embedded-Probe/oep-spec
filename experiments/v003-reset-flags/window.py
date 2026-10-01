@@ -4,7 +4,7 @@
 # ///
 """Time from the reset vector to the top of setup() on the V003 (the window before a sketch can turn SWIO off)."""
 import pathlib, sys, tempfile
-REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32")
+REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32RV")
 sys.path.insert(0, str(REPO / "tests" / "manual" / "oep_smoke"))
 sys.path.insert(0, "/home/mt/dev_oep/oep-client-python/src")
 import oep_smoke, targets

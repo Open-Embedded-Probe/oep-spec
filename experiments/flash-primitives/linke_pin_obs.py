@@ -5,7 +5,7 @@
 """Each WCH-Link board: flash pin_idle_obs (the target watches its own debug pins), then run ch32rv's dmseq monitor
 at two speeds and collect what the target saw while the link polled it. -> the link's idle levels per target."""
 import pathlib, subprocess, sys, tempfile
-REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32")
+REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32RV")
 sys.path.insert(0, str(REPO / "tests" / "manual" / "oep_smoke"))
 import oep_smoke
 CH32RV = str(REPO / ".tools" / "ch32rv" / "0.10.0" / "ch32rv")

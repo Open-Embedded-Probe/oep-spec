@@ -4,7 +4,7 @@
 # ///
 """E159 re-check on the X035 (P4 probe): after reset-halt + resume, and after a plain reset, does millis() run?"""
 import pathlib, re, sys, tempfile, time
-REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32")
+REPO = pathlib.Path("/home/mt/dev_wch/ArduinoCore-CH32RV")
 sys.path.insert(0, str(REPO / "tests" / "manual" / "oep_smoke"))
 sys.path.insert(0, "/home/mt/dev_oep/oep-client-python/src")
 import oep_smoke, targets
