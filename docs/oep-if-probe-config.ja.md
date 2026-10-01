@@ -91,7 +91,7 @@ lock_len は錠の部分（lock_scheme から lock_value まで）の長さ。0 
 - **スロットの接続**: 生きている接続のうち、wire_fn が同じでピンの組がスロットと一致するもの（誰が attach したかは問わない）。
 - **錠**: スロットの接続の target_id（attach の応答の TLV 0x10）が、scheme が lock_scheme と同じで、値と lock_mask のビットごとの
   AND が lock_value と一致するときだけ、錠が合う。錠の無いスロットは常に合う。比べ方（どのビットを無視するか）は host が mask で
-  決める（例: WCH の chip_id でリビジョンのビット [7:4] を無視するなら mask 0xFFFFFF0F）。
+  決める（例: 識別子の下位 byte のビット [7:4] がリビジョンで、それを無視するなら mask 0xFFFFFF0F）。
 - **at boot のスロットの数は、wire_fn ごとに、その線の max_connections まで**（[線とデバッグ](oep-if-debug.ja.md) §1）。超える set
   は rejected unavailable。スロットの並びの順は意味を持たない。
 - 登録できる数は probe が describe の slots_max で宣言する。
@@ -119,7 +119,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
   （[線とデバッグ](oep-if-debug.ja.md)）。probe 自身の attach、target の自己リセット、dmi で書いた ndmreset、`oep.fixture.gpio`
   などで動かしたリセットの線は数えない。選ばれた target の接続が切れても、選択は替えない。
 - 並びが 1 つなら、どの mode でもそれが流れる（1 つのときと 2 つ以上のときで動きが変わらない）。
-- **mixed の行**: LF で閉じる。閉じない出力は、probe が決めた量（目安 128 byte）か静けさ（目安 100 ms）で閉じる。name はスロットの
+- **mixed の行**: LF で閉じる。閉じない出力は、128 byte たまるか、最後のバイトから 100 ms 静かだったら閉じる。name はスロットの
   name。fixture UART は、その fn の plan の RX の channel に label（§1）があればその label、無ければ `name#instance`（core §7.2、
   例 `oep.fixture.uart#1`）。
   label を印にするとき、probe は `]` と 0x20 未満のバイト（CR、LF など）を `_` に置き換える（label の項目そのものは制限しない）。

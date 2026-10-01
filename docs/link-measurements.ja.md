@@ -86,3 +86,23 @@ vendor bulk / HID（長さ付きフレーム）には適用しない。
 - probe: X035 治具の P4（unit 30eda0e31108、firmware 0.0.25）、Pro Micro RP2350（unit 9489dd2ae0953650、main 2026-10-01）。
 - 手順: `oep linktest <port> --patterns in,out,duplex --inflight 1,8 --sizes 64,1008 --frames 300`；libusb 直接は
   oep-client-python の試験用スクリプト（cdc_acm を detach、SET_CONTROL_LINE_STATE で DTR、COBS の link をエンドポイントに載せる）。
+
+## 3. 規範から移した記録（target の観察、2026-10-02）
+
+[線とデバッグ](oep-if-debug.ja.md) の規範からチップ名と日付つきの逸話を外し、ここに残す（規範の規則の由来）。
+
+- **reset をかけながらの attach は最初の命令の前で止まる保証が無い**（debug §1）: CH32X035 で、reset の線の解放から halt が効くまでに
+  走った分があり、dpc 0x4ac で止まった（2026-10-01）。
+- **線の設定（max_speed、idle_clock）は target の性質**（debug §3）: CH32L103 は SWCLK が high で休むと debug の線を reset し、reset 直後の
+  遅いクロックでは 1 MHz を超えると書き込みの確かめが落ちる（2026-09-23〜25）。
+- **止まっている間 haltreq を立てたままにしてよい**（debug §4 の表）: CH32L103 は hart の状態が変わると DMI の link が落ち、halt 直後の
+  読みが前の値になる。参照の firmware（oep-probe-arduino）は保つ。
+- **DATA0 / DATA1 は target のもの**（debug §4.2）: CH32X035 で、probe が abstract command で DATA0 / DATA1 を使うと、target が出していた
+  dmseq のフレームが消え、target は resume の後、自分の語が無いのを沈黙と読んでタイムアウトまで待った（2026-09-30）。
+- **read_block / write_block は応答の前に GPR、DATA、abstractauto を戻す**（debug §4.5）: CH32X035 の sketch のループに 10 ms おきの
+  halt → read_block → resume を 109 回挟むと sketch が死んだ（2026-09-30）。resume の時に戻す方式では、間に host の raw DMI が入ると
+  戻し損ねた（2026-10-01）。
+- **attach は保留中の havereset を先に確認応答する**（debug §4.6）: CH32V00x の DM は、確認応答するまで DMSTATUS の halt / running を
+  固定する。
+- **参照の firmware の値**（規範は数を決めない所）: arm-adi の WAIT の再試行は 100 回（OepSwd.cpp の kWaitRetries）。riscv-dm の DMI の
+  busy の再試行は PHY（rvswd / swio）が持つ。max_op_ms は 10000。

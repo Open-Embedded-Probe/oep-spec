@@ -35,7 +35,7 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 - ストリームの番号（u16）は core §9 の規則で振る（probe で 1 つの空間、1 から進めて一周する。同じ場所の再 open は番号を消費しない、§2）。
 - **streams** は生きているストリームと、閉じたがまだ読めるストリームの一覧（`stream_state`: 0 open、1 closed）。作られた順に first 番目から
   1 フレームに入る分を返し、more = 1 なら続きがある（connections と同じ形）。users は bit0 host の
-  セッション、bit1 スロット（bind）。ロック無しの host（Monitor）が番号を得るための op。
+  セッション、bit1 スロット（bind）。ロック無しの host（監視）が番号を得るための op。
 - 閉じたストリームへの close は何もせず成功。
 - revision 1 は通知を送らない（subscribe は rejected unsupported）。後から足すときは、データの payload を core §11.2 の形にする。
 
