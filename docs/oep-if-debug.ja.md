@@ -63,8 +63,10 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 - max_speed（TLV 0x01、u32 Hz）: probe はこれを超える速さを選ばない。**attach では必須**（無ければ rejected malformed）、critical で
   送る。probe の min_clock_hz より小さければ rejected unsupported（tag 0x01）。scan にも付けられる（無ければ probe の最も遅い速さで
   試す）。pins と idle_clock は任意で、送るときは critical。
-- **scan が target に書くのは dmactive だけ**（DMSTATUS を読むため）。終わったら元に戻す。「見つかった」は DMSTATUS.version が 2 か 3
-  （swd は DPIDR が読めた）。外れた組のピンは core §8 の空きの状態に戻す。
+- **scan が target に書くのは dmactive だけ**（DMSTATUS を読むため）。dmactive は立てたまま残す（§4.6 と同じ。下ろすと DATA0 の
+  コンソールのフレームが消える）。「見つかった」は DMSTATUS.version が 2 か 3（swd は DPIDR が読めた）。外れた組のピンは core §8 の
+  空きの状態に戻す。max_speed が無い scan は、probe が安全と考える遅い速さで試す（attach と同じ探索をしてよい。swd のように読んで
+  選べない線は probe の決めた遅い固定値）。
 - **target の識別子**: attach の応答の後ろに、probe が読めた target の識別子を TLV 0x10 target_id（scheme(u8)、値）で付けてよい。
   scheme は識別子の取り方で、wire ごとに registry が定める。probe は読めなかったとき（scheme が「無い」と定める値だったときを含む）
   は付けない。値の意味（どのビットが系統で、どれがリビジョンか）は host が知っている。probe は解釈しない。
@@ -190,7 +192,7 @@ host が raw の DMI（dmi の op）で何をしても、host が途中で死ん
 | halt | haltreq | allhalted を見る。**止まっている間、haltreq を立てたままにしてよい**（L103 は hart の状態が変わると DMI の link が落ち、halt 直後の読みが前の値になる。参照の firmware は保つ）。resume / step / reset / detach と connection を閉じるときに下ろす |
 | resume | haltreq = 0、resumereq = 1 を 1 回 | 何も覚えず、何も戻さない |
 | step | dcsr.step、DATA0 / DATA1（dcsr の読み書き） | dcsr.step を下ろし、DATA1、DATA0 を戻す |
-| reset | haltreq、ndmreset、havereset の確認応答 | haltreq を下ろす（mode 2 は止めたまま下ろす）、havereset を確認応答。mode 1 の内部の halt は step と同じく戻す |
+| reset | haltreq、ndmreset、havereset の確認応答 | havereset を確認応答。mode 0 / 1 は haltreq を下ろす。mode 2 は止めたままで、halt と同じく haltreq を保ってよい。mode 1 の内部の halt は step と同じく戻す |
 | read_block / write_block | GPR（s0、s1、a0、a1）、DATA1 / DATA0、abstractauto、program buffer、sysbus | GPR、DATA1、DATA0、abstractauto を戻す。program buffer と SBCS / SBADDRESS は戻さない（host が使うなら設定し直す） |
 | run | pc、host が指定した GPR、dcsr（ebreakm、prv）、haltreq | **host の指示どおりに変えたまま返す**（host の責任）。abstractauto と haltreq は戻す |
 | dmi | host が書いたもの | 何も触らず、何も戻さない（host が DATA を使ったら host が戻す） |

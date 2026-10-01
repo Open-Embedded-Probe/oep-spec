@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "98791ec82bf77c12"
+REGISTRY_HASH = "ec281256113a4e2e"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -51,7 +51,7 @@ FIXTURE_GPIO = _NS(name="oep.fixture.gpio", revision=1, op={"set": 0x01, "read":
     closed_tail={}, tlv={"describe": {"modes": 0x40}, "unavailable_payload": {"index": 0x40}}, event={}, enum={"role": {"line": 0x01}, "mode": {"input": 0x00, "input_pullup": 0x01, "input_pulldown": 0x02, "output_low": 0x03, "output_high": 0x04, "open_drain_low": 0x05, "open_drain_release": 0x06, "input_pullup_pulldown": 0x07}}, own={})
 INTERFACES["oep.fixture.gpio"] = FIXTURE_GPIO
 FIXTURE_UART = _NS(name="oep.fixture.uart", revision=1, op={"configure": 0x01, "read": 0x02, "marks": 0x03, "clear": 0x04, "mark": 0x05, "write": 0x06, "status": 0x07}, lock_free={0x02, 0x03, 0x07},
-    closed_tail={}, tlv={"configure": {"format": 0x01}, "describe": {"formats": 0x40}}, event={}, enum={"role": {"rx": 0x01, "tx": 0x02}, "format_field": {"data_bits_mask": 0x03, "parity_mask": 0x0C, "parity_even": 0x04, "parity_odd": 0x08, "stop_bits_2": 0x10}}, own={})
+    closed_tail={}, tlv={"configure": {"format": 0x01}, "describe": {"formats": 0x40}}, event={}, enum={"role": {"rx": 0x01, "tx": 0x02}, "uart_configured": {"default": 0x00, "session": 0x01, "item": 0x02, "item_fallback": 0x03}, "format_field": {"data_bits_mask": 0x03, "parity_mask": 0x0C, "parity_even": 0x04, "parity_odd": 0x08, "stop_bits_2": 0x10}}, own={})
 INTERFACES["oep.fixture.uart"] = FIXTURE_UART
 FIXTURE_I2C_TARGET = _NS(name="oep.fixture.i2c-target", revision=1, op={"configure": 0x01, "arm_rx": 0x02, "read_rx": 0x03, "preload_tx": 0x04, "status": 0x05, "reset": 0x06, "stretch": 0x07}, lock_free={0x05},
     closed_tail={}, tlv={"describe": {"queue_depth": 0x40}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sda": 0x01, "scl": 0x02}, "mode": {"fixed_rx": 0x01, "framed_rx": 0x02, "preloaded_tx": 0x03}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"preloaded_tx": 0x01, "stretch": 0x02}}, own={})

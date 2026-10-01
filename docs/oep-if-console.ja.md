@@ -54,7 +54,8 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 - probe がコンソールの読みを止めるのは、**その connection の riscv-dm の要求を実行している間と、hart が止まっている間**
   だけ（ほかの connection の長い要求の間も、この connection の読みは続ける。core §7.5 max_op_ms）。抽象コマンドと DATA0 を取り合わないよう、host は抽象コマンドの一連を 1 つの dmi 要求に入れる
   （[線とデバッグ](oep-if-debug.ja.md) §4.1）。「hart が止まっている」は probe が DMSTATUS で見る: host が dmi の要求の中で hart を止めても走らせても
-  （debugger が dmcontrol の haltreq / resumereq を自分で書いても）、hart が走っていれば probe は読みを続ける（戻す）。
+  （debugger が dmcontrol の haltreq / resumereq を自分で書いても）、hart が走っていれば probe は読みを続ける（戻す）。probe が
+  DMSTATUS を見る間隔は 20 ms 以下（host が raw で止めたあと、probe が DATA0 を読みうるのはその間だけ）。
   host は、コンソールのために riscv-dm の resume の op を使う必要はない。
 - ストリームを開いた connection が失われたら、マーク link-lost（コンソールの読みの中で線切れを判定したとき）か closed（4）を付けて
   閉じる。target の自己リセット（havereset）を見たら mark restart（1）を付け、dmseq は未同期に戻す。**閉じたストリームも、同じ接続の場所（同じ wire の
