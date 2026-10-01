@@ -251,7 +251,7 @@ port_speed  要求: port(u8)、baud(u32)、step(u8: 0 試す、1 決める、2 �
    確かめ、**大きめの転送で確かめ、測る**: 両方向に max_frame 近くの大きさで、合わせて 1 秒か 32 KiB 以上を流し（link_source、
    link_sink、§12）、壊れたフレームの数と速さを測る。小さな confirm だけでは足りない（壊れる速さで小さなフレームは通ることがある）。
    壊れたフレームが 1 つでもあれば、その速さは使わない（step 2 か時間切れで戻す）。確かめは、host が実際に使う並べ方（max_inflight）で
-   行う。両方向が同時に動くと壊れる線がある（M5Stack ATOM の FTDI は 500 kbaud 以上で、応答を受けている間に要求を書くと応答が壊れた）ので、
+   行う。両方向が同時に動くと壊れる線がある（M5Stack ATOM の変換（CH552 の FTDI 互換。整数分周の速さしか作れない）は 500 kbaud 以上で、応答を受けている間に要求を書くと応答が壊れた）ので、
    並べて壊れたら 1 つずつでも確かめ、通ればその上限で使う。**両方向を同時に流す確かめも 1 回は行う**（link_source と link_sink を
    交互に並べて 1 秒ほど。CH340 の 921600 は片方向ずつなら通り、受信を流し続けながら要求を送ると 0.5 秒おきに壊れた: V003、
    2026-10-01）。測った速さと上限は、host が転送量の予算（キャプチャのストリーミングが続くか、書き込みにかかる時間）を立てるのに使う。
@@ -348,8 +348,10 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 | 0x02 | channel | u16。ぶつかった channel（繰り返してよい） |
 | 0x03 | holder_fn | u16。その資源を持っている fn |
 | 0x04 | holder_kind | u8: 1 plan、2 線の接続、3 スロット、4 bind、5 設定の plan、6 設定の disable |
+| 0x05 | fn | u16。断りの対象の fn（capture-group の bind で、どのトラックかを示す） |
 
-インターフェースは 0x40 以降に自分の tag を足せる。
+インターフェースは 0x40 以降に自分の tag を足せる。rejected unsupported の payload の後ろの TLV も同じ空間（channel 0x02、fn 0x05、
+インターフェースの index など）。
 
 ### 4.4 パイプライン
 
@@ -498,8 +500,8 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 （ロック不要）で出す。tag 0x3F は応答のメタ情報のために予約する（宣言の tag には使わない）。応答そのものが TLV の並びなので、
 **describe の要求には TLV を置かない**（あれば rejected malformed。probe.config の get も同じ）: 応答に ignored（0x7F）が
 現れることはない。
-- **ページングの終わり**（describe、list、state、connections、streams、segments、get に共通）: first が数以上なら count 0 と more 0 を
-  返す。host は more = 0 で止める。
+- **ページングの終わり**（describe、state、connections、streams、segments、get に共通）: first が数以上なら count 0 と more 0 を
+  返す。host は more = 0 で止める。list は more を持たず、total で終わりが分かる（§7.2）。
 
 ### 7.4 describe の共通タグ（0x01〜0x3F）
 
@@ -539,8 +541,8 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x4A | discoverable | u8。1 = probe が host の discovery の一覧に出る形でも列挙している（今の経路がそうでなくても）: iProduct が `OEP` で始まる USB の device（§3.3） |
 | 0x4B | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
 | 0x4C | chip | text。probe の MCU の型番とリビジョン: `<型番> v<リビジョン>`、型番は小文字でハイフンなし（例 `esp32p4 v1.3`、`rp2350 v2`）。取ったデータに、どのチップで取ったかを残すため（任意） |
-| 0x4E | port_speed | u8。1 = この probe は op port_speed（§3.5）を受ける（firmware が機能を ON にしたときだけ出す） |
 | 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める（参照の firmware は 10000） |
+| 0x4E | port_speed | u8。1 = この probe は op port_speed（§3.5）を受ける（firmware が機能を ON にしたときだけ出す） |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 USB-Serial/JTAG、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
   1〜3 がシリアルの口（§3.4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を

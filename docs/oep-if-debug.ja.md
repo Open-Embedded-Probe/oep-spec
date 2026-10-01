@@ -223,7 +223,7 @@ malformed。dmi の max_reads / max_us = 0 は 1 回読む。run の timeout_ms 
 | 0x01 | 書く | address(u8)、value(u32) | — |
 | 0x02 | 読む | address(u8) | 読んだ値(u32) |
 | 0x03 | 読む回数を上限に待つ | address(u8)、mask(u32)、value(u32)、max_reads(u16) | 最後に読んだ値(u32) |
-| 0x04 | 待ち | us(u32) | — |
+| 0x04 | 待ち | wait_us(u32) | — |
 | 0x05 | 時間を上限に待つ | address(u8)、mask(u32)、value(u32)、max_us(u32) | 最後に読んだ値(u32) |
 
 - kind 0x10〜0x1F は、番地を u32 にした同じ手順に予約する。知らない kind は長さが分からないので、要求全体を rejected
