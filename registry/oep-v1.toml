@@ -511,6 +511,11 @@ formats = 0x40                  # n(u8) n x u8: configure format values supporte
 [interface.enum.role]
 rx = 1
 tx = 2
+[interface.enum.uart_configured]  # status's configured byte (oep-if-fixture §2)
+default = 0
+session = 1
+item = 2
+item_fallback = 3               # the settings item's baud could not be made; the default applies
 [interface.enum.format_field]   # masks and values of the format byte (oep-if-fixture §2)
 data_bits_mask = 0x03           # 0 = 8 bits, 1 = 7 bits
 parity_mask = 0x0C

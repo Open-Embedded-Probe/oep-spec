@@ -50,7 +50,7 @@
 | 0x04 | clear | — | — | 必要 |
 | 0x05 | mark | value(u8) | — | 必要 |
 | 0x06 | write | count(u16)、data | accepted(u16)、[TLV] | 必要 |
-| 0x07 | status | — | configured(u8)、baud(u32)、format(u8)、[TLV] | 不要 |
+| 0x07 | status | — | configured(u8: 0 既定のまま、1 セッションの configure、2 設定の uart 項目、3 uart 項目の baud が実現できず既定にした)、baud(u32、実際の値)、format(u8)、[TLV] | 不要 |
 
 - op 0x02〜0x06 は [共通部品](oep-if-common.ja.md) §1 の形（stream の byte なし）で、`oep.target.console` と同じ番号。
 - configure の TLV 0x01 format（u8）: bit0-1 データ長（0 = 8、1 = 7）、bit2-3 パリティ（0 なし、1 偶数、2 奇数）、bit4 ストップ
@@ -58,8 +58,9 @@
   無い値は rejected unsupported（tag 0x01）。host は critical で送る（黙って 8N1 にならないため）。baud は実現できる値を返し、要求から
   ±5% を超えて外れれば rejected unsupported（payload `0x00`）。ピンの無い fn（plan に RX も TX も無い）の configure は rejected
   unavailable（cause 6）。
-- **status**（ロック不要）: configured は configure（または `oep.probe.config` の uart 項目）が掛かっているか。読むだけの host が
-  baud / format を知るため。
+- **status**（ロック不要）: 何が掛かっているか（`uart_configured`）と実際の baud / format。読むだけの host が知るため。uart 項目の
+  baud は set の時に範囲で確かめるが、実際の分周は plan で UART が動くときに決まる。そのとき ±5% を超えれば既定（115200 8N1）に
+  して configured = 3 で知らせる。
 - **ストリームは plan が作り、plan を解くと消える**。セッションの configure も plan を解くと消える。受信は plan から（configure の前は
   `oep.probe.config` の uart 項目があればその値、無ければ 115200 8N1）、セッションに関係なく貯める。configure をやり直しても貯めた分と位置はそのまま
   （境目が要るなら host が mark を付ける）。**位置とマークの serial は、plan を解いて再び作っても起動の中で戻らない**
