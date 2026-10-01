@@ -297,7 +297,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 - 語（32 bit）単位。8 / 16 bit のアクセスは dmi の手順で組む。
 - **1 回の長さ**: read_block / write_block を持つ probe は、describe の共通 tag max_length（core §7.4）を必ず出す。単位は **byte 数**
   （4 の倍数）。probe は max_length を、read_block の応答（見出し 5 + done 2 + status 1 + 語）と write_block の要求（見出し 10 +
-  connection 2 + address 4 + count 2 + 語）がどちらも自分の max_frame に収まる値で宣言する（max_frame − 24 以下）。host は count を
+  connection 2 + address 4 + count 2 + 語）がどちらも自分の max_frame に収まる値で宣言する（max_frame − 24 以下。これより小さく宣言してよい）。host は count を
   max_length から決め、max_frame から計算しない。count × 4 が max_length を超えれば rejected unsupported（payload `0x00`）。count = 0 は
   success、done 0。4 の倍数でない address は rejected malformed。
 - **読みの意味**: read_block は target のバスを通して読む。probe の側に写しを持たない（直前の write_block、dmi、run で target が
