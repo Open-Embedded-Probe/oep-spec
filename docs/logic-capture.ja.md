@@ -338,6 +338,27 @@ ADC の連続変換（DMA）の範囲。ESP32 系は soc_caps の値、RP2 と C
 
 規範は [標準インターフェース: キャプチャ](oep-if-capture.ja.md) §1（ロジックの w / pos、アナログの s / o / b / order と換算）。
 
+**どのチップがどの形に当たるか**（規範 §1 の例の表から 2026-10-02 に移した。規範にはチップ名を書かない）:
+
+| 規範 §1.1 の行 | 実装 |
+|---|---|
+| 1 ビットずつ詰める probe、1 本（w 1） | ESP32-P4 PARLIO、1 本 |
+| 4 ビット単位で詰める probe、3 本（w 4） | ESP32-P4 PARLIO、3 本 |
+| 1 バイト 1 サンプルの probe、3 本（w 8） | classic ESP32 の sampler、3 本 |
+| 16 ビット単位で詰める probe、9 本（w 16） | ESP32-P4 PARLIO、9 本 |
+| 32 ビットの語に左詰めするペリフェラル（規則に入らない） | RP2040 / RP2350 の PIO の自動 push |
+
+| 規範 §1.2 の行 | 実装 |
+|---|---|
+| DMA の 4 バイトのレコード（s 32、b 12） | ESP32-S3 / ESP32-P4 の ADC |
+| 2 バイトのレコード（s 16、b 12） | classic ESP32 の ADC |
+| FIFO の 16 ビット（s 16、b 12） | RP2040 / RP2350 の ADC |
+| 8 ビットに縮めたもの（s 8、b 8） | RP2040 / RP2350 の ADC |
+
+- アナログの入力が pad をアナログに切り替えてデジタルの入出力を切るのは ESP32 系の ADC。
+- calibration の factory（規範 §3.8）の scheme の例: `com.espressif.esp32.two-point`、`com.espressif.esp32p4.curve-fitting.v1`
+  （ESP32 の eFuse の較正の値）。
+
 ### 3.1 別の定義の形式
 
 基本の形は §3.0 の 1 つ。それに入らない形は、別の定義として番号で指定する。例:

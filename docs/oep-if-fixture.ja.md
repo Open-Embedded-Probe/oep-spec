@@ -75,8 +75,8 @@
 
 ## 3. `oep.fixture.i2c-target`
 
-probe が I2C の target になり、DUT の controller の書き込みを受け、読み出しに答える（2026-09-30 に標準にした。それまでは
-`io.github.ch32-riscv-ug.esp32.i2c-target`）。受けたフレームは probe の中の列に積み、host が read_rx で取り出す。
+probe が I2C の target になり、DUT の controller の書き込みを受け、読み出しに答える。受けたフレームは probe の中の列に積み、host が
+read_rx で取り出す。
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
@@ -113,8 +113,7 @@ probe が I2C の target になり、DUT の controller の書き込みを受け
 
 ## 4. `oep.fixture.spi-target`
 
-probe が SPI の target になり、CS で区切った 1 回の転送に、先に置いた MISO のバイトで答え、MOSI のバイトを積む（2026-09-30 に
-標準にした。それまでは `io.github.ch32-riscv-ug.esp32.spi-target`）。
+probe が SPI の target になり、CS で区切った 1 回の転送に、先に置いた MISO のバイトで答え、MOSI のバイトを積む。
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
