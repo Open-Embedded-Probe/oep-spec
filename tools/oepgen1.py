@@ -70,6 +70,8 @@ def check(reg: dict) -> list[str]:
                 seen[tag] = tag_name
                 if tag in (0x7F, 0xFF, 0x00):
                     errors.append(f"{n}: tlv {context}.{tag_name} = {tag:#x} is reserved")
+                if context == "describe" and tag == 0x3F:
+                    errors.append(f"{n}: describe tag {tag_name} = 0x3f is reserved for response meta")
                 if tag & 0x80 and not (n == "oep.core" and context == "plan_apply"):
                     errors.append(f"{n}: tlv {context}.{tag_name} = {tag:#x} has the critical bit set in the registry")
         for group in ("status", "reject_reasons"):
@@ -80,17 +82,27 @@ def check(reg: dict) -> list[str]:
             if tag in common.values() or tag_name in common:
                 errors.append(f"{n}: describe tag {tag_name} = {tag:#x} repeats a common tag ([describe_common])")
         for what, ranges in iface.get("reserved", {}).items():
-            values = codes if what == "op" else iface.get("enum", {}).get(what)
+            if what == "op":
+                values = codes
+            elif what.startswith("tlv."):
+                values = {v: k for k, v in iface.get("tlv", {}).get(what[4:], {}).items()}
+            else:
+                values = iface.get("enum", {}).get(what)
             if values is None:
                 errors.append(f"{n}: reserved.{what} names no enum")
                 continue
-            items = values.items() if what == "op" else ((v, k) for k, v in values.items())
+            items = values.items() if what in ("op",) or what.startswith("tlv.") else ((v, k) for k, v in values.items())
             for v, v_name in items:
                 if any(lo <= v <= hi for lo, hi in ranges):
                     errors.append(f"{n}: {what} {v_name} = {v:#x} is in a reserved range")
         for kind_name, kind in iface.get("event", {}).items():
             if not 0x01 <= kind <= 0x7F:
                 errors.append(f"{n}: event {kind_name} = {kind:#x} outside the interface range 0x01-0x7F")
+    for enum, values in reg.get("common", {}).get("enum", {}).items():
+        if enum == "mark_kind":
+            for k, v in values.items():
+                if not 0x01 <= v <= 0x3F:
+                    errors.append(f"common mark_kind {k} = {v:#x} outside the standard range 0x01-0x3F")
     return errors
 
 
@@ -118,6 +130,16 @@ def cpp(reg: dict, digest: str) -> str:
     L.append("")
     for k, v in reg["timing"].items():
         L.append(f"constexpr uint32_t k{camel(k)} = {v};")
+    for group, prefix in (("usb", "Usb"), ("limits", "Limit")):
+        L.append("")
+        for k, v in reg.get(group, {}).items():
+            L.append(f'constexpr const char *k{prefix}{camel(k)} = "{v}";' if isinstance(v, str)
+                     else f"constexpr uint32_t k{prefix}{camel(k)} = 0x{v:X};")
+    L += ["", "namespace common {"]
+    for enum, values in reg.get("common", {}).get("enum", {}).items():
+        for k, v in values.items():
+            L.append(f"constexpr uint8_t k{camel(enum)}{camel(k)} = 0x{v:02X};")
+    L.append("}  // namespace common")
     for iface in reg["interface"]:
         ns = ident(iface["name"].removeprefix("oep."))
         L += ["", f"namespace {ns} {{", f'constexpr const char *kName = "{iface["name"]}";',
@@ -149,9 +171,12 @@ def py(reg: dict, digest: str) -> str:
          f"PROTOCOL_REVISION = {reg['protocol']['revision']}"]
     for k, v in reg["constants"].items():
         L.append(f"{k.upper()} = {v!r}" if isinstance(v, str) else f"{k.upper()} = 0x{v:02X}")
-    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing"):
-        L.append(f"{group.upper()} = {{" + ", ".join(f'"{k}": 0x{v:02X}' for k, v in reg[group].items()) + "}")
-    L += ["", "INTERFACES = {}"]
+    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits"):
+        L.append(f"{group.upper()} = {{" + ", ".join(f'"{k}": {v!r}' if isinstance(v, str) else f'"{k}": 0x{v:02X}'
+                                                 for k, v in reg.get(group, {}).items()) + "}")
+    en = ", ".join(f'"{e}": {{' + ", ".join(f'"{k}": 0x{v:02X}' for k, v in vals.items()) + "}"
+                   for e, vals in reg.get("common", {}).get("enum", {}).items())
+    L += [f"COMMON = _NS(enum={{{en}}})", "", "INTERFACES = {}"]
     for iface in reg["interface"]:
         var = ident(iface["name"].removeprefix("oep.")).upper()
         ops = ", ".join(f'"{o["name"]}": 0x{o["code"]:02X}' for o in iface["op"])
@@ -179,9 +204,12 @@ def js(reg: dict, digest: str) -> str:
          f"export const PROTOCOL_REVISION = {reg['protocol']['revision']};"]
     for k, v in reg["constants"].items():
         L.append(f"export const {k.upper()} = '{v}';" if isinstance(v, str) else f"export const {k.upper()} = 0x{v:02X};")
-    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing"):
-        L.append(f"export const {group.upper()} = Object.freeze({obj(reg[group])});")
-    L += ["", "/** @type {Record<string, any>} */", "export const INTERFACES = {};"]
+    def objs(d: dict) -> str:
+        return "{" + ", ".join((f"{k}: '{v}'" if isinstance(v, str) else f"{k}: 0x{v:02X}") for k, v in d.items()) + "}"
+    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits"):
+        L.append(f"export const {group.upper()} = Object.freeze({objs(reg.get(group, {}))});")
+    en = "{" + ", ".join(f"{e}: {obj(v)}" for e, v in reg.get("common", {}).get("enum", {}).items()) + "}"
+    L += [f"export const COMMON = {{ enum: {en} }};", "", "/** @type {Record<string, any>} */", "export const INTERFACES = {};"]
     for iface in reg["interface"]:
         var = ident(iface["name"].removeprefix("oep.")).upper()
         free = ", ".join(f"0x{o['code']:02X}" for o in iface["op"] if not o.get("lock"))
