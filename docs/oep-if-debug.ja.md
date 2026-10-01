@@ -105,14 +105,13 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 ### 2.1 connections（接続の一覧）
 
 ```text
-要求: —
-応答: count(u8)、count × (len(u8)、entry)（core §2.3）
+要求: first(u8)
+応答: more(u8)、count(u8)、count × (len(u8)、entry)、[TLV]（core §2.3）
 entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、slot(u8)、tid_scheme(u8)、tid_len(u8)、tid
 ```
 
-応答の後ろは TLV（core §2.3）。
-
-- そのインターフェースの生きている接続を、作られた順に返す。ロックなしで使える。
+- そのインターフェースの生きている接続を、作られた順に first 番目から 1 フレームに入る分だけ返す。more = 1 なら続きがあり、host は
+  first に受け取った数を足してもう一度聞く。ロックなしで使える。
 - users: bit0 host のセッションが使っている、bit1 スロットが使っている（自動の attach か bind のコンソール）。
 - slot は、その接続がスロットの接続（`oep.probe.config` §1.1）ならスロットの番号、そうでなければ 0xFF。
 - tid は attach のときに読めた target_id（無ければ tid_scheme 0、tid_len 0）。swd は tid_scheme 2 = targetsel(u32)（multidrop で無ければ
@@ -123,10 +122,10 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
 | 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (len(u8)、kind(u8)、swdio(u16)、swclk(u16)、id(u32))、[TLV] |
-| 0x02 | attach | method(u8: 0 止めない / 1 止める)、[TLV] | connection(u16)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] |
+| 0x02 | attach | method(u8: 0 止めない / 1 止める。ほかは rejected malformed)、[TLV] | connection(u16)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] |
 | 0x03 | detach | connection(u16)、[TLV] | — |
 | 0x04 | — | 予約（旧 attach_under_reset。attach の reset TLV になった） | |
-| 0x05 | connections | — | §2.1（ロック不要） |
+| 0x05 | connections | first(u8) | §2.1（ロック不要） |
 
 - swio の組は swclk = 0xFFFF（1 本の線。scan で swclk ≠ 0xFFFF は rejected malformed）。scan の kind は `scan_kind`: 1 = riscv-dm、
   2 = arm-adi。`id` は線の種類が決める生の識別子（riscv-dm は DMSTATUS、arm-adi は DPIDR）。
@@ -319,7 +318,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 | 0x02 | attach | method(u8: 0 だけ。1 は rejected unsupported)、[TLV] | connection(u16)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] |
 | 0x03 | detach | connection(u16)、[TLV] | — |
 | 0x04 | — | 予約 | |
-| 0x05 | connections | — | §2.1（ロック不要） |
+| 0x05 | connections | first(u8) | §2.1（ロック不要） |
 
 - scan の kind は 2 = arm-adi、id は DPIDR。要求と応答の形は §3 と同じ（3 線で 1 つの形）。
 - TLV は §3 と同じ番号: scan 0x01 max_speed、0x02 skip、0x06 targetsel（下）。attach 0x01 max_speed（必須）、0x02 targetsel、

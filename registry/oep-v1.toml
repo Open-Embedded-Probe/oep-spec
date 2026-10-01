@@ -177,6 +177,7 @@ holder_kind = 0x04              # u8, enum holder_kind
 fn = 0x05                       # u16: the fn the refusal is about (a track in capture-group's bind)
 [interface.tlv.unsupported_payload]   # the rejected unsupported payload after tag(u8) (0x00 = a fixed-part value), every fn (core §4.3)
 channel = 0x02                  # u16
+fn = 0x05                       # u16: the fn the refusal is about (a track not in capture-group's tracks)
 index = 0x40                    # u8: the position in the request's list (gpio set)
 [interface.tlv.describe]        # the probe itself (fn 0); declarations only (core §7.3)
 firmware = 0x40
@@ -229,7 +230,7 @@ op = [
   { code = 0x01, name = "scan", lock = true },
   { code = 0x02, name = "attach", lock = true },
   { code = 0x03, name = "detach", lock = true },
-  { code = 0x05, name = "connections", lock = false },
+  { code = 0x05, name = "connections", lock = false },  # first(u8) -> more, count x (len, entry)
 ]
 [interface.reserved]
 op = [[0x04, 0x04]]             # was attach_under_reset; now attach's reset TLV (oep-if-debug §3)
@@ -450,7 +451,7 @@ op = [
   { code = 0x05, name = "mark", lock = true },
   { code = 0x06, name = "write", lock = true },
   { code = 0x07, name = "close", lock = true },
-  { code = 0x08, name = "streams", lock = false },
+  { code = 0x08, name = "streams", lock = false },      # first(u8) -> more, count x (len, entry)
 ]
 [interface.tlv.describe]
 mechanisms = 0x40               # u8 list: the mechanisms this probe opens (required; oep-if-console §1)

@@ -65,7 +65,7 @@ lock_len は錠の部分（lock_scheme から lock_value まで）の長さ。0 
 | mechanism | コンソールの方式（`oep.target.console` の mechanism）、または **0xFF = コンソールなし**（bind に載せない、console を持たない probe）。その probe の console が宣言しない方式は rejected unsupported |
 | name | スロットの名前。1〜32 byte で、使える文字は `a-z 0-9 - _` だけ（ほかは rejected malformed）。probe の中で重ならない（重なれば rejected malformed）。host がスロットを名指すのに使い（IDE の address `oep://<unit_id>/<name>` にそのまま入る。unit_id は core §7.5。どちらも URL の中で encode が要らない文字だけ）、mixed の行の印（§1.2）にも使う |
 | lock_len | 錠の部分の長さ。0（錠なし）か 1 + 2n（n ≥ 1）。ほかは rejected malformed |
-| lock_scheme | 錠があるときだけ。target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1）。0 は置かない（錠なしは lock_len 0） |
+| lock_scheme | 錠があるときだけ。target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1）。0 は置かない（錠なしは lock_len 0）。定義にあるがその線が持たない scheme は rejected unsupported、未定義の値は malformed |
 | lock_mask、lock_value | 錠があるときだけ。同じ長さ n = (lock_len − 1) / 2。**n はその scheme の値の長さと同じ**（scheme 1 は 4。違えば rejected malformed。長さは registry の `target_id_scheme`）。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
 
 - max_speed と idle_clock は target の性質で（[線とデバッグ](oep-if-debug.ja.md) §3）、probe が自分でスロットを attach するとき

@@ -60,8 +60,8 @@
   unavailable（cause 6）。
 - **status**（ロック不要）: configured は configure（または `oep.probe.config` の uart 項目）が掛かっているか。読むだけの host が
   baud / format を知るため。
-- **ストリームは plan が作り、plan を解くと消える**。受信は plan から（configure の前は probe の既定: 最後の configure か、
-  `oep.probe.config` の uart 項目か、115200 8N1）、セッションに関係なく貯める。configure をやり直しても貯めた分と位置はそのまま
+- **ストリームは plan が作り、plan を解くと消える**。セッションの configure も plan を解くと消える。受信は plan から（configure の前は
+  `oep.probe.config` の uart 項目があればその値、無ければ 115200 8N1）、セッションに関係なく貯める。configure をやり直しても貯めた分と位置はそのまま
   （境目が要るなら host が mark を付ける）。**位置とマークの serial は、plan を解いて再び作っても起動の中で戻らない**
   （[共通部品](oep-if-common.ja.md) §1.1）。受信の誤りは mark lost（detail 2 framing、3 parity）。
 - **TX の線は、plan で割り当てている間（configure の前も）UART の休止（high）に保つ**（相手の受信が雑音を拾わないため）。plan を
