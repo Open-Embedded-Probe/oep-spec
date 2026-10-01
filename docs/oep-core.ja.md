@@ -440,7 +440,11 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 
 **describe は宣言だけを返す**: 同じ boot_id の間、TLV の並びと値は変わらない（host は boot_id が同じ間 cache してよく、ページングは
 途中で設定が変わっても崩れない）。変わるもの（接続、保存の有無、スロットの状態、空き容量）は、インターフェースが状態を返す op
-（ロック不要）で出す。tag 0x3F は応答のメタ情報のために予約する（宣言の tag には使わない）。
+（ロック不要）で出す。tag 0x3F は応答のメタ情報のために予約する（宣言の tag には使わない）。応答そのものが TLV の並びなので、
+**describe の要求には TLV を置かない**（あれば rejected malformed。probe.config の get も同じ）: 応答に ignored（0x7F）が
+現れることはない。
+- **ページングの終わり**（describe、list、state、connections、streams、segments、get に共通）: first が数以上なら count 0 と more 0 を
+  返す。host は more = 0 で止める。
 
 ### 7.4 describe の共通タグ（0x01〜0x3F）
 
