@@ -249,6 +249,14 @@ boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロッ�
   op の外に状態を持ち越さない案ならこの事故が起きない。コスト（DMI 数回）は問題なし、reg_probe の秒数で前後を測って返す。
   1 は client の返り値の形（gpio.read、read_rx の (pending, data)、uart の read、capture の read）が保たれればベンチの変更は不要。
   変わるならリリースノートに書くこと。
+- **bench（同日、★ 3 / 5 / 8 / 9 と残り）**: 4 つとも推奨案で困らない。反対の点なし。条件:
+  - ★ 3: ベンチは test ごとに 1 セッションで、keepalive は使うたびにしか送らず、60 s 黙る test では今でも lease が切れうる。
+    expired で断られれば失敗の場所と理由が一致する（今は plan や connection が外れたまま通り、UART 無音や capture 空に化ける）。
+    **client は expired を専用の例外（`Expired`、lease の長さ入り）にし、黙って open し直して続けない**こと。
+  - ★ 5: ベンチは baud を毎回 OEP の configure で設定し、CDC の line coding には頼っていない。**ピンの無い fn の configure は今どおり
+    unavailable で断る**こと（「configure を受けた最初の uart = ピンのある口」の見分けが依存）。baud ±5% 超で unsupported にも賛成。
+  - ★ 9: **generation は client の LogicCapture が start / status で覚えて read に付け、`read_segment(segment)` の呼び方は据え置く**。
+  - 3.8b（attach の一本化）はベンチが attach_under_reset を使っていないので影響なし。
 
 ## 6. 決めてもらうこと（★）
 
