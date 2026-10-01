@@ -134,8 +134,9 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 - **attach の flags**（3 線共通、registry の `attach_flags`）: bit0 保留中の havereset を確認応答した（riscv）、bit1 既存の connection、
   bit2 dormant から起こした（swd）、bit3 hart が止まっている（応答の TLV 0x11 dpc が有効）。
 - **reset をかけながらの attach**: TLV 0x05 reset（critical: `channel(u16)、hold_ms(u16)`）を付けると、probe はリセットの線（channel）を
-  hold_ms 保ってから離す。method 1 なら離しながら halt を打ち続け、最初の命令の前で止める（flags bit3、dpc TLV）。method 0 なら
-  走ったまま attach する。任意の機能で、持たない probe は rejected unsupported（tag 0x05）。既存の connection に reset TLV を付けた
+  hold_ms 保ってから離す。method 1 なら離しながら halt を打ち続け、できるだけ早く止める（flags bit3、dpc TLV）。**最初の命令の前で
+  止まる保証は無い**（reset の線の解放から halt が効くまでに走った分がある。X035 で dpc 0x4ac、2026-10-01）。reset の直後の位置で
+  止める保証が要るときは、riscv-dm の reset mode 2（ndmreset を haltreq を保ったまま解く）を使う。method 0 なら走ったまま attach する。任意の機能で、持たない probe は rejected unsupported（tag 0x05）。既存の connection に reset TLV を付けた
   attach は、その target を reset してから同じ connection を返す（reset の op の NRST と同じ扱い: mark reset detail 3）。hold_ms は
   core の max_op_ms の対象。
 - **reset の線に既定は無い**: どの線を reset に使うかは host が毎回 channel で明示する（線を取り違えた reset は target や治具を
