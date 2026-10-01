@@ -222,6 +222,43 @@ UART を USB-UART の変換チップで出したもの、USB CDC、USB-Serial/JT
   後、どこから生の転送を再開するかは、口に結んだ流れを定める設定が決める。
 - host は、生のバイトの中に正しいフレームに見えるものが偶然現れても、role と corr の照合（§11.1）で捨てる。
 
+### 3.5 シリアルの口の速さ（任意の機能）
+
+probe と host の間のリンクを、target の UART より速くするための任意の機能（同じ速さのリンクでは target の UART の全量を運べない。
+大きな書き込み、キャプチャ、デバッグの速さのため）。probe の UART（fixture UART）の速さは、これとは別に、そのインターフェースの
+configure と設定で決める。
+
+- **probe は機能の ON / OFF を持つ**: ON の probe だけが fn 0 の describe に port_speed（§7.5）を宣言し、op port_speed（fn 0、0x14、
+  ロックが要る）を受ける。OFF の probe は unknown_operation で断る。対象は UART bridge（transport の kind 1）の口だけ。
+- **probe は速さの候補を宣言しない**（通る速さは変換チップとドライバで決まり、probe には分からない）。**host が使うか、どの速さを
+  試すかは host が決める**。この仕様は既定を決めない。
+- **起動時の速さ**（ボードの profile が決める。参照の firmware は 115200）が、すべての戻り先。host は起動時の速さを自分の側の 1 か所に
+  持つ（利用者が口を選ぶときに一緒に決める）。
+
+```text
+port_speed  要求: port(u8)、baud(u32)、step(u8: 0 試す、1 決める、2 戻す)、verify_ms(u16)、idle_ms(u32)、[TLV]
+            応答: baud(u32: 実際に掛かる速さ)、[TLV]
+```
+
+1. host は起動時の速さで confirm と describe を済ませ、port_speed（試す）を送る。port はその要求が来た口でなければ rejected
+   unavailable（cause 6）、baud が probe の UART で作れなければ rejected unsupported。
+2. probe は**応答を今の速さで送り終えてから**切り替え、**試しの状態**になる。
+3. host も切り替え、**大きめの転送で確かめ、測る**: 両方向に max_frame 近くの大きさで、合わせて 1 秒か 32 KiB 以上を流し（link_source、
+   link_sink、§12）、壊れたフレームの数と速さを測る。小さな confirm だけでは足りない（壊れる速さで小さなフレームは通ることがある）。
+   壊れたフレームが 1 つでもあれば、その速さは使わない（step 2 か時間切れで戻す）。測った速さは、host が転送量の予算（キャプチャの
+   ストリーミングが続くか、書き込みにかかる時間）を立てるのに使う。
+4. 通れば port_speed（決める、同じ baud）を新しい速さで送る。probe は**決めた状態**になる。
+5. **probe は自分で起動時の速さに戻る**: 試しの状態で verify_ms が過ぎた、試しの状態でその口に壊れた候補（CRC が合わない）が来た、
+   決めた後に idle_ms の間その口に正しいフレームが来ない（0 は確かめない）、決めた後に壊れた候補が続いた（目安 1 秒に 3 つ）、
+   セッションが終わった（end、lease の期限切れ、force で持ち主が替わった）、port_speed（戻す）を受けた（応答は今の速さで送ってから
+   戻る）。戻ったことは知らせない。host は時間切れの後、起動時の速さで confirm し直す。boot_id が変わっていれば probe は再起動して
+   いて、やはり起動時の速さ。
+6. host は、確かめの通らなかった速さを使わない。決めた後も送り直しが続くなら、戻すか、起動時の速さに戻って確かめ直す。口を
+   ブローカーが持つ構成ではブローカーが行う（client は知らない）。
+
+試しと決めるの間、セッションの資源やロックは変わらない。生の転送（§3.4）はセッションの間止まっているので、速さを変えている間に
+OEP を知らない相手（IDE のモニター）がその口を読むことは無い。実験の記録は [UART の速さ](uart-speed-negotiation.ja.md)。
+
 ## 4. メッセージ
 
 ### 4.1 要求
@@ -484,6 +521,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x4A | discoverable | u8。1 = probe が host の discovery の一覧に出る形でも列挙している（今の経路がそうでなくても）: iProduct が `OEP` で始まる USB の device（§3.3） |
 | 0x4B | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
 | 0x4C | chip | text。probe の MCU の型番とリビジョン: `<型番> v<リビジョン>`、型番は小文字でハイフンなし（例 `esp32p4 v1.3`、`rp2350 v2`）。取ったデータに、どのチップで取ったかを残すため（任意） |
+| 0x4E | port_speed | u8。1 = この probe は op port_speed（§3.5）を受ける（firmware が機能を ON にしたときだけ出す） |
 | 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める（参照の firmware は 10000） |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 USB-Serial/JTAG、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
@@ -636,6 +674,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 | 0x11 | end | — | — | 必要 |
 | 0x12 | keepalive | — | — | 必要 |
 | 0x13 | lock_state | — | locked(u8)、remaining_ms(u32)、[TLV owner] | 不要 |
+| 0x14 | port_speed | §3.5（任意。describe の port_speed を出す probe だけ） | baud(u32) | 必要 |
 | 0x30 | subscribe | §11.3 | — | 必要 |
 | 0x32 | unsubscribe | §11.3 | — | 必要 |
 | 0x40 | link_source | length(u32) | length バイト（1 フレームに入る分まで。k バイト目は k & 0xFF） | 不要 |
