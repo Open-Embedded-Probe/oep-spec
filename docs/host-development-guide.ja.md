@@ -139,7 +139,7 @@ UART bridge の probe は常に 115200 bps で開く（probe 側で固定、[pro
 
 ## 4.6 リセットの線
 
-- **どのチャンネルがリセットの線かは、host が探して確かめる。** 候補ごとに attach_under_reset を送り、止まった dpc を見る。
+- **どのチャンネルがリセットの線かは、host が探して確かめる。** 候補ごとに attach（reset TLV、method 1）を送り、止まった dpc を見る。
   本物の線なら最初の命令の前（CH32 は 0x0）で止まり、違う線なら target は走り続けているのでコードの途中で止まる。
   偶然 0x0 に止まることはまず無いので、候補ごとに数回試し、一度でも 0x0 なら当たりとする（2026-09-24、CH32L103 の
   本物の NRST でも 10 回に 2 回外れた。原因は probe 側で、普通の attach で速度を詰めた後だと、リセット後の既定の
@@ -150,7 +150,7 @@ UART bridge の probe は常に 115200 bps で開く（probe 側で固定、[pro
   - 候補を一本ずつオープンドレインで low にする。治具の配線で low にしてはいけない線は候補から外す。
   - 実測: V003（ESP32、15 候補）で 1 回 0.7〜2.1 秒、L103（RP2350、8 候補）で約 3 秒。どちらも本物の線だけが当たった。
   - oep-client-python: `Wire.find_reset_line(candidates)`。
-- **SWD / SWIO を GPIO にしてしまったファームからの回復は、probe の中のモードを先に使う**（attach_under_reset）。
+- **SWD / SWIO を GPIO にしてしまったファームからの回復は、probe の中のモードを先に使う**（attach の reset TLV）。
   持たない probe（unsupported）では、`oep.fixture.gpio` の解放と attach を 1 回にまとめて送り、再試行する
   （`attach_after_gpio_reset`）。窓の縁での競争で、V003 では 5 回中 2 回届いた。解放の応答を待ってから attach を
   送ると届かない。
