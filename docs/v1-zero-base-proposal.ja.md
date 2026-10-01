@@ -94,8 +94,10 @@ flags が要るときは TLV で足す。
 boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロック無しの host（Monitor、discovery）が再起動を知れる。open の応答の boot_id は
 そのまま残す（同じ値）。
 
-**(e) 1 要求の最長時間**（見直し 26）: fn 0 の describe に `max_op_ms(u32)`（既定 2000）を足し、「probe は 1 つの要求にこれ以上かけず、
-超えうる op（run、dmi の wait、capture の start、save）は引数の和がこれを超えれば rejected unsupported。処理中は lease を数えない」。
+**(e) 1 要求の最長時間**（見直し 26）: fn 0 の describe に `max_op_ms(u32)` を足し、「probe は 1 つの要求にこれ以上かけず、超えうる op
+（run、dmi の wait の和、capture の start、save、attach の hold_ms）は引数の和がこれを超えれば rejected unsupported。処理中は lease を
+数えない」。値は probe が決める（規範に既定は置かない）。参照の firmware は 10000 ms（ch32rv の RAM loader は run を 2500 ms で呼ぶ。page erase と
+書き込みの長さは chip 次第なので余裕を持つ）。host は describe の値を読んで timeout を詰める。
 
 ### 3.2 セッション
 
@@ -278,6 +280,17 @@ boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロッ�
 
 ---
 
+- **WireSkein（2026-10-01、採用後）**: 困る点なし。w = 64 / 128 は「little endian、チャンネル k がビット k」で受ける実装を済ませた（規範と同じ）。
+  vrefint の `nominal_mv` は client の `Calibration.vrefint_nominal_mv` で取れるようにする。`Expired` は `Rejected`（→ `OepError`）の下に置く。
+  generation は `LogicCapture.generation` で読めるようにする（ファイルの meta 用）。scale の「ピンの電圧への 1 次式」は WireSkein の仕様と同じ意味。
+- **ch32rv（同日）**: dmi の応答の形と attach の一本化は困らない。max_op_ms の既定 2000 では RAM loader の run（2500 ms）が通らない →
+  規範に既定を置かず参照 firmware は 10000 ms に（3.1e を直した）。halt で haltreq を下ろす規則は L103 の DMI link の件で危ない →
+  「止まっている間は保ってよい」に直した（7.3-31）。ch32rv 側で直すもの: resume の前に raw で dpc を読むのをやめる（失敗時だけ）、raw を
+  使ったら DATA0 / DATA1 を戻す、attach に max_speed を必ず付ける。ブローカーは expired を受けたら open からやり直し、client の connection を
+  失ったものとして返す。規範と fake ができたら fake で試験を通してから実装を確定。
+
+---
+
 ## 7. 方針を当てた漏れの点検（2026-10-01、ユーザーの採用後）
 
 採用した 8 原則と §3 の案を、規範の文書の **すべての op、TLV、出来事、describe、項目、ビット**に機械的に当てて、§3 に書かれていなかった
@@ -349,8 +362,9 @@ boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロッ�
 29. **run の応答に `nvals(u8)`**: `status, stopped, dpc, elapsed_us, nvals, nvals × value(u32), [TLV]`。stopped = 2 / status ≠ ok では nvals = 0。
 30. **done / status を持たない op（scan、attach、detach）の failed は `status(u8), [TLV]`**。core §2.3 に「応答の固定部は (op, resolution, outcome)
     ごとに op が定める形」と一言（★。attach / scan の先頭に status を置いて形を 1 つにする案もあるが、成功の形を汚さない方を取る）。
-31. **op の境界の表**（3.8a の一文表、debug §4 冒頭）: halt = allhalted を見たら haltreq を下ろす。resume = haltreq 0 / resumereq 1 を 1 回、何も
-    覚えず戻さない。step = dcsr.step と DATA を戻して返す。reset = 終わったら haltreq を下ろし havereset を確認応答。read / write_block = GPR、
+31. **op の境界の表**（3.8a の一文表、debug §4 冒頭）: halt = allhalted を見る。**止まっている間 haltreq を保ってよい**（L103 は hart の状態が
+    変わると DMI の link が落ち、halt 直後の読みが前の値になるため、参照の firmware は保つ）。resume / step / reset / detach と connection を
+    閉じるときは下ろす。resume = haltreq 0 / resumereq 1 を 1 回、何も覚えず戻さない。step = dcsr.step と DATA を戻して返す。reset = 終わったら haltreq を下ろし havereset を確認応答。read / write_block = GPR、
     DATA1 / DATA0、abstractauto を戻す。run = pc / GPR / dcsr は host の指示どおり変えたまま（host の責任）、abstractauto と haltreq は戻す。
     dmi = probe は何も触らず何も戻さない（host が DATA を使ったら host が戻す）。どの op も hartsel は 0 にして返す。console = hart が止まって
     いる間 DATA0 に触れない。待ちは目安 100 ms。
