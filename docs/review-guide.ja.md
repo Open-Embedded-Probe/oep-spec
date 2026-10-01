@@ -139,8 +139,8 @@ flash の書き方やチップ固有の手順は host にある。
 
 | PATH | 中身 |
 |---|---|
-| ArduinoCore-CH32 `tests/manual/oep_smoke/` | 実機での回帰（CH32 の Arduino core の試験スケッチを OEP の probe で書き込み、コンソールで判定する）。`README.ja.md` に実績 |
-| ArduinoCore-CH32 `libraries/SerialDMSeq/` | target 側の dmseq の実装（`target-console-dmseq.ja.md` の相手） |
+| ArduinoCore-CH32RV `tests/manual/oep_smoke/` | 実機での回帰（CH32 の Arduino core の試験スケッチを OEP の probe で書き込み、コンソールで判定する）。`README.ja.md` に実績 |
+| ArduinoCore-CH32RV `libraries/SerialDMSeq/` | target 側の dmseq の実装（`target-console-dmseq.ja.md` の相手） |
 | wch-protocols（`experiments/`、`protocols/`、`captures/`） | WCH-Link / LinkE などの既存の probe の線上の観測の記録。OEP の設計の事実の出どころ（実験の番号 E1xx で参照される） |
 
 ## 8. 用語

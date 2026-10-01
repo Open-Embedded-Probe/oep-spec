@@ -57,7 +57,7 @@ UIAPduino固有のPD4操作と製品boot条件はboard procedureとし、汎用S
 ### P2: UIAPduino release fixture
 
 UART console、GPIO、ADC刺激、I2C targetおよびSPI targetをoffered functionとして公開し、現在の
-[`uiapduino_fixture`](https://github.com/ch32-riscv-ug/ArduinoCore-CH32/tree/main/tests/manual/uiapduino_fixture)をOEP clientから
+[`uiapduino_fixture`](https://github.com/ch32-riscv-ug/ArduinoCore-CH32RV/tree/main/tests/manual/uiapduino_fixture)をOEP clientから
 実行する。channel束縛、UART兼用pin、I2C/SPI排他および実際に採用した条件をresultへ残す。
 
 製品applicationの書込みは標準HIDをexternal bindingとして使用できる。OEP側のboot移行成功と、
