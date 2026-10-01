@@ -177,3 +177,40 @@ confirm → link_source / link_sink 496 byte を 20〜100 回ずつ。
 - 921600 への単純な変更はしない。速さの交渉も、実験の結果が出るまで仕様に入れない。
 - まず §3-1（115200 のまま効率を上げる）を probe と client で行い、bench の long で確かめる。
 - §3-2 の実験は、bench のジグを使う前に bench（arduinocore-ch32rv-3c）の了解を取る。
+
+## 5. 仕様の案（2026-10-01、実験 1〜5 の後。未決）
+
+位置付け: **probe と host の間のリンクを、target の UART より速くするための任意の機能**（V003 のジグの long のように、同じ速さの
+リンクでは target の UART の全量を運べない。今後の ESP32 の大きな書き込み、ロジアナ、JTAG / SWD のデバッグも見込む）。probe の UART
+（fixture UART、target との間）の速さは、これとは別に `oep.fixture.uart` の configure と設定の uart 項目で決める（9600、31250 の MIDI、
+115200 など）。
+
+- **probe は ON / OFF を持つ**: 機能を持つ probe（firmware のビルドで ON にしたもの）だけが fn 0 の describe に `port_speed`（u8 1）を
+  宣言し、op を受ける。OFF の probe は op を unknown_operation で断る。速さの候補は宣言しない（通る速さは変換チップとドライバが決め、
+  probe には分からない: ATOM の FTDI と V003 の CH340 で全く違った）。
+- **host が使うかは host が決める**。仕様は既定を決めない。試す速さは host が持つ（利用者の明示、または host が知っている変換チップ
+  の候補）。
+- **形**（fn 0、ロックが要る。番号は 0x14、セッションの範囲）:
+
+```text
+port_speed  要求: port(u8)、baud(u32)、step(u8: 0 試す、1 決める、2 戻す)、verify_ms(u16)、idle_ms(u32)、[TLV]
+            応答: baud(u32: 実際に掛かる速さ)、[TLV]
+```
+
+- **手順**:
+  1. host が 起動時の速さ（既定。ボードの profile が決め、利用者が host の 1 か所に書く）で confirm と describe を済ませ、`port_speed(試す)` を頼む。
+  2. probe は応答を今の速さで送り終えてから切り替え、**試しの状態**になる。
+  3. host も切り替え、**両方向に max_frame 近くの大きさ**で確かめる（link_source を 2 回、link_sink を 2 回、どれも壊れずに返ること）。
+     小さな confirm では足りない（実験 5: CH340 の 230400 で、confirm は通り、大きなフレームは全部壊れた）。
+  4. 通れば `port_speed(決める)` を新しい速さで送る。probe は決めた状態になる。
+  5. **probe が戻る**（起動時の速さへ）: 試しの状態で verify_ms が過ぎた、試しの状態で壊れた候補（CRC が合わない）を受けた、決めた後に
+     idle_ms の間正しいフレームが来ない、決めた後に短い間に壊れた候補が続いた（目安 1 秒に 3 つ）、セッションが終わった（end、
+     lease の期限切れ、force で持ち主が替わった）、`port_speed(戻す)` を受けた。どの場合も応答は無く、host は時間切れの後、起動時の
+     速さで confirm し直す。
+  6. 戻った後の速さは起動時の速さ。boot_id が変わっていれば probe は再起動していて、やはり起動時の速さ。
+- **host の義務**: 試したが確かめが通らなかった速さは使わない。決めた後も、送り直しが続くなら `port_speed(戻す)` か切断で起動時の
+  速さに戻る。ブローカーが口を持つ構成ではブローカーの責任（client は知らない）。
+
+決めること: この案で core に入れてよいか。入れるなら spec → fake → probe（classic ESP32 の参照 firmware は ON、ほかは UART bridge が
+無いので無し）→ oep-client-python（`open_host(..., port_speed=[候補])` の opt-in）→ 実際の書き込み・キャプチャで使ってみる（ドッグ
+フーディング）の順で進める。
