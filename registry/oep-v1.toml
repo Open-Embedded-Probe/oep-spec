@@ -818,6 +818,7 @@ idle = 0x03                     # channel(u16) mode(u8): the state of a free pin
 slot = 0x04                     # a place a target is wired to (oep-if-probe-config §1.1)
 bind = 0x05                     # what a serial port carries (oep-if-probe-config §1.2)
 uart = 0x06                     # fn(u16) baud(u32) format(u8): a fixture UART's settings, applied when its plan is set
+disable = 0x07                  # channel(u16): a channel the probe never uses or touches (not on this board)
 [interface.tlv.describe]        # declarations only; the state is op 0x06 (oep-if-probe-config §3.3)
 storage = 0x40                  # max_bytes(u32): canonical bytes it can save (0 = no storage)
 items = 0x41                    # u8 list: the item tags this probe takes
