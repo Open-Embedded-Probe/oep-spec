@@ -85,11 +85,15 @@ UART bridge の probe は常に 115200 bps で開く（probe 側で固定、[pro
 ## 3. session_id
 
 - open のたびに新しい乱数（u32）を選ぶ。連番や固定値にしない。
-- **one-shot CLI は session_id を probe の個体ごとに保存する。キーは `oep.core` の describe が返す個体の番号
-  （unit_id）にし、USB のシリアル番号は使わない**（CH549 の Link の fw 2.6 は仮の `0001A0000000` を返し、CH340 は
-  シリアル番号を持たない）。
-  次のコマンドで同じ ID を使い、通れば前のコマンドのあと誰も触っていない。「セッションなし」が返ったら、boot_id を
-  見て再起動か他の host かを区別し、attach の状態と target の ID を確かめ直す。
+- **one-shot CLI は session_id を probe の個体ごとに保存する。キーは unit_id**（core §7.5）。OEP の probe が自分で出す USB の口では
+  serial number = unit_id なので開かずに取れる。serial を選べない口（USB-Serial/JTAG、CH340 などの変換チップ。CH549 の Link の fw 2.6 は
+  仮の `0001A0000000` を返す）では describe で読む。
+  次のコマンドで同じ ID を使い、通れば前のコマンドのあと誰も触っていない。rejected `expired` が返ったら、lease が切れて資源が
+  外れている: open からやり直し、plan、attach、購読を張り直す（黙って続けない。bench の条件）。「セッションなし」が返ったら、confirm の
+  boot_id を見て再起動か他の host かを区別し、attach の状態と target の ID を確かめ直す。
+- **発見の手順**: USB の device を列挙し、iProduct が `OEP` で始まるものを probe とする（core §3.3）。serial number が unit_id。口は
+  interface の記述子で選ぶ（vendor bulk: class 0xFF / subclass 0x4F / protocol 0x45、HID: usage page 0xFF4F、CDC: シリアルの口）。開いたら
+  confirm で boot_id と上限を取り、describe の unit_id が serial と同じことを確かめる。ロック無しの監視は confirm の boot_id で再起動を知る。
 - 対話型の CLI や Monitor のように長く開いておくものは、keepalive か普段の要求でロックを保つ。確認のプロンプトで
   止まる間も keepalive を打ち、破壊的な手順の前ごとにセッションが生きているか（`no session` / `locked` にならないか）
   を確かめる。
