@@ -159,8 +159,8 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
 - 1 つの set の中で同じキー（plan は (fn, role, channel)）が 2 回出たら、要求全体を rejected malformed。
 - set / unset の結果の設定全体が §1 の規則を満たさなければ（bind が消したスロットを指す、など）、何も変えずに rejected malformed。
 - **set の原子性は、設定の検証と資源の予約（plan の適用、ピンの取り合いの確かめ）まで**。どれかが受け入れられなければ、何も変え
-  ずに rejected。自動の attach とコンソールを開くこと（外の状態を変えること）は、set が済んだ後に行い、その結果は describe の
-  slot_state と bind_state で分かる（巻き戻さない）。
+  ずに rejected。自動の attach とコンソールを開くこと（外の状態を変えること）は、set が済んだ後に行い、その結果は state（op 0x06、
+  §3.3）の slot_state と bind_state で分かる（巻き戻さない）。
 - **probe は host が送った項目のバイト列をそのまま持つ**（critical の bit だけ外す。知らない後ろのフィールドも切らずに持つ）。
   probe が自分で後ろにフィールドを足すことはしない。
 - **hash** は今の設定の正規形の CRC-32（core §5.2 と同じ IEEE）。正規形 = 項目を tag の昇順に、同じ tag の中はキー（plan は
@@ -239,8 +239,6 @@ bind_state: port(u8)、mode(u8)、selected(u8: 今選ばれている並びの番
 
 ## 4. describe
 
-| tag | 名前 | 値 |
-|---:|---|---|
 describe は宣言だけ（core §7.3）。状態は state（§3.3）。
 
 | tag | 名前 | 値 |

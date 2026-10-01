@@ -20,7 +20,7 @@ USB の VID:PID で見分けるのは、「OEP の probe か」だけである�
   usage page 0xFF4F / usage 0x45 の HID。registry の `usb`）。interface の文字列は表示のためだけ。
 - host が probe を覚えるとき（IDE、sketch.yaml、bench の設定）は、VID:PID ではなく unit_id（= USB の serial number）で覚える。
   PID を取ったときに VID:PID が変わっても、覚えた値はそのまま使える。
-- fn 0 の describe の `oep_pid = 1` は、「host の discovery に出る形でも列挙している」という意味（USB-Serial/JTAG のように別の口から
+- fn 0 の describe の `discoverable = 1`（0x4A。旧名 `oep_pid`）は、「host の discovery に出る形でも列挙している」という意味（USB-Serial/JTAG のように別の口から
   開かれたときにも分かる）。
 - VID:PID も iProduct も選べない口（USB-Serial/JTAG、USB-UART の変換チップ）は、利用者が口を選ぶ。
 

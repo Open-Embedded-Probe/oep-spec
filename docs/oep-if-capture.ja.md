@@ -347,7 +347,8 @@ bind の TLV:
 - **bind** は、configure 済みのトラック（`oep.fixture.logic` / `oep.fixture.analog` の fn）を束ねる。n = 0 で解く（state 3 のときは
   rejected unavailable cause 6。束ねていないときの n = 0 は何もせず成功）。断り方: 同じ fn の重複は malformed、宣言（tracks）に無い fn
   は unsupported、configure していない・モードが揃っていない・trigger_track 以外が即時でないトリガを持つ・budget を超える は
-  unavailable（cause 6 / 2）。何も変えずに断る。束ねている間、各トラックの configure、start、stop、force は rejected unavailable
+  unavailable（cause 6 / 2）。どのトラックについての断りかは payload の TLV fn（0x05、core §4.3。unsupported の payload も同じ）で返す。
+  何も変えずに断る。束ねている間、各トラックの configure、start、stop、force は rejected unavailable
   （cause 4、holder_fn = 組の fn。組の op を使う。configure し直すときは、いったん n = 0 で解く）。束ねたトラックの plan の
   plan_release / plan_apply も rejected unavailable（cause 4）。**bind はセッションの資源**（core §9: end で残り、lease の期限切れと
   force で解ける）。

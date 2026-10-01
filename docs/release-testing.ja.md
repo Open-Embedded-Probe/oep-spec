@@ -1,6 +1,7 @@
-# リリース前の結合試験: 誰が何を持つか（案）
+# リリース前の結合試験: 誰が何を持つか
 
-状態: **案**（2026-10-01、ユーザーのメモから）。core（ArduinoCore-CH32RV）を中心にしたエコシステムの試験台はできた。OEP の側は、
+状態: **決定**（2026-10-01 にユーザーが採用。試験は oep-client-python の `tests/hw/` に置いた。2026-10-02 に実機の事実を追記）。
+元は 2026-10-01 のユーザーのメモから起こした案。core（ArduinoCore-CH32RV）を中心にしたエコシステムの試験台はできた。OEP の側は、
 core を介さずに firmware を転送して試験できるので、**リリース前に「Arduino の firmware」と「Python クライアント」の組で試験するのを必須**
 にし、どのリポジトリが環境と手順を持つかをここで決める。
 
@@ -33,14 +34,26 @@ picotool / uf2、oep_client）でできる。firmware のリポジトリは Ardu
 
 対象のボードは `OEP_HW_BOARDS`（board-identify の id の並び、例: `esp32-pico-d4-50029191fe34`）。ボードごとに:
 
-1. 焼く（esp32: esptool の merged.bin、rp2: uf2 を BOOTSEL のドライブへ、P4: DFU の app.bin）。
+1. 焼く（esp32: esptool の merged.bin、rp2: 1200 baud の touch で BOOTSEL に落とし picotool の PICOBOOT で uf2 を送る、P4: DFU の app.bin）。
+   実機で分かったこと（2026-10-02）:
+   - **RP2 は WSL から BOOTSEL のドライブ（Mass Storage）では焼けない**（ドライブは Windows 側に付く）。1200 baud の touch + picotool
+     （PICOBOOT の USB の口を usbipd で WSL に付ける）なら通る。
+   - **P4 の DFU は interface 番号も転送の大きさも記述子から読む**（今の firmware は interface 4 / 4096 byte、古い版は 7 / 1024 byte。
+     決め打ちは版が変わると壊れる）。
+   - **USB の serial が変わった firmware を焼くと Windows の usbipd は別の device と見る**（旧版の `<unit>-hs` → unit_id）。管理者で
+     bind し直すまで WSL から見えない。2 台目の P4 で踏んだ。試験の手順は、焼いた後に serial が変わりうることを前提に bind を確かめる。
 2. 起動を待ち、confirm / list / describe。boot_id が変わっていること、firmware の文字列が期待の版であること。
 3. probe.config: set / get / save / state / unset（disable を含む）。保存して再起動して読めること。
 4. 線（接続している target があれば）: scan、attach（reset TLV を含む）、halt → read_block → resume の往復（block op の自己完結）。
 5. fixture: gpio の set / read、uart の configure / write / read（ループバックの配線があれば）。
 6. port_speed（UART bridge の probe だけ）: `linktest` の matrix を既定の条件（今の速さと候補の速さ、in / out / duplex、同時 1 と max）で
-   回し、結果を記録する。壊れ方の閾値（例: 1 つずつで 1 % 以下）を判定にする。
+   回し、結果を記録する。**起動時の速さで同じ matrix を先に測って基準とし**、候補の壊れ・失われの割合を基準と比べる（CH340 は 115200 でも
+   1〜3 % 落とすので、絶対数の閾値では判定できない。[リンクの計測](link-measurements.ja.md) §1.4）。
 7. セッション: lease の期限切れ、expired、force の往復。
+8. シリアルの口（CDC、USB-Serial/JTAG、UART bridge）の host の受けの上限: 未解決の応答の見込み量（同時数 × フレーム長）を client の上限
+   （6 KiB、core §3.4 の注）まで上げた `linktest` in で 1 つも失われないこと（Linux の cdc_acm の 8 KiB を踏んでいないことの確かめ）。
+9. read_block を describe の max_length ちょうどの count で 1 回（応答が max_frame に収まり、malformed にならないこと。線のある
+   ボードだけ）。
 
 結果は JSON で `tests/hw/results/<board>-<firmware>-<client>.json` に残し、リリースノートから参照する。
 
