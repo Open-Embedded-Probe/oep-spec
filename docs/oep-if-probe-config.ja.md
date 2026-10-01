@@ -42,10 +42,13 @@
   自分のボードに合わせて明示する。firmware が使えると宣言した channel（describe の role_channels など）を減らすだけで、firmware が
   使えないとしたピンを使えるようにはできない（それは自前のビルドで行う）。
   - 無効にした channel を指す要求（plan_apply、設定の plan、線の attach の pins と reset、scan の組、gpio など）は rejected unavailable
-    （cause 5 設定が持つ、channel 付き）。scan の count = 0 の並びには入れない。
+    （cause 5 設定が持つ、channel と holder_kind 6 無効化 付き）。scan の count = 0 の並びと、pins の無い attach の候補には入れない
+    （候補がそれしか無ければ同じく cause 5）。同じ set の中で disable と、その channel を使う plan / slot を両方送った場合も cause 5。
+  - firmware が宣言していない channel の disable は rejected unsupported（idle と同じ）。
   - probe はその channel の pin を駆動も設定もしない（起動時と解放時の空きの状態にもしない。リセットの後のまま）。
-  - いま使われている channel（plan、接続、スロット）を無効にする set は rejected unavailable（cause 1）。同じ channel の idle と
-    disable を両方持つ設定は malformed。
+  - いま使われている channel（plan、接続、スロット。同じ set で外されるものは除く）を無効にする set は rejected unavailable
+    （cause 1）。同じ channel の idle と disable を両方持つ設定は malformed。
+  - unset で disable を外した channel は、すぐ空きの状態（idle か Hi-Z）になる。
   - describe は宣言だけなので変わらない（core §7.3）。host は get の disable を合わせて、使える channel を知る。
   - 保存すれば起動時に、空きの状態を掛けるより先に適用する。
 - **idle**: plan にも接続にも使われていないピンの状態。起動時と、そのピンが解放されるたび（core §8）に、この状態にする。
@@ -151,7 +154,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
 - **set は、要求に含まれる項目のキーごとに置き換える**（含まれないキーはそのまま。何回かの set に分けて積み上げられる）。
   plan の項目は fn ごとにまとめて、その fn の plan を置き換える。項目の順は意味を持たない。
 - **unset はキーの項目を消す**（key は tag ごと: plan は fn(u16)（その fn の plan 全部）、label と idle は channel(u16)、slot は slot(u8)、
-  bind は port(u8)、uart は fn(u16)。要素に len を置くのはキーの長さが tag ごとに違うため）。検証と原子性は set と同じ。無いキーは
+  bind は port(u8)、uart は fn(u16)、disable は channel(u16)。要素に len を置くのはキーの長さが tag ごとに違うため）。検証と原子性は set と同じ。無いキーは
   何もせず成功。消したスロット・bind には §1.1 / §1.2 の後始末を適用する。
 - 1 つの set の中で同じキー（plan は (fn, role, channel)）が 2 回出たら、要求全体を rejected malformed。
 - set / unset の結果の設定全体が §1 の規則を満たさなければ（bind が消したスロットを指す、など）、何も変えずに rejected malformed。
