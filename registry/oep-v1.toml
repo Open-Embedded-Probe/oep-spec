@@ -75,6 +75,7 @@ resync_quiet_ms = 50            # host: read and discard until the input is this
 probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restarts its reader
 host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
 heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
+port_speed_idle_max_ms = 3000   # a raised port_speed goes back after this long without a good frame, whatever idle_ms said (core §3.5)
 
 [describe_common]               # declaration tags every interface's describe may use (core §7.4); 0x04 reserved, 0x3F response meta
 role_channels = 0x01
