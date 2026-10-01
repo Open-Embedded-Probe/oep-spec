@@ -236,7 +236,9 @@ boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロッ�
   reset 線、SWD、state 5 の復帰、write_pos。
 - **追随**: oep-client-python（fake を含む）、oep-probe-arduino、oep-client-js、ch32rv、WireSkein（read / status / segments の形）、
   bench（prepare.py の describe / state の読み分け）。
-- **大きさの見積もり**: spec 2 日、fake + Python 1 日、probe 2 日、JS 1 日、peer の追随 1〜2 日。前回の 13 項目と同じ規模の 2 倍程度。
+- **§7 の点検で増えた分**: 出来事の TLV 化、unsupported の payload、state のページング、uart の status、attach の細目、scan の TLV、run の nvals、
+  generation の 3 か所、registry の `[usb]` / `[limits]`。形の変更は 1.5 倍ほどに増える。
+- **大きさの見積もり**: spec 3 日、fake + Python 1.5 日、probe 3 日、JS 1 日、peer の追随 2 日。前回の 13 項目の 3 倍程度。
 - **順序**: ★ を決める → core の 3.1〜3.6 を先に書く（ほかの文書がこれに依る）→ インターフェースの文書 → registry → 生成 → fake →
   probe → client → peer に通知。
 
@@ -273,3 +275,164 @@ boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロッ�
 | 9 | capture の read に generation を要求する（3.10a） | する | status に generation を足すだけ（read は黙って返す） |
 
 ほかの項目（3.3、3.6、3.7、3.9、3.10b〜h、3.11）は案のとおりで進めてよいか、まとめて可否をもらう。
+
+---
+
+## 7. 方針を当てた漏れの点検（2026-10-01、ユーザーの採用後）
+
+採用した 8 原則と §3 の案を、規範の文書の **すべての op、TLV、出来事、describe、項目、ビット**に機械的に当てて、§3 に書かれていなかった
+漏れを 3 系統（core / config、debug / console、capture / fixture）で点検した。見つかった 79 件を、原則に従って決めた形で以下に書く。
+判断が分かれうるものだけ ★ を付けた（ほかは原則からの帰結）。§3 の案と番号がぶつかった所も直した。
+
+### 7.1 本体と共通部品
+
+1. **出来事の payload も「固定部 + TLV」**（データフレームと同じ）。core §2.3 の「後ろに足す」の列挙から出来事を外し、§11.2 に
+   `kind(u8), 固定部, [TLV]`。ハートビートは `boot_id(u32), uptime_ns(u64), [TLV]`。
+2. **TLV の長い形の符号化は一意**: `len ≤ 254` は短い形、`255 以上` は長い形（`tag, 0xFF, len(u16)`）。別の形は malformed。probe.config の
+   正規形もこの符号化。並びの要素の `len(u8)` には逃げ道は無い（要素は 255 byte 以内）。
+3. **rejected unsupported の payload は常に `tag(u8), [TLV]`**、`0x00` = 固定部の値（tag 0x00 は TLV に使わないと §2.2 に明記）。固定部の
+   どの要素かを返したいとき（gpio set の mode など）は TLV `channel` / `index` を後ろに（unavailable と同じ tag の空間）。
+4. **断り方の順を全段で**（3.6 は payload の中だけだった）: 見出し（unknown_function → unknown_operation → session_required）→ 送り直し
+   （§5.2: corr_reused / result_lost）→ セッション（no_session / expired / locked）→ window_exceeded → malformed → unsupported → unavailable →
+   no_connection。payload で指す fn（describe、subscribe、plan、設定の項目）が無いときは unknown_function を流用。
+5. **plan_apply の理由の表**: 形の誤り・同じ (fn, role, channel) の重複・fn 0 → malformed。role / channel が宣言に無い・channel_group に不一致 →
+   unsupported（tag 0x90）。plan_roles 超え・取り合い・設定の plan → unavailable（cause 2 / 1 / 5）。fn が無い → unknown_function。
+6. **plan 項目のキーは (fn, role, channel)**（gpio は 1 role に複数 channel）。正規形はその昇順。
+7. **subscribe**: fn 0 の subscribe / unsubscribe は必ず実装。送り出さない fn への subscribe は rejected unsupported。購読の無い fn の
+   unsubscribe は ok。mode 3（ストリーミング）を宣言する capture は features bit2 を立てる。
+8. **値の幅**: `max_delay_ms` → u32、slot の `retry_s` → `retry_ms(u32)`、`bind_modes` → u32、`plan_roles` → u32。
+9. **fn 0 describe の `label`（0x46）は firmware が持つ固定のラベルだけ**（★）。設定の label 項目は probe.config の get で読む（host は両方を
+   合わせる）。describe を set で変えないため（原則 5）。freeze-decisions 12 の「core の describe に出す」を直す。
+10. **describe の TLV の値（bitmap、text、組の並び）は閉じたまま**、足すときは新しい tag — §4 の表に載せる。ただし `channel_group` は
+    `group, n(u8), n × (role, channel)` に、capture の `rate_list` / `tracks` / `budget` に `n(u8)`、calibration の `factory` に `raw_len(u16)` を置く。
+11. **describe の tag 0x3F と probe.config の項目 tag 0x7E を「応答のメタ情報」のために予約**（宣言の空間とぶつけない）。
+12. **`oep_pid`（0x4A）→ `discoverable`** に改名、意味は 3.4d の条件（iProduct `OEP` 接頭 + 固定の subclass / protocol で列挙している）。
+13. **`max_op_ms` は fn 0 describe の tag 0x4D**。save もこれに従い、`max_save_ms` は describe から外す。attach の reset TLV の `hold_ms` も
+    対象に入れる。1 要求を実行中も、**ほかの connection のコンソールの読みは続ける**（同じ connection は止める）。
+14. **boot_id は 32 bit の乱数でよい**（同じ値になる確率は host が受け入れる）。**保存の無い probe は unit_id を firmware のビルド定数で
+    持ってよい**（同じ firmware の個体を区別できないことを受け入れる）。
+15. **資源番号の一周の残りの穴を明記**: 一周の後は古い番号が別の資源を指しうる。host は no_connection を受けた番号を捨て、長く持つ番号は
+    connections / streams で確かめる。
+16. **セッションの状態機械を 1 つの表に**: 行 = open(新 ID) / open(同 ID、保持中) / open(同 ID、end 後) / open(同 ID、期限切れ後 = expired) /
+    open(force) / end / 期限切れ / 再起動 / 経路替え、列 = ロック / lease / 資源 / 購読 / §5.2 の表。決める升: 保持中の同 ID open は購読を残し
+    通知の送り先をその経路に替える、§5.2 の表は open だけで捨てる（期限切れ後の送り直しは表の判定が expired より先）、end 後の再開の lease は
+    前の open の値、2 経路から 0x81 を送った host の誤判定は host の責任。
+17. **共通部品 §1 の「使うもの」から logic / analog を外す**。capture は「位置と区画と世代を持つ別の形」（from / マーク無し）。§1.5 は削り
+    core §11.2（3.1c）を指す。
+18. **`oep.fixture.uart` の位置とマークの serial は probe の起動の中では戻らない**（plan を解いて再び作っても続きから）（★。世代番号を置く
+    代わり。実装が軽く、bind の口の位置も同じ規則）。uart にロック不要の `status`（0x07: `configured(u8), baud(u32), format(u8), [TLV]`）を足す。
+19. **ストリームが閉じた理由のマーク** kind 0x09 `closed`、detail: 1 全員が外れた、2 lease 切れ / force、3 slot の置き換え・削除、4 connection
+    が閉じた。`mark_detail_reset` の 3 は「attach の reset TLV（NRST）」、method 0（probe が選ぶ）は実際に使った方法を detail に。
+20. **同じ場所・同じ mechanism の console open は、閉じたストリームを同じ番号で再び開く**（位置・マークは続き、mark attach、flags bit0）。
+    別 mechanism の open で古い方は消える。arm-adi の connection への console open は unavailable cause 6（3.3 に揃える）。
+
+### 7.2 `oep.probe.config`
+
+21. **op 番号**: `unset` = 0x05、`state` = 0x06（3.4a と 3.7a が同じ 0x05 だった）。describe の 0x44 / 0x45 は reserved に。
+22. **`state` のページング**: 要求 `first_slot(u8), first_bind(u8)`、応答 `more(u8), storage_state, storage_hash, unreadable_reason, n_slots × (len, slot_state),
+    n_binds × (len, bind_state), [TLV]`。
+23. **`unset` の規則**: 検証と原子性は set と同じ、応答は hash、無いキーは何もせず ok、結果が §1 を満たさなければ何も変えず malformed、消した
+    slot / bind には 3.7f を適用。要求の並びに `len(u8)` を置くのは「tag ごとにキーの長さが違う」ための例外として §4 に載せる。
+24. **`uart` 項目の関係**: その fn の plan に RX か TX が付いた時点（設定・セッションを問わず）で configure 相当を掛ける。plan が無くても set は
+    通る。セッションの configure は、plan を解くか再起動するまで項目より勝つ。保存の読み替えの対象に uart の fn を足す。baud は set のときに
+    actual を確かめ、±5% 超は unsupported。**ピンの無い fn の configure は今どおり unavailable**（bench の条件）。
+25. **理由の表**（§2 の末尾に 1 つ）: その線が許さないピンの組 → unsupported、同じ wire_fn と同じピンのスロットが 2 つ・bind が無いスロットを
+    指す → malformed（設定どうしの矛盾）、idle_clock 1 を rvswd 以外 → unsupported（attach と揃える）、port がシリアルの口でない → unsupported、
+    bind kind 2 の fn が uart でない → unknown_function、保存なし（max_bytes 0）の save / erase → unsupported、erase 後は状態 0・hash 0。
+26. **slot_state の `last_try_ns` は時刻**: `last_try_at_ns(u64)` = 試した時点の uptime、全ビット 1 = 試していない。
+27. **at boot のスロットの生存確認**: probe は retry_ms ごとに DMSTATUS を読んで確かめてよい（書かない）。線切れを見たら接続を閉じて retry に入る
+    （mechanism 0xFF のスロットでも「いない」が分かる）。
+28. **slot の `max_speed` → `max_speed_hz`**（registry 名）。probe-config §1.2 の「CDC は bInterfaceProtocol 0」は開発ガイドへ。
+
+### 7.3 線とデバッグ、コンソール
+
+29. **run の応答に `nvals(u8)`**: `status, stopped, dpc, elapsed_us, nvals, nvals × value(u32), [TLV]`。stopped = 2 / status ≠ ok では nvals = 0。
+30. **done / status を持たない op（scan、attach、detach）の failed は `status(u8), [TLV]`**。core §2.3 に「応答の固定部は (op, resolution, outcome)
+    ごとに op が定める形」と一言（★。attach / scan の先頭に status を置いて形を 1 つにする案もあるが、成功の形を汚さない方を取る）。
+31. **op の境界の表**（3.8a の一文表、debug §4 冒頭）: halt = allhalted を見たら haltreq を下ろす。resume = haltreq 0 / resumereq 1 を 1 回、何も
+    覚えず戻さない。step = dcsr.step と DATA を戻して返す。reset = 終わったら haltreq を下ろし havereset を確認応答。read / write_block = GPR、
+    DATA1 / DATA0、abstractauto を戻す。run = pc / GPR / dcsr は host の指示どおり変えたまま（host の責任）、abstractauto と haltreq は戻す。
+    dmi = probe は何も触らず何も戻さない（host が DATA を使ったら host が戻す）。どの op も hartsel は 0 にして返す。console = hart が止まって
+    いる間 DATA0 に触れない。待ちは目安 100 ms。
+32. **attach の一本化の細目**: 3 線とも `method(u8), [TLV]`（swd は method 1 を unsupported）。TLV 0x05 `reset`（critical: `channel(u16), hold_ms(u16)`）。
+    reset + method 1 = 旧 attach_under_reset、reset + method 0 = NRST を hold_ms 保って離し走ったまま attach。既存 connection への reset TLV は
+    reset op の NRST 相当として扱い mark reset。応答 `connection, id(u32), flags(u8), speed_hz(u32), [TLV 0x11 dpc]`。**flags は 3 線共通の
+    `attach_flags`**: bit0 havereset_acked、bit1 existing、bit2 dormant_woken、bit3 halted（dpc TLV が有効）。失敗の status: 止まらない / 走らない =
+    timeout、DM が応えない = line、cmderr = fault。
+33. **scan にも TLV `max_speed`（critical）と `idle_clock`（rvswd、critical）**。無ければ probe の最も遅い速さ / high で試す。
+34. **`max_speed < min_clock_hz` は unsupported（tag 0x01）**、3 線共通。
+35. **connection と hart の状態機械の表**（debug §2）: lease 切れ / force = セッションの分を外し hart は触らない（止まっていれば止まったまま。
+    host は attach(method 0) + resume で戻す）。end = 何も変えない。force detach = 線が落ちたときと同じ（at boot は retry、mark detach）。
+    再起動 = 全部無くなる。2 セッション目 = §9 で資源が移り attach は flags bit1。bind のコンソールと host の open の重なり = 7.1-20。
+36. **線切れ判定**: 要求の中で判定したら status line で返してから閉じる。**コンソールの読みの中で判定したら mark link-lost を付けて閉じる**。
+    idle な connection は監視しない（at boot のスロットは 7.2-27）。
+37. **havereset を見たら**（要求の中でもコンソールの読みの中でも）確認応答し、dmseq を未同期に戻し、mark restart（detail 1）。3.8i の「覚えた
+    値を捨てる」は 3.8a では空なので消す。
+38. **swd の connections entry の tid は `tid_scheme 2 = targetsel(u32)`**（同じピンで targetsel の違う connection を見分ける）。slot の錠には
+    使わない（registry swd の `slot` ビットは `# always 0 in v1`）。
+39. **arm-adi**: block は hart の状態を問わない、done は probe が送った語数、ack は線の順で bit0 が最初（OK=1, WAIT=2, FAULT=4、無応答 = status
+    line）、req の上位 4 bit は 0 でなければ malformed、TAR は進めたまま SELECT / CSW は変えない。§6 末尾に「意図した非対称」の箇条書き。
+40. **RV64 / 64 bit AP の伸ばし道を予約**: read_block / write_block の TLV 0x01 `address_hi(u32)` を reserved に。attach の dpc TLV は len で幅が
+    分かるので 8 byte も許す。
+41. **空の結果・端の値の表**（debug / console）: dmi n = 0・read_block count = 0 → success done 0、4 の倍数でない address → malformed、swio の
+    scan で swclk ≠ 0xFFFF → malformed、使っていないセッションの detach → ok、閉じた stream の close → ok、max_reads / max_us = 0 → 1 回読む、
+    run の timeout_ms = 0 → malformed、n_out の regno 重複 → 許す。
+42. **命名**: `max_speed_hz`、dmi の `us` → `wait_us`、dmseq 文書の「host」→「probe」、「framing」→「mechanism」。**継続時間（timeout_ms、hold_ms、
+    wait_us、elapsed_us、retry_ms）は今の単位のまま。u64 ns にするのは時計の値だけ**（3.5 の誤読を防ぐ）。
+43. registry: `scan_kind`、riscv-dm `features` ビット、`attach_flags`、reset / read の flags、run の `stopped`、streams の `state`（0 open、1 closed）、
+    attach の TLV 0x05 / 0x11、arm-adi `ack` ビット、mark kind 0x09、swd の `attach_answer` 節。
+
+### 7.4 キャプチャと fixture
+
+44. **ストリーミングのデータ payload に TLV `generation(u32)`、mode 3 では必ず付ける**（start の応答の後に前の世代の送り残しが届きうるため）。
+45. **release の要求にも `generation(u32)`**（read と同じ。違えば unavailable cause 6）。**start の応答に `generation(u32)`** を固定部に
+    （`blocking_ms, generation`）。group の start も各トラックの generation を +1 し、応答に `n × (fn, generation)` を TLV で。
+46. **トラックの状態遷移表**（capture §3.2）: 行 = state 0〜6、列 = configure / start / stop / force / release / trigger / あふれ / 完了 /
+    plan_release・lease 切れ。決める升: state 2 / 3 の configure・start → unavailable cause 6、stop を 1 / 4 / 5 / 6 で → ok 何もしない、force を
+    2 以外で → ok 何もしない、4 / 5 / 6 からの configure なしの start → 可（世代 +1、区画は消える）、plan を解いたらデータも区画も消える（state 0、
+    read は空）、plan 無しの configure / query → unavailable cause 6。
+47. **state 6 の理由**: status の応答 TLV `error(u8)`（1 DMA / ペリフェラル、2 置き場、3 時計、0x40〜 固有）、stopped reason 3 の payload の後ろにも。
+48. **group**: `start_ns` は取得（pretrigger のリングを含む）を始めた時刻、ずれの推定は即時トリガのときだけ、トリガ付きは trigger_ns と各トラックの
+    trigger_index で合わせる。bind n = 0 は state 3 以外のときだけ。始めた後のトラックの失敗 → 組は state 6・stopped reason 3・ほかも止める。
+    start 前の start_ns は全ビット 1。features は bit1 force、bit2 通知（query は無いので bit0 は 0）。`trigger_track` は critical。force は triggered
+    を送り trigger_fn = 0。
+49. **mode 3 の start は購読が無ければ unavailable cause 6**。取得中に購読が消えたら取り続け、送れない分は捨てる（position の飛び）。
+50. **`blocking_ms > max_op_ms` になる構成は configure で unsupported**。blocking の間は lease を数えない。
+51. **rate_limit は C ≤ channels のときの上限、rate_list は 1 TLV（繰り返せば和集合）**。release(serial) は serial **以下**を解放。state 5 から
+    再開した最初の区画は flags bit0。
+52. **アナログの b は 1〜31**（zero は i32 のまま、trigger value u32 で足りる）。
+53. **チャンネル数の u8（C、max、rate_limit の channels、max_tracks）は role(u8) に縛られるので意図的に u8** — §4 の表に。**layout の候補の
+    ビット集合は u32**。i2c / spi の `errors` は u32。
+54. **i2c-target**: mode 1 で未 arm のときの controller の書き込みは ACK して捨て errors を数える、mode 3 で置き場が空のときの読み出しは 0xFF、
+    mode 2 の長さ byte と本文は同じトランザクション（repeated start なし）、stretch は各 byte の ACK の後、`tx_slots` = preload_tx で置いて未読の
+    置き場の数（mode 3、ほかは 0）。**spi-target**: length を超えた分は捨てる（bits は実際に来た数、data は length まで）。read_rx の応答 TLV に
+    `ns(u64)`（受けた時刻、任意）を予約。列の深さは describe tag 0x40 `queue_depth`。
+55. **gpio set は確かめで断る以外は失敗しない（success）**。扱えない mode は unsupported + TLV channel / index（7.1-3）。
+56. **理由の揃え**: i2c / spi の `length` が max_length 超 → unsupported（0 は malformed）、group bind の同じ fn の重複 → malformed、宣言に無い fn →
+    unsupported、configure していない・モード不揃い・budget 超え → unavailable。
+57. **空の結果・端の値**（fixture / capture）: 未割り当て channel の gpio read → unavailable(channel)、read の max = 0 → 空の成功、非リピートでの
+    release → ok、未束ねの bind n = 0 → ok、state 0 の i2c / spi reset → unavailable cause 6、plan 前の query → unavailable cause 6、count = 0 の
+    write / preload_tx → malformed、segments の from_serial が serial_done より先 → 空の成功。
+58. registry: 各 capture / fixture の `features` ビットを enum に、uart `format` のビット、i2c / spi describe `queue_depth`、capture-group の state /
+    stopped_reason、unavailable_payload に断った fn を返す tag、logic の `stopped_reason.no_free_segment` に「送らない（予約）」の注記、logic から
+    analog 専用 tag を外す。
+
+### 7.5 文書と registry の整理（書き直しのときに一緒に）
+
+- 見直し 51〜59、本点検の 7.1-10 / 12、7.2-28、7.3-42 / 43、7.4-58 を、該当する文書を書き直すときに直す。形を変えないので凍結の後でも
+  直せるが、registry の名前（生成コードに出る）は凍結前に。
+- 開発ガイドの追随: host ガイド §3（boot_id は confirm から、ロック無しの Monitor の動線）、§4（max_op_ms）、§2.5（expired の扱い: 専用の例外、
+  黙って open し直さない）、§5（uart の位置の規則）。probe ガイド §3.8（iProduct / subclass / protocol / HID usage）、§3.9（max_op_ms と lease）、
+  boot_id の作り方。usb-identity §3 / §4 を「計画をやめた」形に書き替える。
+- registry に `[usb]`（subclass 0x4F、protocol 0x45、HID usage page 0xFF4F / usage 0x45、参照 firmware の 1209:4F45）と `[limits]`（lease 1000〜60000、
+  owner / unit_id / slot name 1〜32、インターフェース名 1〜64、max_op_ms 既定 2000、min_max_frame 64）を置き、生成コードで検査できるようにする。
+
+### 7.6 ★ 判断の記録（原則だけでは決まらなかったもの）
+
+| # | 決めたこと | 理由 | 別の案 |
+|---|---|---|---|
+| 7.1-9 | core の describe `label` は firmware の固定ラベルだけ、設定の label は get で読む | describe を set で変えない（原則 5）。host は 2 か所を合わせる手間 | describe に残し「label は例外」と書く |
+| 7.1-18 | uart の位置は起動の中で戻らない（世代番号を置かない） | 実装が軽く bind の口にも同じ規則が効く。console は番号で見分けるので不要 | read の応答 TLV に generation |
+| 7.3-30 | failed の形は `status, [TLV]`、固定部は (op, resolution, outcome) ごと | 成功の形を汚さない | attach / scan の先頭に status を置き形を 1 つに |
+| 7.3-38 | swd の tid は scheme 2 = targetsel | 同じピンの connection を見分けるのに最小 | entry の後ろに targetsel を足す |
+| 7.4-44 | mode 3 のデータに generation TLV を必須に | 「start の応答前に送り残しを捨てる」だけでは経路の遅れで守れない | 不変条件だけ書く |
