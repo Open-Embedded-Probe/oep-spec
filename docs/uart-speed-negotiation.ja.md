@@ -65,6 +65,10 @@ broker の取り違えも無かった。往復は直結で keepalive 5.3 ms、�
 
 ## 3a. 実験 1: M5Stack ATOM（ESP32-PICO-D4 + FTDI、2026-10-01）
 
+> **注（ユーザーのメモ、2026-10-01）**: ATOM の変換は本物の FTDI ではなく、**CH552 が FTDI 互換（0403:6001 "M5stack"）を
+> 名乗っている**もの。整数分周の速さしか通らないこと、両方向同時に壊れること、115200 でも 0.1〜0.3 % 壊れることは、この
+> ソフトウェア実装の性能の限界で、FTDI 系の一般の性質ではない。以下「FTDI」とあるのはこの CH552 のこと。
+
 **やり方**: 実験用の op（fn 0 の 0xF0 `port_speed`、実験用の番号の範囲。oep-probe-arduino の `exp-port-speed` ブランチ、
 `-DOEP_EXPERIMENT_PORT_SPEED`）を classic ESP32 の OepProbe に足して ATOM に焼いた。**probe は速さの候補を宣言しない**。host が頼み、
 probe は応答を今の速さで送り終えてから UART0 の baud を変え、confirm_ms（500 ms）の間に正しいフレームが来なければ 115200 に戻る。
