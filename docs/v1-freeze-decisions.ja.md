@@ -12,6 +12,9 @@
 7（oep-if-fixture §3 / §4、registry）、8（console）、10（core §7.5）。残りは実装だけ: 9（firmware.yml）、12（probe が label を受ける）、
 13（client の API）、11（予約は今の文書のまま）。
 1 の bind の並びは漏れていて、2026-10-01 に probe-config §1.2 に入れた（応答の並びと同じく各要素の前に len）。
+12 は 2026-10-01 のゼロベースの再検討で変わった: 設定の label は core の describe には出さず probe.config の get で読む（describe は宣言だけ）。
+3(b)（iProduct `OEP`）は恒久の規範になり、3(c)（HID の report）は記述子に任せる形で反映した。11 の参照「probe-cdc §6 / §7」は
+open-proposals §6 / §7 の誤り。その後の決定は [ゼロベースの再検討と仕様案](v1-zero-base-proposal.ja.md)。
 
 ## A. 横断（決めると他が動ける）
 
