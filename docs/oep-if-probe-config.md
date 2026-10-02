@@ -56,6 +56,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
   - describe is only a declaration and does not change (core §7.3). The host combines it with the disable of get to know the usable channels.
   - If saved, it is applied at boot before the idle state is applied.
 - **idle**: the state of a pin used neither by a plan nor by a connection. It is put in this state at boot and each time the pin is released (core §8).
+  A channel with an idle item (any mode) is left out of a scan with count = 0 and of the candidates of an attach without pins; a request that names it is rejected unavailable (cause 5, holder_kind 7) when the idle is an output (mode 3 / 4) ([wire and debug](oep-if-debug.md) §1).
   With mode 3 / 4, the probe drives that level for as long as the pin is idle. A pin without idle is Hi-Z. A pin where the peer's input would float because of the fixture's wiring (a TX connected to the peer's RX, etc.) is stated explicitly by the host with idle and saved.
   The output modes exist for a channel that must keep a level even while no plan holds it (the switch of the target's power, etc.).
   A change of the idle item (set / unset) takes effect at once on a free channel, and on a channel a plan or a connection holds, when it next becomes free.
@@ -98,7 +99,7 @@ boot_reset may be placed (0 if not placed). After it is the place for fields add
 | name | The slot's name. 1 to 32 bytes; the only usable characters are `a-z 0-9 - _` (others are rejected malformed). Unique within the probe (if duplicated, rejected malformed). Used by the host to name the slot (it goes as is into the IDE address `oep://<unit_id>/<name>`. unit_id is core §7.5. Both contain only characters that need no encoding in a URL), and also used for the line marker of mixed (§1.2) |
 | lock_len | The length of the lock part. 0 (no lock) or 1 + 2n (n ≥ 1). Others are rejected malformed |
 | lock_scheme | Only when there is a lock. The scheme of target_id ([wire and debug](oep-if-debug.md) §1). 0 is not placed (no lock is lock_len 0). A scheme the wire does not have, whether defined or not (core §2.5), is rejected unsupported |
-| lock_mask, lock_value | Only when there is a lock. The same length n = (lock_len − 1) / 2. **n is the same as the length of the value of that scheme** (4 for scheme 1. If different, rejected malformed. The length is `target_id_scheme` of the registry). The byte order is the same as the value of target_id in the answer to attach (for scheme 1, u32 little endian) |
+| lock_mask, lock_value | Only when there is a lock. The same length n = (lock_len − 1) / 2. **n is the same as the length of the value of that scheme** (4 for scheme 1. If different, rejected malformed. The length is `[common.enum.target_id_len]` of the registry). The byte order is the same as the value of target_id in the answer to attach (for scheme 1, u32 little endian) |
 | boot_reset | Optional. Whether, when the automatic attach at boot got no answer from the wire, the probe attaches once more using the reset line (§3.1): 0 no, 1 yes. 0 if not placed. 2 or more is rejected malformed. 1 on a slot that is not at boot is rejected malformed |
 
 - max_speed and idle_clock are properties of the target ([wire and debug](oep-if-debug.md) §3), used when the probe attaches the slot itself
@@ -114,6 +115,7 @@ boot_reset may be placed (0 if not placed). After it is the place for fields add
 - **The number of at boot slots is, per wire_fn, up to max_connections of that wire** ([wire and debug](oep-if-debug.md) §1). A set exceeding it
   is rejected unavailable. The order of the sequence of slots has no meaning.
 - The number that can be registered is declared by the probe with slots_max of describe.
+- A slot designates a two-pin wire. A wire whose combination is not two pins gets a new item tag when slots are defined for it.
 
 ### 1.2 bind (what is sent to a serial port)
 

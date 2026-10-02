@@ -120,10 +120,20 @@ dmi_busy_retries = 100          # riscv-dm: DMI busy is retried this many times,
 reset_wait_ms = 100             # riscv-dm reset: wait for the hart after releasing ndmreset, per attempt (oep-if-debug §4.3)
 reset_retries = 1               # riscv-dm reset: the sequence is repeated at most this many times (flags bit2) (oep-if-debug §4.3)
 swd_wait_retries = 100          # arm-adi transfer: WAIT is retried this many times, then status wait (oep-if-debug §6)
+wire_retry_ms = 200             # wire: the most one request spends retrying the wire, slower speeds included; then status line (oep-if-debug §2)
+wire_lost_ms = 1000             # wire: failures with no answer from the wire for this long of real time, no success in between, = wire loss (oep-if-debug §2)
+attach_budget_ms = 1000         # wire: one attach answer at most, speed search and retries included, reset hold_ms excluded (oep-if-debug §1, core §4.4)
+scan_budget_ms = 500            # wire: no scan combination starts later than this after the request arrived (oep-if-debug §1, core §4.4)
 
 [reference]                     # values that are not the specification's, outside the freeze (core, top)
 max_op_ms = 10000               # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
 
+[common.enum.target_id_scheme]  # one space for the whole probe; each wire states which it uses (oep-if-debug §1)
+wch_dmi_7f = 1                  # the u32 at DMI address 0x7F of that debug module; 0 and all ones = none (not sent)
+targetsel = 2                   # swd: connections entries only, the u32 TARGETSEL (0 when none); never a slot lock
+[common.enum.target_id_len]     # bytes of each scheme's value (slot locks must match it; oep-if-probe-config §1.1)
+wch_dmi_7f = 4
+targetsel = 4
 [common.enum.read_from]         # positioned streams (oep-if-common §1.2)
 position = 0
 oldest = 1
@@ -197,12 +207,12 @@ cause = 0x01                    # u8, enum unavailable_cause
 channel = 0x02                  # u16, may repeat
 holder_fn = 0x03                # u16
 holder_kind = 0x04              # u8, enum holder_kind
-fn = 0x05                       # u16: the fn the refusal is about (a track in capture-group's bind)
+fn = 0x05                       # u16: the fn the refusal is about (a track in capture-group's bind or start)
 [interface.tlv.unsupported_payload]   # the rejected unsupported payload after tag(u8) (0x00 = a fixed-part value), every fn (core §4.3)
 supported = 0x01                # confirm only: min(u8) max(u8), the protocol revisions the probe handles (core §7.1)
 channel = 0x02                  # u16
 fn = 0x05                       # u16: the fn the refusal is about (a track not in capture-group's tracks)
-index = 0x40                    # u8: the position in the request's list (gpio set)
+index = 0x40                    # u8: the position in the request's list (gpio set, wire scan)
 [interface.tlv.describe]        # the probe itself (fn 0); declarations only (core §7.3)
 firmware = 0x40
 model = 0x41
@@ -232,6 +242,7 @@ slot = 3
 bind = 4
 settings_plan = 5
 disabled = 6                    # a channel the settings' disable item takes out (oep-if-probe-config §1)
+settings_idle = 7               # a channel the settings' idle item takes charge of: output idles refused when named, every idle left out of count = 0 (oep-if-debug §1, oep-if-capture §1.2)
 [interface.enum.transport_kind] # describe transport (core §7.5); 1-3 are serial ports (core §3.4)
 uart_bridge = 1
 usb_cdc = 2
@@ -283,6 +294,7 @@ reset = 0x05                    # critical: channel(u16) hold_ms(u16) - hold the
 [interface.tlv.attach_answer]   # the attach result's tail
 target_id = 0x10                # scheme(u8) value: what the probe read of the target's identity (oep-if-debug §1)
 dpc = 0x11                      # u32 (8 bytes on RV64): the halted hart's dpc when flags halted is set
+search_retries = 0x12           # u16, optional: failed tries of the speed search before speed_hz was verified (0xFFFF = 65535 or more) (oep-if-debug §1)
 [interface.enum.scan_kind]      # the kind byte of a scan entry
 riscv_dm = 1
 arm_adi = 2
@@ -291,10 +303,8 @@ havereset_acked = 0x01
 existing = 0x02
 dormant_woken = 0x04
 halted = 0x08
-[interface.enum.target_id_scheme]
-wch_dmi_7f = 1                  # the u32 at DMI address 0x7F (the name: WCH's debug module keeps an identifier there); 0 and all ones = none (not sent)
-[interface.enum.target_id_len]  # bytes of each scheme's value (slot locks must match it; oep-if-probe-config §1.1)
-wch_dmi_7f = 4
+[interface.enum.features]       # describe features bits (common tag 0x06)
+attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound
 [interface.enum.attach_method]
 run = 0
 halt = 1
@@ -334,6 +344,7 @@ reset = 0x05                    # critical: channel(u16) hold_ms(u16)
 [interface.tlv.attach_answer]
 target_id = 0x10
 dpc = 0x11
+search_retries = 0x12           # u16, optional (oep-if-debug §1)
 [interface.enum.scan_kind]
 riscv_dm = 1
 arm_adi = 2
@@ -342,10 +353,8 @@ havereset_acked = 0x01
 existing = 0x02
 dormant_woken = 0x04
 halted = 0x08
-[interface.enum.target_id_scheme]
-wch_dmi_7f = 1                  # the u32 at DMI address 0x7F (the name: WCH's debug module keeps an identifier there); 0 and all ones = none (not sent)
-[interface.enum.target_id_len]
-wch_dmi_7f = 4
+[interface.enum.features]       # describe features bits (common tag 0x06)
+attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound
 [interface.enum.attach_method]
 run = 0
 halt = 1
@@ -383,6 +392,7 @@ reset = 0x05                    # critical: channel(u16) hold_ms(u16); probes wi
 [interface.tlv.attach_answer]
 target_id = 0x10                # not sent in v1 (no scheme for swd)
 dpc = 0x11                      # not sent in v1 (method 1 is unsupported)
+search_retries = 0x12           # u16, optional (oep-if-debug §1)
 [interface.enum.scan_kind]
 riscv_dm = 1
 arm_adi = 2
@@ -391,10 +401,8 @@ havereset_acked = 0x01
 existing = 0x02
 dormant_woken = 0x04
 halted = 0x08
-[interface.enum.target_id_scheme]
-targetsel = 2                   # connections entries only: the u32 TARGETSEL (0 when none); never a slot lock
-[interface.enum.target_id_len]
-targetsel = 4
+[interface.enum.features]       # describe features bits (common tag 0x06)
+attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound
 [interface.enum.attach_method]
 run = 0                         # halt (1) is rejected unsupported on swd
 [interface.enum.pin_role]       # the roles of the pins in describe's channel_group / role_channels
@@ -418,6 +426,8 @@ op = [
 [interface.tlv.describe]        # plus the common tags (features 0x06, enum features)
 [interface.tlv.reset]
 method = 0x01
+[interface.tlv.step_answer]
+step_left = 0x01                # length 0: step could not halt the hart again; dcsr.step may still be set and the hart runs (oep-if-debug §4.2)
 [interface.tlv.read_block]
 address_hi = 0x01               # reserved: critical u32, the upper address bits (RV64); not in v1
 [interface.tlv.write_block]
@@ -578,6 +588,7 @@ op = [
 [interface.tlv.describe]
 queue_depth = 0x40              # u8: frames the queue holds; in mode 3 also the most unread preload_tx slots
 max_stretch_us = 0x41           # u32: the largest stretch_us the stretch op accepts (required with features bit1; oep-if-fixture §3)
+pullup_ohms = 0x42              # u32, approximate: the internal pull-ups the probe enables on SDA / SCL while configured; required with features bit2 (oep-if-fixture §3)
 [interface.tlv.read_rx_answer]
 ns = 0x01                       # u64: when the frame was received (probe clock; optional)
 [interface.enum.role]
@@ -593,6 +604,7 @@ running = 1
 [interface.enum.features]
 preloaded_tx = 0x01
 stretch = 0x02
+internal_pullups = 0x04         # the probe enables pull-ups of its own on SDA / SCL while configured (oep-if-fixture §3)
 
 [[interface]]
 name = "oep.fixture.spi-target"
@@ -673,6 +685,9 @@ notify = 0x04
 one_shot = 1
 repeat = 2
 streaming = 3
+[interface.enum.background]     # describe mode's background byte (oep-if-capture §3.5); other values reserved
+blocks = 0                      # the probe does not answer while capturing in this mode; start's blocking_ms says for how long
+answers = 1                     # the probe keeps answering while capturing; start's blocking_ms is 0
 [interface.enum.trigger]
 immediate = 0
 level = 1
@@ -767,10 +782,11 @@ notify = 0x04
 one_shot = 1
 repeat = 2
 streaming = 3
+[interface.enum.background]     # describe mode's background byte (oep-if-capture §3.5); other values reserved
+blocks = 0                      # the probe does not answer while capturing in this mode; start's blocking_ms says for how long
+answers = 1                     # the probe keeps answering while capturing; start's blocking_ms is 0
 [interface.enum.trigger]
 immediate = 0
-level = 1
-edge = 2
 cross_up = 3
 cross_down = 4
 [interface.enum.reference_source]

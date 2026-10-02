@@ -56,6 +56,7 @@
   - describe は宣言だけなので変わらない（core §7.3）。host は get の disable を合わせて、使える channel を知る。
   - 保存すれば起動時に、空きの状態を掛けるより先に適用する。
 - **idle**: plan にも接続にも使われていないピンの状態。起動時と、そのピンが解放されるたび（core §8）に、この状態にする。
+  idle の項目（mode を問わない）を持つ channel は、count = 0 の scan と pins の無い attach の候補に入れない。その channel を名指す要求は、idle が出力（mode 3 / 4）なら rejected unavailable（cause 5、holder_kind 7）（[線とデバッグ](oep-if-debug.ja.md) §1）。
   mode 3 / 4 では、そのピンが空きの間ずっと、probe がその level で駆動する。idle が無いピンは Hi-Z。治具の配線で相手の入力が浮くピン（相手の RX につながる TX など）は、host が idle で明示し、保存する。
   出力の mode は、plan が持っていない間もある level を保たなければならない channel（target の電源のスイッチなど）のためにある。
   idle の項目の変更（set / unset）は、空いている channel にはすぐ効き、plan や接続が持つ channel には、次に空きになったときに効く。
@@ -98,7 +99,7 @@ boot_reset を置ける（置かなければ 0）。その後ろは、後から�
 | name | スロットの名前。1〜32 byte で、使える文字は `a-z 0-9 - _` だけ（ほかは rejected malformed）。probe の中で重ならない（重なれば rejected malformed）。host がスロットを名指すのに使い（IDE の address `oep://<unit_id>/<name>` にそのまま入る。unit_id は core §7.5。どちらも URL の中で encode が要らない文字だけ）、mixed の行の印（§1.2）にも使う |
 | lock_len | 錠の部分の長さ。0（錠なし）か 1 + 2n（n ≥ 1）。ほかは rejected malformed |
 | lock_scheme | 錠があるときだけ。target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1）。0 は置かない（錠なしは lock_len 0）。その線が持たない scheme は、定義にあってもなくても（core §2.5）rejected unsupported |
-| lock_mask、lock_value | 錠があるときだけ。同じ長さ n = (lock_len − 1) / 2。**n はその scheme の値の長さと同じ**（scheme 1 は 4。違えば rejected malformed。長さは registry の `target_id_scheme`）。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
+| lock_mask、lock_value | 錠があるときだけ。同じ長さ n = (lock_len − 1) / 2。**n はその scheme の値の長さと同じ**（scheme 1 は 4。違えば rejected malformed。長さは registry の `[common.enum.target_id_len]`）。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
 | boot_reset | 任意。起動時の自動の attach に線の応答が無かったとき、リセットの線を使ってもう 1 回 attach するか（§3.1）: 0 しない、1 する。置かなければ 0。2 以上は rejected malformed。at boot でないスロットで 1 は rejected malformed |
 
 - max_speed と idle_clock は target の性質で（[線とデバッグ](oep-if-debug.ja.md) §3）、probe が自分でスロットを attach するとき
@@ -114,6 +115,7 @@ boot_reset を置ける（置かなければ 0）。その後ろは、後から�
 - **at boot のスロットの数は、wire_fn ごとに、その線の max_connections まで**（[線とデバッグ](oep-if-debug.ja.md) §1）。超える set
   は rejected unavailable。スロットの並びの順は意味を持たない。
 - 登録できる数は probe が describe の slots_max で宣言する。
+- スロットは 2 本のピンの線を指す。組が 2 本のピンでない線は、スロットをその線に定めるときに新しい項目の tag を持つ。
 
 ### 1.2 bind（シリアルの口に何を流すか）
 

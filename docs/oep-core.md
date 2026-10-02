@@ -66,7 +66,7 @@ A probe MUST implement:
 - fn 0 confirm, list, describe, open, end, keepalive, lock_state, subscribe and unsubscribe, link_source and link_sink;
 - in describe of fn 0, unit_id, transport and max_op_ms.
 
-plan_apply and plan_release are required when any of its interfaces has plan roles. A probe without one answers unknown_operation. Optional: port_speed (§3.5), notifications other than fn 0's heartbeat, and every interface.
+plan_apply and plan_release are required when any of its interfaces has plan roles. A probe none of whose interfaces has plan roles answers them with unknown_operation. Optional: port_speed (§3.5), notifications other than fn 0's heartbeat, and every interface.
 
 A probe answers an op it does not implement with unknown_operation, and an optional function of an op it implements with unsupported.
 
@@ -431,7 +431,7 @@ When an fn designated inside the payload (describe, subscribe, plan, settings it
 | 0x01 | cause | u8: 1 the pin is in use, 2 a count limit (plan_roles, slots, connections, etc.), 3 not enough storage, 4 bound into a group (capture-group), 5 held by the settings (a settings plan, a slot), 6 wrong state (not configured, running, etc.) |
 | 0x02 | channel | u16. The channel that collided (may repeat) |
 | 0x03 | holder_fn | u16. The fn holding that resource |
-| 0x04 | holder_kind | u8: 1 plan, 2 wire connection, 3 slot, 4 bind, 5 settings plan, 6 settings disable |
+| 0x04 | holder_kind | u8: 1 plan, 2 wire connection, 3 slot, 4 bind, 5 settings plan, 6 settings disable, 7 settings idle |
 | 0x05 | fn | u16. The fn the refusal concerns (in the bind of a capture-group, indicates which track) |
 
 Interfaces may add their own tags from 0x40. The TLVs after the payload of rejected unsupported use the same space (channel 0x02, fn 0x05,
@@ -683,6 +683,8 @@ The plan is held **per fn**.
   Hi-Z (input, no pull)**. An interface must not leave a pin under its own drive after it is released (when the idle state is an output, that drive belongs to
   the settings' idle. The setting of the idle state is the idle of `oep.probe.config`,
   [probe settings](oep-if-probe-config.md)).
+- **Taking a plan does not change a pin's electrical state.** A pin keeps its idle state until the interface that holds it starts to use it. That is: gpio at the first set, uart TX at the plan (high, [fixture](oep-if-fixture.md) §2), i2c-target and spi-target at configure, analog at start (the pad leaves the digital function). Logic capture never changes it: it only listens. It does not stop an output, and it does not change the pull or direction of a pin that another function or an idle output drives.
+- An analog plan on a channel whose idle is an output (mode 3 / 4) is rejected unavailable (cause 5, holder_kind 7).
 - The lifetime of the plan is §9 (per fn).
 
 **Refusals of plan_apply** (the order of §4.3):

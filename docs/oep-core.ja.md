@@ -66,7 +66,7 @@ probe が実装しなければならない（MUST）もの:
 - fn 0 の confirm、list、describe、open、end、keepalive、lock_state、subscribe と unsubscribe、link_source と link_sink;
 - fn 0 の describe の unit_id、transport、max_op_ms。
 
-plan_apply と plan_release は、どれかのインターフェースが plan の role を持つときに要る。どれも持たない probe は unknown_operation で答える。任意: port_speed（§3.5）、fn 0 のハートビート以外の通知、すべてのインターフェース。
+plan_apply と plan_release は、どれかのインターフェースが plan の role を持つときに要る。plan の role を持つインターフェースが 1 つも無い probe は、それらに unknown_operation で答える。任意: port_speed（§3.5）、fn 0 のハートビート以外の通知、すべてのインターフェース。
 
 probe は、実装しない op には unknown_operation で、実装する op の任意の機能には unsupported で答える。
 
@@ -431,7 +431,7 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 | 0x01 | cause | u8: 1 ピンが使われている、2 数の上限（plan_roles、スロット、接続など）、3 保存先が足りない、4 組（capture-group）に束ねられている、5 設定が持つ（設定の plan、スロット）、6 状態が違う（configure していない、動いている、など） |
 | 0x02 | channel | u16。ぶつかった channel（繰り返してよい） |
 | 0x03 | holder_fn | u16。その資源を持っている fn |
-| 0x04 | holder_kind | u8: 1 plan、2 線の接続、3 スロット、4 bind、5 設定の plan、6 設定の disable |
+| 0x04 | holder_kind | u8: 1 plan、2 線の接続、3 スロット、4 bind、5 設定の plan、6 設定の disable、7 設定の idle |
 | 0x05 | fn | u16。断りの対象の fn（capture-group の bind で、どのトラックかを示す） |
 
 インターフェースは 0x40 以降に自分の tag を足せる。rejected unsupported の payload の後ろの TLV も同じ空間（channel 0x02、fn 0x05、
@@ -683,6 +683,8 @@ plan は **fn ごと**に持つ。
   Hi-Z（入力、プルなし）**にする。インターフェースは、解いた後もピンを自分の駆動のまま残してはならない（空きの状態が出力なら、その駆動は
   設定の idle のもの。空きの状態の設定は `oep.probe.config` の idle、
   [probe の設定](oep-if-probe-config.ja.md)）。
+- **plan を取ってもピンの電気の状態は変わらない。** ピンは、それを持つインターフェースが使い始めるまで空きの状態を保つ。つまり、gpio は最初の set で、uart の TX は plan で（high、[fixture](oep-if-fixture.ja.md) §2）、i2c-target と spi-target は configure で、analog は start で（パッドがデジタルの機能を離れる）。ロジックのキャプチャは決して変えない: 聞くだけである。出力を止めず、ほかの機能や出力の idle が駆動するピンのプルや向きも変えない。
+- idle が出力（mode 3 / 4）の channel への analog の plan は rejected unavailable（cause 5、holder_kind 7）。
 - plan の寿命は §9（fn ごと）。
 
 **plan_apply の断り方**（§4.3 の順）:
