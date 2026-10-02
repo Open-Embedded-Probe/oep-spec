@@ -1,6 +1,6 @@
 # Open Embedded Probe — 能力の宣言モデル（describe の語彙）
 
-状態: **理由（規範ではない）**。ここで採った形は [OEP core](oep-core.ja.md) §7 と `oep-if-*.ja.md` に移した。食い違えば規範が正しい。当時の状態: **非規定の設計案**（2026-09-24）。[能力の識別方式の比較](capability-identification-comparison.ja.md) の推奨
+状態: **記録**（規範ではない。決めた理由）。ここで採った形は [OEP core](oep-core.ja.md) §7 と `oep-if-*.ja.md` に移した。食い違えば規範が正しい。当時の状態: **非規定の設計案**（2026-09-24）。[能力の識別方式の比較](capability-identification-comparison.ja.md) の推奨
 （名前で識別し、セッション内は `fn` で使う）の上で、probe が「何を、どのピンで、どこまでできるか」をどう宣言するかを
 決める。**どの能力を BASIC（標準）にするかは決めない。** 決めるのは宣言の仕組みだけである。
 

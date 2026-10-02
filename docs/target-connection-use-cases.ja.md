@@ -1,6 +1,6 @@
 # Open Embedded Probe — target の発見と接続
 
-状態: **理由（規範ではない）**。規範は [線とデバッグ](oep-if-debug.ja.md)。その後に変わった主な点: 長い操作（PENDING）は v1 から外した、
+状態: **記録**（規範ではない。決めた理由）。規範は [線とデバッグ](oep-if-debug.ja.md)。その後に変わった主な点: 長い操作（PENDING）は v1 から外した、
 スキャンとピンの組は oep-if-debug §1、connection の寿命は oep-if-common §2 と oep-if-debug §2。当時の状態: **仮置き**（2026-09-24 の議論の合意）。実験してから調整する。wire format は決めない。
 セッション、ロック、長い操作は [セッションと排他](session-and-exclusivity.ja.md)、コンソールは
 [コンソールのストリーム](console-stream.ja.md) に分けた。

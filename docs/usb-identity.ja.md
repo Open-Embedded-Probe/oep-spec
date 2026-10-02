@@ -1,6 +1,6 @@
 # USB の識別（OEP の probe をどう見分けるか）
 
-状態: **実務（規範は core §3.3、§7.5）**（2026-09-30。2026-10-02 に改めた: 名前や vendor class の値はほかの製品と偶然重なりうるので、
+状態: **ガイド**（規範ではない。規範は core §3.3、§7.5。2026-09-30。2026-10-02 に改めた: 名前や vendor class の値はほかの製品と偶然重なりうるので、
 **規範はプロジェクトの USB の VID:PID だけで OEP の probe を自動で見分ける**。iProduct と interface の subclass / protocol は見分けに使わない）。
 参照の firmware の今の形と、host が probe を見分け、覚える方法をまとめる。
 PID の使い方の規則は oep-probe-arduino の [PID-USE.md](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/PID-USE.md)。

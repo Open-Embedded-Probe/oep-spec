@@ -1,6 +1,6 @@
 # Open Embedded Probe — Request correlationのscopeとlifecycle
 
-状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中の論理protocol案**。この文書は、requestと最初のresultを対応付け、resultに対象情報を重複して載せなくても誤配送しないためのrequest correlationを整理する。
+状態: **記録**（規範ではない。v0 以前の検討の経緯）。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中の論理protocol案**。この文書は、requestと最初のresultを対応付け、resultに対象情報を重複して載せなくても誤配送しないためのrequest correlationを整理する。
 
 wire表現、bit幅、予約値および再送方式は決定しない。[明示correlationと暗黙対応の比較](implicit-correlation-comparison.ja.md)により、初期の共通logical protocolでは直列profileにも明示correlationを持たせる方向とした。
 

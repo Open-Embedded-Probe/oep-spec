@@ -1,0 +1,51 @@
+# OEP の仕様への貢献
+
+[English](CONTRIBUTING.md)
+
+この文書は [CONTRIBUTING.md](CONTRIBUTING.md)（英語が原文）の訳である。
+
+## 仕様の置き場
+
+このリポジトリが OEP の唯一の正である。仕様は `docs/` の規範の文（`oep-core.md`、`oep-if-*.md`、`target-console-dmseq.md`）と、
+番号の registry `registry/oep-v1.toml` である。実装は仕様に従うもので、仕様を決めるものではない。
+
+仕様を変えるやり方は 2 つ: maintainer がこのリポジトリを直接直すか、誰でもこのリポジトリに pull request を出す。誤りは issue で
+知らせるか、pull request で直してよい。
+
+規範は英語の文で、日本語の文は訳である。変更は、同じ commit で両方の言語を直す。両者が食い違えば英語が正しく、日本語を直す。
+
+## 変更の 2 つの種類
+
+- **文言の変更**: probe や host のすることは変わらない。分かりやすい文、誤字、訳の直し、コメント、例、リンク、状態の行。
+  文言の変更はそのまま入れてよい。
+- **規則の変更**: 実装がしなければならないことが変わる。または registry の値（op、tag、enum、timing、limit、名前、revision）が
+  変わる。pull request には、規則、理由、どの実装が追随するかを書き、merge の前に実装者のレビューを受ける。実装は仕様の後で
+  直す。
+
+規範の文は、文だけで実装できなければならない: 数は目安ではなく値で、手順のすべての分かれ道を書く。チップ、ボード、製品の名前、
+実測、日付、逸話は記録の文書に置き、規範の文からはリンクしてよい。
+
+## `oep.` の名前や registry の値を足す
+
+`oep.` の名前と registry のすべての番号は、`registry/oep-v1.toml` と、新しい名前や値を定める文を一緒に変える pull request を
+merge したときにだけ割り当てる。その pull request では:
+
+1. `registry/oep-v1.toml` と規範の文（両方の言語）を直す。
+2. `python3 tools/oepgen1.py`、続いて `python3 tools/oepgen1.py --check` を走らせ、`generated/` を commit する。
+3. `cd tests && uv run pytest registry_v1` を走らせる。
+
+merge されるまでは、自分の逆 DNS の名前か、出荷する probe が使わない実験用の op の範囲 0xF0〜0xFF（core §2.5）で試す。
+
+## 第三者のインターフェース
+
+標準ではないインターフェースは逆 DNS の名前（例 `io.github.<owner>.<name>`、core §13）を使う。登録も、ここへの pull request も
+要らない。op、tag、値は、そのインターフェース自身の定義が割り当てる。
+
+## 凍結の後の errata
+
+v1 の凍結の後も、errata は同じ pull request の手順で入れる。文言だけを直す erratum は文言の変更、振る舞いを変えるものは
+規則の変更で、core §2.7 の revision の規則に従う。
+
+## License
+
+貢献は、このリポジトリの [MIT License](LICENSE) のもとで行う。

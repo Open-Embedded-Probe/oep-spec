@@ -1,6 +1,6 @@
 # Open Embedded Probe — 共通protocolの情報model
 
-状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **合意済みの情報model**。この文書は、[共通protocolの抽象的な振る舞い](common-protocol-behavior.ja.md)を成立させるために、OEPが概念上区別する必要のある情報とその関係を整理する。下流設計によって矛盾が見つかった場合は、理由を記録して改訂する。
+状態: **記録**（規範ではない。v0 以前の検討の経緯）。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **合意済みの情報model**。この文書は、[共通protocolの抽象的な振る舞い](common-protocol-behavior.ja.md)を成立させるために、OEPが概念上区別する必要のある情報とその関係を整理する。下流設計によって矛盾が見つかった場合は、理由を記録して改訂する。
 
 ここで定義する情報要素は、そのままwire上のobject、message、fieldまたは個別のqueryになるとは限らない。複数の情報をまとめること、既知の情報を省略すること、接続固有の方法から導出することは、将来のprotocol設計で決める。
 

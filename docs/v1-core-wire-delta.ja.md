@@ -1,6 +1,6 @@
 # Open Embedded Probe — core wire model v1（v0 からの差分）
 
-状態: **経緯（規範ではない）**。2026-09-26 に、本体は [OEP core](oep-core.ja.md)、標準インターフェースは `oep-if-*.ja.md`
+状態: **記録**（規範ではない。経緯）。2026-09-26 に、本体は [OEP core](oep-core.ja.md)、標準インターフェースは `oep-if-*.ja.md`
 （[core](oep-core.ja.md) §14 の一覧）へ書き直した。規範はそちらで、この文書と食い違えばそちらが正しい。ここに残すのは、
 v0 からの差分として固めていった順の記録と、各節の実験（通知の実測 §4.5、link の速さ §5 など）。土台は
 [core wire model v0 draft](v0-core-wire-model.ja.md)。

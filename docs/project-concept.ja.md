@@ -2,7 +2,7 @@
 
 [English](project-concept.md)
 
-状態: **最上流のproject定義案**。project名、相互運用を中心とする目的、機能に必要な通信経路をOEP native pathまたは明示的なexternal bindingとして扱う原則、および非互換な派生をOEPとして識別しない原則は合意済みである。その他の文言と範囲は引き続き検討中であり、protocolの構造や技術的な解決方法は規定しない。
+状態: **ガイド**（規範ではない）。上流で合意したprojectの目的と範囲: project名、相互運用を中心とする目的、機能に必要な通信経路をOEP native pathまたは明示的なexternal bindingとして扱う原則、および非互換な派生をOEPとして識別しない原則。この文書はprotocolの構造や技術的な解決方法を規定しない。それはv1の仕様（[OEP core](oep-core.ja.md)と標準インターフェース）が定める。
 
 ## 背景
 
@@ -83,9 +83,9 @@ OEPのsource codeまたは仕様を変更、forkまたは移植すること自�
 
 一方、OEP機能を未宣言の外部通信へ依存させる、標準機能へ異なる意味を与える等、OEPの必須要求を満たさない変更は、OEPから派生した別protocolとして扱う。その実装はOEPへの適合または互換性を主張してはならず、OEP protocolと誤認されるprotocol名またはprotocol identityを使用してはならない。明示的なexternal bindingを使用することだけでは、非互換な派生にならない。
 
-将来OEP projectへUSB VID:PIDその他の共通identityが割り当てられた場合、非互換な派生はそれを使用できない。独自のidentityを使用し、OEP実装と機械的に区別できなければならない。
+OEP projectへUSB VID:PIDその他の共通identityが割り当てられた場合、非互換な派生はそれを使用できない。独自のidentityを使用し、OEP実装と機械的に区別できなければならない。
 
-同じ物理deviceへOEP endpoint、external bindingおよびOEPから独立した別機能を併設できる。external bindingは、登録済みまたは許容されたprofileの一部として、OEP endpointと一つのUSB VID:PIDを共有し得る。OEPから独立した別protocolは、hostがOEP endpoint、OEP機能またはそのexternal bindingと誤認しないよう区別できなければならない。具体的なprotocol identity、USB PID、interface、profileおよびcomposite deviceの規則は後で定義する。
+同じ物理deviceへOEP endpoint、external bindingおよびOEPから独立した別機能を併設できる。external bindingは、登録済みまたは許容されたprofileの一部として、OEP endpointと一つのUSB VID:PIDを共有し得る。OEPから独立した別protocolは、hostがOEP endpoint、OEP機能またはそのexternal bindingと誤認しないよう区別できなければならない。
 
 softwareや仕様文書のlicenseに基づいてforkする権利と、OEPへの適合を主張する権利、OEPの名称を互換性表示に用いる条件、およびproject identityを利用する権利は別の問題として扱う。
 
@@ -98,13 +98,10 @@ OEPが対象とする中心的な関係は、次の二者間の相互運用で�
 
 複数のprobe実装と複数のhost実装が、一対一の専用統合なしに接続できることを目指す。
 
-「probe」および「組み込み開発用機能」に含める正確な範囲は、今後の要求定義で明確にする。UART、GPIO、SWD、JTAG、logic captureなどは出発点となった候補であり、この文書では採用、分類または必須化を決定しない。
-
 ## Projectの範囲
 
 OEPは、probeが提供する機能について、probe側とhost側が相互運用するために必要な共通仕様を対象とする。
 
-この範囲には、将来的に次の事項が含まれ得るが、この文書では内容や実現方法を決定しない。
 
 - 機能と操作の共通の意味
 - 提供される機能とその制約の表現
@@ -136,17 +133,15 @@ Projectの中心的な成功条件は、次の状態を実証できることで�
 
 性能、対応機能数、特定の接続方法、特定のhardwareへの対応は、それだけではproject全体の成功条件としない。
 
-## この文書で決めないこと
+## 技術的な決定の置き場
 
-次の事項は、この目的と範囲に合意した後で要求を整理し、段階的に検討する。
+次の事項は、この文書では決めず仕様に任せる。今はv1の仕様（[OEP core](oep-core.ja.md)、標準インターフェースの`oep-if-*.ja.md`、`registry/oep-v1.toml`）が定めている。
 
 - 機能の分類と、最初に標準化する機能
 - protocolの構造、message modelおよびwire encoding
 - 機能、実装、device等の識別方法
 - 接続、発見および通信の方法
 - versioning、拡張、互換性およびlifecycleの規則
-- 適合性の定義と検証方法
-- USB profile、VID/PIDおよびproject identityの運用
-- repository、実装およびgovernanceの構成
+- USBの識別
 
-これらの候補に関する既存の記述や調査結果は、決定事項ではなく、今後の設計で評価する入力として扱う。
+適合性の定義と検証方法、projectのUSB VID:PIDの利用、governanceは、まだ仕様で決まっていない。変更の手順は[CONTRIBUTING](../CONTRIBUTING.ja.md)にある。

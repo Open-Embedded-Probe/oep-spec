@@ -1,6 +1,6 @@
 # Open Embedded Probe — 責任境界
 
-状態: **合意済みの責任境界**。この文書は、[合意済みの概念モデル](conceptual-model.ja.md)に基づき、OEP共通protocol、個別機能、connection binding、external binding、host・probe実装、およびproject governanceがそれぞれ何を担当するかを整理する。下流設計によって矛盾が見つかった場合は、理由を記録して改訂する。
+状態: **記録**（規範ではない。v1 より前に合意した責任境界）。この文書は、[合意済みの概念モデル](conceptual-model.ja.md)に基づき、OEP共通protocol、個別機能、connection binding、external binding、host・probe実装、およびproject governanceがそれぞれ何を担当するかを整理する。下流設計によって矛盾が見つかった場合は、理由を記録して改訂する。
 
 この文書は責任の所在を定めるものであり、message形式、encoding、識別子の形式、通信手順またはsoftware構造は規定しない。
 

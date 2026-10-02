@@ -1,6 +1,6 @@
 # Open Embedded Probe — Activityの参照とlifecycle
 
-状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中の論理protocol案**。この文書は、[Requestの受理と完了](request-completion-semantics.ja.md)で`accepted`となった処理を、後続のupdate、data、停止要求およびterminal outcomeへ対応付けるためのactivity referenceとlifecycleを整理する。
+状態: **記録**（規範ではない。v0 以前の検討の経緯）。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中の論理protocol案**。この文書は、[Requestの受理と完了](request-completion-semantics.ja.md)で`accepted`となった処理を、後続のupdate、data、停止要求およびterminal outcomeへ対応付けるためのactivity referenceとlifecycleを整理する。
 
 wire上の識別子形式、bit幅、割当algorithm、message typeおよび再接続protocolはまだ決定しない。
 

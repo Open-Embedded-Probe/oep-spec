@@ -1,6 +1,6 @@
 # Open Embedded Probe — UART frame layout比較
 
-状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **非規定layoutの比較結果**。この文書は、COBS系delimiter framingでpayload lengthを明示する方式と、frame境界から導出する方式を比較し、最小UART bindingの実験候補を選ぶ。
+状態: **記録**（規範ではない。v0 以前の検討の経緯）。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **非規定layoutの比較結果**。この文書は、COBS系delimiter framingでpayload lengthを明示する方式と、frame境界から導出する方式を比較し、最小UART bindingの実験候補を選ぶ。
 
 frame type割当、bit配置、CRC polynomial、最大payloadおよび正式なwire encodingはまだ決定しない。
 

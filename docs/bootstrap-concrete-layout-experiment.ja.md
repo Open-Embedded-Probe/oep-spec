@@ -1,6 +1,6 @@
 # Open Embedded Probe — Bootstrap具体layout実験案
 
-状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **比較計算用の非割当layout**。この文書は、[Bootstrap layout候補](bootstrap-layout-candidates.ja.md)の候補Bと候補Cへ具体的な仮fieldを置き、HID feature reportとUART frameに載せた場合のbyte数と状態量を比較する。
+状態: **記録**（規範ではない。v0 以前の検討の経緯）。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **比較計算用の非割当layout**。この文書は、[Bootstrap layout候補](bootstrap-layout-candidates.ja.md)の候補Bと候補Cへ具体的な仮fieldを置き、HID feature reportとUART frameに載せた場合のbyte数と状態量を比較する。
 
 すべての値は計算用であり、protocol registry、version、magic、byte order、CRCまたは正式なtest vectorではない。
 

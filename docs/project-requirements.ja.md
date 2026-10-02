@@ -1,6 +1,6 @@
 # Open Embedded Probe — Project要求
 
-状態: **検討中の要求案**。この文書は、[プロジェクトの目的と範囲](project-concept.ja.md)および[相互運用ユースケース](use-cases.ja.md)から、OEPが満たすべき性質を技術方式に依存しない要求として抽出する。
+状態: **記録**（規範ではない。v1 より前の要求案）。この文書は、[プロジェクトの目的と範囲](project-concept.ja.md)および[相互運用ユースケース](use-cases.ja.md)から、OEPが満たすべき性質を技術方式に依存しない要求として抽出する。
 
 protocol構造、message model、encoding、識別子、接続方法または実装技術は、この文書では決めない。
 

@@ -1,6 +1,6 @@
 # リンクの計測記録（運び方ごとのスループットと壊れ方）
 
-状態: 記録（2026-10-01 から）。`oep linktest`（oep-client-python の `oep_client.linktest`）で、host が選んだ条件（速さ、向き、同時数、
+状態: **記録**（規範ではない。2026-10-01 から）。`oep linktest`（oep-client-python の `oep_client.linktest`）で、host が選んだ条件（速さ、向き、同時数、
 フレーム長）ごとに「通った / 壊れた / 失われた」を数えたもの。UART bridge の速さの交渉は
 [uart-speed-negotiation.ja.md](uart-speed-negotiation.ja.md) に別に記録してある。ここは USB の運び方と、host 側の OS の都合。
 
