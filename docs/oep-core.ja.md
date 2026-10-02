@@ -197,7 +197,9 @@ UART を USB-UART の変換チップで出したもの、USB CDC、USB-Serial/JT
   ためのもので、見分けには使わない。
 - **名指した probe**: 利用者が probe を unit_id で名指したとき（アドレス `oep://<unit_id>[/<slot name>]`、§7.6）、host は、serial number
   がその unit_id と同じ USB の device を、見分けずに開いてよい。開いた後は下の探りの規則に従い、confirm の後に送る fn 0 の describe の
-  unit_id が名指した値と同じときだけ、その device をその probe として使う。違えば host はその device を閉じ、ほかに何も送らない。
+  unit_id が名指した値と同じときだけ、その device をその probe として使う。違えば host はその device を閉じ、ほかに何も送らない。ここでの比べ方（unit_id と
+  serial number、unit_id どうし）は、英字の大文字と小文字を区別しない（serial number を大文字で見せる OS や道具があるため。unit_id
+  は §7.5 の文字だけなので、区別しなくても別の値が同じにはならない）。
 - **ほかの device とシリアルの口**: 上の 2 つに当たらない USB の device とシリアルの口は、host が自分で扱い方を持つものか、利用者が
   明示して選んだものだけを開く。
 - **探りの規則**: host が見分けずに開く device と口（名指した device、利用者の選んだ口、host が自分で扱う device、暫定の手がかりで
