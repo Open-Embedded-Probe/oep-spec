@@ -318,8 +318,8 @@ malformed。dmi の max_reads / max_us = 0 は 1 回読む。run の timeout_ms 
   - target によっては、これで足りない（allresumeack を立てない target がすぐ breakpoint で止まり直す、1 回の resumereq で出ない
     ことがある）。その扱い（dpc を読んで、動いていなければもう一度 resume する、など）は target を知っている host が行う。
 - **DATA0 / DATA1 は target のもの**: hart が止まっている間に probe が abstract command（read_block など）で DATA0 / DATA1 を
-  使うと、target がそこに出していた語（dmseq などのコンソールのフレームや答え）が消え、target は resume の後、自分の語が無いのを
-  沈黙と読んでタイムアウトまで待つ（[リンクの計測](link-measurements.ja.md) §3）。だから、DATA0 / DATA1 を使う op はそれを**自分の応答の前に**戻す（§4 の
+  使うと、target がそこに出していた語（dmseq などのコンソールのフレームや答え）が消え、resume の後、target がその方式の規則でフレームを
+  出し直すまでコンソールが止まる（[リンクの計測](link-measurements.ja.md) §3）。だから、DATA0 / DATA1 を使う op はそれを**自分の応答の前に**戻す（§4 の
   表）。probe は op をまたいで何も覚えない。
 - **step** は dcsr.step を立てて resume を 1 回だけ出し、戻ったら dcsr.step を下ろす。dpc が動かなくても失敗にしない（status ok、moved = 0。自分自身へ
   跳ぶ命令は正しく進んでも dpc が同じなので、host が命令を読んで判断する）。prv は変えない。
@@ -391,7 +391,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 - **havereset を見たら**（要求の中でも、コンソールの読みの中でも）確認応答し、コンソールの dmseq の状態を未同期に戻し、その connection
   のストリームに mark restart（detail 1）を付ける。
 - **probe は connection を閉じるときもデバッグモジュールを reset しない**（dmactive を残し、haltreq などを下ろす）。reset すると
-  DATA0 の dmseq のフレームが消え、次に開いたコンソールが target のタイムアウトまで待たされる。
+  DATA0 の dmseq のフレームが消えることがあり、コンソールは target がそれを出し直すまで（短い待ちのうち、[dmseq](target-console-dmseq.ja.md)）待たされる。
 
 ## 5. `oep.wire.swd`
 

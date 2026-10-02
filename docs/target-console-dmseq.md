@@ -18,9 +18,13 @@ Name: the framing name is **dmseq** (`registry/oep-v1.toml`: `[interface.enum.me
 
 The debug module's DATA0 and DATA1 ([console](oep-if-console.md) §3). Ownership alternates strictly.
 
-- The target writes only when bit 7 of DATA0 is 0 (an answer is there, or nothing yet).
+- The target writes DATA0 / DATA1 only:
+  (a) at begin() ("Target frame");
+  (b) to post a frame when bit 7 of DATA0 is 0;
+  (c) to post its outstanding frame again: under target rule 0 (bit 7 is 1 but the word is not the one it posted), under target rule 1, at the timeout,
+  while keeping a frame posted ("Timeout"), and while DATA0 reads 0 ("A word of 0 is not an answer", target rules).
 - The host writes only when bit 7 is 1 (a target frame is there).
-- Neither side overwrites the other side's word.
+- Apart from (c) over a word with bit 7 = 1 that is not the target's own frame, neither side overwrites a word the other side wrote.
 
 ## Target frame (target → host)
 
@@ -37,6 +41,11 @@ The debug module's DATA0 and DATA1 ([console](oep-if-console.md) §3). Ownership
 - **TO**: a frame on which the target gave up waiting for an answer (see "Timeout"). It applies to that frame only;
   in the next frame the target posts, it is 0 again.
 - **N = 0** is an empty frame (it prompts the host to answer). An empty frame also has a number and receives an answer.
+- **Byte order**: byte k of DATA0 (k = 0 to 3) is bits 8k to 8k+7 of the register (byte0 is the least significant byte). Byte k of DATA1 is bits 8k to 8k+7
+  of DATA1 and carries payload byte 3+k. Example: an empty SYN frame with S = 0 and A = 1 has byte0 0x98 and CRC 0x32, so DATA0 = 0x00003298.
+  A host answer with K = 0, H = 0, M = 0 is DATA0 = 0x0000F300.
+- **At begin()** the target sets SYN and may write 0 to DATA0. S and A may start at any value, because the host resynchronises on SYN (host rule 3).
+  (Informative) The reference targets start with S = 0, A = 1 and write DATA0 = 0.
 
 ## Host answer (host → target)
 
@@ -54,6 +63,7 @@ has cleared to 0, is never taken for a frame or an answer. The CRC also covers t
 by the target does not pass.
 
 The method of computation is free (an implementation conforms if it gives the same value).
+Check values: the 9 ASCII bytes "123456789" → 0xFB; the single byte 0x00 → 0xF3.
 
 ## Host state
 
@@ -75,6 +85,10 @@ Write the answer only after that (once it has been answered, the target may post
    If invalid words come 3 times in a row and the host is synced, answer with K = `last_s`, M = 0.
    (The word may be the host's own answer turned into bit 7 = 1. K = `last_s` is safe whatever the target has posted: the frame with that S
    has already been accepted, and a new frame has a different S, so it fails the K check and the target posts it again.)
+   The host counts consecutive polls that read an invalid word with bit 7 = 1 (`0xffffffff` included). The count restarts at 0 when it reads a valid frame,
+   after it answers under this rule, and when a session starts. A poll that reads a word with bit 7 = 0 does not change the count. The rule-1 answer is sent
+   only while the host is synced. While it is not, the count stops at 3 (it does not wrap) and the host does not answer; the next valid frame syncs the host
+   and restarts the count.
 2. **Duplicate**: if synced and S == `last_s` and (SYN is 0, or `last_syn`), discard the payload and answer as in 5.
    (A SYN frame posted again is a duplicate, like any other frame.)
 3. **Resynchronisation**: if not synced, or if SYN is 1 and the frame is not a duplicate under 2: `last_s` := not S (so that this frame counts
@@ -94,6 +108,9 @@ Write the answer only after that (once it has been answered, the target may post
 
 When the target reads bit 7 = 0:
 
+**A word of 0 is not an answer.** While DATA0 reads 0, the target keeps waiting for the answer (the wait time runs on) and posts its frame again once
+every short wait. It does not treat 0 under rule 1. For any other word with bit 7 = 0:
+
 1. If the answer is invalid (M > 2, or a CRC mismatch; look at M before locating the CRC), or K != S, post the same frame again
    (the host treats it as a duplicate).
 2. Otherwise it is an ack: invert S; from then on SYN is 0. If M > 0, H differs from the last received H, and there is room, take the
@@ -105,9 +122,11 @@ When the target reads bit 7 = 0:
 
 ## Timeout
 
-**Wait time.** The target waits for an answer for a limited time only: **20 ms** while the host has not answered since begin() (or since
-the last timeout), and **1 s** after it has answered once. So that the wait ends even while interrupts are disabled, it is counted in
-register reads, not with a clock.
+**Wait time.** The target waits for an answer for a limited time only: the **short wait** while the host has not answered since begin() (or since
+the last timeout), and the **long wait** after it has answered once. The short wait lasts **at least 20 ms** and the long wait **at least 1 s** of real time.
+The target measures them in a way that still ends while interrupts are disabled. "Every short wait" (keeping a frame posted, and while DATA0 reads 0) uses
+the same measure. (Informative) Counting reads of DATA0, the reference targets use F_CPU (the CPU clock in Hz) / 8000 reads per ms, assuming one read loop
+takes at least 8 cycles.
 
 **What this means for the host.** If a synced host polls at least once per second, no output is lost. A host that attaches later receives the
 frame that timed out and what is written after it answers. The writes in between have been discarded.
@@ -116,22 +135,18 @@ frame that timed out and what is written after it answers. The writes in between
 again), and **keeps it posted**. Later writes are discarded without waiting, until a valid answer arrives. When a host that attaches later
 answers that frame, it is delivered as usual and the target returns to normal.
 
-**Keeps it posted** means that while waiting, the target **posts that frame again every shorter wait time (20 ms)**. When DATA0 stops
+**Keeps it posted** means that while waiting, the target **posts that frame again every short wait**. When DATA0 stops
 being the target's own word while it waits for an answer (another word with bit 7 = 1), it posts the frame again at once without waiting for
 the timeout (target rule 0). The host does not need to write anything for this.
 
-- host (optional): an unsynchronised host that reads `0xffffffff` 3 times in a row may write to DATA0 an invalid word with bit 7 = 0
-  (for example `0x7f7f7f7f`, whose CRC does not match). A word with bit 7 = 1 is the host's turn, so this does not break the ownership rule,
-  and the target reads it under rule 1 as an invalid answer and posts its frame again. `0xffffffff` has N = 7 and cannot be a valid frame,
-  so this never erases a real frame.
-- host (debugger): **do not reset the debug module when detaching** (do not clear DMCONTROL.dmactive). Clearing it returns DATA0 to 0,
-  and the frame the target had posted is lost. The target reads 0 as silence and waits until its timeout. That wait is counted in the
-  target's reads of DATA0, so it gets longer while a debugger reads DMI quickly.
+- host (debugger): **do not reset the debug module when detaching** (do not clear DMCONTROL.dmactive). Clearing it may return DATA0 and DATA1 to 0,
+  and the frame the target had posted is then lost. The target posts it again within a short wait ("A word of 0 is not an answer").
 - host (debugger that halts the hart): if it used DATA0 / DATA1 with abstract commands while the hart was halted, it writes back DATA1 and
   then DATA0, as they were when the hart was halted, before letting it run. Otherwise the frame the target had posted (or the host's answer)
-  is lost, and the target waits until its timeout. An OEP probe restores them before the answer of each op that uses them
+  is lost, and the target has to post it again under its rules. An OEP probe restores them before the answer of each op that uses them
   ([wire and debug](oep-if-debug.md) §4.2).
 - host: treat a TO frame as a normal frame (rules 2 and 4 apply). It is not a reason to resynchronise.
   The host may tell the user that "output written while nobody answered was discarded".
-- host: if, while unsynchronised, it reads for a long time only words that are not frames (a CRC mismatch, or bit 7 = 0), the target has no
-  dmseq console. The host may report that rather than stay silent.
+- (Informative) A target that prints or polls its input posts a frame at least once per long wait plus a short wait. A host that has read no valid
+  frame for 3 s while unsynchronised may tell the user that no dmseq console is answering. A target that neither prints nor reads posts nothing, so this
+  is not proof that it has no console.

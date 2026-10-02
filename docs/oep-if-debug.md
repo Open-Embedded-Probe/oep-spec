@@ -318,8 +318,8 @@ it is returned twice as is. write_block / read_block on a hart that is not halte
   - For some targets this is not enough (a target that does not set allresumeack may immediately halt again at a breakpoint, or may not leave with one
     resumereq). Handling that (reading dpc and resuming again if it is not moving, etc.) is done by the host that knows the target.
 - **DATA0 / DATA1 belong to the target**: if the probe uses DATA0 / DATA1 with an abstract command (read_block etc.) while the hart is halted,
-  the word the target had placed there (a console frame or answer of dmseq etc.) is lost, and after resume the target reads the absence of its own word as
-  silence and waits until its timeout ([link measurements](link-measurements.ja.md) (Japanese) §3). Therefore an op that uses DATA0 / DATA1 restores them **before its own answer** (the table of
+  the word the target had placed there (a console frame or answer of dmseq etc.) is lost, and after resume the console stalls until the target posts its frame
+  again under its mechanism's rules ([link measurements](link-measurements.ja.md) (Japanese) §3). Therefore an op that uses DATA0 / DATA1 restores them **before its own answer** (the table of
   §4). The probe remembers nothing across ops.
 - **step** sets dcsr.step, issues resume exactly once, and clears dcsr.step when it returns. It is not a failure if dpc does not move (status ok, moved = 0. An instruction that jumps to
   itself leaves dpc the same even when it executed correctly, so the host reads the instruction and decides). prv is not changed.
@@ -390,8 +390,8 @@ dmi).
 - After a target reset (the reset op, the reset TLV of attach), the probe acknowledges havereset and keeps the same connection.
 - **On seeing havereset** (whether inside a request or inside a console read), acknowledge it, return the dmseq state of the console to unsynchronised, and attach a mark restart (detail 1)
   to the streams of that connection.
-- **The probe does not reset the debug module even when closing a connection** (it leaves dmactive and clears haltreq etc.). Resetting would
-  erase the dmseq frame in DATA0, and the next console opened would be kept waiting until the target's timeout.
+- **The probe does not reset the debug module even when closing a connection** (it leaves dmactive and clears haltreq etc.). Resetting may
+  erase the dmseq frame in DATA0, and the console then waits until the target posts it again (within a short wait, [dmseq](target-console-dmseq.md)).
 
 ## 5. `oep.wire.swd`
 
