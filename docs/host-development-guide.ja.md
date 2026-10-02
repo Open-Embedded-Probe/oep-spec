@@ -358,7 +358,7 @@ label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分
 
 ### 8.2 電源の入れ直し
 
-1. 電源の channel を `oep.fixture.gpio` の plan で取る（plan_apply）。取った直後の level は定まっていないので、すぐ次の set を送る。
+1. 電源の channel を `oep.fixture.gpio` の plan で取る（plan_apply）。取っても level は変わらない（fixture §2: 最初の set まで空きの状態を保つ）。
 2. 電源が入らない level（`power_hi` なら出力 low、`power_lo` なら出力 high）を 200 ms 以上保つ。200 ms は既定で、もっと長く要る
    target には host の設定で延ばす。
 3. 電源が入る level にする。
@@ -367,8 +367,7 @@ label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分
    出力の idle（`power_hi` なら mode 4 出力 high、`power_lo` なら mode 3 出力 low、[probe の設定](oep-if-probe-config.ja.md) §1）を
    置いて保存しておく。保存した出力の idle は起動時にも掛かり、at boot のスロットの attach より先に target の電源が入る。
 
-- 電源の channel を gpio の plan で取るのは、入れ直すときだけにする。読むだけのために取らない（取った直後の level が定まらないので、
-  target の電源がちらつくことがある）。
+- 電源の channel を gpio の plan で取っても電源は切れない（上の 1）。読むだけなら read で今の level が分かる。
 - probe のピンから target に直接給電できるのは、target の消費と突入電流が probe のピンの流せる電流（数十 mA 程度）に収まるときだけ。
   それを超える target や板は、外付けのスイッチ（ロードスイッチ、MOSFET）を介し、電源の channel はその制御の線にする。
 

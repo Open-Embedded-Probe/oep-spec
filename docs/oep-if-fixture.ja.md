@@ -38,6 +38,8 @@
   tag 0x40 index（u8））。扱えない mode（宣言に無い）は rejected unsupported（payload `0x00`、後ろに同じ channel / index の TLV）。
   未定義の mode（8 以上）は rejected malformed。
 - 扱える mode は describe の modes（tag 0x40、u32 のビット集合、bit n = mode n）で宣言する。0（入力）は必須。
+- **plan で取ったチャンネルは、最初の set までそれまでの状態を保つ**（空きの状態のまま。出力の idle なら、その level の駆動を続ける）。
+  取ったことで level は変わらない。
 - plan を解いたら、そのチャンネルは core §8 の空きの状態に戻る。
 
 ## 2. `oep.fixture.uart`

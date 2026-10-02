@@ -38,6 +38,8 @@ All of them handle only the channels assigned by the plan (core §8).
   tag 0x40 index (u8)). A mode that cannot be handled (not in the declaration) is rejected unsupported (payload `0x00`, followed by the same channel / index TLVs).
   An undefined mode (8 or more) is rejected malformed.
 - The modes that can be handled are declared with the modes of describe (tag 0x40, a u32 bit set, bit n = mode n). 0 (input) is mandatory.
+- **A channel taken by a plan keeps its previous state until the first set** (it stays in its idle state; with an output idle, the probe keeps driving that level).
+  Taking it does not change the level.
 - When the plan is released, the channel returns to the idle state of core §8.
 
 ## 2. `oep.fixture.uart`
