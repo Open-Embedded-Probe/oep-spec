@@ -71,25 +71,25 @@ C-11（USB の見分け）は決まった（変えない）ので含めない。
 
 | id | 話題 | 重さ | 一言 | 壊す | 状態 |
 |---|---|:---:|---|:---:|---|
-| C-01 | 1 断りの種類と伸ばし方 | ★ | tag の番号は下の 7 bit。registry は 0x90 でなく 0x10 と書く | いいえ（registry の定数は変わる） | 合意 |
-| C-02 | 1 断りの種類と伸ばし方 | ★ | 後の revision が定めうる値 → malformed でなく unsupported | はい | 合意 |
-| C-03 | 1 断りの種類と伸ばし方 | ★ | 要求の TLV の繰り返し、短すぎ、後ろへの伸ばし | はい | 合意 |
-| O-5 | 1 断りの種類と伸ばし方 | ○ | u8 の enum の 0xF0〜0xFE は実験用 | いいえ | 合意 |
-| C-04 | 2 ignored の上限 | ★ | ignored は多くて 16 個、0x00 は「ほかにも」、落とさない | はい | 合意 |
-| C-06 | 3 時間 | ★ | host の待ち時間に UART の転送時間を足し、前の応答から数え始める | いいえ | 合意 |
+| C-01 | 1 断りの種類と伸ばし方 | ★ | tag の番号は下の 7 bit。registry は 0x90 でなく 0x10 と書く | いいえ（registry の定数は変わる） | 合意。d48ca6d で適用 |
+| C-02 | 1 断りの種類と伸ばし方 | ★ | 後の revision が定めうる値 → malformed でなく unsupported | はい | 合意。d48ca6d で適用（core、probe-config の分） |
+| C-03 | 1 断りの種類と伸ばし方 | ★ | 要求の TLV の繰り返し、短すぎ、後ろへの伸ばし | はい | 合意。d48ca6d で適用 |
+| O-5 | 1 断りの種類と伸ばし方 | ○ | u8 の enum の 0xF0〜0xFE は実験用 | いいえ | 合意。d48ca6d で適用 |
+| C-04 | 2 ignored の上限 | ★ | ignored は多くて 16 個、0x00 は「ほかにも」、落とさない | はい | 合意。cd15f53 で適用 |
+| C-06 | 3 時間 | ★ | host の待ち時間に UART の転送時間を足し、前の応答から数え始める | いいえ | 合意。f7d6d21 で適用 |
 | P2-★4 | 3 時間 | ★ | 線の再試行は要求ごとに 200 ms、線切れは実時間 1000 ms、attach は 1000 ms まで、scan は 500 ms まで | はい | 条件付き合意 |
 | P2-○3 | 3 時間 | ○ | dmi: max_op_ms に数えるのは時間で決まる待ちだけ | いいえ | 合意 |
-| C-07 | 4 経路 | ★ | TCP では 200 ms のやり直しをしない。長すぎる length。立て直しは host が最後に書いてから 250 ms 待つ | はい | 合意 |
-| C-08 | 4 経路 | ★ | max_frame / window / max_inflight は経路ごと | いいえ | 合意 |
-| C-09 | 4 経路 | ★ | UART bridge は 115200 8N1、流れの制御なし。line coding と DTR で OEP を止めない | いいえ | 合意 |
-| C-05 | 4 経路 | ★ | confirm の応答は、どの経路で来たかを言う。TCP の端点も probe | いいえ | 条件付き合意 |
-| C-15 | 5 revision の範囲 | ★ | プロトコルの revision が何に効くか。confirm は変わらない。断りに範囲を付ける | はい | 合意 |
-| P2-★1 | 6 電気の安全 | ★ | scan の count = 0 は idle の項目のある channel を外す。出力の idle の channel は断る | はい | 合意 |
+| C-07 | 4 経路 | ★ | TCP では 200 ms のやり直しをしない。長すぎる length。立て直しは host が最後に書いてから 250 ms 待つ | はい | 合意。48b8cbe で適用 |
+| C-08 | 4 経路 | ★ | max_frame / window / max_inflight は経路ごと | いいえ | 合意。48b8cbe で適用 |
+| C-09 | 4 経路 | ★ | UART bridge は 115200 8N1、流れの制御なし。line coding と DTR で OEP を止めない | いいえ | 合意。48b8cbe で適用 |
+| C-05 | 4 経路 | ★ | confirm の応答は、どの経路で来たかを言う。TCP の端点も probe | いいえ | 条件付き合意。48b8cbe で適用 |
+| C-15 | 5 revision の範囲 | ★ | プロトコルの revision が何に効くか。confirm は変わらない。断りに範囲を付ける | はい | 合意。929bbb7 で適用 |
+| P2-★1 | 6 電気の安全 | ★ | scan の count = 0 は idle の項目のある channel を外す。出力の idle の channel は断る | はい | 合意。core / probe-config / registry の分は 18d7eac で適用 |
 | P2-★2 | 6 電気の安全 | ★ | spi-target は CS が有効な間だけ MISO を駆動する | はい（1 つの probe の build。測った） | 合意 |
 | P2-★3 | 6 電気の安全 | ★ | i2c-target はオープンドレインだけ。内蔵のプルアップは宣言する | いいえ | 合意 |
-| P2-○13 | 6 電気の安全 | ○ | plan を取ってもピンは変わらない。ロジックのキャプチャは聞くだけ | はい | 合意 |
+| P2-○13 | 6 電気の安全 | ○ | plan を取ってもピンは変わらない。ロジックのキャプチャは聞くだけ | はい | 合意。core / registry の分は 18d7eac で適用 |
 | P2-★5 | 7 debug の線の一般化 | ★ | 宣言が許さない組 → unsupported | いいえ（probe はすでにそう） | 合意 |
-| P2-★7 | 7 debug の線の一般化 | ★ | どの線にも共通のことと、新しい線（JTAG など）が定めること。ピンを持たない線 | いいえ | 合意 |
+| P2-★7 | 7 debug の線の一般化 | ★ | どの線にも共通のことと、新しい線（JTAG など）が定めること。ピンを持たない線 | いいえ | 合意。probe-config の分は 18d7eac で適用 |
 | P2-★8 | 7 debug の線の一般化 | ★ | 速さを確かめる前に probe が書いてよいもの。scan が書くのは wake / 設定の並びと dmactive だけ | いいえ | 条件付き合意 |
 | P2-○1 | 7 debug の線の一般化 | ○ | 「見つかった」は DMSTATUS.version ≥ 2 かつ ≠ 15。op も同じ | はい | 合意 |
 | P2-○4 | 7 debug の線の一般化 | ○ | halt / step が失敗したとき target に何を残すか | はい | 合意 |
@@ -101,26 +101,26 @@ C-11（USB の見分け）は決まった（変えない）ので含めない。
 | P2-○10 | 8 キャプチャ | ○ | capture-group の状態の表 | はい（fake） | 合意 |
 | P2-○11 | 8 キャプチャ | ○ | 位置つきの read: 書き込み位置より先、量、from 3 | いいえ | 合意 |
 | P2-○15 | 8 キャプチャ | ○ | analog の trigger の enum から level / edge を外す | いいえ | 合意 |
-| PC-1 | 9 probe-config | ○ | 線の名前を firmware の固定の label からも探す | はい（起動時） | 合意 |
-| PC-2 | 9 probe-config | ○ | 表に無い名前は役目を表さない。標準の名前は registry に。独自の名前は `x-` | いいえ | 合意 |
-| PC-3 | 9 probe-config | ○ | channel に無い pull の idle → unsupported | はい | 合意 |
-| PC-4 | 9 probe-config | ○ | label / idle / disable の channel は channels 未満で reserved でない | はい | 合意 |
-| PC-5 | 9 probe-config | ○ | label の text は制御文字を含まない 1〜32 byte の UTF-8 | はい | 合意 |
-| PC-6 | 9 probe-config | ○ | get の応答: 項目は payload の終わりまで（文言） | いいえ | 合意 |
-| PC-7 | 9 probe-config | △ | hash の正規形の細部（文言） | いいえ | 合意 |
-| PC-8 | 9 probe-config | ○ | transport の index は firmware の版を越えて変えない。起動時の bind | いいえ | 合意 |
-| C-10 | 10 適合 | ★ | 規範の語。どの probe と host も持つもの | いいえ | 合意 |
-| C-16 | 11 core のほかの規則 | ○ | rejected の応答も送り直しの表に覚える。§5.2 は TCP の端点も縛る | いいえ | 条件付き合意 |
-| C-17 | 11 core のほかの規則 | ○ | lease が数え直される時と、応答の lease_ms の範囲 | はい（fake） | 合意 |
-| C-18 | 11 core のほかの規則 | ○ | session_id は乱数で 0 でない。open は role 0x01 だけ | はい | 合意 |
-| C-22 | 11 core のほかの規則 | ○ | 真偽値は 0 / 1。text に制御文字を入れない | はい | 合意 |
-| C-23 | 11 core のほかの規則 | ○ | 名前、model、chip の文法 | はい | 合意 |
-| C-24 | 11 core のほかの規則 | ○ | 固有の番号も保存も無い probe の unit_id は `x-` | はい | 合意 |
-| C-25 | 11 core のほかの規則 | ○ | 排他で開く、HID の output、WinUSB | いいえ | 合意 |
-| C-29 | 11 core のほかの規則 | ○ | registry のキーを止める。hash の意味 | いいえ | 合意 |
-| C-30 | 11 core のほかの規則 | ○ | instance は (name, revision) ごとに数える | いいえ | 合意 |
-| C-32 | 11 core のほかの規則 | ○ | port_speed: baud の誤差 ±2 %、try の verify_ms 0 | はい | 条件付き合意 |
-| C-33 | 11 core のほかの規則 | ○ | ハートビートの周期は 100 ms に切り上げてよい | いいえ | 合意 |
+| PC-1 | 9 probe-config | ○ | 線の名前を firmware の固定の label からも探す | はい（起動時） | 合意。20967d7 で適用 |
+| PC-2 | 9 probe-config | ○ | 表に無い名前は役目を表さない。標準の名前は registry に。独自の名前は `x-` | いいえ | 合意。20967d7 で適用 |
+| PC-3 | 9 probe-config | ○ | channel に無い pull の idle → unsupported | はい | 合意。20967d7 で適用 |
+| PC-4 | 9 probe-config | ○ | label / idle / disable の channel は channels 未満で reserved でない | はい | 合意。20967d7 で適用 |
+| PC-5 | 9 probe-config | ○ | label の text は制御文字を含まない 1〜32 byte の UTF-8 | はい | 合意。20967d7 で適用 |
+| PC-6 | 9 probe-config | ○ | get の応答: 項目は payload の終わりまで（文言） | いいえ | 合意。20967d7 で適用 |
+| PC-7 | 9 probe-config | △ | hash の正規形の細部（文言） | いいえ | 合意。20967d7 で適用 |
+| PC-8 | 9 probe-config | ○ | transport の index は firmware の版を越えて変えない。起動時の bind | いいえ | 合意。20967d7 で適用 |
+| C-10 | 10 適合 | ★ | 規範の語。どの probe と host も持つもの | いいえ | 合意。4e62116 で適用 |
+| C-16 | 11 core のほかの規則 | ○ | rejected の応答も送り直しの表に覚える。§5.2 は TCP の端点も縛る | いいえ | 条件付き合意。fc17225 で適用 |
+| C-17 | 11 core のほかの規則 | ○ | lease が数え直される時と、応答の lease_ms の範囲 | はい（fake） | 合意。fc17225 で適用 |
+| C-18 | 11 core のほかの規則 | ○ | session_id は乱数で 0 でない。open は role 0x01 だけ | はい | 合意。fc17225 で適用 |
+| C-22 | 11 core のほかの規則 | ○ | 真偽値は 0 / 1。text に制御文字を入れない | はい | 合意。fc17225 で適用 |
+| C-23 | 11 core のほかの規則 | ○ | 名前、model、chip の文法 | はい | 合意。fc17225 で適用 |
+| C-24 | 11 core のほかの規則 | ○ | 固有の番号も保存も無い probe の unit_id は `x-` | はい | 合意。fc17225 で適用 |
+| C-25 | 11 core のほかの規則 | ○ | 排他で開く、HID の output、WinUSB | いいえ | 合意。fc17225 で適用 |
+| C-29 | 11 core のほかの規則 | ○ | registry のキーを止める。hash の意味 | いいえ | 合意。fc17225 で適用 |
+| C-30 | 11 core のほかの規則 | ○ | instance は (name, revision) ごとに数える | いいえ | 合意。fc17225 で適用 |
+| C-32 | 11 core のほかの規則 | ○ | port_speed: baud の誤差 ±2 %、try の verify_ms 0 | はい | 条件付き合意。fc17225 で適用 |
+| C-33 | 11 core のほかの規則 | ○ | ハートビートの周期は 100 ms に切り上げてよい | いいえ | 合意。fc17225 で適用 |
 | DS-1 | 12 コンソールの dmseq | ★ | DATA0 = 0 は答えではない: 待ち続け、短い待ちごとに出し直す | はい（target） | 合意 |
 | DS-2 | 12 コンソールの dmseq | ★ | 持ち主の規則に、target が出し直す例外を書く | いいえ | 合意 |
 | DS-3 | 12 コンソールの dmseq | ★ | 待ち時間は実時間の下限。割り込みを止めても終わる数え方で数える | いいえ | 合意 |
