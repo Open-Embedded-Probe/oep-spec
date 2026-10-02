@@ -19,7 +19,7 @@ flash の書き方やチップ固有の手順は host にある。
 ## 2. 今の状態
 
 - **v1 の凍結の候補**です。規範は `docs/oep-core.ja.md`、`docs/oep-if-*.ja.md`（6 つ）、`docs/target-console-dmseq.ja.md`、番号は `registry/oep-v1.toml`。
-  規範の中に未決の数（【決める】）は残っていません。凍結で何を止め、何を止めないかは [凍結の範囲](v1-freeze-decisions.ja.md) §0。
+  規範の中に未決の数（「決める」の印）は残っていません。凍結で何を止め、何を止めないかは [凍結の範囲](v1-freeze-decisions.ja.md) §0。
 - 凍結までは破壊的な変更を revision を上げずに入れます（利用者はまだいない）。凍結後は revision を上げます。
 - **リリース**: oep-spec は GitHub の main に push 済み（タグは無い。commit で指す）。参照の実装は oep-probe-arduino **0.0.27**（Arduino ライブラリ
   `OpenEmbeddedProbe`、GitHub release に profile ごとの firmware）、oep-client-python **0.0.27**（PyPI `oep-client-python`）。oep-client-js は

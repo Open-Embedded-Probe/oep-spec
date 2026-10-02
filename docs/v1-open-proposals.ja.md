@@ -115,5 +115,5 @@ git の履歴、2026-09-26 の整理より前の版に残っている）。§6 /
 | probe が一切触らない channel を設定で指す | **`oep.probe.config` の項目 `disable`（0x07）**。指す要求は unavailable cause 5 / holder_kind 6、宣言していない channel は unsupported | probe-config §1（6088438、4842e95） |
 | ゼロベース再検討の ★ 9 つ（TLV の len の逃げ道、describe は宣言だけ、boot_id は confirm、資源番号は 1 空間、時計は ns、断り方の順、ほか） | すべて推奨案で採用し規範に入れた | [ゼロベース再検討](v1-zero-base-proposal.ja.md) §3 / §7 |
 | 2 回目の点検の ★1〜★12（リンクの速さの目的、壊れの判定は基準との比、ブリッジの名前、block の長さは unsupported、unit_id は版を越えて不変、host の受けの上限は host の規則、文言） | 入れた。☆1〜☆8 は固定のまま（理由は [凍結の範囲](v1-freeze-decisions.ja.md) §0.3） | b2d9d61、20aa9ec、35a9caa、[再点検](v1-zero-base-review-2026-10-02.ja.md) |
-| 規範に残っていた【決める】の数（host の待ちの加算、閉じた番号の再利用の距離、通知の送りかけの上限、DMI busy / SWD WAIT の再試行、reset の待ちとやり直し） | 1000 ms、1024、max_frame × 2、100 回、100 ms / 1 回。registry の `timing` / `limits` に載せた | core §4.4 / §9 / §11.4、debug §1 / §4.3 / §6（f50c937） |
+| 規範に残っていた未決の数（host の待ちの加算、閉じた番号の再利用の距離、通知の送りかけの上限、DMI busy / SWD WAIT の再試行、reset の待ちとやり直し） | 1000 ms、1024、max_frame × 2、100 回、100 ms / 1 回。registry の `timing` / `limits` に載せた | core §4.4 / §9 / §11.4、debug §1 / §4.3 / §6（f50c937） |
 | リリース前の結合試験を誰が持つか | Python の `tests/hw/` が実機の試験を持つ。firmware はローカルのビルドか固定したリリース | [release-testing](release-testing.ja.md)（ddaddf0） |
