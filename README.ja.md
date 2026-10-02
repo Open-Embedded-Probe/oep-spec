@@ -35,6 +35,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
   - [キャプチャ（設計と実測）](docs/logic-capture.ja.md)、[キャプチャの机上調査](docs/capture-survey.ja.md)
   - [シリアルの口と永続化](docs/probe-cdc-and-persistence.ja.md)
   - [host 開発ガイド](docs/host-development-guide.ja.md)
+  - [target ごとの scan と attach の記録](docs/target-scan-notes.ja.md)（ピンの探し方、つまずき、チップ・治具ごと）
   - [probe 開発ガイド](docs/probe-development-guide.ja.md)
   - [USB の識別](docs/usb-identity.ja.md)（PID を取るまでの見分け方、取った後に直す所）と [pid.codes への申請の資料](docs/pid-codes-application/README.ja.md)
   - [core wire model v1（v0 からの差分、経緯）](docs/v1-core-wire-delta.ja.md)

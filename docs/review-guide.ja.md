@@ -79,7 +79,7 @@ flash の書き方やチップ固有の手順は host にある。
 | **v1 の規範** | `oep-core`、`oep-if-*`（6 つ）、`target-console-dmseq` |
 | 凍結の範囲と決定 | `v1-freeze-decisions`（§0 範囲、§A / §B の 13 項目）、`v1-zero-base-proposal`、`v1-zero-base-review-2026-10-02`、`v1-freeze-review-2026-10-01`（対応済み） |
 | 実務（規範ではない） | `host-development-guide`、`probe-development-guide`、`release-testing` |
-| 記録（実測。追記は自由） | `link-measurements`、`uart-speed-negotiation`、`logic-capture`（§7 以降）、`probe-cdc-and-persistence` §7 |
+| 記録（実測。追記は自由） | `link-measurements`、`target-scan-notes`（target ごとの scan と attach）、`uart-speed-negotiation`、`logic-capture`（§7 以降）、`probe-cdc-and-persistence` §7 |
 | v1 の理由 | `session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-connection-use-cases`、`probe-cdc-and-persistence`、`usb-identity` |
 | 案と経緯、レビューの対応 | `v1-open-proposals`、`review-response-2026-09-26`、`review-answer-*`（3 つ）、`hardware-source-review-2026-09-26`、`v1-operation-test-audit-2026-09-26`、`v1-open-issues-research-2026-09-26`、`v1-core-wire-delta` |
 | 上流の合意（目的・要求・モデル） | `project-concept`（英語版 `project-concept.md` は古い）、`use-cases`、`project-requirements`、`conceptual-model`、`responsibility-boundaries`、`development-guidelines` |
