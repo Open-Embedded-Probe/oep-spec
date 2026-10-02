@@ -56,7 +56,9 @@ All of them handle only the channels assigned by the plan (core §8).
   One TLV applies to one element of the sequence, and it is repeated to attach to several elements (because the strength may differ per element. A power line and a signal line
   can be moved in one request). If index is n or more, the same index appears twice, kind is undefined, or the mode of the element it points to is not 3 / 4, the whole request is
   rejected malformed. If the value of kind 0 is the number of levels or more, that TLV is ignored. A probe that does not declare drive_levels ignores
-  all drive TLVs. An ignored drive is listed in ignored of the answer (core §2.3).
+  all drive TLVs without checking their form (a drive TLV does not make the request rejected malformed). An ignored drive is listed in ignored of the answer (core §2.3).
+  ignored lists tags only, so it does not show which element's drive was ignored. The host learns the effective level from read's answer TLV drive.
+  A drive TLV sent with the critical bit follows core §2.3: where it would be ignored, the request is rejected unsupported instead of ignoring it.
 - **The effective strength**: the strength of an element that set made mode 3 / 4 is the level of that element's drive (one not ignored) if there is one, else the level of the drive of
   the idle item of that channel ([probe settings](oep-if-probe-config.md) §1) if it has one, and the default level if neither. The strength is kept until that channel is
   set next. From taking it by a plan until the first set, and after the plan is released, it is the strength of the idle state (the drive of idle, the default level if none).
