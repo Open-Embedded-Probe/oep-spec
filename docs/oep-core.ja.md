@@ -185,15 +185,18 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **USB の束ね方**（vendor bulk）: host は、書き込みの長さが wMaxPacketSize の倍数なら長さ 0 の転送を続ける。probe は、送り
   終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか最後の 1 byte を別の転送に分ける。
   続きがすぐ来るときは倍数のままでよい。
+- **max_frame より大きい長さ**: probe はそのフレームと、次に `probe_frame_gap_ms` 途切れるまでの入力を捨て、次のフレームを待つ。応答は送らない。TCP では代わりに接続を閉じる。count が report に入る量（report の長さ − 2、report ID があれば − 3）より大きい HID の report は、丸ごと捨てる。
 - どのフレームを使うかは経路の種類だけで決まる（VID:PID で選ばない）。
 - **TCP は、信頼できるローカルの接続か、認証したトンネルの内側でだけ使う。** OEP は認証を持たない（§6.4 の force を含む）。
-  1 つの probe を複数の host で使うときは、host の側のブローカーが 1 つのセッションに束ねる（ブローカーは host の実装で、この
-  仕様の外。probe から見える経路とセッションは変わらない）。
+  1 つの probe を複数の host で使うときは、ブローカーが 1 つのセッションに束ねる（probe の規則がブローカーに何を求めるかは次の項目）。
+- **OEP の要求に自分で答える端点は probe である**。何が運び、後ろに何があるかによらない（たとえば TCP で OEP を出し、別のデバッガを動かすプログラム）。probe の規則はすべてそれに掛かる。要求を OEP の probe に中継するだけのブローカーは、その probe に対しては host である。
+- **セッションの op に自分で答える中継のブローカー**（confirm、open、end、keepalive、lock_state）で、ほかの要求をすべて 1 つの OEP の probe に中継するものは、自分の describe を持たない: それが中継する fn 0 の describe は probe のもの。confirm の transport TLV では index 0xFF（「describe に無い」）を返す。probe に対しては host である。それらのセッションの op の規則はすべて、その応答に掛かる。
+- **TCP の経路**: TCP で待ち受ける probe は、待ち受けの socket 1 つを fn 0 の describe の経路 1 つとして並べる（kind 6、interface 0xFF）。その socket で受けた接続はどれも、confirm の transport TLV でその index を返す。§3.3、§4.4、§7.1、§11.4 が経路ごとに掛ける規則（セッションの 0x81 の要求は 1 つの経路で、max_frame / window / max_inflight、使っている revision、通知の送り先）は、受けた接続ごとに別々に掛かる。
 
 ### 3.2 フレームの送り方
 
 - host は **1 つのフレームを 1 回の書き込みで送り**、フレームの途中で 100 ms 以上止めない。
-- probe は、フレームの途中で 200 ms 入力が途切れたら読み取りを最初からやり直す。
+- シリアルの口、vendor bulk、HID では、フレームの途中で 200 ms（`probe_frame_gap_ms`）入力が途切れたら、probe は読み取りを最初からやり直す。**TCP ではやり直さない。** TCP は区切りを失わず、流れの壊れた TCP の接続は閉じる。
 
 ### 3.3 複数の経路
 
@@ -217,7 +220,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   明示して選んだものだけを開く。
 - **探りの規則**: host が見分けずに開く device と口（名指した device、利用者の選んだ口、host が自分で扱う device、暫定の手がかりで
   見つけた device）では、host が最初に送るのは confirm（§7.1）だけである（§5.2 の 1 回の送り直しを含む）。confirm の待ち時間
-  （§4.4。confirm には引数で決まる時間が無いので 1000 ms）が過ぎても正しい confirm の応答が来なければ（送り直したときは、送り直した
+  （§4.4。confirm には引数で決まる時間が無いので 1000 ms と転送の時間）が過ぎても正しい confirm の応答が来なければ（送り直したときは、送り直した
   confirm の待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。ただし UART bridge（transport の
   kind 1）の口では、送り直しの代わりに §3.5 の host の義務 7 の間 confirm を繰り返してよい（前の host が上げた速さの残りを待つため。
   送るのは confirm だけで、その間に正しい応答が来なければ閉じる）。正しい confirm の応答とは、送った
@@ -244,6 +247,9 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 シリアルの口は、OEP のフレームと生のバイト（target のコンソールなど）を同じ口で運ぶ。probe はどの口でもいつでも OEP を受ける
 （口を OEP 専用にする設定や、起動の型は持たない）。
 
+- **UART bridge の回線**: データ 8 bit、パリティなし、ストップ 1 bit、フロー制御なし。起動時の速さは **115200 bps**（registry の `uart_bridge_boot_baud`）。port_speed（§3.5）が変えるのは速さだけ。
+- **USB のシリアルの口**（USB CDC、内蔵の USB シリアル）: probe は、host がどんな line coding を設定しても OEP を受けて送り、line coding を何にも掛けない。
+- **制御線**: probe は、OEP を受けるか送るかを DTR、RTS、回線の状態で決めない。host は口を開いている間 DTR と RTS を立てておく（UART bridge はそれを probe のリセットにつないでいることがある）。host が DTR を落としている間の probe の動きは定めない。
 - **probe の受け方**: 0x00 が来たら次の 0x00 までためて解く。解けて CRC が合えば OEP の要求。解けない、CRC が合わない、または
   次の 0x00 の前に 200 ms 途切れた（§3.2）ときは、ためた分（前の 0x00 を含む）を生のバイトとして扱う。候補を閉じた 0x00 は
   次の候補の始まりになる。**0x00 だけで中身の無い候補**（フレームの閉じの 0x00 の後に何も来ないとき、0x00 の連続）は区切りで
@@ -271,7 +277,7 @@ host が決める（参考の手順: [host 開発ガイド](host-development-gui
 
 **語の定義**
 
-- **起動時の速さ**: ボードの profile が決める口の速さ。probe のすべての戻り先。host は利用者が口を選ぶときに一緒に決めて 1 か所に持つ。
+- **起動時の速さ**: 115200 bps（§3.4）。probe のすべての戻り先。
 - **候補**: host が試す速さの並び。probe は候補を宣言しない（通る速さは変換チップと OS で決まり、probe には分からない）。この仕様は
   候補も既定も決めない。
 - **流し方**: 向き（probe → host、host → probe、両方向）と同時数 n の組。host の確かめと記録の語として使う（この仕様は流し方を
@@ -289,6 +295,7 @@ port_speed  要求: port(u8)、baud(u32)、step(u8: 0 試す、1 決める、2 �
             応答: baud(u32: 実際に掛かる速さ)、[TLV]
 ```
 
+- port: この要求の来た経路の index（§7.5）（confirm の応答の transport TLV、§7.1）。
 - 断り: port がこの要求の来た口でない → rejected unavailable（cause 6）。baud を probe の UART で作れない → rejected unsupported。
   step が 3 以上なら rejected unsupported（payload の tag 0x00、§2.5）。
   ロックが無い・違うときの断りは §4.3 の順（session_required、no_session、expired、locked）。
@@ -411,6 +418,7 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 - host は両方の上限を守る。超えた要求を probe は rejected window_exceeded で断ってよいが、バッファを超えて失われた要求には
   応答も返らない。守るのは host の責任である。
 - probe は要求を受け取った順に処理し、応答を受け取った順に返す。
+- confirm の max_frame、window、max_inflight は、**その confirm が来た経路の**上限である。経路ごとに別々に数え、ある経路で未解決の要求は、ほかの経路の受けの余地を使わない。§5.2 の表は probe に 1 つのまま（セッションの 0x81 の要求は 1 つの経路で送る、§3.3）。
 - **host の待ち時間**: 応答が来ないことは時間切れだけで判断する（§3.1）。host は要求ごとに**少なくとも**次を待つ: その要求の引数で決まる時間（run の timeout_ms、
   reset の hold_ms、dmi の待ちの和、save など。attach は `attach_budget_ms` にその reset TLV の hold_ms を足したもの、scan は `scan_budget_ms` + `attach_budget_ms`（[線とデバッグ](oep-if-debug.ja.md) §1）。無ければ 0。多くても max_op_ms、§7.5）+ 1000 ms（`host_wait_add_ms`）+ 転送の時間。待ちは、要求を書き終えた時から始める。同じ経路に先の要求が未解決の間は、その 1 つ前の要求の応答が届いた時から始める（probe は順に答える）。
   転送の時間は UART bridge 以外では 0。UART bridge では (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒で、L はその要求のフレームの線の上の長さ、baud は口の今の速さ。host はもっと長く待ってよい。待ちが過ぎたら §5.2 の送り直しに進む。
@@ -424,6 +432,8 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 確かめてから再開する。応答の末尾の TLV が途中で切れていたら、その応答は壊れている。通知が流れ続けて入力が静かにならないときは、
 unsubscribe と end を確かめずに送ってよい（二度実行しても害がない）。COBS のフレームは CRC で壊れたものを捨てられるので、
 この手順は要らない。
+
+立て直しの confirm の前と、長さつきのフレームの口を開いて最初の confirm の前には、host は、50 ms 静かな入力に加えて、その口に最後に書いてから `host_resync_wait_ms`（registry、250 ms = probe_frame_gap_ms + 50 ms）が過ぎるまで待つ。TCP では、代わりに接続を閉じて新しく開いてもよい。
 
 ### 5.2 送り直しと重複排除
 
@@ -515,6 +525,8 @@ boot_id は probe の起動ごとに変わる値で、confirm（§7.1）と open
 要求: "OEP?"、min_rev(u8)、max_rev(u8)、[TLV]
 応答: "OEP!"、revision(u8)、flags(u8)、max_frame(u16)、window(u32)、max_inflight(u8)、boot_id(u32)、[TLV]
 ```
+
+- TLV 0x01 transport（u8）: この confirm が来た経路の index（§7.5）。probe は必ず付ける。同じ接続で返す fn 0 の describe の entry を指す（中継のブローカーからは 0xFF、§3.1）。port_speed（UART bridge、§3.5）と bind（シリアルの口、[probe の設定](oep-if-probe-config.ja.md) §1.2）が TCP の index を取ることはない。
 
 host は扱えるプロトコルの revision の範囲を送り、probe はその中で扱える最大の revision を返す。範囲に扱えるものが無ければ
 rejected unsupported。flags は予約（0）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も 64 byte に収まる

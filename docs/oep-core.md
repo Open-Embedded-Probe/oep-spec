@@ -185,15 +185,18 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 - **USB bundling** (vendor bulk): if the length of a write is a multiple of wMaxPacketSize, the host follows it with a zero-length transfer. When the probe has finished
   sending and nothing follows, if the last transfer is a multiple of wMaxPacketSize, it either sends a zero-length transfer or splits the last 1 byte into a separate transfer.
   If more follows immediately, it may stay a multiple.
+- **A length larger than max_frame**: the probe discards that frame and the input up to the next pause of `probe_frame_gap_ms`, then waits for the next frame. It sends no answer. On TCP it closes the connection instead. A HID report whose count is larger than the report can carry (the report length − 2, or − 3 with a report ID) is discarded whole.
 - Which frame is used is decided only by the kind of transport (not chosen by VID:PID).
 - **TCP is used only on a trusted local connection or inside an authenticated tunnel.** OEP has no authentication (including the force of §6.4).
-  When one probe is used by several hosts, a broker on the host side bundles them into one session (the broker is a host implementation, outside this
-  specification. The transport and the session as seen from the probe do not change).
+  When one probe is used by several hosts, a broker bundles them into one session (the next bullets say what the probe rules require of it).
+- **An endpoint that answers OEP requests itself is a probe**, whatever carries it and whatever is behind it (for example a program that serves OEP on TCP and drives another debugger). Every probe rule applies to it. A broker that only relays requests to an OEP probe is a host towards that probe.
+- **A relaying broker that answers the session ops itself** (confirm, open, end, keepalive, lock_state) and relays every other request to one OEP probe has no describe of its own: fn 0's describe it relays is the probe's. In the transport TLV of its confirm it reports index 0xFF ("not in describe"). Towards the probe it is a host. Every rule on those session ops applies to its answers.
+- **TCP transports**: a probe that listens on TCP lists each listening socket as one transport in the describe of fn 0 (kind 6, interface 0xFF). Every connection accepted on that socket reports that index in the transport TLV of confirm. The rules that §3.3, §4.4, §7.1 and §11.4 apply per transport (the 0x81 requests of a session on one transport, max_frame / window / max_inflight, the revision in use, where notifications go) apply to each accepted connection separately.
 
 ### 3.2 Sending frames
 
 - The host **sends one frame in one write**, and does not pause for 100 ms or more in the middle of a frame.
-- If input stops for 200 ms in the middle of a frame, the probe restarts the read from the beginning.
+- On serial ports, vendor bulk and HID, if input stops for 200 ms (`probe_frame_gap_ms`) in the middle of a frame, the probe restarts the read from the beginning. **On TCP it does not.** TCP does not lose boundaries, and a TCP connection whose stream is broken is closed.
 
 ### 3.3 Several transports
 
@@ -217,7 +220,7 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
   has chosen explicitly.
 - **The probing rule**: on a device or port the host opens without having identified it (a named device, a port the user chose, a device the host handles on its own, a device found by
   a temporary clue), the first thing the host sends is a confirm (§7.1) only (including the single resend of §5.2). When the wait for the confirm
-  (§4.4; confirm has no time set by its arguments, so 1000 ms) has passed without a valid confirm answer (when resent, when the wait for the resent
+  (§4.4; confirm has no time set by its arguments, so 1000 ms plus the transfer time) has passed without a valid confirm answer (when resent, when the wait for the resent
   confirm has passed without one), the host closes the device or port and sends nothing else. On a UART bridge port (transport
   kind 1), however, the host may repeat the confirm for the time of host obligation 7 in §3.5 instead of the single resend (to wait out a rate a previous host raised;
   it sends confirms only, and closes the port when no valid answer has come by then). A valid confirm answer is a completed answer with the same corr as the sent
@@ -244,6 +247,9 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 A serial port carries OEP frames and raw bytes (the target's console, etc.) on the same port. The probe accepts OEP on every port at all times
 (it has no setting that makes a port OEP-only, and no boot mode).
 
+- **The line of a UART bridge**: 8 data bits, no parity, 1 stop bit, no flow control. The boot speed is **115200 bps** (registry `uart_bridge_boot_baud`). port_speed (§3.5) changes only the speed.
+- **USB serial ports** (USB CDC, built-in USB serial): the probe accepts and sends OEP whatever line coding the host sets, and applies the line coding to nothing.
+- **Control lines**: the probe does not use DTR, RTS or the line state to decide whether to accept or send OEP. The host keeps DTR and RTS asserted while the port is open (a UART bridge may wire them to the probe's reset). What a probe does while the host holds DTR deasserted is not defined.
 - **How the probe receives**: when 0x00 arrives, it accumulates up to the next 0x00 and decodes. If it decodes and the CRC matches, it is an OEP request. If it does not decode, the CRC does not match, or
   input stops for 200 ms before the next 0x00 (§3.2), the accumulated bytes (including the leading 0x00) are treated as raw bytes. The 0x00 that closed a candidate becomes
   the start of the next candidate. **A candidate of 0x00 only with no contents** (nothing follows the closing 0x00 of a frame; consecutive 0x00) is a delimiter,
@@ -271,7 +277,7 @@ are decided by the host (reference procedure: [host development guide](host-deve
 
 **Definitions of terms**
 
-- **Boot speed**: the port speed determined by the board profile. The fallback for everything on the probe. The host decides it together with the user's choice of port and keeps it in one place.
+- **Boot speed**: 115200 bps (§3.4). The fallback for everything on the probe.
 - **Candidate**: the sequence of speeds the host tries. The probe does not declare candidates (which speeds pass is determined by the converter chip and the OS, and the probe cannot know). This specification
   decides neither the candidates nor a default.
 - **Flow**: the pair of direction (probe → host, host → probe, both directions) and concurrency n. A term for the host's verification and records (this specification does not decide the
@@ -289,6 +295,7 @@ port_speed  request: port(u8), baud(u32), step(u8: 0 try, 1 commit, 2 revert), v
             answer:  baud(u32: the speed actually applied), [TLV]
 ```
 
+- port: the index (§7.5) of the transport this request came on (the transport TLV of the confirm answer, §7.1).
 - Refusals: port is not the port this request came from → rejected unavailable (cause 6). baud cannot be produced by the probe's UART → rejected unsupported.
   A step of 3 or more is rejected unsupported (payload tag 0x00, §2.5).
   Refusals when the lock is missing or different follow the order of §4.3 (session_required, no_session, expired, locked).
@@ -411,6 +418,7 @@ the interface's index, etc.).
 - The host observes both limits. The probe may refuse a request that exceeds them with rejected window_exceeded, but a request lost beyond the buffer gets
   no answer either. Observing them is the host's responsibility.
 - The probe processes requests in the order received and returns answers in the order received.
+- max_frame, window and max_inflight of confirm are the limits **of the transport the confirm came on**. Each transport is counted separately, and requests outstanding on one transport do not use the receive room of another. The table of §5.2 stays one per probe (the 0x81 requests of a session are sent on one transport, §3.3).
 - **The host's wait time**: the absence of an answer is decided only by timeout (§3.1). For each request the host waits **at least**: the time set by the request's arguments (the timeout_ms of run,
   the hold_ms of reset, the sum of the waits of dmi, save, etc.; for attach, `attach_budget_ms` plus the hold_ms of its reset TLV; for scan, `scan_budget_ms` + `attach_budget_ms` ([wire and debug](oep-if-debug.md) §1); 0 if none; at most max_op_ms, §7.5) + 1000 ms (`host_wait_add_ms`) + the transfer time. The wait starts when the request has been written, or, while earlier requests on the same transport are outstanding, when the answer to the request before it arrives (the probe answers in order).
   The transfer time is 0 except on a UART bridge. On a UART bridge it is (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud seconds, where L is the length on the wire of the request's frame and baud is the port's current speed. A host may wait longer. When the wait has passed, it proceeds to the resend of §5.2.
@@ -424,6 +432,8 @@ stopped midway (no continuation for 200 ms), it discards input until it has been
 before resuming. If the TLVs at the end of an answer are cut off midway, that answer is broken. When notifications keep flowing and the input does not become quiet,
 it may send unsubscribe and end without verifying (executing them twice does no harm). COBS frames can discard broken ones by the CRC, so
 this procedure is not needed there.
+
+Before the confirm of a resync, and before the first confirm after opening a length-prefixed port, the host waits until `host_resync_wait_ms` (registry, 250 ms = probe_frame_gap_ms + 50 ms) have passed since it last wrote to that port, in addition to the 50 ms of quiet input. On TCP the host may instead close the connection and open a new one.
 
 ### 5.2 Resend and deduplication
 
@@ -515,6 +525,8 @@ A host that does not hold the lock (monitoring, discovery) learns of a reboot th
 request: "OEP?", min_rev(u8), max_rev(u8), [TLV]
 answer:  "OEP!", revision(u8), flags(u8), max_frame(u16), window(u32), max_inflight(u8), boot_id(u32), [TLV]
 ```
+
+- TLV 0x01 transport (u8): the index (§7.5) of the transport this confirm came on. The probe always attaches it. It names an entry of the describe of fn 0 returned on the same connection (0xFF from a relaying broker, §3.1). port_speed (UART bridges, §3.5) and bind (serial ports, [probe settings](oep-if-probe-config.md) §1.2) never take a TCP index.
 
 The host sends the range of protocol revisions it can handle, and the probe returns the highest revision within it that it can handle. If there is none in the range it can handle,
 rejected unsupported. flags is reserved (0). boot_id is §6.5 (the place to learn of a reboot without the lock). Both request and answer fit in 64 bytes

@@ -73,9 +73,11 @@ fault = 3
 timeout = 4
 state = 5
 
-[timing]                        # values host and probe both implement (core §3.2, §5.1, §11)
+[timing]                        # times and line values host and probe both implement (core §3.2, §3.4, §5.1, §11)
 resync_quiet_ms = 50            # host: read and discard until the input is this quiet, then confirm
-probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restarts its reader
+probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restarts its reader (not on TCP; core §3.2)
+host_resync_wait_ms = 250       # host: before a resync's confirm, and the first confirm on a length-prefixed port, this long since its last write (core §5.1)
+uart_bridge_boot_baud = 115200  # a UART bridge's boot speed, 8N1 without flow control (core §3.4)
 host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
 heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
 port_speed_idle_max_ms = 3000   # a raised port_speed goes back after this long without a good frame, whatever idle_ms said (core §3.5)
@@ -177,6 +179,8 @@ op = [
 ]
 [interface.tlv.plan_apply]
 role_assignment = 0x10          # repeats; always sent critical (0x90): fn(u16) role(u8) channel(u16); one assignment is identified by all three (core §8)
+[interface.tlv.confirm_answer]
+transport = 0x01                # u8: the index of the transport this confirm came on (0xFF: a relaying broker); always sent (core §7.1)
 [interface.tlv.open]
 owner = 0x01                    # text (1-32 bytes): who holds the lock, for display (core §6.4)
 [interface.tlv.lock_state_answer]
