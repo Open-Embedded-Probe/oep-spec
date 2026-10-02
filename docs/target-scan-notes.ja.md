@@ -30,7 +30,7 @@ target の節（§3）を先に読み、その target の落とし穴を除い�
    なら見つからないのが正しい（V003 の RST_MODE、§3.1）。
 6. **読み出し保護と option bytes を確かめる。** scan と attach は保護があっても通る。flash を読んで初めて分かる（WeAct X035 の
    出荷デモ、§3.2）。option は読むだけにし、書くのは目的があるときだけ。
-7. **スロットに記録する。** wire、pins、max_speed、idle_clock、reset_channel（あれば）、錠（target_id）を `oep config slot` に書き、
+7. **スロットに記録する。** wire、pins、max_speed、idle_clock、錠（target_id）を `oep config slot` に、リセットの線（あれば）を label の `<スロットの name>.nrst` に書き、
    治具の設計（bench の toml）にも同じ値を残す。
 
 **走っているかは DM ではなく UART で判断する**（全 target 共通、材料、E158 / E159）。DMSTATUS の allrunning、dpc が flash の中に

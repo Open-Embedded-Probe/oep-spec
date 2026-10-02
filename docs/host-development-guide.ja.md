@@ -525,8 +525,8 @@ oep-client-python では `oep pins` がこの手順を行い、target の系統�
    できるなら、option を読む（読むだけ）。無効なら、リセットの線は探さない。読んだら resume する。
 6. **リセットの線を確かめる。** 3 で止まった channel（無ければ候補を弱い pull-up のものから順に）を attach の reset TLV
    （method 1）に渡し、dpc がリセットのベクタかを見る（§4.6）。毎回 pins を付ける。
-7. **記録を勧める。** wire、pins、reset_channel（[probe の設定](oep-if-probe-config.ja.md) §1.1）をスロットの形で示す。書くのは
-   利用者が頼んだときだけ。
+7. **記録を勧める。** wire、pins をスロット（[probe の設定](oep-if-probe-config.ja.md) §1.1）の形で、リセットの線を label の
+   `<スロットの name>.nrst`（同 §1.3）の形で示す。書くのは利用者が頼んだときだけ。
 
 ### 9.2 安全の決まり
 
