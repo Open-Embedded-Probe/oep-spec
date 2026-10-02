@@ -84,7 +84,7 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
   takes effect (items that may be ignored may be sent without it). TLVs that an interface's definition says are sent critical (a speed limit,
   pins, and other items for safety) always carry it. If the probe sees an unknown critical
   TLV it refuses with rejected unsupported (the tag as received in the payload). It ignores unknown non-critical TLVs and appends ignored
-  (tag 0x7F, value: the sequence of ignored tags) to the answer. It does so on every completed answer, also when the op's status is a failure.
+  (tag 0x7F, value: the sequence of ignored tags) to the answer. It does so on every completed answer, also when the op's status is a failure. When it ignores two or more TLVs with the same tag, it lists the tag that many times.
 - Even for a known TLV, if the probe cannot handle its value: rejected unsupported if critical, otherwise it ignores it and lists it in ignored.
 - Tag 0x7F or 0xFF in a request is rejected malformed. A request shorter than the fixed part is rejected malformed.
 - **Variable sequences are preceded by a count** (so that TLVs can be appended after them).
