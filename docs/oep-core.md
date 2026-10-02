@@ -683,8 +683,8 @@ The plan is held **per fn**.
   Hi-Z (input, no pull)**. An interface must not leave a pin under its own drive after it is released (when the idle state is an output, that drive belongs to
   the settings' idle. The setting of the idle state is the idle of `oep.probe.config`,
   [probe settings](oep-if-probe-config.md)).
-- **Taking a plan does not change a pin's electrical state.** A pin keeps its idle state until the interface that holds it starts to use it. That is: gpio at the first set, uart TX at the plan (high, [fixture](oep-if-fixture.md) §2), i2c-target and spi-target at configure, analog at start (the pad leaves the digital function). Logic capture never changes it: it only listens. It does not stop an output, and it does not change the pull or direction of a pin that another function or an idle output drives.
-- An analog plan on a channel whose idle is an output (mode 3 / 4) is rejected unavailable (cause 5, holder_kind 7).
+- **Taking a plan does not change a pin's electrical state.** A pin keeps its idle state until the interface that holds it starts to use it. Each interface's document says which of its operations starts that use (for some interfaces the plan itself). An interface that only reads a pin never changes it: it does not stop an output, and it does not change the pull or direction of a pin that another function or an idle output drives.
+- When an interface's document refuses a plan on a channel whose idle is an output (mode 3 / 4), the refusal is unavailable (cause 5, holder_kind 7).
 - The lifetime of the plan is §9 (per fn).
 
 **Refusals of plan_apply** (the order of §4.3):
@@ -694,7 +694,7 @@ The plan is held **per fn**.
 | Malformed form, the same (fn, role, channel) twice, fn 0 listed | malformed |
 | fn does not exist | unknown_function |
 | The role does not exist in that interface, the channel is not among the candidates of role_channels, it matches none of the channel_groups | unsupported (tag 0x90) |
-| plan_roles exceeded, contention for pins or resources (§8.1), the fn of a settings plan | unavailable (cause 2 / 1 / 5) |
+| plan_roles exceeded, contention for pins or resources (§8.1), the fn of a settings plan, an output idle the interface refuses | unavailable (cause 2 / 1 / 5) |
 
 ### 8.1 Resource contention
 

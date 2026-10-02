@@ -683,8 +683,8 @@ plan は **fn ごと**に持つ。
   Hi-Z（入力、プルなし）**にする。インターフェースは、解いた後もピンを自分の駆動のまま残してはならない（空きの状態が出力なら、その駆動は
   設定の idle のもの。空きの状態の設定は `oep.probe.config` の idle、
   [probe の設定](oep-if-probe-config.ja.md)）。
-- **plan を取ってもピンの電気の状態は変わらない。** ピンは、それを持つインターフェースが使い始めるまで空きの状態を保つ。つまり、gpio は最初の set で、uart の TX は plan で（high、[fixture](oep-if-fixture.ja.md) §2）、i2c-target と spi-target は configure で、analog は start で（パッドがデジタルの機能を離れる）。ロジックのキャプチャは決して変えない: 聞くだけである。出力を止めず、ほかの機能や出力の idle が駆動するピンのプルや向きも変えない。
-- idle が出力（mode 3 / 4）の channel への analog の plan は rejected unavailable（cause 5、holder_kind 7）。
+- **plan を取ってもピンの電気の状態は変わらない。** ピンは、それを持つインターフェースが使い始めるまで空きの状態を保つ。どの操作で使い始めるかは、各インターフェースの文書が定める（plan そのもののインターフェースもある）。ピンを読むだけのインターフェースは決して変えない: 出力を止めず、ほかの機能や出力の idle が駆動するピンのプルや向きも変えない。
+- idle が出力（mode 3 / 4）の channel への plan をインターフェースの文書が断るとき、その断りは unavailable（cause 5、holder_kind 7）である。
 - plan の寿命は §9（fn ごと）。
 
 **plan_apply の断り方**（§4.3 の順）:
@@ -694,7 +694,7 @@ plan は **fn ごと**に持つ。
 | 形の誤り、同じ (fn, role, channel) が 2 回、fn 0 を挙げた | malformed |
 | fn が無い | unknown_function |
 | role がそのインターフェースに無い、channel が role_channels の候補に無い、channel_group のどれにも一致しない | unsupported（tag 0x90） |
-| plan_roles を超える、ピンや資源の取り合い（§8.1）、設定の plan の fn | unavailable（cause 2 / 1 / 5） |
+| plan_roles を超える、ピンや資源の取り合い（§8.1）、設定の plan の fn、インターフェースが断る出力の idle | unavailable（cause 2 / 1 / 5） |
 
 ### 8.1 資源の取り合い
 

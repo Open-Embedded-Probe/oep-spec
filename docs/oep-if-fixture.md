@@ -93,7 +93,7 @@ One stream per fn.
   the value of the uart item of `oep.probe.config` if there is one, otherwise 115200 8N1), and accumulates regardless of sessions. Redoing configure leaves the accumulated bytes and the position as they are
   (if a boundary is needed, the host attaches a mark). **The position and the serial of the marks do not go back within a boot even when the plan is released and created again**
   ([common parts](oep-if-common.md) §1.1). Receive errors are mark lost (detail 2 framing, 3 parity).
-- **The TX line is kept at the UART idle (high) while assigned by the plan (even before configure)** (so that the peer's receiver does not pick up noise). When the plan
+- **The TX line is kept at the UART idle (high) while assigned by the plan (even before configure)**: taking the plan starts the use of TX (core §8) (so that the peer's receiver does not pick up noise). When the plan
   is released, the UART drive stops and it goes to the idle state of core §8. A fixture that does not want to leave the peer's input floating after release decides, in the idle of `oep.probe.config`,
   that the pin is a pull-up input, and saves it.
 - The formats that can be handled are declared with the formats of describe (tag 0x40, n(u8), n × u8. The values of the TLV 0x01 of configure). 8N1 (0) is mandatory.
