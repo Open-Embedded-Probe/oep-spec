@@ -56,6 +56,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
 - **idle**: the state of a pin used neither by a plan nor by a connection. It is put in this state at boot and each time the pin is released (core §8).
   With mode 3 / 4, the probe drives that level for as long as the pin is idle. A pin without idle is Hi-Z. A pin where the peer's input would float because of the fixture's wiring (a TX connected to the peer's RX, etc.) is stated explicitly by the host with idle and saved.
   The output modes exist for a channel that must keep a level even while no plan holds it (the switch of the target's power, etc.).
+  A change of the idle item (set / unset) takes effect at once on a free channel, and on a channel a plan or a connection holds, when it next becomes free.
   On a probe that cannot drive that channel as an output, an idle with mode 3 / 4 is rejected unsupported.
   (Informative) Keeping an output idle from meeting an output of the target is the responsibility of the wiring.
   - **Strength (optional)**: drive_kind(u8), drive_value(u16) may be placed after mode (the same kind and value as the strength specification of [fixture](oep-if-fixture.md) §1.1).
@@ -188,7 +189,7 @@ Only the settings' label items (§1) are searched, not the label (0x46) of the c
   The plan items are grouped per fn and replace the plan of that fn. The order of the items has no meaning.
 - **unset deletes the item of the key** (key depends on the tag: plan is fn(u16) (the whole plan of that fn), label and idle are channel(u16), slot is slot(u8),
   bind is port(u8), uart is fn(u16), disable is channel(u16). len is placed on each element because the length of the key differs per tag). Validation and atomicity are the same as set. A nonexistent key
-  does nothing and succeeds. The clean-up of §1.1 / §1.2 is applied to deleted slots and binds.
+  does nothing and succeeds. The tag of an undeclared item is rejected unsupported (the payload's tag is the tag as received, core §4.3). The clean-up of §1.1 / §1.2 is applied to deleted slots and binds.
 - If the same key (for plan, (fn, role, channel)) appears twice in one set, the whole request is rejected malformed.
 - If the whole of the settings resulting from set / unset does not satisfy the rules of §1 (a bind points to a deleted slot, etc.), rejected malformed without changing anything.
 - **The atomicity of set extends to the validation of the settings and the reservation of resources (applying the plan, checking pin contention)**. If any of them is not accepted, rejected
@@ -275,7 +276,7 @@ whether it is connected cannot be known).
 request: first_slot(u8), first_bind(u8)
 answer:  more(u8), storage_state(u8), storage_hash(u32), unreadable_reason(u8),
          n_slots(u8), n_slots × (len(u8), slot_state), n_binds(u8), n_binds × (len(u8), bind_state), [TLV]
-slot_state: slot(u8), state(u8, §3.2), connection(u16, 0 if none), last_try_at_ns(u64: the time of the last automatic attach attempt (the probe's clock), all bits 1 is not tried), tid_scheme(u8, 0 is none), tid_len(u8), tid,
+slot_state: slot(u8), state(u8, §3.2), connection(u16, 0 if none), last_try_at_ns(u64: the time of the last automatic attach attempt (the probe's clock; the retry with reset of §3.1 counts as an attempt), all bits 1 is not tried), tid_scheme(u8, 0 is none), tid_len(u8), tid,
       reset_at_ns(u64: the time the probe started pulling the reset line in the retry with reset of §3.1 (the probe's clock), all bits 1 is not done)
 bind_state: port(u8), mode(u8), selected(u8: the number in the sequence currently selected. 0xFF for mixed), flow(u8: 0 nothing to send / 1 sending / 2 stopped by a session)
 ```

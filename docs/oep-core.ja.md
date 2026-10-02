@@ -84,7 +84,7 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
   付ける**（効かなくても構わない項目は付けずに送ってよい）。インターフェースの定義が critical で送ると決めた TLV（速さの上限、
   pins など、安全のための項目）は必ず付ける。probe は、知らない critical の
   TLV があれば rejected unsupported（payload に受け取ったままの tag）で断る。知らない非 critical の TLV は無視し、応答の
-  後ろに ignored（tag 0x7F、値は無視した tag の並び）を付ける。結果が completed なら、op の status が失敗でも付ける。
+  後ろに ignored（tag 0x7F、値は無視した tag の並び）を付ける。結果が completed なら、op の status が失敗でも付ける。同じ tag の TLV を 2 つ以上無視したら、その数だけ並べる。
 - 知っている TLV でも、その値を扱えなければ、critical なら rejected unsupported、そうでなければ無視して ignored に載せる。
 - 要求の中に tag 0x7F か 0xFF があれば rejected malformed。固定部分より短い要求は rejected malformed。
 - **可変の並びは前に数を置く**（後ろに TLV を付けられるように）。

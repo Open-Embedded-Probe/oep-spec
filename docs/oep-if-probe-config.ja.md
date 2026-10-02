@@ -56,6 +56,7 @@
 - **idle**: plan にも接続にも使われていないピンの状態。起動時と、そのピンが解放されるたび（core §8）に、この状態にする。
   mode 3 / 4 では、そのピンが空きの間ずっと、probe がその level で駆動する。idle が無いピンは Hi-Z。治具の配線で相手の入力が浮くピン（相手の RX につながる TX など）は、host が idle で明示し、保存する。
   出力の mode は、plan が持っていない間もある level を保たなければならない channel（target の電源のスイッチなど）のためにある。
+  idle の項目の変更（set / unset）は、空いている channel にはすぐ効き、plan や接続が持つ channel には、次に空きになったときに効く。
   その channel を出力として駆動できない probe では、mode 3 / 4 の idle は rejected unsupported。
   （参考）出力の idle が target の出力とぶつからないようにするのは、配線の責任である。
   - **強さ（任意）**: mode の後ろに drive_kind(u8)、drive_value(u16) を置ける（[fixture](oep-if-fixture.ja.md) §1.1 の強さの指定と同じ
@@ -188,7 +189,7 @@ label（§1）の text のうち、次の名前は線の役目を表す。text �
   plan の項目は fn ごとにまとめて、その fn の plan を置き換える。項目の順は意味を持たない。
 - **unset はキーの項目を消す**（key は tag ごと: plan は fn(u16)（その fn の plan 全部）、label と idle は channel(u16)、slot は slot(u8)、
   bind は port(u8)、uart は fn(u16)、disable は channel(u16)。要素に len を置くのはキーの長さが tag ごとに違うため）。検証と原子性は set と同じ。無いキーは
-  何もせず成功。消したスロット・bind には §1.1 / §1.2 の後始末を適用する。
+  何もせず成功。宣言していない項目の tag は rejected unsupported（payload の tag は受け取ったままの tag、core §4.3）。消したスロット・bind には §1.1 / §1.2 の後始末を適用する。
 - 1 つの set の中で同じキー（plan は (fn, role, channel)）が 2 回出たら、要求全体を rejected malformed。
 - set / unset の結果の設定全体が §1 の規則を満たさなければ（bind が消したスロットを指す、など）、何も変えずに rejected malformed。
 - **set の原子性は、設定の検証と資源の予約（plan の適用、ピンの取り合いの確かめ）まで**。どれかが受け入れられなければ、何も変え
@@ -275,7 +276,7 @@ state（op 0x06、§3.3）の slot_state はロックなしで読める。host �
 要求: first_slot(u8)、first_bind(u8)
 応答: more(u8)、storage_state(u8)、storage_hash(u32)、unreadable_reason(u8)、
       n_slots(u8)、n_slots × (len(u8)、slot_state)、n_binds(u8)、n_binds × (len(u8)、bind_state)、[TLV]
-slot_state: slot(u8)、state(u8、§3.2)、connection(u16、無ければ 0)、last_try_at_ns(u64: 最後に自動の attach を試した時刻（probe の時計）、全ビット 1 は試していない)、tid_scheme(u8、0 は無し)、tid_len(u8)、tid、
+slot_state: slot(u8)、state(u8、§3.2)、connection(u16、無ければ 0)、last_try_at_ns(u64: 最後に自動の attach を試した時刻（probe の時計。§3.1 のリセットでのやり直しも試したうちに入る）、全ビット 1 は試していない)、tid_scheme(u8、0 は無し)、tid_len(u8)、tid、
       reset_at_ns(u64: §3.1 のリセットでのやり直しでリセットの線を引き始めた時刻（probe の時計）、全ビット 1 はしていない)
 bind_state: port(u8)、mode(u8)、selected(u8: 今選ばれている並びの番号。mixed では 0xFF)、flow(u8: 0 流すものが無い / 1 流している / 2 セッションで止めている)
 ```
