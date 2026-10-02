@@ -1,5 +1,7 @@
 # OEP 標準インターフェース: probe の設定 v1
 
+[English](oep-if-probe-config.md)
+
 状態: **規範**（2026-09-29 に組み直し。2026-10-01 に[ゼロベースの再検討](v1-zero-base-proposal.ja.md)を反映）。本体は [OEP core](oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。経緯と
 実験は [シリアルの口と永続化](probe-cdc-and-persistence.ja.md)。
 
