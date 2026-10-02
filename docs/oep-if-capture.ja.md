@@ -28,7 +28,7 @@ calibration（§3.8）だけ。複数トラックの同時開始と時刻合わ�
 status、区画の情報、ストリーミングのデータの TLV で分かる。
 
 キャプチャは位置つきのストリームの形（[共通部品](oep-if-common.ja.md) §1）を使わない（from とマークが無く、区画と世代を持つ）。
-モード（ワンショット、リピート、ストリーミング）の意味は [設計](logic-capture.ja.md) §2.4、レートの決め方は同 §2.10。
+モード（ワンショット、リピート、ストリーミング）は §2.1（理由: [設計](logic-capture.ja.md) §2.4。レートの決め方: 同 §2.10）。
 
 ## 1. データの形
 
@@ -113,7 +113,29 @@ configure の応答で probe が返す値:
   ほかの機能や idle の出力が駆動しているピンのプルや向きも変えない。アナログのチャネルは start で空きの状態を離れる（pad がデジタルの機能を離れる）。
 - idle が出力（mode 3 / 4）の channel へのアナログの plan は rejected unavailable（cause 5、holder_kind 7）。
 
-## 2. 区画
+## 2. モードと区画
+
+### 2.1 モード
+
+| モード | ふるまい |
+|---|---|
+| 1 ワンショット | start（とトリガ）の後、samples 個のサンプルを取って止まる（state 4）。host は自分の速さで読む。次の start でデータは消える |
+| 2 リピート | ワンショットを次々に、区画の境目に隙間なく、空いている区画にだけ取る。空きが無くなれば止まり（state 5）、release で再開する |
+| 3 ストリーミング | リピートと同じく隙間なく取り、ロックを持つ者が購読している間、データを通知で送る |
+
+- トリガは開始の条件だけである: どのモードでも、最初の区画の始まりにだけ効く。
+- probe は start の後にだけ取る。先回りして取らない。
+
+**ストリーミングの規則**:
+
+1. 送る余地が無いとき、probe は**新しい**データを捨てる（すでに積んだデータは送る）。捨てた量は、次のデータのフレームの position の飛びと、
+   status の flags bit0 に現れる。
+2. stop の後も、probe は stop の前に取った分を送る。受け取った position の末尾が、stop の後の status の write_pos に等しくなれば、host はすべて受け取っている。
+3. ストリーミングでは区画の出来事を送らない（stopped は送る）。
+4. 通知で送ったデータは read で読めないことがある（読めない位置は gap 付きの空の応答を返す）。
+5. 購読はロックとともに終わる（core §11.3）。受けている host はロックを保つ。
+
+### 2.2 区画
 
 1 回のキャプチャは、トラック 1 本の**位置の付いたバイトの並び**（ストリーム、§1）で、区画に分かれる。
 
@@ -195,34 +217,41 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 
 plan_release、lease の期限切れ、force で plan が解けたら state 0 に戻り、データも区画も消える（read は空）。mode 3（ストリーミング）の
 start は、その fn の購読が無ければ rejected unavailable（cause 6）。取得中に購読が消えたら取り続け、送れない分は捨てる（position が飛ぶ）。
-configure の応答の blocking_ms が core の max_op_ms を超える構成は、configure で rejected unsupported。blocking の間は lease を
-数えない。
+configure の応答の blocking_ms が core の max_op_ms を超える構成は、configure で rejected unsupported。
+
+- start の応答から blocking_ms の間、probe はどの transport のフレームも処理しないことがあり、失うことがある。host はその間、その probe に
+  どの transport でも何も送らない。その後、長さ前置きの transport では core §5.1 の resync から始める。シリアルポートではそのまま続ける。
+  lease も host の待ち（core §4.4）も blocking_ms を数えない。
 
 ### 3.3 configure
 
 **設定の TLV**（critical を立てた TLV（または値）を probe が扱えなければ configure 全体を
 rejected unsupported（0x0B、payload に tag）で断り、立てていなければ無視して応答の `ignored`（0x7F）に載せる。core §2.3）:
 
-| tag | 名前 | 値 | 対象 |
-|---|---|---|---|
-| 0x40 | mode | u8: 1 ワンショット、2 リピート、3 ストリーミング（0x40〜 は別の定義） | 両方 |
-| 0x42 | rate | rate_hz(u32)（アナログはチャネルあたり。1 Hz 以上。それより遅い記録は host の問い合わせの範囲で、v1 には入れない） | 両方 |
-| 0x43 | samples | u32（1 区画のサンプル数。ストリーミングでは省略してよい） | 両方 |
-| 0x44 | segments | u32（リピートの区画の数。省略すれば probe に任せる） | 両方 |
-| 0x45 | trigger | type(u8)、role(u8)、value(u32) | 両方 |
-| 0x46 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 |
-| 0x47 | frontend | role(u8)、frontend(u8: describe の frontend の番号) | アナログ |
+| tag | 名前 | 値 | 対象 | critical で送るか |
+|---|---|---|---|---|
+| 0x40 | mode | u8: 1 ワンショット、2 リピート、3 ストリーミング（0x40〜 は別の定義） | 両方 | 常に |
+| 0x42 | rate | rate_hz(u32)（アナログはチャネルあたり。1 Hz 以上。それより遅い記録は host の問い合わせの範囲で、v1 には入れない） | 両方 | 常に |
+| 0x43 | samples | u32（1 区画のサンプル数。ストリーミングでは省略してよい） | 両方 | 立てずに送ってよい |
+| 0x44 | segments | u32（リピートの区画の数。省略すれば probe に任せる） | 両方 | 立てずに送ってよい |
+| 0x45 | trigger | type(u8)、role(u8)、value(u32) | 両方 | 常に |
+| 0x46 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 | 常に |
+| 0x47 | frontend | role(u8)、frontend(u8: describe の frontend の番号) | アナログ | 常に |
 
 - **問い合わせは別の操作（0x09）**。configure の TLV のフラグにすると、probe はロックの要否を操作の番号で決めるので、
   ロックなしの問い合わせができない（[設計](logic-capture.ja.md) §7.8）。問い合わせは今の設定と取ったデータを壊さない。
 - trigger の type: 0 即時（省略時）、1 レベル（value 0 / 1）、2 エッジ（value 0 立ち上がり / 1 立ち下がり / 2 両方）、
   3 しきい値を上向きに横切る、4 下向きに横切る（value は o / b で切り出した後の ADC の値）。1〜2 はロジック、3〜4 はアナログ。
   宣言に無い type は rejected unsupported。
-- トリガは開始の条件だけ。リピートとストリーミングでも、効くのは最初だけ（[設計](logic-capture.ja.md) §2.4）。
+- トリガは開始の条件だけ。リピートとストリーミングでも、効くのは最初だけ（§2.1）。
 - **samples は区画の総数**（pretrigger を含む）。トリガが早く立ってプリトリガの分が足りなければ、区画は短く、trigger_index はそのまま
   小さい。force で始めたときは trigger_index = その瞬間のサンプルで triggered を送る。type 0（即時）では triggered を送らない。
-- **rate**: rate_range の範囲内なら、probe は最も近い実現できる値を選ぶ（向きは問わない。actual_rate で分かる）。範囲外は rejected
-  unsupported（tag 0x42）。
+- **critical で送るもの**: mode、rate、trigger、pretrigger、frontend は常に critical で送る。そのどれかに従えない probe は configure を断る
+  （unsupported、受け取ったままの tag）。
+- **rate**: critical で送ったとき、probe は宣言した rate_range の中で実現できる最も近い値を使う（向きは問わない。どれかは actual_rate
+  で分かる）。範囲の外の rate は rejected unsupported（tag 0x42）。
+- **samples と segments** は critical を立てずに送ってよい。probe が持てる量を超える samples は、その上限に切り下げ、応答の actual_samples（0x52）
+  が正である。host は送った値を仮定せず、actual_samples と actual_segments を読む。
 
 **応答の TLV**:
 
@@ -262,7 +291,7 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | tag | 名前 | 値 |
 |---|---|---|
 | 0x06 | features | 共通のビット。bit0 query（op 0x09）、bit1 force、bit2 通知 |
-| 0x40 | mode | mode(u8)、background(u8)、max_samples(u32、1 区画)、max_segments(u32)（モードごとに 1 つ。**最大**の置き場で答える。describe は宣言だけなので、その時点の空きでは答えない） |
+| 0x40 | mode | mode(u8)、background(u8: 1 = このモードで取っている間も probe は要求に答え続け、start の blocking_ms は 0。0 = 取っている間は答えず、start の blocking_ms がその長さを示す、§3.2。ほかの値は予約)、max_samples(u32、1 区画)、max_segments(u32)（モードごとに 1 つ。**最大**の置き場で答える。describe は宣言だけなので、その時点の空きでは答えない） |
 | 0x41 | rate_range | min_hz(u32)、max_hz(u32)、exact(u8: 1 = 範囲内の任意の値を指定できる) |
 | 0x42 | rate_list | n(u8)、n × rate_hz(u32)。代表的なレート。UI の一覧の候補。1 つの TLV に入らなければ繰り返してよい（和集合） |
 | 0x43 | rate_limit | mode(u8)、channels(u8)、max_hz(u32)。チャネル数 C ≤ channels のときの上限（条件ごとに繰り返してよい） |
@@ -273,7 +302,7 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | 0x47 | max_read | u32 |
 | 0x48 | segment_ring | u16（覚えている区画の情報の数） |
 
-- **宣言は目安、configure の応答が正**（[設計](logic-capture.ja.md) §2.10）。宣言に出ていない組み合わせは query で確かめる。
+- **宣言は目安、configure の応答が正。** 宣言に出ていない組み合わせは query で確かめる。
 
 ### 3.6 別の定義に回したもの
 
@@ -356,7 +385,9 @@ bind の TLV:
   （cause 4、holder_fn = 組の fn。組の op を使う。configure し直すときは、いったん n = 0 で解く）。束ねたトラックの plan の
   plan_release / plan_apply も rejected unavailable（cause 4）。**bind はセッションの資源**（core §9: end で残り、lease の期限切れと
   force で解ける）。
-- **start** は、全トラックの前提を確かめてから束ねたトラックをできるだけ同時に始め、組の開始の時刻 start_ns（probe の時計）と、
+- トラックを束ねていないとき: start は rejected unavailable cause 6。stop と force は何もせず成功。state は 0。
+- **start** は、どのトラックを始めるよりも前に全トラックの前提を確かめ（ストリーミングで購読の無いトラックがあれば、start は TLV fn（0x05）=
+  そのトラックを付けて rejected unavailable cause 6）、それから束ねたトラックをできるだけ同時に始め、組の開始の時刻 start_ns（probe の時計）と、
   各トラックの新しい世代を返す（各トラックの start と同じく generation を +1）。始めた後にトラックが失敗したら、組は state 6、
   stopped reason 3 で、ほかのトラックも止める。**start_ns は取得（pretrigger のリングを含む）を始めた時刻**。トラック k の最初の
   区画の start_ns − 組の start_ns がそのトラックのずれ（推定値。即時トリガのときだけ成り立つ。トリガ付きは trigger_ns と各トラックの
@@ -366,7 +397,8 @@ bind の TLV:
   trigger_index を、そのトラックでその時刻に最も近いサンプルにする**（probe が各トラックの時間軸に写す）。host はどのトラックでも
   同じ瞬間の位置を知る。
 - **stop** は全トラックを止める。区画はトラックごとに（短い区画は flags bit1）。
-- status の state はトラックと同じ値（§3.2）で、組全体の状態（全トラックが完了したら完了）。trigger_ns は立っていなければ
+- status の state はトラックと同じ値（§3.2）で、組全体の状態: どれかのトラックが 6 なら 6。そうでなく、始めていて全トラックが 4 なら 4。
+  そうでなく、trigger_track があってまだ立っておらず、どれかのトラックが 2 か 3 なら 2。そうでなく、どれかのトラックが 2、3、5 なら 3。そうでなければ 1。trigger_ns は立っていなければ
   0xFFFFFFFFFFFFFFFF、trigger_fn は 0。force で始めたときは triggered を送り、trigger_fn は 0。
 - モードは全トラックで同じ（ワンショット、リピート、ストリーミング）。リピートの release とストリーミングの push は、トラック
   ごとに今までどおり。

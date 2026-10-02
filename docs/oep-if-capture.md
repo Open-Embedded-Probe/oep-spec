@@ -28,7 +28,7 @@ so the host attaches the generation to read and release, and the probe refuses i
 status, the segment information, and the TLV of streaming data.
 
 Capture does not use the form of positioned streams ([common parts](oep-if-common.md) §1) (it has no from and no marks, and has segments and generations).
-The meaning of the modes (one-shot, repeat, streaming) is in [design](logic-capture.ja.md) (Japanese) §2.4, and how the rate is decided is in §2.10 of the same.
+The modes (one-shot, repeat, streaming) are in §2.1 (reasons: [design](logic-capture.ja.md) (Japanese) §2.4; how the rate is decided: §2.10 of the same).
 
 ## 1. Form of the data
 
@@ -113,7 +113,29 @@ depending on the chip, switches the pad to the analog function and cuts off the 
   the pull or direction of a pin that another function or an idle output drives. An analog channel leaves its idle state at start (the pad leaves the digital function).
 - An analog plan on a channel whose idle is an output (mode 3 / 4) is rejected unavailable (cause 5, holder_kind 7).
 
-## 2. Segments
+## 2. Modes and segments
+
+### 2.1 Modes
+
+| Mode | Behaviour |
+|---|---|
+| 1 one-shot | After start (and the trigger), captures samples samples, then stops (state 4). The host reads at its own pace. The next start discards the data |
+| 2 repeat | One-shot after one-shot, with no gap at segment boundaries, into free segments only. Stops (state 5) when none is free; resumes on release |
+| 3 streaming | Captures without gaps as repeat does, and sends the data in notifications while the lock holder subscribes |
+
+- The trigger is only a start condition: it applies to the start of the first segment in every mode.
+- The probe captures only after start. It does not capture ahead.
+
+**Streaming rules**:
+
+1. When there is no room to send, the probe discards **new** data (data already queued is still sent). The discarded amount shows as a jump of position
+   in the next data frame and as status flags bit0.
+2. After stop, the probe still sends what it captured before stop. The host has everything when the end of the received positions equals status's write_pos after stop.
+3. No segment events are sent in streaming (stopped is sent).
+4. Data sent in a notification may not be readable with read (an unreadable position returns an empty answer with gap).
+5. The subscription ends with the lock (core §11.3). A receiving host keeps the lock alive.
+
+### 2.2 Segments
 
 One capture is a **sequence of bytes with positions** of one track (a stream, §1), divided into segments.
 
@@ -195,34 +217,41 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 
 When the plan is released by plan_release, lease expiry, or force, it returns to state 0 and the data and segments disappear (read is empty). A start in mode 3 (streaming)
 is rejected unavailable (cause 6) if there is no subscription for that fn. If the subscription disappears while capturing, it keeps capturing and discards what cannot be sent (position jumps).
-A configuration where blocking_ms of the answer to configure exceeds the core's max_op_ms is rejected unsupported at configure. The lease is not
-counted during blocking.
+A configuration where blocking_ms of the answer to configure exceeds the core's max_op_ms is rejected unsupported at configure.
+
+- From the start answer for blocking_ms, the probe may not process frames on any transport and may lose them. The host sends nothing to that probe on any transport
+  during blocking_ms. Afterwards, on a length-prefixed transport, it begins with the resync of core §5.1. On a serial port it simply continues. Neither the lease nor
+  the host's wait (core §4.4) counts blocking_ms.
 
 ### 3.3 configure
 
 **TLVs of the settings** (if the probe cannot handle a TLV (or value) with critical set, the whole configure is
 refused with rejected unsupported (0x0B, the tag in the payload); if critical is not set, it is ignored and listed in `ignored` (0x7F) of the answer. core §2.3):
 
-| tag | Name | Value | Applies to |
-|---|---|---|---|
-| 0x40 | mode | u8: 1 one-shot, 2 repeat, 3 streaming (0x40 onwards are separate definitions) | Both |
-| 0x42 | rate | rate_hz(u32) (for analog, per channel. 1 Hz or more. Slower recording is within the range of host polling, and is not in v1) | Both |
-| 0x43 | samples | u32 (the number of samples of 1 segment. May be omitted in streaming) | Both |
-| 0x44 | segments | u32 (the number of segments of repeat. If omitted, left to the probe) | Both |
-| 0x45 | trigger | type(u8), role(u8), value(u32) | Both |
-| 0x46 | pretrigger | u32 (the number of samples to keep before the trigger) | Both |
-| 0x47 | frontend | role(u8), frontend(u8: the number of the frontend of describe) | Analog |
+| tag | Name | Value | Applies to | Sent critical |
+|---|---|---|---|---|
+| 0x40 | mode | u8: 1 one-shot, 2 repeat, 3 streaming (0x40 onwards are separate definitions) | Both | Always |
+| 0x42 | rate | rate_hz(u32) (for analog, per channel. 1 Hz or more. Slower recording is within the range of host polling, and is not in v1) | Both | Always |
+| 0x43 | samples | u32 (the number of samples of 1 segment. May be omitted in streaming) | Both | May be sent without |
+| 0x44 | segments | u32 (the number of segments of repeat. If omitted, left to the probe) | Both | May be sent without |
+| 0x45 | trigger | type(u8), role(u8), value(u32) | Both | Always |
+| 0x46 | pretrigger | u32 (the number of samples to keep before the trigger) | Both | Always |
+| 0x47 | frontend | role(u8), frontend(u8: the number of the frontend of describe) | Analog | Always |
 
 - **Querying is a separate operation (0x09)**. If it were a flag in the TLVs of configure, querying without the lock would not be possible, since the probe decides whether the lock is required
   by the operation number ([design](logic-capture.ja.md) (Japanese) §7.8). A query does not break the current settings or the captured data.
 - type of trigger: 0 immediate (when omitted), 1 level (value 0 / 1), 2 edge (value 0 rising / 1 falling / 2 both),
   3 crossing a threshold upward, 4 crossing it downward (value is the ADC value after extraction with o / b). 1 to 2 are for logic, 3 to 4 for analog.
   A type not in the declaration is rejected unsupported.
-- A trigger is only a start condition. Even in repeat and streaming, it takes effect only at the beginning ([design](logic-capture.ja.md) (Japanese) §2.4).
+- A trigger is only a start condition. Even in repeat and streaming, it takes effect only at the beginning (§2.1).
 - **samples is the total of the segment** (including pretrigger). If the trigger fires early and the pretrigger part is short, the segment is short and trigger_index is
   correspondingly small. When started by force, triggered is sent with trigger_index = the sample at that instant. With type 0 (immediate), triggered is not sent.
-- **rate**: if within rate_range, the probe chooses the nearest realisable value (in either direction. Seen in actual_rate). Out of range is rejected
-  unsupported (tag 0x42).
+- **Sent critical**: mode, rate, trigger, pretrigger and frontend are always sent critical. A probe that cannot honour one refuses the configure (unsupported, the tag
+  as received).
+- **rate**: sent critical, it means that the probe applies the nearest value it can realise within its declared rate_range (in either direction; actual_rate says
+  which). A rate outside the range is rejected unsupported (tag 0x42).
+- **samples and segments** may be sent without the critical bit. A samples above what the probe can hold is rounded down to its limit, and actual_samples (0x52)
+  in the answer is authoritative. The host reads actual_samples and actual_segments rather than assuming the values it sent.
 
 **TLVs of the answer**:
 
@@ -262,7 +291,7 @@ segments.
 | tag | Name | Value |
 |---|---|---|
 | 0x06 | features | Common bits. bit0 query (op 0x09), bit1 force, bit2 notifications |
-| 0x40 | mode | mode(u8), background(u8), max_samples(u32, 1 segment), max_segments(u32) (one per mode. Answered with the **largest** storage. describe is only a declaration, so it does not answer with the free space at that moment) |
+| 0x40 | mode | mode(u8), background(u8: 1 = while capturing in this mode the probe keeps answering requests, and start's blocking_ms is 0; 0 = it does not answer while capturing, and start's blocking_ms says for how long, §3.2; other values reserved), max_samples(u32, 1 segment), max_segments(u32) (one per mode. Answered with the **largest** storage. describe is only a declaration, so it does not answer with the free space at that moment) |
 | 0x41 | rate_range | min_hz(u32), max_hz(u32), exact(u8: 1 = any value within the range can be specified) |
 | 0x42 | rate_list | n(u8), n × rate_hz(u32). Representative rates. Candidates for a list in a UI. If they do not fit in one TLV, it may be repeated (union) |
 | 0x43 | rate_limit | mode(u8), channels(u8), max_hz(u32). The upper limit when the number of channels C ≤ channels (may be repeated per condition) |
@@ -273,7 +302,7 @@ segments.
 | 0x47 | max_read | u32 |
 | 0x48 | segment_ring | u16 (the number of segment information entries remembered) |
 
-- **The declaration is a guide; the answer to configure is authoritative** ([design](logic-capture.ja.md) (Japanese) §2.10). Combinations not shown in the declaration are checked with query.
+- **The declaration is a guide; the answer to configure is authoritative.** Combinations not shown in the declaration are checked with query.
 
 ### 3.6 What was moved to separate definitions
 
@@ -356,7 +385,9 @@ TLVs of bind:
   (cause 4, holder_fn = the group's fn. Use the group's ops. To configure again, first unbind with n = 0). plan_release / plan_apply of the plan of a bound track
   are also rejected unavailable (cause 4). **bind is a session resource** (core §9: it remains on end, and is released on lease expiry and
   force).
-- **start** checks the prerequisites of all tracks, then starts the bound tracks as simultaneously as possible, and returns the group's start time start_ns (the probe's clock) and
+- With no track bound: start is rejected unavailable cause 6; stop and force do nothing and succeed; state is 0.
+- **start** checks the prerequisites of every track before starting any (in streaming, a track without a subscription makes start rejected unavailable cause 6
+  with TLV fn (0x05) = that track), then starts the bound tracks as simultaneously as possible, and returns the group's start time start_ns (the probe's clock) and
   the new generation of each track (generation +1, the same as the start of each track). If a track fails after starting, the group goes to state 6,
   stopped reason 3, and the other tracks are also stopped. **start_ns is the time acquisition (including the pretrigger ring) started**. The start_ns of the first
   segment of track k − the group's start_ns is the offset of that track (an estimate. It holds only with an immediate trigger. With a trigger, align with trigger_ns and each track's
@@ -366,7 +397,8 @@ TLVs of bind:
   is set to the sample of that track nearest to that time** (the probe maps it onto each track's time axis). The host knows the position of the same instant in
   every track.
 - **stop** stops all tracks. Segments are per track (short segments have flags bit1).
-- state of status has the same values as a track (§3.2), and is the state of the group as a whole (complete when all tracks have completed). trigger_ns is
+- state of status has the same values as a track (§3.2), and is the state of the group as a whole: 6 if any track is 6. Otherwise 4 if started and every track is 4.
+  Otherwise 2 if trigger_track is set, has not fired, and a track is 2 or 3. Otherwise 3 if a track is 2, 3 or 5. Otherwise 1. trigger_ns is
   0xFFFFFFFFFFFFFFFF if it has not fired, and trigger_fn is 0. When started by force, triggered is sent, and trigger_fn is 0.
 - The mode is the same for all tracks (one-shot, repeat, streaming). The release of repeat and the push of streaming are per track
   as before.

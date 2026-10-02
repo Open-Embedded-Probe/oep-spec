@@ -38,7 +38,10 @@ answer:  start(u64), flags(u8: bit0 more, bit1 gap), len(u16), data, [TLV]
 | 3 | From the position of the last mark of kind arg (arg 0 means any kind). If no mark of that kind remains, from now (same as from 2. Never existed, or pushed out of the ring of marks) |
 
 - `start` is the position of the first byte of data. If the requested position has already been pushed out, start moves forward and gap is set (the difference is the amount lost).
-- `more` means there are still readable bytes after this answer. The host may read the next immediately.
+- If the requested position (from 0) is beyond the write position, the answer is start = the write position, len 0, flags 0.
+- len is at most max and at most what fits in the answer within max_frame. `more` is set when bytes remain: there are still readable bytes after this answer,
+  and the host may read the next immediately.
+- from 3 with arg > 0xFF is rejected malformed (a mark kind is u8).
 - `max` = 0 is an empty success (len 0).
 - **read can be used without the lock** (reading changes no state, and the probe keeps no per-reader state).
 
