@@ -144,7 +144,7 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 - **reset の線に既定は無い**: どの線を reset に使うかは host が毎回 channel で明示する（線を取り違えた reset は target や治具を
   壊しうる）。probe が reset に使ってよい channel は describe の role_channels の role 3（reset）で宣言する。宣言していない
   channel は、何も実行せずに rejected unsupported（tag 0x05）。今ある plan や接続が持つ channel は、§8.1 の取り合いとして rejected
-  unavailable。**reset の線はオープンドレインで low に引き、離すときは駆動をやめる**（core §8 の空きの状態。外部の reset ボタンや
+  unavailable。**reset の線はオープンドレインで low に引き、離すときは引くのをやめて core §8 の空きの状態にする**（外部の reset ボタンや
   ほかの driver と短絡しない）。channel は op の間だけ持つ。持たない probe では、host は `oep.fixture.gpio` の解放と attach をまとめて
   送って再試行する。
 

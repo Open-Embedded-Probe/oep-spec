@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "3861100e11fb3b22"
+REGISTRY_HASH = "050ffee525722713"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -69,5 +69,5 @@ FIXTURE_CAPTURE_GROUP = _NS(name="oep.fixture.capture-group", revision=1, op={"b
     closed_tail={}, tlv={"bind": {"trigger_track": 0x01}, "start_answer": {"generations": 0x01}, "describe": {"tracks": 0x40, "max_tracks": 0x41, "budget": 0x42, "start_skew": 0x43}}, event={"stopped": 0x02, "triggered": 0x03}, enum={"features": {"force": 0x02, "notify": 0x04}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}}, own={})
 INTERFACES["oep.fixture.capture-group"] = FIXTURE_CAPTURE_GROUP
 PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, op={"get": 0x01, "set": 0x02, "save": 0x03, "erase": 0x04, "unset": 0x05, "state": 0x06}, lock_free={0x01, 0x06},
-    closed_tail={}, tlv={"item": {"plan": 0x01, "label": 0x02, "idle": 0x03, "slot": 0x04, "bind": 0x05, "uart": 0x06, "disable": 0x07}, "describe": {"storage": 0x40, "items": 0x41, "slots_max": 0x42, "bind_modes": 0x43}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02}, "slot_attach": {"host": 0x00, "at_boot": 0x01}, "slot_state": {"connected": 0x00, "absent": 0x01, "lock_mismatch": 0x02, "no_target_id": 0x03}, "bind_mode": {"last_reset": 0x00, "manual": 0x01, "mixed": 0x02}, "bind_stream": {"slot_console": 0x01, "fixture_uart": 0x02}, "bind_flow": {"idle": 0x00, "streaming": 0x01, "held": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}, "storage_unreadable": {"form": 0x01, "interface": 0x02, "refused": 0x03}}, own={})
+    closed_tail={}, tlv={"item": {"plan": 0x01, "label": 0x02, "idle": 0x03, "slot": 0x04, "bind": 0x05, "uart": 0x06, "disable": 0x07}, "describe": {"storage": 0x40, "items": 0x41, "slots_max": 0x42, "bind_modes": 0x43}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02, "output_low": 0x03, "output_high": 0x04}, "slot_attach": {"host": 0x00, "at_boot": 0x01}, "slot_state": {"connected": 0x00, "absent": 0x01, "lock_mismatch": 0x02, "no_target_id": 0x03}, "bind_mode": {"last_reset": 0x00, "manual": 0x01, "mixed": 0x02}, "bind_stream": {"slot_console": 0x01, "fixture_uart": 0x02}, "bind_flow": {"idle": 0x00, "streaming": 0x01, "held": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}, "storage_unreadable": {"form": 0x01, "interface": 0x02, "refused": 0x03}}, own={})
 INTERFACES["oep.probe.config"] = PROBE_CONFIG

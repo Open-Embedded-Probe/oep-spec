@@ -848,6 +848,8 @@ bind_modes = 0x43               # u32 bits of bind_mode; last_reset and manual a
 hi_z = 0
 pull_up = 1
 pull_down = 2
+output_low = 3
+output_high = 4
 [interface.enum.slot_attach]
 host = 0
 at_boot = 1

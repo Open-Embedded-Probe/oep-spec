@@ -22,7 +22,7 @@
 |---:|---|---|---|
 | 0x01 | plan | fn(u16)、role(u8)、channel(u16)（1 項目 1 割り当て） | (fn, role, channel)（同じ fn の項目で、その fn の plan になる） |
 | 0x02 | label | channel(u16)、text | channel |
-| 0x03 | idle | channel(u16)、mode(u8: 0 Hi-Z、1 プルアップの入力、2 プルダウンの入力) | channel |
+| 0x03 | idle | channel(u16)、mode(u8: 0 Hi-Z、1 プルアップの入力、2 プルダウンの入力、3 出力 low、4 出力 high) | channel |
 | 0x04 | slot | §1.1 | slot |
 | 0x05 | bind | §1.2 | port |
 | 0x06 | uart | fn(u16)、baud(u32)、format(u8)（`oep.fixture.uart` の configure と同じ値） | fn |
@@ -54,7 +54,10 @@
   - describe は宣言だけなので変わらない（core §7.3）。host は get の disable を合わせて、使える channel を知る。
   - 保存すれば起動時に、空きの状態を掛けるより先に適用する。
 - **idle**: plan にも接続にも使われていないピンの状態。起動時と、そのピンが解放されるたび（core §8）に、この状態にする。
-  idle が無いピンは Hi-Z。治具の配線で相手の入力が浮くピン（相手の RX につながる TX など）は、host が idle で明示し、保存する。
+  mode 3 / 4 では、そのピンが空きの間ずっと、probe がその level で駆動する。idle が無いピンは Hi-Z。治具の配線で相手の入力が浮くピン（相手の RX につながる TX など）は、host が idle で明示し、保存する。
+  出力の mode は、plan が持っていない間もある level を保たなければならない channel（target の電源のスイッチなど）のためにある。
+  その channel を出力として駆動できない probe では、mode 3 / 4 の idle は rejected unsupported。
+  （参考）出力の idle が target の出力とぶつからないようにするのは、配線の責任である。
 
 ### 1.1 slot（スロット）
 
@@ -179,7 +182,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
   fn のまま）。指す interface が無いか、revision が違えば、**保存全体を適用しない**（一部だけ入れると治具が半端に動く。storage の
   状態は「あり・読めない」、理由 2）。指していない interface の追加・削除・並べ替えは、保存に影響しない。
 - 保存の形（probe の中の持ち方）は probe が決める。読み替えの規則だけが規範。
-- 起動時は、保存を今の設定にして（上の確かめを通ったとき）、idle を掛け、plan を適用し、uart を掛け、at boot のスロットの attach を
+- 起動時は、保存を今の設定にして（上の確かめを通ったとき）、idle を掛け（mode 3 / 4 の出力の駆動を含む）、plan を適用し、uart を掛け、at boot のスロットの attach を
   始め、bind を結ぶ。保存を読めないときは適用せず、state で知らせる。
 
 **断り方の表**（core §4.3 の順）:
@@ -188,7 +191,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
 |---|---|
 | 形の誤り、同じキーが 2 回、name の文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
 | 指す fn が無い（plan、slot の wire_fn、bind の kind 2、uart） | unknown_function |
-| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、idle_clock 1 を rvswd 以外、守れない max_speed_hz、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、保存の無い probe の save / erase | unsupported |
+| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、idle_clock 1 を rvswd 以外、守れない max_speed_hz、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、保存の無い probe の save / erase | unsupported |
 | plan_roles 超え、ピンや資源の取り合い、at boot のスロットが max_connections を超える、保存先が足りない | unavailable（cause 2 / 1 / 2 / 3） |
 
 ## 3. スロットの接続と状態
@@ -200,6 +203,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
 | 0 host | probe は自分から attach しない。host の attach でスロットの接続ができたら、bind はそれに乗る |
 | 1 at boot | 起動時と、そのスロットの項目を set した直後。いなければ retry_ms ごとにやり直す（0 ならやり直さない） |
 
+- 起動時の自動の attach は、すべての idle（mode 3 / 4 の出力の駆動を含む）を掛けた後に始める（§2 の起動の順）。
 - **自動の attach（at boot）は止めない attach（method 0）だけ**で、スロットのピンの組で、[線とデバッグ](oep-if-debug.ja.md)
   §1 の規則どおりに行う。錠が合わなければ、コンソールを開かずに自分の分を外す（状態は錠に不一致）。
 - 自動の attach は、接続に時間のかかる場合を先に払っておくもの。外れていれば、host は使うときに自分で attach する。

@@ -68,7 +68,7 @@
   （境目が要るなら host が mark を付ける）。**位置とマークの serial は、plan を解いて再び作っても起動の中で戻らない**
   （[共通部品](oep-if-common.ja.md) §1.1）。受信の誤りは mark lost（detail 2 framing、3 parity）。
 - **TX の線は、plan で割り当てている間（configure の前も）UART の休止（high）に保つ**（相手の受信が雑音を拾わないため）。plan を
-  解いたら駆動をやめ、core §8 の空きの状態にする。解いた後も相手の入力を浮かせたくない治具は、`oep.probe.config` の idle で
+  解いたら UART の駆動をやめ、core §8 の空きの状態にする。解いた後も相手の入力を浮かせたくない治具は、`oep.probe.config` の idle で
   そのピンをプルアップの入力に決めて保存する。
 - 扱える format は describe の formats（tag 0x40、n(u8)、n × u8。configure の TLV 0x01 の値）で宣言する。8N1（0）は必須。
 - 片方向だけの UART（RX だけ、TX だけ）は、plan で片方の role だけを割り当てる。ピンの組が決まっている probe は、RX だけの組と
