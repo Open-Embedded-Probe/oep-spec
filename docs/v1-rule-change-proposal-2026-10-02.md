@@ -28,7 +28,7 @@ The premise is the review's: people we have never met build probes and hosts fro
 - **agreed with condition**: accepted on the condition stated in the item. The condition is folded into the proposed text unless the item says it is still to be met.
 - **open**: not settled. The item says what is missing.
 
-Open items: P2-★4's cold-attach measurement (bench, before the freeze).
+Open items: P2-★4's cold-attach measurement (bench, before the freeze). For the peers' review: the RVSWD and SWIO frames of debug §3.1 / §3.2 (7392817), a rule addition written from the reference probe (no item above).
 
 **Final answers.**
 
@@ -72,42 +72,42 @@ Open items: P2-★4's cold-attach measurement (bench, before the freeze).
 | id | topic | sev | one line | breaking | status |
 |---|---|:---:|---|:---:|---|
 | C-01 | 1 errors / extensibility | ★ | The tag number is the low 7 bits; the registry writes 0x10, not 0x90 | no (registry constant changes) | agreed; applied d48ca6d |
-| C-02 | 1 errors / extensibility | ★ | A value a later revision may define → unsupported, not malformed | yes | agreed; applied d48ca6d (core, probe-config parts) |
+| C-02 | 1 errors / extensibility | ★ | A value a later revision may define → unsupported, not malformed | yes | agreed; applied d48ca6d (core, probe-config), fb44490 (interfaces) |
 | C-03 | 1 errors / extensibility | ★ | Repeated, short and extended request TLVs | yes | agreed; applied d48ca6d |
 | O-5 | 1 errors / extensibility | ○ | 0xF0 to 0xFE of u8 enums are experimental | no | agreed; applied d48ca6d |
 | C-04 | 2 ignored cap | ★ | ignored: at most 16 entries, 0x00 marks "more", never left out | yes | agreed; applied cd15f53 |
 | C-06 | 3 timing | ★ | The host's wait adds the UART transfer time and starts after the previous answer | no | agreed; applied f7d6d21 |
-| P2-★4 | 3 timing | ★ | Wire retries 200 ms per request, wire loss 1000 ms of real time, attach budget 1000 ms, scan budget 500 ms | yes | agreed with condition |
-| P2-○3 | 3 timing | ○ | dmi: only time-based waits count against max_op_ms | no | agreed |
-| C-07 | 4 transports | ★ | No 200 ms restart on TCP; over-long lengths; resync waits 250 ms after the host's last write | yes | agreed; applied 48b8cbe |
+| P2-★4 | 3 timing | ★ | Wire retries 200 ms per request, wire loss 1000 ms of real time, attach budget 1000 ms, scan budget 500 ms | yes | agreed with condition; applied 3a88ec9 (debug), f7d6d21 (core), 18d7eac (registry). The cold-attach measurement is still open |
+| P2-○3 | 3 timing | ○ | dmi: only time-based waits count against max_op_ms | no | agreed; applied 3a88ec9 |
+| C-07 | 4 transports | ★ | No 200 ms restart on TCP; over-long lengths; resync waits 250 ms after the host's last write | yes | agreed; applied 48b8cbe, 0bb10e8 (§5.1 on TCP) |
 | C-08 | 4 transports | ★ | max_frame / window / max_inflight are per transport | no | agreed; applied 48b8cbe |
 | C-09 | 4 transports | ★ | UART bridge 115200 8N1 without flow control; line coding and DTR do not gate OEP | no | agreed; applied 48b8cbe |
 | C-05 | 4 transports | ★ | confirm's answer says which transport it came on; a TCP endpoint is a probe | no | agreed with condition; applied 48b8cbe |
 | C-15 | 5 revision scope | ★ | What a protocol revision covers; confirm never changes; the range in the refusal | yes | agreed; applied 929bbb7 |
-| P2-★1 | 6 electrical safety | ★ | scan count = 0 leaves out channels with an idle item; output-idle channels are refused | yes | agreed — core / probe-config / registry part applied 18d7eac |
-| P2-★2 | 6 electrical safety | ★ | spi-target drives MISO only while CS is active | yes (one probe build, measured) | agreed |
-| P2-★3 | 6 electrical safety | ★ | i2c-target is open-drain only; internal pull-ups are declared | no | agreed |
-| P2-○13 | 6 electrical safety | ○ | Taking a plan does not change a pin; logic capture only listens | yes | agreed — core / registry part applied 18d7eac |
-| P2-★5 | 7 debug wires | ★ | A combination the declaration does not allow → unsupported | no (the probe does it already) | agreed |
-| P2-★7 | 7 debug wires | ★ | What every wire shares, and what a new wire (JTAG...) defines; a wire without pins | no | agreed — probe-config part applied 18d7eac |
-| P2-★8 | 7 debug wires | ★ | What the probe may write before the speed is verified; scan writes only the wake / configuration sequence and dmactive | no | agreed with condition |
-| P2-○1 | 7 debug wires | ○ | "Found" is DMSTATUS.version ≥ 2 and ≠ 15, for the ops too | yes | agreed |
-| P2-○4 | 7 debug wires | ○ | What a failed halt / step leaves on the target | yes | agreed |
-| P2-○6 | 7 debug wires | ○ | Console rules split into "every mechanism" and "the DATA0 mechanisms" | no | agreed |
-| P2-○5 | 7 debug wires | ○ | target_id_scheme is one space for the probe | no | agreed |
-| P2-★6 | 8 capture | ★ | Modes, streaming rules and `background` move into the normative text | no | agreed |
-| P2-○8 | 8 capture | ○ | Which configure TLVs the host sends critical (samples is not) | yes (hosts) | agreed with condition |
-| P2-○9 | 8 capture | ○ | What host and probe do during blocking_ms | no | agreed |
-| P2-○10 | 8 capture | ○ | capture-group state table | yes (fake) | agreed |
-| P2-○11 | 8 capture | ○ | Positioned read: beyond the write position, how much, from 3 | no | agreed |
-| P2-○15 | 8 capture | ○ | analog trigger enum loses level / edge | no | agreed |
+| P2-★1 | 6 electrical safety | ★ | scan count = 0 leaves out channels with an idle item; output-idle channels are refused | yes | agreed; applied 0517c2f (debug), 18d7eac (core, probe-config, registry) |
+| P2-★2 | 6 electrical safety | ★ | spi-target drives MISO only while CS is active | yes (one probe build, measured) | agreed; applied 0517c2f |
+| P2-★3 | 6 electrical safety | ★ | i2c-target is open-drain only; internal pull-ups are declared | no | agreed; applied 0517c2f, 18d7eac (registry) |
+| P2-○13 | 6 electrical safety | ○ | Taking a plan does not change a pin; logic capture only listens | yes | agreed; applied 0517c2f (capture), 18d7eac (core, registry), 3d51d4a (core §8 without interface names, fixture) |
+| P2-★5 | 7 debug wires | ★ | A combination the declaration does not allow → unsupported | no (the probe does it already) | agreed; applied 78403b2 |
+| P2-★7 | 7 debug wires | ★ | What every wire shares, and what a new wire (JTAG...) defines; a wire without pins | no | agreed; applied 78403b2 (debug), 18d7eac (probe-config) |
+| P2-★8 | 7 debug wires | ★ | What the probe may write before the speed is verified; scan writes only the wake / configuration sequence and dmactive | no | agreed with condition; applied 78403b2, 18d7eac (registry) |
+| P2-○1 | 7 debug wires | ○ | "Found" is DMSTATUS.version ≥ 2 and ≠ 15, for the ops too | yes | agreed; applied 78403b2 |
+| P2-○4 | 7 debug wires | ○ | What a failed halt / step leaves on the target | yes | agreed; applied 78403b2, 18d7eac (registry) |
+| P2-○6 | 7 debug wires | ○ | Console rules split into "every mechanism" and "the DATA0 mechanisms" | no | agreed; applied 78403b2 |
+| P2-○5 | 7 debug wires | ○ | target_id_scheme is one space for the probe | no | agreed; applied 78403b2, 18d7eac (registry) |
+| P2-★6 | 8 capture | ★ | Modes, streaming rules and `background` move into the normative text | no | agreed; applied a35acb0, 18d7eac (registry) |
+| P2-○8 | 8 capture | ○ | Which configure TLVs the host sends critical (samples is not) | yes (hosts) | agreed with condition; applied a35acb0 |
+| P2-○9 | 8 capture | ○ | What host and probe do during blocking_ms | no | agreed; applied a35acb0 |
+| P2-○10 | 8 capture | ○ | capture-group state table | yes (fake) | agreed; applied a35acb0 |
+| P2-○11 | 8 capture | ○ | Positioned read: beyond the write position, how much, from 3 | no | agreed; applied a35acb0 |
+| P2-○15 | 8 capture | ○ | analog trigger enum loses level / edge | no | agreed; applied a35acb0, 18d7eac (registry) |
 | PC-1 | 9 probe-config | ○ | Line names are also found in the firmware's fixed labels | yes (at boot) | agreed; applied 20967d7 |
 | PC-2 | 9 probe-config | ○ | Names not in the table state no role; standard names in the registry; `x-` for private ones | no | agreed; applied 20967d7 |
 | PC-3 | 9 probe-config | ○ | idle with a pull the channel lacks → unsupported | yes | agreed; applied 20967d7 |
 | PC-4 | 9 probe-config | ○ | The channel of label / idle / disable is < channels and not reserved | yes | agreed; applied 20967d7 |
 | PC-5 | 9 probe-config | ○ | label text: 1 to 32 bytes of UTF-8 without control characters | yes | agreed; applied 20967d7 |
 | PC-6 | 9 probe-config | ○ | get's answer: items run to the end of the payload (wording) | no | agreed; applied 20967d7 |
-| PC-7 | 9 probe-config | △ | Canonical form details for the hash (wording) | no | agreed; applied 20967d7 |
+| PC-7 | 9 probe-config | △ | Canonical form details for the hash (wording) | no | agreed; applied 20967d7; test vector e21a9a2 |
 | PC-8 | 9 probe-config | ○ | Transport indexes do not change across firmware versions; bind at boot | no | agreed; applied 20967d7 |
 | C-10 | 10 conformance | ★ | Normative words; what every probe and host must have | no | agreed; applied 4e62116 |
 | C-16 | 11 other core | ○ | Rejected answers go into the resend table too; §5.2 binds TCP endpoints | no | agreed with condition; applied fc17225 |
@@ -121,16 +121,16 @@ Open items: P2-★4's cold-attach measurement (bench, before the freeze).
 | C-30 | 11 other core | ○ | instance is counted per (name, revision) | no | agreed; applied fc17225 |
 | C-32 | 11 other core | ○ | port_speed: ±2 % baud tolerance, verify_ms 0 in a try | yes | agreed with condition; applied fc17225 |
 | C-33 | 11 other core | ○ | Heartbeat period may be rounded up to 100 ms | no | agreed; applied fc17225 |
-| DS-1 | 12 console dmseq | ★ | DATA0 = 0 is no answer: keep waiting, post again every short wait | yes (target) | agreed |
-| DS-2 | 12 console dmseq | ★ | The ownership rule lists the target's repost exceptions | no | agreed |
-| DS-3 | 12 console dmseq | ★ | The waits are real-time lower bounds, counted so they end with interrupts off | no | agreed |
-| DS-4 | 12 console dmseq | ★ | Byte k is bits 8k..8k+7 of the register | no | agreed |
-| DS-5 | 12 console dmseq | ○ | What restarts the host's count of invalid words | no | agreed |
-| DS-6 | 12 console dmseq | ○ | The target's state at begin() | no | agreed |
-| DS-7 | 12 console dmseq | ○ | "Reading for a long time" becomes 3 s, informative | no | agreed |
-| DS-8 | 12 console dmseq | ★ | Remove the optional host safeguard (rule 0 is mandatory), together with DS-1 | yes (ch32rv host) | agreed with condition |
-| DS-9 | 12 console dmseq | ○ | Clearing dmactive *may* clear DATA0 | no | agreed |
-| DS-10 | 12 console dmseq | ○ | CRC-8 check values | no | agreed |
+| DS-1 | 12 console dmseq | ★ | DATA0 = 0 is no answer: keep waiting, post again every short wait | yes (target) | agreed; applied 67863b1 |
+| DS-2 | 12 console dmseq | ★ | The ownership rule lists the target's repost exceptions | no | agreed; applied 67863b1 |
+| DS-3 | 12 console dmseq | ★ | The waits are real-time lower bounds, counted so they end with interrupts off | no | agreed; applied 67863b1 |
+| DS-4 | 12 console dmseq | ★ | Byte k is bits 8k..8k+7 of the register | no | agreed; applied 67863b1 |
+| DS-5 | 12 console dmseq | ○ | What restarts the host's count of invalid words | no | agreed; applied 67863b1 |
+| DS-6 | 12 console dmseq | ○ | The target's state at begin() | no | agreed; applied 67863b1 |
+| DS-7 | 12 console dmseq | ○ | "Reading for a long time" becomes 3 s, informative | no | agreed; applied 67863b1 |
+| DS-8 | 12 console dmseq | ★ | Remove the optional host safeguard (rule 0 is mandatory), together with DS-1 | yes (ch32rv host) | agreed with condition; applied 67863b1 |
+| DS-9 | 12 console dmseq | ○ | Clearing dmactive *may* clear DATA0 | no | agreed; applied 67863b1 |
+| DS-10 | 12 console dmseq | ○ | CRC-8 check values | no | agreed; applied 67863b1; test vector e21a9a2 |
 
 Items per topic:
 
