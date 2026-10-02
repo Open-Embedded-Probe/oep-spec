@@ -29,7 +29,7 @@ v1 の凍結は、host と probe が別々に作られても噛み合うため�
 | フレームの形（COBS + CRC-16、`length(u16)`、HID の report、見出しの並びと長さ、confirm の前の 64 byte） | [core](oep-core.ja.md) §3 |
 | メッセージの形（要求 / 応答 / 出来事 / データの固定部、TLV の形と critical の規則、reject reason、outcome、断り方の順） | core §2、§4 |
 | 標準インターフェースの payload（op の表、固定部、TLV の tag、出来事、status、資源の寿命） | `oep-if-*.ja.md` |
-| **registry/oep-v1.toml のすべての数**（op、tag、reason、status、enum、`timing`、`limits`、`usb`、インターフェースの名前と revision）。ただし名前に `reference` を含む値（`reference_vid`、`reference_pid`、`max_op_ms_reference`）は参照 firmware の値で、規範ではなく凍結しない | [registry](../registry/oep-v1.toml)、生成物 |
+| **registry/oep-v1.toml のすべての数**（op、tag、reason、status、enum、`timing`、`limits`、`usb`、インターフェースの名前と revision）。ただし名前に `reference` を含む値（`max_op_ms_reference`）は参照 firmware の値で、規範ではなく凍結しない | [registry](../registry/oep-v1.toml)、生成物 |
 | core と `oep-if-*` の規範の文（「〜する」「〜しない」の文。[dmseq](target-console-dmseq.ja.md) を含む） | 各文書 |
 
 凍結の後にこれらを変えるときは **revision を上げる**（固定部か意味を変えるインターフェースはその revision、本体の形はプロトコルの
@@ -128,8 +128,9 @@ revision。core §2.7）。後ろに足す（任意の TLV、任意の op、出�
 - **(b) vendor bulk の経路**: `bInterfaceClass 0xFF` で、`iInterface` が `OEP` で始まるインターフェースの bulk IN / OUT 1 組、と
   core §3.3 に書く（今の client は「最初の bulk 対」を掴んでいて、DFU や CDC が先にあると外れる）。
 - **(c) HID の経路**: usage page / usage、report ID、report の長さを core §3.3 に書く（今の実装の値で固める）。
-- **(d) PID を取った後**: firmware は VID:PID を 1209:4F45 に替えるだけ。host の発見は今も iProduct の `OEP` で見るので影響なし。
-  bench などの VID:PID の決め打ちは、それまでに serial（unit_id）か iProduct で探す形に替える。usb-identity の iProduct を今の値に直す。
+- **(d) VID:PID**: 今は仮の USB の ID（ボードの既定の VID:PID）で動かしていて、配布には使えない。専用の PID を取得できたら、
+  それに切り替える予定。host の発見は iProduct の `OEP` で見るので、host には影響なし。bench などの VID:PID の決め打ちは、serial（unit_id）か
+  iProduct で探す形に替える。usb-identity の iProduct を今の値に直す。
 
 追随: probe（USB の serial）、client（発見、vendor の選び方）、ch32rv、bench（toml、dfu.py）、ArduinoCore-CH32 の IDE の保存値。
 

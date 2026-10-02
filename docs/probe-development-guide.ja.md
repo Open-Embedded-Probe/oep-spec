@@ -102,11 +102,12 @@ core §3.4 の規則を守るための作り（2026-09-29）。
 | EspUsbDevice の CDC（P4 の HS） | 元から持たない |
 | classic ESP32 などの UART bridge | 変換チップの先の自動リセット回路なので、firmware では止められない。host が DTR と RTS を両方立てて開く（host 開発ガイド §1）。止められないものは describe の resets_on_open で宣言する |
 
-## 3.8 推奨の USB の作り（専用 PID と HID の口）
+## 3.8 推奨の USB の作り（VID:PID、iProduct と HID の口）
 
 ネイティブ USB を持つ probe（ESP32-P4 の HS の口、RP2350 など）の推奨の形:
 
-- **OEP の専用の VID:PID で列挙する**（pid.codes で取る。まだ取っていない。参照 firmware の値で、規範ではない）。**host の discovery は USB の
+- **VID:PID は規範ではない**。今は仮の USB の ID（ボードの既定の VID:PID）で動かしていて、配布には使えない。専用の PID を取得できたら、
+  それに切り替える予定。**host の discovery は USB の
   device の名前（iProduct が `OEP` で始まる）で OEP の probe を見分ける**ので、iProduct を `OEP` で始める（恒久の規範、core §3.3。PID を
   取っても名前での判定は変わらない）。device の中の口は interface の種類で決まる（core §3.3: CDC はすべてシリアルの口）。この形で列挙する probe
   は、fn 0 の describe の discoverable を 1 にする（USB-Serial/JTAG のように別の口から開かれても、host がそれで分かる）。
