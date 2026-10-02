@@ -49,7 +49,7 @@
 | 8 | debug §4.5 / §6 と fixture §3 / §4 | 同じ「describe の max_length 超え」が block では **malformed**、i2c / spi では **unsupported**。core §4.3 の順 6 は「定義にあるが持たない（範囲外）」を unsupported と定める | debug L295 / L354、fixture L96 / L129 |
 | 9 | core §7.5 の表 | 0x4E port_speed の行が 0x4D max_op_ms の前（並びだけ） | core L542-543 |
 | 10 | usb-identity §2 | `oep_pid = 1` のまま（7.1-12 で `discoverable` に改名） | `grep -rn oep_pid docs/` |
-| 11 | probe-development-guide §3.8 | 「PID を取ったら名前での判定は無くなる」のまま（3.4d: iProduct `OEP` 接頭は恒久の規範） | L110-111 |
+| 11 | probe-development-guide §3.8 | 「PID を取ったら名前での判定は無くなる」のまま（3.4d: iProduct `OEP` 接頭は恒久の規範）（2026-10-02 に置き換え: [core §3.3](oep-core.ja.md)。iProduct と interface の文字列は見分けに使わない。暫定の手がかりは host 開発ガイド §1.7） | L110-111 |
 | 12 | probe-config §4 | 表の見出し行が 2 回（L242-243 の空の表） | 目視 |
 
 registry そのものは `tools/oepgen1.py --check` が exit 0 で、op 番号・ロック要否・tag・enum は全文書と一致。食い違いは**コメントと本文の
@@ -139,7 +139,7 @@ registry そのものは `tools/oepgen1.py --check` が exit 0 で、op 番号�
 
 ### ★10 core §7.3 のページングの終わり: 「list は total で終わりが分かる（more を持たない）。describe、state、connections、streams、segments、get は first が数以上なら count 0 と more 0」。(b)-4。
 
-### ★11 細かい文言（凍結前にまとめて）: debug §4.1 `us(u32)` → `wait_us(u32)`（(b)-5）、core §7.5 の 0x4D / 0x4E の並び（(b)-9）、probe-config §4 の重複した表の見出し（(b)-12）、usb-identity §2 `oep_pid` → `discoverable`（(b)-10）、probe 開発ガイド §3.8「PID を取ったら名前での判定は無くなる」→「iProduct `OEP` 接頭は恒久（core §3.3）」（(b)-11）。
+### ★11 細かい文言（凍結前にまとめて）: debug §4.1 `us(u32)` → `wait_us(u32)`（(b)-5）、core §7.5 の 0x4D / 0x4E の並び（(b)-9）、probe-config §4 の重複した表の見出し（(b)-12）、usb-identity §2 `oep_pid` → `discoverable`（(b)-10）、probe 開発ガイド §3.8「PID を取ったら名前での判定は無くなる」→「iProduct `OEP` 接頭は恒久（core §3.3）」（(b)-11）。（2026-10-02 に置き換え: [core §3.3](oep-core.ja.md)。iProduct と interface の文字列は見分けに使わない。暫定の手がかりは host 開発ガイド §1.7）
 
 ### ★12 release-testing を「案」から「決めた」に（事実 7）
 

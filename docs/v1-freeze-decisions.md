@@ -15,7 +15,7 @@ Each item: **proposal**, what changes, what follows. ★ marks items the user wa
 13 (the client's API), 11 (the reservations stay as the present documents have them).
 The sequence of bind in 1 was missed, and was put into probe-config §1.2 on 2026-10-01 (len before each element, the same as sequences in answers).
 12 changed with the zero-base re-examination of 2026-10-01: the label of the settings is not put in the core's describe but read with get of probe.config (describe is only a declaration).
-3(b) (iProduct `OEP`) became permanent normative text, and 3(c) (the HID report) was reflected in a form that leaves it to the descriptor. The reference "probe-cdc §6 / §7" in 11 is
+3(b) (iProduct `OEP`) became permanent normative text (Superseded on 2026-10-02 by [core §3.3](oep-core.md): neither iProduct nor interface strings are used for identification. Interim clues are in the host development guide §1.7.), and 3(c) (the HID report) was reflected in a form that leaves it to the descriptor. The reference "probe-cdc §6 / §7" in 11 is
 an error for open-proposals §6 / §7. Later decisions are in [the zero-base re-examination and the specification proposal](v1-zero-base-proposal.ja.md) (Japanese).
 
 ## 0. Scope of the v1 freeze (2026-10-02)
@@ -126,11 +126,11 @@ Follows: probe (the save form of OepConfig), fake, show of the client.
   The address is `oep://<unit_id>/<slot name>`. The host looks by serial, and if not found, by the unit id of describe.
   **unit_id is 1 to 32 bytes of `a-z 0-9 -`** (the slot name is still `a-z 0-9 - _`). Neither needs encoding in a URL.
 - **(b) The vendor bulk path**: write in core §3.3 that it is the 1 pair of bulk IN / OUT of the interface with `bInterfaceClass 0xFF` whose `iInterface` starts with `OEP`
-  (the present client grabs "the first bulk pair", and misses when DFU or CDC comes first).
+  (the present client grabs "the first bulk pair", and misses when DFU or CDC comes first). (Superseded on 2026-10-02 by [core §3.3](oep-core.md): neither iProduct nor interface strings are used for identification. Interim clues are in the host development guide §1.7.)
 - **(c) The HID path**: write the usage page / usage, report ID and report length in core §3.3 (fixed at the values of the present implementation).
 - **(d) The VID:PID**: the firmware currently runs with a temporary USB ID (the board's default VID:PID), which may not be used for
   distribution. When the project obtains a PID of its own, the firmware will switch to it. Host discovery looks at `OEP` of iProduct, so
-  that has no effect on hosts. Hard-coded VID:PIDs in bench etc. are changed to look by serial (unit_id) or iProduct. Correct the iProduct of usb-identity to the present value.
+  that has no effect on hosts. Hard-coded VID:PIDs in bench etc. are changed to look by serial (unit_id) or iProduct. Correct the iProduct of usb-identity to the present value. (Superseded on 2026-10-02 by [core §3.3](oep-core.md): neither iProduct nor interface strings are used for identification. Interim clues are in the host development guide §1.7.)
 
 Follows: probe (USB serial), client (discovery, how vendor is chosen), ch32rv, bench (toml, dfu.py), the values saved by the IDE of ArduinoCore-CH32.
 

@@ -123,7 +123,7 @@ boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロッ�
   「最大」に限る。これで describe は boot_id が同じ間 cache できる。
 - **(b) 名前**: 1〜64 byte、`a-z 0-9 - .`（見直し 15）。
 - **(c) instance**: 同名のインターフェースを fn の昇順に 0 から。probe は同名の口の順を firmware の版を越えて保つ（見直し 30）。
-- **(d) iProduct `OEP` 接頭を恒久の規範に**。vendor bulk は class 0xFF かつ `bInterfaceSubClass = 0x4F ('O'), bInterfaceProtocol = 0x45 ('E')`、
+- **(d) iProduct `OEP` 接頭を恒久の規範に**（2026-10-02 に置き換え: [core §3.3](oep-core.ja.md)。iProduct と interface の文字列は見分けに使わない。暫定の手がかりは host 開発ガイド §1.7）。vendor bulk は class 0xFF かつ `bInterfaceSubClass = 0x4F ('O'), bInterfaceProtocol = 0x45 ('E')`、
   HID は usage page 0xFF4F / usage 0x45 に固定（見直し 16）。プロジェクトの VID:PID は参照 firmware の値として usb-identity に置き、取得後に core を
   書き換える計画をやめる。「serial = unit_id は probe が serial を選べる口に限る。unit_id は個体で一意。固有番号の無い probe は乱数を
   保存して使う」。
@@ -272,7 +272,7 @@ boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロッ�
 | 4 | describe から状態を出して state op に（3.4a） | 出す | 今のまま。「状態の TLV は宣言の後ろ」と順序だけ決める |
 | 5 | block op の自己完結（3.8a） | する | 今の probe の動きを規範に書く |
 | 6 | attach の一本化（3.8b） | する | attach_under_reset に flags を足すだけ |
-| 7 | iProduct `OEP` を恒久の規範に、interface の subclass / protocol を固定（3.4d） | する | プロジェクトの VID:PID の取得後に core を書き換える今の計画 |
+| 7 | iProduct `OEP` を恒久の規範に、interface の subclass / protocol を固定（3.4d）（2026-10-02 に置き換え: [core §3.3](oep-core.ja.md)。iProduct と interface の文字列は見分けに使わない。暫定の手がかりは host 開発ガイド §1.7） | する | プロジェクトの VID:PID の取得後に core を書き換える今の計画 |
 | 8 | 時刻を ns（u64）の一本に（3.5） | する | mark の後ろに time_ns を足すだけ（ms も残る） |
 | 9 | capture の read に generation を要求する（3.10a） | する | status に generation を足すだけ（read は黙って返す） |
 
@@ -319,7 +319,7 @@ boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロッ�
 10. **describe の TLV の値（bitmap、text、組の並び）は閉じたまま**、足すときは新しい tag — §4 の表に載せる。ただし `channel_group` は
     `group, n(u8), n × (role, channel)` に、capture の `rate_list` / `tracks` / `budget` に `n(u8)`、calibration の `factory` に `raw_len(u16)` を置く。
 11. **describe の tag 0x3F と probe.config の項目 tag 0x7E を「応答のメタ情報」のために予約**（宣言の空間とぶつけない）。
-12. **`oep_pid`（0x4A）→ `discoverable`** に改名、意味は 3.4d の条件（iProduct `OEP` 接頭 + 固定の subclass / protocol で列挙している）。
+12. **`oep_pid`（0x4A）→ `discoverable`** に改名、意味は 3.4d の条件（iProduct `OEP` 接頭 + 固定の subclass / protocol で列挙している）（2026-10-02 に置き換え: [core §3.3](oep-core.ja.md)。iProduct と interface の文字列は見分けに使わない。暫定の手がかりは host 開発ガイド §1.7）。
 13. **`max_op_ms` は fn 0 describe の tag 0x4D**。save もこれに従い、`max_save_ms` は describe から外す。attach の reset TLV の `hold_ms` も
     対象に入れる。1 要求を実行中も、**ほかの connection のコンソールの読みは続ける**（同じ connection は止める）。
 14. **boot_id は 32 bit の乱数でよい**（同じ値になる確率は host が受け入れる）。**保存の無い probe は unit_id を firmware のビルド定数で
