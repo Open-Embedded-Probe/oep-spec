@@ -63,6 +63,8 @@
     byte、または drive_kind が未定義なら rejected malformed。`oep.fixture.gpio` の describe が drive_levels を宣言する probe では、
     kind 0 で drive_value が段の数以上なら rejected unsupported。drive_levels を宣言しない probe（`oep.fixture.gpio` の無い probe を
     含む）は、このフィールドを持つが効かせない（強さは既定のまま）。
+    （参考）gpio の set の drive の TLV が範囲外の段を無視するのと違い、ここで断るのは、保存して起動のたびに使う設定の誤りを、書いたときに
+    知らせるためである。
   - mode 3 / 4 の idle は、その level と強さを一緒に掛ける（起動時も解放のときも）。
 
 ### 1.1 slot（スロット）
