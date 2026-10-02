@@ -171,7 +171,7 @@ In addition to [common parts](oep-if-common.md) §2:
   an exchange on that wire succeeds, or until the connection is lost, the probe rests the wire's lines in the free state between exchanges and drives them only
   during an exchange (each retry is an exchange). The free state is undriven, with no pull or with a pull toward the line's rest level on that connection. For a
   clock line of a connection that uses idle_clock 1 (low), that is no pull or a pull-down, never a pull-up. When an exchange succeeds again, the probe restores the
-  rest state of the connection (the clock line at the idle_clock level, and the data line's rest state) before the next exchange. While exchanges succeed, the rest
+  rest state of the connection (the clock line at the idle_clock level, and the data line's rest state: rvswd §3.1, swio §3.2, swd §5) before the next exchange. While exchanges succeed, the rest
   state between exchanges is the one the wire's section defines, unchanged by this rule.
 - (Informative) Otherwise, a target that has lost power is powered back through the protection diodes of its pins by the lines the probe keeps driving.
 - **When the probe closes a connection, it does not change the target's state more than necessary** (it does not reset the target. A hart that was halted is left as the
@@ -527,6 +527,16 @@ dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rej
 - **Wake / configuration sequence** (§1 item 1): the JTAG-to-SWD switch, the dormant wake, and TARGETSEL when one is given. swd names no scratch register.
 - attach tries the switch from JTAG to SWD, and if there is no answer wakes it from dormant (flags bit2). Power-up (the CDBGPWRUPREQ /
   CSYSPWRUPREQ of CTRL/STAT) is done by the host with DP writes. In the retries of §2, the line reset and the wake from dormant are redone.
+- **Lines and packets**: the wire has two lines, SWDIO (pin role 1) and SWCLK (pin role 2), and uses the SWD protocol of the Arm Debug Interface (ADIv5 / ADIv6).
+  The probe always drives SWCLK. A packet is one SWD packet of that protocol: the request, the acknowledgement and the data phase the protocol gives it, with their
+  turnaround cycles. Each packet, and each of the line reset, the JTAG-to-SWD switch and the dormant wake sequences, is one exchange of §2.
+- **Who drives SWDIO**: the target drives SWDIO only in the acknowledgement and read-data phases, with the turnaround cycles as the protocol defines. The probe
+  drives it at all other times, except in the free state of §2.
+- **Idle cycles**: after every packet, and after each of the sequences above, the probe clocks at least 8 idle cycles: clock cycles with SWDIO driven low by the
+  probe. They are part of that exchange (§2).
+- **Rest state** (between exchanges): SWDIO driven low by the probe and SWCLK driven high.
+- **Before the probe stops driving the lines** (when a detach or anything else closes the connection, when the probe releases the pins, or for the free state of
+  §2 "Lines while the wire does not answer"), it clocks the 8 idle cycles after the last packet, so that the target completes that packet.
 - **targetsel (TLV 0x02, u32) is sent critical** (only for multidrop. If ignored, it would attach to a different target). **The identity of a connection
   includes targetsel.** An attach whose targetsel (including none) differs from a live connection with the same pin combination is rejected unavailable
   (the host detaches first). If the same, that connection is returned as is. scan tries without targetsel (multidrop targets that require TARGETSEL

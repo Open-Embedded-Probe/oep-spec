@@ -171,7 +171,7 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
   probe はやり取りの間、その線を放した状態で休ませ、やり取りの最中だけ駆動する（再試行の 1 回 1 回もやり取り）。放した状態とは駆動しない状態で、
   pull 無しか、その connection でのその線の休みの level に向けた pull とする。idle_clock 1（low）を使う connection のクロックの線では、
   pull 無しか pull-down で、pull-up にはしない。やり取りがまた成功したら、probe は次のやり取りの前に connection の休み方（クロックの線は
-  idle_clock の level、データの線はその休み方）に戻す。やり取りが成功している間の、やり取りの間の休み方は wire の節が定めるとおりで、この規則では変わらない。
+  idle_clock の level、データの線はその休み方: rvswd は §3.1、swio は §3.2、swd は §5）に戻す。やり取りが成功している間の、やり取りの間の休み方は wire の節が定めるとおりで、この規則では変わらない。
 - （参考）そうしないと、電源を失った target は、probe が駆動し続ける線から、ピンの保護ダイオードを通して逆に給電される。
 - **probe は connection を閉じるとき、target の状態を必要以上に変えない**（target を reset しない。止めていた hart は、閉じる前の
   host の操作のままにする）。
@@ -526,6 +526,16 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 - **wake / 設定の手順**（§1 の 1）: JTAG から SWD への切り替え、dormant からの wake、与えられたときの TARGETSEL。swd は scratch のレジスタを名指さない。
 - attach は JTAG から SWD への切り替えを試し、答えがなければ dormant から起こす（flags bit2）。電源投入（CTRL/STAT の CDBGPWRUPREQ /
   CSYSPWRUPREQ）は host が DP の書き込みで行う。§2 の再試行では、line reset と dormant 起こしをやり直す。
+- **線と packet**: この wire の線は SWDIO（ピンの役 1）と SWCLK（ピンの役 2）の 2 本で、Arm Debug Interface（ADIv5 / ADIv6）の SWD の手順を使う。
+  probe は SWCLK を常に駆動する。packet とは、その手順の 1 つの SWD packet で、要求、確認応答、手順がそれに与えるデータの相を、それらの
+  turnaround のサイクルとともに含む。packet の 1 つ 1 つと、line reset、JTAG から SWD への切り替え、dormant からの wake の手順の 1 つ 1 つが、§2 の 1 つのやり取りである。
+- **SWDIO を駆動する側**: target が SWDIO を駆動するのは確認応答と読みのデータの相だけで、turnaround のサイクルは手順の定めるとおりとする。probe は
+  それ以外のときはいつも駆動する（§2 の放した状態を除く）。
+- **idle サイクル**: probe は、どの packet の後にも、また上の手順の 1 つ 1 つの後にも、少なくとも 8 回の idle サイクルを刻む: SWDIO を probe が
+  low に駆動したクロックのサイクルである。これはそのやり取りの一部である（§2）。
+- **休み方**（やり取りの間）: SWDIO は probe が low に駆動し、SWCLK は high に駆動する。
+- **probe が線の駆動をやめる前に**（detach などで connection が閉じるとき、probe がピンを放すとき、または §2 の「線が応えない間の線」の
+  放した状態にするとき）、最後の packet の後の 8 回の idle サイクルを刻み、target がその packet を終えられるようにする。
 - **targetsel（TLV 0x02、u32）は critical で送る**（multidrop のときだけ。無視されると別の target に attach するため）。**connection の
   同一性には targetsel を含める**。同じピンの組の生きている connection と targetsel（無しを含む）が違う attach は rejected unavailable
   （host が先に detach する）。同じなら、その connection をそのまま返す。scan は targetsel なしで試す（TARGETSEL が要る multidrop の
