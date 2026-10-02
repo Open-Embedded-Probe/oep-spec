@@ -22,7 +22,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
 |---:|---|---|---|
 | 0x01 | plan | fn(u16), role(u8), channel(u16) (1 assignment per item) | (fn, role, channel) (the items of the same fn make up the plan of that fn) |
 | 0x02 | label | channel(u16), text | channel |
-| 0x03 | idle | channel(u16), mode(u8: 0 Hi-Z, 1 input with pull-up, 2 input with pull-down, 3 output low, 4 output high) | channel |
+| 0x03 | idle | channel(u16), mode(u8: 0 Hi-Z, 1 input with pull-up, 2 input with pull-down, 3 output low, 4 output high), [drive_kind(u8), drive_value(u16)] | channel |
 | 0x04 | slot | §1.1 | slot |
 | 0x05 | bind | §1.2 | port |
 | 0x06 | uart | fn(u16), baud(u32), format(u8) (the same values as configure of `oep.fixture.uart`) | fn |
@@ -58,6 +58,12 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
   The output modes exist for a channel that must keep a level even while no plan holds it (the switch of the target's power, etc.).
   On a probe that cannot drive that channel as an output, an idle with mode 3 / 4 is rejected unsupported.
   (Informative) Keeping an output idle from meeting an output of the target is the responsibility of the wiring.
+  - **Strength (optional)**: drive_kind(u8), drive_value(u16) may be placed after mode (the same kind and value as the strength specification of [fixture](oep-if-fixture.md) §1.1).
+    If not placed, the default level. Only mode 3 / 4 can carry them, and placing them with another mode is rejected malformed. A value length of 4 or 5
+    bytes, or an undefined drive_kind, is rejected malformed. On a probe whose describe of `oep.fixture.gpio` declares drive_levels,
+    kind 0 with drive_value equal to the number of levels or more is rejected unsupported. A probe that does not declare drive_levels (including a probe without `oep.fixture.gpio`)
+    keeps this field but does not apply it (the strength stays the default).
+  - An idle with mode 3 / 4 applies its level and its strength together (both at boot and at release).
 
 ### 1.1 slot
 
@@ -66,11 +72,12 @@ A slot is a registration of the **place** where a target is connected (not a reg
 ```text
 slot(u8), wire_fn(u16), swdio(u16), swclk(u16), attach(u8), retry_ms(u32), max_speed_hz(u32), idle_clock(u8), mechanism(u8),
 name_len(u8), name,
-lock_len(u8), lock_scheme(u8), lock_mask(n byte), lock_value(n byte)
+lock_len(u8), lock_scheme(u8), lock_mask(n byte), lock_value(n byte),
+[boot_reset(u8)]
 ```
 
-lock_len is the length of the lock part (from lock_scheme to lock_value). 0 is no lock (nothing from lock_scheme onwards is placed). After the lock is the place for fields
-added later (core §2.3. The reader skips the unknown tail).
+lock_len is the length of the lock part (from lock_scheme to lock_value). 0 is no lock (nothing from lock_scheme onwards is placed). After the lock, an optional
+boot_reset may be placed (0 if not placed). After it is the place for fields added later (core §2.3. The reader skips the unknown tail).
 
 | Field | Meaning |
 |---|---|
@@ -86,6 +93,7 @@ added later (core §2.3. The reader skips the unknown tail).
 | lock_len | The length of the lock part. 0 (no lock) or 1 + 2n (n ≥ 1). Others are rejected malformed |
 | lock_scheme | Only when there is a lock. The scheme of target_id ([wire and debug](oep-if-debug.md) §1). 0 is not placed (no lock is lock_len 0). A scheme in the definition that the wire does not have is rejected unsupported, an undefined value is malformed |
 | lock_mask, lock_value | Only when there is a lock. The same length n = (lock_len − 1) / 2. **n is the same as the length of the value of that scheme** (4 for scheme 1. If different, rejected malformed. The length is `target_id_scheme` of the registry). The byte order is the same as the value of target_id in the answer to attach (for scheme 1, u32 little endian) |
+| boot_reset | Optional. Whether, when the automatic attach at boot got no answer from the wire, the probe attaches once more using the reset line (§3.1): 0 no, 1 yes. 0 if not placed. 2 or more is rejected malformed. 1 on a slot that is not at boot is rejected malformed |
 
 - max_speed and idle_clock are properties of the target ([wire and debug](oep-if-debug.md) §3), used when the probe attaches the slot itself
   (at boot, retry). A host's attach passes its own values in the respective TLVs (the slot's values are not used).
@@ -145,6 +153,22 @@ port(u8), mode(u8), selected(u8), n(u8), n × (len(u8), kind(u8), id(u16))
   item (§1) or the session's configure.
 - DTR / RTS / the 1200 baud touch and the CDC line coding do nothing (neither the target nor the probe is reset, nothing is attached, and the baud is not changed).
 
+### 1.3 Line names (the label convention)
+
+Among the texts of label (§1), the following names state the role of a line. A text and a name are compared ignoring ASCII case.
+
+| Name | Line | Used by |
+|---|---|---|
+| `nrst` | The target's reset line | The probe (the retry with reset of §3.1) and the host |
+| `power_hi` | A line that powers the target when high | The host only (the probe does not use it) |
+| `power_lo` | A line that powers the target when low | The host only (the probe does not use it) |
+
+- **Finding a slot's line** (name N, slot name S): the channel of the label whose text equals `S.N`. If there is none, and only when the settings hold
+  at most one slot item, the channel of the label whose text equals `N`. If neither finds one, that slot has no such line.
+- If two or more channels match at the same step (`S.N` or `N`), that slot is taken to have no such line.
+- In settings without slot items, the channel of the label equal to `N` is that line of the target connected to the probe (none if two or more match).
+- The probe does not use `power_hi` and `power_lo` (it does not drive the power line). The host finds the power line with the same search.
+
 ## 2. Operations
 
 | op | Name | Request | Answer | Lock |
@@ -182,16 +206,16 @@ port(u8), mode(u8), selected(u8), n(u8), n × (len(u8), kind(u8), id(u16))
   with fn). If an interface pointed to does not exist, or the revision differs, **the whole save is not applied** (putting in only part would make the fixture behave half-way. The storage
   state is "present, unreadable", reason 2). Adding, removing or reordering interfaces that are not pointed to does not affect the save.
 - The form of the save (how it is kept inside the probe) is decided by the probe. Only the rewriting rule is normative.
-- At boot, the probe makes the save the current settings (when it passes the checks above), applies idle (including driving the outputs of mode 3 / 4), applies the plan, applies uart, starts the attach of the at boot slots,
+- At boot, the probe makes the save the current settings (when it passes the checks above), applies idle (including driving the outputs of mode 3 / 4, together with their strength), applies the plan, applies uart, starts the attach of the at boot slots,
   and connects the binds. When the save cannot be read it is not applied, and this is reported in state.
 
 **Table of refusals** (in the order of core §4.3):
 
 | Situation | reason |
 |---|---|
-| Form errors, the same key twice, characters of name, range of selected, retry_ms not 0 on a host slot, length of lock, putting a slot with mechanism 0xFF on a bind, a bind pointing to a nonexistent slot, two slots with the same wire_fn and the same pins, duplicate name | malformed |
+| Form errors, the same key twice, characters of name, range of selected, retry_ms not 0 on a host slot, length of lock, the value of boot_reset and boot_reset 1 on a host slot, a drive of an idle that is not mode 3 / 4, and the length and drive_kind of an idle's drive, putting a slot with mechanism 0xFF on a bind, a bind pointing to a nonexistent slot, two slots with the same wire_fn and the same pins, duplicate name | malformed |
 | The fn pointed to does not exist (plan, wire_fn of slot, kind 2 of bind, uart) | unknown_function |
-| An undeclared item, a pin combination the wire does not allow, a wire_fn whose wire cannot have a lock, a mechanism the console does not declare, an idle with mode 3 / 4 on a channel that cannot be driven as an output, idle_clock 1 on other than rvswd, a max_speed_hz that cannot be kept, a mode not in bind_modes, a port that is not a serial port, an fn that is not uart, an unrealisable baud / format, save / erase on a probe without saving | unsupported |
+| An undeclared item, a pin combination the wire does not allow, a wire_fn whose wire cannot have a lock, a mechanism the console does not declare, an idle with mode 3 / 4 on a channel that cannot be driven as an output, an idle's level number equal to the number of levels or more, idle_clock 1 on other than rvswd, a max_speed_hz that cannot be kept, a mode not in bind_modes, a port that is not a serial port, an fn that is not uart, an unrealisable baud / format, save / erase on a probe without saving | unsupported |
 | plan_roles exceeded, contention for pins or resources, at boot slots exceeding max_connections, not enough room to save | unavailable (cause 2 / 1 / 2 / 3) |
 
 ## 3. Slot connections and state
@@ -203,7 +227,7 @@ port(u8), mode(u8), selected(u8), n(u8), n × (len(u8), kind(u8), id(u16))
 | 0 host | The probe does not attach on its own. When a host's attach creates the slot's connection, the bind rides on it |
 | 1 at boot | At boot, and right after the item of that slot is set. If the target is not there, retried every retry_ms (no retry if 0) |
 
-- The automatic attach at boot starts after all idle states (including driving the outputs of mode 3 / 4) have been applied (the boot order of §2).
+- The automatic attach at boot starts after all idle states (including driving the outputs of mode 3 / 4, together with their strength) have been applied (the boot order of §2).
 - **The automatic attach (at boot) is only a non-halting attach (method 0)**, done with the slot's pin combination according to the rules of [wire and debug](oep-if-debug.md)
   §1. If the lock does not match, the probe removes its own share without opening the console (the state is lock mismatch).
 - The automatic attach is for paying up front for cases where connecting takes time. If it missed, the host attaches by itself when it uses the target.
@@ -214,6 +238,20 @@ port(u8), mode(u8), selected(u8), n(u8), n × (len(u8), kind(u8), id(u16))
   closes the connection and goes into retry (even for a slot with mechanism 0xFF, or without console reads, "not there" is detected). If retry_ms is 0,
   it does not check.
 - The probe does not check slots whose policy is host (it does not drive the wire).
+- **Retry with reset** (a slot with boot_reset 1): when an automatic attach of that slot ended without any answer from the wire
+  (completed failed, status line, [common parts](oep-if-common.md) §3), the probe immediately does the same attach (method 0) once,
+  with the reset line. It behaves like attach's reset TLV ([wire and debug](oep-if-debug.md) §3), and hold_ms is the registry's
+  `slot_retry_reset_hold_ms` (20 ms).
+  - It is done only after boot while no session has taken the lock yet. Once the lock has been taken, it is not done within that boot
+    (even after the lock is released).
+  - It is done only after a failure with status line. It is not done when the attach succeeded (including lock mismatch and target_id not readable), after a failure with a status other than line
+    (including read protection), or after a rejected.
+  - Per slot, at most once in one boot. If the retry fails, the ordinary retries every retry_ms (without reset) continue.
+  - The reset line is the channel of `nrst` found by the search of §1.3. When none is found, or when that channel cannot be used for the reset TLV of the attach of
+    that slot's wire (not in role 3 of role_channels, disabled, held by a plan or a connection, the wire does not have the reset TLV), the probe does not
+    retry with reset.
+  - When it is done, the probe puts the time it started pulling the reset line into reset_at_ns of the state's slot_state (§3.3). The bind selection does not change (the probe's
+    own attach, §1.2).
 
 ### 3.2 State
 
@@ -233,7 +271,8 @@ whether it is connected cannot be known).
 request: first_slot(u8), first_bind(u8)
 answer:  more(u8), storage_state(u8), storage_hash(u32), unreadable_reason(u8),
          n_slots(u8), n_slots × (len(u8), slot_state), n_binds(u8), n_binds × (len(u8), bind_state), [TLV]
-slot_state: slot(u8), state(u8, §3.2), connection(u16, 0 if none), last_try_at_ns(u64: the time of the last automatic attach attempt (the probe's clock), all bits 1 is not tried), tid_scheme(u8, 0 is none), tid_len(u8), tid
+slot_state: slot(u8), state(u8, §3.2), connection(u16, 0 if none), last_try_at_ns(u64: the time of the last automatic attach attempt (the probe's clock), all bits 1 is not tried), tid_scheme(u8, 0 is none), tid_len(u8), tid,
+      reset_at_ns(u64: the time the probe started pulling the reset line in the retry with reset of §3.1 (the probe's clock), all bits 1 is not done)
 bind_state: port(u8), mode(u8), selected(u8: the number in the sequence currently selected. 0xFF for mixed), flow(u8: 0 nothing to send / 1 sending / 2 stopped by a session)
 ```
 

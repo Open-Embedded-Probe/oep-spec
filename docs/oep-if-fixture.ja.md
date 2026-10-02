@@ -18,7 +18,7 @@
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x01 | set | n(u8)、n × (channel(u16)、mode(u8)) | — | 必要 |
+| 0x01 | set | n(u8)、n × (channel(u16)、mode(u8))、[TLV] | — | 必要 |
 | 0x02 | read | n(u8)、n × channel(u16) | n(u8)、n × level(u8: 0 / 1)、[TLV] | 不要 |
 
 | mode | 意味 |
@@ -41,6 +41,28 @@
 - **plan で取ったチャンネルは、最初の set までそれまでの状態を保つ**（空きの状態のまま。出力の idle なら、その level の駆動を続ける）。
   取ったことで level は変わらない。
 - plan を解いたら、そのチャンネルは core §8 の空きの状態に戻る。
+
+### 1.1 出力の強さ（任意）
+
+- **段の宣言**: 出力の強さを切り替えられる probe は、describe の drive_levels（tag 0x41: default(u8)、n(u8)、n × ma(u16)）で、
+  選べる強さ（段）を目安の mA の昇順に並べ、既定の段を宣言する。段の番号は並びの位置（0 から）。n は 2 以上、ma は狭義の昇順、
+  default は n 未満。強さを切り替えられない probe は drive_levels を載せない。段は probe のすべての channel に共通で、
+  `oep.fixture.gpio` の fn が 2 つ以上あれば、どれも同じ値を宣言する。
+- **強さが効くのは mode 3 / 4 だけ**。ほかの mode と、線（`oep.wire.*`）、`oep.fixture.uart`、`oep.fixture.i2c-target`、
+  `oep.fixture.spi-target` が駆動するピンの強さは probe が決め、host は指定できない。
+- **強さの指定**: kind(u8)、value(u16)。kind 0 = 段の番号（value が段の番号）。kind 1 = mA の上限（目安の mA が value 以下の段の
+  うち、いちばん強い段。value がどの段の mA より小さければ段 0）。kind 2 以上は未定義。`oep.probe.config` の idle の項目も同じ形を使う。
+- **set の TLV 0x01 drive**（非 critical。host は critical の bit を付けずに送る）: index(u8: 要求の並びの位置)、kind(u8)、value(u16)。
+  1 つの TLV が並びの要素 1 つに効き、繰り返して複数の要素に付ける（要素ごとに強さが違ってよいため。電源の線と信号の線を 1 要求で
+  動かせる）。index が n 以上、同じ index が 2 回、kind が未定義、指す要素の mode が 3 / 4 でない のどれかなら、要求全体を
+  rejected malformed。kind 0 の value が段の数以上なら、その TLV を無視する。drive_levels を宣言しない probe は、drive の TLV を
+  すべて無視する。無視した drive は応答の ignored（core §2.3）に載せる。
+- **効く強さ**: set で mode 3 / 4 にした要素の強さは、その要素の drive（無視しなかったもの）があればその段、無ければその channel の
+  idle の項目（[probe の設定](oep-if-probe-config.ja.md) §1）が drive を持てばその段、どちらも無ければ既定の段。強さは、その channel を
+  次に set するまで保つ。plan で取ってから最初の set までと、plan を解いた後は、空きの状態の強さ（idle の drive、無ければ既定の段）。
+- **read の応答の TLV 0x01 drive**: n × u8。要求の channel の順に、その channel をいま mode 3 / 4 で駆動している段の番号（空きの
+  状態の出力を含む）。mode 3 / 4 で駆動していない channel は 0xFF。drive_levels を宣言する probe は必ず付け、宣言しない probe は
+  付けない。段の mA は describe の drive_levels で読む。
 
 ## 2. `oep.fixture.uart`
 

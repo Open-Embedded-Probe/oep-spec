@@ -398,11 +398,15 @@ link_sink（core §12）で流す。確かめは**使う流し方だけ**でよ�
 ## 8. target の電源とリセット（参考）
 
 target の電源とリセットの線は、probe の設定のスロットの項目に入れない（[案と決めた経緯](v1-open-proposals.ja.md) §10）。host が
-label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分で扱う。この節は規範ではない。
+label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分で扱う。probe が自分でリセットの線を使うのは、boot_reset 1 の
+スロットの、起動直後のリセットでのやり直し（[probe の設定](oep-if-probe-config.ja.md) §3.1）だけ。この節は規範ではない（線の名前の
+決まりの規範は [probe の設定](oep-if-probe-config.ja.md) §1.3）。
 
 ### 8.1 線の名前（label の決まり）
 
-`oep.probe.config` の label の項目（tag 0x02）で、線に次の名前を付けて保存する。host は設定の get で label を読んで線を探す。
+名前と探し方の規範は [probe の設定](oep-if-probe-config.ja.md) §1.3（ASCII の大文字と小文字は区別しない、一致が 2 つ以上なら線は
+無い）。ここはその使い方。`oep.probe.config` の label の項目（tag 0x02）で、線に次の名前を付けて保存する。host は設定の get で
+label を読んで線を探す。
 
 | 名前 | 線 |
 |---|---|
@@ -412,8 +416,8 @@ label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分
 
 - スロットが 2 つ以上ある probe では、`<スロットの name>.nrst`、`<スロットの name>.power_hi`、`<スロットの name>.power_lo` と付ける
   （スロットの name は [probe の設定](oep-if-probe-config.ja.md) §1.1）。名前だけ（`nrst` など）は、スロットが 1 つ以下の probe でだけ使う（スロットの無い probe でも素の名前で付けられる）。
-- host は、使うスロットについて `<スロット>.<名前>` を先に探し、無ければ名前だけを探す。どちらも無ければ、その線は無いものとして扱う
-  （リセットの線を探すなら §4.6）。
+- host は、使うスロットについて `<スロット>.<名前>` を先に探し、無ければ（スロットが 1 つ以下のときだけ）名前だけを探す。どちらも
+  無ければ、その線は無いものとして扱う（リセットの線を探すなら §4.6）。probe も boot_reset のやり直しで `nrst` を同じ探し方で探す。
 - 1 つの target に付けるのは `power_hi` と `power_lo` のどちらか 1 つ。
 
 ### 8.2 電源の入れ直し
@@ -462,6 +466,37 @@ label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分
   channel 自身も取る channel に入れた。リセットの線は通電の 4.4 ms 後に上がり、target の UART の線は通電の 2 µs 後に high に
   なった。この probe の logic は最遅 1 MHz、1 回 約 6 万サンプルまでなので、1 回の窓は約 60 ms（target のアプリが動き出す約
   138 ms 後は窓の外）。
+
+### 8.6 出力の強さ
+
+`oep.fixture.gpio` の describe が drive_levels を宣言する probe では、gpio の set の drive と、probe の設定の idle の drive で、
+mode 3 / 4 の出力の強さを選べる（[fixture](oep-if-fixture.ja.md) §1.1）。指定しなければ既定の段。いま効いている段は gpio の
+read の応答の drive で読める。
+
+- **既定のままでよい場面がほとんど**: 下の実験では、小さな target を probe のピンから直接給電しても、最弱の段で足りた。強さを
+  上げるのは、要る理由（給電する target の消費、長い線、LED など）があるときだけにする。
+- **段の番号より mA の上限で書く**: 設定のファイルを別の probe でも使うなら、kind 1（mA の上限）で書く。段の並びは probe の
+  SoC ごとに違う。
+- **電源の線**: gpio の set で強さを指定しなければ、idle の drive が引き継がれる。電源の入れ直し（§8.2）で plan を取って set
+  しても、idle で決めた強さのまま。
+- **強くすると困る線**（既定の段か、それより弱い段で使う）:
+  - 試験の中で DUT と両側から駆動しうる線（ぶつかったときに流れる電流が強さで増える）。
+  - USB PD の CC の線と、USB の pad（D+ / D−）。
+  - DUT の RX につながる UART の TX（エッジが速いほど、隣の線に漏れ込む）。
+  - リセットの線。これは強さを選ばず、オープンドレインで引く（mode 5 / 6、attach の reset TLV）。
+- debug の線と、UART / SPI / I2C の周辺の線の強さは probe が決める（host は指定できない）。debug の線の強さは
+  [probe 開発ガイド](probe-development-guide.ja.md) §4。
+
+**実験**（2026-10-02。ESP32-P4、FS、CH32V003 を GPIO5 から直接給電、出力 high の強さを build で 4 段。測った例であって規則ではない）:
+
+| 強さ | 設定だけで起動 | 電源の入れ直しからの止める attach | 止まるまで | NRST が上がるまで |
+|---|---|---|---|---|
+| 最弱（約 5 mA） | 動く | 8/8 | 16.7〜17.2 ms | 4.82 ms |
+| 約 10 mA | 動く | 8/8 | 16.2〜16.7 ms | 4.55 ms |
+| 既定（約 20 mA） | 動く | 8/8 | 16.2〜16.7 ms | 4.42 ms |
+| 最強（約 40 mA） | 動く | 8/8 | 16.2〜16.5 ms | 4.37 ms |
+
+強さで変わったのは立ち上がりの 0.5 ms ほどだった。
 
 ## 9. ピンの探し方（参考）
 

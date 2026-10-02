@@ -18,7 +18,7 @@ All of them handle only the channels assigned by the plan (core §8).
 
 | op | Name | Request | Answer | Lock |
 |---:|---|---|---|---|
-| 0x01 | set | n(u8), n × (channel(u16), mode(u8)) | — | Required |
+| 0x01 | set | n(u8), n × (channel(u16), mode(u8)), [TLV] | — | Required |
 | 0x02 | read | n(u8), n × channel(u16) | n(u8), n × level(u8: 0 / 1), [TLV] | Not required |
 
 | mode | Meaning |
@@ -41,6 +41,28 @@ All of them handle only the channels assigned by the plan (core §8).
 - **A channel taken by a plan keeps its previous state until the first set** (it stays in its idle state; with an output idle, the probe keeps driving that level).
   Taking it does not change the level.
 - When the plan is released, the channel returns to the idle state of core §8.
+
+### 1.1 Output drive strength (optional)
+
+- **Declaring the levels**: a probe that can switch the output drive strength declares, with drive_levels of describe (tag 0x41: default(u8), n(u8), n × ma(u16)),
+  the strengths it can select (levels) in ascending order of their approximate mA, and the default level. The number of a level is its position in the list (from 0). n is 2 or more, ma is strictly ascending,
+  default is less than n. A probe that cannot switch the strength does not carry drive_levels. The levels are common to all channels of the probe, and
+  when there are two or more fns of `oep.fixture.gpio`, every one declares the same value.
+- **The strength applies to mode 3 / 4 only**. The strength of other modes, and of the pins driven by wires (`oep.wire.*`), `oep.fixture.uart`, `oep.fixture.i2c-target`
+  and `oep.fixture.spi-target`, is decided by the probe, and the host cannot specify it.
+- **Specifying a strength**: kind(u8), value(u16). kind 0 = a level number (value is the level number). kind 1 = an mA ceiling (among the levels whose approximate mA is
+  value or less, the strongest. If value is smaller than the mA of every level, level 0). kind 2 or more is undefined. The idle item of `oep.probe.config` uses the same form.
+- **set's TLV 0x01 drive** (non-critical. The host sends it without the critical bit): index(u8: the position in the request's sequence), kind(u8), value(u16).
+  One TLV applies to one element of the sequence, and it is repeated to attach to several elements (because the strength may differ per element. A power line and a signal line
+  can be moved in one request). If index is n or more, the same index appears twice, kind is undefined, or the mode of the element it points to is not 3 / 4, the whole request is
+  rejected malformed. If the value of kind 0 is the number of levels or more, that TLV is ignored. A probe that does not declare drive_levels ignores
+  all drive TLVs. An ignored drive is listed in ignored of the answer (core §2.3).
+- **The effective strength**: the strength of an element that set made mode 3 / 4 is the level of that element's drive (one not ignored) if there is one, else the level of the drive of
+  the idle item of that channel ([probe settings](oep-if-probe-config.md) §1) if it has one, and the default level if neither. The strength is kept until that channel is
+  set next. From taking it by a plan until the first set, and after the plan is released, it is the strength of the idle state (the drive of idle, the default level if none).
+- **read's answer TLV 0x01 drive**: n × u8. In the order of the request's channels, the number of the level at which that channel is now driven in mode 3 / 4 (including an output of the idle
+  state). A channel not driven in mode 3 / 4 is 0xFF. A probe that declares drive_levels always attaches it, and a probe that does not declare it does not
+  attach it. The mA of a level is read from drive_levels of describe.
 
 ## 2. `oep.fixture.uart`
 

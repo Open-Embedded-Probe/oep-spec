@@ -1,7 +1,7 @@
 # OEP v1 — 案と決めた経緯
 
 状態: **案と経緯（規範ではない）**（2026-09-24 起草、2026-09-26 に整理、2026-10-02 に決着を追記）。表の 1〜5 は決まって規範に移した（案の本文は
-git の履歴、2026-09-26 の整理より前の版に残っている）。§6 / §7 は v1 の外、§8 は予定なし、§9 はこの文書の外で起こして決着した案の一覧、§10 は target の電源とリセットの扱いの決着。
+git の履歴、2026-09-26 の整理より前の版に残っている）。§6 / §7 は v1 の外、§8 は予定なし、§9 はこの文書の外で起こして決着した案の一覧、§10 は target の電源とリセットの扱いの決着、§11 は fixture の出力の強さの決着。
 
 | # | 案 | 決定 | 規範の置き場 |
 |---:|---|---|---|
@@ -118,19 +118,32 @@ git の履歴、2026-09-26 の整理より前の版に残っている）。§6 /
 | 規範に残っていた未決の数（host の待ちの加算、閉じた番号の再利用の距離、通知の送りかけの上限、DMI busy / SWD WAIT の再試行、reset の待ちとやり直し） | 1000 ms、1024、max_frame × 2、100 回、100 ms / 1 回。registry の `timing` / `limits` に載せた | core §4.4 / §9 / §11.4、debug §1 / §4.3 / §6（f50c937） |
 | リリース前の結合試験を誰が持つか | Python の `tests/hw/` が実機の試験を持つ。firmware はローカルのビルドか固定したリリース | [release-testing](release-testing.ja.md)（ddaddf0） |
 
-## 10. target の電源とリセットの扱い（決着、2026-10-02）
+## 10. target の電源とリセットの扱い: 決着（採用、2026-10-02）
 
-状態: **案 B を採った**（3 つの実装のセッションが合意）。電源とリセットはスロットの項目に入れない。
+状態: **案 B を採り、その上にリセットでのやり直しを任意で足した**（3 つの実装のセッションが合意）。電源とリセットの線はスロットの
+項目に入れない（label の名前で決める）。
+
+**追記: 決着（採用、2026-10-02）**: ユーザーの基準は「決まっていない多くの利用者が要るもの」。その基準で、at boot の attach の
+リセットでのやり直しを、スロットごとの任意の機能として採った（3 つの実装のセッションが、次の条件で合意）。
+- スロットの項目の錠の後ろに任意の boot_reset（u8、既定 0 しない）。リセットの線はスロットのフィールドに置かず、label の名前
+  （`<スロットの name>.nrst`、スロットが 1 つ以下なら `nrst`）で probe が探す。見つからなければやり直さない。名前の決まりは規範に
+  上げた（[probe の設定](oep-if-probe-config.ja.md) §1.3。`power_hi` / `power_lo` は host が使う名前で、probe は使わない）。
+- 行うのは起動の後、どのセッションもロックを取る前だけ。直前の自動の attach が線の応答をまったく得られなかった（status line）
+  ときだけで、錠に不一致、target_id が無い、読み出しの保護、そのほかの失敗や断りの後には行わない。1 回の起動で多くても 1 回。
+  hold_ms は registry の `slot_retry_reset_hold_ms`（20）。
+- 行ったことと時刻は state の slot_state の reset_at_ns で見える。
+- ブランチ `proposal/power-reset`（案 A）は退けたままにする。電源とリセットの線をスロットのフィールドに持っていたが、それは label に
+  なった。
 
 | 案 | 中身 | 決着 |
 |---|---|---|
 | A | スロットの項目に reset_channel と電源のフィールド（power_channel、power_on_level、power_off_ms）を置き、at boot の attach が通らなければ reset TLV を付けてやり直す | 採らない。ブランチ `proposal/power-reset` に退けた案として残す（main には入れない） |
-| B | スロットの項目は変えない。idle に出力 low / high（mode 3 / 4）を足し、線の場所は label の名前の決まりで host に知らせる。電源の入れ直しとリセットは host が行う | 採った |
+| B | スロットの項目は変えない。idle に出力 low / high（mode 3 / 4）を足し、線の場所は label の名前の決まりで host に知らせる。電源の入れ直しとリセットは host が行う | 採った。後から、label で探すリセットでのやり直しを任意で足した（上の追記） |
 
 ### 理由
 
 - **at boot のリセットでのやり直し**: 要った実験も治具の場面も無かった。治具で見た at boot の attach の失敗 3 つは、読み出しの保護、
-  電源が無い、リセットの経路の速さの問題で、どれもリセットでは直らなかった。
+  電源が無い、リセットの経路の速さの問題で、どれもリセットでは直らなかった（案 B を採ったときの理由。その後、多くの利用者が要るものという基準で、任意の機能として足した）。
 - **リセットの線の場所をスロットのフィールドに置くこと**: probe がその線を使わないなら、スロットに置く理由が無い。host が見つけられれば
   足りる。
 - **複数スロットのあいまいさ**: label の名前をスロットの name で区切る（`<スロットの name>.nrst` など）ので、どのスロットの線かが決まる。
@@ -140,11 +153,30 @@ git の履歴、2026-09-26 の整理より前の版に残っている）。§6 /
 
 - 出力の idle（mode 3 / 4）、起動の順、解いたピンは空きの状態に戻ること: [probe の設定](oep-if-probe-config.ja.md) §1 / §2 / §3.1、
   [core](oep-core.ja.md) §8（5013ffb）。
-- 名前の決まり（`nrst`、`power_hi`、`power_lo`）、電源の入れ直し、リセットをかけながらの attach、実測: [host 開発ガイド](host-development-guide.ja.md) §8。
+- 名前の決まり（`nrst`、`power_hi`、`power_lo`）とリセットでのやり直し: [probe の設定](oep-if-probe-config.ja.md) §1.1 / §1.3 / §3.1 / §3.3。
+- 電源の入れ直し、リセットをかけながらの attach、実測: [host 開発ガイド](host-development-guide.ja.md) §8。
 
-## 11. fixture の出力の強さを仕様で指定する（保留、2026-10-02）
+## 11. fixture の出力の強さを仕様で指定する: 決着（採用、2026-10-02）
 
-**案**: `oep.fixture.gpio` の出力に任意の強さ。probe は describe に出せる段を目安の mA の並びで宣言し、host は gpio の set と
+**決着**: ユーザーの基準「決まっていない多くの利用者が要るもの」で、任意の機能として採った（同じ日に一度保留にした。下の実験と
+結論はそのときのもの）。3 つの実装のセッション（ch32rv、WireSkein、bench）が、次の条件で合意した。
+
+- `oep.fixture.gpio` の describe の drive_levels: 選べる強さを目安の mA（u16）の昇順の並びと、既定の段の番号で宣言する。強さを
+  切り替えられない probe は宣言しない。
+- probe.config の idle の項目の後ろに任意の drive_kind(u8)、drive_value(u16)。kind 0 = 段の番号、kind 1 = 「value mA 以下の
+  いちばん強い段」（bench file を SoC をまたいで使うため）。mode 3 / 4 だけ（ほかの mode では malformed）。
+- gpio の set に非 critical の TLV drive（要素ごと: index、kind、value）。無ければ idle の drive、それも無ければ既定。知らない probe
+  と段を宣言しない probe は無視する（効く強さは既定のまま）。
+- 効いている段は gpio の read の応答の TLV drive で、channel ごとに読める（mA は describe）。gpio に status の op は無いので、
+  ロック不要の read に足した。
+- 起動時は、idle の出力の level と強さを一緒に、at boot の attach より先に掛ける。
+- debug の線と、UART / SPI / I2C target の周辺の線は指定させない。
+- 強めると困る線と下の実験の数は [host 開発ガイド](host-development-guide.ja.md) §8.6 に置いた。
+
+規範の置き場: [fixture](oep-if-fixture.ja.md) §1.1、[probe の設定](oep-if-probe-config.ja.md) §1 / §2、[core](oep-core.ja.md) §8、
+registry の gpio の `drive_levels` / `drive` / `drive_kind`。
+
+**案**（保留にしたときのもの）: `oep.fixture.gpio` の出力に任意の強さ。probe は describe に出せる段を目安の mA の並びで宣言し、host は gpio の set と
 probe.config の idle の項目に任意の TLV で段を指定する（無ければ既定）。debug の線（probe の方針で最弱に固定）と、UART /
 SPI / I2C の周辺の線は指定させない。きっかけは classic ESP32 の SWIO のエッジの漏れ込み（[対象ごとのスキャンの記録](target-scan-notes.ja.md) §4）と、
 用途で要る強さが違うこと（gpio / PWM の裏の LED、idle の出力で target に給電する電源の線）。
@@ -159,9 +191,9 @@ SPI / I2C の周辺の線は指定させない。きっかけは classic ESP32 �
 | 最強（約 40 mA） | 動く | 8/8 | 16.2〜16.5 ms | 4.37 ms |
 
 **結論**: 小さな target の直接給電でも最弱で足り、強さで変わるのは立ち上がりの 0.5 ms ほど。bench の治具はどれも probe の 3V3 か
-外部から給電していて、GPIO で給電する治具も、gpio の裏に LED のある治具も無い。**今は入れない**（必要が出てから足す）。
+外部から給電していて、GPIO で給電する治具も、gpio の裏に LED のある治具も無い。このときは入れないことにした（上の決着で採った）。
 
-**入れ直すときの条件**（ch32rv、WireSkein、bench の回答）:
+**入れるときの条件**（ch32rv、WireSkein、bench の回答。上の決着はこれを満たす。gpio の set の TLV は、最初から入れた）:
 - 既定は変えない。最初は idle の項目だけにし、gpio の set には要る場面が出てから足す。
 - gpio の set で強さを指定しないときは、その channel の idle の項目の強さを引き継ぐ（電源の入れ直しで plan を取った瞬間に電源の
   線が弱まらないため）。
