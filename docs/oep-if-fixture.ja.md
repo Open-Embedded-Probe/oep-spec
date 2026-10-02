@@ -120,7 +120,8 @@ read_rx で取り出す。
   フレームの数（255 で止める）。rx_frames は列に積んだフレームの累計（あふれて捨てたものは数えない）、tx_slots は preload_tx で置いて
   未読の置き場の数（mode 3。ほかは 0）、errors はあふれと、上の書き込みの誤り（長さの誤り、未 arm と mode 3 の書き込み）の累計（u32）。
 - reset は configure 直後と同じ状態に戻す（列、待ち、累計を消す。mode と address は保つ）。state 0 では rejected unavailable（cause 6）。
-- stretch は、受けたバイトごとに、その byte の ACK の後で SCL を low に保つ時間（µs、0 = しない）。features の bit1 を宣言する probe
+- stretch は、受けたデータの byte ごとに、8 bit 目の後、ACK を出した状態で ACK の clock の前に SCL を low に保つ時間（µs、0 = しない）。
+  read では、アドレスが一致した後に同じだけ保つ。write のアドレスの byte では保たない。features の bit1 を宣言する probe
   だけ（ほかは unknown_operation）。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け
   （state 0 でも）、値は次に受ける byte から効く。configure と reset は値を変えない。
 - describe: role_channels、max_length（1 フレームの最大 byte）、max_clock_hz（確かめた SCL の上限）、features（bit0 mode 3、
