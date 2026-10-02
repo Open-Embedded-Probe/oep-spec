@@ -102,15 +102,19 @@ core §3.4 の規則を守るための作り（2026-09-29）。
 | EspUsbDevice の CDC（P4 の HS） | 元から持たない |
 | classic ESP32 などの UART bridge | 変換チップの先の自動リセット回路なので、firmware では止められない。host が DTR と RTS を両方立てて開く（host 開発ガイド §1）。止められないものは describe の resets_on_open で宣言する |
 
-## 3.8 推奨の USB の作り（VID:PID、iProduct と HID の口）
+## 3.8 推奨の USB の作り（VID:PID、iProduct、serial と HID の口）
 
 ネイティブ USB を持つ probe（ESP32-P4 の HS の口、RP2350 など）の推奨の形:
 
-- **VID:PID は規範ではない**。今は仮の USB の ID（ボードの既定の VID:PID）で動かしていて、配布には使えない。専用の PID を取得できたら、
-  それに切り替える予定。**host の discovery は USB の
-  device の名前（iProduct が `OEP` で始まる）で OEP の probe を見分ける**ので、iProduct を `OEP` で始める（恒久の規範、core §3.3。PID を
-  取っても名前での判定は変わらない）。device の中の口は interface の種類で決まる（core §3.3: CDC はすべてシリアルの口）。この形で列挙する probe
-  は、fn 0 の describe の discoverable を 1 にする（USB-Serial/JTAG のように別の口から開かれても、host がそれで分かる）。
+- **VID:PID**: host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID を持つ device だけ（core §3.3）。その VID:PID は
+  取得したときに registry に載る。今は仮の USB の ID（ボードの既定の VID:PID）で動かしていて、配布には使えない。専用の PID を取得できたら、
+  それに切り替える予定。プロジェクトの VID:PID で列挙する probe は、fn 0 の describe の discoverable を 1 にする（USB-Serial/JTAG のように
+  別の口から開かれても、host がそれで分かる）。registry に載るまでは、どの probe も 0。
+- **iProduct** は表示のための自由な文字列で、host は見分けに使わない（core §3.3）。ただ、専用の PID を取得するまでの暫定の手がかり
+  （[host 開発ガイド](host-development-guide.ja.md) §1.7）に乗るよう、今は iProduct を `OEP` で始めることを勧める。
+- **serial number は unit_id**（core §3.3）。利用者が unit_id で名指した probe は、host がこれで探す。
+- device の中の口は interface の種類で決まる（core §3.3: CDC はすべてシリアルの口、vendor bulk は class 0xFF / subclass 0x4F /
+  protocol 0x45、HID は usage page 0xFF4F / usage 0x45）。probe はこの形で出す。host はこの値だけで OEP の probe とは決めない。
   - 参照 probe（ESP32-P4、EspUsbDevice 2.5.1）は、VID:PID は仮に 303a:0002（arduino-esp32 の TinyUSB の既定）、iProduct を
     「OEP probe (P4 HS)」にしている（CDC の「OEP console」は表示のための名前）。
 - interface は **vendor bulk（OEP）、HID（OEP）、CDC（シリアルの口）** の組（core §3.3）。

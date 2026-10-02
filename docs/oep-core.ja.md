@@ -190,17 +190,33 @@ UART を USB-UART の変換チップで出したもの、USB CDC、USB-Serial/JT
   別の経路から送ってよい。host が 2 つの経路から 0x81 を送ったときの誤判定は host の責任で、probe は確かめない。
 - host は、同じ probe に複数の経路があれば vendor bulk、HID、シリアルの口の順に試す（シリアルの口は生のバイトの転送にも
   使われる、§3.4）。probe の経路の一覧は fn 0 の describe の transport（§7.5）で分かる。
-- **USB の OEP の probe と口の見分け方**: **device の文字列 iProduct が `OEP` で始まる device は OEP の probe**（VID:PID は見分けに
-  使わない。参照の firmware の VID:PID は実務の文書 [USB の識別](usb-identity.ja.md)）。host はこれで probe を見分け、その device の口を
-  interface の記述子で選ぶ: CDC（ACM）はすべてシリアルの口（§3.4。どれも OEP を受ける）、**bInterfaceClass 0xFF、bInterfaceSubClass 0x4F
-  ('O')、bInterfaceProtocol 0x45 ('E') の interface の bulk IN / OUT の組**は vendor bulk、**usage page 0xFF4F、usage 0x45 の HID** は HID
-  （registry の `usb`）。OEP の probe は vendor bulk と HID をそれぞれ高々 1 つしか出さない。ほかの class 0xFF の interface（USB-Serial/JTAG
-  の JTAG、WebUSB など）はこの subclass / protocol を持たないので掴まない。ほかの機能（DFU、Mass Storage など）は OEP の外。
-  interface の文字列は表示のためのもので、見分けには使わない。
+- **USB の OEP の probe の見分け方**: host が知らない device の中から OEP の probe を自動で見分けるのは、**プロジェクトの USB の
+  VID:PID を持つ device** だけである。プロジェクトの VID:PID は、取得したときに registry の `usb` に載せる。載るまでは registry に
+  VID:PID は無く、この規則で自動で見分けられる device は無い（それまでの暫定の手がかりは [host 開発ガイド](host-development-guide.ja.md)
+  §1.7。規範ではない）。device の文字列 iProduct は表示のための自由な文字列で、host は見分けに使わない。interface の文字列も表示の
+  ためのもので、見分けには使わない。
+- **名指した probe**: 利用者が probe を unit_id で名指したとき（アドレス `oep://<unit_id>[/<slot name>]`、§7.6）、host は、serial number
+  がその unit_id と同じ USB の device を、見分けずに開いてよい。開いた後は下の探りの規則に従い、confirm の後に送る fn 0 の describe の
+  unit_id が名指した値と同じときだけ、その device をその probe として使う。違えば host はその device を閉じ、ほかに何も送らない。
+- **ほかの device とシリアルの口**: 上の 2 つに当たらない USB の device とシリアルの口は、host が自分で扱い方を持つものか、利用者が
+  明示して選んだものだけを開く。
+- **探りの規則**: host が見分けずに開く device と口（名指した device、利用者の選んだ口、host が自分で扱う device、暫定の手がかりで
+  見つけた device）では、host が最初に送るのは confirm（§7.1）だけである（§5.2 の 1 回の送り直しを含む）。confirm の待ち時間
+  （§4.4。confirm には引数で決まる時間が無いので 1000 ms）が過ぎても正しい confirm の応答が来なければ（送り直したときは、送り直した
+  confirm の待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。正しい confirm の応答とは、送った
+  confirm と同じ corr の completed で、payload が §7.1 の形（`OEP!` で始まる）のものをいう。正しい応答が来た device と口は OEP の
+  probe として扱う。
+- **口の選び方**: OEP の probe と分かった device（プロジェクトの VID:PID、名指した device、正しい confirm の応答が来た device）の中の
+  口は、interface の記述子で選ぶ: CDC（ACM）はすべてシリアルの口（§3.4。どれも OEP を受ける）、**bInterfaceClass 0xFF、
+  bInterfaceSubClass 0x4F ('O')、bInterfaceProtocol 0x45 ('E') の interface の bulk IN / OUT の組**は vendor bulk、**usage page 0xFF4F、
+  usage 0x45 の HID** は HID（registry の `usb`）。probe は vendor bulk と HID をこの形で出し、それぞれ高々 1 つしか出さない。host は、
+  この class / subclass / protocol と usage page / usage だけで device を OEP の probe とは決めない。ほかの class 0xFF の interface
+  （USB-Serial/JTAG の JTAG、WebUSB など）はこの subclass / protocol を持たないので掴まない。ほかの機能（DFU、Mass Storage など）は
+  OEP の外。
 - **USB の serial number は unit_id**（§7.5）: probe が serial を選べる口（CDC、vendor bulk、HID を自分で出す device）では、serial number を
-  unit_id そのものにする（§7.5 の不変性）。host は開かずに probe を見分けられ、どの経路の describe とも同じ値になる。serial も iProduct も選べない口
-  （USB-Serial/JTAG、USB-UART の変換チップ）は、host が経路を外から指定し、describe で unit_id を確かめる。confirm と describe は口を
-  開いた後にしか使えないので、口の選び方はこの規則による。
+  unit_id そのものにする（§7.5 の不変性）。host は開かずに個体を見分けられ（名指した probe を探せる）、どの経路の describe とも同じ値に
+  なる。serial を選べない口（USB-Serial/JTAG、USB-UART の変換チップ）は、host が経路を外から指定し、describe で unit_id を確かめる。
+  confirm と describe は口を開いた後にしか使えないので、口の選び方はこの規則による。
 - **max_frame は両方向の上限**: probe は max_frame を超える message を送らず、host は max_frame を超える message を送らない。
 - **confirm の前**: どの probe も 64 byte（registry の `min_max_frame`）までの message を受ける（confirm の max_frame は 64 以上）。
   host は confirm の応答を受けるまで、64 byte を超える message を送らない。host は probe から長さ 65535 byte までの message を
@@ -559,7 +575,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x47 | resets_on_open | u8。経路を開くと probe がリセットするか |
 | 0x48 | — | 予約 |
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8: USB の interface 番号、0xFF は USB でない)。probe の経路ごとに 1 つ。**必須** |
-| 0x4A | discoverable | u8。1 = probe が host の discovery の一覧に出る形でも列挙している（今の経路がそうでなくても）: iProduct が `OEP` で始まる USB の device（§3.3） |
+| 0x4A | discoverable | u8。1 = probe はプロジェクトの USB の VID:PID（§3.3）でも列挙している（今の経路がそうでなくても）。プロジェクトの VID:PID が registry に載るまでは、どの probe も 0 |
 | 0x4B | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
 | 0x4C | chip | text。probe の MCU の型番とリビジョン: `<型番> v<リビジョン>`、型番は小文字でハイフンなし（例 `esp32p4 v1.3`、`rp2350 v2`）。取ったデータに、どのチップで取ったかを残すため（任意） |
 | 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host はこの値に、要求と応答が線を通る時間を足した値以上を待つ（§4.4） |

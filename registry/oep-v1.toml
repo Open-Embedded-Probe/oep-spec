@@ -88,8 +88,9 @@ features = 0x06
 implementation = 0x07
 channel_group = 0x08            # group(u8) n(u8) n x (role(u8) channel(u16))
 
-[usb]                           # how a host tells an OEP probe and its ports apart (core §3.3); never by VID:PID
-iproduct_prefix = "OEP"
+[usb]                           # the shape of a probe's interfaces inside a device known to be OEP (core §3.3)
+# The project's USB VID:PID is listed here when it is obtained. None is listed yet, so no device is
+# identified automatically (core §3.3). Neither these values nor iProduct identify an OEP probe on their own.
 vendor_bulk_class = 0xFF
 vendor_bulk_subclass = 0x4F     # 'O'
 vendor_bulk_protocol = 0x45     # 'E'
