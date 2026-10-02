@@ -22,7 +22,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
 |---:|---|---|---|
 | 0x01 | plan | fn(u16), role(u8), channel(u16) (1 assignment per item) | (fn, role, channel) (the items of the same fn make up the plan of that fn) |
 | 0x02 | label | channel(u16), text | channel |
-| 0x03 | idle | channel(u16), mode(u8: 0 Hi-Z, 1 input with pull-up, 2 input with pull-down) | channel |
+| 0x03 | idle | channel(u16), mode(u8: 0 Hi-Z, 1 input with pull-up, 2 input with pull-down, 3 output low, 4 output high) | channel |
 | 0x04 | slot | §1.1 | slot |
 | 0x05 | bind | §1.2 | port |
 | 0x06 | uart | fn(u16), baud(u32), format(u8) (the same values as configure of `oep.fixture.uart`) | fn |
@@ -54,7 +54,10 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
   - describe is only a declaration and does not change (core §7.3). The host combines it with the disable of get to know the usable channels.
   - If saved, it is applied at boot before the idle state is applied.
 - **idle**: the state of a pin used neither by a plan nor by a connection. It is put in this state at boot and each time the pin is released (core §8).
-  A pin without idle is Hi-Z. A pin where the peer's input would float because of the fixture's wiring (a TX connected to the peer's RX, etc.) is stated explicitly by the host with idle and saved.
+  With mode 3 / 4, the probe drives that level for as long as the pin is idle. A pin without idle is Hi-Z. A pin where the peer's input would float because of the fixture's wiring (a TX connected to the peer's RX, etc.) is stated explicitly by the host with idle and saved.
+  The output modes exist for a channel that must keep a level even while no plan holds it (the switch of the target's power, etc.).
+  On a probe that cannot drive that channel as an output, an idle with mode 3 / 4 is rejected unsupported.
+  (Informative) Keeping an output idle from meeting an output of the target is the responsibility of the wiring.
 
 ### 1.1 slot
 
@@ -179,7 +182,7 @@ port(u8), mode(u8), selected(u8), n(u8), n × (len(u8), kind(u8), id(u16))
   with fn). If an interface pointed to does not exist, or the revision differs, **the whole save is not applied** (putting in only part would make the fixture behave half-way. The storage
   state is "present, unreadable", reason 2). Adding, removing or reordering interfaces that are not pointed to does not affect the save.
 - The form of the save (how it is kept inside the probe) is decided by the probe. Only the rewriting rule is normative.
-- At boot, the probe makes the save the current settings (when it passes the checks above), applies idle, applies the plan, applies uart, starts the attach of the at boot slots,
+- At boot, the probe makes the save the current settings (when it passes the checks above), applies idle (including driving the outputs of mode 3 / 4), applies the plan, applies uart, starts the attach of the at boot slots,
   and connects the binds. When the save cannot be read it is not applied, and this is reported in state.
 
 **Table of refusals** (in the order of core §4.3):
@@ -188,7 +191,7 @@ port(u8), mode(u8), selected(u8), n(u8), n × (len(u8), kind(u8), id(u16))
 |---|---|
 | Form errors, the same key twice, characters of name, range of selected, retry_ms not 0 on a host slot, length of lock, putting a slot with mechanism 0xFF on a bind, a bind pointing to a nonexistent slot, two slots with the same wire_fn and the same pins, duplicate name | malformed |
 | The fn pointed to does not exist (plan, wire_fn of slot, kind 2 of bind, uart) | unknown_function |
-| An undeclared item, a pin combination the wire does not allow, a wire_fn whose wire cannot have a lock, a mechanism the console does not declare, idle_clock 1 on other than rvswd, a max_speed_hz that cannot be kept, a mode not in bind_modes, a port that is not a serial port, an fn that is not uart, an unrealisable baud / format, save / erase on a probe without saving | unsupported |
+| An undeclared item, a pin combination the wire does not allow, a wire_fn whose wire cannot have a lock, a mechanism the console does not declare, an idle with mode 3 / 4 on a channel that cannot be driven as an output, idle_clock 1 on other than rvswd, a max_speed_hz that cannot be kept, a mode not in bind_modes, a port that is not a serial port, an fn that is not uart, an unrealisable baud / format, save / erase on a probe without saving | unsupported |
 | plan_roles exceeded, contention for pins or resources, at boot slots exceeding max_connections, not enough room to save | unavailable (cause 2 / 1 / 2 / 3) |
 
 ## 3. Slot connections and state
@@ -200,6 +203,7 @@ port(u8), mode(u8), selected(u8), n(u8), n × (len(u8), kind(u8), id(u16))
 | 0 host | The probe does not attach on its own. When a host's attach creates the slot's connection, the bind rides on it |
 | 1 at boot | At boot, and right after the item of that slot is set. If the target is not there, retried every retry_ms (no retry if 0) |
 
+- The automatic attach at boot starts after all idle states (including driving the outputs of mode 3 / 4) have been applied (the boot order of §2).
 - **The automatic attach (at boot) is only a non-halting attach (method 0)**, done with the slot's pin combination according to the rules of [wire and debug](oep-if-debug.md)
   §1. If the lock does not match, the probe removes its own share without opening the console (the state is lock mismatch).
 - The automatic attach is for paying up front for cases where connecting takes time. If it missed, the host attaches by itself when it uses the target.

@@ -144,7 +144,7 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
 - **There is no default reset wire**: which wire is used for reset is specified explicitly by the host every time with channel (a reset on the wrong wire could damage the target or the
   fixture). The channels the probe may use for reset are declared with role 3 (reset) of the role_channels of describe. An undeclared
   channel is rejected unsupported (tag 0x05) without executing anything. A channel held by an existing plan or connection is rejected
-  unavailable as the contention of §8.1. **The reset wire is pulled low open-drain, and when released the drive stops** (the idle state of core §8. No short with an external reset button or
+  unavailable as the contention of §8.1. **The reset wire is pulled low open-drain, and when released it stops pulling and goes to the idle state of core §8** (no short with an external reset button or
   another driver). The channel is held only for the duration of the op. On a probe without it, the host sends the release of `oep.fixture.gpio` and the attach together
   and retries.
 

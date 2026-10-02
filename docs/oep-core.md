@@ -598,8 +598,10 @@ The plan is held **per fn**.
   the settings. plan_release ignores that fn without releasing it (even with n = 0), and if plan_apply lists that fn, nothing changes and the answer is rejected
   unavailable (the same refusal as the pin contention of §8.1). Changing or removing a settings plan is done with the settings set (and its save). Otherwise
   the saved settings and the actual assignments would diverge.
-- A released pin becomes **the state the probe's settings define for that pin when idle, if they define one; otherwise Hi-Z (input, no pull)**.
-  An interface must not keep driving a pin after it is released (the setting of the idle state is the idle of `oep.probe.config`,
+- A released pin, whichever way it is released (plan_release, replacement by plan_apply, the cleanup at a lease lapse and at force in §9), goes to **the idle state**,
+  that is **the idle the probe's settings define for that pin, if they define one (for output low / high it is driven at that level, not made Hi-Z); otherwise
+  Hi-Z (input, no pull)**. An interface must not leave a pin under its own drive after it is released (when the idle state is an output, that drive belongs to
+  the settings' idle. The setting of the idle state is the idle of `oep.probe.config`,
   [probe settings](oep-if-probe-config.md)).
 - The lifetime of the plan is §9 (per fn).
 
