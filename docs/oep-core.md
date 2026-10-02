@@ -409,7 +409,7 @@ When an fn designated inside the payload (describe, subscribe, plan, settings it
 | 0x05 | fn | u16. The fn the refusal concerns (in the bind of a capture-group, indicates which track) |
 
 Interfaces may add their own tags from 0x40. The TLVs after the payload of rejected unsupported use the same space (channel 0x02, fn 0x05,
-the interface's index, etc.).
+the interface's index, etc.), except that there 0x01 is supported, the refusal of confirm (§7.1).
 
 ### 4.4 Pipelining
 
@@ -529,8 +529,13 @@ answer:  "OEP!", revision(u8), flags(u8), max_frame(u16), window(u32), max_infli
 - TLV 0x01 transport (u8): the index (§7.5) of the transport this confirm came on. The probe always attaches it. It names an entry of the describe of fn 0 returned on the same connection (0xFF from a relaying broker, §3.1). port_speed (UART bridges, §3.5) and bind (serial ports, [probe settings](oep-if-probe-config.md) §1.2) never take a TCP index.
 
 The host sends the range of protocol revisions it can handle, and the probe returns the highest revision within it that it can handle. If there is none in the range it can handle,
-rejected unsupported. flags is reserved (0). boot_id is §6.5 (the place to learn of a reboot without the lock). Both request and answer fit in 64 bytes
+rejected unsupported (below). flags is reserved (0). boot_id is §6.5 (the place to learn of a reboot without the lock). Both request and answer fit in 64 bytes
 (§3.3).
+
+- The confirm request and the fixed part of its answer, the magic `OEP?` / `OEP!`, and the rules before confirm (64 bytes, the frames of §3.1, §3.3) are the same in every protocol revision.
+- The revision the probe chose applies to **the transport the confirm came on**, to every message in both directions, until the next confirm on that transport. Transports may run different revisions. On TCP, the transport is each accepted connection (§3.1).
+- After its first confirm on a transport, the host sends `min_rev = max_rev =` the revision in use in every later confirm there (resync, probing again).
+- When it can handle no revision in the range: rejected unsupported, payload tag 0x00 followed by TLV 0x01 supported (min(u8), max(u8): the range the probe can handle). `min_rev > max_rev` is rejected malformed.
 
 ### 7.2 list
 

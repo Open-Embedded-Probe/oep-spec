@@ -409,7 +409,7 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 | 0x05 | fn | u16。断りの対象の fn（capture-group の bind で、どのトラックかを示す） |
 
 インターフェースは 0x40 以降に自分の tag を足せる。rejected unsupported の payload の後ろの TLV も同じ空間（channel 0x02、fn 0x05、
-インターフェースの index など）。
+インターフェースの index など）。ただしそこでは 0x01 は supported で、confirm の断りに使う（§7.1）。
 
 ### 4.4 パイプライン
 
@@ -529,8 +529,13 @@ boot_id は probe の起動ごとに変わる値で、confirm（§7.1）と open
 - TLV 0x01 transport（u8）: この confirm が来た経路の index（§7.5）。probe は必ず付ける。同じ接続で返す fn 0 の describe の entry を指す（中継のブローカーからは 0xFF、§3.1）。port_speed（UART bridge、§3.5）と bind（シリアルの口、[probe の設定](oep-if-probe-config.ja.md) §1.2）が TCP の index を取ることはない。
 
 host は扱えるプロトコルの revision の範囲を送り、probe はその中で扱える最大の revision を返す。範囲に扱えるものが無ければ
-rejected unsupported。flags は予約（0）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も 64 byte に収まる
+rejected unsupported（下）。flags は予約（0）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も 64 byte に収まる
 （§3.3）。
+
+- confirm の要求とその応答の固定部分、magic の `OEP?` / `OEP!`、confirm の前の規則（64 byte、§3.1 のフレーム、§3.3）は、どのプロトコルの revision でも同じ。
+- probe が選んだ revision は、**その confirm が来た経路**の、両方向のすべての message に、その経路の次の confirm まで掛かる。経路ごとに違う revision で動いてよい。TCP では、経路は受けた接続ごとである（§3.1）。
+- ある経路で最初の confirm をした後、host はそこでの後の confirm（立て直し、探り直し）ではすべて、`min_rev = max_rev =` 使っている revision を送る。
+- 範囲の中に扱える revision が無いとき: rejected unsupported で、payload は tag 0x00 の後に TLV 0x01 supported（min(u8)、max(u8): probe が扱える範囲）。`min_rev > max_rev` は rejected malformed。
 
 ### 7.2 list
 

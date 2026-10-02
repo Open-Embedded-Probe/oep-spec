@@ -194,6 +194,7 @@ holder_fn = 0x03                # u16
 holder_kind = 0x04              # u8, enum holder_kind
 fn = 0x05                       # u16: the fn the refusal is about (a track in capture-group's bind)
 [interface.tlv.unsupported_payload]   # the rejected unsupported payload after tag(u8) (0x00 = a fixed-part value), every fn (core §4.3)
+supported = 0x01                # confirm only: min(u8) max(u8), the protocol revisions the probe handles (core §7.1)
 channel = 0x02                  # u16
 fn = 0x05                       # u16: the fn the refusal is about (a track not in capture-group's tracks)
 index = 0x40                    # u8: the position in the request's list (gpio set)
