@@ -367,6 +367,11 @@ label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分
    出力の idle（`power_hi` なら mode 4 出力 high、`power_lo` なら mode 3 出力 low、[probe の設定](oep-if-probe-config.ja.md) §1）を
    置いて保存しておく。保存した出力の idle は起動時にも掛かり、at boot のスロットの attach より先に target の電源が入る。
 
+- 電源の channel を gpio の plan で取るのは、入れ直すときだけにする。読むだけのために取らない（取った直後の level が定まらないので、
+  target の電源がちらつくことがある）。
+- probe のピンから target に直接給電できるのは、target の消費と突入電流が probe のピンの流せる電流（数十 mA 程度）に収まるときだけ。
+  それを超える target や板は、外付けのスイッチ（ロードスイッチ、MOSFET）を介し、電源の channel はその制御の線にする。
+
 ### 8.3 リセットをかけながらの attach
 
 - `nrst` の channel を attach の reset TLV（[線とデバッグ](oep-if-debug.ja.md) §3）に渡す。その channel は probe が describe の
