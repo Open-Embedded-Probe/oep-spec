@@ -355,7 +355,7 @@ label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分
 | `power_lo` | low のとき target の電源が入る線 |
 
 - スロットが 2 つ以上ある probe では、`<スロットの name>.nrst`、`<スロットの name>.power_hi`、`<スロットの name>.power_lo` と付ける
-  （スロットの name は [probe の設定](oep-if-probe-config.ja.md) §1.1）。名前だけ（`nrst` など）は、スロットが 1 つの probe でだけ使う。
+  （スロットの name は [probe の設定](oep-if-probe-config.ja.md) §1.1）。名前だけ（`nrst` など）は、スロットが 1 つ以下の probe でだけ使う（スロットの無い probe でも素の名前で付けられる）。
 - host は、使うスロットについて `<スロット>.<名前>` を先に探し、無ければ名前だけを探す。どちらも無ければ、その線は無いものとして扱う
   （リセットの線を探すなら §4.6）。
 - 1 つの target に付けるのは `power_hi` と `power_lo` のどちらか 1 つ。

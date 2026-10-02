@@ -67,7 +67,9 @@ UIAPduino Pro Micro V1.4、E132 の配線）。NRST は GPIO23 に配線済み�
 
 **NRST の探し方**（10-02、P4）: `find_reset_line` は外れた（[] が返った。host ガイド §4.6 の 09-24 の実測では V003 で本物だけが
 当たっている）。候補を 1 本ずつオープンドレインで low に保ち、アプリの点滅（21）が止まるピンを探すと 4。attach の reset TLV（4）で
-6/6 dpc 0。セッションの最初の 1 回だけ failed が返った。
+6/6 dpc 0。セッションの最初の 1 回だけ failed が返った。外れた原因は client の側だった: `find_reset_line` が attach に pins を
+付けず、最初の候補の後で接続が閉じると、以後の attach が unavailable で断られ、それを「リセットに使えない channel」と読んで
+飛ばしていた（oep-client-python 6a302e7 で修正。修正後は 48 候補、tries=3 で [4]、4.2 s）。今は `oep pins` が両方の方法で探す。
 
 **NRST が有効か**: option bytes 0x1FFFF800 の word0 = RDPR、nRDPR、USER、nUSER。USER の RST_MODE（bits[4:3]）が 11 なら PD7 は
 GPIO で NRST は無い（出荷時）。10-02 の板は USER = 0xF7 → 10（有効、12 ms の窓）。**読むだけで書かない。**
