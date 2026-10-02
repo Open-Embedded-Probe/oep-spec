@@ -108,6 +108,7 @@ owner_max_bytes = 32
 unit_id_max_bytes = 32
 slot_name_max_bytes = 32
 interface_name_max_bytes = 64
+ignored_max_entries = 16        # entries of the ignored TLV; 0x00 as the 16th = more were ignored (core §2.3)
 max_op_ms_reference = 10000     # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
 resource_reuse_distance = 1024  # a closed resource number is not reused among the most recently closed this many (core §9)
 dm_wait_ms = 100                # riscv-dm: one wait for a DM state inside a high-level op (oep-if-debug §4)

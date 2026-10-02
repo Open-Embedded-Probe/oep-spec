@@ -87,7 +87,9 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
   付ける**（効かなくても構わない項目は付けずに送ってよい）。インターフェースの定義が critical で送ると決めた TLV（速さの上限、
   pins など、安全のための項目）は必ず付ける。probe は、知らない critical の
   TLV があれば rejected unsupported（payload に受け取ったままの tag）で断る。知らない非 critical の TLV は無視し、応答の
-  後ろに ignored（tag 0x7F、値は無視した tag の並び）を付ける。結果が completed なら、op の status が失敗でも付ける。同じ tag の TLV を 2 つ以上無視したら、その数だけ並べる。
+  後ろに ignored（tag 0x7F、下）を付ける。結果が completed なら、op の status が失敗でも付ける。
+- ignored は、無視した TLV の番号（bit 7 を落としたもの）を**要求に現れた順に**、無視した TLV 1 つにつき 1 つ、多くても 16 個（`ignored_max_entries`）並べる。無視した TLV が 16 を超えたら、probe は最初の 15 個を並べ、16 個目に **0x00** を置く（「ほかにも無視した」。0x00 は tag にならない、§2.2）。0x00 を見た host は、自分の要求の TLV のうち並んでいないものをすべて、無視されたかもしれないものとして扱う。
+- probe は、ignored の要る応答から ignored を省かない。応答に入れる可変のデータ（data、並び）の量を決めるときは、ignored の場所（多くても 18 byte）を残す。固定部分だけでも場所が足りなければ、入るだけの数を並べ、最後を 0x00 にする。`0x7F 0x01 0x00`（3 byte）は必ず入る。
 - 繰り返すと定義が言わない tag は、1 つの要求に高々 1 回しか現れない。2 つ以上あれば、critical かどうかによらず rejected malformed。応答では、host は最初のものを使う。
 - この probe が実装する TLV の値が定義より短いか、定義が除く値を持てば、critical かどうかによらず要求を rejected malformed にする。定義の中の値でこの probe が扱えないものだけが unsupported（critical）か ignored（critical でない）になる。probe が実装しない TLV は、長さによらず、その probe にとって知らない TLV である。
 - **要求の TLV の値は後ろに伸ばさない。** 新しいフィールドは新しい tag に置く。実装する要求の TLV で、値が知っている長さより長いものに会った probe は、critical なら unsupported（受け取ったままのその tag）で断り、そうでなければ TLV 全体を無視して ignored に載せる。
