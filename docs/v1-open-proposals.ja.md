@@ -141,3 +141,31 @@ git の履歴、2026-09-26 の整理より前の版に残っている）。§6 /
 - 出力の idle（mode 3 / 4）、起動の順、解いたピンは空きの状態に戻ること: [probe の設定](oep-if-probe-config.ja.md) §1 / §2 / §3.1、
   [core](oep-core.ja.md) §8（5013ffb）。
 - 名前の決まり（`nrst`、`power_hi`、`power_lo`）、電源の入れ直し、リセットをかけながらの attach、実測: [host 開発ガイド](host-development-guide.ja.md) §8。
+
+## 11. fixture の出力の強さを仕様で指定する（保留、2026-10-02）
+
+**案**: `oep.fixture.gpio` の出力に任意の強さ。probe は describe に出せる段を目安の mA の並びで宣言し、host は gpio の set と
+probe.config の idle の項目に任意の TLV で段を指定する（無ければ既定）。debug の線（probe の方針で最弱に固定）と、UART /
+SPI / I2C の周辺の線は指定させない。きっかけは classic ESP32 の SWIO のエッジの漏れ込み（[対象ごとのスキャンの記録](target-scan-notes.ja.md) §4）と、
+用途で要る強さが違うこと（gpio / PWM の裏の LED、idle の出力で target に給電する電源の線）。
+
+**実験**（ESP32-P4、FS、CH32V003 を GPIO5 から直接給電、出力 high の強さを build で 4 段）:
+
+| 強さ | 設定だけで起動 | 電源の入れ直しからの止める attach | 止まるまで | NRST が上がるまで |
+|---|---|---|---|---|
+| 最弱（約 5 mA） | 動く | 8/8 | 16.7〜17.2 ms | 4.82 ms |
+| 約 10 mA | 動く | 8/8 | 16.2〜16.7 ms | 4.55 ms |
+| 既定（約 20 mA） | 動く | 8/8 | 16.2〜16.7 ms | 4.42 ms |
+| 最強（約 40 mA） | 動く | 8/8 | 16.2〜16.5 ms | 4.37 ms |
+
+**結論**: 小さな target の直接給電でも最弱で足り、強さで変わるのは立ち上がりの 0.5 ms ほど。bench の治具はどれも probe の 3V3 か
+外部から給電していて、GPIO で給電する治具も、gpio の裏に LED のある治具も無い。**今は入れない**（必要が出てから足す）。
+
+**入れ直すときの条件**（ch32rv、WireSkein、bench の回答）:
+- 既定は変えない。最初は idle の項目だけにし、gpio の set には要る場面が出てから足す。
+- gpio の set で強さを指定しないときは、その channel の idle の項目の強さを引き継ぐ（電源の入れ直しで plan を取った瞬間に電源の
+  線が弱まらないため）。
+- 実際に効いている強さ（既定を含む）を host が読める（電源投入の波形を比べるため）。
+- 段の番号だけでなく、目安の mA で「この値以下の最大の段」を選ぶ書き方も許す（bench file を SoC をまたいで使うため）。
+- 強めると困る線がある: DUT と両側から駆動しうる線、USB PD の CC と USB の pad、DUT の RX につながる UART の TX、reset の線
+  （open drain で引く）。
