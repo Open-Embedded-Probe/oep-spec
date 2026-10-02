@@ -37,8 +37,8 @@ connections, §3 status). The only definition of the numbers is `registry/oep-v1
     to take that channel, rejected unavailable (core §8.1).
   - The `tried` of the scan answer is the number of combinations tried from the start of the request's sequence (for count = 0, the count = 0 sequence above. On a channel_group wire, the order emitted in describe).
     At most 255 combinations are tried in one go (tried is u8). If the found combinations would make the answer no longer fit in one frame,
-    the probe stops there. **The time spent on one answer is 500 ms or less, and if the next combination would exceed it the probe stops there** (a delayed answer
-    becomes a timeout on the host). If tried ≥ 1, the host sends the continuation. If a request listing combinations returns tried smaller than the number listed, the host sends scan again with the remaining combinations.
+    the probe stops there. **The probe also stops where the scan budget (below) does not let it start the next combination**
+    (at least one combination is tried). If tried ≥ 1, the host sends the continuation. If a request listing combinations returns tried smaller than the number listed, the host sends scan again with the remaining combinations.
   - **Continuing count = 0**: a count = 0 request can pass, in the TLV skip (0x01, u16), the number of combinations to skip from the start of the count = 0 sequence (0 if absent).
     The host continues by passing the sum of the tried values so far in skip, and **stops when tried = 0 is returned**. **If combinations remain in the sequence, the probe tries at least 1**
     (tried ≥ 1. tried = 0 only when the sequence is used up). Since the sequence is determined by what is held at the time of the request,
@@ -48,6 +48,11 @@ connections, §3 status). The only definition of the numbers is `registry/oep-v1
     (joining the existing connection. A connection held by a slot is fine too); if there is no live connection and exactly one allowed combination, that combination;
     otherwise (2 or more live connections, or no connection and 2 or more allowed combinations) rejected unavailable (the host chooses).
   - **A combination that is not allowed is rejected unavailable without executing anything** (scan refuses the whole request if even one is in it).
+- **attach budget**: one attach answer takes at most 1000 ms (registry `limits.attach_budget_ms`) of the probe's time, the speed search and its retries included and
+  the hold_ms of the reset TLV excluded. When no speed works within it, the answer is completed failed with status line.
+- **scan budget**: the probe starts no combination later than 500 ms (`limits.scan_budget_ms`) after the scan request arrived (at least one combination is tried).
+  The try of one combination is bounded by the attach budget. One scan answer therefore takes at most `scan_budget_ms` + `attach_budget_ms`.
+- Both budgets are capped at max_op_ms. The host's wait counts them as argument time (core §4.4).
 - **Number of connections that can be held at once**: a wire interface declares it with the max_connections of describe (tag 0x40, u8). If not declared, 1.
   The lock stays one per probe (there is no per-connection lock).
 - **scan and live connections**: for the combination of a live connection, scan does not restart the wire from scratch; it returns it as a found combination using the values read over that connection (DMSTATUS etc.)
@@ -74,6 +79,8 @@ connections, §3 status). The only definition of the numbers is `registry/oep-v1
 - **Target identifier**: after the attach answer, the probe may attach the target identifier it could read, as TLV 0x10 target_id (scheme(u8), value).
   scheme is how the identifier was obtained, defined by the registry per wire. When the probe could not read it (including when the value is one the scheme defines as "none"),
   it does not attach it. The meaning of the value (which bits are the family, which the revision) is known to the host. The probe does not interpret it.
+- **search_retries**: the attach answer of every wire may carry TLV 0x12 search_retries (u16, optional): the number of tries of the speed search that failed
+  before the speed in speed_hz was verified (0 = the first try worked; 0xFFFF = 65535 or more). A host may log it to see a wire that is close to failing.
 
 ## 2. Lifetime of connections (all wires)
 
@@ -83,13 +90,16 @@ In addition to [common parts](oep-if-common.md) §2:
   force (length 0, sent critical), it closes even if there are users.
 - **A reset of the target does not close the connection.** The probe keeps it usable on the same connection after the reset (the per-wire procedure is in
   §4.6 and the other sections of the interfaces that handle targets).
-- The wire is considered lost when there is **no answer for 1000 ms continuously** even when retrying at the slowest speed. While the probe is asserting reset, while the probe
-  is holding the reset wire (the plan, the reset TLV of attach), and the time from its release until the target's debug comes back, are not counted. A target that stays unresponsive
-  longer than that (power removed, a long reset applied externally) may be considered lost. The slow speed during retries is temporary and does not change the connection's
-  speed_hz.
+- **Retries inside one request**: the probe spends at most 200 ms (registry `limits.wire_retry_ms`) of one request retrying the wire, retries at a slower speed
+  included. When that is used up, it ends that request with status line. That alone does not decide wire loss. The speed search of attach (and of a scan combination)
+  is bounded by the attach budget of §1 instead. The slow speed during retries is temporary and does not change the connection's speed_hz.
+- **Wire loss**: the wire is lost when operations on a connection have failed with no answer from the wire (status line, inside requests or inside console reads)
+  for **1000 ms of real time** (`limits.wire_lost_ms`), with no successful operation on that connection in between. The time the probe asserts reset or holds
+  a reset line (the plan, the reset TLV of attach), and the 1000 ms after it releases it, are not counted. When the probe decides wire loss inside a request,
+  it answers that request with status line, then closes the connection.
 - **Wire loss is decided only inside a request or inside a console read** (idle connections are not monitored. The liveness check of at boot slots is
-  [probe settings](oep-if-probe-config.md) §3.1). When decided inside a request, that request is returned with status line, then the connection closes
-  (the host verifies with connections). When decided inside a console read, a mark link-lost is attached and it closes.
+  [probe settings](oep-if-probe-config.md) §3.1). A status line alone does not mean that the connection closed: the host checks with connections.
+  When decided inside a console read, a mark link-lost is attached and it closes.
 - **When the probe closes a connection, it does not change the target's state more than necessary** (it does not reset the target. A hart that was halted is left as the
   host's last operation left it).
 
@@ -164,6 +174,7 @@ TLVs:
 | detach | 0x01 | force | Length 0. critical |
 | attach answer | 0x10 | target_id | scheme(u8), value |
 | attach answer | 0x11 | dpc | u32 (8 bytes for RV64). The dpc when the hart is halted (flags bit3) |
+| attach answer | 0x12 | search_retries | u16, optional. §1 |
 
 The schemes of target_id (`target_id_scheme`): 1 = the u32 read from DMI address 0x7F (length 4). 0 and 0xFFFFFFFF mean "none" (not attached).
 2 = the targetsel of swd (u32, used only in the entries of connections. Not used for the lock). The length of the value per scheme is held in the registry
@@ -237,7 +248,8 @@ it is returned twice as is. write_block / read_block on a hart that is not halte
 - **done is the number of steps completed** (on failure, the 0-based index of the failed step). Only 0x02 / 0x03 / 0x05 add values.
   `nvals` is the number of values in the answer (the number of value-adding steps among the first done steps, plus 1 if the failed step was 0x03 / 0x05 that ran out of waiting
   (status timeout)). A step that failed without being able to read, because of a wire fault or the like, adds no value.
-- The sum of the waits (the us of 0x04, the limits of 0x03 / 0x05) must not exceed the core's max_op_ms (rejected unsupported if it does).
+- The sum of the wait_us of 0x04 steps and the max_us of 0x05 steps must not exceed max_op_ms (rejected unsupported). 0x03 steps are bounded by their count, not by time.
+  If a request reaches max_op_ms while running, the probe ends it at that step with status timeout (done = the index of that step).
 - One request is an operation on one hart. Things that need timing and re-establishing of the wire (reset, recovery) are made into component ops.
 - **The host puts a whole abstract-command sequence (writing data1 / data0, command, reading data0) into one dmi request** (so that it is not broken even if the probe
   inserts a console read between requests. `oep.target.console` §2).
@@ -335,10 +347,10 @@ dmi).
 
 - The kind of scan is 2 = arm-adi, id is DPIDR. The forms of request and answer are the same as §3 (one form for the 3 wires).
 - The TLVs use the same numbers as §3: scan 0x01 max_speed, 0x02 skip, 0x06 targetsel (below). attach 0x01 max_speed (mandatory), 0x02 targetsel,
-  0x03 pins, 0x05 reset (a probe without it is rejected unsupported). detach 0x01 force.
+  0x03 pins, 0x05 reset (a probe without it is rejected unsupported). detach 0x01 force. attach answer 0x10 target_id, 0x12 search_retries (§1).
 - **How the speed is selected**: SWD cannot select the speed by reading, so it starts at `min(max_speed, the max_clock_hz of describe)`.
 - attach tries the switch from JTAG to SWD, and if there is no answer wakes it from dormant (flags bit2). Power-up (the CDBGPWRUPREQ /
-  CSYSPWRUPREQ of CTRL/STAT) is done by the host with DP writes. In the retries for wire loss, the line reset and the wake from dormant are redone.
+  CSYSPWRUPREQ of CTRL/STAT) is done by the host with DP writes. In the retries of §2, the line reset and the wake from dormant are redone.
 - **targetsel (TLV 0x02, u32) is sent critical** (only for multidrop. If ignored, it would attach to a different target). **The identity of a connection
   includes targetsel.** An attach whose targetsel (including none) differs from a live connection with the same pin combination is rejected unavailable
   (the host detaches first). If the same, that connection is returned as is. scan tries without targetsel (multidrop targets that require TARGETSEL

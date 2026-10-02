@@ -37,8 +37,8 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
     取ろうとすれば rejected unavailable（core §8.1）。
   - scan の応答の `tried` は、要求の並び（count = 0 なら上の count = 0 の並び。channel_group の線では describe に出した順）の
     先頭から試し終えた組の数。1 回に試すのは多くても 255 組（tried は u8）。見つかった組で応答が 1 フレームに入らなくなりそう
-    なら、probe はそこで止める。**1 回の応答に掛ける時間は 500 ms 以下にし、次の組で超えそうなら probe はそこで止める**（応答が
-    遅れると host の時間切れになる）。tried ≥ 1 なら、host は続きを送る。組を並べた要求で tried が並びの数より少なければ、host は残りの組でもう一度 scan を送る。
+    なら、probe はそこで止める。**scan の予算（下）で次の組を始められないときも、probe はそこで止める**
+    （少なくとも 1 組は試す）。tried ≥ 1 なら、host は続きを送る。組を並べた要求で tried が並びの数より少なければ、host は残りの組でもう一度 scan を送る。
   - **count = 0 の続き**: count = 0 の要求は TLV skip（0x01、u16）で、count = 0 の並びの先頭から飛ばす数を渡せる（無ければ 0）。
     host は skip に今までの tried の和を渡して続け、**tried = 0 が返ったら終わり**。**並びに組が残っていれば、probe は少なくとも 1 組は
     試す**（tried ≥ 1。tried = 0 は並びを使い切ったときだけ）。並びは要求のときの持たれ方で決まるので、
@@ -48,6 +48,11 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
     だけならその組（既存の接続に乗る。スロットが持っている接続でもよい）、生きている接続が無く許す組が 1 つだけならその組、
     それ以外（生きている接続が 2 つ以上、または接続が無く許す組が 2 つ以上）は rejected unavailable（host が選ぶ）。
   - **許していない組は、何も実行せずに rejected unavailable**（scan は要求の中に 1 つでもあれば全体を断る）。
+- **attach の予算**: 1 つの attach の応答に probe が掛ける時間は多くても 1000 ms（registry `limits.attach_budget_ms`）で、速さの探索とその再試行を含み、
+  reset TLV の hold_ms は含まない。その間にどの速さも使えなければ、応答は status line の completed failed。
+- **scan の予算**: probe は、scan の要求が届いてから 500 ms（`limits.scan_budget_ms`）より後に組を始めない（少なくとも 1 組は試す）。
+  1 組の試しは attach の予算で抑える。したがって 1 つの scan の応答は多くても `scan_budget_ms` + `attach_budget_ms` かかる。
+- どちらの予算も max_op_ms で頭打ちにする。host の待ちは、これらを引数の時間として数える（core §4.4）。
 - **同時に持てる接続の数**: wire のインターフェースは describe の max_connections（tag 0x40、u8）で宣言する。宣言が無ければ 1。
   ロックは probe に 1 つのまま（接続ごとのロックは無い）。
 - **scan と生きている接続**: 生きている接続の組は、scan で線を初めからやり直さず、その接続で読んだ値（DMSTATUS など）で見つかった
@@ -74,6 +79,8 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 - **target の識別子**: attach の応答の後ろに、probe が読めた target の識別子を TLV 0x10 target_id（scheme(u8)、値）で付けてよい。
   scheme は識別子の取り方で、wire ごとに registry が定める。probe は読めなかったとき（scheme が「無い」と定める値だったときを含む）
   は付けない。値の意味（どのビットが系統で、どれがリビジョンか）は host が知っている。probe は解釈しない。
+- **search_retries**: どの wire の attach の応答にも TLV 0x12 search_retries（u16、任意）を付けてよい: speed_hz の速さを確かめるまでに
+  失敗した速さの探索の試行の数（0 = 最初の試行で通った。0xFFFF = 65535 以上）。host はこれを記録して、切れかけの線を見てよい。
 
 ## 2. connection の寿命（全 wire）
 
@@ -83,13 +90,16 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   force（長さ 0、critical で送る）で、使っているものがあっても閉じる。
 - **target の reset では connection を閉じない**。probe は、reset の後も同じ connection で使えるように保つ（wire ごとの手順は
   §4.6 など、target を扱うインターフェースの節）。
-- 線が切れたとみなすのは、最遅の速さで再試行しても **1000 ms 続けて応答が無い**とき。probe が reset を出している間、reset の線を
-  probe が保っている間（plan、attach の reset TLV）、その解放から target の debug が戻るまでの時間は数えない。それより長く応答
-  しない target（電源を切った、長い reset を外から掛けた）は、切れたとみなしてよい。再試行の間の遅い速さは一時的で、connection の
-  speed_hz は変えない。
+- **1 つの要求の中の再試行**: probe が 1 つの要求の中で線の再試行に使うのは多くても 200 ms（registry `limits.wire_retry_ms`）で、遅い速さでの
+  再試行を含む。使い切ったら、その要求を status line で終える。それだけでは線切れと決めない。attach（と scan の 1 組）の速さの探索は、
+  代わりに §1 の attach の予算で抑える。再試行の間の遅い速さは一時的で、connection の speed_hz は変えない。
+- **線切れ**: 線が切れたとするのは、ある connection の操作が線からの応答無しで失敗し続けて（status line。要求の中でもコンソールの読みの中でも）
+  **実時間で 1000 ms**（`limits.wire_lost_ms`）たち、その間にその connection で成功した操作が無いとき。probe が reset を出している時間、
+  reset の線を保っている時間（plan、attach の reset TLV）と、それを解いてからの 1000 ms は数えない。probe が要求の中で線切れと決めたら、
+  その要求に status line で答えてから connection を閉じる。
 - **線切れの判定は、要求の中かコンソールの読みの中でだけ行う**（idle な connection は監視しない。at boot のスロットの生存確認は
-  [probe の設定](oep-if-probe-config.ja.md) §3.1）。要求の中で判定したら、その要求を status line で返してから connection を閉じる
-  （host は connections で確かめる）。コンソールの読みの中で判定したら、mark link-lost を付けて閉じる。
+  [probe の設定](oep-if-probe-config.ja.md) §3.1）。status line だけでは connection が閉じたことにならない: host は connections で確かめる。
+  コンソールの読みの中で判定したら、mark link-lost を付けて閉じる。
 - **probe は connection を閉じるとき、target の状態を必要以上に変えない**（target を reset しない。止めていた hart は、閉じる前の
   host の操作のままにする）。
 
@@ -164,6 +174,7 @@ TLV:
 | detach | 0x01 | force | 長さ 0。critical |
 | attach の応答 | 0x10 | target_id | scheme(u8)、値 |
 | attach の応答 | 0x11 | dpc | u32（RV64 は 8 byte）。hart が止まっている（flags bit3）ときの dpc |
+| attach の応答 | 0x12 | search_retries | u16、任意。§1 |
 
 target_id の scheme（`target_id_scheme`）: 1 = DMI のアドレス 0x7F を読んだ u32（長さ 4）。0 と 0xFFFFFFFF は「無い」（付けない）。
 2 = swd の targetsel（u32、connections の entry だけに使う。錠には使わない）。scheme ごとの値の長さは registry に持つ
@@ -237,7 +248,8 @@ malformed。dmi の max_reads / max_us = 0 は 1 回読む。run の timeout_ms 
 - **done は最後まで済んだ手順の数**（失敗したときは、失敗した手順の 0 起点の番号）。値を足すのは 0x02 / 0x03 / 0x05 だけ。
   `nvals` は応答に入っている値の数（最初の done 個の手順のうち値を足す手順の数に、失敗した手順が 0x03 / 0x05 で待ち切れた
   （status timeout）なら 1 を足したもの）。線の不良などで読めずに失敗した手順は値を足さない。
-- 待ち（0x04 の us、0x03 / 0x05 の上限）の和は core の max_op_ms を超えてはならない（超えれば rejected unsupported）。
+- 0x04 の手順の wait_us と 0x05 の手順の max_us の和は max_op_ms を超えてはならない（rejected unsupported）。0x03 の手順は時間ではなく回数で抑える。
+  走っている間に要求が max_op_ms に達したら、probe はその手順で要求を終え、status timeout で答える（done = その手順の番号）。
 - 1 つの要求は 1 つの hart の操作。タイミングと線の立て直しが要るもの（リセット、回復）は部品の op にする。
 - **host は抽象コマンドの一連（data1 / data0 の書き込み、command、data0 の読み）を 1 つの dmi 要求に入れる**（probe が
   要求の間にコンソールの読みを挟んでも壊れない。`oep.target.console` §2）。
@@ -335,10 +347,10 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 
 - scan の kind は 2 = arm-adi、id は DPIDR。要求と応答の形は §3 と同じ（3 線で 1 つの形）。
 - TLV は §3 と同じ番号: scan 0x01 max_speed、0x02 skip、0x06 targetsel（下）。attach 0x01 max_speed（必須）、0x02 targetsel、
-  0x03 pins、0x05 reset（持たない probe は rejected unsupported）。detach 0x01 force。
+  0x03 pins、0x05 reset（持たない probe は rejected unsupported）。detach 0x01 force。attach の応答 0x10 target_id、0x12 search_retries（§1）。
 - **speed の選び方**: SWD は読んで速さを選べないので、`min(max_speed, describe の max_clock_hz)` で始める。
 - attach は JTAG から SWD への切り替えを試し、答えがなければ dormant から起こす（flags bit2）。電源投入（CTRL/STAT の CDBGPWRUPREQ /
-  CSYSPWRUPREQ）は host が DP の書き込みで行う。線の切れの再試行では、line reset と dormant 起こしをやり直す。
+  CSYSPWRUPREQ）は host が DP の書き込みで行う。§2 の再試行では、line reset と dormant 起こしをやり直す。
 - **targetsel（TLV 0x02、u32）は critical で送る**（multidrop のときだけ。無視されると別の target に attach するため）。**connection の
   同一性には targetsel を含める**。同じピンの組の生きている connection と targetsel（無しを含む）が違う attach は rejected unavailable
   （host が先に detach する）。同じなら、その connection をそのまま返す。scan は targetsel なしで試す（TARGETSEL が要る multidrop の
