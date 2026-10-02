@@ -18,6 +18,8 @@
 
 **設定 = 項目（TLV）の並び**。tag はこの文脈の空間。項目ごとに**キー**があり、同じ tag の項目はキーで見分ける。
 
+- **項目の channel**: label、idle、disable の項目の channel は、`channels`（fn 0 の describe の 0x43）未満で、`reserved`（0x44）に無い。そうでなければ set は rejected unsupported（受け取ったままの項目の tag）。
+
 | tag | 項目 | 値 | キー |
 |---:|---|---|---|
 | 0x01 | plan | fn(u16)、role(u8)、channel(u16)（1 項目 1 割り当て） | (fn, role, channel)（同じ fn の項目で、その fn の plan になる） |
@@ -33,7 +35,7 @@
 - **plan**: その fn の plan_apply と同じ（core §8）。設定の plan は設定だけが変える: セッションの plan_release（n = 0 を含む）
   はそれを解かず、plan_apply がその fn を挙げたら rejected unavailable（core §8）。
 - **label**: 設定で付けた channel の名前。get で読む（core の describe の label（0x46）は firmware が持つ固定の名前で、設定では
-  変わらない。host は両方を合わせて使う。core §7.3: describe は宣言だけ）。
+  変わらない。host は両方を合わせて使う。core §7.3: describe は宣言だけ）。text: 1〜32 byte（registry の `limits.label_max_bytes`）の正しい UTF-8 で、C0 の制御文字（0x00〜0x1F）と 0x7F を含まない。そうでなければ rejected malformed。
 - **uart**: その fn（`oep.fixture.uart`）の plan に RX か TX が付いた時点（設定の plan でも、セッションの plan_apply でも）で、
   configure 相当を掛ける。plan が無くても set は通る（掛かるのは plan が付いたとき）。セッションの configure は、plan を解くか
   probe が再起動するまで、この項目より勝つ。baud は set のときに実現できる値を確かめ、±5% を超えて外れれば rejected unsupported。
@@ -46,7 +48,7 @@
   - 無効にした channel を指す要求（plan_apply、設定の plan、線の attach の pins と reset、scan の組、gpio など）は rejected unavailable
     （cause 5 設定が持つ、channel と holder_kind 6 無効化 付き）。scan の count = 0 の並びと、pins の無い attach の候補には入れない
     （候補がそれしか無ければ同じく cause 5）。同じ set の中で disable と、その channel を使う plan / slot を両方送った場合も cause 5。
-  - firmware が宣言していない channel の disable は rejected unsupported（idle と同じ）。
+  - firmware が宣言していない channel の disable は rejected unsupported（上の、項目の channel）。
   - probe はその channel の pin を駆動も設定もしない（起動時と解放時の空きの状態にもしない。リセットの後のまま）。
   - いま使われている channel（plan、接続、スロット。同じ set で外されるものは除く）を無効にする set は rejected unavailable
     （cause 1）。同じ channel の idle と disable を両方持つ設定は malformed。
@@ -57,7 +59,7 @@
   mode 3 / 4 では、そのピンが空きの間ずっと、probe がその level で駆動する。idle が無いピンは Hi-Z。治具の配線で相手の入力が浮くピン（相手の RX につながる TX など）は、host が idle で明示し、保存する。
   出力の mode は、plan が持っていない間もある level を保たなければならない channel（target の電源のスイッチなど）のためにある。
   idle の項目の変更（set / unset）は、空いている channel にはすぐ効き、plan や接続が持つ channel には、次に空きになったときに効く。
-  その channel を出力として駆動できない probe では、mode 3 / 4 の idle は rejected unsupported。mode が 5 以上なら rejected unsupported（受け取ったままの項目の tag、core §2.5）。
+  その channel を出力として駆動できない probe では、mode 3 / 4 の idle は rejected unsupported。そのプルを持たない channel では、mode 1 か 2 の idle は rejected unsupported（受け取ったままの項目の tag）。（参考）`oep.fixture.gpio` の無い probe では、どの channel がプルや出力を持つかを host が前もって知る方法は無い。mode が 5 以上なら rejected unsupported（受け取ったままの項目の tag、core §2.5）。
   （参考）出力の idle が target の出力とぶつからないようにするのは、配線の責任である。
   - **強さ（任意）**: mode の後ろに drive_kind(u8)、drive_value(u16) を置ける（[fixture](oep-if-fixture.ja.md) §1.1 の強さの指定と同じ
     kind と value）。置かなければ既定の段。置けるのは mode 3 / 4 だけで、ほかの mode で置けば rejected malformed。値の長さが 4 か 5
@@ -121,7 +123,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
 
 | フィールド | 意味 |
 |---|---|
-| port | シリアルの口の番号（core の describe の transport の index）。シリアルの口でなければ rejected unsupported。firmware の更新で USB の構成が変わると index も変わりうる（bind を見直す） |
+| port | シリアルの口の番号（core の describe の transport の index）。シリアルの口でなければ rejected unsupported。index は firmware の版を越えて変わらない（core §7.5） |
 | mode | 0 last-reset、1 manual、2 mixed（下）。describe の bind_modes に無い mode は rejected unsupported |
 | selected | manual の選択（並びの中の番号、n 未満。外れていれば rejected malformed）。last-reset と mixed では 0 を送り、probe は見ない |
 | n、並び | 流すストリーム（n ≥ 1）。各要素の前に要素の長さ len を置く（応答の並びと同じ形、core §2.3）。len は 3 以上（3 未満は rejected malformed）で、probe は 3 byte より後ろを読み飛ばす。host は今は 3 を送る。kind 1 = スロットのコンソール（id = slot）、kind 2 = fixture UART の受信（id = `oep.fixture.uart` の fn）。無いスロットを指せば rejected malformed（設定どうしの矛盾）、fn が無ければ unknown_function、fn が `oep.fixture.uart` でなければ rejected unsupported。mechanism 0xFF のスロットは載せられない（rejected malformed） |
@@ -139,7 +141,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
 - **mixed の行**: LF で閉じる。閉じない出力は、128 byte たまるか、最後のバイトから 100 ms 静かだったら閉じる。name はスロットの
   name。fixture UART は、その fn の plan の RX の channel に label（§1）があればその label、無ければ `name#instance`（core §7.2、
   例 `oep.fixture.uart#1`）。
-  label を印にするとき、probe は `]` と 0x20 未満のバイト（CR、LF など）を `_` に置き換える（label の項目そのものは制限しない）。
+  label を印にするとき、probe は `]` と 0x20 未満のバイト（CR、LF など）を `_` に置き換える。
   行の前後は、target どうしでは行が閉じた順（機械で読む用途には向かない）。
 - **口から来た生のバイト**（core §3.4 の、フレームの外のバイト）は、選ばれているストリームの相手（コンソールなら console の write、
   fixture UART なら TX）に、相手が受け取れる分だけ渡す。受け取れない分は捨ててよい。
@@ -159,8 +161,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
 
 ### 1.3 線の名前（label の決まり）
 
-label（§1）の text のうち、次の名前は線の役目を表す。text と名前は、ASCII の大文字と小文字を区別せずに比べる。
-探すのは設定の label の項目（§1）だけで、core の describe の label（0x46）やほかの名前は探さない。
+label（設定の label の項目、§1 と、firmware の label、core の describe の label（0x46））の text のうち、次の名前は線の役目を表す。
 
 | 名前 | 線 | 使うもの |
 |---|---|---|
@@ -168,23 +169,27 @@ label（§1）の text のうち、次の名前は線の役目を表す。text �
 | `power_hi` | high のとき target の電源が入る線 | host だけ（probe は使わない） |
 | `power_lo` | low のとき target の電源が入る線 | host だけ（probe は使わない） |
 
-- **スロットの線の探し方**（名前 N、スロットの name S）: text が `S.N` に等しい label の channel。それが無く、設定が持つスロットの項目が
-  1 つ以下のときだけ、text が `N` に等しい label の channel。どちらでも見つからなければ、そのスロットにその線は無い。
-- 同じ段（`S.N` か `N`）で 2 つ以上の channel が一致したら、そのスロットにその線は無いものとする。
-- スロットの項目の無い設定では、`N` に等しい label の channel が probe につながる target の線である（一致が 2 つ以上なら無い）。
+- **スロットの線の探し方**（名前 N、スロットの name S）。次の順に探し、channel がちょうど 1 つ見つかった段で止める:
+  - (a) `S.N` に等しい設定の label;
+  - (b) 設定が持つスロットの項目が 1 つ以下のときだけ、`N` に等しい設定の label;
+  - (c) 設定が持つスロットの項目が 1 つ以下のときだけ、`N` に等しい firmware の label（fn 0 の describe、0x46）。
+- 2 つ以上の channel が見つかった段で、線なしとして探すのを終える。どの段でも見つからなければ、そのスロットにその線は無い。text と名前は、ASCII の大文字と小文字を区別せずに比べる。
+- スロットの項目の無い設定では、段 (b) と (c) で、probe につながる target のその線が見つかる。
+- 表に無い label の text は、役目を表さない（名前でしかない）。標準の名前は registry（`oep.probe.config` の `[line_names]`）に並べる。足しても revision は変わらない（core §2.7）。標準でない役目の名前は `x-` で始める（例 `x-acme-boot0`）。標準の名前は `x-` で始まらず、どの名前も `.` を含まない（`S.N` が使う）。
 - probe は `power_hi` と `power_lo` を使わない（電源の線を駆動しない）。host は同じ探し方で電源の線を見つける。
 
 ## 2. 操作
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---|---|---|---|---|
-| 0x01 | get | first(u16) | more(u8)、hash(u32)、項目の並び（今の設定）、… | 不要 |
+| 0x01 | get | first(u16) | more(u8)、hash(u32)、payload の終わりまでの項目（今の設定） | 不要 |
 | 0x02 | set | 項目の並び | hash(u32)、[TLV] | 必要 |
 | 0x03 | save | — | hash(u32)、[TLV] | 必要 |
 | 0x04 | erase | — | — | 必要 |
 | 0x05 | unset | n(u8)、n × (len(u8)、tag(u8)、key) | hash(u32)、[TLV] | 必要 |
 | 0x06 | state | first_slot(u8)、first_bind(u8) | §3.3（今の状態）、ロック不要 | 不要 |
 
+- **get**: 応答の項目は payload の終わりまで続く。tag 0x7E は応答のメタ情報のために予約し、v1 の probe は置かない。get は TLV を取らない（あれば rejected malformed、core §7.3）。
 - **set は、要求に含まれる項目のキーごとに置き換える**（含まれないキーはそのまま。何回かの set に分けて積み上げられる）。
   plan の項目は fn ごとにまとめて、その fn の plan を置き換える。項目の順は意味を持たない。
 - **unset はキーの項目を消す**（key は tag ごと: plan は fn(u16)（その fn の plan 全部）、label と idle は channel(u16)、slot は slot(u8)、
@@ -199,7 +204,7 @@ label（§1）の text のうち、次の名前は線の役目を表す。text �
   probe が自分で後ろにフィールドを足すことはしない。
 - **hash** は今の設定の正規形の CRC-32（core §5.2 と同じ IEEE）。正規形 = 項目を tag の昇順に、同じ tag の中はキー（plan は
   (fn, role, channel)）の昇順に並べ、TLV（core §2.2 の一意の符号化）でつないだバイト列。host は自分の欲しい設定から同じ値を計算し、
-  get の hash と同じなら何もしない。get はこの正規形の順で first 番目の項目から返し、どのページも同じ hash を返す（変わっていたら
+  get の hash と同じなら何もしない。正規形では tag の critical の bit を落とす。キーは数として比べ、複数のフィールドのキーは最初のフィールドから順に比べる。get はこの正規形の順で first 番目の項目から返し、どのページも同じ hash を返す（変わっていたら
   host は最初から読み直す）。
 - **save は host の明示的な操作だけ**で、今の設定をそのまま保存する（同じ内容なら書かない）。書いている間はほかの要求に答えない
   （core の max_op_ms の対象）。**保存は丸ごと置き換え**で、途中で電源が落ちても前の保存か新しい保存のどちらかが読める。describe の
@@ -211,6 +216,7 @@ label（§1）の text のうち、次の名前は線の役目を表す。text �
   fn のまま）。指す interface が無いか、revision が違えば、**保存全体を適用しない**（一部だけ入れると治具が半端に動く。storage の
   状態は「あり・読めない」、理由 2）。指していない interface の追加・削除・並べ替えは、保存に影響しない。
 - 保存の形（probe の中の持ち方）は probe が決める。読み替えの規則だけが規範。
+- 起動時に、保存した bind の port がこの firmware のシリアルの口でなければ、保存は読めないものになる（理由 2）。保存した項目のどれかの適用が断られたら、保存全体を適用しない（理由 3）。
 - 起動時は、保存を今の設定にして（上の確かめを通ったとき）、idle を掛け（mode 3 / 4 の出力の駆動を、その強さと一緒に含む）、plan を適用し、uart を掛け、at boot のスロットの attach を
   始め、bind を結ぶ。保存を読めないときは適用せず、state で知らせる。
 
@@ -218,9 +224,9 @@ label（§1）の text のうち、次の名前は線の役目を表す。text �
 
 | 状況 | reason |
 |---|---|
-| 形の誤り、同じキーが 2 回、name の文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset の値と host のスロットの boot_reset 1、mode 3 / 4 でない idle の drive と、idle の drive の長さと drive_kind、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
+| 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset の値と host のスロットの boot_reset 1、mode 3 / 4 でない idle の drive と、idle の drive の長さと drive_kind、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
 | 指す fn が無い（plan、slot の wire_fn、bind の kind 2、uart） | unknown_function |
-| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、その線が持たない lock_scheme（定義にあってもなくても）、保存の無い probe の save / erase | unsupported |
+| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か reserved にある label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、その線が持たない lock_scheme（定義にあってもなくても）、保存の無い probe の save / erase | unsupported |
 | plan_roles 超え、ピンや資源の取り合い、at boot のスロットが max_connections を超える、保存先が足りない | unavailable（cause 2 / 1 / 2 / 3） |
 
 ## 3. スロットの接続と状態
@@ -282,7 +288,7 @@ bind_state: port(u8)、mode(u8)、selected(u8: 今選ばれている並びの番
 ```
 
 - storage_state: 0 保存なし、1 あり・適用済み、2 あり・読めない。storage_hash は、保存を今の fn に読み替えた後の正規形の hash
-  （読めなければ 0）。unreadable_reason: 0 なし、1 形が読めない（壊れた、別の版の形）、2 指す interface が無い・revision が違う、
+  （読めなければ 0）。unreadable_reason: 0 なし、1 形が読めない（壊れた、別の版の形）、2 指す interface が無い・revision が違う・bind の port がシリアルの口でない、
   3 適用が断られた（資源がぶつかる）。
 - 登録したスロットを slot の昇順に first_slot 番目から、bind を port の昇順に first_bind 番目から、1 フレームに入る分だけ返す。
   more = 1 なら続きがあり、host は first に受け取った数を足してもう一度聞く。

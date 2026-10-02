@@ -619,6 +619,7 @@ appears in the answer.
 - The kind of transport: 1 UART bridge, 2 USB CDC, 3 built-in USB serial (a USB serial port implemented by the MCU's hardware, whose USB descriptors, the serial number included, the probe cannot choose), 4 vendor bulk, 5 HID, 6 TCP (the registry's `transport_kind`).
   1 to 3 are serial ports (§3.4). index is the number designating a transport within the probe (from 0); when the probe's settings designate a serial port they also use this
   number. It does not change while the probe stays booted.
+- **Invariance of transport indexes**: a transport keeps its index across firmware versions of the same model. A firmware that adds a transport gives it an index not used before, and a removed index is not reused.
 - The host may decide how to take over the lock from the number of transports (if the only transport is a single serial port, there is no previous owner once the port has been opened
   exclusively. [host development guide](host-development-guide.ja.md) (Japanese)).
 - **Uniqueness of unit_id**: unit_id is a different value per unit (the chip's unique number, etc.). A probe with neither a unique number nor storage may hold it as a firmware build

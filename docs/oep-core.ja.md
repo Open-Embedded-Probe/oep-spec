@@ -619,6 +619,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 - transport の kind: 1 UART bridge、2 USB CDC、3 内蔵の USB シリアル（MCU のハードウェアが持つ USB のシリアルの口で、serial number を含む USB の記述子を probe が選べないもの）、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
   1〜3 がシリアルの口（§3.4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
   使う。probe の起動の間は変わらない。
+- **経路の index の不変性**: 経路は、同じ model の firmware の版を越えて index を保つ。経路を足す firmware は、それまで使っていない index を付け、外した index は使い直さない。
 - host は transport の数で、ロックの奪い方を決めてよい（経路がシリアルの口 1 つだけなら、口を排他で開けた時点で前の持ち主は
   いない。[host 開発ガイド](host-development-guide.ja.md)）。
 - **unit_id の一意性**: unit_id は個体ごとに違う値にする（チップの固有の番号、など）。固有の番号も保存も無い probe は firmware のビルド

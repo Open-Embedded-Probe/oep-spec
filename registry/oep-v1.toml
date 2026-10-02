@@ -109,6 +109,7 @@ lease_max_ms = 60000
 owner_max_bytes = 32
 unit_id_max_bytes = 32
 slot_name_max_bytes = 32
+label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
 interface_name_max_bytes = 64
 ignored_max_entries = 16        # entries of the ignored TLV; 0x00 as the 16th = more were ignored (core §2.3)
 max_op_ms_reference = 10000     # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
@@ -863,6 +864,10 @@ bind_modes = 0x43               # u32 bits of bind_mode; last_reset and manual a
 [interface.reserved]
 "tlv.describe" = [[0x44, 0x45]] # were slot_state / bind_state (moved to op state)
 "tlv.item" = [[0x7E, 0x7E]]
+[interface.line_names]          # standard line names of label texts (oep-if-probe-config §1.3); private names start with x-
+nrst = "the target's reset line (the probe's retry with reset, and the host)"
+power_hi = "a line that powers the target when high (the host only)"
+power_lo = "a line that powers the target when low (the host only)"
 [interface.enum.idle_mode]
 hi_z = 0
 pull_up = 1
@@ -897,5 +902,5 @@ applied = 1
 unreadable = 2
 [interface.enum.storage_unreadable]   # state's unreadable_reason: why the saved items were not applied (§3.3)
 form = 1                        # not readable (damaged, another firmware's form)
-interface = 2                   # an interface they name is gone or of another revision
+interface = 2                   # an interface they name is gone or of another revision, or a bind's port is not a serial port
 refused = 3                     # applying them was refused (resources clash)

@@ -18,6 +18,8 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
 
 **Settings = a sequence of items (TLVs)**. The tag is in the space of this context. Each item has a **key**, and items with the same tag are told apart by the key.
 
+- **The channel of an item**: the channel of a label, idle or disable item is less than `channels` (fn 0 describe 0x43) and not in `reserved` (0x44). Otherwise the set is rejected unsupported (the item's tag as received).
+
 | tag | Item | Value | Key |
 |---:|---|---|---|
 | 0x01 | plan | fn(u16), role(u8), channel(u16) (1 assignment per item) | (fn, role, channel) (the items of the same fn make up the plan of that fn) |
@@ -33,7 +35,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
 - **plan**: the same as plan_apply of that fn (core §8). A settings plan is changed only by the settings: a session's plan_release (including n = 0)
   does not release it, and if plan_apply names that fn, rejected unavailable (core §8).
 - **label**: the name of a channel given by the settings. Read with get (the label (0x46) of the core's describe is the fixed name the firmware holds, and does not change
-  with the settings. The host uses both together. core §7.3: describe is only a declaration).
+  with the settings. The host uses both together. core §7.3: describe is only a declaration). text: 1 to 32 bytes (registry `limits.label_max_bytes`) of valid UTF-8 without C0 control characters (0x00 to 0x1F) or 0x7F. Otherwise rejected malformed.
 - **uart**: applies the equivalent of configure at the point the plan of that fn (`oep.fixture.uart`) gets RX or TX (whether by the settings plan or by a session's plan_apply).
   set goes through even without a plan (it is applied when a plan is attached). A session's configure wins over this item until the plan is released or
   the probe reboots. baud is checked at set for the realisable value, and if it deviates by more than ±5%, rejected unsupported.
@@ -46,7 +48,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
   - A request that points to a disabled channel (plan_apply, a settings plan, pins and reset of a wire's attach, a combination of scan, gpio, etc.) is rejected unavailable
     (cause 5 held by the settings, with channel and holder_kind 6 disable). It is not included in the sequence of a scan with count = 0, nor in the candidates of an attach without pins
     (if that is the only candidate, likewise cause 5). When a disable and a plan / slot using that channel are both sent in the same set, also cause 5.
-  - A disable of a channel the firmware does not declare is rejected unsupported (the same as idle).
+  - A disable of a channel the firmware does not declare is rejected unsupported (the channel of an item, above).
   - The probe neither drives nor configures the pin of that channel (it does not put it in the idle state at boot and at release either. It stays as after reset).
   - A set that disables a channel currently in use (plan, connection, slot. Excluding those removed in the same set) is rejected unavailable
     (cause 1). Settings that have both idle and disable for the same channel are malformed.
@@ -57,7 +59,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
   With mode 3 / 4, the probe drives that level for as long as the pin is idle. A pin without idle is Hi-Z. A pin where the peer's input would float because of the fixture's wiring (a TX connected to the peer's RX, etc.) is stated explicitly by the host with idle and saved.
   The output modes exist for a channel that must keep a level even while no plan holds it (the switch of the target's power, etc.).
   A change of the idle item (set / unset) takes effect at once on a free channel, and on a channel a plan or a connection holds, when it next becomes free.
-  On a probe that cannot drive that channel as an output, an idle with mode 3 / 4 is rejected unsupported. A mode of 5 or more is rejected unsupported (the item's tag as received, core §2.5).
+  On a probe that cannot drive that channel as an output, an idle with mode 3 / 4 is rejected unsupported. On a channel that does not have that pull, an idle with mode 1 or 2 is rejected unsupported (the item's tag as received). (Informative) A probe without `oep.fixture.gpio` gives the host no way to learn in advance which channels have pulls or outputs. A mode of 5 or more is rejected unsupported (the item's tag as received, core §2.5).
   (Informative) Keeping an output idle from meeting an output of the target is the responsibility of the wiring.
   - **Strength (optional)**: drive_kind(u8), drive_value(u16) may be placed after mode (the same kind and value as the strength specification of [fixture](oep-if-fixture.md) §1.1).
     If not placed, the default level. Only mode 3 / 4 can carry them, and placing them with another mode is rejected malformed. A value length of 4 or 5
@@ -121,7 +123,7 @@ port(u8), mode(u8), selected(u8), n(u8), n × (len(u8), kind(u8), id(u16))
 
 | Field | Meaning |
 |---|---|
-| port | The number of the serial port (the index of the transport of the core's describe). If it is not a serial port, rejected unsupported. If a firmware update changes the USB configuration, the index can also change (review the bind) |
+| port | The number of the serial port (the index of the transport of the core's describe). If it is not a serial port, rejected unsupported. The index does not change across firmware versions (core §7.5) |
 | mode | 0 last-reset, 1 manual, 2 mixed (below). A mode not in bind_modes of describe is rejected unsupported |
 | selected | The selection for manual (the number in the sequence, less than n. If out of range, rejected malformed). For last-reset and mixed 0 is sent, and the probe does not look at it |
 | n, sequence | The streams to send (n ≥ 1). Each element is preceded by its length len (the same form as sequences in answers, core §2.3). len is 3 or more (less than 3 is rejected malformed), and the probe skips what follows the first 3 bytes. The host sends 3 for now. kind 1 = the console of a slot (id = slot), kind 2 = reception of a fixture UART (id = the fn of `oep.fixture.uart`). Pointing to a nonexistent slot is rejected malformed (a contradiction within the settings), a nonexistent fn is unknown_function, an fn that is not `oep.fixture.uart` is rejected unsupported. A slot with mechanism 0xFF cannot be put on it (rejected malformed) |
@@ -139,7 +141,7 @@ port(u8), mode(u8), selected(u8), n(u8), n × (len(u8), kind(u8), id(u16))
 - **Lines of mixed**: closed by LF. Output that is not closed is closed when 128 bytes have accumulated or after 100 ms of quiet since the last byte. name is the slot's
   name. For a fixture UART, the label if the channel of RX in the plan of that fn has a label (§1), otherwise `name#instance` (core §7.2,
   e.g. `oep.fixture.uart#1`).
-  When a label is used as the marker, the probe replaces `]` and bytes below 0x20 (CR, LF, etc.) with `_` (the label item itself is not restricted).
+  When a label is used as the marker, the probe replaces `]` and bytes below 0x20 (CR, LF, etc.) with `_`.
   The order of lines between targets is the order in which the lines were closed (not suited to machine reading).
 - **Raw bytes coming from the port** (the bytes outside frames of core §3.4) are passed to the peer of the selected stream (for a console, the write of console;
   for a fixture UART, TX), as much as the peer can accept. What cannot be accepted may be discarded.
@@ -159,8 +161,7 @@ port(u8), mode(u8), selected(u8), n(u8), n × (len(u8), kind(u8), id(u16))
 
 ### 1.3 Line names (the label convention)
 
-Among the texts of label (§1), the following names state the role of a line. A text and a name are compared ignoring ASCII case.
-Only the settings' label items (§1) are searched, not the label (0x46) of the core's describe or other names.
+Among the texts of labels (the settings' label items, §1, and the firmware's labels, the label (0x46) of the core's describe), the following names state the role of a line.
 
 | Name | Line | Used by |
 |---|---|---|
@@ -168,23 +169,27 @@ Only the settings' label items (§1) are searched, not the label (0x46) of the c
 | `power_hi` | A line that powers the target when high | The host only (the probe does not use it) |
 | `power_lo` | A line that powers the target when low | The host only (the probe does not use it) |
 
-- **Finding a slot's line** (name N, slot name S): the channel of the label whose text equals `S.N`. If there is none, and only when the settings hold
-  at most one slot item, the channel of the label whose text equals `N`. If neither finds one, that slot has no such line.
-- If two or more channels match at the same step (`S.N` or `N`), that slot is taken to have no such line.
-- In settings without slot items, the channel of the label equal to `N` is that line of the target connected to the probe (none if two or more match).
+- **Finding a slot's line** (name N, slot name S). Search in this order, and stop at the first step that finds exactly one channel:
+  - (a) a settings label equal to `S.N`;
+  - (b) only when the settings hold at most one slot item, a settings label equal to `N`;
+  - (c) only when the settings hold at most one slot item, a firmware label (describe of fn 0, 0x46) equal to `N`.
+- A step that finds two or more channels ends the search with no line. If no step finds one, that slot has no such line. Texts and names are compared ignoring ASCII case.
+- In settings without slot items, steps (b) and (c) find that line of the target connected to the probe.
+- A label text that is not in the table states no role (it is only a name). Standard names are listed in the registry (`[line_names]` of `oep.probe.config`). Adding one does not change the revision (core §2.7). A name for a role that is not standard starts with `x-` (example `x-acme-boot0`). Standard names never start with `x-`, and no name contains `.` (`S.N` uses it).
 - The probe does not use `power_hi` and `power_lo` (it does not drive the power line). The host finds the power line with the same search.
 
 ## 2. Operations
 
 | op | Name | Request | Answer | Lock |
 |---|---|---|---|---|
-| 0x01 | get | first(u16) | more(u8), hash(u32), sequence of items (the current settings), … | Not required |
+| 0x01 | get | first(u16) | more(u8), hash(u32), the items (the current settings) to the end of the payload | Not required |
 | 0x02 | set | sequence of items | hash(u32), [TLV] | Required |
 | 0x03 | save | — | hash(u32), [TLV] | Required |
 | 0x04 | erase | — | — | Required |
 | 0x05 | unset | n(u8), n × (len(u8), tag(u8), key) | hash(u32), [TLV] | Required |
 | 0x06 | state | first_slot(u8), first_bind(u8) | §3.3 (the current state), no lock needed | Not required |
 
+- **get**: the answer's items run to the end of the payload. Tag 0x7E is reserved for answer meta information, and a v1 probe does not place it. get takes no TLV (one is rejected malformed, core §7.3).
 - **set replaces per key of the items contained in the request** (keys not contained stay as they are. Settings can be built up over several sets).
   The plan items are grouped per fn and replace the plan of that fn. The order of the items has no meaning.
 - **unset deletes the item of the key** (key depends on the tag: plan is fn(u16) (the whole plan of that fn), label and idle are channel(u16), slot is slot(u8),
@@ -199,7 +204,7 @@ Only the settings' label items (§1) are searched, not the label (0x46) of the c
   The probe does not add fields to the tail itself.
 - **hash** is the CRC-32 (the same IEEE one as core §5.2) of the canonical form of the current settings. Canonical form = the byte sequence of the items sorted in ascending order of tag, and within the same tag in ascending order of key (for plan
   (fn, role, channel)), joined as TLVs (the unique encoding of core §2.2). The host computes the same value from the settings it wants, and
-  if it is the same as the hash of get, does nothing. get returns from the first-th item in the order of this canonical form, and every page returns the same hash (if it has changed,
+  if it is the same as the hash of get, does nothing. In the canonical form a tag has its critical bit cleared. Keys are compared as numbers, and multi-field keys field by field from the first. get returns from the first-th item in the order of this canonical form, and every page returns the same hash (if it has changed,
   the host reads again from the beginning).
 - **save is only an explicit operation of the host**, and saves the current settings as they are (if the content is the same, nothing is written). While writing, it does not answer other requests
   (subject to the core's max_op_ms). **A save replaces the whole**, and even if power is lost partway, either the previous save or the new save can be read. `max_bytes` of
@@ -211,6 +216,7 @@ Only the settings' label items (§1) are searched, not the label (0x46) of the c
   with fn). If an interface pointed to does not exist, or the revision differs, **the whole save is not applied** (putting in only part would make the fixture behave half-way. The storage
   state is "present, unreadable", reason 2). Adding, removing or reordering interfaces that are not pointed to does not affect the save.
 - The form of the save (how it is kept inside the probe) is decided by the probe. Only the rewriting rule is normative.
+- At boot, a saved bind whose port is not a serial port of this firmware makes the save unreadable (reason 2). If applying any saved item is refused, the whole save is not applied (reason 3).
 - At boot, the probe makes the save the current settings (when it passes the checks above), applies idle (including driving the outputs of mode 3 / 4, together with their strength), applies the plan, applies uart, starts the attach of the at boot slots,
   and connects the binds. When the save cannot be read it is not applied, and this is reported in state.
 
@@ -218,9 +224,9 @@ Only the settings' label items (§1) are searched, not the label (0x46) of the c
 
 | Situation | reason |
 |---|---|
-| Form errors, the same key twice, characters of name, range of selected, retry_ms not 0 on a host slot, length of lock, the value of boot_reset and boot_reset 1 on a host slot, a drive of an idle that is not mode 3 / 4, and the length and drive_kind of an idle's drive, putting a slot with mechanism 0xFF on a bind, a bind pointing to a nonexistent slot, two slots with the same wire_fn and the same pins, duplicate name | malformed |
+| Form errors, the same key twice, characters of name, the length and characters of a label's text, range of selected, retry_ms not 0 on a host slot, length of lock, the value of boot_reset and boot_reset 1 on a host slot, a drive of an idle that is not mode 3 / 4, and the length and drive_kind of an idle's drive, putting a slot with mechanism 0xFF on a bind, a bind pointing to a nonexistent slot, two slots with the same wire_fn and the same pins, duplicate name | malformed |
 | The fn pointed to does not exist (plan, wire_fn of slot, kind 2 of bind, uart) | unknown_function |
-| An undeclared item, a pin combination the wire does not allow, a wire_fn whose wire cannot have a lock, a mechanism the console does not declare, an idle with mode 3 / 4 on a channel that cannot be driven as an output, an idle's level number equal to the number of levels or more, idle_clock 1 on other than rvswd, a max_speed_hz that cannot be kept, a mode not in bind_modes, a port that is not a serial port, an fn that is not uart, an unrealisable baud / format, an unused value or reserved bit of format, an idle mode of 5 or more, a lock_scheme the wire does not have (defined or not), save / erase on a probe without saving | unsupported |
+| An undeclared item, a pin combination the wire does not allow, a wire_fn whose wire cannot have a lock, a mechanism the console does not declare, an idle with mode 3 / 4 on a channel that cannot be driven as an output, an idle's level number equal to the number of levels or more, idle_clock 1 on other than rvswd, a max_speed_hz that cannot be kept, an idle with mode 1 / 2 on a channel without that pull, the channel of a label / idle / disable at or beyond channels or in reserved, a mode not in bind_modes, a port that is not a serial port, an fn that is not uart, an unrealisable baud / format, an unused value or reserved bit of format, an idle mode of 5 or more, a lock_scheme the wire does not have (defined or not), save / erase on a probe without saving | unsupported |
 | plan_roles exceeded, contention for pins or resources, at boot slots exceeding max_connections, not enough room to save | unavailable (cause 2 / 1 / 2 / 3) |
 
 ## 3. Slot connections and state
@@ -282,7 +288,7 @@ bind_state: port(u8), mode(u8), selected(u8: the number in the sequence currentl
 ```
 
 - storage_state: 0 no save, 1 present and applied, 2 present and unreadable. storage_hash is the hash of the canonical form after the save is rewritten to the current fns
-  (0 if unreadable). unreadable_reason: 0 none, 1 the form cannot be read (corrupted, the form of a different version), 2 an interface pointed to does not exist / the revision differs,
+  (0 if unreadable). unreadable_reason: 0 none, 1 the form cannot be read (corrupted, the form of a different version), 2 an interface pointed to does not exist / the revision differs / a bind's port is not a serial port,
   3 applying was refused (resources conflict).
 - Returns the registered slots in ascending order of slot from the first_slot-th, and the binds in ascending order of port from the first_bind-th, as many as fit in 1 frame.
   If more = 1 there is a continuation, and the host adds the received counts to first and asks again.
