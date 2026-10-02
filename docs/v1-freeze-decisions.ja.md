@@ -1,6 +1,6 @@
-# v1 凍結前の決定（2026-09-30）
+# v1 凍結前の決定（2026-09-30）と凍結の範囲（2026-10-02）
 
-状態: **決定**（2026-09-30。★ の 3 つはユーザーが選んだ。ほかは案のとおりで進め、規範の文書に移す）。発端は bench（arduinocore）がエコシステム全体を洗い出した
+状態: **決定**（2026-09-30。§0 は 2026-10-02 に足した凍結の範囲。★ の 3 つはユーザーが選んだ。ほかは案のとおりで進め、規範の文書に移す）。発端は bench（arduinocore）がエコシステム全体を洗い出した
 「凍結前に壊さないと後で直せない所」のうち OEP の分（13 項目）。凍結前なので、どれも revision を上げずに形を変え、全ツールが
 一度に追う（[開発の方針](development-guidelines.ja.md)）。
 
@@ -15,6 +15,73 @@
 12 は 2026-10-01 のゼロベースの再検討で変わった: 設定の label は core の describe には出さず probe.config の get で読む（describe は宣言だけ）。
 3(b)（iProduct `OEP`）は恒久の規範になり、3(c)（HID の report）は記述子に任せる形で反映した。11 の参照「probe-cdc §6 / §7」は
 open-proposals §6 / §7 の誤り。その後の決定は [ゼロベースの再検討と仕様案](v1-zero-base-proposal.ja.md)。
+
+## 0. v1 の凍結の範囲（2026-10-02）
+
+v1 の凍結は、host と probe が別々に作られても噛み合うための約束を止めること。何を止め、何を止めないかを 1 か所に書く。
+
+### 0.1 凍結するもの
+
+| 凍結するもの | 置き場 |
+|---|---|
+| フレームの形（COBS + CRC-16、`length(u16)`、HID の report、見出しの並びと長さ、confirm の前の 64 byte） | [core](oep-core.ja.md) §3 |
+| メッセージの形（要求 / 応答 / 出来事 / データの固定部、TLV の形と critical の規則、reject reason、outcome、断り方の順） | core §2、§4 |
+| 標準インターフェースの payload（op の表、固定部、TLV の tag、出来事、status、資源の寿命） | `oep-if-*.ja.md` |
+| **registry/oep-v1.toml のすべての数**（op、tag、reason、status、enum、`timing`、`limits`、`usb`、インターフェースの名前と revision） | [registry](../registry/oep-v1.toml)、生成物 |
+| core と `oep-if-*` の規範の文（「〜する」「〜しない」の文。[dmseq](target-console-dmseq.ja.md) を含む） | 各文書 |
+
+凍結の後にこれらを変えるときは **revision を上げる**（固定部か意味を変えるインターフェースはその revision、本体の形はプロトコルの
+revision。core §2.7）。後ろに足す（任意の TLV、任意の op、出来事、並びの要素の後ろ）は revision を変えずにできる（§0.4）。
+
+### 0.2 凍結の後も自由なもの
+
+| 自由なもの | 置き場 |
+|---|---|
+| host 開発ガイド、probe 開発ガイドと、その中の参考の数字（速さの候補、閾値、フレーム数、窓、再試行の回数の例） | [host](host-development-guide.ja.md)、[probe](probe-development-guide.ja.md) |
+| 計測の記録（追記は自由。規範はそこから数字を引かない） | [リンクの計測](link-measurements.ja.md)、[UART の速さ](uart-speed-negotiation.ja.md)、[キャプチャ](logic-capture.ja.md) |
+| リリース前の試験の中身と手順 | [release-testing](release-testing.ja.md)、oep-client-python `tests/hw/` |
+| fake（偽の probe）の振る舞いのうち、規範が probe に任せている所 | oep-client-python `fake.py` |
+| client の方針（候補の並び、待ち方、再試行の回数、API の形）と、参照 firmware の宣言する値（max_frame、window、max_op_ms、max_length） | 各実装 |
+| 理由と経緯の文書（この文書を含む） | core §15 の一覧 |
+
+### 0.3 意図して固定し、伸ばさないもの（理由）
+
+[ゼロベース再検討](v1-zero-base-proposal.ja.md) §4 と [再点検](v1-zero-base-review-2026-10-02.ja.md) の ☆ から。凍結のレビューで
+「理由が成り立つか」を見てほしい所。
+
+| 固定するもの | 理由 | もし要るなら |
+|---|---|---|
+| フレームの見出し（要求 6 / 10 byte、応答 5 byte、通知 5 / 6 byte） | 替えるのは本体の revision。confirm で交渉できるので将来の道は閉じない | プロトコルの revision |
+| COBS + CRC-16 / `length(u16)` / HID report の詰め方 | 経路の種類ごとに決まる | 新しい transport kind が自分の方式を定める |
+| op（u8）、TLV の tag（u8、bit 7 critical）、reject reason（u8）、出来事の kind（u8） | 足りなくなったらインターフェースを分ける。空間を広げるより名前で分ける方が host に優しい | 別の名前のインターフェース（別の fn） |
+| 要求の並びの要素に len を置かない | host は revision と describe で probe を知ってから送る（原則 3）。足すものは TLV | 要求の TLV |
+| 応答の固定部そのもの | 固定部を変えるのは revision + 新しい fn。足すものは TLV（「伸ばし方は 1 つ」） | TLV、revision |
+| link_source / link_sink の意味 | 線の試験用。意味を足す理由が無い | — |
+| confirm の前の 64 byte | 交渉の前の約束。小さいほど安全 | — |
+| probe.config の項目のキー（slot u8、port u8、fn u16、channel u16） | 1 台の probe の中の数。u8 / u16 で足りる | — |
+| ☆1 confirm に host の受けの上限を足さない | 応答の量は host が同時数で、通知の量は host が min_bytes で決める。probe が host の上限を知っても使い道が無い（通知に ack が無い） | confirm の要求 TLV（非 critical）を後から |
+| ☆2 max_frame は両方向の上限のまま | シリアルの口の受けの問題は 1 フレームではなく burst の量（core §3.4 の host の規則） | — |
+| ☆3 DFU / firmware の更新は OEP の外（core §0） | USB の記述子にすべてある。OEP が写しを持つと版ごとに食い違う。unit_id = serial が不変なので焼く側は個体を見失わない | `oep.probe.firmware` のような名前つきのインターフェース |
+| ☆4 read_block に `max_count` の宣言や専用の理由を足さない | max_length（byte）で表せる。断り方は unsupported に揃えた | address_hi は予約済み（RV64） |
+| ☆5 port_speed で probe は速さの候補を宣言しない | 通る速さは host 側の変換チップで決まり、probe からは見えない。候補は host の表 | 要求 TLV に「試した結果」を後から |
+| ☆6 ブリッジ側の実際の baud（整数分周のずれ）は出さない | host 側の性質で probe は知れない。応答の baud は probe の UART の実際の値で足りる | — |
+| ☆7 block op の往復の減らし方（sysbus のまとめ読みなど）は op に足さない | read_block の意味は「target のバスを通して読む」で、手段は probe が選べる | riscv-dm の features ビットと op 0x09〜 |
+| 長い操作、role 0x03 / 0x04、dmi の u32 step、reset の method 2、swd の attach_under_reset、capture の 0x40 以降（§11） | 使う実例が無いまま形を決めない | 予約の番号に後から定める |
+
+### 0.4 伸ばす道（revision を変えずにできること）
+
+| 道 | 範囲 | 規則 |
+|---|---|---|
+| TLV | 要求 / 応答 / 出来事の後ろ。tag は (fn, op) の文脈ごとの u8（bit 7 critical。0x00、0x7F、0xFF は予約） | core §2.2、§2.3。host は知らない非 critical を飛ばし、probe は知らない critical を unsupported で断る |
+| 後ろに足す | TLV の値、出来事の payload、応答の並びの要素（`count × (len, 要素)`）の後ろ | core §2.3。読む側は知らない後ろを飛ばす、短ければ壊れた値 |
+| op | インターフェースの op は 0x01〜0xEF をその定義が決める（0xF0〜0xFF は実験用）。core は 0x50〜0xEF が予約 | core §2.5。任意の op の有無は describe で宣言 |
+| reject reason / status | 0x40〜0x7F をインターフェースが決める | core §2.5、common §3 |
+| describe の宣言 tag | 0x01〜0x3E は本体の共通タグ、0x40〜0x7F はインターフェース。fn 0 は 0x40〜 | core §7.4、§7.5 |
+| unavailable / unsupported の payload の tag | 0x40 以降をインターフェースが足す | core §4.3 |
+| 出来事の kind | fn ごとに 0x01〜0x7F | core §2.5 |
+| probe.config の項目 | 新しい tag、既存の項目の後ろ | probe-config §1 |
+| 新しいインターフェース | `oep.` は標準、独自は逆 DNS。名前が違えば別の fn | core §13 |
+| 新しい経路 | transport kind を足し、そのフレームの方式を定める | core §3.1、§3.3 |
 
 ## A. 横断（決めると他が動ける）
 
