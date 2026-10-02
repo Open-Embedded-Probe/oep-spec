@@ -1,6 +1,6 @@
 # Open Embedded Probe — Requestの受理と完了
 
-状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中の論理protocol案**。この文書は、[共通message model候補](message-model-candidates.ja.md)の候補Cを仮の比較基準として、requestに対する受理、拒否、即時完了および継続処理の意味を整理する。候補Cの採用、wire上のmessage type、encodingおよびfield構成はまだ決定しない。
+状態: **記録**（規範ではない。v0 以前の検討の経緯）。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中の論理protocol案**。この文書は、[共通message model候補](message-model-candidates.ja.md)の候補Cを仮の比較基準として、requestに対する受理、拒否、即時完了および継続処理の意味を整理する。候補Cの採用、wire上のmessage type、encodingおよびfield構成はまだ決定しない。
 
 ## 解決したい問題
 

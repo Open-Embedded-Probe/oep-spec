@@ -2,7 +2,7 @@
 
 [English](review-guide.md)
 
-状態: 2026-10-02 時点の地図（v1 の凍結前。凍結前の決定とゼロベースの再検討を規範に入れ、残っていた数を埋めた後）。OEP をまだ知らない人が
+状態: **ガイド**（規範ではない）。2026-10-02 時点の地図（v1 の凍結前。凍結前の決定とゼロベースの再検討を規範に入れ、残っていた数を埋めた後）。OEP をまだ知らない人が
 v1 の凍結のレビューをするときに、どこから読めばよいか、どの PATH に何があるか、何を見てほしいかをまとめる。PATH は各リポジトリの根からの相対。
 
 ## 1. OEP とは
@@ -33,7 +33,8 @@ flash の書き方やチップ固有の手順は host にある。
   同時使用、TCP。これらは fake に対する試験（`uv run pytest`、247 件）と手動の確認だけです。
 - 決め方は「先に実験・試作をして、その結果で仕様を固める」。実験の番号や日付は**記録の文書**に残し、規範の文には置きません
   （規範はチップ名・ボード名・日付を持たず、数は目安ではなく値）。
-- 文書は**日本語が原文**です。規範の文書（core、oep-if-*）と凍結の範囲、このガイドには英語版（`.md`）があります。食い違えば日本語が正しい。記録とガイドは日本語だけです。
+- **規範は英語の文**です。日本語の文書（`.ja.md`）は訳で、両者が食い違えば英語の文が正しい。規範の文書にはすべて英語版があります。ガイドと記録の多くは日本語だけです。
+- **変更**: このリポジトリが唯一の正です。規則の変更、文言の変更、新しい `oep.` の名前と registry の値、errata の入れ方は [CONTRIBUTING](../CONTRIBUTING.ja.md) にあります。
 
 ## 3. 最短の読む順番（v1 の凍結のレビュー）
 
@@ -76,16 +77,16 @@ flash の書き方やチップ固有の手順は host にある。
 
 | 状態 | PATH（`docs/`） |
 |---|---|
-| **v1 の規範** | `oep-core`、`oep-if-*`（6 つ）、`target-console-dmseq` |
-| 凍結の範囲と決定 | `v1-freeze-decisions`（§0 範囲、§A / §B の 13 項目）、`v1-zero-base-proposal`、`v1-zero-base-review-2026-10-02`、`v1-freeze-review-2026-10-01`（対応済み） |
-| 実務（規範ではない） | `host-development-guide`、`probe-development-guide`、`release-testing` |
-| 記録（実測。追記は自由） | `link-measurements`、`target-scan-notes`（target ごとの scan と attach）、`uart-speed-negotiation`、`logic-capture`（§7 以降）、`probe-cdc-and-persistence` §7 |
-| v1 の理由 | `session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-connection-use-cases`、`probe-cdc-and-persistence`、`usb-identity` |
-| 案と経緯、レビューの対応 | `v1-open-proposals`、`review-response-2026-09-26`、`review-answer-*`（3 つ）、`hardware-source-review-2026-09-26`、`v1-operation-test-audit-2026-09-26`、`v1-open-issues-research-2026-09-26`、`v1-core-wire-delta` |
-| 上流の合意（目的・要求・モデル） | `project-concept`（英語版 `project-concept.md` は古い）、`use-cases`、`project-requirements`、`conceptual-model`、`responsibility-boundaries`、`development-guidelines` |
-| v0 以前の設計の比較と候補（経緯） | `common-protocol-behavior`、`information-model`、`interaction-patterns`、`message-model-candidates`、`message-routing-model`、`message-header-layout-comparison`、`request-correlation-lifecycle`、`implicit-correlation-comparison`、`correlation-width-comparison`、`correlation-retirement-model`、`request-completion-semantics`、`activity-reference-lifecycle`、`connection-binding-design-inputs`、`minimal-connection-channel`、`bootstrap-*`（3 つ）、`uart-*`（`uart-speed-negotiation` を除く 5 つ） |
-| v0（v1 で置き換え済み） | `v0-core-wire-model`、`v003-destructive-prototype` |
-| 調査 | `capture-survey`（sigrok、市販のロジアナの机上調査） |
+| **規範** | `oep-core`、`oep-if-*`（6 つ）、`target-console-dmseq` |
+| **ガイド**（規範ではない） | `review-guide`、`project-concept`、`host-development-guide`、`probe-development-guide`、`release-testing`、`usb-identity`、`development-guidelines` |
+| **記録**: 凍結の範囲と決定 | `v1-freeze-decisions`（§0 範囲、§A / §B の 13 項目）、`v1-zero-base-proposal`、`v1-zero-base-review-2026-10-02`、`v1-zero-base-review-3-2026-10-02`、`v1-freeze-review-2026-10-01`（対応済み） |
+| **記録**: 実測（追記は自由） | `link-measurements`、`target-scan-notes`（target ごとの scan と attach）、`uart-speed-negotiation`、`logic-capture`（§7 以降）、`probe-cdc-and-persistence` §7、`target-console-dmseq-notes` |
+| **記録**: v1 の理由 | `session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-connection-use-cases`、`probe-cdc-and-persistence` |
+| **記録**: 案と経緯、レビューの対応 | `v1-open-proposals`、`review-response-2026-09-26`、`review-answer-*`（3 つ）、`hardware-source-review-2026-09-26`、`v1-operation-test-audit-2026-09-26`、`v1-open-issues-research-2026-09-26`、`v1-core-wire-delta` |
+| **記録**: v1 より前の上流の入力（要求、モデル） | `use-cases`、`project-requirements`、`conceptual-model`、`responsibility-boundaries` |
+| **記録**: v0 以前の設計の比較と候補 | `common-protocol-behavior`、`information-model`、`interaction-patterns`、`message-model-candidates`、`message-routing-model`、`message-header-layout-comparison`、`request-correlation-lifecycle`、`implicit-correlation-comparison`、`correlation-width-comparison`、`correlation-retirement-model`、`request-completion-semantics`、`activity-reference-lifecycle`、`connection-binding-design-inputs`、`minimal-connection-channel`、`bootstrap-*`（3 つ）、`uart-*`（`uart-speed-negotiation` を除く 5 つ） |
+| **記録**: v0（v1 で置き換え済み） | `v0-core-wire-model`、`v003-destructive-prototype` |
+| **記録**: 調査 | `capture-survey`（sigrok、市販のロジアナの机上調査） |
 
 ### 5.2 番号の表と生成
 
@@ -103,7 +104,8 @@ flash の書き方やチップ固有の手順は host にある。
 | `experiments/*/README.ja.md` | 非規定の比較実装と実験の記録（flash-primitives、dm-console-seq、v003-reset-flags、session-id-cost、v0 以前の bootstrap-layout / message-routing / uart-binding） |
 | `tests/` | 実験実装の検証環境（`tests/README.ja.md`） |
 | `memo.ja.md` | 調査・移行のメモ、ユーザーのメモの控え（作業用） |
-| `README.ja.md` | 文書の一覧（状態の区別は無いので、この手引きの 5.1 を使う） |
+| `README.ja.md` | OEP とは何か、状態、文書の地図、始め方、貢献、license |
+| `CONTRIBUTING.ja.md` | 変更の手順 |
 
 ## 6. oep-probe-arduino（probe の実装、Arduino ライブラリ、0.0.27）
 
@@ -168,6 +170,6 @@ flash の書き方やチップ固有の手順は host にある。
 - 規範は「〜する」「〜しない」の文で、数は値（目安ではない）。実験の番号（X1〜X6、P1〜P7、E1xx）、日付、チップやボードの名前は記録の文書にある。
 - 「未確定」「未確認」と書いたものは、まだ確かめていない。
 - 同じことを別の文書で古い形で書いていることがある（v0 以前の比較の文書、`v1-core-wire-delta.ja.md` など）。v1 では
-  `oep-core.ja.md` と `oep-if-*.ja.md` が正しく、番号は `registry/oep-v1.toml` が正しい。
+  英語の `oep-core.md` と `oep-if-*.md` が正しく（日本語の `.ja.md` はその訳）、番号は `registry/oep-v1.toml` が正しい。
 - 実装の振る舞いを確かめたいときは、probe は `src/Oep*.cpp`、client は `src/oep_client/` を見るのが早い。どちらも
   冒頭のコメントに、対応する仕様の節が書いてある。

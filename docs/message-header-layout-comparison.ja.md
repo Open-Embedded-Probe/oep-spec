@@ -1,6 +1,6 @@
 # Open Embedded Probe — Message header構成比較
 
-状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **非規定の比較案**。この文書は、request/result、activity、notificationおよびdataを配送する情報を、すべてのmessageに共通する固定headerへ置く方式と、message roleごとに必要なheaderを持つ方式で比較する。
+状態: **記録**（規範ではない。v0 以前の検討の経緯）。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **非規定の比較案**。この文書は、request/result、activity、notificationおよびdataを配送する情報を、すべてのmessageに共通する固定headerへ置く方式と、message roleごとに必要なheaderを持つ方式で比較する。
 
 wire field、数値、幅、byte order、alignmentおよびroleの個数は決定しない。以下のbyte数は差を観察するための仮定であり、protocol上の上限または採用layoutではない。
 

@@ -1,6 +1,6 @@
 # Open Embedded Probe — UART bindingの信頼性model候補
 
-状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **初期UART connection bindingの検討方針**。この文書は、UART上で破損、欠落、重複および再同期を扱い、OEP共通protocolへ完全なlogical messageまたはtransport failureを渡すための最小信頼性modelを整理する。
+状態: **記録**（規範ではない。v0 以前の検討の経緯）。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **初期UART connection bindingの検討方針**。この文書は、UART上で破損、欠落、重複および再同期を扱い、OEP共通protocolへ完全なlogical messageまたはtransport failureを渡すための最小信頼性modelを整理する。
 
 framing、CRC、delimiter、timeout、baud rateおよびfield値はまだ決定しない。
 

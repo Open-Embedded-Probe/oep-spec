@@ -1,6 +1,6 @@
 # Open Embedded Probe — 共通protocolの抽象的な振る舞い
 
-状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **合意済みの抽象的な振る舞い**。この文書は、[概念モデル](conceptual-model.ja.md)と[責任境界](responsibility-boundaries.ja.md)に基づき、OEP共通protocolが外部から観測可能にする必要のある振る舞いを整理する。下流設計によって矛盾が見つかった場合は、理由を記録して改訂する。
+状態: **記録**（規範ではない。v0 以前の検討の経緯）。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **合意済みの抽象的な振る舞い**。この文書は、[概念モデル](conceptual-model.ja.md)と[責任境界](responsibility-boundaries.ja.md)に基づき、OEP共通protocolが外部から観測可能にする必要のある振る舞いを整理する。下流設計によって矛盾が見つかった場合は、理由を記録して改訂する。
 
 この文書は、packet、message、field、encoding、転送単位、数値識別子または具体的なstate machineを規定しない。ここで示す段階を一つずつ独立した通信として実装することも要求しない。
 

@@ -1,6 +1,6 @@
 # OEP 実機・ソース・テスト項目レビュー（2026-09-26）
 
-状態: 実測とコードレビューの記録。規範ではない。対象のソースは `oep-probe-arduino` `3160dee`、
+状態: **記録**（規範ではない。実測とコードレビュー）。対象のソースは `oep-probe-arduino` `3160dee`、
 `oep-client-python` `75ee13e`、[OEP core](oep-core.ja.md) と各標準インターフェース。
 probe と target の接続・配線は ArduinoCore-CH32 の `tests/manual/oep_smoke/targets.py` を使用した。
 

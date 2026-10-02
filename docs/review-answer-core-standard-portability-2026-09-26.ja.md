@@ -1,6 +1,6 @@
 # OEP v1 コア・標準インターフェースの移植性と復旧性レビュー（2026-09-26）
 
-状態: **レビュー回答・提案。規範ではない。** 対象は `oep-spec` 2ff1d62 の
+状態: **記録**（規範ではない。レビューの回答と提案）。 対象は `oep-spec` 2ff1d62 の
 [`oep-core.ja.md`](oep-core.ja.md) と §14 の標準インターフェース文書、`oep-probe-arduino` 3160dee、
 `oep-client-python` 75ee13e。実機で確認したことは
 [実機・ソースレビュー](hardware-source-review-2026-09-26.ja.md)と

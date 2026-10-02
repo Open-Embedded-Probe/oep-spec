@@ -1,6 +1,6 @@
 # Open Embedded Probe — Connection binding設計入力
 
-状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中の下位protocol設計入力**。この文書は、OEP共通protocolをHID、UART、USB CDC、USB vendor interfaceおよびIP network上で成立させるために、connection bindingが扱う性質と初期検証対象を整理する。
+状態: **記録**（規範ではない。v0 以前の検討の経緯）。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **検討中の下位protocol設計入力**。この文書は、OEP共通protocolをHID、UART、USB CDC、USB vendor interfaceおよびIP network上で成立させるために、connection bindingが扱う性質と初期検証対象を整理する。
 
 ここでは個別bindingのframing、USB descriptor、HID report、baud rate、network transportまたはwire encodingをまだ決定しない。各接続方法をすべてのprobeへ実装することも要求しない。
 

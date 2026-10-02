@@ -2,7 +2,7 @@
 
 [日本語](v1-freeze-decisions.ja.md)
 
-Status: **decided** (2026-09-30. §0 is the scope of the freeze added on 2026-10-02. The 3 ★ items were chosen by the user. The others proceed as proposed and are moved into the normative documents). The origin is the OEP share (13 items) of
+Status: **record** (not normative. Decisions, 2026-09-30. §0 is the scope of the freeze added on 2026-10-02. The 3 ★ items were chosen by the user. The others proceed as proposed and are moved into the normative documents). The origin is the OEP share (13 items) of
 "places that cannot be fixed later unless broken before the freeze", which bench (arduinocore) found by sweeping the whole ecosystem. Since it is before the freeze, every one changes form without raising the revision, and all tools
 follow at once ([development guidelines](development-guidelines.ja.md) (Japanese)).
 

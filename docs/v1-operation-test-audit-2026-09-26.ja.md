@@ -1,6 +1,6 @@
 # OEP v1 操作・状態遷移・テスト監査（2026-09-26）
 
-状態: 実測とソースレビュー。規範ではない。対象は `oep-spec` 2ff1d62、`oep-probe-arduino` 3160dee、
+状態: **記録**（規範ではない。実測とソースレビュー）。対象は `oep-spec` 2ff1d62、`oep-probe-arduino` 3160dee、
 `oep-client-python` 75ee13e、および ArduinoCore-CH32 の `tests/manual/oep_*`。
 個々の機材と firmware 転送、既に見つけた plan の問題、Windows 経由の RP2350 転送手順は
 [実機・ソースレビュー](hardware-source-review-2026-09-26.ja.md)に記録した。

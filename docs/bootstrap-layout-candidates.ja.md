@@ -1,6 +1,6 @@
 # Open Embedded Probe — Bootstrap layout候補
 
-状態: **経緯（v0 以前の検討。規範ではない）**。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **比較検討用の仮wire layout**。この文書は、OEP endpoint確認と最小constraint取得を、8 byte単位のHID control transferと小さいUART bufferの双方で実行できるか比較する。
+状態: **記録**（規範ではない。v0 以前の検討の経緯）。今の規範は [OEP core](oep-core.ja.md) と標準インターフェースの `oep-if-*.ja.md`。当時の状態: **比較検討用の仮wire layout**。この文書は、OEP endpoint確認と最小constraint取得を、8 byte単位のHID control transferと小さいUART bufferの双方で実行できるか比較する。
 
 ここに示すfield名、値、byte order、bit幅、message typeおよびhex値は説明用であり、protocol割当ではない。標準version、magic、command番号および最大長を決定しない。
 

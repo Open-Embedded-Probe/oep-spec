@@ -1,6 +1,6 @@
 # Open Embedded Probe — probe 開発ガイド
 
-状態: **実務（規範ではない）**（2026-09-24 起草、2026-09-26 に規範の [OEP core](oep-core.ja.md) と `oep-if-*.ja.md` に
+状態: **ガイド**（規範ではない。2026-09-24 起草、2026-09-26 に規範の [OEP core](oep-core.ja.md) と `oep-if-*.ja.md` に
 合わせて更新）。規範が probe に求めることを実装で守るための具体的なやり方と、実測で分かった罠。規範と食い違えば規範が
 正しい。host 側は [host 開発ガイド](host-development-guide.ja.md)。
 
