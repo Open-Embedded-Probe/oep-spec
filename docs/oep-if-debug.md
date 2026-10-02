@@ -198,8 +198,8 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
   2 = arm-adi. `id` is the raw identifier determined by the kind of wire (DMSTATUS for riscv-dm, DPIDR for arm-adi).
 - **The flags of attach** (common to the 3 wires, the registry's `attach_flags`): bit0 a pending havereset was acknowledged (riscv), bit1 existing connection,
   bit2 woken from dormant (swd), bit3 the hart is halted (the answer's TLV 0x11 dpc is valid).
-- **Wake / configuration sequence** (§1 item 1): rvswd: the wake pattern, then DMI 0x7E and DMI 0x7D each written 0x5AA50400, the pair twice.
-  swio: DMI 0x7E and DMI 0x7D each written 0x5AA50400, the pair twice.
+- **Wake / configuration sequence** (§1 item 1): rvswd: the wake pattern (§3.1), then DMI 0x7E and DMI 0x7D each written 0x5AA50400, the pair twice.
+  swio: DMI 0x7E and DMI 0x7D each written 0x5AA50400, the pair twice. The frames of both wires are §3.1 and §3.2.
 - **Scratch** (§1): PROGBUF0 (DMI 0x20). Making it free: ABSTRACTAUTO (DMI 0x18) = 0, which is not restored (an autoexec left armed by an earlier session would run
   on each access).
 - **attach while applying reset**: with the TLV 0x05 reset (critical: `channel(u16), hold_ms(u16)`), the probe holds the reset wire (channel) for
@@ -242,6 +242,91 @@ The schemes of target_id these wires use (`target_id_scheme`, one space for the 
   targets with scan without breaking them).
 - If an attach to an existing connection carries an idle_clock different from the current one, the probe changes the resting of that connection and returns it. A probe that cannot change it
   treats it as a TLV value it cannot handle (core §2.3).
+
+### 3.1 RVSWD frames
+
+The wire has two lines, SWDIO (pin role 1) and SWCLK (pin role 2). The probe always drives SWCLK. It drives SWDIO except during the data of a read, and while the
+wire is in use it keeps a pull-up on SWDIO, so that the line reads high when neither side drives it.
+
+**Bit cells.** T is the half period. One bit cell is SWCLK low for T, then SWCLK high for T.
+- A bit the probe sends: the probe sets SWDIO at the falling edge of SWCLK that starts the cell (both lines change together) and holds it until the next falling edge.
+  The target samples it at the rising edge.
+- A bit the target sends: the target sets SWDIO after the falling edge. The probe samples SWDIO at the end of the low half, just before the rising edge.
+
+**Conditions** (SWDIO changes while SWCLK is high only here):
+- START: both lines high for at least T, then SWDIO falls while SWCLK stays high. The first bit cell starts T later.
+- STOP: a bit cell with SWDIO low, then SWDIO rises while SWCLK stays high. Both lines then stay high for at least T.
+
+**Frame**: one DMI access. Values are sent most significant bit first. A frame has 53 bit cells.
+
+| Field | Cells | Driven by | Value |
+|---|---:|---|---|
+| START | — | probe | |
+| address | 7 | probe | The DMI address |
+| direction | 1 | probe | 1 write, 0 read |
+| header parity | 1 | probe | Makes the number of ones in address, direction and this bit even |
+| aux 1 | 5 | probe | 1, 0, 1, 0, 1 |
+| data | 32 | probe (write), target (read) | The 32-bit value |
+| data parity | 1 | the same side as data | Makes the number of ones in data and this bit even |
+| aux 2 | 5 | probe | 1, 0, 1, 1, 1 |
+| STOP | 1 | probe | The bit cell with SWDIO low of STOP |
+
+- **Turnaround** (read): the probe stops driving SWDIO after the rising edge of the last cell of aux 1, while SWCLK is high, and the first data cell follows with no
+  extra cell. After the rising edge of the data parity cell the probe drives SWDIO high again, and aux 2 follows with no extra cell. The target drives SWDIO only
+  during the 33 cells of data and data parity.
+- A read whose data parity does not match is a failed read (retried as §2 says). A write has no acknowledgement: the write path is checked only by reading back (§1).
+- **Resting** (between frames): with idle_clock 0 both lines stay high. With idle_clock 1 SWCLK is low and SWDIO high, both driven by the probe. A frame starts from both
+  lines high: with idle_clock 1, SWCLK rises with SWDIO high at least T before START.
+
+**Wake pattern** (the first part of the wake / configuration sequence, §3):
+
+1. both lines driven high for at least 20 µs;
+2. 100 bit cells with SWDIO high;
+3. 1 bit cell with SWDIO low;
+4. SWDIO rises while SWCLK is high (a STOP condition);
+5. both lines high for at least 20 µs before the first frame.
+
+- **Speed of the wake / configuration sequence**: T is at least 500 ns and at least 1 / (2 × max_speed). When the probe writes dmactive (§1 item 2), it may write the
+  configuration pair (DMI 0x7E, then DMI 0x7D) twice again right after it, at the same T. These writes are part of the wake / configuration sequence.
+- **Choosing the speed**: the probe chooses T by DMSTATUS reads only (§1), from that slowest T towards shorter ones, and never shorter than 1 / (2 × max_speed). It then
+  checks the write path at the chosen T with the scratch register (§3).
+- **Re-synchronising after a rest**: the target may lose the link while the bus rests. Before the first frame after a rest of 300 µs or more, the probe reads DMSTATUS.
+  If that read fails, or DMSTATUS is not "found" (§1) with bit 7 (authenticated) set, the probe sends the configuration pair twice (without the wake pattern) and reads
+  DMSTATUS again. If it still fails, the operation fails on the wire and is retried as §2 says. While it retries, the probe may send the whole wake / configuration
+  sequence.
+- (Informative) The wake pattern may reset the target as well as its debug interface. The reference probe sends it only when it brings up a wire that does not answer,
+  not when it re-synchronises. It accepts a T when 1000 consecutive DMSTATUS reads return the same value with a matching parity, and its writes when 256 write and
+  read-back round trips on the scratch register match.
+
+### 3.2 SWIO frames
+
+The wire has one line, SWDIO (pin role 1). It rests high. When the probe sends, it drives the line both high and low. While the wire is in use the probe keeps a
+pull-up on the line.
+
+**Bit cells the probe sends**: the line low, then high.
+
+| Cell | Low | High after it |
+|---|---|---|
+| 1 | 240 to 270 ns | 240 to 270 ns |
+| 0 | 840 to 880 ns | 240 to 270 ns |
+
+**Bit cells the target sends** (read cells): the probe drives the line low for 240 to 270 ns, then stops driving it. The target sends 0 by holding the line low,
+and 1 by leaving it to rise. The probe samples the line 520 to 600 ns after the falling edge it made (high = 1, low = 0). It then waits until the line reads high
+again. If the line does not read high within 100 µs, the read fails. Once the line is high the probe drives it high for at least 130 ns before the next cell.
+After it stops driving the line low, and again after a sample of 0, the probe may drive the line high for at most 30 ns at a time (a recharge pulse, to shorten
+the rise through the pull-up).
+
+**Frame**: one DMI access, most significant bit first, 41 cells:
+
+- write: START (a 1 cell), the 7-bit DMI address, the direction 1, then 32 data cells sent by the probe;
+- read: START (a 1 cell), the 7-bit DMI address, the direction 0, then 32 read cells.
+
+- There is no parity, acknowledgement or stop. A read detects only a line that does not come back high; a wrong bit is not detected.
+- The probe keeps every cell of a frame within the times above (nothing may interrupt a frame). After a frame the line stays high for at least 8 µs before the next
+  frame.
+- **Speed**: the bit timing is fixed, so the probe does not choose a speed. It declares, with min_clock_hz of describe, the rate of a 0 cell (1 / (its low + its
+  high)). A max_speed below it is rejected unsupported (§1).
+- (Informative) Before the first frame of an attach, the reference probe leaves the line to its pull-up for 2 ms, and finds no target if the line then reads low.
 
 ## 4. `oep.target.riscv-dm`
 

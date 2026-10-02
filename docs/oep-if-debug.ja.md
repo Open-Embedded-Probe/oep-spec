@@ -198,8 +198,8 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
   2 = arm-adi。`id` は線の種類が決める生の識別子（riscv-dm は DMSTATUS、arm-adi は DPIDR）。
 - **attach の flags**（3 線共通、registry の `attach_flags`）: bit0 保留中の havereset を確認応答した（riscv）、bit1 既存の connection、
   bit2 dormant から起こした（swd）、bit3 hart が止まっている（応答の TLV 0x11 dpc が有効）。
-- **wake / 設定の手順**（§1 の 1）: rvswd: wake のパターン、続けて DMI 0x7E と DMI 0x7D にそれぞれ 0x5AA50400 を書く。その組を 2 回。
-  swio: DMI 0x7E と DMI 0x7D にそれぞれ 0x5AA50400 を書く。その組を 2 回。
+- **wake / 設定の手順**（§1 の 1）: rvswd: wake のパターン（§3.1）、続けて DMI 0x7E と DMI 0x7D にそれぞれ 0x5AA50400 を書く。その組を 2 回。
+  swio: DMI 0x7E と DMI 0x7D にそれぞれ 0x5AA50400 を書く。その組を 2 回。両方の線のフレームは §3.1 と §3.2。
 - **scratch**（§1）: PROGBUF0（DMI 0x20）。それを空ける書き込み: ABSTRACTAUTO（DMI 0x18）= 0。これは戻さない（前のセッションが残した autoexec は、
   アクセスのたびに走る）。
 - **reset をかけながらの attach**: TLV 0x05 reset（critical: `channel(u16)、hold_ms(u16)`）を付けると、probe はリセットの線（channel）を
@@ -242,6 +242,91 @@ TLV:
   target を scan で壊さず見つけるため）。
 - 既存の connection への attach で idle_clock が今と違えば、probe はその connection の休ませ方を替えて返す。替えられない probe は、
   扱えない TLV の値として扱う（core §2.3）。
+
+### 3.1 RVSWD のフレーム
+
+線は 2 本、SWDIO（ピンの役割 1）と SWCLK（ピンの役割 2）。probe は SWCLK をいつも駆動する。SWDIO は読み出しのデータの間を除いて駆動し、
+線を使っている間は SWDIO にプルアップを保つ（どちらも駆動しないとき、線が high に読めるように）。
+
+**ビットの区切り。** T は半周期。1 つのビットの区切りは、SWCLK low を T、続けて SWCLK high を T である。
+- probe が送るビット: probe は、その区切りを始める SWCLK の立ち下がりで SWDIO をそのビットにし（2 本が同時に変わる）、次の立ち下がりまで保つ。
+  target は立ち上がりでそれを読む。
+- target が送るビット: target は立ち下がりの後に SWDIO を変える。probe は low の半分の終わり、立ち上がりの直前に SWDIO を読む。
+
+**条件**（SWCLK が high の間に SWDIO が変わるのはここだけ）:
+- START: 2 本とも high を T 以上、続けて SWCLK を high のまま SWDIO が下がる。最初のビットの区切りは T 後に始まる。
+- STOP: SWDIO low のビットの区切り 1 つ、続けて SWCLK を high のまま SWDIO が上がる。その後 2 本とも T 以上 high のまま。
+
+**フレーム**: DMI のアクセス 1 回。値は最上位ビットから送る。フレームはビットの区切り 53 個。
+
+| 欄 | 区切り | 駆動する側 | 値 |
+|---|---:|---|---|
+| START | — | probe | |
+| address | 7 | probe | DMI のアドレス |
+| direction | 1 | probe | 1 書き込み、0 読み出し |
+| ヘッダのパリティ | 1 | probe | address、direction とこのビットの 1 の数を偶数にする |
+| aux 1 | 5 | probe | 1、0、1、0、1 |
+| data | 32 | probe（書き込み）、target（読み出し） | 32 bit の値 |
+| data のパリティ | 1 | data と同じ側 | data とこのビットの 1 の数を偶数にする |
+| aux 2 | 5 | probe | 1、0、1、1、1 |
+| STOP | 1 | probe | STOP の SWDIO low のビットの区切り |
+
+- **向きの切り替え**（読み出し）: probe は、aux 1 の最後の区切りの立ち上がりの後、SWCLK が high の間に SWDIO の駆動をやめ、最初の data の区切りが
+  余分な区切り無しに続く。data のパリティの区切りの立ち上がりの後、probe は SWDIO を再び high に駆動し、aux 2 が余分な区切り無しに続く。target が SWDIO を
+  駆動するのは、data と data のパリティの 33 個の区切りの間だけである。
+- data のパリティが合わない読み出しは、失敗した読み出しである（§2 のとおり再試行する）。書き込みに確認応答は無い: 書く経路は読み戻しでしか確かめられない（§1）。
+- **休ませ方**（フレームの間）: idle_clock 0 では 2 本とも high のまま。idle_clock 1 では SWCLK low、SWDIO high で、どちらも probe が駆動する。フレームは 2 本
+  とも high から始まる: idle_clock 1 では、START の T 以上前に、SWDIO high のまま SWCLK が上がる。
+
+**wake のパターン**（wake / 設定の手順の最初の部分、§3）:
+
+1. 2 本とも high に駆動して 20 µs 以上;
+2. SWDIO high のビットの区切り 100 個;
+3. SWDIO low のビットの区切り 1 個;
+4. SWCLK が high の間に SWDIO が上がる（STOP の条件）;
+5. 最初のフレームの前に、2 本とも high を 20 µs 以上。
+
+- **wake / 設定の手順の速さ**: T は 500 ns 以上、かつ 1 / (2 × max_speed) 以上。probe が dmactive を書くとき（§1 の 2）、その直後に同じ T で設定の組
+  （DMI 0x7E、続けて DMI 0x7D）をもう 2 回書いてよい。これらの書き込みは wake / 設定の手順の一部である。
+- **速さの選び方**: probe は、DMSTATUS の読み出しだけで T を選ぶ（§1）。その一番遅い T から短い方へ進め、1 / (2 × max_speed) より短くしない。その後、
+  選んだ T で scratch のレジスタ（§3）を使って書く経路を確かめる。
+- **休んだ後の同期の取り直し**: 線が休んでいる間に、target がリンクを失うことがある。300 µs 以上休んだ後の最初のフレームの前に、probe は DMSTATUS を読む。
+  その読み出しが失敗したか、DMSTATUS が bit 7（authenticated）の立った「見つかった」（§1）でなければ、probe は設定の組を 2 回送り（wake のパターンは無し）、
+  DMSTATUS をもう一度読む。それでも失敗なら、その操作は線の上の失敗であり、§2 のとおり再試行する。再試行の間、probe は wake / 設定の手順の全体を
+  送ってよい。
+- （参考）wake のパターンは、target のデバッグの口だけでなく target そのものをリセットすることがある。参照の probe は、応えない線を立ち上げるときだけ送り、
+  同期の取り直しでは送らない。T は、DMSTATUS を続けて 1000 回読んで同じ値とパリティの一致が得られたら受け入れ、書き込みは、scratch のレジスタへの書き込みと
+  読み戻しを 256 回往復して一致したら受け入れる。
+
+### 3.2 SWIO のフレーム
+
+線は 1 本、SWDIO（ピンの役割 1）。休んでいるときは high。probe は、送るとき線を high にも low にも駆動する。線を使っている間、probe は線に
+プルアップを保つ。
+
+**probe が送るビットの区切り**: 線を low、続けて high。
+
+| 区切り | low | その後の high |
+|---|---|---|
+| 1 | 240 から 270 ns | 240 から 270 ns |
+| 0 | 840 から 880 ns | 240 から 270 ns |
+
+**target が送るビットの区切り**（読み出しの区切り）: probe は線を 240 から 270 ns low に駆動し、駆動をやめる。target は、線を low に保って 0 を、
+上がるにまかせて 1 を送る。probe は、自分が作った立ち下がりから 520 から 600 ns 後に線を読む（high = 1、low = 0）。その後、線がまた high に読めるまで
+待つ。100 µs 以内に high に読めなければ、その読み出しは失敗である。high になったら、probe は次の区切りの前に線を 130 ns 以上 high に駆動する。
+low の駆動をやめた後と、0 を読んだ後に、probe は 1 回 30 ns 以下だけ線を high に駆動してよい（充電のパルス。プルアップを通る立ち上がりを
+短くするため）。
+
+**フレーム**: DMI のアクセス 1 回。最上位ビットから、区切り 41 個:
+
+- 書き込み: START（1 の区切り）、7 bit の DMI のアドレス、direction 1、続けて probe が送る data の区切り 32 個;
+- 読み出し: START（1 の区切り）、7 bit の DMI のアドレス、direction 0、続けて読み出しの区切り 32 個。
+
+- パリティ、確認応答、STOP は無い。読み出しが見つけられるのは high に戻らない線だけで、違うビットは見つけられない。
+- probe は、フレームのすべての区切りを上の時間の中に保つ（フレームを何にも割り込ませない）。フレームの後、次のフレームの前に、線は 8 µs 以上
+  high のまま。
+- **速さ**: ビットの時間は決まっているので、probe は速さを選ばない。describe の min_clock_hz で、0 の区切りの速さ（1 / (その low + その high)）を宣言する。
+  それより低い max_speed は rejected unsupported（§1）。
+- （参考）参照の probe は、attach の最初のフレームの前に線をプルアップだけにして 2 ms おき、そのとき線が low に読めれば target は無いとする。
 
 ## 4. `oep.target.riscv-dm`
 
