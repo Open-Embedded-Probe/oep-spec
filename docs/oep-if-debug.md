@@ -328,7 +328,7 @@ wire is in use it keeps a pull-up on SWDIO, so that the line reads high when nei
 ### 3.2 SWIO frames
 
 The wire has one line, SWDIO (pin role 1). It rests high. When the probe sends, it drives the line both high and low. While the wire is in use the probe keeps a
-pull-up on the line.
+pull-up on the line. Between frames the line rests high, either driven high by the probe or released to that pull-up; the probe may drive it high there only while the target answers. From a failed exchange on, it releases the line to the pull-up and does not drive it high (§2, the lines while the wire does not answer).
 
 **Bit cells the probe sends**: the line low, then high.
 
