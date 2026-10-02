@@ -28,7 +28,7 @@ The premise is the review's: people we have never met build probes and hosts fro
 - **agreed with condition**: accepted on the condition stated in the item. The condition is folded into the proposed text unless the item says it is still to be met.
 - **open**: not settled. The item says what is missing.
 
-Open items: P2-★4's cold-attach measurement (bench, before the freeze), and P2-★8 (added in this revision; peers to confirm).
+Open items: P2-★4's cold-attach measurement (bench, before the freeze).
 
 **Final answers.**
 
@@ -65,7 +65,7 @@ Open items: P2-★4's cold-attach measurement (bench, before the freeze), and P2
 | Q29 | C-32 | Yes: ±2 %. verify_ms 0 is malformed for step 0 (try) only |
 | Q30 | DS-1 | Post again every short wait (DS-1 adopted). The host safeguard of DS-8 goes only together with it |
 | Q31 | DS-3 to DS-10 | ch32rv conforms to DS-4. DS-5 takes ch32rv's details (count saturates while unsynchronised) |
-| Q32 | P2-★8 | Open: peers to confirm (recommended: form A) |
+| Q32 | P2-★8 | Form A; ABSTRACTAUTO = 0 may be named; a probe attaching through another debugger sets `attach_writes_unbounded` (ch32rv) |
 
 ## Index
 
@@ -90,7 +90,7 @@ Open items: P2-★4's cold-attach measurement (bench, before the freeze), and P2
 | P2-○13 | 6 electrical safety | ○ | Taking a plan does not change a pin; logic capture only listens | yes | agreed |
 | P2-★5 | 7 debug wires | ★ | A combination the declaration does not allow → unsupported | no (the probe does it already) | agreed |
 | P2-★7 | 7 debug wires | ★ | What every wire shares, and what a new wire (JTAG...) defines; a wire without pins | no | agreed |
-| P2-★8 | 7 debug wires | ★ | What the probe may write before the speed is verified; scan writes only the wake / configuration sequence and dmactive | no | open |
+| P2-★8 | 7 debug wires | ★ | What the probe may write before the speed is verified; scan writes only the wake / configuration sequence and dmactive | no | agreed with condition |
 | P2-○1 | 7 debug wires | ○ | "Found" is DMSTATUS.version ≥ 2 and ≠ 15, for the ops too | yes | agreed |
 | P2-○4 | 7 debug wires | ○ | What a failed halt / step leaves on the target | yes | agreed |
 | P2-○6 | 7 debug wires | ○ | Console rules split into "every mechanism" and "the DATA0 mechanisms" | no | agreed |
@@ -666,7 +666,7 @@ probe.config §1.1, added:
 
 ### P2-★8 ★ What the probe may write before the speed is verified
 
-**Status: open** — new in this revision; peers to confirm.
+**Status: agreed with condition** — ch32rv (form A, with the flag below for a probe that attaches through another debugger), bench and WireSkein (no objection), 2026-10-02.
 
 **Problem.** debug §1 says "The probe does not write to the target until it has finished verifying the wire speed (it selects the speed by reading only)" and "The only thing scan writes to the target is dmactive". A third party bringing a wire whose debug module answers nothing until it is woken and configured cannot meet either sentence: written as is, the probe never finds such a target. The text also does not say how the write path is verified at the chosen speed, nor what that verification may leave on the target. Reads alone are not enough: a speed whose reads are clean can still garble writes (measured on the reference probe, OepRvswdPhy.cpp:347-351; [link measurements](link-measurements.ja.md) §3), so a write check is needed.
 
@@ -708,6 +708,12 @@ P2-★7's list of what a new wire's document defines gains "its wake / configura
 - fake, hosts: none (fake: not checked).
 
 **Breaking:** no. scan writes less than today; attach writes what it writes today, plus PROGBUF0's restore.
+
+**Added for ch32rv (a probe that attaches through another debugger).** debug §1, after form A:
+
+> The bound above applies to a probe that drives the wire itself. A probe whose attach goes through another debugger it does not control (it cannot see or bound what that debugger writes) sets bit `attach_writes_unbounded` in the wire's describe flags, and is then outside this bound. A host treats an attach on such a wire like a reset of unknown effect: it does not expect the target's registers or the running program to survive it.
+
+The registry gains the flag bit in the wire describe. A flag rather than a sentence alone, because a host that meets a third party's probe must be able to tell.
 
 **Q32.** Form A (recommended) or form B? And may a wire name a write that is not restored, as ABSTRACTAUTO = 0 above, to make its scratch free? Recommendation: yes, named per wire; an autoexec left armed is never what the next attach wants, and without the write the check fails on every attach until power-cycle.
 
