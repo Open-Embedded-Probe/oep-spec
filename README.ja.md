@@ -7,7 +7,11 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
 現在は **v1 を固める候補の仕様**があります（2026-09-26）。規範は、本体の [OEP core](docs/oep-core.ja.md) と、標準インターフェース
 の `docs/oep-if-*.ja.md`、番号の唯一の定義の [registry/oep-v1.toml](registry/oep-v1.toml) です。実装（[oep-probe-arduino](https://github.com/Open-Embedded-Probe/oep-probe-arduino)、
 [oep-client-python](https://github.com/Open-Embedded-Probe/oep-client-python)）はこれに合わせてあり、実機で確かめています。まだ公開した
-仕様ではなく、破壊的な変更を前提にしています。文書は日本語が先で、英語版は固まってから作ります。
+仕様ではなく、破壊的な変更を前提にしています。文書は日本語が先（原文）です。規範の文書には、レビューのための英語訳があります:
+[OEP core](docs/oep-core.md)、標準インターフェースの [共通部品](docs/oep-if-common.md)、[線とデバッグ](docs/oep-if-debug.md)、
+[コンソール](docs/oep-if-console.md)、[fixture](docs/oep-if-fixture.md)、[キャプチャ](docs/oep-if-capture.md)、[probe の設定](docs/oep-if-probe-config.md)
+（コンソールの framing の [dmseq](docs/target-console-dmseq.ja.md) は日本語だけ）、[凍結前の決定と凍結の範囲](docs/v1-freeze-decisions.md)、
+[レビューの手引き](docs/review-guide.md)。訳と日本語の原文が食い違えば、日本語の原文が正しい。
 
 2026-09-29 に、シリアルの口で OEP のフレームと target のコンソールを 1 本で運ぶ形（core §3.4）と、スロットと bind の登録
 （`oep.probe.config`）を入れました。実装は、Arduino のライブラリ `OpenEmbeddedProbe`（oep-probe-arduino）と、Python の host
