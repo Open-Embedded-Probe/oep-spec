@@ -42,6 +42,7 @@ answer:  start(u64), flags(u8: bit0 more, bit1 gap), len(u16), data, [TLV]
 - len is at most max and at most what fits in the answer within max_frame. `more` is set when bytes remain: there are still readable bytes after this answer,
   and the host may read the next immediately.
 - from 3 with arg > 0xFF is rejected malformed (a mark kind is u8).
+- A from of 4 or more is rejected unsupported (payload `0x00`. A later revision may define it, core §2.5).
 - `max` = 0 is an empty success (len 0).
 - **read can be used without the lock** (reading changes no state, and the probe keeps no per-reader state).
 

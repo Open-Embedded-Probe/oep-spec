@@ -555,7 +555,7 @@ op = [
   { code = 0x07, name = "status", lock = false },
 ]
 [interface.tlv.configure]
-format = 0x01                   # u8, critical: enum format_field; unset bits are malformed, undeclared values unsupported
+format = 0x01                   # u8, critical: enum format_field; undefined values and reserved bits (core §2.5) and undeclared values are unsupported
 [interface.tlv.describe]
 formats = 0x40                  # n(u8) n x u8: configure format values supported (0 = 8N1 required)
 [interface.enum.role]

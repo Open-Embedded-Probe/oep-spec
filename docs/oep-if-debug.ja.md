@@ -189,7 +189,7 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
 | 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (len(u8)、kind(u8)、swdio(u16)、swclk(u16)、id(u32))、[TLV] |
-| 0x02 | attach | method(u8: 0 止めない / 1 止める。ほかは rejected malformed)、[TLV] | connection(u16)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] |
+| 0x02 | attach | method(u8: 0 止めない / 1 止める。ほかは rejected unsupported、payload `0x00`)、[TLV] | connection(u16)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] |
 | 0x03 | detach | connection(u16)、[TLV] | — |
 | 0x04 | — | 予約（旧 attach_under_reset。attach の reset TLV になった） | |
 | 0x05 | connections | first(u8) | §2.1（ロック不要） |
@@ -350,9 +350,10 @@ malformed。dmi の max_reads / max_us = 0 は 1 回読む。run の timeout_ms 
   止まらない / 走らない = timeout、DM が応えない = line、cmderr = fault）。ndmreset を解いてから hart が止まる / 走るのを待つ上限は
   1 回の手順につき 100 ms、手順のやり直し（flags bit2）は 1 回まで。
 - flags のほかの bit は 0。reset の後は havereset を確認応答し、haltreq を下ろす（mode 2 は止めたまま）。
+- 3 以上の mode は rejected unsupported（payload `0x00`。後の revision が定めうる、core §2.5）。
 
 TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target のシステムリセットには共通の手順が無いので、host が dmi で
-組む）。
+組む）。2 以上の method は、この probe が扱えない値である（core §2.3: critical で送られたら rejected unsupported、そうでなければ無視する）。
 
 ### 4.4 run
 
@@ -398,7 +399,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
 | 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (len(u8)、kind(u8)、swdio(u16)、swclk(u16)、id(u32))、[TLV] |
-| 0x02 | attach | method(u8: 0 だけ。1 は rejected unsupported)、[TLV] | connection(u16)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] |
+| 0x02 | attach | method(u8: 0 だけ。ほかは rejected unsupported、payload `0x00`)、[TLV] | connection(u16)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] |
 | 0x03 | detach | connection(u16)、[TLV] | — |
 | 0x04 | — | 予約 | |
 | 0x05 | connections | first(u8) | §2.1（ロック不要） |
@@ -429,7 +430,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 | 0x03 | write_block | address(u32)、count(u16)、count 個の語、[TLV] | done(u16)、status(u8)、[TLV] |
 
 - ack は最後の転送の生の ACK（`swd_ack`: 線の順で bit0 が最初。OK = 1、WAIT = 2、FAULT = 4。無応答は status line）。req の bit4-7 が
-  0 でなければ rejected malformed。nvals は読んだ値の数（最初の done 個の転送のうち読み出しの数）。
+  0 でなければ rejected malformed（req が転送の引数の長さを決めるので、知らない req では要求の残りを読めない。知らない dmi の kind と同じ）。nvals は読んだ値の数（最初の done 個の転送のうち読み出しの数）。
 - transfer は生の転送で、AP の読み出しが 1 つ遅れて返るのもそのまま（host が RDBUFF か次の AP の読み出しで受け取る）。
   WAIT は probe の中で 100 回まで再試行し、使い切れば status wait。FAULT で止まるので、host は ABORT で sticky を消す。
 - read_block / write_block の 1 回の長さと読みの意味は riscv-dm（§4.5）と同じ: describe の max_length（byte 数、4 の倍数、要求も応答も

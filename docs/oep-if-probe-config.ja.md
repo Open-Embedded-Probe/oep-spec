@@ -64,7 +64,7 @@
   （参考）出力の idle が target の出力とぶつからないようにするのは、配線の責任である。
   - **強さ（任意）**: mode の後ろに drive_kind(u8)、drive_value(u16) を置ける（[fixture](oep-if-fixture.ja.md) §1.1 の強さの指定と同じ
     kind と value）。置かなければ既定の段。置けるのは mode 3 / 4 だけで、ほかの mode で置けば rejected malformed。値の長さが 4 か 5
-    byte、または drive_kind が未定義なら rejected malformed。`oep.fixture.gpio` の describe が drive_levels を宣言する probe では、
+    byte なら rejected malformed。未定義の drive_kind（2 以上）は rejected unsupported（受け取ったままの項目の tag。後の revision が定めうる、core §2.5）。`oep.fixture.gpio` の describe が drive_levels を宣言する probe では、
     kind 0 で drive_value が段の数以上なら rejected unsupported。drive_levels を宣言しない probe（`oep.fixture.gpio` の無い probe を
     含む）は、このフィールドを持つが効かせない（強さは既定のまま）。
     drive_value の後ろ（値の 7 byte 目から）は、後から足すフィールドの場所（core §2.3。probe は読み飛ばし、§2 のとおり切らずに持つ）。
@@ -226,9 +226,9 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 
 | 状況 | reason |
 |---|---|
-| 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset の値と host のスロットの boot_reset 1、mode 3 / 4 でない idle の drive と、idle の drive の長さと drive_kind、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
+| 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset の値と host のスロットの boot_reset 1、mode 3 / 4 でない idle の drive と、idle の drive の長さ、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
 | 指す fn が無い（plan、slot の wire_fn、bind の kind 2、uart） | unknown_function |
-| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か reserved にある label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、その線が持たない lock_scheme（定義にあってもなくても）、保存の無い probe の save / erase | unsupported |
+| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か reserved にある label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、idle の未定義の drive_kind、その線が持たない lock_scheme（定義にあってもなくても）、保存の無い probe の save / erase | unsupported |
 | plan_roles 超え、ピンや資源の取り合い、at boot のスロットが max_connections を超える、保存先が足りない | unavailable（cause 2 / 1 / 2 / 3） |
 
 ## 3. スロットの接続と状態

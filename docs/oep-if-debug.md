@@ -189,7 +189,7 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
 | op | Name | Request | Answer |
 |---:|---|---|---|
 | 0x01 | scan | count(u8), count × (swdio(u16), swclk(u16)), [TLV] | tried(u8), count(u8), count × (len(u8), kind(u8), swdio(u16), swclk(u16), id(u32)), [TLV] |
-| 0x02 | attach | method(u8: 0 do not halt / 1 halt. Others are rejected malformed), [TLV] | connection(u16), id(u32), flags(u8), speed_hz(u32), [TLV] |
+| 0x02 | attach | method(u8: 0 do not halt / 1 halt. Others are rejected unsupported, payload `0x00`), [TLV] | connection(u16), id(u32), flags(u8), speed_hz(u32), [TLV] |
 | 0x03 | detach | connection(u16), [TLV] | — |
 | 0x04 | — | Reserved (formerly attach_under_reset. Became the reset TLV of attach) | |
 | 0x05 | connections | first(u8) | §2.1 (no lock) |
@@ -350,9 +350,10 @@ Answer:
   does not halt / does not run = timeout, the DM does not answer = line, cmderr = fault). The upper limit for waiting for the hart to halt / run after releasing ndmreset is
   100 ms per procedure, and the procedure is redone (flags bit2) at most once.
 - The other bits of flags are 0. After the reset, havereset is acknowledged and haltreq is cleared (mode 2 stays halted).
+- A mode of 3 or more is rejected unsupported (payload `0x00`. A later revision may define it, core §2.5).
 
 TLV 0x01 method (u8): 0 the probe chooses, 1 ndmreset. 2 is reserved (there is no common procedure for a target's system reset, so the host builds it with
-dmi).
+dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rejected unsupported when sent critical, otherwise ignored).
 
 ### 4.4 run
 
@@ -398,7 +399,7 @@ dmi).
 | op | Name | Request | Answer |
 |---:|---|---|---|
 | 0x01 | scan | count(u8), count × (swdio(u16), swclk(u16)), [TLV] | tried(u8), count(u8), count × (len(u8), kind(u8), swdio(u16), swclk(u16), id(u32)), [TLV] |
-| 0x02 | attach | method(u8: 0 only. 1 is rejected unsupported), [TLV] | connection(u16), id(u32), flags(u8), speed_hz(u32), [TLV] |
+| 0x02 | attach | method(u8: 0 only. Others are rejected unsupported, payload `0x00`), [TLV] | connection(u16), id(u32), flags(u8), speed_hz(u32), [TLV] |
 | 0x03 | detach | connection(u16), [TLV] | — |
 | 0x04 | — | Reserved | |
 | 0x05 | connections | first(u8) | §2.1 (no lock) |
@@ -429,7 +430,7 @@ Requests start with connection(u16).
 | 0x03 | write_block | address(u32), count(u16), count words, [TLV] | done(u16), status(u8), [TLV] |
 
 - ack is the raw ACK of the last transfer (`swd_ack`: bit0 is first in wire order. OK = 1, WAIT = 2, FAULT = 4. No response is status line). If bit4-7 of req are
-  not 0, rejected malformed. nvals is the number of values read (the number of reads among the first done transfers).
+  not 0, rejected malformed (req decides the length of the transfer's arguments, so an unknown req leaves the rest of the request unreadable, as an unknown dmi kind does). nvals is the number of values read (the number of reads among the first done transfers).
 - transfer is a raw transfer, and the one-transfer delay of AP reads is passed through as is (the host receives it with RDBUFF or the next AP read).
   WAIT is retried up to 100 times inside the probe, and when used up, status wait. It stops on FAULT, so the host clears the sticky bits with ABORT.
 - The length per request and the meaning of a read of read_block / write_block are the same as riscv-dm (§4.5): the max_length of describe (number of bytes, a multiple of 4, a value such that both request and answer

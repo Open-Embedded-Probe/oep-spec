@@ -36,7 +36,7 @@ All of them handle only the channels assigned by the plan (core §8).
   set does not fail other than by refusal at verification (success).
 - An unassigned channel (set, read) does nothing and is rejected unavailable (the payload is the TLVs of core §4.3: channel 0x02 and the position in the sequence,
   tag 0x40 index (u8)). A mode that cannot be handled (not in the declaration) is rejected unsupported (payload `0x00`, followed by the same channel / index TLVs).
-  An undefined mode (8 or more) is rejected malformed.
+  An undefined mode (8 or more) is rejected the same way (a later revision may define it, core §2.5).
 - The modes that can be handled are declared with the modes of describe (tag 0x40, a u32 bit set, bit n = mode n). 0 (input) is mandatory.
 - **A channel taken by a plan keeps its previous state until the first set** (it stays in its idle state; with an output idle, the probe keeps driving that level).
   Taking it does not change the level.
@@ -54,8 +54,8 @@ All of them handle only the channels assigned by the plan (core §8).
   value or less, the strongest. If value is smaller than the mA of every level, level 0). kind 2 or more is undefined. The idle item of `oep.probe.config` uses the same form.
 - **set's TLV 0x01 drive** (non-critical. The host sends it without the critical bit): index(u8: the position in the request's sequence), kind(u8), value(u16).
   One TLV applies to one element of the sequence, and it is repeated to attach to several elements (because the strength may differ per element. A power line and a signal line
-  can be moved in one request). If index is n or more, the same index appears twice, kind is undefined, or the mode of the element it points to is not 3 / 4, the whole request is
-  rejected malformed. If the value of kind 0 is the number of levels or more, that TLV is ignored. A probe that does not declare drive_levels ignores
+  can be moved in one request). If index is n or more, the same index appears twice, or the mode of the element it points to is not 3 / 4, the whole request is
+  rejected malformed. An undefined kind (2 or more, which a later revision may define, core §2.5) and a value of kind 0 that is the number of levels or more are values this probe cannot handle: that TLV is ignored. A probe that does not declare drive_levels ignores
   all drive TLVs without checking their form (a drive TLV does not make the request rejected malformed). An ignored drive is listed in ignored of the answer (core §2.3).
   ignored lists tags only, so it does not show which element's drive was ignored. The host learns the effective level from read's answer TLV drive.
   A drive TLV sent with the critical bit follows core §2.3: where it would be ignored, the request is rejected unsupported instead of ignoring it.
@@ -82,8 +82,8 @@ One stream per fn.
 
 - ops 0x02 to 0x06 take the form of [common parts](oep-if-common.md) §1 (without the stream bytes), with the same numbers as `oep.target.console`.
 - The TLV 0x01 format (u8) of configure: bit0-1 data length (0 = 8, 1 = 7), bit2-3 parity (0 none, 1 even, 2 odd), bit4 stop
-  bits (0 = 1, 1 = 2). 8N1 if absent. Undefined values (2 / 3 in bit0-1, 3 in bit2-3, bit5-7) are rejected malformed. A value not in the declaration (formats)
-  is rejected unsupported (tag 0x01). The host sends it critical (so that it does not silently become 8N1). baud returns the value that can be realised, and if it deviates
+  bits (0 = 1, 1 = 2). 8N1 if absent. Undefined values (2 / 3 in bit0-1, 3 in bit2-3, bit5-7: a later revision may define them, core §2.5) and a value not in the declaration (formats)
+  are rejected unsupported (the tag as received). The host sends it critical (so that it does not silently become 8N1). baud returns the value that can be realised, and if it deviates
   more than ±5% from the request, rejected unsupported (payload `0x00`). configure on an fn without pins (neither RX nor TX in the plan) is rejected
   unavailable (cause 6).
 - **status** (no lock): what is in effect (`uart_configured`) and the actual baud / format. So that a read-only host can know. The baud of a uart item
@@ -127,8 +127,8 @@ retrieves them with read_rx.
   tag 0x42 pullup_ohms (u32, approximate). A probe that does not declare it enables none. v1 has no request that switches them.
 - In state 0 the probe ACKs no address and leaves both lines released (it neither pulls them low nor enables pull-ups; until configure the channels keep their idle state, core §8).
 - configure recreates the target (the queued frames, the wait, the placements, rx_frames and errors are lost. The stretch value is kept). When this fn has no plan,
-  it is rejected unavailable (cause 6). If address exceeds 0x7F or mode is undefined (0, 4 or more), rejected malformed. A mode that is in the definition but
-  not in the declaration is rejected unsupported.
+  it is rejected unavailable (cause 6). If address exceeds 0x7F, rejected malformed. An undefined mode (0, 4 or more: a later revision may define it, core §2.5) and a mode that is in the definition but
+  not in the declaration are rejected unsupported (payload `0x00`).
 - arm_rx is for mode 1 only (otherwise rejected unavailable cause 6). length is 1 to the max_length of describe (0 is malformed, above max_length is
   unsupported). If already waiting, the current wait is dropped and it waits with the new length. The wait does not end when a frame is received: it keeps receiving with the same length until the next arm_rx, reset,
   configure or plan release (armed stays 1). **A write from the controller while not armed is ACKed and discarded, and

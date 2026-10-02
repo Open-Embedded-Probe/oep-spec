@@ -42,6 +42,7 @@
 - len は max 以下で、かつ max_frame の中で応答に収まる分以下。バイトが残っていれば `more` を立てる: この応答の後ろにまだ読めるバイトがあり、
   host はすぐ次を読んでよい。
 - from 3 で arg > 0xFF は rejected malformed（マークの kind は u8）。
+- 4 以上の from は rejected unsupported（payload `0x00`。後の revision が定めうる、core §2.5）。
 - `max` = 0 は空の成功（len 0）。
 - **read はロックなしで使える**（読んでも状態は変わらず、probe は読み手ごとの状態を持たない）。
 
