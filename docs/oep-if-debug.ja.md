@@ -1,5 +1,7 @@
 # OEP 標準インターフェース: 線とデバッグ v1
 
+[English](oep-if-debug.md)
+
 状態: **規範**（2026-09-26。2026-10-01 に[ゼロベースの再検討](v1-zero-base-proposal.ja.md)を反映）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§2 debug の
 connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`。名前の置き方の理由は
 [能力の名前の階層](capability-name-hierarchy.ja.md)。
