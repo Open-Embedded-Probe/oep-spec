@@ -130,7 +130,7 @@ def cpp(reg: dict, digest: str) -> str:
     L.append("")
     for k, v in reg["timing"].items():
         L.append(f"constexpr uint32_t k{camel(k)} = {v};")
-    for group, prefix in (("usb", "Usb"), ("limits", "Limit")):
+    for group, prefix in (("usb", "Usb"), ("limits", "Limit"), ("reference", "Reference")):
         L.append("")
         for k, v in reg.get(group, {}).items():
             L.append(f'constexpr const char *k{prefix}{camel(k)} = "{v}";' if isinstance(v, str)
@@ -171,7 +171,7 @@ def py(reg: dict, digest: str) -> str:
          f"PROTOCOL_REVISION = {reg['protocol']['revision']}"]
     for k, v in reg["constants"].items():
         L.append(f"{k.upper()} = {v!r}" if isinstance(v, str) else f"{k.upper()} = 0x{v:02X}")
-    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits"):
+    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits", "reference"):
         L.append(f"{group.upper()} = {{" + ", ".join(f'"{k}": {v!r}' if isinstance(v, str) else f'"{k}": 0x{v:02X}'
                                                  for k, v in reg.get(group, {}).items()) + "}")
     en = ", ".join(f'"{e}": {{' + ", ".join(f'"{k}": 0x{v:02X}' for k, v in vals.items()) + "}"
@@ -206,7 +206,7 @@ def js(reg: dict, digest: str) -> str:
         L.append(f"export const {k.upper()} = '{v}';" if isinstance(v, str) else f"export const {k.upper()} = 0x{v:02X};")
     def objs(d: dict) -> str:
         return "{" + ", ".join((f"{k}: '{v}'" if isinstance(v, str) else f"{k}: 0x{v:02X}") for k, v in d.items()) + "}"
-    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits"):
+    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits", "reference"):
         L.append(f"export const {group.upper()} = Object.freeze({objs(reg.get(group, {}))});")
     en = "{" + ", ".join(f"{e}: {obj(v)}" for e, v in reg.get("common", {}).get("enum", {}).items()) + "}"
     L += [f"export const COMMON = {{ enum: {en} }};", "", "/** @type {Record<string, any>} */", "export const INTERFACES = {};"]

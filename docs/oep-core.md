@@ -8,6 +8,7 @@ kept in non-normative documents (§15). Where this document and a non-normative 
 
 The only definition of the numbers (op, tag, reject reason, status, enum) is `registry/oep-v1.toml`; the tables in this document are copies of it.
 Where they disagree, the registry is right and the document is corrected.
+After the freeze the registry's keys (and so the generated identifiers) are not renamed; new keys are added. REGISTRY_HASH only tells whether generated code matches the registry and says nothing about wire compatibility. Values that are not the specification's (the max_op_ms of the reference firmware) are kept in a `[reference]` table outside the freeze.
 
 ## 0. Scope and layers
 
@@ -77,6 +78,9 @@ A host MUST: skip unknown TLVs and tags (§2.3, §2.4); follow §3.2 and the pro
 
 All numbers are little endian. Strings are UTF-8 byte sequences whose length is carried separately (no terminating 0).
 A **bitmap** is a byte sequence in which bit i is bit (i mod 8) of byte ⌊i/8⌋, bit 0 being the least significant bit. A bitmap runs to the end of the value that contains it.
+
+- A boolean u8 is 0 (false) or 1 (true). In a request any other value is rejected malformed. In an answer the host reads any non-zero value as true.
+- Text in a request that is not valid UTF-8, or that contains C0 control characters (0x00 to 0x1F) or 0x7F, is rejected malformed. A host replaces such characters, and invalid UTF-8, before it shows text from an answer.
 
 ### 2.2 TLV
 
@@ -259,6 +263,9 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 - **Before confirm**: every probe accepts messages of up to 64 bytes (the registry's `min_max_frame`) (the max_frame of confirm is 64 or more).
   The host sends no message exceeding 64 bytes until it has received the answer to confirm. The host is able to receive messages of up to 65535 bytes from the
   probe.
+- The host opens a serial port and a HID exclusively where the OS allows it (on Linux, TIOCEXCL on a tty).
+- A probe that exposes HID accepts output reports both on its interrupt OUT endpoint and by SET_REPORT (Output).
+- A probe that exposes vendor bulk SHOULD give that interface the Microsoft OS 2.0 compatible ID `WINUSB`.
 
 ### 3.4 Sharing a serial port
 
@@ -314,7 +321,8 @@ port_speed  request: port(u8), baud(u32), step(u8: 0 try, 1 commit, 2 revert), v
 ```
 
 - port: the index (§7.5) of the transport this request came on (the transport TLV of the confirm answer, §7.1).
-- Refusals: port is not the port this request came from → rejected unavailable (cause 6). baud cannot be produced by the probe's UART → rejected unsupported.
+- Refusals: port is not the port this request came from → rejected unavailable (cause 6). If the nearest speed the UART can produce differs from the request by more than 2 %, rejected unsupported. The answer's baud is the speed actually applied.
+  verify_ms 0 in step 0 (try) is rejected malformed. In step 1 (commit) and step 2 (revert) verify_ms has no meaning and any value is accepted.
   A step of 3 or more is rejected unsupported (payload tag 0x00, §2.5).
   Refusals when the lock is missing or different follow the order of §4.3 (session_required, no_session, expired, locked).
 - The state is one of 3 per port: **boot / trying / committed**.
@@ -461,6 +469,8 @@ Before the confirm of a resync, and before the first confirm after opening a len
 - The probe remembers, for the requests of the last session (role 0x81), at least the most recent max_inflight entries of (corr, fn, op, CRC-32 of the request payload,
   answer), and the newest corr of that session. **The identity of a request is determined by corr alone** (the ordering of §4.1). The CRC is only for
   detecting a numbering mistake by the host.
+- The probe stores the answer of every request of the last session that passes order 2 of §4.3, rejected answers included, and advances the newest corr with it. A host that corrects a rejected request sends it with a new corr.
+- §5.2 binds every probe (every endpoint that answers OEP requests itself, §3.1) on every transport, TCP included. TCP does not lose frames, but a host still resends after its wait (§4.4) when an answer is late, so the probe keeps the table to avoid executing a request twice. The table is one per probe, shared by all its transports and TCP connections, as the session is. A broker that only relays to an OEP probe keeps no table of its own; when it renumbers corr, it relays a client's resend with the same corr it used the first time. For that it keeps, per accepted client connection, the map from the client's corr to the corr it used upstream for at least the client's last max_inflight requests, and drops the map when that connection closes.
 - A request carrying the session_id of the last session is checked as follows **before the decision of §6.2** (the same even if the lock is free):
   - If the table has the same corr and fn, op and CRC are the same, **the remembered answer is returned without executing**. Neither the lock state nor the lease changes (a resent
     end does not re-establish the lock).
@@ -480,8 +490,8 @@ Before the confirm of a resync, and before the first confirm after opening a len
 ### 6.1 The lock
 
 - The probe has **one lock**. Only the session holding the lock can execute requests that change state.
-- The session_id is chosen by the host (random is fine). The probe remembers the session_id that last held the lock.
-- The lease is set by open and extended every time a request of the lock-holding session (role 0x81) completes. When the expiry passes, the lock becomes free
+- The host chooses the session_id for each session as an unpredictable 32-bit random value. It does not use a fixed value or 0. open with session_id 0 is rejected malformed. The probe remembers the session_id that last held the lock.
+- The lease is set by open. It restarts (lease_ms counted again from when the answer is sent) at every answer to a request of the lock-holding session that passed order 3 of §4.3, rejected answers included. It does not restart on an answer replayed from the table of §5.2. When the expiry passes, the lock becomes free
   (the expiry of §9). **The lease is not counted while a request is being executed** (the session is not cut even if a long op outlasts the lease. The upper bound on the length is
   the describe's max_op_ms, §7.5).
 
@@ -511,11 +521,11 @@ declares lock-free must not change state.
 
 ### 6.4 open, end, keepalive, force
 
-- **open** (session_id, lease_ms, force): takes the lock. The answer is lease_ms (the value decided by the probe), boot_id, resumed (0 new session,
+- **open** (session_id, lease_ms, force): takes the lock. open is sent with role 0x01; an open with role 0x81 is rejected malformed. The answer is lease_ms (the value decided by the probe), boot_id, resumed (0 new session,
   1 re-established with the same session_id with the resources kept, 2 same session_id but after the resources were removed. The registry's `resumed`). **The table of §5.2 is discarded at
   every successful open** (not at an open that gets rejected locked. Not at end, expiry or force).
-- **lease_ms**: 0 means "the probe's default". The probe accepts requests of 1000 to 60000 ms as they are, and rounds values outside the range (the default and the rounding range are
-  decided by the probe). The host takes the lease_ms of the answer as authoritative.
+- **lease_ms**: 0 means "the probe's default". The probe accepts requests of 1000 to 60000 ms as they are, and rounds values outside the range into it (the default is
+  decided by the probe). The lease_ms of the answer is within lease_min_ms to lease_max_ms (1000 to 60000). The host takes the lease_ms of the answer as authoritative.
 - **end**: releases the lock. The session's resources remain (§9).
 - **keepalive**: only extends the lease.
 - **lock_state**: whether the lock is held and the remaining time. locked means "the lock is held by whatever session" (lock_state can be sent without holding a
@@ -569,7 +579,7 @@ entry:   fn(u16), instance(u16), revision(u8), flags(u8), name_len(u8), name
   write `oep`). An empty prefix matches everything. With exact, only exact matches (an empty prefix matches nothing). `oep.core` (fn 0) is also counted as the first
   entry. Bits 1 to 7 of the request's flags are reserved: a request with any of them set is rejected unsupported (payload tag 0x00, §2.5).
 - Names are 1 to 64 bytes; the usable characters are `a-z 0-9 - .` (§13).
-- instance distinguishes several interfaces of the same name. **Those with the same name are numbered from 0 in ascending order of fn.** The probe keeps the order of ports of the same name
+- instance distinguishes several interfaces of the same name. **Interfaces with the same (name, revision) are numbered from 0 in ascending order of fn.** The probe keeps the order of ports of the same name
   across firmware versions (because saved settings designate an interface by (name, instance, revision)). flags is reserved (0).
 - When a single interface is designated in text (CLI, settings files, logs), it is written `name#instance` (instance is this value, from 0.
   `#0` may be omitted). Example: `oep.fixture.uart#1` is the second `oep.fixture.uart`.
@@ -619,7 +629,7 @@ appears in the answer.
 | tag | Name | Value |
 |---:|---|---|
 | 0x40 | firmware | text |
-| 0x41 | model | text. The kind of probe (the same value for hardware of the same kind carrying the same firmware. Does not vary per unit). **Lowercase `a-z 0-9 -`**, 1 to 32 bytes |
+| 0x41 | model | text. The kind of probe (the same value for hardware of the same kind carrying the same firmware. Does not vary per unit). **Lowercase `a-z 0-9 -`**, 1 to 32 bytes. A model that is not the project's own starts with its maker's reverse domain name, with `.` replaced by `-` (example `com-example-probe1`) |
 | 0x42 | unit_id | The ID of the unit. **Mandatory.** text of 1 to 32 bytes; the only usable characters are `a-z 0-9 -` (the chip's unique number in lowercase hex, etc.). Used by the host to group the transports of the same probe, so the describe of every transport returns the same value. Equals the USB serial number (§3.3). The value by which the host names a probe (the address `oep://<unit_id>/<slot name>`, [probe settings](oep-if-probe-config.md) §1.1) |
 | 0x43 | channels | u16. The number of channels |
 | 0x44 | reserved | base(u16), bitmap. If bit i is set, channel base+i is used by the probe itself and is not assigned to interfaces |
@@ -630,7 +640,7 @@ appears in the answer.
 | 0x49 | transport | index(u8), kind(u8), interface(u8: the USB interface number, 0xFF if not USB). One per transport of the probe. **Mandatory** |
 | 0x4A | discoverable | u8. 1 = the probe also enumerates with the project's USB VID:PID (§3.3) (even if the current transport is not one). Until the project's VID:PID is listed in the registry, every probe sends 0 |
 | 0x4B | plan_roles | u32. The number of role_assignments the plan can hold at once (the total over all fns. Includes the settings plan). A probe with a limit always emits it (§8) |
-| 0x4C | chip | text. The part number and revision of the probe's MCU: `<part number> v<revision>`, the part number in lowercase without hyphens (e.g. `abc123 v1.0`). So that captured data records which chip captured it (optional) |
+| 0x4C | chip | text. The part number and revision of the probe's MCU: `<part> v<revision>`. part is 1 to 24 of `a-z 0-9`. revision is digits with optional `.digits` groups. When the revision is unknown, the part alone (e.g. `abc123 v1.0`, `abc123`). So that captured data records which chip captured it (optional) |
 | 0x4D | max_op_ms | u32. The longest time the probe spends on one request. **Mandatory.** Ops that could exceed it (run, the sum of the waits of dmi, the start of capture, save, the hold_ms of the reset of attach) are rejected unsupported if the sum of their arguments exceeds it. The lease is not counted during execution (§6.1). Reading the other transports and the consoles of connections continues. The value is decided by the probe. The host waits as §4.4 says |
 | 0x4E | port_speed | u8. 1 = this probe accepts op port_speed (§3.5) (emitted only when the firmware has the function ON) |
 
@@ -640,9 +650,9 @@ appears in the answer.
 - **Invariance of transport indexes**: a transport keeps its index across firmware versions of the same model. A firmware that adds a transport gives it an index not used before, and a removed index is not reused.
 - The host may decide how to take over the lock from the number of transports (if the only transport is a single serial port, there is no previous owner once the port has been opened
   exclusively. [host development guide](host-development-guide.ja.md) (Japanese)).
-- **Uniqueness of unit_id**: unit_id is a different value per unit (the chip's unique number, etc.). A probe with neither a unique number nor storage may hold it as a firmware build
-  constant (accepting that units with the same firmware cannot be told apart).
-- **Invariance of unit_id**: unit_id is derived only from values of the unit (the chip's unique number, a saved random number), and does not change with the firmware version, the profile, the build, or the kind of
+- **Uniqueness of unit_id**: unit_id is a different value per unit (the chip's unique number, etc.). A probe with storage but no unique number creates its unit_id at first boot from a random number and saves it.
+  A probe with neither uses a unit_id that starts with `x-` (not unique). A host does not group transports by a unit_id that starts with `x-`, does not name a probe by it, and does not key anything it keeps across sessions by it (for example a record of a port's link speed), so that another unit on the same port inherits nothing.
+- **Invariance of unit_id**: unit_id is derived only from values of the unit (the chip's unique number, a saved random number; an `x-` unit_id is the one exception), and does not change with the firmware version, the profile, the build, or the kind of
   transport. No suffix is added. The host and the OS remember a probe by unit_id (= the USB serial number, §3.3).
 
 ### 7.6 Addresses
@@ -765,7 +775,7 @@ event   role=0x05 | fn(u16) | seq(u16) | kind(u8) | fixed part | [TLV]          
   one subscription per fn.
 - **Conditions for batching**: send when min_bytes bytes have accumulated or max_delay_ms has passed since the first byte. 0 disables that condition. If both are 0,
   send whatever there is immediately.
-- Subscribing to fn 0 delivers the heartbeat. The period is max_delay_ms (1000 ms if 0).
+- Subscribing to fn 0 delivers the heartbeat. The period is max_delay_ms (1000 ms if 0). The probe may round a heartbeat period shorter than 100 ms up to 100 ms.
 - There is no flow budget (credits). What the host or the wire fell behind on is pushed out inside the probe, and is seen from the interface's payload
   (the stream position, etc.) or from a gap in seq.
 
@@ -804,6 +814,7 @@ Standard interfaces and independent interfaces are both defined by the following
 
 1. **Name**: `oep.` is reserved by the project. Independent interfaces use reverse DNS (`io.github.<owner>.<name>`, etc.). Names are cut by what the host
    uses them for (not by the name of the probe's peripheral). **1 to 64 bytes; the usable characters are `a-z 0-9 - .`** (the registry's `limits`).
+   Each label of a name is 1 or more of `a-z 0-9 -`, and does not start or end with `-`. A name has at least two labels.
 2. **What the definition decides**: the revision, the table of ops (number, request, answer, whether the lock is required), the TLV tags of each op (the space of that op's context),
    the interface-specific describe tags (0x40 to 0x7F), the role numbers of the plan, reject reasons (0x40 to 0x7F), event kinds
    (0x01 to 0x7F), the form of the payload of notification data, the resources the interface creates and their lifetime (on top of §9).

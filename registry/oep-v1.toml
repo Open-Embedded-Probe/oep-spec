@@ -6,7 +6,9 @@
 # Per op: `lock` = needs the session lock; `closed_tail = true` = the response ends with a list of unknown length,
 # so nothing can be appended after it (core §2.3: only fn 0's link_source). The key `fields` is reserved on ops for
 # payload layouts later (encoders / decoders generated from here). Shared enums live under [common.enum.*]; USB
-# descriptor constants under [usb]; text and value limits the spec states under [limits] (2026-10-01).
+# descriptor constants under [usb]; text and value limits the spec states under [limits] (2026-10-01); values that are
+# not the specification's under [reference]. After the freeze keys are never renamed, only added (core, top);
+# the hash tells only whether generated code matches this file, nothing about wire compatibility.
 # The hash embedded in the generated files is the sha256 of this file with line endings normalized to LF.
 # Per interface: `reserved.<enum or "op">` = ranges [[lo, hi]] no value may use; `status` / `reject_reasons` = the
 # interface's own values (0x40-0x7F). Common describe tags ([describe_common]) are not repeated in an interface.
@@ -112,13 +114,15 @@ slot_name_max_bytes = 32
 label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
 interface_name_max_bytes = 64
 ignored_max_entries = 16        # entries of the ignored TLV; 0x00 as the 16th = more were ignored (core §2.3)
-max_op_ms_reference = 10000     # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
 resource_reuse_distance = 1024  # a closed resource number is not reused among the most recently closed this many (core §9)
 dm_wait_ms = 100                # riscv-dm: one wait for a DM state inside a high-level op (oep-if-debug §4)
 dmi_busy_retries = 100          # riscv-dm: DMI busy is retried this many times, then status wait (oep-if-debug §4)
 reset_wait_ms = 100             # riscv-dm reset: wait for the hart after releasing ndmreset, per attempt (oep-if-debug §4.3)
 reset_retries = 1               # riscv-dm reset: the sequence is repeated at most this many times (flags bit2) (oep-if-debug §4.3)
 swd_wait_retries = 100          # arm-adi transfer: WAIT is retried this many times, then status wait (oep-if-debug §6)
+
+[reference]                     # values that are not the specification's, outside the freeze (core, top)
+max_op_ms = 10000               # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
 
 [common.enum.read_from]         # positioned streams (oep-if-common §1.2)
 position = 0

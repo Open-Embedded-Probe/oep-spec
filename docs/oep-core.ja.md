@@ -8,6 +8,7 @@
 
 番号（op、tag、reject reason、status、enum）の唯一の定義は `registry/oep-v1.toml` で、この文書の表はその写しである。
 食い違えば registry が正しく、文書を直す。
+凍結の後、registry のキー（したがって生成した識別子）は改名せず、新しいキーを足す。REGISTRY_HASH は生成したコードが registry と合っているかを示すだけで、線の上の互換については何も言わない。仕様のものでない値（参考の firmware の max_op_ms）は、凍結の外の `[reference]` の表に置く。
 
 ## 0. 範囲と層
 
@@ -77,6 +78,9 @@ host がしなければならない（MUST）こと: 知らない TLV と tag �
 
 数値はすべて little endian。文字列は UTF-8 のバイト列で、長さは別に持つ（終端の 0 は付けない）。
 **bitmap** は byte の並びで、bit i は byte ⌊i/8⌋ の bit (i mod 8) である（bit 0 は最下位の bit）。bitmap は、それを含む値の終わりまで続く。
+
+- 真偽値の u8 は 0（偽）か 1（真）。要求の中でほかの値なら rejected malformed。応答では、host は 0 でない値をすべて真と読む。
+- 要求の中の text が正しい UTF-8 でないか、C0 の制御文字（0x00〜0x1F）か 0x7F を含めば rejected malformed。host は、応答の text を見せる前に、そうした文字と正しくない UTF-8 を置き換える。
 
 ### 2.2 TLV
 
@@ -259,6 +263,9 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **confirm の前**: どの probe も 64 byte（registry の `min_max_frame`）までの message を受ける（confirm の max_frame は 64 以上）。
   host は confirm の応答を受けるまで、64 byte を超える message を送らない。host は probe から長さ 65535 byte までの message を
   受けられるようにする。
+- host は、OS が許すところでは、シリアルの口と HID を排他で開く（Linux では tty に TIOCEXCL）。
+- HID を出す probe は、output の report を、interrupt OUT の endpoint でも SET_REPORT（Output）でも受ける。
+- vendor bulk を出す probe は、できれば（SHOULD）その interface に Microsoft OS 2.0 の compatible ID `WINUSB` を付ける。
 
 ### 3.4 シリアルの口の共用
 
@@ -314,7 +321,8 @@ port_speed  要求: port(u8)、baud(u32)、step(u8: 0 試す、1 決める、2 �
 ```
 
 - port: この要求の来た経路の index（§7.5）（confirm の応答の transport TLV、§7.1）。
-- 断り: port がこの要求の来た口でない → rejected unavailable（cause 6）。baud を probe の UART で作れない → rejected unsupported。
+- 断り: port がこの要求の来た口でない → rejected unavailable（cause 6）。UART が作れる最も近い速さが要求と 2 % より大きく違えば rejected unsupported。応答の baud は実際に掛けた速さ。
+  step 0（試す）の verify_ms 0 は rejected malformed。step 1（決める）と step 2（戻す）では verify_ms に意味は無く、どの値も受ける。
   step が 3 以上なら rejected unsupported（payload の tag 0x00、§2.5）。
   ロックが無い・違うときの断りは §4.3 の順（session_required、no_session、expired、locked）。
 - 状態は口ごとに **起動時 / 試し / 決めた** の 3 つ。
@@ -461,6 +469,8 @@ unsubscribe と end を確かめずに送ってよい（二度実行しても害
 - probe は、最後のセッションの要求（role 0x81）について、直近の max_inflight 個以上の (corr, fn, op, 要求の payload の CRC-32,
   応答) と、そのセッションで最も新しい corr を覚えておく。**要求の同一性は corr だけで決まる**（§4.1 の順序）。CRC は host の
   番号付けの誤りを見つけるためだけのもの。
+- probe は、最後のセッションの要求のうち §4.3 の順 2 を通ったものすべての応答を、rejected の応答も含めて覚え、それに合わせて最も新しい corr を進める。rejected になった要求を直して送る host は、新しい corr で送る。
+- §5.2 はどの probe（OEP の要求に自分で答えるどの端点も、§3.1）にも、TCP を含むどの経路でも掛かる。TCP はフレームを失わないが、応答が遅れれば host は待ち（§4.4）の後に送り直すので、probe は要求を二度実行しないように表を持つ。表は probe に 1 つで、セッションと同じく、すべての経路と TCP の接続で共有する。OEP の probe に中継するだけのブローカーは自分の表を持たない。corr を付け直すときは、client の送り直しを、最初に使ったのと同じ corr で中継する。そのために、受けた client の接続ごとに、client の corr から上流で使った corr への対応を、少なくともその client の直近の max_inflight 個の要求について持ち、その接続が閉じたら捨てる。
 - 最後のセッションの session_id を持つ要求は、**§6.2 の判定より先に**次のとおり見る（ロックが空いていても同じ）:
   - 表に同じ corr があり、fn、op、CRC が同じなら、**実行せずに覚えた応答を返す**。ロックの状態も lease も変えない（送り直した
     end でロックが立ち直ることはない）。
@@ -480,8 +490,8 @@ unsubscribe と end を確かめずに送ってよい（二度実行しても害
 ### 6.1 ロック
 
 - probe は**ロックを 1 つ**持つ。ロックを持つセッションだけが状態を変える要求を実行できる。
-- session_id は host が選ぶ（乱数でよい）。probe は最後にロックを持った session_id を覚えている。
-- lease は open で決まり、ロックを持つセッションの要求（role 0x81）が完了するたびに延びる。期限を過ぎるとロックは空く
+- host はセッションごとの session_id を、予測できない 32 bit の乱数で選ぶ。決まった値や 0 は使わない。session_id 0 の open は rejected malformed。probe は最後にロックを持った session_id を覚えている。
+- lease は open で決まる。ロックを持つセッションの要求で §4.3 の順 3 を通ったものへの応答のたびに（rejected の応答も含む）、lease は数え直す（応答を送った時から lease_ms を数え直す）。§5.2 の表から返し直した応答では数え直さない。期限を過ぎるとロックは空く
   （§9 の期限切れ）。**要求を実行している間は lease を数えない**（長い op が lease より長くてもセッションは切れない。長さの上限は
   describe の max_op_ms、§7.5）。
 
@@ -511,11 +521,11 @@ probe は、ロックの有無、最後の session_id、その ID のロック�
 
 ### 6.4 open、end、keepalive、force
 
-- **open**（session_id、lease_ms、force）: ロックを取る。応答は lease_ms（probe が決めた値）、boot_id、resumed（0 新しいセッション、
+- **open**（session_id、lease_ms、force）: ロックを取る。open は role 0x01 で送る。role 0x81 の open は rejected malformed。応答は lease_ms（probe が決めた値）、boot_id、resumed（0 新しいセッション、
   1 同じ session_id で資源を残したまま立て直した、2 同じ session_id だが資源は外した後。registry の `resumed`）。**成功した open のたびに
   §5.2 の表を捨てる**（rejected locked の open では捨てない。end、期限切れ、force では捨てない）。
-- **lease_ms**: 0 は「probe の既定」。probe は 1000〜60000 ms の要求をそのまま受け、範囲の外は probe が丸める（既定と丸めの幅は
-  probe が決める）。host は応答の lease_ms を正とする。
+- **lease_ms**: 0 は「probe の既定」。probe は 1000〜60000 ms の要求をそのまま受け、範囲の外は範囲の中に丸める（既定は
+  probe が決める）。応答の lease_ms は lease_min_ms〜lease_max_ms（1000〜60000）の中にある。host は応答の lease_ms を正とする。
 - **end**: ロックを離す。セッションの資源は残す（§9）。
 - **keepalive**: lease を延ばすだけ。
 - **lock_state**: ロックの有無と残り時間。locked は「どのセッションであれロックが持たれている」（lock_state はセッションを
@@ -569,7 +579,7 @@ entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
   `oep` と書く）。空の prefix はすべてに一致する。exact なら完全一致だけ（空の prefix は何にも一致しない）。`oep.core`（fn 0）も最初の
   entry として数える。要求の flags の bit 1〜7 は予約: どれかが立った要求は rejected unsupported（payload の tag 0x00、§2.5）。
 - 名前は 1〜64 byte、使える文字は `a-z 0-9 - .`（§13）。
-- instance は、同じ名前のインターフェースが複数あるときの見分け。**同じ名前のものを fn の昇順に 0 から振る**。probe は同じ名前の口の
+- instance は、同じ名前のインターフェースが複数あるときの見分け。**同じ (名前, revision) のインターフェースを fn の昇順に 0 から振る**。probe は同じ名前の口の
   順を firmware の版を越えて保つ（保存した設定が (name, instance, revision) でインターフェースを指すため）。flags は予約（0）。
 - 文字で 1 つのインターフェースを指すとき（CLI、設定のファイル、ログ）は `name#instance` と書く（instance はこの値、0 から。
   `#0` は省いてよい）。例: `oep.fixture.uart#1` は 2 つめの `oep.fixture.uart`。
@@ -619,7 +629,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | tag | 名前 | 値 |
 |---:|---|---|
 | 0x40 | firmware | text |
-| 0x41 | model | text。probe の種類（同じ firmware を載せた同じ種類のハードウェアで同じ値。個体では変わらない）。**小文字の `a-z 0-9 -`**、1〜32 byte |
+| 0x41 | model | text。probe の種類（同じ firmware を載せた同じ種類のハードウェアで同じ値。個体では変わらない）。**小文字の `a-z 0-9 -`**、1〜32 byte。project のものでない model は、作り手の逆 DNS の名前の `.` を `-` に替えたもので始める（例 `com-example-probe1`） |
 | 0x42 | unit_id | 個体の ID。**必須**。text で 1〜32 byte、使える文字は `a-z 0-9 -` だけ（チップの固有の番号を小文字の 16 進にしたもの、など）。同じ probe の経路を host がまとめるのに使うので、どの経路の describe でも同じ値を返す。USB の serial number と同じ（§3.3）。host が probe を名指す値（アドレス `oep://<unit_id>/<スロットの名前>`、[probe の設定](oep-if-probe-config.ja.md) §1.1） |
 | 0x43 | channels | u16。channel の数 |
 | 0x44 | reserved | base(u16)、bitmap。bit i が立っていれば、channel base+i は probe が自分で使っていてインターフェースに割り当てない channel |
@@ -630,7 +640,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8: USB の interface 番号、0xFF は USB でない)。probe の経路ごとに 1 つ。**必須** |
 | 0x4A | discoverable | u8。1 = probe はプロジェクトの USB の VID:PID（§3.3）でも列挙している（今の経路がそうでなくても）。プロジェクトの VID:PID が registry に載るまでは、どの probe も 0 |
 | 0x4B | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
-| 0x4C | chip | text。probe の MCU の型番とリビジョン: `<型番> v<リビジョン>`、型番は小文字でハイフンなし（例 `abc123 v1.0`）。取ったデータに、どのチップで取ったかを残すため（任意） |
+| 0x4C | chip | text。probe の MCU の型番とリビジョン: `<part> v<revision>`。part は `a-z 0-9` の 1〜24 文字。revision は数字で、`.数字` の組が続いてよい。リビジョンが分からなければ part だけ（例 `abc123 v1.0`、`abc123`）。取ったデータに、どのチップで取ったかを残すため（任意） |
 | 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host は §4.4 のとおり待つ |
 | 0x4E | port_speed | u8。1 = この probe は op port_speed（§3.5）を受ける（firmware が機能を ON にしたときだけ出す） |
 
@@ -640,9 +650,9 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 - **経路の index の不変性**: 経路は、同じ model の firmware の版を越えて index を保つ。経路を足す firmware は、それまで使っていない index を付け、外した index は使い直さない。
 - host は transport の数で、ロックの奪い方を決めてよい（経路がシリアルの口 1 つだけなら、口を排他で開けた時点で前の持ち主は
   いない。[host 開発ガイド](host-development-guide.ja.md)）。
-- **unit_id の一意性**: unit_id は個体ごとに違う値にする（チップの固有の番号、など）。固有の番号も保存も無い probe は firmware のビルド
-  定数で持ってよい（同じ firmware の個体を区別できないことを受け入れる）。
-- **unit_id の不変性**: unit_id は個体の値（チップの固有の番号、保存した乱数）だけから作り、firmware の版、profile、ビルド、経路の種類で
+- **unit_id の一意性**: unit_id は個体ごとに違う値にする（チップの固有の番号、など）。保存はあるが固有の番号の無い probe は、最初の起動で乱数から unit_id を作って保存する。
+  どちらも無い probe は `x-` で始まる unit_id を使う（一意ではない）。host は `x-` で始まる unit_id で経路をまとめず、それで probe を名指さず、セッションを越えて持つもの（たとえば口のリンクの速さの記録）のキーにしない。同じ口のほかの個体が何も引き継がないためである。
+- **unit_id の不変性**: unit_id は個体の値（チップの固有の番号、保存した乱数。`x-` の unit_id だけは例外）だけから作り、firmware の版、profile、ビルド、経路の種類で
   変えない。接尾辞を足さない。host と OS は unit_id（= USB の serial number、§3.3）で probe を覚える。
 
 ### 7.6 アドレス
@@ -765,7 +775,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
   1 つだけ。
 - **まとめて送る条件**: min_bytes バイトたまるか、最初のバイトから max_delay_ms 経ったら送る。0 はその条件を使わない。両方 0 なら
   あるだけすぐ送る。
-- fn 0 を購読するとハートビートが来る。周期は max_delay_ms（0 なら 1000 ms）。
+- fn 0 を購読するとハートビートが来る。周期は max_delay_ms（0 なら 1000 ms）。probe は 100 ms より短いハートビートの周期を 100 ms に切り上げてよい。
 - 流れの量の予算（クレジット）は持たない。host や線が遅れた分は probe の中で押し出され、インターフェースの payload
   （ストリームの位置など）か seq の抜けで分かる。
 
@@ -804,6 +814,7 @@ link_source / link_sink は線の速さを測るためのもので、状態を�
 
 1. **名前**: `oep.` は project が予約する。独自のインターフェースは逆 DNS（`io.github.<owner>.<name>` など）。名前は host が何に
    使うかで切る（probe のペリフェラルの名前にしない）。**1〜64 byte、使える文字は `a-z 0-9 - .`**（registry の `limits`）。
+   名前の label はそれぞれ `a-z 0-9 -` の 1 文字以上で、`-` で始まらず `-` で終わらない。名前は label を 2 つ以上持つ。
 2. **定義が決めるもの**: revision、op の表（番号、要求、応答、ロックの要否）、各 op の TLV の tag（その op の文脈の空間）、
    describe のインターフェース固有のタグ（0x40〜0x7F）、plan の role の番号、reject reason（0x40〜0x7F）、出来事の kind
    （0x01〜0x7F）、通知のデータの payload の形、インターフェースが作る資源とその寿命（§9 の上で）。
