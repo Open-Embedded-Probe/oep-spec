@@ -190,17 +190,33 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
   sent from another transport. A misjudgement caused by the host sending 0x81 from 2 transports is the host's responsibility; the probe does not check.
 - When the same probe has several transports, the host tries vendor bulk, HID, then serial ports in that order (serial ports are also used to carry raw bytes,
   §3.4). The list of the probe's transports is known from the transport of the describe of fn 0 (§7.5).
-- **How to tell a USB OEP probe and its ports apart**: **a device whose string iProduct starts with `OEP` is an OEP probe** (VID:PID is not used
-  for identification. The VID:PID of the reference firmware is in the practical document [USB identity](usb-identity.ja.md) (Japanese)). The host identifies probes by this, and selects the device's ports
-  by the interface descriptors: every CDC (ACM) is a serial port (§3.4; all of them accept OEP), **the bulk IN / OUT pair of an interface with bInterfaceClass 0xFF, bInterfaceSubClass 0x4F
-  ('O'), bInterfaceProtocol 0x45 ('E')** is vendor bulk, and **a HID with usage page 0xFF4F, usage 0x45** is HID
-  (the registry's `usb`). An OEP probe exposes at most one vendor bulk and at most one HID. Other class 0xFF interfaces (the JTAG of USB-Serial/JTAG,
-  WebUSB, etc.) do not have this subclass / protocol, so they are not claimed. Other functions (DFU, Mass Storage, etc.) are outside OEP.
-  Interface strings are for display and are not used for identification.
+- **How to tell a USB OEP probe apart**: among devices it does not know, a host identifies an OEP probe automatically only when the device has **the project's USB
+  VID:PID**. The project's VID:PID is listed in the registry's `usb` when it is obtained. Until it is listed, the registry has no
+  VID:PID, and no device is identified automatically by this rule (the temporary clues until then are in [host development guide](host-development-guide.ja.md) (Japanese)
+  §1.7; they are not normative). The device string iProduct is free text for display, and the host does not use it for identification. Interface strings are also for
+  display and are not used for identification.
+- **A named probe**: when the user names a probe by its unit_id (the address `oep://<unit_id>[/<slot name>]`, §7.6), the host may open the USB device whose serial number
+  equals that unit_id without identifying it. After opening, the host follows the probing rule below, and uses the device as that probe only when the unit_id of the describe of fn 0
+  sent after confirm equals the named value. Otherwise the host closes the device and sends nothing else.
+- **Other devices and serial ports**: of the USB devices and serial ports that fit neither of the 2 cases above, the host opens only those it has its own way of handling, or those the user
+  has chosen explicitly.
+- **The probing rule**: on a device or port the host opens without having identified it (a named device, a port the user chose, a device the host handles on its own, a device found by
+  a temporary clue), the first thing the host sends is a confirm (§7.1) only (including the single resend of §5.2). When the wait for the confirm
+  (§4.4; confirm has no time set by its arguments, so 1000 ms) has passed without a valid confirm answer (when resent, when the wait for the resent
+  confirm has passed without one), the host closes the device or port and sends nothing else. A valid confirm answer is a completed answer with the same corr as the sent
+  confirm whose payload has the shape of §7.1 (starting with `OEP!`). A device or port that gave a valid answer is treated as an OEP
+  probe.
+- **Choosing the ports**: inside a device known to be an OEP probe (the project's VID:PID, a named device, a device that gave a valid confirm answer), the
+  ports are selected by the interface descriptors: every CDC (ACM) is a serial port (§3.4; all of them accept OEP), **the bulk IN / OUT pair of an interface with bInterfaceClass 0xFF,
+  bInterfaceSubClass 0x4F ('O'), bInterfaceProtocol 0x45 ('E')** is vendor bulk, and **a HID with usage page 0xFF4F,
+  usage 0x45** is HID (the registry's `usb`). A probe exposes vendor bulk and HID in this shape, and at most one of each. The host does not decide
+  that a device is an OEP probe from this class / subclass / protocol and usage page / usage alone. Other class 0xFF interfaces
+  (the JTAG of USB-Serial/JTAG, WebUSB, etc.) do not have this subclass / protocol, so they are not claimed. Other functions (DFU, Mass Storage, etc.) are
+  outside OEP.
 - **The USB serial number is the unit_id** (§7.5): on ports where the probe can choose the serial (CDC, vendor bulk, HID that the device exposes itself), the serial number is
-  the unit_id itself (the invariance of §7.5). The host can identify the probe without opening it, and the value equals the describe of every transport. On ports where neither serial nor iProduct can be chosen
-  (USB-Serial/JTAG, USB-UART converter chips), the host specifies the transport from outside and confirms the unit_id with describe. confirm and describe can only be used after the port is
-  opened, so the choice of port follows this rule.
+  the unit_id itself (the invariance of §7.5). The host can tell the unit apart without opening it (and so find a named probe), and the value equals the describe of every
+  transport. On ports where the serial cannot be chosen (USB-Serial/JTAG, USB-UART converter chips), the host specifies the transport from outside and confirms the unit_id with describe.
+  confirm and describe can only be used after the port is opened, so the choice of port follows this rule.
 - **max_frame is the limit in both directions**: the probe sends no message exceeding max_frame, and the host sends no message exceeding max_frame.
 - **Before confirm**: every probe accepts messages of up to 64 bytes (the registry's `min_max_frame`) (the max_frame of confirm is 64 or more).
   The host sends no message exceeding 64 bytes until it has received the answer to confirm. The host is able to receive messages of up to 65535 bytes from the
@@ -559,7 +575,7 @@ appears in the answer.
 | 0x47 | resets_on_open | u8. Whether the probe resets when the transport is opened |
 | 0x48 | — | Reserved |
 | 0x49 | transport | index(u8), kind(u8), interface(u8: the USB interface number, 0xFF if not USB). One per transport of the probe. **Mandatory** |
-| 0x4A | discoverable | u8. 1 = the probe is also enumerated in a form that appears in the host's discovery list (even if the current transport is not one): a USB device whose iProduct starts with `OEP` (§3.3) |
+| 0x4A | discoverable | u8. 1 = the probe also enumerates with the project's USB VID:PID (§3.3) (even if the current transport is not one). Until the project's VID:PID is listed in the registry, every probe sends 0 |
 | 0x4B | plan_roles | u32. The number of role_assignments the plan can hold at once (the total over all fns. Includes the settings plan). A probe with a limit always emits it (§8) |
 | 0x4C | chip | text. The part number and revision of the probe's MCU: `<part number> v<revision>`, the part number in lowercase without hyphens (e.g. `esp32p4 v1.3`, `rp2350 v2`). So that captured data records which chip captured it (optional) |
 | 0x4D | max_op_ms | u32. The longest time the probe spends on one request. **Mandatory.** Ops that could exceed it (run, the sum of the waits of dmi, the start of capture, save, the hold_ms of the reset of attach) are rejected unsupported if the sum of their arguments exceeds it. The lease is not counted during execution (§6.1). Reading the other transports and the consoles of connections continues. The value is decided by the probe. The host waits at least this value plus the time the request and answer spend on the wire (§4.4) |

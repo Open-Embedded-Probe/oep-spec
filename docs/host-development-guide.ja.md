@@ -49,6 +49,22 @@ UART bridge の probe は常に 115200 bps で開く（probe 側で固定、[pro
 - 送るフレームは必ず前後を 0x00 で囲む（前の 0x00 が無いと、probe はフレームの頭を生のバイトとして流してしまう）。
 - セッションを開くと、その口の生の転送は止まる（core §3.4）。コンソールを読みたいときは OEP の read で読む。
 
+## 1.7 USB の probe の見つけ方と暫定の手がかり（専用の PID を取得するまで）
+
+- 規範（core §3.3）では、host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID を持つ device だけである。その
+  VID:PID は取得したときに registry に載る。今は載っていないので、規範だけでは自動で見つかる device は無い。名指した probe
+  （unit_id = serial number の device）と、利用者が選んだ口は、今でも開ける（core §3.3）。
+- それまでの**暫定の手がかり**として、host は次のどれかに当たる USB の device を候補にしてよい:
+  - iProduct が `OEP` で始まる。
+  - class 0xFF / subclass 0x4F / protocol 0x45 の vendor の interface を持つ。
+  - usage page 0xFF4F の HID の interface を持つ。
+- 候補は 1 つずつ開き、core §3.3 の探りの規則で確かめる: 最初に送るのは confirm だけで、正しい confirm の応答が待ち時間のうちに
+  来なければ、閉じてほかに何も送らない。応答が来た候補だけを OEP の probe として扱う。
+- 名前や vendor class の値は、ほかの製品と偶然重なりうる。このためこれらの手がかりは仕様の一部ではなく、プロジェクトの VID:PID が
+  できたら無くなる。それまでも、手がかりだけで probe と決めない（必ず confirm で確かめる）。
+- 参照の firmware は今、仮の USB の ID（ボードの既定の VID:PID）で動いていて、配布には使えない。参照の firmware の iProduct は
+  `OEP` で始まるので、今は上の手がかりで見つかる（[USB の識別](usb-identity.ja.md)）。
+
 ## 2. 排他とロックの奪い方
 
 - **シリアルの口は必ず排他で開く**（Linux / macOS は `ioctl(TIOCEXCL)`、Windows は元から排他）。排他でないと、応答のバイトが
@@ -92,9 +108,10 @@ UART bridge の probe は常に 115200 bps で開く（probe 側で固定、[pro
   次のコマンドで同じ ID を使い、通れば前のコマンドのあと誰も触っていない。rejected `expired` が返ったら、lease が切れて資源が
   外れている: open からやり直し、plan、attach、購読を張り直す（黙って続けない。bench の条件）。「セッションなし」が返ったら、confirm の
   boot_id を見て再起動か他の host かを区別し、attach の状態と target の ID を確かめ直す。
-- **発見の手順**: USB の device を列挙し、iProduct が `OEP` で始まるものを probe とする（core §3.3）。serial number が unit_id。口は
+- **発見の手順**: USB の device を列挙し、プロジェクトの VID:PID を持つもの（registry に載るまでは無い）、名指した unit_id と serial number
+  が同じもの、§1.7 の暫定の手がかりに当たるものを開く（core §3.3）。serial number が unit_id。口は
   interface の記述子で選ぶ（vendor bulk: class 0xFF / subclass 0x4F / protocol 0x45、HID: usage page 0xFF4F、CDC: シリアルの口）。開いたら
-  confirm で boot_id と上限を取り、describe の unit_id が serial と同じことを確かめる。ロック無しの監視は confirm の boot_id で再起動を知る。
+  最初に confirm だけを送り（応答が無ければ閉じる）、boot_id と上限を取り、describe の unit_id が serial と同じことを確かめる。ロック無しの監視は confirm の boot_id で再起動を知る。
 - 対話型の CLI や Monitor のように長く開いておくものは、keepalive か普段の要求でロックを保つ。確認のプロンプトで
   止まる間も keepalive を打ち、破壊的な手順の前ごとにセッションが生きているか（`no session` / `locked` にならないか）
   を確かめる。
