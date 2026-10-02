@@ -1,6 +1,6 @@
 # v1 の 3 回目のゼロベース点検（2026-10-02）
 
-状態: **点検の記録（規範ではない）**。対象は oep-spec 82e6b9f。直すかどうか、どう直すかは、この後にユーザーと peers（ch32rv / WireSkein / bench）で決める。
+状態: **記録**（規範ではない。点検）。対象は oep-spec 82e6b9f。直すかどうか、どう直すかは、この後にユーザーと peers（ch32rv / WireSkein / bench）で決める。
 
 前提（ユーザーの指定）: OEP を OSS の共通仕様として公開し、会ったことのない多くの人が、見たことのない環境（ほかの OS、USB スタック、MCU、
 debug の線、target、ブラウザ、CI）で、本文だけを読んで probe と host を作って使う。判断の基準は今の仮の bench ではなく、その人たちに何が要るか。
@@ -18,10 +18,15 @@ debug の線、target、ブラウザ、CI）で、本文だけを読んで probe
 ## ユーザーの判断が要るもの
 
 - 3 部 O-1: 申請の資料（docs/pid-codes-application/）を第三者のレビューの前に木から外すか、案内しないだけにするか。履歴を書き換えるか。
+  **決着: 木から外し、案内も消す。VID:PID は取得してから書く（2026-10-02、ユーザー）。** 7ff4dce で外した（履歴は書き換えていない）。
 - 1 部 C-11: USB の自動の見分けを、プロジェクトの VID:PID だけにしたまま（第三者のハードは自動では見つからない）でよいか。
+  **決着: 今のまま（2026-10-02、ユーザー）。**
 - 3 部 O-4: 変更の手順と、誰が決めるか（`oep.` の名前、enum の値、errata）。
+  **決着: spec のリポジトリが唯一の正で、変更はそこへの直接の編集か pull request（2026-10-02、ユーザー）。** CONTRIBUTING（en / ja）に書いた（6bcf7e3）。
 - 3 部 O-6: 仕様の文のライセンス（MIT のままか）、特許の非主張、「OEP」を名乗る条件。
+  **決着: 仕様は MIT のまま（2026-10-02、ユーザー）。** README に書いた（6bcf7e3）。特許の非主張と「OEP」を名乗る条件は、まだ決めていない。
 - 1 部 C-14 / 3 部 O-10: 日本語と英語のどちらを正とするか。
+  **決着: 英語が正、日本語は訳。規範の文書はすべて英語版を持ち、英語が完全であること（2026-10-02、ユーザー）。** README、review-guide、core §0（en / ja）に書いた（78137fb、6bcf7e3）。
 
 
 ---
@@ -188,6 +193,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-11 ★ §3.3 の自動の見分け: 第三者のハードウェアは見つけられない（規則。**今日決めた点だが、前提で答えが変わる**）
 
+**決着: 今のまま（2026-10-02、ユーザー）。** 自動の見分けはプロジェクトの VID:PID だけで、それ以外は利用者が probe を名指すか口を選ぶ。
+
 - **問題**: 2108125（2026-10-02）で、自動で見分けるのはプロジェクトの VID:PID だけになった。取り違えを避ける理由は正しい。けれど OSS の
   共通仕様では、(1) 自分の VID を持つ会社や、自分の PID を取った別のプロジェクトが作る OEP の probe は、**規範のどの道でも**自動で見つからない
   （名指すか、利用者が選ぶしかない）。(2) 第三者がプロジェクトの VID:PID を使ってよいのか（適合した実装なら誰でも使える共用の ID なのか、
@@ -205,6 +212,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-12 ★ registry `discoverable` のコメントが core と食い違う（文言）
 
+**対応済み**（78137fb）: 案のとおりに直した。
+
 - registry L202: `discoverable = 0x4A  # u8: 1 = the probe also enumerates as a USB device whose iProduct starts with "OEP" (core §3.3)`。
   core §7.5 は「プロジェクトの USB の VID:PID でも列挙している」で、§3.3 は「iProduct は見分けに使わない」と書いている。registry は
   「唯一の定義」なので、第三者はコメントを信じる。
@@ -212,11 +221,15 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-13 ★ §7.4 / §7.5: bitmap のビットの順が無い（文言）
 
+**対応済み**（78137fb）: 実装（oep-probe-arduino `Oep.h` の roleChannels / describeCore、oep-client-python `catalog.py`）はどちらも bit i = byte ⌊i/8⌋ の bit (i mod 8)、LSB が先、長さは値の残り。そのとおりに core §2.1 に書き、0x44 reserved にも「bit i が立っていれば」を足した。
+
 - role_channels と reserved の `base(u16)、bitmap` は「bit i が立っていれば channel base+i」とだけあり、byte の中のビットの順（LSB が先か）と、
   bitmap の長さ（TLV の長さ − 3）が書いていない。実装によって逆に読める。
 - **案**（§2.1 に足す）: 「**bitmap** は byte の並びで、bit i は byte ⌊i/8⌋ の bit (i mod 8)（bit 0 = LSB）。長さは、それを含む値の残り全部。」
 
 #### C-14 ★ 言語: 規範の dmseq に英語版が無く、英語の core はどちらが原文かを書いていない（文言・文書）
+
+**決着: 英語が正、日本語は訳（2026-10-02、ユーザー）。** core §0 に書いた（78137fb）。dmseq の英語版は cdd26b4。
 
 - `target-console-dmseq.ja.md` は規範（v1-freeze-decisions §0.1）なのに英語版が無く、en の core §14 は日本語版を指している。どちらが原文かは
   review-guide にしか書いていない（core の ja / en のどちらにも無い）。
@@ -329,6 +342,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-28 ○ registry のコメントの誤り（文言。「似た仕組みも確かめる」の結果）
 
+**対応済み**（78137fb）: `swept`、`result_lost` を案のとおりに直した。似たコメントでは、`mark_detail_closed.expired`（期限切れ / force）は正しいのでそのまま。`notify_pending_max_frames` の置き場（△）は生成物の名前が変わるので残した。
+
 - `resumed.swept = 2  # the same session id after expiry / force` は誤り。force で奪われた側の ID はもう最後の ID ではないので、resumed 2 は期限切れの
   後だけ（core §6.2、§9）。★9（`expired` のコメント）と同じ誤り。案: `# the same session id after its lease expired: resources were removed`。
 - `result_lost = 0x0C  # … whose result was too large to keep` は、表から落ちた古い corr の場合（§5.2）が抜けている。案: `# a resend whose
@@ -370,6 +385,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
   行う。0xF0〜0xFF はどのインターフェースでも出荷する probe では使わない」（core の op だけでなく、インターフェースの op も揃える）。
 
 #### C-35 ○ 規範の文に残る今の環境（文言）
+
+**対応済み**（78137fb）: owner の例を "flash-tool pid 1234"、chip の例を `abc123 v1.0` にし、kind 3 を「内蔵の USB シリアル」と性質で書いた（registry のキー `usb_serial_jtag` は生成物の識別子なので残し、コメントで意味を書いた）。
 
 - §6.4 owner の例「"ch32rv monitor pid 1234"」→「"flash-tool pid 1234"」。
 - §7.5 chip の例 `esp32p4 v1.3`、`rp2350 v2`、§7.5 model の例は、実在のチップ名。例は形だけ見せればよいので `abc123 v1.0` にする。
@@ -717,9 +734,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 
 | id | 場所 | 問題 | 直す | 区分 |
 |---|---|---|---|---|
-| △1 | debug §3 表（「WCH の 2 線 / 1 線」）、console §3.1「WCH の SDI printf」、§3.2「minichlink の framing」、debug §3 の target_id scheme 1「WCH の DM の DMI 0x7F」 | 規範の文にベンダーやツールの名前がある（spec-writing-rules） | 規範の文は方式の定義だけにして、名前の由来は「（参考）」の注に移す。registry の識別子 `wch_dmi_7f` はそのままでよい | 文言 |
+| △1 | debug §3 表（「WCH の 2 線 / 1 線」）、console §3.1「WCH の SDI printf」、§3.2「minichlink の framing」、debug §3 の target_id scheme 1「WCH の DM の DMI 0x7F」 | 規範の文にベンダーやツールの名前がある（spec-writing-rules） | 規範の文は方式の定義だけにして、名前の由来は「（参考）」の注に移す。registry の識別子 `wch_dmi_7f` はそのままでよい | 文言。対応済み（78137fb）: 名前は「（参考）」の注へ。gdb は「デバッガ」に |
 | △2 | debug §1 / §3 / §4.2 / §4.5 / §4.6 の「[リンクの計測] §3」6 か所、§4.2 の「target によっては…」、capture §3.7 の「44642/1 など（設計 §7.4）」 | 規範の文の中に、記録への理由のリンクと実例の話がある | 「（理由: …）」の形にまとめて、規範の文から切り離す | 文言 |
-| △3 | registry `[limits]` の dm_wait_ms と dmi_busy_retries のコメント「(oep-if-debug §1)」、logic の `[interface.tlv.configure]` のコメント（応答の tag 0x55、0x57〜0x59 が挙がっている） | 節の番号と tag の誤り | §4 にする。configure の tag は 0x47 だけを挙げる | 文言 |
+| △3 | registry `[limits]` の dm_wait_ms と dmi_busy_retries のコメント「(oep-if-debug §1)」、logic の `[interface.tlv.configure]` のコメント（応答の tag 0x55、0x57〜0x59 が挙がっている） | 節の番号と tag の誤り | §4 にする。configure の tag は 0x47 だけを挙げる | 文言。対応済み（78137fb） |
 | △4 | debug §1「§8.1 のとおり」 | どの文書の §8.1 か書いていない（debug に §8 は無い） | 「core §8.1」 | 文言 |
 | △5 | fixture §3 configure の address | 予約のアドレス（0x00〜0x07、0x78〜0x7F。general call、10 bit の前置き）を受けてよいかが無い | 「予約のアドレスは rejected unsupported（宣言で許す probe だけ受ける）」など | 規則（小さい） |
 | △6 | spi arm の count > length、uart の TX の無い plan での write、console open の mechanism 0xFF | 断り方が書かれていない | malformed / unavailable 6 / malformed と書く | 文言に近い |
@@ -894,6 +911,8 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 #### C. oep-spec 全体の OSS / 共通仕様としての準備
 
 #### O-1 ★ 決まっていない VID:PID と申請の状態がリポジトリにある（文書）
+
+**決着: 木から外し、案内も消す（2026-10-02、ユーザー）。** 7ff4dce: ディレクトリ、review-guide §3 の行、memo（en / ja）の割当元の調査と申請の手順と参照を消した。
 - **場所**:
   - `docs/pid-codes-application/`（申請の状態と番号を書いた資料一式）。
   - `docs/review-guide.ja.md` / `.md` の §3 の行「`docs/pid-codes-application/` … pid.codes への申請の資料」。
@@ -906,17 +925,23 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 - **種類**: 文書（判断: 履歴）。
 
 #### O-2 ★ 記録の文書が、今の規範と逆の USB の識別を「決定」として書いている（文書）
+
+**対応済み**（769ffeb）: v1-freeze-decisions（ja / en）、v1-zero-base-review ★11 と表の 11、v1-zero-base-proposal 3.4(d) / 表の 7 / 12、v1-freeze-review の 16 の案に、置き換えの注と core §3.3 へのリンクを付けた（本文は書き換えていない）。
 - **場所**: v1-freeze-decisions（.ja / .md）の冒頭「3(b)（iProduct `OEP`）は恒久の規範になり」、§3(b)「iInterface が `OEP` で始まる」、§3(d)「host の発見は iProduct の `OEP` で見るので」。v1-zero-base-review ★11「iProduct `OEP` 接頭は恒久（core §3.3）」。
 - **問題**: core §3.3 は今「自動で見分けるのはプロジェクトの VID:PID だけ、iProduct は見分けに使わない」。review-guide は freeze-decisions を **2 番目に読む文書**としていて、レビューをする人はまずこの食い違いに当たる。
 - **直し方**: 該当の行に「（2026-10-02 に置き換え: core §3.3。iProduct と interface の文字列は見分けに使わない。暫定の手がかりは host ガイド §1.7）」と注を付ける（ja / en）。あわせて、置き換えた決定に印を付ける決まりを作る（O-11）。
 - **種類**: 文書。
 
 #### O-3 ★ 入口の README.md（英語）が古く、中で食い違っている（文書）
+
+**対応済み**（6bcf7e3）: README（en / ja）を書き直し、project-concept.md を今の合意の文に揃えた。
 - **問題**: 次のように書いてある。「Only the project name is settled at this time. Everything … is an exploratory draft」「The other English documents below predate the v1 candidate」「Language rules … remain undecided」「governance … undecided」。これは v1 の候補と凍結の範囲（§0）と食い違う。`docs/project-concept.md` も「Exploratory upstream draft. Only the project name is settled」のまま（review-guide も「英語版は古い」と言っている）。英語の README は文書の一覧をほとんど持たない。
 - **直し方**: README（en / ja）を書き直す。中身は、OEP とは何か（3 行）、今の状態（v1 の候補、凍結の約束へのリンク）、**文書の地図を状態ごとに**（規範 / 実務 / 記録 / 経緯）、実装の始め方（spec → registry → generated → fake → tests）、貢献のしかた（O-4）、license（O-6）。project-concept.md は今の .ja.md に合わせて訳し直すか、冒頭に「古い」と書く。
 - **種類**: 文書。
 
 #### O-4 ★ 貢献と変更の手順が無い（判断 + 文書）
+
+**決着: spec のリポジトリが唯一の正で、変更はそこへの直接の編集か pull request（2026-10-02、ユーザー）。** CONTRIBUTING（en / ja、6bcf7e3）。
 - **問題**: CONTRIBUTING も、issue のひな形も、誰が決めるか（governance）も無い。第三者が次のことをどうすればよいか分からない。(1) 誤りを報告する。(2) 新しい `oep.` インターフェースや、標準インターフェースへの任意の TLV を提案する。(3) enum の値（mechanism、transport kind、target_id_scheme など）を取る。(4) 凍結の後の errata。
 - **直し方**: CONTRIBUTING（ja / en）に手順を書く。issue → 案の文書 → peer（ch32rv / WireSkein / bench と外部）のレビュー → registry の PR（`oepgen1.py --check`、tests/registry_v1）→ fake → 実装。誰が決めるか、凍結の後の変更は revision の規則（core §2.7）と CHANGELOG に記録すること、「規範の文は実装できる文だけ」（spec-writing rules）もここに置く。
 - **種類**: 判断（誰が決めるか）+ 文書。
@@ -927,6 +952,8 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 - **種類**: 規則。
 
 #### O-6 ○ 仕様の文の license、特許、名前の使い方（判断）
+
+**決着: 仕様は MIT のまま（2026-10-02、ユーザー）。** 特許と名前の使い方は未決。
 - **問題**: LICENSE は MIT（文の対象は "Software"）で、README は「リポジトリの中身は MIT」と書く。仕様の文にも当たるとは読めるが、仕様の文書でよく使う形ではない。特許の扱い（実装者が特許の主張を受けない約束）が無い。project-concept の「非互換な派生を OEP として識別しない」原則があるのに、「OEP 準拠」を名乗る条件（O-8）と名前の扱いの決まりが無い（PID-USE.md は PID の条件だけ）。
 - **直し方**: ユーザーが決める。候補は、文書は CC-BY-4.0、コード（tools、generated）は MIT とし、README に明記する。特許については、貢献者の非主張の 1 段落（または既存の仕様の特許方針を採る）を入れる。名前については「OEP の名前を、仕様に従わない実装に使わない。準拠の確かめ方は O-8」を置く。
 - **種類**: 判断。
@@ -955,12 +982,16 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 - **種類**: 文書（差分は peer が見る）。
 
 #### O-10 ○ 英語で読めるもの（文書 + 判断）
+
+**決着: 英語が正、日本語は訳。規範の文書はすべて英語版を持ち、英語が完全であること（2026-10-02、ユーザー）。**
 - **規範**: dmseq（O-9）以外はある。
 - **初めての人に要るのに英語が無いもの**: host / probe 開発ガイド、usb-identity（README.md がリンクしているのは .ja.md）、release-testing、用語集（O-13）。project-concept.md は古い（O-3）。記録と経緯は日本語のままでよい。
 - **英語版の冒頭**: 今は「Japanese」へのリンクだけで、「食い違えば日本語が正しい」とは書いていない（README にだけある）。各英語版の状態の行に 1 文で書く。
 - **判断**: 凍結の後も「日本語が正」を続けるか、英語を同格にするかを決めて README に書く。今の README は「Whether this becomes a formal project rule remains undecided」のまま。
 
 #### O-11 ○ 記録と規範が同じ所に並び、状態の書き方も揃っていない（文書）
+
+**対応済み**（6bcf7e3）: `docs/` のすべての文書の冒頭を「規範 / ガイド / 記録」の 3 つの形にした。ディレクトリは分けていない（地図は README と review-guide §5.1）。
 - **事実**: `docs/` に 80 の文書が平らに並ぶ。状態の行が無いもの: console-stream、hardware-source-review-2026-09-26、link-measurements、review-answer-portability-2026-09-26、v1-open-issues-research-2026-09-26、v1-operation-test-audit-2026-09-26（review-guide は太字の状態が無い）。状態の言葉も揃っていない。
   - 「決定」が release-testing（実務）と v1-freeze-decisions（記録）の両方に付いている。
   - v1-zero-base-proposal は「採用・規範に反映済み」で、規範と取られうる。
