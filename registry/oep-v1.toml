@@ -78,6 +78,7 @@ heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
 port_speed_idle_max_ms = 3000   # a raised port_speed goes back after this long without a good frame, whatever idle_ms said (core §3.5)
 host_wait_add_ms = 1000         # host: waits the request's own argument time plus this; the cap is max_op_ms plus this (core §4.4)
 notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §11.4)
+slot_retry_reset_hold_ms = 20   # probe: hold_ms of the retry with reset of a boot_reset slot (oep-if-probe-config §3.1)
 
 [describe_common]               # declaration tags every interface's describe may use (core §7.4); 0x04 reserved, 0x3F response meta
 role_channels = 0x01
@@ -493,6 +494,11 @@ op = [
 ]
 [interface.tlv.describe]
 modes = 0x40                    # u32 bit set: bit n = mode n is supported (0 input required)
+drive_levels = 0x41             # default(u8) n(u8) n x ma(u16 ascending): selectable output strengths (oep-if-fixture §1.1); absent = not switchable
+[interface.tlv.set]
+drive = 0x01                    # non-critical, repeated: index(u8) kind(u8) value(u16): the strength of one mode 3 / 4 element
+[interface.tlv.read_answer]
+drive = 0x01                    # n x u8: the level each channel is driven at in mode 3 / 4, 0xFF when not; only with drive_levels
 [interface.tlv.unavailable_payload]   # set / read refusal, after the core TLVs (core §4.3); unsupported uses the same index tag
 index = 0x40                    # u8: the position in the request's list
 [interface.enum.role]
@@ -506,6 +512,11 @@ output_high = 4
 open_drain_low = 5
 open_drain_release = 6
 input_pullup_pulldown = 7        # both pulls at once: a weak mid level (a rough ADC reference on an unwired line)
+[interface.enum.drive_kind]     # the strength specification (gpio set's drive, probe.config idle's drive_kind)
+level = 0                       # value is a level number
+max_ma = 1                      # the strongest level whose approximate mA is value or less (level 0 when none)
+[interface.enum.drive_read]     # read's drive TLV
+not_driven = 0xFF               # the channel is not driven in mode 3 / 4
 
 [[interface]]
 name = "oep.fixture.uart"
@@ -830,7 +841,7 @@ op = [
 [interface.tlv.item]            # the items of the configuration (get / set / unset); 0x7E reserved for response meta
 plan = 0x01                     # fn(u16) role(u8) channel(u16); key (fn, role, channel)
 label = 0x02                    # channel(u16) text
-idle = 0x03                     # channel(u16) mode(u8): the state of a free pin
+idle = 0x03                     # channel(u16) mode(u8) [drive_kind(u8) drive_value(u16)]: the state of a free pin
 slot = 0x04                     # a place a target is wired to (oep-if-probe-config §1.1)
 bind = 0x05                     # what a serial port carries (oep-if-probe-config §1.2)
 uart = 0x06                     # fn(u16) baud(u32) format(u8): a fixture UART's settings, applied when its plan is set
@@ -852,6 +863,9 @@ output_high = 4
 [interface.enum.slot_attach]
 host = 0
 at_boot = 1
+[interface.enum.slot_boot_reset]  # slot's optional trailing boot_reset (oep-if-probe-config §1.1 / §3.1)
+off = 0
+retry_with_reset = 1
 [interface.enum.slot_state]
 connected = 0
 absent = 1

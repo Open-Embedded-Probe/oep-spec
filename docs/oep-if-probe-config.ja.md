@@ -22,7 +22,7 @@
 |---:|---|---|---|
 | 0x01 | plan | fn(u16)、role(u8)、channel(u16)（1 項目 1 割り当て） | (fn, role, channel)（同じ fn の項目で、その fn の plan になる） |
 | 0x02 | label | channel(u16)、text | channel |
-| 0x03 | idle | channel(u16)、mode(u8: 0 Hi-Z、1 プルアップの入力、2 プルダウンの入力、3 出力 low、4 出力 high) | channel |
+| 0x03 | idle | channel(u16)、mode(u8: 0 Hi-Z、1 プルアップの入力、2 プルダウンの入力、3 出力 low、4 出力 high)、[drive_kind(u8)、drive_value(u16)] | channel |
 | 0x04 | slot | §1.1 | slot |
 | 0x05 | bind | §1.2 | port |
 | 0x06 | uart | fn(u16)、baud(u32)、format(u8)（`oep.fixture.uart` の configure と同じ値） | fn |
@@ -58,6 +58,12 @@
   出力の mode は、plan が持っていない間もある level を保たなければならない channel（target の電源のスイッチなど）のためにある。
   その channel を出力として駆動できない probe では、mode 3 / 4 の idle は rejected unsupported。
   （参考）出力の idle が target の出力とぶつからないようにするのは、配線の責任である。
+  - **強さ（任意）**: mode の後ろに drive_kind(u8)、drive_value(u16) を置ける（[fixture](oep-if-fixture.ja.md) §1.1 の強さの指定と同じ
+    kind と value）。置かなければ既定の段。置けるのは mode 3 / 4 だけで、ほかの mode で置けば rejected malformed。値の長さが 4 か 5
+    byte、または drive_kind が未定義なら rejected malformed。`oep.fixture.gpio` の describe が drive_levels を宣言する probe では、
+    kind 0 で drive_value が段の数以上なら rejected unsupported。drive_levels を宣言しない probe（`oep.fixture.gpio` の無い probe を
+    含む）は、このフィールドを持つが効かせない（強さは既定のまま）。
+  - mode 3 / 4 の idle は、その level と強さを一緒に掛ける（起動時も解放のときも）。
 
 ### 1.1 slot（スロット）
 
@@ -66,11 +72,12 @@
 ```text
 slot(u8)、wire_fn(u16)、swdio(u16)、swclk(u16)、attach(u8)、retry_ms(u32)、max_speed_hz(u32)、idle_clock(u8)、mechanism(u8)、
 name_len(u8)、name、
-lock_len(u8)、lock_scheme(u8)、lock_mask(n byte)、lock_value(n byte)
+lock_len(u8)、lock_scheme(u8)、lock_mask(n byte)、lock_value(n byte)、
+[boot_reset(u8)]
 ```
 
-lock_len は錠の部分（lock_scheme から lock_value まで）の長さ。0 は錠なし（lock_scheme 以降を置かない）。錠の後ろは、後から
-足すフィールドの場所（core §2.3。読む側は知らない後ろを飛ばす）。
+lock_len は錠の部分（lock_scheme から lock_value まで）の長さ。0 は錠なし（lock_scheme 以降を置かない）。錠の後ろに任意の
+boot_reset を置ける（置かなければ 0）。その後ろは、後から足すフィールドの場所（core §2.3。読む側は知らない後ろを飛ばす）。
 
 | フィールド | 意味 |
 |---|---|
@@ -86,6 +93,7 @@ lock_len は錠の部分（lock_scheme から lock_value まで）の長さ。0 
 | lock_len | 錠の部分の長さ。0（錠なし）か 1 + 2n（n ≥ 1）。ほかは rejected malformed |
 | lock_scheme | 錠があるときだけ。target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1）。0 は置かない（錠なしは lock_len 0）。定義にあるがその線が持たない scheme は rejected unsupported、未定義の値は malformed |
 | lock_mask、lock_value | 錠があるときだけ。同じ長さ n = (lock_len − 1) / 2。**n はその scheme の値の長さと同じ**（scheme 1 は 4。違えば rejected malformed。長さは registry の `target_id_scheme`）。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
+| boot_reset | 任意。起動時の自動の attach に線の応答が無かったとき、リセットの線を使ってもう 1 回 attach するか（§3.1）: 0 しない、1 する。置かなければ 0。2 以上は rejected malformed。at boot でないスロットで 1 は rejected malformed |
 
 - max_speed と idle_clock は target の性質で（[線とデバッグ](oep-if-debug.ja.md) §3）、probe が自分でスロットを attach するとき
   （at boot、やり直し）に使う。host の attach はそれぞれの TLV で自分の値を渡す（スロットの値は使わない）。
@@ -145,6 +153,22 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
   項目（§1）か、セッションの configure。
 - DTR / RTS / 1200 baud の touch と CDC の line coding では何もしない（target も probe も reset せず、attach もせず、baud も変えない）。
 
+### 1.3 線の名前（label の決まり）
+
+label（§1）の text のうち、次の名前は線の役目を表す。text と名前は、ASCII の大文字と小文字を区別せずに比べる。
+
+| 名前 | 線 | 使うもの |
+|---|---|---|
+| `nrst` | target のリセットの線 | probe（§3.1 のリセットでのやり直し）と host |
+| `power_hi` | high のとき target の電源が入る線 | host だけ（probe は使わない） |
+| `power_lo` | low のとき target の電源が入る線 | host だけ（probe は使わない） |
+
+- **スロットの線の探し方**（名前 N、スロットの name S）: text が `S.N` に等しい label の channel。それが無く、設定が持つスロットの項目が
+  1 つ以下のときだけ、text が `N` に等しい label の channel。どちらでも見つからなければ、そのスロットにその線は無い。
+- 同じ段（`S.N` か `N`）で 2 つ以上の channel が一致したら、そのスロットにその線は無いものとする。
+- スロットの項目の無い設定では、`N` に等しい label の channel が probe につながる target の線である（一致が 2 つ以上なら無い）。
+- probe は `power_hi` と `power_lo` を使わない（電源の線を駆動しない）。host は同じ探し方で電源の線を見つける。
+
 ## 2. 操作
 
 | op | 名前 | 要求 | 応答 | ロック |
@@ -182,16 +206,16 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
   fn のまま）。指す interface が無いか、revision が違えば、**保存全体を適用しない**（一部だけ入れると治具が半端に動く。storage の
   状態は「あり・読めない」、理由 2）。指していない interface の追加・削除・並べ替えは、保存に影響しない。
 - 保存の形（probe の中の持ち方）は probe が決める。読み替えの規則だけが規範。
-- 起動時は、保存を今の設定にして（上の確かめを通ったとき）、idle を掛け（mode 3 / 4 の出力の駆動を含む）、plan を適用し、uart を掛け、at boot のスロットの attach を
+- 起動時は、保存を今の設定にして（上の確かめを通ったとき）、idle を掛け（mode 3 / 4 の出力の駆動を、その強さと一緒に含む）、plan を適用し、uart を掛け、at boot のスロットの attach を
   始め、bind を結ぶ。保存を読めないときは適用せず、state で知らせる。
 
 **断り方の表**（core §4.3 の順）:
 
 | 状況 | reason |
 |---|---|
-| 形の誤り、同じキーが 2 回、name の文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
+| 形の誤り、同じキーが 2 回、name の文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset の値と host のスロットの boot_reset 1、mode 3 / 4 でない idle の drive と、idle の drive の長さと drive_kind、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
 | 指す fn が無い（plan、slot の wire_fn、bind の kind 2、uart） | unknown_function |
-| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、idle_clock 1 を rvswd 以外、守れない max_speed_hz、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、保存の無い probe の save / erase | unsupported |
+| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、保存の無い probe の save / erase | unsupported |
 | plan_roles 超え、ピンや資源の取り合い、at boot のスロットが max_connections を超える、保存先が足りない | unavailable（cause 2 / 1 / 2 / 3） |
 
 ## 3. スロットの接続と状態
@@ -203,7 +227,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
 | 0 host | probe は自分から attach しない。host の attach でスロットの接続ができたら、bind はそれに乗る |
 | 1 at boot | 起動時と、そのスロットの項目を set した直後。いなければ retry_ms ごとにやり直す（0 ならやり直さない） |
 
-- 起動時の自動の attach は、すべての idle（mode 3 / 4 の出力の駆動を含む）を掛けた後に始める（§2 の起動の順）。
+- 起動時の自動の attach は、すべての idle（mode 3 / 4 の出力の駆動を、その強さと一緒に含む）を掛けた後に始める（§2 の起動の順）。
 - **自動の attach（at boot）は止めない attach（method 0）だけ**で、スロットのピンの組で、[線とデバッグ](oep-if-debug.ja.md)
   §1 の規則どおりに行う。錠が合わなければ、コンソールを開かずに自分の分を外す（状態は錠に不一致）。
 - 自動の attach は、接続に時間のかかる場合を先に払っておくもの。外れていれば、host は使うときに自分で attach する。
@@ -214,6 +238,20 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
   接続を閉じて retry に入る（mechanism 0xFF のスロットでも、コンソールの読みが無くても「いない」が分かる）。retry_ms が 0 なら
   確かめない。
 - policy が host のスロットを、probe は確かめない（線を駆動しない）。
+- **リセットでのやり直し**（boot_reset 1 のスロット）: そのスロットの自動の attach が、線の応答をまったく得られずに終わった
+  （completed failed、status line、[共通部品](oep-if-common.ja.md) §3）とき、probe はすぐに 1 回、同じ attach（method 0）を、
+  リセットの線を付けて行う。動きは attach の reset TLV（[線とデバッグ](oep-if-debug.ja.md) §3）と同じで、hold_ms は registry の
+  `slot_retry_reset_hold_ms`（20 ms）。
+  - 行うのは、起動してから、どのセッションもまだロックを取っていない間だけ。ロックが一度でも取られたら、その起動の中では
+    （ロックが放された後も）行わない。
+  - status line の失敗の後だけに行う。attach が成功した場合（錠に不一致、target_id が読めない を含む）、status line 以外の失敗
+    （読み出しの保護を含む）、rejected の後には行わない。
+  - スロットごとに、1 回の起動で多くても 1 回。やり直しが失敗したら、retry_ms のふつうのやり直し（リセットなし）を続ける。
+  - リセットの線は、§1.3 の探し方で見つけた `nrst` の channel。見つからないとき、またはその channel をそのスロットの線の attach の
+    reset TLV に使えないとき（role_channels の role 3 に無い、disable、plan や接続が持っている、その線が reset TLV を持たない）は、
+    リセットでのやり直しをしない。
+  - 行ったら、state の slot_state の reset_at_ns（§3.3）に、リセットの線を引き始めた時刻を入れる。bind の選択は替えない（probe
+    自身の attach、§1.2）。
 
 ### 3.2 状態
 
@@ -233,7 +271,8 @@ state（op 0x06、§3.3）の slot_state はロックなしで読める。host �
 要求: first_slot(u8)、first_bind(u8)
 応答: more(u8)、storage_state(u8)、storage_hash(u32)、unreadable_reason(u8)、
       n_slots(u8)、n_slots × (len(u8)、slot_state)、n_binds(u8)、n_binds × (len(u8)、bind_state)、[TLV]
-slot_state: slot(u8)、state(u8、§3.2)、connection(u16、無ければ 0)、last_try_at_ns(u64: 最後に自動の attach を試した時刻（probe の時計）、全ビット 1 は試していない)、tid_scheme(u8、0 は無し)、tid_len(u8)、tid
+slot_state: slot(u8)、state(u8、§3.2)、connection(u16、無ければ 0)、last_try_at_ns(u64: 最後に自動の attach を試した時刻（probe の時計）、全ビット 1 は試していない)、tid_scheme(u8、0 は無し)、tid_len(u8)、tid、
+      reset_at_ns(u64: §3.1 のリセットでのやり直しでリセットの線を引き始めた時刻（probe の時計）、全ビット 1 はしていない)
 bind_state: port(u8)、mode(u8)、selected(u8: 今選ばれている並びの番号。mixed では 0xFF)、flow(u8: 0 流すものが無い / 1 流している / 2 セッションで止めている)
 ```
 

@@ -619,7 +619,7 @@ The plan is held **per fn**.
   unavailable (the same refusal as the pin contention of §8.1). Changing or removing a settings plan is done with the settings set (and its save). Otherwise
   the saved settings and the actual assignments would diverge.
 - A released pin, whichever way it is released (plan_release, replacement by plan_apply, the cleanup at a lease lapse and at force in §9), goes to **the idle state**,
-  that is **the idle the probe's settings define for that pin, if they define one (for output low / high it is driven at that level, not made Hi-Z); otherwise
+  that is **the idle the probe's settings define for that pin, if they define one (for output low / high it is driven at that level and with the strength the idle defines, not made Hi-Z); otherwise
   Hi-Z (input, no pull)**. An interface must not leave a pin under its own drive after it is released (when the idle state is an output, that drive belongs to
   the settings' idle. The setting of the idle state is the idle of `oep.probe.config`,
   [probe settings](oep-if-probe-config.md)).
