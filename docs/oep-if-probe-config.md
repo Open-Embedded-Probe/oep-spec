@@ -28,7 +28,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
 | 0x06 | uart | fn(u16), baud(u32), format(u8) (the same values as configure of `oep.fixture.uart`) | fn |
 | 0x07 | disable | channel(u16) | channel |
 
-- Every item takes effect immediately. The items handled are declared with items of describe, and a set of an undeclared item is rejected unsupported. Tag 0x7E is reserved for the answer's
+- Every item takes effect immediately. The items handled are declared with items of describe, and a set of an undeclared item is rejected unsupported (the payload's tag is the item's tag as received, core §4.3). Tag 0x7E is reserved for the answer's
   meta information.
 - **plan**: the same as plan_apply of that fn (core §8). A settings plan is changed only by the settings: a session's plan_release (including n = 0)
   does not release it, and if plan_apply names that fn, rejected unavailable (core §8).
