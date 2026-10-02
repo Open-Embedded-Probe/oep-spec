@@ -171,7 +171,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
   6 error.
 - `serial_done` is the number of finished segments, `write_pos` is the byte position captured so far (the position space. **Including what was discarded**: the position of the next byte to be written).
 - `flags` of status: bit0 data was dropped inside the probe (the capture queue or ring overflowed), bit1 the time base was bent
-  (the same as slipped of a segment). The other bits are reserved (0). **Reset to 0 at start, cumulative for that run**. In state 6, the reason is returned with the TLV 0x01 error (u8:
+  (the same as bit2 of a segment's flags). The other bits are reserved (0). **Reset to 0 at start, cumulative for that run**. In state 6, the reason is returned with the TLV 0x01 error (u8:
   1 DMA / peripheral, 2 storage, 3 clock, 0x40 onwards probe-specific) of the answer.
 - **generation**: read and release put the current generation in the request. If it differs, rejected unavailable (cause 6). 0 before start.
 - If the position requested by read has already been reused (or pushed out), the position of the answer moves forward and gap is set.
