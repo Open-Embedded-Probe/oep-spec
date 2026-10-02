@@ -120,7 +120,8 @@ retrieves them with read_rx.
   frames (capped at 255). rx_frames is the cumulative count of frames put in the queue (those discarded by overflow are not counted), tx_slots is the number of placements placed by preload_tx and
   not yet read (mode 3. Otherwise 0), errors is the cumulative count of overflows and of the write errors above (length errors, writes while not armed and in mode 3) (u32).
 - reset returns to the state right after configure (clears the queue, the wait and the cumulative counts. Keeps mode and address). In state 0 it is rejected unavailable (cause 6).
-- stretch is the time SCL is held low after the ACK of each received byte (µs, 0 = none). Only for probes that declare bit1 of features
+- stretch is the time SCL is held low for each received data byte, after its 8th bit, with the ACK driven, before the ACK clock (µs, 0 = none).
+  On a read, it is held the same time after the address matched. It is not held on a write's address byte. Only for probes that declare bit1 of features
   (otherwise unknown_operation). If stretch_us exceeds the max_stretch_us of describe, rejected unsupported. It is accepted in any state
   (state 0 too), and the value takes effect from the next received byte. configure and reset do not change the value.
 - describe: role_channels, max_length (the maximum bytes of one frame), max_clock_hz (the verified upper limit of SCL), features (bit0 mode 3,
