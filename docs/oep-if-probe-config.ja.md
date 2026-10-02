@@ -28,7 +28,7 @@
 | 0x06 | uart | fn(u16)、baud(u32)、format(u8)（`oep.fixture.uart` の configure と同じ値） | fn |
 | 0x07 | disable | channel(u16) | channel |
 
-- どの項目もすぐ効く。扱う項目は describe の items で宣言し、宣言していない項目の set は rejected unsupported。tag 0x7E は応答の
+- どの項目もすぐ効く。扱う項目は describe の items で宣言し、宣言していない項目の set は rejected unsupported（payload の tag は受け取ったままの項目の tag、core §4.3）。tag 0x7E は応答の
   メタ情報のために予約。
 - **plan**: その fn の plan_apply と同じ（core §8）。設定の plan は設定だけが変える: セッションの plan_release（n = 0 を含む）
   はそれを解かず、plan_apply がその fn を挙げたら rejected unavailable（core §8）。
