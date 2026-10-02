@@ -197,7 +197,9 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
   display and are not used for identification.
 - **A named probe**: when the user names a probe by its unit_id (the address `oep://<unit_id>[/<slot name>]`, §7.6), the host may open the USB device whose serial number
   equals that unit_id without identifying it. After opening, the host follows the probing rule below, and uses the device as that probe only when the unit_id of the describe of fn 0
-  sent after confirm equals the named value. Otherwise the host closes the device and sends nothing else.
+  sent after confirm equals the named value. Otherwise the host closes the device and sends nothing else. These comparisons (a unit_id with a serial number, and unit_ids with each other)
+  ignore the case of ASCII letters (some OSes and tools show serial numbers in upper case; since a unit_id uses only the characters of §7.5, ignoring case
+  never makes two different values equal).
 - **Other devices and serial ports**: of the USB devices and serial ports that fit neither of the 2 cases above, the host opens only those it has its own way of handling, or those the user
   has chosen explicitly.
 - **The probing rule**: on a device or port the host opens without having identified it (a named device, a port the user chose, a device the host handles on its own, a device found by
