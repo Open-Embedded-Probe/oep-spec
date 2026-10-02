@@ -79,7 +79,7 @@ probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restar
 host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
 heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
 port_speed_idle_max_ms = 3000   # a raised port_speed goes back after this long without a good frame, whatever idle_ms said (core §3.5)
-host_wait_add_ms = 1000         # host: waits the request's own argument time plus this; the cap is max_op_ms plus this (core §4.4)
+host_wait_add_ms = 1000         # host: waits at least the request's argument time (at most max_op_ms) plus this plus the transfer time (core §4.4)
 notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §11.4)
 slot_retry_reset_hold_ms = 20   # probe: hold_ms of the retry with reset of a boot_reset slot (oep-if-probe-config §3.1)
 

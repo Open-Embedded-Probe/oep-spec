@@ -411,9 +411,9 @@ the interface's index, etc.).
 - The host observes both limits. The probe may refuse a request that exceeds them with rejected window_exceeded, but a request lost beyond the buffer gets
   no answer either. Observing them is the host's responsibility.
 - The probe processes requests in the order received and returns answers in the order received.
-- **The host's wait time**: the absence of an answer is determined only by timeout (§3.1). The wait time is the time determined by the request's arguments (the timeout_ms of run,
-  the hold_ms of reset, the sum of the waits of dmi, save, etc.; 0 if none) plus 1000 ms, and does not exceed the describe's max_op_ms
-  (§7.5) plus 1000 ms. Once it has passed, proceed to the resend of §5.2.
+- **The host's wait time**: the absence of an answer is decided only by timeout (§3.1). For each request the host waits **at least**: the time set by the request's arguments (the timeout_ms of run,
+  the hold_ms of reset, the sum of the waits of dmi, save, etc.; for attach, `attach_budget_ms` plus the hold_ms of its reset TLV; for scan, `scan_budget_ms` + `attach_budget_ms` ([wire and debug](oep-if-debug.md) §1); 0 if none; at most max_op_ms, §7.5) + 1000 ms (`host_wait_add_ms`) + the transfer time. The wait starts when the request has been written, or, while earlier requests on the same transport are outstanding, when the answer to the request before it arrives (the probe answers in order).
+  The transfer time is 0 except on a UART bridge. On a UART bridge it is (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud seconds, where L is the length on the wire of the request's frame and baud is the port's current speed. A host may wait longer. When the wait has passed, it proceeds to the resend of §5.2.
 
 ## 5. Recovery and resend
 
@@ -596,7 +596,7 @@ appears in the answer.
 | 0x4A | discoverable | u8. 1 = the probe also enumerates with the project's USB VID:PID (§3.3) (even if the current transport is not one). Until the project's VID:PID is listed in the registry, every probe sends 0 |
 | 0x4B | plan_roles | u32. The number of role_assignments the plan can hold at once (the total over all fns. Includes the settings plan). A probe with a limit always emits it (§8) |
 | 0x4C | chip | text. The part number and revision of the probe's MCU: `<part number> v<revision>`, the part number in lowercase without hyphens (e.g. `abc123 v1.0`). So that captured data records which chip captured it (optional) |
-| 0x4D | max_op_ms | u32. The longest time the probe spends on one request. **Mandatory.** Ops that could exceed it (run, the sum of the waits of dmi, the start of capture, save, the hold_ms of the reset of attach) are rejected unsupported if the sum of their arguments exceeds it. The lease is not counted during execution (§6.1). Reading the other transports and the consoles of connections continues. The value is decided by the probe. The host waits at least this value plus the time the request and answer spend on the wire (§4.4) |
+| 0x4D | max_op_ms | u32. The longest time the probe spends on one request. **Mandatory.** Ops that could exceed it (run, the sum of the waits of dmi, the start of capture, save, the hold_ms of the reset of attach) are rejected unsupported if the sum of their arguments exceeds it. The lease is not counted during execution (§6.1). Reading the other transports and the consoles of connections continues. The value is decided by the probe. The host waits as §4.4 says |
 | 0x4E | port_speed | u8. 1 = this probe accepts op port_speed (§3.5) (emitted only when the firmware has the function ON) |
 
 - The kind of transport: 1 UART bridge, 2 USB CDC, 3 built-in USB serial (a USB serial port implemented by the MCU's hardware, whose USB descriptors, the serial number included, the probe cannot choose), 4 vendor bulk, 5 HID, 6 TCP (the registry's `transport_kind`).

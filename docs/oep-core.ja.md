@@ -411,9 +411,9 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 - host は両方の上限を守る。超えた要求を probe は rejected window_exceeded で断ってよいが、バッファを超えて失われた要求には
   応答も返らない。守るのは host の責任である。
 - probe は要求を受け取った順に処理し、応答を受け取った順に返す。
-- **host の待ち時間**: 応答が来ないことは時間切れだけで判断する（§3.1）。待ち時間は、その要求の引数で決まる時間（run の timeout_ms、
-  reset の hold_ms、dmi の待ちの和、save など。無ければ 0）に 1000 ms を足した値で、describe の max_op_ms
-  （§7.5）に 1000 ms を足した値を超えない。過ぎたら §5.2 の送り直しに進む。
+- **host の待ち時間**: 応答が来ないことは時間切れだけで判断する（§3.1）。host は要求ごとに**少なくとも**次を待つ: その要求の引数で決まる時間（run の timeout_ms、
+  reset の hold_ms、dmi の待ちの和、save など。attach は `attach_budget_ms` にその reset TLV の hold_ms を足したもの、scan は `scan_budget_ms` + `attach_budget_ms`（[線とデバッグ](oep-if-debug.ja.md) §1）。無ければ 0。多くても max_op_ms、§7.5）+ 1000 ms（`host_wait_add_ms`）+ 転送の時間。待ちは、要求を書き終えた時から始める。同じ経路に先の要求が未解決の間は、その 1 つ前の要求の応答が届いた時から始める（probe は順に答える）。
+  転送の時間は UART bridge 以外では 0。UART bridge では (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒で、L はその要求のフレームの線の上の長さ、baud は口の今の速さ。host はもっと長く待ってよい。待ちが過ぎたら §5.2 の送り直しに進む。
 
 ## 5. 立て直しと送り直し
 
@@ -596,7 +596,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x4A | discoverable | u8。1 = probe はプロジェクトの USB の VID:PID（§3.3）でも列挙している（今の経路がそうでなくても）。プロジェクトの VID:PID が registry に載るまでは、どの probe も 0 |
 | 0x4B | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
 | 0x4C | chip | text。probe の MCU の型番とリビジョン: `<型番> v<リビジョン>`、型番は小文字でハイフンなし（例 `abc123 v1.0`）。取ったデータに、どのチップで取ったかを残すため（任意） |
-| 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host はこの値に、要求と応答が線を通る時間を足した値以上を待つ（§4.4） |
+| 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host は §4.4 のとおり待つ |
 | 0x4E | port_speed | u8。1 = この probe は op port_speed（§3.5）を受ける（firmware が機能を ON にしたときだけ出す） |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 内蔵の USB シリアル（MCU のハードウェアが持つ USB のシリアルの口で、serial number を含む USB の記述子を probe が選べないもの）、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
