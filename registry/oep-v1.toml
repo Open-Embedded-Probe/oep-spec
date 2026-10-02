@@ -10,6 +10,9 @@
 # The hash embedded in the generated files is the sha256 of this file with line endings normalized to LF.
 # Per interface: `reserved.<enum or "op">` = ranges [[lo, hi]] no value may use; `status` / `reject_reasons` = the
 # interface's own values (0x40-0x7F). Common describe tags ([describe_common]) are not repeated in an interface.
+# TLV tags are written as their number, the low 7 bits (core §2.2); a request sets bit 7 itself when it sends one critical.
+# A request tag appears at most once unless its comment says `repeats` (core §2.3).
+# In every u8 enum, 0xF0-0xFE are experimental unless the enum says otherwise: never registered (core §2.5).
 
 [registry]
 schema = 1
@@ -172,7 +175,7 @@ op = [
   { code = 0x41, name = "link_sink", lock = false },
 ]
 [interface.tlv.plan_apply]
-role_assignment = 0x90          # critical: fn(u16) role(u8) channel(u16); one assignment is identified by all three (core §8)
+role_assignment = 0x10          # repeats; always sent critical (0x90): fn(u16) role(u8) channel(u16); one assignment is identified by all three (core §8)
 [interface.tlv.open]
 owner = 0x01                    # text (1-32 bytes): who holds the lock, for display (core §6.4)
 [interface.tlv.lock_state_answer]
@@ -496,7 +499,7 @@ op = [
 modes = 0x40                    # u32 bit set: bit n = mode n is supported (0 input required)
 drive_levels = 0x41             # default(u8) n(u8) n x ma(u16 ascending): selectable output strengths (oep-if-fixture §1.1); absent = not switchable
 [interface.tlv.set]
-drive = 0x01                    # non-critical, repeated: index(u8) kind(u8) value(u16): the strength of one mode 3 / 4 element
+drive = 0x01                    # repeats; non-critical: index(u8) kind(u8) value(u16): the strength of one mode 3 / 4 element
 [interface.tlv.read_answer]
 drive = 0x01                    # n x u8: the level each channel is driven at in mode 3 / 4, 0xFF when not; only with drive_levels
 [interface.tlv.unavailable_payload]   # set / read refusal, after the core TLVs (core §4.3); unsupported uses the same index tag

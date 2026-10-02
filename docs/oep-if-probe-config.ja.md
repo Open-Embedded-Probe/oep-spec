@@ -37,7 +37,7 @@
 - **uart**: その fn（`oep.fixture.uart`）の plan に RX か TX が付いた時点（設定の plan でも、セッションの plan_apply でも）で、
   configure 相当を掛ける。plan が無くても set は通る（掛かるのは plan が付いたとき）。セッションの configure は、plan を解くか
   probe が再起動するまで、この項目より勝つ。baud は set のときに実現できる値を確かめ、±5% を超えて外れれば rejected unsupported。
-  format は configure の TLV format と同じ値（未定義のビットは rejected malformed）。ピンの無い fn の configure は今どおり
+  format は configure の TLV format と同じ値（使っていない値と予約のビットは rejected unsupported、core §2.5）。ピンの無い fn の configure は今どおり
   rejected unavailable（項目があっても変わらない）。CDC の口の line coding は fixture UART に写さない（OEP の configure とこの項目
   だけが効く）。
 - **disable**: その channel を probe が**一切使わない**ようにする（ボードに出ていないピン、ほかの部品につながっているピン）。利用者が
@@ -57,7 +57,7 @@
   mode 3 / 4 では、そのピンが空きの間ずっと、probe がその level で駆動する。idle が無いピンは Hi-Z。治具の配線で相手の入力が浮くピン（相手の RX につながる TX など）は、host が idle で明示し、保存する。
   出力の mode は、plan が持っていない間もある level を保たなければならない channel（target の電源のスイッチなど）のためにある。
   idle の項目の変更（set / unset）は、空いている channel にはすぐ効き、plan や接続が持つ channel には、次に空きになったときに効く。
-  その channel を出力として駆動できない probe では、mode 3 / 4 の idle は rejected unsupported。
+  その channel を出力として駆動できない probe では、mode 3 / 4 の idle は rejected unsupported。mode が 5 以上なら rejected unsupported（受け取ったままの項目の tag、core §2.5）。
   （参考）出力の idle が target の出力とぶつからないようにするのは、配線の責任である。
   - **強さ（任意）**: mode の後ろに drive_kind(u8)、drive_value(u16) を置ける（[fixture](oep-if-fixture.ja.md) §1.1 の強さの指定と同じ
     kind と value）。置かなければ既定の段。置けるのは mode 3 / 4 だけで、ほかの mode で置けば rejected malformed。値の長さが 4 か 5
@@ -95,7 +95,7 @@ boot_reset を置ける（置かなければ 0）。その後ろは、後から�
 | mechanism | コンソールの方式（`oep.target.console` の mechanism）、または **0xFF = コンソールなし**（bind に載せない、console を持たない probe）。その probe の console が宣言しない方式は rejected unsupported |
 | name | スロットの名前。1〜32 byte で、使える文字は `a-z 0-9 - _` だけ（ほかは rejected malformed）。probe の中で重ならない（重なれば rejected malformed）。host がスロットを名指すのに使い（IDE の address `oep://<unit_id>/<name>` にそのまま入る。unit_id は core §7.5。どちらも URL の中で encode が要らない文字だけ）、mixed の行の印（§1.2）にも使う |
 | lock_len | 錠の部分の長さ。0（錠なし）か 1 + 2n（n ≥ 1）。ほかは rejected malformed |
-| lock_scheme | 錠があるときだけ。target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1）。0 は置かない（錠なしは lock_len 0）。定義にあるがその線が持たない scheme は rejected unsupported、未定義の値は malformed |
+| lock_scheme | 錠があるときだけ。target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1）。0 は置かない（錠なしは lock_len 0）。その線が持たない scheme は、定義にあってもなくても（core §2.5）rejected unsupported |
 | lock_mask、lock_value | 錠があるときだけ。同じ長さ n = (lock_len − 1) / 2。**n はその scheme の値の長さと同じ**（scheme 1 は 4。違えば rejected malformed。長さは registry の `target_id_scheme`）。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
 | boot_reset | 任意。起動時の自動の attach に線の応答が無かったとき、リセットの線を使ってもう 1 回 attach するか（§3.1）: 0 しない、1 する。置かなければ 0。2 以上は rejected malformed。at boot でないスロットで 1 は rejected malformed |
 
@@ -220,7 +220,7 @@ label（§1）の text のうち、次の名前は線の役目を表す。text �
 |---|---|
 | 形の誤り、同じキーが 2 回、name の文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset の値と host のスロットの boot_reset 1、mode 3 / 4 でない idle の drive と、idle の drive の長さと drive_kind、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
 | 指す fn が無い（plan、slot の wire_fn、bind の kind 2、uart） | unknown_function |
-| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、保存の無い probe の save / erase | unsupported |
+| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、その線が持たない lock_scheme（定義にあってもなくても）、保存の無い probe の save / erase | unsupported |
 | plan_roles 超え、ピンや資源の取り合い、at boot のスロットが max_connections を超える、保存先が足りない | unavailable（cause 2 / 1 / 2 / 3） |
 
 ## 3. スロットの接続と状態

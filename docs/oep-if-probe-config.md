@@ -37,7 +37,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
 - **uart**: applies the equivalent of configure at the point the plan of that fn (`oep.fixture.uart`) gets RX or TX (whether by the settings plan or by a session's plan_apply).
   set goes through even without a plan (it is applied when a plan is attached). A session's configure wins over this item until the plan is released or
   the probe reboots. baud is checked at set for the realisable value, and if it deviates by more than ±5%, rejected unsupported.
-  format has the same values as the TLV format of configure (undefined bits are rejected malformed). configure on an fn without pins is, as now,
+  format has the same values as the TLV format of configure (an unused value or a reserved bit is rejected unsupported, core §2.5). configure on an fn without pins is, as now,
   rejected unavailable (unchanged even with the item). The line coding of a CDC port is not mirrored onto the fixture UART (only OEP's configure and this item
   take effect).
 - **disable**: makes the probe **not use that channel at all** (pins not brought out on the board, pins connected to other parts). The user
@@ -57,7 +57,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
   With mode 3 / 4, the probe drives that level for as long as the pin is idle. A pin without idle is Hi-Z. A pin where the peer's input would float because of the fixture's wiring (a TX connected to the peer's RX, etc.) is stated explicitly by the host with idle and saved.
   The output modes exist for a channel that must keep a level even while no plan holds it (the switch of the target's power, etc.).
   A change of the idle item (set / unset) takes effect at once on a free channel, and on a channel a plan or a connection holds, when it next becomes free.
-  On a probe that cannot drive that channel as an output, an idle with mode 3 / 4 is rejected unsupported.
+  On a probe that cannot drive that channel as an output, an idle with mode 3 / 4 is rejected unsupported. A mode of 5 or more is rejected unsupported (the item's tag as received, core §2.5).
   (Informative) Keeping an output idle from meeting an output of the target is the responsibility of the wiring.
   - **Strength (optional)**: drive_kind(u8), drive_value(u16) may be placed after mode (the same kind and value as the strength specification of [fixture](oep-if-fixture.md) §1.1).
     If not placed, the default level. Only mode 3 / 4 can carry them, and placing them with another mode is rejected malformed. A value length of 4 or 5
@@ -95,7 +95,7 @@ boot_reset may be placed (0 if not placed). After it is the place for fields add
 | mechanism | The console mechanism (mechanism of `oep.target.console`), or **0xFF = no console** (not put on a bind; a probe without console). A mechanism that the probe's console does not declare is rejected unsupported |
 | name | The slot's name. 1 to 32 bytes; the only usable characters are `a-z 0-9 - _` (others are rejected malformed). Unique within the probe (if duplicated, rejected malformed). Used by the host to name the slot (it goes as is into the IDE address `oep://<unit_id>/<name>`. unit_id is core §7.5. Both contain only characters that need no encoding in a URL), and also used for the line marker of mixed (§1.2) |
 | lock_len | The length of the lock part. 0 (no lock) or 1 + 2n (n ≥ 1). Others are rejected malformed |
-| lock_scheme | Only when there is a lock. The scheme of target_id ([wire and debug](oep-if-debug.md) §1). 0 is not placed (no lock is lock_len 0). A scheme in the definition that the wire does not have is rejected unsupported, an undefined value is malformed |
+| lock_scheme | Only when there is a lock. The scheme of target_id ([wire and debug](oep-if-debug.md) §1). 0 is not placed (no lock is lock_len 0). A scheme the wire does not have, whether defined or not (core §2.5), is rejected unsupported |
 | lock_mask, lock_value | Only when there is a lock. The same length n = (lock_len − 1) / 2. **n is the same as the length of the value of that scheme** (4 for scheme 1. If different, rejected malformed. The length is `target_id_scheme` of the registry). The byte order is the same as the value of target_id in the answer to attach (for scheme 1, u32 little endian) |
 | boot_reset | Optional. Whether, when the automatic attach at boot got no answer from the wire, the probe attaches once more using the reset line (§3.1): 0 no, 1 yes. 0 if not placed. 2 or more is rejected malformed. 1 on a slot that is not at boot is rejected malformed |
 
@@ -220,7 +220,7 @@ Only the settings' label items (§1) are searched, not the label (0x46) of the c
 |---|---|
 | Form errors, the same key twice, characters of name, range of selected, retry_ms not 0 on a host slot, length of lock, the value of boot_reset and boot_reset 1 on a host slot, a drive of an idle that is not mode 3 / 4, and the length and drive_kind of an idle's drive, putting a slot with mechanism 0xFF on a bind, a bind pointing to a nonexistent slot, two slots with the same wire_fn and the same pins, duplicate name | malformed |
 | The fn pointed to does not exist (plan, wire_fn of slot, kind 2 of bind, uart) | unknown_function |
-| An undeclared item, a pin combination the wire does not allow, a wire_fn whose wire cannot have a lock, a mechanism the console does not declare, an idle with mode 3 / 4 on a channel that cannot be driven as an output, an idle's level number equal to the number of levels or more, idle_clock 1 on other than rvswd, a max_speed_hz that cannot be kept, a mode not in bind_modes, a port that is not a serial port, an fn that is not uart, an unrealisable baud / format, save / erase on a probe without saving | unsupported |
+| An undeclared item, a pin combination the wire does not allow, a wire_fn whose wire cannot have a lock, a mechanism the console does not declare, an idle with mode 3 / 4 on a channel that cannot be driven as an output, an idle's level number equal to the number of levels or more, idle_clock 1 on other than rvswd, a max_speed_hz that cannot be kept, a mode not in bind_modes, a port that is not a serial port, an fn that is not uart, an unrealisable baud / format, an unused value or reserved bit of format, an idle mode of 5 or more, a lock_scheme the wire does not have (defined or not), save / erase on a probe without saving | unsupported |
 | plan_roles exceeded, contention for pins or resources, at boot slots exceeding max_connections, not enough room to save | unavailable (cause 2 / 1 / 2 / 3) |
 
 ## 3. Slot connections and state

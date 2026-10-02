@@ -72,7 +72,7 @@ def check(reg: dict) -> list[str]:
                     errors.append(f"{n}: tlv {context}.{tag_name} = {tag:#x} is reserved")
                 if context == "describe" and tag == 0x3F:
                     errors.append(f"{n}: describe tag {tag_name} = 0x3f is reserved for response meta")
-                if tag & 0x80 and not (n == "oep.core" and context == "plan_apply"):
+                if tag & 0x80:
                     errors.append(f"{n}: tlv {context}.{tag_name} = {tag:#x} has the critical bit set in the registry")
         for group in ("status", "reject_reasons"):
             for v_name, v in iface.get(group, {}).items():

@@ -69,10 +69,10 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
 
 - **The encoding is unique**: the short form if the value is 254 bytes or less, the long form if 255 bytes or more. Any other form (254 or less in the long form, etc.) is malformed.
   The reader decides by whether the first byte of `len` is 0xFF. The `len(u8)` of an element of a sequence (§2.3) has no such escape (an element is at most 255 bytes).
-- **Bit 7 of the tag is critical** (meaningful only inside requests). Tag 0x00 is reserved (not used in TLVs; the marker in the payload of rejected unsupported, §4.3),
-  0x7F is reserved for ignored in answers, 0xFF is invalid.
+- **The tag number is the low 7 bits (0x01 to 0x7E).** Bit 7 is the critical mark. It is used only in requests and is not part of the number: 0x10 and 0x90 are the same TLV, sent without and with the mark. In answers, events and data bit 7 is 0, and a reader that meets a TLV with bit 7 set there skips it as an unknown tag. Tag 0x00 is reserved (not used in TLVs; the marker in the payload of rejected unsupported, §4.3), 0x7F is reserved for ignored in answers, and 0xFF is invalid.
+- ignored lists tag numbers (bit 7 cleared). The payload of rejected unsupported carries the tag byte as received (bit 7 included).
 - The tag space is **per (fn, op) context** (the same value in a different context is a different thing).
-- Repeating the same tag represents a sequence.
+- Repeating the same tag represents a sequence, for a tag whose definition says it repeats (§2.3).
 
 ### 2.3 Fixed part and tail
 
@@ -88,14 +88,16 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
   pins, and other items for safety) always carry it. If the probe sees an unknown critical
   TLV it refuses with rejected unsupported (the tag as received in the payload). It ignores unknown non-critical TLVs and appends ignored
   (tag 0x7F, value: the sequence of ignored tags) to the answer. It does so on every completed answer, also when the op's status is a failure. When it ignores two or more TLVs with the same tag, it lists the tag that many times.
-- Even for a known TLV, if the probe cannot handle its value: rejected unsupported if critical, otherwise it ignores it and lists it in ignored.
+- A tag whose definition does not say it repeats appears at most once in a request. Two or more are rejected malformed, critical or not. In an answer, the host uses the first.
+- If the value of a TLV this probe implements is shorter than its definition, or holds a value its definition excludes, the request is rejected malformed, critical or not. Only a value inside the definition that this probe cannot handle is unsupported (critical) or ignored (not critical). A TLV the probe does not implement is unknown to it, whatever its length.
+- **The value of a request TLV is not extended at the end.** A new field goes under a new tag. A probe that meets a request TLV it implements whose value is longer than it knows rejects it unsupported (that tag as received) when critical, and otherwise ignores the whole TLV and lists it in ignored.
 - Tag 0x7F or 0xFF in a request is rejected malformed. A request shorter than the fixed part is rejected malformed.
 - **Variable sequences are preceded by a count** (so that TLVs can be appended after them).
 - No field that may be omitted is placed in the fixed part (a value that should be omittable becomes a TLV).
 - Arguments the host adds for safety (a speed limit, etc.) are critical.
 
 **How fixed forms are extended** (after the freeze this is the only way):
-- When **the value of a TLV or an element of a sequence** has a fixed form, **the reader skips whatever lies beyond the length it knows** (shorter than the known length is a broken value).
+- When **the value of a TLV in an answer, an event or data, or an element of a sequence**, has a fixed form, **the reader skips whatever lies beyond the length it knows** (shorter than the known length is a broken value).
   **The writer appends only at the end.** The position and meaning of earlier fields do not change. If the form contains a variable part (with a length), what lies beyond "the end of the last
   known field" is skipped.
 - A variable part inside a fixed form (a name, the value of a lock, etc.) is **preceded by a length**. A variable part without a length can only be at the very end of the form, and nothing
@@ -104,6 +106,7 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
   Sequences in requests (sent by the host) carry no length (anything to add becomes a TLV). However, values the probe remembers and returns on read-back (the items of probe.config,
   the sequence of streams of a bind) take the same form as the sequences of answers.
 - A field appended after a value is treated as an optional item. The revision of §2.7 does not change.
+- The items the probe keeps and returns (probe.config) keep the "append at the end" rule. A field appended to such an item must be one that is safe for an older probe to skip.
 - **The values of describe TLVs** (bitmaps, strings, sequences of pairs) stay closed as an exception to this rule. Information added to describe is added under a new tag.
 - **Width of values**: values determined by the nature of the hardware (counts, speeds, thresholds, capacities, times) are u32 or wider. u8 / u16 are used only where the limit is set by
   the protocol itself (a count within one frame, fn, resource numbers, numbers within an interface). A set of bits is u32 or `base + bitmap`.
@@ -114,6 +117,7 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
 - An unknown resolution, and an unknown outcome of completed, are treated as failure.
 - Unknown values of an interface's status or reason are treated as failure.
 - Events of an unknown kind are discarded (seq is still counted).
+- The host ignores reserved bits of an answer's flags. It shows unknown values of an answer's enum that do not report a failure (cause, holder_kind, the kind of a scan entry) as unknown. Unknown status and reason values remain failures.
 
 ### 2.5 Number spaces
 
@@ -125,9 +129,13 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
 | reject reason | 0x01 to 0x3F core (common to all interfaces), 0x40 to 0x7F interface, 0x80 to 0xFF reserved |
 | outcome | 0 success, 1 failed, 2 partial. Others reserved |
 | event kind | A space per fn. 0x01 to 0x7F are decided by the interface (for fn 0, the core), 0x80 to 0xFF are reserved |
-| TLV tag | Per (fn, op) context. Bit 7 is critical. 0x00, 0x7F, 0xFF are reserved in every context |
+| TLV tag | Per (fn, op) context. The number is the low 7 bits; bit 7 is the critical mark (§2.2). 0x00, 0x7F, 0xFF are reserved in every context |
 | describe tag | 0x01 to 0x3E common tags of the core (§7.4), 0x3F reserved (answer meta information), 0x40 to 0x7F interface |
 | resource number | u16, one space per probe (§9) |
+
+Unless its definition says otherwise, every unused value of an enum and every reserved bit of a request may be defined later (§2.7). A probe refuses them by order 6 of §4.3.
+
+**Experimental values**: in every u8 enum whose definition does not say otherwise, the values 0xF0 to 0xFE are experimental. Anyone may use them while trying something out. A shipping probe and a released host do not use them, and they are never registered. (Tag numbers have no experimental range. Independent information goes into an independent interface, §13 rule 7.)
 
 ### 2.6 Wrapping values
 
@@ -280,6 +288,7 @@ port_speed  request: port(u8), baud(u32), step(u8: 0 try, 1 commit, 2 revert), v
 ```
 
 - Refusals: port is not the port this request came from → rejected unavailable (cause 6). baud cannot be produced by the probe's UART → rejected unsupported.
+  A step of 3 or more is rejected unsupported (payload tag 0x00, §2.5).
   Refusals when the lock is missing or different follow the order of §4.3 (session_required, no_session, expired, locked).
 - The state is one of 3 per port: **boot / trying / committed**.
   - **Try** (step 0, accepted in the boot state): after finishing sending the answer at the current speed, switch to the baud of the answer and become **trying**. verify_ms starts
@@ -373,8 +382,8 @@ The detail of rejected is the reason, and other information goes in the payload.
 2. Resend (the table of §5.2): corr_reused / result_lost / the remembered answer.
 3. Session (§6.2): no_session / expired / locked.
 4. window_exceeded.
-5. **Format and out of range** (length, undefined values, `address > 0x7F`, `mode > 3`, contradictions between settings) → malformed.
-6. **In the definition, but this probe does not have it** (mode, format, rate out of range, trigger type, unknown critical TLV, pin combination) → unsupported.
+5. **Format** → malformed: the length, a count that does not match the contents, a TLV encoding error, a contradiction between fields, and a value the field's definition excludes for every revision (the 7-bit `address > 0x7F`, a boolean other than 0 / 1, a value the definition calls invalid, a value whose length is unknown so that the rest of the request cannot be read, such as an unknown dmi step kind).
+6. **Not handled by this probe** → unsupported: a value the definition leaves unused (an unused value of an enum, a reserved bit of a request's flags), a value in the definition that this probe does not declare (mode, format, rate, trigger type), an unknown critical TLV, a pin combination the declaration does not allow. The payload's tag is 0x00 for a value in the fixed part, and the TLV's tag as received for a value inside a critical TLV (a non-critical TLV with such a value is ignored, §2.3).
 7. **Cannot be accepted in the current state or with the current resources** (plan, connection, running, capacity, bound into a group) → unavailable (with cause).
 8. The resource designated by number is unknown → no_connection.
 
@@ -521,7 +530,7 @@ entry:   fn(u16), instance(u16), revision(u8), flags(u8), name_len(u8), name
   a name matches if it equals prefix or starts with `prefix + "."` (`oep.fixture.uart` matches `oep.fixture.uart` and `oep.fixture.uart.stream`,
   and does not match `oep.fixture.uart2`). prefix is a sequence of labels without a trailing `.` (`oep.` matches nothing;
   write `oep`). An empty prefix matches everything. With exact, only exact matches (an empty prefix matches nothing). `oep.core` (fn 0) is also counted as the first
-  entry.
+  entry. Bits 1 to 7 of the request's flags are reserved: a request with any of them set is rejected unsupported (payload tag 0x00, §2.5).
 - Names are 1 to 64 bytes; the usable characters are `a-z 0-9 - .` (§13).
 - instance distinguishes several interfaces of the same name. **Those with the same name are numbered from 0 in ascending order of fn.** The probe keeps the order of ports of the same name
   across firmware versions (because saved settings designate an interface by (name, instance, revision)). flags is reserved (0).
@@ -566,7 +575,7 @@ appears in the answer.
   role_channels constrains only the roles it lists (a role not in role_channels is determined by channel_group alone, and a role not in channel_group
   is determined by role_channels alone).
 - The same declaration is also used, by interfaces that select pins by argument instead of the plan (the pins of the wire's attach, etc.), as the declaration of selectable pins.
-- The role_assignment (0x90) of the plan request is a tag in the context of plan_apply (§8), not a describe tag.
+- The role_assignment (0x10, sent critical as 0x90) of the plan request is a tag in the context of plan_apply (§8), not a describe tag.
 
 ### 7.5 Declaration of the probe as a whole (describe of fn 0, 0x40 onwards)
 
@@ -608,7 +617,7 @@ several paths). When an IDE or a settings file remembers a probe, it remembers i
 
 The plan is held **per fn**.
 
-- **plan_apply**: a sequence of role_assignment TLVs (0x90, critical: fn(u16), role(u8), channel(u16)). One assignment is identified by
+- **plan_apply**: a sequence of role_assignment TLVs (0x10, sent critical as 0x90: fn(u16), role(u8), channel(u16); it repeats). One assignment is identified by
   (fn, role, channel) (some functions have several channels for the same role, such as gpio). **Only the assignments of the fns appearing in the request are
   replaced atomically**; the plans of the other fns are kept as they are. Treating the current assignments of the fns being replaced as removed, each interface verifies
   without side effects (including the contention check of §8.1), and it is applied only when all accept. If even one refuses, nothing changes and the answer is

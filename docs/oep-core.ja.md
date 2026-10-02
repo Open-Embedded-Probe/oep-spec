@@ -69,10 +69,10 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
 
 - **符号化は一意**: 値が 254 byte 以下なら短い形、255 byte 以上なら長い形。別の形（254 以下を長い形で、など）は malformed。
   読む側は `len` の 1 byte 目が 0xFF かどうかで分ける。並びの要素の `len(u8)`（§2.3）にはこの逃げ道は無い（要素は 255 byte 以内）。
-- **tag の bit 7 は critical**（要求の中でだけ意味を持つ）。tag 0x00 は予約（TLV には使わない。rejected unsupported の payload の印、§4.3）、
-  0x7F は応答の ignored 専用、0xFF は無効。
+- **tag の番号は下位 7 bit（0x01〜0x7E）。** bit 7 は critical の印。要求の中でだけ使い、番号には含めない: 0x10 と 0x90 は同じ TLV を、印なしと印ありで送ったもの。応答、出来事、データでは bit 7 は 0 で、そこで bit 7 の立った TLV に会った読む側は、知らない tag として読み飛ばす。tag 0x00 は予約（TLV には使わない。rejected unsupported の payload の印、§4.3）、0x7F は応答の ignored 専用、0xFF は無効。
+- ignored は tag の番号（bit 7 を落としたもの）を並べる。rejected unsupported の payload は、受け取ったままの tag の byte（bit 7 を含む）を持つ。
 - tag の空間は **(fn, op) の文脈ごと**（同じ値でも文脈が違えば別物）。
-- 同じ tag の繰り返しは並びを表す。
+- 同じ tag の繰り返しは、繰り返すと定義が言う tag で、並びを表す（§2.3）。
 
 ### 2.3 固定部分と末尾
 
@@ -88,14 +88,16 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
   pins など、安全のための項目）は必ず付ける。probe は、知らない critical の
   TLV があれば rejected unsupported（payload に受け取ったままの tag）で断る。知らない非 critical の TLV は無視し、応答の
   後ろに ignored（tag 0x7F、値は無視した tag の並び）を付ける。結果が completed なら、op の status が失敗でも付ける。同じ tag の TLV を 2 つ以上無視したら、その数だけ並べる。
-- 知っている TLV でも、その値を扱えなければ、critical なら rejected unsupported、そうでなければ無視して ignored に載せる。
+- 繰り返すと定義が言わない tag は、1 つの要求に高々 1 回しか現れない。2 つ以上あれば、critical かどうかによらず rejected malformed。応答では、host は最初のものを使う。
+- この probe が実装する TLV の値が定義より短いか、定義が除く値を持てば、critical かどうかによらず要求を rejected malformed にする。定義の中の値でこの probe が扱えないものだけが unsupported（critical）か ignored（critical でない）になる。probe が実装しない TLV は、長さによらず、その probe にとって知らない TLV である。
+- **要求の TLV の値は後ろに伸ばさない。** 新しいフィールドは新しい tag に置く。実装する要求の TLV で、値が知っている長さより長いものに会った probe は、critical なら unsupported（受け取ったままのその tag）で断り、そうでなければ TLV 全体を無視して ignored に載せる。
 - 要求の中に tag 0x7F か 0xFF があれば rejected malformed。固定部分より短い要求は rejected malformed。
 - **可変の並びは前に数を置く**（後ろに TLV を付けられるように）。
 - 固定部分に省略できるフィールドを置かない（省略したい値は TLV にする）。
 - host が安全のために足す引数（速さの上限など）は critical にする。
 
 **固定の形の伸ばし方**（凍結後はこれだけで伸ばす）:
-- **TLV の値と並びの要素**が固定の形を持つとき、**読む側は、知っている長さより後ろを読み飛ばす**（知っている長さより短ければ壊れた値）。
+- **応答、出来事、データの TLV の値と、並びの要素**が固定の形を持つとき、**読む側は、知っている長さより後ろを読み飛ばす**（知っている長さより短ければ壊れた値）。
   **書く側は後ろにだけ足す**。前のフィールドの位置と意味は変えない。形の中に可変の部分（長さつき）があれば、「知っている最後の
   フィールドの終わり」より後ろを飛ばす。
 - 固定の形の中の可変の部分（名前、錠の値など）は、**前に長さを置く**。長さを持たない可変の部分は形の最後にしか置けず、その後ろ
@@ -104,6 +106,7 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
   飛ばす。要求の並び（host が送る）は長さを置かない（足すものは TLV にする）。ただし、probe が覚えて読み返しに返す値（probe.config の
   項目、bind のストリームの並び）は応答の並びと同じ形にする。
 - 値の後ろに足したフィールドは任意の項目として扱う。§2.7 の revision は変えない。
+- probe が持って返す項目（probe.config）は「後ろに足す」の規則のまま。その項目に足すフィールドは、古い probe が読み飛ばしても安全なものでなければならない。
 - **describe の TLV の値**（bitmap、文字列、組の並び）は、この規則の例外として閉じたままにする。describe に足す情報は新しい tag で足す。
 - **値の幅**: ハードウェアの性質で決まる値（数、速さ、しきい値、容量、時間）は u32 以上にする。u8 / u16 は、プロトコルの都合で上限が
   決まるもの（1 フレームの中の数、fn、資源の番号、インターフェースの中の番号）だけに使う。ビットの集合は u32 か `base + bitmap`。
@@ -114,6 +117,7 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
 - 知らない resolution、completed の知らない outcome は失敗として扱う。
 - インターフェースの status や reason の知らない値は失敗として扱う。
 - 知らない出来事の kind は捨てる（seq は数える）。
+- host は応答の flags の予約のビットを無視する。応答の enum の知らない値で失敗を知らせないもの（cause、holder_kind、scan の entry の kind）は、知らない値として見せる。status と reason の知らない値は失敗のまま。
 
 ### 2.5 番号の空間
 
@@ -125,9 +129,13 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
 | reject reason | 0x01〜0x3F 本体（全インターフェース共通）、0x40〜0x7F インターフェース、0x80〜0xFF 予約 |
 | outcome | 0 success、1 failed、2 partial。ほかは予約 |
 | 出来事の kind | fn ごとの空間。0x01〜0x7F はインターフェースが決める（fn 0 は本体）、0x80〜0xFF は予約 |
-| TLV の tag | (fn, op) の文脈ごと。bit 7 は critical。0x00、0x7F、0xFF は全文脈で予約 |
+| TLV の tag | (fn, op) の文脈ごと。番号は下位 7 bit で、bit 7 は critical の印（§2.2）。0x00、0x7F、0xFF は全文脈で予約 |
 | describe の tag | 0x01〜0x3E 本体の共通タグ（§7.4）、0x3F 予約（応答のメタ情報）、0x40〜0x7F インターフェース |
 | 資源の番号 | u16、probe で 1 つの空間（§9） |
+
+定義が別に言わない限り、enum の使っていない値と要求の予約のビットは、どれも後から定義されうる（§2.7）。probe は §4.3 の順 6 でそれらを断る。
+
+**実験用の値**: 定義が別に言わないすべての u8 の enum で、0xF0〜0xFE は実験用である。何かを試す間は誰が使ってもよい。出荷する probe と公開した host は使わず、registry に載せることもない。（tag の番号には実験用の範囲は無い。独自の情報は独自のインターフェースに置く、§13 の規則 7。）
 
 ### 2.6 一周する値
 
@@ -280,6 +288,7 @@ port_speed  要求: port(u8)、baud(u32)、step(u8: 0 試す、1 決める、2 �
 ```
 
 - 断り: port がこの要求の来た口でない → rejected unavailable（cause 6）。baud を probe の UART で作れない → rejected unsupported。
+  step が 3 以上なら rejected unsupported（payload の tag 0x00、§2.5）。
   ロックが無い・違うときの断りは §4.3 の順（session_required、no_session、expired、locked）。
 - 状態は口ごとに **起動時 / 試し / 決めた** の 3 つ。
   - **試す**（step 0、起動時の状態で受ける）: 応答を今の速さで送り終えてから、応答の baud に切り替えて**試し**になる。verify_ms を
@@ -373,8 +382,8 @@ rejected の detail は reason で、そのほかの情報は payload に置く�
 2. 送り直し（§5.2 の表）: corr_reused / result_lost / 覚えた応答。
 3. セッション（§6.2）: no_session / expired / locked。
 4. window_exceeded。
-5. **書式と値域の外**（長さ、未定義の値、`address > 0x7F`、`mode > 3`、設定どうしの矛盾）→ malformed。
-6. **定義にはあるが、この probe が持たない**（mode、format、rate の範囲外、trigger の type、知らない critical の TLV、ピンの組）→ unsupported。
+5. **書式** → malformed: 長さ、中身と合わない数、TLV の符号化の誤り、フィールドどうしの矛盾、そしてフィールドの定義がどの revision でも除く値（7 bit の `address > 0x7F`、0 / 1 以外の真偽値、定義が無効と言う値、長さが分からず要求の残りを読めなくなる値、たとえば知らない dmi の step の kind）。
+6. **この probe が扱わない** → unsupported: 定義が使わずに残した値（enum の使っていない値、要求の flags の予約のビット）、定義にあるがこの probe が宣言しない値（mode、format、rate、trigger の type）、知らない critical の TLV、宣言が許さないピンの組。payload の tag は、固定部分の値なら 0x00、critical の TLV の中の値ならその TLV の受け取ったままの tag（そうした値を持つ critical でない TLV は無視する、§2.3）。
 7. **今の状態・資源で受けられない**（plan、接続、動いている、容量、組に束ねられている）→ unavailable（cause 付き）。
 8. 番号で指す資源を知らない → no_connection。
 
@@ -521,7 +530,7 @@ entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
   名前が prefix と同じか、`prefix + "."` で始まれば一致（`oep.fixture.uart` は `oep.fixture.uart` と `oep.fixture.uart.stream` に
   一致し、`oep.fixture.uart2` には一致しない）。prefix は label の並びで、末尾に `.` を付けない（`oep.` は何にも一致しない。
   `oep` と書く）。空の prefix はすべてに一致する。exact なら完全一致だけ（空の prefix は何にも一致しない）。`oep.core`（fn 0）も最初の
-  entry として数える。
+  entry として数える。要求の flags の bit 1〜7 は予約: どれかが立った要求は rejected unsupported（payload の tag 0x00、§2.5）。
 - 名前は 1〜64 byte、使える文字は `a-z 0-9 - .`（§13）。
 - instance は、同じ名前のインターフェースが複数あるときの見分け。**同じ名前のものを fn の昇順に 0 から振る**。probe は同じ名前の口の
   順を firmware の版を越えて保つ（保存した設定が (name, instance, revision) でインターフェースを指すため）。flags は予約（0）。
@@ -566,7 +575,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
   role_channels が縛るのは、それが挙げる role だけである（role_channels に無い role は channel_group だけで決まり、channel_group に
   無い role は role_channels だけで決まる）。
 - 同じ宣言は、plan を使わずにピンを引数で選ぶインターフェース（線の attach の pins など）でも、選べるピンの宣言として使う。
-- plan の要求の role_assignment（0x90）は plan_apply の文脈の tag（§8）で、describe の tag ではない。
+- plan の要求の role_assignment（0x10、critical の 0x90 で送る）は plan_apply の文脈の tag（§8）で、describe の tag ではない。
 
 ### 7.5 probe 全体の宣言（fn 0 の describe、0x40〜）
 
@@ -608,7 +617,7 @@ host が probe とスロットを名指す文字列: `oep://<unit_id>[/<slot nam
 
 plan は **fn ごと**に持つ。
 
-- **plan_apply**: role_assignment の TLV（0x90、critical: fn(u16)、role(u8)、channel(u16)）の並び。1 つの割り当ての見分けは
+- **plan_apply**: role_assignment の TLV（0x10、critical の 0x90 で送る: fn(u16)、role(u8)、channel(u16)。繰り返す）の並び。1 つの割り当ての見分けは
   (fn, role, channel)（同じ role に複数の channel を持つ機能がある。gpio など）。**要求に出てくる fn の割り当てだけを
   原子的に置き換え**、ほかの fn の plan はそのまま保つ。置き換える fn の今の割り当てを外したものとして、各インターフェースが
   副作用なしで確かめ（§8.1 の取り合いの確かめを含む）、全部が受け入れたときだけ適用する。1 つでも断れば、何も変えずに
