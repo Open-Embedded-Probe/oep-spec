@@ -1,5 +1,7 @@
 # OEP 標準インターフェース: コンソール v1
 
+[English](oep-if-console.md)
+
 状態: **規範**（2026-09-26。2026-10-01 に[ゼロベースの再検討](v1-zero-base-proposal.ja.md)を反映）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
 ストリーム、§2 debug の connection）。番号の唯一の定義は `registry/oep-v1.toml`。考え方と理由は
 [コンソールのストリーム](console-stream.ja.md)。
