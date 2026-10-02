@@ -46,19 +46,13 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 - **同じ (connection, mechanism) のストリームがあれば、open はそれを返す**（flags bit0。位置もマークもそのまま）。
   1 コマンド 1 プロセスの host が、続きから読めるようにするため。閉じたストリームの場所（同じ wire の同じピンの組）で同じ mechanism を
   open したときも、**同じ番号で再び開く**（位置とマークは続き、mark attach、flags bit0）。別の mechanism の open で古い方は消える。
-- **1 つの connection に生きているストリームは 1 つ**（3 方式とも DATA0 を郵便受けにする）。別の mechanism の open は rejected
-  unavailable（cause 6）。
+- **各 mechanism が定めるもの**: open できる connection の種類、使う target の資源、1 つの connection にほかの mechanism と合わせて生きている
+  ストリームをいくつ持てるか、probe が読みを止めるとき、target の状態を確かめる頻度（mechanism 0〜2 は §3）。
 - **ストリームの寿命は connection と同じ数え方**（[共通部品](oep-if-common.ja.md) §2）: 使っているものは、open したセッションと、
   bind で開いたスロット。close と lease の期限切れ・force は自分の分を外すだけで、全員が外れたら閉じる（mark closed、detail 1 / 2）。
   スロットの項目の置き換え・削除で外れたときは detail 3、connection が閉じたときは 4。
 - probe は、ストリームを開いている間、セッションと関係なく target の出力を吸い出して貯める（dmseq は読み続けないと target が
   送信で詰まる）。
-- probe がコンソールの読みを止めるのは、**その connection の riscv-dm の要求を実行している間と、hart が止まっている間**
-  だけ（ほかの connection の長い要求の間も、この connection の読みは続ける。core §7.5 max_op_ms）。抽象コマンドと DATA0 を取り合わないよう、host は抽象コマンドの一連を 1 つの dmi 要求に入れる
-  （[線とデバッグ](oep-if-debug.ja.md) §4.1）。「hart が止まっている」は probe が DMSTATUS で見る: host が dmi の要求の中で hart を止めても走らせても
-  （debugger が dmcontrol の haltreq / resumereq を自分で書いても）、hart が走っていれば probe は読みを続ける（戻す）。probe が
-  DMSTATUS を見る間隔は 20 ms 以下（host が raw で止めたあと、probe が DATA0 を読みうるのはその間だけ）。
-  host は、コンソールのために riscv-dm の resume の op を使う必要はない。
 - ストリームを開いた connection が失われたら、マーク link-lost（コンソールの読みの中で線切れを判定したとき）か closed（4）を付けて
   閉じる。target の自己リセット（havereset）を見たら mark restart（1）を付け、dmseq は未同期に戻す。**閉じたストリームも、同じ接続の場所（同じ wire の
   同じピンの組）で同じ mechanism が次に open されるまで読める**（read / marks。write / mark / clear は rejected unavailable）。線が
@@ -70,8 +64,17 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 
 ## 3. 方式（mechanism）
 
-どれも debug module の DATA0（DMI 0x04）と DATA1（0x05）を郵便受けに使う。hart は止めない。probe は DATA0 を読んで、方式の
+mechanism 0、1、2 は debug module の DATA0（DMI 0x04）と DATA1（0x05）を郵便受けに使う。hart は止めない。probe は DATA0 を読んで、方式の
 規則で受け取る。
+
+- **mechanism 0〜2 の中では、1 つの connection に生きているストリームは 1 つ。** そのうちの別のものの open は rejected unavailable（cause 6）。
+  arm-adi の connection では開かない（rejected unavailable cause 6）。
+- probe がコンソールの読みを止めるのは、**その connection の riscv-dm の要求を実行している間と、hart が止まっている間**
+  だけ（ほかの connection の長い要求の間も、この connection の読みは続ける。core §7.5 max_op_ms）。抽象コマンドと DATA0 を取り合わないよう、host は抽象コマンドの一連を 1 つの dmi 要求に入れる
+  （[線とデバッグ](oep-if-debug.ja.md) §4.1）。「hart が止まっている」は probe が DMSTATUS で見る: host が dmi の要求の中で hart を止めても走らせても
+  （debugger が dmcontrol の haltreq / resumereq を自分で書いても）、hart が走っていれば probe は読みを続ける（戻す）。probe が
+  DMSTATUS を見る間隔は 20 ms 以下（host が raw で止めたあと、probe が DATA0 を読みうるのはその間だけ）。
+  host は、コンソールのために riscv-dm の resume の op を使う必要はない。
 
 | mechanism | 名前 | 向き | 定義 |
 |---:|---|---|---|

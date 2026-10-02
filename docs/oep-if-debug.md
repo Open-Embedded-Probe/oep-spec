@@ -21,10 +21,50 @@ connections, §3 status). The only definition of the numbers is `registry/oep-v1
 - **The target's family (the chip type) is not declared.** Per-chip knowledge (how to write flash, the quirks of the DM) is held by the host.
 - Every op other than connections requires the lock.
 
+## 0. What every wire shares, and what a new wire defines
+
+Every `oep.wire.*` interface:
+
+1. uses op 0x01 scan, 0x02 attach, 0x03 detach and 0x05 connections with the meanings of §1 to §2.1 (a wire may add ops from 0x06). attach, detach and connections
+   are required on every wire. scan is required on every wire that declares a pin combination (channel_group or role_channels);
+2. follows §1 (verify the speed by reading before writing, count = 0 and what it leaves out, seats and max_connections, the scan and attach budgets, refusals) and
+   §2 (lifetime, wire loss, the state machine, closing does not change the target), reading swdio / swclk as "the channel of pin role 1 / 2";
+3. creates the connections of [common parts](oep-if-common.md) §2 that `oep.target.*` interfaces use.
+
+A wire whose combination is not two pins writes, in its own document, its pins TLV, its scan entries and its connections entry with `n(u8), n × (role(u8), channel(u16))`
+in place of the two u16 fields, keeping the other fields and their order.
+
+**A wire without pins.** A wire that declares neither channel_group nor role_channels (its pins are not channels of this probe, for example a TCP endpoint that drives
+another debugger) has exactly one combination, the one the endpoint uses:
+
+- attach is sent without pins. A pins TLV is rejected unsupported (the tag as received), like any combination the declaration does not allow (§1);
+- scan is optional. Without it the probe answers unknown_operation. With it, count = 0 tries that one combination, and a request listing combinations is rejected unsupported;
+- connections entries and scan entries carry 0xFFFF for each channel (in the `n × (role, channel)` form, n = 0);
+- the pin rules of §1 (what count = 0 leaves out, held channels) have nothing to apply to.
+
+A new wire's document also defines:
+
+- its pin roles and how its speed is chosen;
+- its wake / configuration sequence and its scratch registers (§1);
+- its "found" criterion and its scan_kind values;
+- the target_id schemes it uses (from the single space of §1) and how wire loss is seen;
+- which `oep.target.*` interfaces take its connections, and whether consoles and probe.config slots ride on them.
+
 ## 1. Rules for attach (all wires)
 
-- The probe does not write to the target until it has finished verifying the wire speed (it selects the speed by reading only). A write at a mismatched speed could write
-  a garbled value into a target register.
+- **Writes before the speed is verified.** Until the probe has verified the wire speed, it writes to the target only:
+  1. the wake / configuration sequence that the wire's section defines (for example a wake pattern, a line reset, a target select, or the debug-module configuration
+     registers the module needs before it answers), sent at the wire's slowest speed;
+  2. dmactive, on a wire whose connections reach a RISC-V DM, and only when DMCONTROL does not already read dmactive = 1 (the write clears haltreq).
+- **Verifying the speed.** The probe chooses the speed by reads only. It then verifies the write path at the chosen speed by writing and reading back only the
+  debug-module registers that the wire's section names as free scratch (registers no part of the target uses while no debug command runs), together with any write
+  the wire's section names as making them free. Before the check it reads each scratch register, and after the check it writes that value back. A speed whose writes
+  do not read back is not used.
+- Nothing else is written to the target before the speed is verified (a write at a mismatched speed could write a garbled value into a target register).
+- **A probe that attaches through another debugger.** The bound above applies to a probe that drives the wire itself. A probe whose attach goes through another debugger
+  it does not control (it cannot see or bound what that debugger writes) sets bit0 `attach_writes_unbounded` of the wire's describe features (common tag 0x06,
+  core §7.4), and is then outside this bound. A host treats an attach on such a wire like a reset of unknown effect: it does not expect the target's registers or the
+  running program to survive it.
 - **Pin combinations**:
   - The combinations the probe can use are declared with the common tags of describe (core §7.4). Fixed combinations with channel_group; if any pin can be assigned,
     with role_channels. The role numbers are `pin_role` (1 = SWDIO, 2 = SWCLK, 3 = reset).
@@ -52,7 +92,9 @@ connections, §3 status). The only definition of the numbers is `registry/oep-v1
   - attach specifies the combination with pins (TLV 0x03, critical). If pins is absent: if that wire has exactly one live connection, that combination
     (joining the existing connection. A connection held by a slot is fine too); if there is no live connection and exactly one allowed combination, that combination;
     otherwise (2 or more live connections, or no connection and 2 or more allowed combinations) rejected unavailable (the host chooses).
-  - **A combination that is not allowed is rejected unavailable without executing anything** (scan refuses the whole request if even one is in it).
+  - **A combination the declaration (channel_group / role_channels) does not allow is rejected unsupported without executing anything** (scan refuses the whole
+    request if even one is in it). attach puts the pins tag as received in the payload. scan puts tag 0x00 followed by TLV 0x40 index (u8, its position in the
+    request's sequence). A combination with a held channel (plan, connection, settings, disable) is rejected unavailable (cause 1 / 5, with the channel).
 - **attach budget**: one attach answer takes at most 1000 ms (registry `limits.attach_budget_ms`) of the probe's time, the speed search and its retries included and
   the hold_ms of the reset TLV excluded. When no speed works within it, the answer is completed failed with status line.
 - **scan budget**: the probe starts no combination later than 500 ms (`limits.scan_budget_ms`) after the scan request arrived (at least one combination is tried).
@@ -77,12 +119,15 @@ connections, §3 status). The only definition of the numbers is `registry/oep-v1
 - max_speed (TLV 0x01, u32 Hz): the probe does not select a speed above it. **Mandatory in attach** (rejected malformed if absent), sent
   critical. If smaller than the probe's min_clock_hz, rejected unsupported (tag 0x01). It can also be attached to scan (if absent, the probe tries at its slowest
   speed). pins and idle_clock are optional, and critical when sent.
-- **The only thing scan writes to the target is dmactive** (to read DMSTATUS). dmactive is left set (same as §4.6. Clearing it erases the console frames in
-  DATA0). "Found" means DMSTATUS.version is 2 or 3 (for swd, DPIDR could be read). The pins of combinations that were not found return to the idle state of core §8.
+- **What scan writes**: only the writes of items 1 and 2 of "Writes before the speed is verified", to read the identifier of "found". scan does not verify the
+  write path and writes no scratch register. It may choose the speed by reads as attach does. dmactive is left set (same as §4.6. Clearing it may erase the console
+  frames in DATA0). "Found" means DMSTATUS.version is 2 or more and not 15 (0 = no DM, 1 = a version this interface does not handle, 15 = a DM that does not
+  conform). For swd, DPIDR could be read. The pins of combinations that were not found return to the idle state of core §8.
   A scan without max_speed tries at a slow speed the probe considers safe (it may do the same search as attach. For a wire like swd that cannot select by reading,
   a slow fixed value decided by the probe).
 - **Target identifier**: after the attach answer, the probe may attach the target identifier it could read, as TLV 0x10 target_id (scheme(u8), value).
-  scheme is how the identifier was obtained, defined by the registry per wire. When the probe could not read it (including when the value is one the scheme defines as "none"),
+  scheme is how the identifier was obtained. The target_id scheme numbers are one space for the whole probe (registry `[common.enum.target_id_scheme]`:
+  1 the u32 at DMI 0x7F of that debug module, 2 swd targetsel). Each wire states which schemes it uses. When the probe could not read it (including when the value is one the scheme defines as "none"),
   it does not attach it. The meaning of the value (which bits are the family, which the revision) is known to the host. The probe does not interpret it.
 - **search_retries**: the attach answer of every wire may carry TLV 0x12 search_retries (u16, optional): the number of tries of the speed search that failed
   before the speed in speed_hz was verified (0 = the first try worked; 0xFFFF = 65535 or more). A host may log it to see a wire that is close to failing.
@@ -153,6 +198,10 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
   2 = arm-adi. `id` is the raw identifier determined by the kind of wire (DMSTATUS for riscv-dm, DPIDR for arm-adi).
 - **The flags of attach** (common to the 3 wires, the registry's `attach_flags`): bit0 a pending havereset was acknowledged (riscv), bit1 existing connection,
   bit2 woken from dormant (swd), bit3 the hart is halted (the answer's TLV 0x11 dpc is valid).
+- **Wake / configuration sequence** (§1 item 1): rvswd: the wake pattern, then DMI 0x7E and DMI 0x7D each written 0x5AA50400, the pair twice.
+  swio: DMI 0x7E and DMI 0x7D each written 0x5AA50400, the pair twice.
+- **Scratch** (§1): PROGBUF0 (DMI 0x20). Making it free: ABSTRACTAUTO (DMI 0x18) = 0, which is not restored (an autoexec left armed by an earlier session would run
+  on each access).
 - **attach while applying reset**: with the TLV 0x05 reset (critical: `channel(u16), hold_ms(u16)`), the probe holds the reset wire (channel) for
   hold_ms and then releases it. With method 1 it keeps issuing halt while releasing, to halt as early as possible (flags bit3, dpc TLV). **There is no guarantee of halting before the first
   instruction** (some execution happens between the release of the reset wire and the halt taking effect. [link measurements](link-measurements.ja.md) (Japanese) §3). When a guarantee of halting at the position right after
@@ -182,7 +231,7 @@ TLVs:
 | attach answer | 0x11 | dpc | u32 (8 bytes for RV64). The dpc when the hart is halted (flags bit3) |
 | attach answer | 0x12 | search_retries | u16, optional. §1 |
 
-The schemes of target_id (`target_id_scheme`): 1 = the u32 read from DMI address 0x7F (length 4). 0 and 0xFFFFFFFF mean "none" (not attached).
+The schemes of target_id these wires use (`target_id_scheme`, one space for the probe, §1): 1 = the u32 read from DMI address 0x7F (length 4). 0 and 0xFFFFFFFF mean "none" (not attached).
 2 = the targetsel of swd (u32, used only in the entries of connections. Not used for the lock). The length of the value per scheme is held in the registry
 (used to verify the length of the mask / value of a slot's lock).
 
@@ -205,15 +254,16 @@ Requests start with connection(u16).
   sets the hartsel of DMCONTROL to 0 and **returns with it set to 0** (a hartsel selected by the host with dmi lasts only within that dmi request). Other harts and RV64 are
   handled by the host with dmi (DMI values being u32 is the form of DMI, and does not mean a restriction to RV32). RV64 addresses are added later with the
   critical TLV 0x01 `address_hi(u32)` of read_block / write_block (reserved. The registry's reserved).
+- The riscv-dm ops treat every DMSTATUS.version that scan accepts (§1) the same way.
 
 **Invariant at op boundaries**: **the probe carries no target state across an op after returning its answer.** What was used inside the op is restored before the answer.
 Whatever the host does with raw DMI (the dmi op), and even if the host dies midway (lease expiry, force), there is nothing the probe forgets to restore.
 
 | op | What the probe touches | Before the answer |
 |---|---|---|
-| halt | haltreq | Checks allhalted. **haltreq may be left set while halted** (whether to keep or clear it is decided by the probe; the behaviour visible to the host is the same. The reason for keeping it is [link measurements](link-measurements.ja.md) (Japanese) §3). Cleared on resume / step / reset / detach and when the connection closes |
+| halt | haltreq | Checks allhalted. **haltreq may be left set while halted** (whether to keep or clear it is decided by the probe; the behaviour visible to the host is the same. The reason for keeping it is [link measurements](link-measurements.ja.md) (Japanese) §3). Cleared on resume / step / reset / detach and when the connection closes. When halt times out, it is cleared before the answer (§4.2) |
 | resume | haltreq = 0, resumereq = 1 once | Remembers nothing, restores nothing |
-| step | dcsr.step, DATA0 / DATA1 (reading and writing dcsr) | Clears dcsr.step, restores DATA1, DATA0 |
+| step | dcsr.step, DATA0 / DATA1 (reading and writing dcsr), haltreq | Clears dcsr.step, restores DATA1, DATA0, clears haltreq. If the hart cannot be halted again, the answer says step_left (§4.2) |
 | reset | haltreq, ndmreset, acknowledging havereset | Acknowledges havereset. mode 0 / 1 clear haltreq. mode 2 stays halted and may keep haltreq like halt. The internal halt of mode 1 is restored like step |
 | read_block / write_block | GPRs (s0, s1, a0, a1), DATA1 / DATA0, abstractauto, program buffer, sysbus | Restores GPRs, DATA1, DATA0, abstractauto. The program buffer and SBCS / SBADDRESS are not restored (the host sets them again if it uses them) |
 | run | pc, the GPRs the host specified, dcsr (ebreakm, prv), haltreq | **Returns with them changed as the host instructed** (the host's responsibility). abstractauto and haltreq are restored |
@@ -258,11 +308,11 @@ it is returned twice as is. write_block / read_block on a hart that is not halte
   If a request reaches max_op_ms while running, the probe ends it at that step with status timeout (done = the index of that step).
 - One request is an operation on one hart. Things that need timing and re-establishing of the wire (reset, recovery) are made into component ops.
 - **The host puts a whole abstract-command sequence (writing data1 / data0, command, reading data0) into one dmi request** (so that it is not broken even if the probe
-  inserts a console read between requests. `oep.target.console` §2).
+  inserts a console read between requests. `oep.target.console` §3).
 
 ### 4.2 halt, resume, step
 
-- **halt** does nothing and returns ok if already halted. It waits 100 ms for allhalted, and if not seen, status timeout.
+- **halt** does nothing and returns ok if already halted. If allhalted is not seen within 100 ms, the probe clears haltreq and answers status timeout.
 - **resume** writes haltreq = 0, resumereq = 1 once. ok means "the hart left debug mode", decided by the allresumeack of DMSTATUS (or
   allrunning and not halted). resumereq is not reissued. If not seen after waiting 100 ms, status state.
   - For some targets this is not enough (a target that does not set allresumeack may immediately halt again at a breakpoint, or may not leave with one
@@ -272,8 +322,10 @@ it is returned twice as is. write_block / read_block on a hart that is not halte
   silence and waits until its timeout ([link measurements](link-measurements.ja.md) (Japanese) §3). Therefore an op that uses DATA0 / DATA1 restores them **before its own answer** (the table of
   §4). The probe remembers nothing across ops.
 - **step** sets dcsr.step, issues resume exactly once, and clears dcsr.step when it returns. It is not a failure if dpc does not move (status ok, moved = 0. An instruction that jumps to
-  itself leaves dpc the same even when it executed correctly, so the host reads the instruction and decides). If the hart does not return to debug mode within 100 ms, status state.
-  prv is not changed.
+  itself leaves dpc the same even when it executed correctly, so the host reads the instruction and decides). prv is not changed.
+  If the hart does not return to debug mode within 100 ms, the probe sets haltreq and waits up to 100 ms more. If the hart halts, it clears dcsr.step, restores
+  DATA1 / DATA0, and answers status state with dpc_after valid. If it does not halt, it clears haltreq and answers status state with answer TLV 0x01 step_left
+  (length 0): dcsr.step may still be set and the hart is running. The host halts it and clears dcsr.step.
 
 ### 4.3 reset
 
@@ -355,6 +407,7 @@ dmi).
 - The TLVs use the same numbers as §3: scan 0x01 max_speed, 0x02 skip, 0x06 targetsel (below). attach 0x01 max_speed (mandatory), 0x02 targetsel,
   0x03 pins, 0x05 reset (a probe without it is rejected unsupported). detach 0x01 force. attach answer 0x10 target_id, 0x12 search_retries (§1).
 - **How the speed is selected**: SWD cannot select the speed by reading, so it starts at `min(max_speed, the max_clock_hz of describe)`.
+- **Wake / configuration sequence** (§1 item 1): the JTAG-to-SWD switch, the dormant wake, and TARGETSEL when one is given. swd names no scratch register.
 - attach tries the switch from JTAG to SWD, and if there is no answer wakes it from dormant (flags bit2). Power-up (the CDBGPWRUPREQ /
   CSYSPWRUPREQ of CTRL/STAT) is done by the host with DP writes. In the retries of §2, the line reset and the wake from dormant are redone.
 - **targetsel (TLV 0x02, u32) is sent critical** (only for multidrop. If ignored, it would attach to a different target). **The identity of a connection

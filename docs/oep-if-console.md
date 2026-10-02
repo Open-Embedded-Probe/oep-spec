@@ -46,19 +46,13 @@ A stream is opened over a debug connection by specifying a mechanism. There is o
 - **If a stream with the same (connection, mechanism) exists, open returns it** (flags bit0. The position and the marks stay as they are).
   So that a one-command-one-process host can read from where it left off. When the same mechanism is opened at the place of a closed stream (the same pin combination of the same wire),
   it is **reopened with the same number** (the position and the marks continue, mark attach, flags bit0). An open with a different mechanism erases the old one.
-- **One connection has one live stream** (all 3 mechanisms use DATA0 as the mailbox). An open with a different mechanism is rejected
-  unavailable (cause 6).
+- **Each mechanism defines**: the kinds of connection it opens on, the target resources it uses, how many live streams one connection can have together with
+  other mechanisms, when the probe pauses reading, and how often it checks the target's state (mechanisms 0 to 2: §3).
 - **The lifetime of a stream is counted the same way as a connection** ([common parts](oep-if-common.md) §2): its users are the session that opened it and
   the slot that opened it by bind. close, lease expiry and force remove only one's own share, and it closes when every user has left (mark closed, detail 1 / 2).
   When a user left through the replacement or deletion of a slot item, detail 3; when the connection closed, 4.
 - While a stream is open, the probe drains and accumulates the target's output regardless of sessions (with dmseq, unless it keeps reading, the target
   blocks on transmission).
-- The probe stops reading the console **only while executing a riscv-dm request on that connection and while the hart is halted**
-  (during a long request on another connection, reading on this connection continues. core §7.5 max_op_ms). To avoid contending with abstract commands for DATA0, the host puts a whole abstract-command sequence into one dmi request
-  ([wire and debug](oep-if-debug.md) §4.1). "The hart is halted" is seen by the probe in DMSTATUS: whether the host halts or runs the hart inside a dmi request
-  (even if the debugger writes the haltreq / resumereq of dmcontrol itself), the probe keeps reading (resumes) while the hart is running. The interval at which the probe
-  checks DMSTATUS is 20 ms or less (after the host halts it raw, the probe may read DATA0 only within that interval).
-  The host need not use the resume op of riscv-dm for the console's sake.
 - When the connection on which a stream was opened is lost, it is closed with a mark link-lost (when wire loss was decided inside a console read) or closed (4).
   On seeing a self-reset of the target (havereset), a mark restart (1) is attached, and dmseq returns to unsynchronised. **A closed stream remains readable until the same mechanism is next opened at the same connection place (the same pin combination of the same
   wire)** (read / marks. write / mark / clear are rejected unavailable). To recover the output right before the wire
@@ -70,8 +64,17 @@ A stream is opened over a debug connection by specifying a mechanism. There is o
 
 ## 3. Mechanisms
 
-All of them use the debug module's DATA0 (DMI 0x04) and DATA1 (0x05) as the mailbox. The hart is not halted. The probe reads DATA0 and receives by the rules
+Mechanisms 0, 1 and 2 use the debug module's DATA0 (DMI 0x04) and DATA1 (0x05) as the mailbox. The hart is not halted. The probe reads DATA0 and receives by the rules
 of the mechanism.
+
+- **Among mechanisms 0 to 2, one connection has one live stream.** An open with another of them is rejected unavailable (cause 6). They do not open on an arm-adi
+  connection (rejected unavailable cause 6).
+- The probe stops reading the console **only while executing a riscv-dm request on that connection and while the hart is halted**
+  (during a long request on another connection, reading on this connection continues. core §7.5 max_op_ms). To avoid contending with abstract commands for DATA0, the host puts a whole abstract-command sequence into one dmi request
+  ([wire and debug](oep-if-debug.md) §4.1). "The hart is halted" is seen by the probe in DMSTATUS: whether the host halts or runs the hart inside a dmi request
+  (even if the debugger writes the haltreq / resumereq of dmcontrol itself), the probe keeps reading (resumes) while the hart is running. The interval at which the probe
+  checks DMSTATUS is 20 ms or less (after the host halts it raw, the probe may read DATA0 only within that interval).
+  The host need not use the resume op of riscv-dm for the console's sake.
 
 | mechanism | Name | Direction | Definition |
 |---:|---|---|---|
