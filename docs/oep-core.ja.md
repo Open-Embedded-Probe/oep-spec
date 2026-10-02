@@ -34,6 +34,8 @@ OEP は 3 つの層からなる。
 
 OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、USB の記述子の細部。
 
+**言語**: この仕様の規範は英語の文である。日本語の文書は訳で、両者が食い違えば英語の文が正しい。
+
 ## 1. 用語
 
 | 用語 | 意味 |
@@ -41,8 +43,8 @@ OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、
 | probe | OEP を話す装置（デバッガ、治具、ロジアナなど） |
 | host | probe を使うソフトウェア |
 | target | probe がつながる相手（開発中のマイコンなど） |
-| 経路（transport） | OEP のフレームを運ぶもの（UART bridge、USB CDC、USB-Serial/JTAG、USB の vendor bulk、HID、TCP） |
-| シリアルの口（serial port） | 経路のうち OS からシリアルデバイスに見えるもの（UART bridge、USB CDC、USB-Serial/JTAG）。OEP と生のバイトを共用する（§3.4） |
+| 経路（transport） | OEP のフレームを運ぶもの（UART bridge、USB CDC、内蔵の USB シリアル、USB の vendor bulk、HID、TCP） |
+| シリアルの口（serial port） | 経路のうち OS からシリアルデバイスに見えるもの（UART bridge、USB CDC、内蔵の USB シリアル）。OEP と生のバイトを共用する（§3.4） |
 | インターフェース | probe が名前で出す機能。list で見つけ、fn で呼ぶ |
 | fn | そのセッションの間、インターフェースを指す番号（u16）。fn 0 は `oep.core` |
 | op | インターフェースの中の操作の番号（u8） |
@@ -56,6 +58,7 @@ OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、
 ### 2.1 byte order と文字列
 
 数値はすべて little endian。文字列は UTF-8 のバイト列で、長さは別に持つ（終端の 0 は付けない）。
+**bitmap** は byte の並びで、bit i は byte ⌊i/8⌋ の bit (i mod 8) である（bit 0 は最下位の bit）。bitmap は、それを含む値の終わりまで続く。
 
 ### 2.2 TLV
 
@@ -153,12 +156,12 @@ probe の時計は 1 つ: **起動からの ns（u64）**。時刻を返す所�
 ### 3.1 フレーム
 
 経路の種類は 2 つに分かれる。**シリアルの口（serial port）** は OS からシリアルデバイスに見える経路（UART bridge = probe の
-UART を USB-UART の変換チップで出したもの、USB CDC、USB-Serial/JTAG）で、OEP とシリアルの生のバイトを同じ口で運ぶ（§3.4）。
+UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB シリアル）で、OEP とシリアルの生のバイトを同じ口で運ぶ（§3.4）。
 ほかの経路（USB の vendor bulk、HID、TCP）は OEP だけを運ぶ。
 
 | 経路 | フレーム |
 |---|---|
-| シリアルの口（UART bridge、USB CDC、USB-Serial/JTAG） | COBS + CRC-16、0x00 で区切る（下） |
+| シリアルの口（UART bridge、USB CDC、内蔵の USB シリアル） | COBS + CRC-16、0x00 で区切る（下） |
 | USB の vendor bulk、TCP | `length(u16) message`。CRC なし。length 0 は予約（keepalive。読み飛ばす）。vendor bulk では 1 回の転送に複数のフレームが入ってよく、フレームが転送をまたいでもよい |
 | USB の HID（vendor 定義の report） | 長さつきのフレームのバイト列を report に詰める。report = `count(u16)`、count バイト、0 埋め（report の大きさは HID の記述子のとおり）。記述子が report ID を宣言していれば、input も output も report の先頭に ID が付き、count はその後ろから数える |
 
@@ -215,11 +218,11 @@ UART を USB-UART の変換チップで出したもの、USB CDC、USB-Serial/JT
   bInterfaceSubClass 0x4F ('O')、bInterfaceProtocol 0x45 ('E') の interface の bulk IN / OUT の組**は vendor bulk、**usage page 0xFF4F、
   usage 0x45 の HID** は HID（registry の `usb`）。probe は vendor bulk と HID をこの形で出し、それぞれ高々 1 つしか出さない。host は、
   この class / subclass / protocol と usage page / usage だけで device を OEP の probe とは決めない。ほかの class 0xFF の interface
-  （USB-Serial/JTAG の JTAG、WebUSB など）はこの subclass / protocol を持たないので掴まない。ほかの機能（DFU、Mass Storage など）は
+  （内蔵の USB シリアルのデバッグの機能、WebUSB など）はこの subclass / protocol を持たないので掴まない。ほかの機能（DFU、Mass Storage など）は
   OEP の外。
 - **USB の serial number は unit_id**（§7.5）: probe が serial を選べる口（CDC、vendor bulk、HID を自分で出す device）では、serial number を
   unit_id そのものにする（§7.5 の不変性）。host は開かずに個体を見分けられ（名指した probe を探せる）、どの経路の describe とも同じ値に
-  なる。serial を選べない口（USB-Serial/JTAG、USB-UART の変換チップ）は、host が経路を外から指定し、describe で unit_id を確かめる。
+  なる。serial を選べない口（内蔵の USB シリアル、USB-UART の変換チップ）は、host が経路を外から指定し、describe で unit_id を確かめる。
   confirm と describe は口を開いた後にしか使えないので、口の選び方はこの規則による。
 - **max_frame は両方向の上限**: probe は max_frame を超える message を送らず、host は max_frame を超える message を送らない。
 - **confirm の前**: どの probe も 64 byte（registry の `min_max_frame`）までの message を受ける（confirm の max_frame は 64 以上）。
@@ -478,7 +481,7 @@ probe は、ロックの有無、最後の session_id、その ID のロック�
 - **keepalive**: lease を延ばすだけ。
 - **lock_state**: ロックの有無と残り時間。locked は「どのセッションであれロックが持たれている」（lock_state はセッションを
   持たずに送れるので、probe には誰が聞いたかは分からない。自分が持っているかは host が自分の状態で知る）。
-- **owner**: open の TLV 0x01 owner（text、1〜32 byte、非 critical）で、host は持ち主の名前（例 "ch32rv monitor pid 1234"）を
+- **owner**: open の TLV 0x01 owner（text、1〜32 byte、非 critical）で、host は持ち主の名前（例 "flash-tool pid 1234"）を
   付けてよい。probe は最後の session_id と一緒に owner を覚え（別の session_id の open で置き換わり、同じ session_id の再開では
   owner が付いていれば置き換え、無ければ前のまま）、ロックが持たれている間、lock_state の応答と rejected locked の payload の後ろに
   TLV 0x01 owner で付ける（owner が無ければ付けない）。**session_id は返さない**（返すと他の host がその ID で再開でき、force なしで奪える）。owner は表示のためだけのもので、
@@ -573,7 +576,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x41 | model | text。probe の種類（同じ firmware を載せた同じ種類のハードウェアで同じ値。個体では変わらない）。**小文字の `a-z 0-9 -`**、1〜32 byte |
 | 0x42 | unit_id | 個体の ID。**必須**。text で 1〜32 byte、使える文字は `a-z 0-9 -` だけ（チップの固有の番号を小文字の 16 進にしたもの、など）。同じ probe の経路を host がまとめるのに使うので、どの経路の describe でも同じ値を返す。USB の serial number と同じ（§3.3）。host が probe を名指す値（アドレス `oep://<unit_id>/<スロットの名前>`、[probe の設定](oep-if-probe-config.ja.md) §1.1） |
 | 0x43 | channels | u16。channel の数 |
-| 0x44 | reserved | base(u16)、bitmap。probe が自分で使っていてインターフェースに割り当てない channel |
+| 0x44 | reserved | base(u16)、bitmap。bit i が立っていれば、channel base+i は probe が自分で使っていてインターフェースに割り当てない channel |
 | 0x45 | profile | text。治具などの配線の名前 |
 | 0x46 | label | channel(u16)、text。**firmware（配線の profile）が持つ固定の** channel の名前（NRST など）。設定で付けた名前は `oep.probe.config` の get で読む（describe は宣言だけ、§7.3） |
 | 0x47 | resets_on_open | u8。経路を開くと probe がリセットするか |
@@ -581,11 +584,11 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8: USB の interface 番号、0xFF は USB でない)。probe の経路ごとに 1 つ。**必須** |
 | 0x4A | discoverable | u8。1 = probe はプロジェクトの USB の VID:PID（§3.3）でも列挙している（今の経路がそうでなくても）。プロジェクトの VID:PID が registry に載るまでは、どの probe も 0 |
 | 0x4B | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
-| 0x4C | chip | text。probe の MCU の型番とリビジョン: `<型番> v<リビジョン>`、型番は小文字でハイフンなし（例 `esp32p4 v1.3`、`rp2350 v2`）。取ったデータに、どのチップで取ったかを残すため（任意） |
+| 0x4C | chip | text。probe の MCU の型番とリビジョン: `<型番> v<リビジョン>`、型番は小文字でハイフンなし（例 `abc123 v1.0`）。取ったデータに、どのチップで取ったかを残すため（任意） |
 | 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host はこの値に、要求と応答が線を通る時間を足した値以上を待つ（§4.4） |
 | 0x4E | port_speed | u8。1 = この probe は op port_speed（§3.5）を受ける（firmware が機能を ON にしたときだけ出す） |
 
-- transport の kind: 1 UART bridge、2 USB CDC、3 USB-Serial/JTAG、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
+- transport の kind: 1 UART bridge、2 USB CDC、3 内蔵の USB シリアル（MCU のハードウェアが持つ USB のシリアルの口で、serial number を含む USB の記述子を probe が選べないもの）、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
   1〜3 がシリアルの口（§3.4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
   使う。probe の起動の間は変わらない。
 - host は transport の数で、ロックの奪い方を決めてよい（経路がシリアルの口 1 つだけなら、口を排他で開けた時点で前の持ち主は

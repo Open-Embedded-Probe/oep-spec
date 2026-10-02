@@ -1,6 +1,6 @@
 # OEP v1 registry: every number on the wire, in one place (2026-09-25, working toward the freeze).
-# The spec text is docs/oep-core.ja.md (the core) and docs/oep-if-*.ja.md (the standard interfaces). tools/oepgen1.py generates
-# the C++ header and the Python module from this file; `oepgen1.py --check` fails when the committed outputs drift.
+# The spec text is docs/oep-core.md (the core) and docs/oep-if-*.md (the standard interfaces). tools/oepgen1.py generates
+# the C++ header and the Python and JS modules from this file; `oepgen1.py --check` fails when the committed outputs drift.
 # Numbers only: payload layouts stay in the spec tables. TLV tags live in the context of one (interface, op) or one
 # declaration; the same value in another context is another tag (core §2.2).
 # Per op: `lock` = needs the session lock; `closed_tail = true` = the response ends with a list of unknown length,
@@ -58,7 +58,7 @@ locked = 0x08
 session_required = 0x09
 no_connection = 0x0A
 unsupported = 0x0B
-result_lost = 0x0C              # a request sent again whose result was too large to keep (read it again)
+result_lost = 0x0C              # a resend whose answer is not kept (it fell out of the table, or was too large): read the state again (core §5.2)
 corr_reused = 0x0D              # a request sent again with the same corr but another fn, op or payload
 expired = 0x0E                  # this session's lock ended by lease expiry and its resources were swept: open again (core §6.2); the side forced out sees locked, then no_session (core §9)
 
@@ -107,8 +107,8 @@ slot_name_max_bytes = 32
 interface_name_max_bytes = 64
 max_op_ms_reference = 10000     # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
 resource_reuse_distance = 1024  # a closed resource number is not reused among the most recently closed this many (core §9)
-dm_wait_ms = 100                # riscv-dm: one wait for a DM state inside a high-level op (oep-if-debug §1)
-dmi_busy_retries = 100          # riscv-dm: DMI busy is retried this many times, then status wait (oep-if-debug §1)
+dm_wait_ms = 100                # riscv-dm: one wait for a DM state inside a high-level op (oep-if-debug §4)
+dmi_busy_retries = 100          # riscv-dm: DMI busy is retried this many times, then status wait (oep-if-debug §4)
 reset_wait_ms = 100             # riscv-dm reset: wait for the hart after releasing ndmreset, per attempt (oep-if-debug §4.3)
 reset_retries = 1               # riscv-dm reset: the sequence is repeated at most this many times (flags bit2) (oep-if-debug §4.3)
 swd_wait_retries = 100          # arm-adi transfer: WAIT is retried this many times, then status wait (oep-if-debug §6)
@@ -199,7 +199,7 @@ profile = 0x45
 label = 0x46                    # channel(u16) text: the firmware's fixed channel names (settings' labels: probe.config get)
 resets_on_open = 0x47
 transport = 0x49                # index(u8) kind(u8) interface(u8, 0xFF not USB): one per transport; required (0x48 reserved)
-discoverable = 0x4A             # u8: 1 = the probe also enumerates as a USB device whose iProduct starts with "OEP" (core §3.3)
+discoverable = 0x4A             # u8: 1 = the probe also enumerates with the project's USB VID:PID (core §3.3, §7.5); 0 until that VID:PID is listed in [usb]
 plan_roles = 0x4B               # u32: the most role assignments the plan holds at once, every fn together (core §8)
 chip = 0x4C                     # text: the probe MCU's part and revision (optional)
 max_op_ms = 0x4D                # u32: the longest one request may take; required (core §7.5)
@@ -221,7 +221,7 @@ disabled = 6                    # a channel the settings' disable item takes out
 [interface.enum.transport_kind] # describe transport (core §7.5); 1-3 are serial ports (core §3.4)
 uart_bridge = 1
 usb_cdc = 2
-usb_serial_jtag = 3
+usb_serial_jtag = 3             # built-in USB serial: the MCU hardware's USB serial port, whose descriptors the probe cannot choose (core §7.5)
 vendor_bulk = 4
 hid = 5
 tcp = 6
@@ -232,7 +232,7 @@ revert = 2
 [interface.enum.resumed]        # open's answer (core §6.4)
 new = 0
 resumed = 1                     # the same session id, resources kept
-swept = 2                       # the same session id after expiry / force: resources were removed
+swept = 2                       # the same session id after its lease expired: resources were removed (core §6.4)
 [interface.event]
 heartbeat = 0x01                # boot_id(u32), uptime_ns(u64)
 [interface.reserved]
@@ -278,7 +278,7 @@ existing = 0x02
 dormant_woken = 0x04
 halted = 0x08
 [interface.enum.target_id_scheme]
-wch_dmi_7f = 1                  # the u32 at DMI 0x7F of a WCH debug module; 0 and all ones = none (not sent)
+wch_dmi_7f = 1                  # the u32 at DMI address 0x7F (the name: WCH's debug module keeps an identifier there); 0 and all ones = none (not sent)
 [interface.enum.target_id_len]  # bytes of each scheme's value (slot locks must match it; oep-if-probe-config §1.1)
 wch_dmi_7f = 4
 [interface.enum.attach_method]
@@ -329,7 +329,7 @@ existing = 0x02
 dormant_woken = 0x04
 halted = 0x08
 [interface.enum.target_id_scheme]
-wch_dmi_7f = 1                  # the u32 at DMI 0x7F of a WCH debug module; 0 and all ones = none (not sent)
+wch_dmi_7f = 1                  # the u32 at DMI address 0x7F (the name: WCH's debug module keeps an identifier there); 0 and all ones = none (not sent)
 [interface.enum.target_id_len]
 wch_dmi_7f = 4
 [interface.enum.attach_method]
@@ -619,7 +619,7 @@ op = [
   { code = 0x08, name = "release", lock = true },
   { code = 0x09, name = "query", lock = false },
 ]
-[interface.tlv.configure]       # also the request of query (the analog-only tags 0x47, 0x55, 0x57-0x59 are not used here)
+[interface.tlv.configure]       # also the request of query (the analog-only tag 0x47 frontend is not used here)
 mode = 0x40
 rate = 0x42
 samples = 0x43

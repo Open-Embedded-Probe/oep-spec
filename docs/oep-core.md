@@ -34,6 +34,8 @@ OEP consists of 3 layers.
 
 Outside OEP: updating the probe's own firmware (DFU, Mass Storage, etc.), the details of the USB descriptors.
 
+**Language**: the English text of this specification is normative. The Japanese documents are translations; where the two differ, the English text is right.
+
 ## 1. Terms
 
 | Term | Meaning |
@@ -41,8 +43,8 @@ Outside OEP: updating the probe's own firmware (DFU, Mass Storage, etc.), the de
 | probe | A device that speaks OEP (a debugger, a fixture, a logic analyser, etc.) |
 | host | Software that uses a probe |
 | target | What the probe is connected to (a microcontroller under development, etc.) |
-| transport | What carries OEP frames (UART bridge, USB CDC, USB-Serial/JTAG, USB vendor bulk, HID, TCP) |
-| serial port | A transport that the OS sees as a serial device (UART bridge, USB CDC, USB-Serial/JTAG). Shares the port between OEP and raw bytes (§3.4) |
+| transport | What carries OEP frames (UART bridge, USB CDC, built-in USB serial, USB vendor bulk, HID, TCP) |
+| serial port | A transport that the OS sees as a serial device (UART bridge, USB CDC, built-in USB serial). Shares the port between OEP and raw bytes (§3.4) |
 | interface | A function the probe exposes under a name. Found with list, called with fn |
 | fn | A number (u16) that designates an interface for the duration of the session. fn 0 is `oep.core` |
 | op | The number of an operation within an interface (u8) |
@@ -56,6 +58,7 @@ Outside OEP: updating the probe's own firmware (DFU, Mass Storage, etc.), the de
 ### 2.1 Byte order and strings
 
 All numbers are little endian. Strings are UTF-8 byte sequences whose length is carried separately (no terminating 0).
+A **bitmap** is a byte sequence in which bit i is bit (i mod 8) of byte ⌊i/8⌋, bit 0 being the least significant bit. A bitmap runs to the end of the value that contains it.
 
 ### 2.2 TLV
 
@@ -153,12 +156,12 @@ The probe has one clock: **ns since boot (u64)**. Wherever a time is returned (m
 ### 3.1 Frames
 
 Transports fall into 2 kinds. A **serial port** is a transport that the OS sees as a serial device (UART bridge = the probe's
-UART brought out through a USB-UART converter chip, USB CDC, USB-Serial/JTAG); it carries OEP and raw serial bytes on the same port (§3.4).
+UART brought out through a USB-UART converter chip, USB CDC, built-in USB serial); it carries OEP and raw serial bytes on the same port (§3.4).
 The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 
 | Transport | Frame |
 |---|---|
-| Serial port (UART bridge, USB CDC, USB-Serial/JTAG) | COBS + CRC-16, delimited by 0x00 (below) |
+| Serial port (UART bridge, USB CDC, built-in USB serial) | COBS + CRC-16, delimited by 0x00 (below) |
 | USB vendor bulk, TCP | `length(u16) message`. No CRC. Length 0 is reserved (keepalive; skipped). On vendor bulk, one transfer may contain several frames, and a frame may span transfers |
 | USB HID (vendor-defined report) | The bytes of length-prefixed frames are packed into reports. report = `count(u16)`, count bytes, zero padding (the report size is as in the HID descriptor). If the descriptor declares a report ID, both input and output reports start with the ID, and count is counted from after it |
 
@@ -215,11 +218,11 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
   bInterfaceSubClass 0x4F ('O'), bInterfaceProtocol 0x45 ('E')** is vendor bulk, and **a HID with usage page 0xFF4F,
   usage 0x45** is HID (the registry's `usb`). A probe exposes vendor bulk and HID in this shape, and at most one of each. The host does not decide
   that a device is an OEP probe from this class / subclass / protocol and usage page / usage alone. Other class 0xFF interfaces
-  (the JTAG of USB-Serial/JTAG, WebUSB, etc.) do not have this subclass / protocol, so they are not claimed. Other functions (DFU, Mass Storage, etc.) are
+  (the debug function of a built-in USB serial, WebUSB, etc.) do not have this subclass / protocol, so they are not claimed. Other functions (DFU, Mass Storage, etc.) are
   outside OEP.
 - **The USB serial number is the unit_id** (§7.5): on ports where the probe can choose the serial (CDC, vendor bulk, HID that the device exposes itself), the serial number is
   the unit_id itself (the invariance of §7.5). The host can tell the unit apart without opening it (and so find a named probe), and the value equals the describe of every
-  transport. On ports where the serial cannot be chosen (USB-Serial/JTAG, USB-UART converter chips), the host specifies the transport from outside and confirms the unit_id with describe.
+  transport. On ports where the serial cannot be chosen (built-in USB serial, USB-UART converter chips), the host specifies the transport from outside and confirms the unit_id with describe.
   confirm and describe can only be used after the port is opened, so the choice of port follows this rule.
 - **max_frame is the limit in both directions**: the probe sends no message exceeding max_frame, and the host sends no message exceeding max_frame.
 - **Before confirm**: every probe accepts messages of up to 64 bytes (the registry's `min_max_frame`) (the max_frame of confirm is 64 or more).
@@ -478,7 +481,7 @@ declares lock-free must not change state.
 - **keepalive**: only extends the lease.
 - **lock_state**: whether the lock is held and the remaining time. locked means "the lock is held by whatever session" (lock_state can be sent without holding a
   session, so the probe does not know who asked. Whether it holds it, the host knows from its own state).
-- **owner**: with the TLV 0x01 owner of open (text, 1 to 32 bytes, non-critical), the host may attach an owner name (e.g. "ch32rv monitor pid 1234").
+- **owner**: with the TLV 0x01 owner of open (text, 1 to 32 bytes, non-critical), the host may attach an owner name (e.g. "flash-tool pid 1234").
   The probe remembers owner together with the last session_id (replaced by an open with a different session_id; on a resume with the same session_id, replaced if
   owner is present, otherwise kept), and while the lock is held, appends TLV 0x01 owner after the answer of lock_state and the payload of rejected locked
   (not appended if there is no owner). **The session_id is not returned** (returning it would let another host resume with that ID and take over without force). owner is for display only, and
@@ -573,7 +576,7 @@ appears in the answer.
 | 0x41 | model | text. The kind of probe (the same value for hardware of the same kind carrying the same firmware. Does not vary per unit). **Lowercase `a-z 0-9 -`**, 1 to 32 bytes |
 | 0x42 | unit_id | The ID of the unit. **Mandatory.** text of 1 to 32 bytes; the only usable characters are `a-z 0-9 -` (the chip's unique number in lowercase hex, etc.). Used by the host to group the transports of the same probe, so the describe of every transport returns the same value. Equals the USB serial number (§3.3). The value by which the host names a probe (the address `oep://<unit_id>/<slot name>`, [probe settings](oep-if-probe-config.md) §1.1) |
 | 0x43 | channels | u16. The number of channels |
-| 0x44 | reserved | base(u16), bitmap. Channels the probe uses itself and does not assign to interfaces |
+| 0x44 | reserved | base(u16), bitmap. If bit i is set, channel base+i is used by the probe itself and is not assigned to interfaces |
 | 0x45 | profile | text. The name of the wiring, of a fixture or the like |
 | 0x46 | label | channel(u16), text. A **fixed** channel name **held by the firmware (the wiring profile)** (NRST, etc.). Names given through the settings are read with the get of `oep.probe.config` (describe is declarations only, §7.3) |
 | 0x47 | resets_on_open | u8. Whether the probe resets when the transport is opened |
@@ -581,11 +584,11 @@ appears in the answer.
 | 0x49 | transport | index(u8), kind(u8), interface(u8: the USB interface number, 0xFF if not USB). One per transport of the probe. **Mandatory** |
 | 0x4A | discoverable | u8. 1 = the probe also enumerates with the project's USB VID:PID (§3.3) (even if the current transport is not one). Until the project's VID:PID is listed in the registry, every probe sends 0 |
 | 0x4B | plan_roles | u32. The number of role_assignments the plan can hold at once (the total over all fns. Includes the settings plan). A probe with a limit always emits it (§8) |
-| 0x4C | chip | text. The part number and revision of the probe's MCU: `<part number> v<revision>`, the part number in lowercase without hyphens (e.g. `esp32p4 v1.3`, `rp2350 v2`). So that captured data records which chip captured it (optional) |
+| 0x4C | chip | text. The part number and revision of the probe's MCU: `<part number> v<revision>`, the part number in lowercase without hyphens (e.g. `abc123 v1.0`). So that captured data records which chip captured it (optional) |
 | 0x4D | max_op_ms | u32. The longest time the probe spends on one request. **Mandatory.** Ops that could exceed it (run, the sum of the waits of dmi, the start of capture, save, the hold_ms of the reset of attach) are rejected unsupported if the sum of their arguments exceeds it. The lease is not counted during execution (§6.1). Reading the other transports and the consoles of connections continues. The value is decided by the probe. The host waits at least this value plus the time the request and answer spend on the wire (§4.4) |
 | 0x4E | port_speed | u8. 1 = this probe accepts op port_speed (§3.5) (emitted only when the firmware has the function ON) |
 
-- The kind of transport: 1 UART bridge, 2 USB CDC, 3 USB-Serial/JTAG, 4 vendor bulk, 5 HID, 6 TCP (the registry's `transport_kind`).
+- The kind of transport: 1 UART bridge, 2 USB CDC, 3 built-in USB serial (a USB serial port implemented by the MCU's hardware, whose USB descriptors, the serial number included, the probe cannot choose), 4 vendor bulk, 5 HID, 6 TCP (the registry's `transport_kind`).
   1 to 3 are serial ports (§3.4). index is the number designating a transport within the probe (from 0); when the probe's settings designate a serial port they also use this
   number. It does not change while the probe stays booted.
 - The host may decide how to take over the lock from the number of transports (if the only transport is a single serial port, there is no previous owner once the port has been opened
@@ -776,7 +779,7 @@ Standard interfaces and independent interfaces are both defined by the following
 |---|---|
 | [Standard interfaces: common parts](oep-if-common.md) | Positioned streams, debug connections |
 | [Standard interfaces: wire and debug](oep-if-debug.md) | `oep.wire.rvswd`, `oep.wire.swio`, `oep.wire.swd`, `oep.target.riscv-dm`, `oep.target.arm-adi` |
-| [Standard interfaces: console](oep-if-console.md) | `oep.target.console` (the dmseq framing is [target-console-dmseq](target-console-dmseq.ja.md) (Japanese)) |
+| [Standard interfaces: console](oep-if-console.md) | `oep.target.console` (the dmseq framing is [target-console-dmseq](target-console-dmseq.md)) |
 | [Standard interfaces: fixture](oep-if-fixture.md) | `oep.fixture.gpio`, `oep.fixture.uart`, `oep.fixture.i2c-target`, `oep.fixture.spi-target` |
 | [Standard interfaces: capture](oep-if-capture.md) | `oep.fixture.logic`, `oep.fixture.analog`, `oep.fixture.capture-group` |
 | [Standard interfaces: probe settings](oep-if-probe-config.md) | `oep.probe.config` |

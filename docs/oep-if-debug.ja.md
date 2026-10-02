@@ -8,11 +8,13 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 
 | 名前 | revision | 役割 |
 |---|---:|---|
-| `oep.wire.rvswd` | 1 | WCH の 2 線（RVSWD）で RISC-V の DM につなぐ |
-| `oep.wire.swio` | 1 | WCH の 1 線（SWIO）で RISC-V の DM につなぐ |
+| `oep.wire.rvswd` | 1 | 2 線の RVSWD で RISC-V の DM につなぐ |
+| `oep.wire.swio` | 1 | 1 線の SWIO で RISC-V の DM につなぐ |
 | `oep.wire.swd` | 1 | ARM の SWD で ADI につなぐ |
 | `oep.target.riscv-dm` | 1 | RISC-V Debug Module の操作 |
 | `oep.target.arm-adi` | 1 | ARM ADI（DP / AP）の操作 |
+
+（参考）RVSWD と SWIO は、WCH の RISC-V の MCU が持つ 2 線と 1 線のデバッグの線である。target_id の scheme 1 の registry の名前 `wch_dmi_7f` も、WCH のデバッグモジュールから来ている。
 
 - `oep.wire.*` は connection を作り、`oep.target.*` は connection の上で target を操作する。target を扱うインターフェースは
   attach の前から list に出し、connection の無い要求は rejected no_connection。
@@ -163,7 +165,7 @@ TLV:
 | attach の応答 | 0x10 | target_id | scheme(u8)、値 |
 | attach の応答 | 0x11 | dpc | u32（RV64 は 8 byte）。hart が止まっている（flags bit3）ときの dpc |
 
-target_id の scheme（`target_id_scheme`）: 1 = WCH の DM の DMI 0x7F を読んだ u32（長さ 4）。0 と 0xFFFFFFFF は「無い」（付けない）。
+target_id の scheme（`target_id_scheme`）: 1 = DMI のアドレス 0x7F を読んだ u32（長さ 4）。0 と 0xFFFFFFFF は「無い」（付けない）。
 2 = swd の targetsel（u32、connections の entry だけに使う。錠には使わない）。scheme ごとの値の長さは registry に持つ
 （スロットの錠の mask / value の長さの確かめに使う）。
 
@@ -286,7 +288,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 
 - host のローダーを呼ぶためのもの。probe は dcsr の ebreakm と prv = M を立て、pc から走らせ、止まるのを待つ。**probe は run を
   出し直さない**（止まった位置が開始位置のままでも、走って戻った場合と区別できない）。走らなかったかどうかは host が dpc で
-  判断し、ローダーを二度走らせてよいときだけやり直す。**gdb の continue には使わない**（prv と ebreakm を変える）。
+  判断し、ローダーを二度走らせてよいときだけやり直す。**デバッガの continue には使わない**（prv と ebreakm を変える）。
 - timeout_ms は 1〜core の max_op_ms（0 は rejected malformed、超えれば rejected unsupported）。run の応答を返すまで、probe はこの
   connection のほかの要求に答えない（実行中は lease を数えない、core §6.1。ほかの connection のコンソールの読みは続ける）。
   止まったら stopped = 1（success）。上限に達したら probe は hart を止めてから dpc と値を読み、stopped = 0、status timeout、outcome
