@@ -63,6 +63,8 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
     bytes, or an undefined drive_kind, is rejected malformed. On a probe whose describe of `oep.fixture.gpio` declares drive_levels,
     kind 0 with drive_value equal to the number of levels or more is rejected unsupported. A probe that does not declare drive_levels (including a probe without `oep.fixture.gpio`)
     keeps this field but does not apply it (the strength stays the default).
+    (Informative) Unlike gpio set, whose drive TLV ignores a level out of range, this item refuses it so that a mistake in a setting that is
+    stored and used at every boot is reported when it is written.
   - An idle with mode 3 / 4 applies its level and its strength together (both at boot and at release).
 
 ### 1.1 slot
