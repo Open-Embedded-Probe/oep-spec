@@ -194,7 +194,7 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 | 0x04 | — | 予約（旧 attach_under_reset。attach の reset TLV になった） | |
 | 0x05 | connections | first(u8) | §2.1（ロック不要） |
 
-- swio の組は swclk = 0xFFFF（1 本の線。scan で swclk ≠ 0xFFFF は rejected malformed）。scan の kind は `scan_kind`: 1 = riscv-dm、
+- swio の組は swclk = 0xFFFF（1 本の線。swclk ≠ 0xFFFF は宣言が許さない組で、scan でも attach でも §1 のとおり rejected unsupported）。scan の kind は `scan_kind`: 1 = riscv-dm、
   2 = arm-adi。`id` は線の種類が決める生の識別子（riscv-dm は DMSTATUS、arm-adi は DPIDR）。
 - **attach の flags**（3 線共通、registry の `attach_flags`）: bit0 保留中の havereset を確認応答した（riscv）、bit1 既存の connection、
   bit2 dormant から起こした（swd）、bit3 hart が止まっている（応答の TLV 0x11 dpc が有効）。
@@ -290,13 +290,16 @@ TLV:
   （DMI 0x7E、続けて DMI 0x7D）をもう 2 回書いてよい。これらの書き込みは wake / 設定の手順の一部である。
 - **速さの選び方**: probe は、DMSTATUS の読み出しだけで T を選ぶ（§1）。その一番遅い T から短い方へ進め、1 / (2 × max_speed) より短くしない。その後、
   選んだ T で scratch のレジスタ（§3）を使って書く経路を確かめる。
-- **休んだ後の同期の取り直し**: 線が休んでいる間に、target がリンクを失うことがある。300 µs 以上休んだ後の最初のフレームの前に、probe は DMSTATUS を読む。
-  その読み出しが失敗したか、DMSTATUS が bit 7（authenticated）の立った「見つかった」（§1）でなければ、probe は設定の組を 2 回送り（wake のパターンは無し）、
-  DMSTATUS をもう一度読む。それでも失敗なら、その操作は線の上の失敗であり、§2 のとおり再試行する。再試行の間、probe は wake / 設定の手順の全体を
-  送ってよい。
+- **要求の中で線を失う**: 線が休んでいる間に、target がリンクを失うことがある。要求の中で線を戻せない probe は、§2 のとおり status line で
+  答える。
+- （参考）参照の probe の戻し方: 300 µs 以上休んだ後の最初のフレームの前に、DMSTATUS を読む。その読み出しが失敗したか、DMSTATUS が
+  bit 7（authenticated）の立った「見つかった」（§1）でなければ、設定の組を 2 回送り（wake のパターンは無し）、DMSTATUS をもう一度読む。それでも失敗なら、
+  §2 のとおり再試行し、再試行の間は wake / 設定の手順の全体を送ってよい。
 - （参考）wake のパターンは、target のデバッグの口だけでなく target そのものをリセットすることがある。参照の probe は、応えない線を立ち上げるときだけ送り、
   同期の取り直しでは送らない。T は、DMSTATUS を続けて 1000 回読んで同じ値とパリティの一致が得られたら受け入れ、書き込みは、scratch のレジスタへの書き込みと
   読み戻しを 256 回往復して一致したら受け入れる。
+- （参考）ほかのデバッガは、つなぐときに、状態の問い合わせの長い形（ビットの区切り 85 個）も送ることがある。probe はそれを送らなくてよい。取り込んだ
+  波形を読む人は、それを誤りと読まないこと。
 
 ### 3.2 SWIO のフレーム
 
@@ -307,8 +310,12 @@ TLV:
 
 | 区切り | low | その後の high |
 |---|---|---|
-| 1 | 240 から 270 ns | 240 から 270 ns |
-| 0 | 840 から 880 ns | 240 から 270 ns |
+| 1 | 240 から 310 ns | 240 から 270 ns |
+| 0 | 840 から 1060 ns | 240 から 270 ns |
+
+- 勧める low は、1 が 262 ns、0 が 862 ns。
+- （参考）low の範囲は、1 つの target の系列で動くと測ったもので、target そのものの限界はわかっていない。ベンチで掃引して測る予定で、
+  [target ごとの scan と attach の記録](target-scan-notes.ja.md) §3.1 に記録する。
 
 **target が送るビットの区切り**（読み出しの区切り）: probe は線を 240 から 270 ns low に駆動し、駆動をやめる。target は、線を low に保って 0 を、
 上がるにまかせて 1 を送る。probe は、自分が作った立ち下がりから 520 から 600 ns 後に線を読む（high = 1、low = 0）。その後、線がまた high に読めるまで

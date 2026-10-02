@@ -194,7 +194,7 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
 | 0x04 | — | Reserved (formerly attach_under_reset. Became the reset TLV of attach) | |
 | 0x05 | connections | first(u8) | §2.1 (no lock) |
 
-- A swio combination has swclk = 0xFFFF (a single wire. swclk ≠ 0xFFFF in scan is rejected malformed). The kind of scan is `scan_kind`: 1 = riscv-dm,
+- A swio combination has swclk = 0xFFFF (a single wire. swclk ≠ 0xFFFF is a combination the declaration does not allow, rejected unsupported as §1 says, in scan and attach alike). The kind of scan is `scan_kind`: 1 = riscv-dm,
   2 = arm-adi. `id` is the raw identifier determined by the kind of wire (DMSTATUS for riscv-dm, DPIDR for arm-adi).
 - **The flags of attach** (common to the 3 wires, the registry's `attach_flags`): bit0 a pending havereset was acknowledged (riscv), bit1 existing connection,
   bit2 woken from dormant (swd), bit3 the hart is halted (the answer's TLV 0x11 dpc is valid).
@@ -290,13 +290,16 @@ wire is in use it keeps a pull-up on SWDIO, so that the line reads high when nei
   configuration pair (DMI 0x7E, then DMI 0x7D) twice again right after it, at the same T. These writes are part of the wake / configuration sequence.
 - **Choosing the speed**: the probe chooses T by DMSTATUS reads only (§1), from that slowest T towards shorter ones, and never shorter than 1 / (2 × max_speed). It then
   checks the write path at the chosen T with the scratch register (§3).
-- **Re-synchronising after a rest**: the target may lose the link while the bus rests. Before the first frame after a rest of 300 µs or more, the probe reads DMSTATUS.
-  If that read fails, or DMSTATUS is not "found" (§1) with bit 7 (authenticated) set, the probe sends the configuration pair twice (without the wake pattern) and reads
-  DMSTATUS again. If it still fails, the operation fails on the wire and is retried as §2 says. While it retries, the probe may send the whole wake / configuration
-  sequence.
+- **Losing the wire inside a request**: the target may lose the link while the bus rests. A probe that cannot bring the wire back within a request answers status
+  line, as §2 says.
+- (Informative) The reference probe's way back: before the first frame after a rest of 300 µs or more, it reads DMSTATUS. If that read fails, or DMSTATUS is not
+  "found" (§1) with bit 7 (authenticated) set, it sends the configuration pair twice (without the wake pattern) and reads DMSTATUS again. If that still fails, it
+  retries as §2 says, and while it retries it may send the whole wake / configuration sequence.
 - (Informative) The wake pattern may reset the target as well as its debug interface. The reference probe sends it only when it brings up a wire that does not answer,
   not when it re-synchronises. It accepts a T when 1000 consecutive DMSTATUS reads return the same value with a matching parity, and its writes when 256 write and
   read-back round trips on the scratch register match.
+- (Informative) At connect, another debugger may also send a longer form of the status query, 85 bit cells long. A probe need not send it. Someone decoding a
+  capture should not read it as an error.
 
 ### 3.2 SWIO frames
 
@@ -307,8 +310,12 @@ pull-up on the line.
 
 | Cell | Low | High after it |
 |---|---|---|
-| 1 | 240 to 270 ns | 240 to 270 ns |
-| 0 | 840 to 880 ns | 240 to 270 ns |
+| 1 | 240 to 310 ns | 240 to 270 ns |
+| 0 | 840 to 1060 ns | 240 to 270 ns |
+
+- The recommended lows are 262 ns for a 1 and 862 ns for a 0.
+- (Informative) The low ranges were measured to work on one target family; the target's own limits are not known. A sweep on the bench is planned, to be recorded in
+  [target scan notes](target-scan-notes.ja.md) (Japanese) §3.1.
 
 **Bit cells the target sends** (read cells): the probe drives the line low for 240 to 270 ns, then stops driving it. The target sends 0 by holding the line low,
 and 1 by leaving it to rise. The probe samples the line 520 to 600 ns after the falling edge it made (high = 1, low = 0). It then waits until the line reads high

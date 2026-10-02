@@ -93,6 +93,8 @@ pull-up（R4 / R5）付きで、pull の判定に使えない。
 
 **速さ**（10-02）: SWIO read_block 64 語 8.1 ms（P4）、classic ESP32 の治具は 35 ms。1 DMI 約 43〜44 µs（うち frame gap 8 µs）。
 
+**SWIO のビットの時間の限界**（予定）: debug §3.2 の low の範囲（1 = 240〜310 ns、0 = 840〜1060 ns）は 1 つの target の系列で動くと測ったもので、target そのものの限界はわかっていない。ベンチで low / high の時間を掃引して測り、ここに記録する（まだ測っていない）。
+
 ### 3.2 CH32X035
 
 **線と設定**: rvswd、idle_clock high、max_speed 0（probe の最速）、at boot、retry 1 s、mechanism dmseq（bench x035-p4 / x035-weact）。

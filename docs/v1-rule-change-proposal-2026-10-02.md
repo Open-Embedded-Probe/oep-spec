@@ -28,7 +28,7 @@ The premise is the review's: people we have never met build probes and hosts fro
 - **agreed with condition**: accepted on the condition stated in the item. The condition is folded into the proposed text unless the item says it is still to be met.
 - **open**: not settled. The item says what is missing.
 
-Open items: P2-★4's cold-attach measurement (bench, before the freeze). For the peers' review: the RVSWD and SWIO frames of debug §3.1 / §3.2 (7392817), a rule addition written from the reference probe (no item above).
+Open items: P2-★4's cold-attach measurement (bench, before the freeze). The RVSWD and SWIO frames of debug §3.1 / §3.2 (7392817), a rule addition written from the reference probe (no item above): reviewed by ch32rv 2026-10-02, its points applied (the re-sync after a rest made informative, the 85-cell status query noted, the SWIO low ranges widened to 240 to 310 / 840 to 1060 ns, swio swclk ≠ 0xFFFF unsupported in scan as in attach).
 
 **Final answers.**
 
