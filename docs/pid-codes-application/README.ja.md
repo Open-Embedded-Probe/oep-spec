@@ -1,6 +1,6 @@
 # pid.codes への申請の資料
 
-状態: **pull request の準備済み**（2026-10-02。Open-Embedded-Probe/pidcodes.github.com の branch `add-open-embedded-probe-4f45`、commit 28411a4）。ここにあるファイルを、そのまま [pid.codes](https://pid.codes/howto/) のリポジトリ
+状態: **pull request を出した**（2026-10-02、https://github.com/pidcodes/pidcodes.github.com/pull/1296 、head は fork の `add-open-embedded-probe-4f45` 080bf79。審査待ち）。ここにあるファイルを、そのまま [pid.codes](https://pid.codes/howto/) のリポジトリ
 （`pidcodes/pidcodes.github.com`）への pull request に入れる。PID の使い方の規則は oep-probe-arduino の
 [PID-USE.md](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/PID-USE.md)、host から見た見分け方と、割り当て後に
 変える所は [USB の識別](../usb-identity.ja.md)。
