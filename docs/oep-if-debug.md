@@ -33,6 +33,11 @@ connections, §3 status). The only definition of the numbers is `registry/oep-v1
     twice". The count = 0 sequence is in ascending order of swdio, then ascending order of swclk within it, and **combinations containing a channel currently held by something else (a plan, the connection of another wire,
     a settings resource) are not listed** (count = 0 tries only the combinations that may be driven). If a request listing combinations contains a held
     channel, the whole request is rejected unavailable as in §8.1.
+  - **Channels with an idle item**: the count = 0 sequence and the candidates of an attach without pins leave out every channel that has an **idle item**
+    in the probe's settings (any mode, [probe settings](oep-if-probe-config.md) §1), in addition to channels held by something else and disabled channels.
+    A request that names such a channel explicitly (a scan listing combinations, the pins of attach) is accepted when the idle is an input (mode 0 to 2).
+    It is rejected unavailable (cause 5, the channel, holder_kind 7 = settings idle) when the idle is an output (mode 3 / 4).
+  - (Informative) count = 0 drives every free candidate pin in turn. Without the user's consent, a host does not send count = 0 to a fixture whose wiring it does not know.
   - A wire holds the channels of the combination a live connection is using (released when the connection is gone). While held, if a plan or the settings tries
     to take that channel, rejected unavailable (core §8.1).
   - The `tried` of the scan answer is the number of combinations tried from the start of the request's sequence (for count = 0, the count = 0 sequence above. On a channel_group wire, the order emitted in describe).
@@ -102,6 +107,7 @@ In addition to [common parts](oep-if-common.md) §2:
   When decided inside a console read, a mark link-lost is attached and it closes.
 - **When the probe closes a connection, it does not change the target's state more than necessary** (it does not reset the target. A hart that was halted is left as the
   host's last operation left it).
+- When a connection closes, the channels of its combination go to the idle state of core §8 (the drive of idle_clock stops).
 
 **The state machine of connection and hart**:
 

@@ -109,9 +109,9 @@ depending on the chip, switches the pad to the analog function and cuts off the 
   probe. **A combination that cannot be shared is refused at plan_apply (and at the attach of a wire, the set of the settings) with rejected unavailable**. It is refused whichever
   comes later. It must not silently break the reading and writing of other functions.
 - A probe that allows sharing allows it only when the digital input of that pin (and the output of other functions) does not change while the analog is running.
-
-
-
+- **Taking a plan does not change a pin's electrical state** (core §8). A logic capture never changes it: it only listens. It does not stop an output, and it does not change
+  the pull or direction of a pin that another function or an idle output drives. An analog channel leaves its idle state at start (the pad leaves the digital function).
+- An analog plan on a channel whose idle is an output (mode 3 / 4) is rejected unavailable (cause 5, holder_kind 7).
 
 ## 2. Segments
 

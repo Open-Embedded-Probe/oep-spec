@@ -122,6 +122,10 @@ read_rx で取り出す。
 - この fn の plan は role 1 と 2 をちょうど 1 つずつ、別々の channel で持つ（どちらかが無い、同じ role が 2 つある、両方の role が同じ
   channel の plan_apply は rejected malformed）。plan を解く・置き換えると target は止まり、describe の直後と同じ状態に戻る（state 0、
   mode 0、列・待ち・置き場・累計を消し、stretch の値は 0）。
+- SDA と SCL は**オープンドレインだけ**で駆動する: probe は low に引くか離すかで、high に駆動しない。
+- **内部のプルアップ**: configure されている間 SDA / SCL に自分のプルアップを入れる probe は、features の bit2（内部プルアップ）と describe の
+  tag 0x42 pullup_ohms（u32、おおよその値）でそれを宣言する。宣言しない probe はプルアップを入れない。v1 にはそれを切り替える要求は無い。
+- state 0 では probe はどのアドレスにも ACK せず、両方の線を離しておく（low に引かず、プルアップも入れない。configure までは channel は core §8 の空きの状態のまま）。
 - configure は target を作り直す（積んだフレーム、待ち、置き場、rx_frames と errors は消える。stretch の値は保つ）。この fn の plan が
   無いときは rejected unavailable（cause 6）。address が 0x7F を超える、mode が未定義（0、4 以上）なら rejected malformed。定義にあるが
   宣言に無い mode は rejected unsupported。
@@ -149,8 +153,9 @@ read_rx で取り出す。
   だけ（ほかは unknown_operation）。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け
   （state 0 でも）、値は次に受ける byte から効く。configure と reset は値を変えない。
 - describe: role_channels、max_length（1 フレームの最大 byte）、max_clock_hz（確かめた SCL の上限）、features（bit0 mode 3、
-  bit1 stretch。mode 1 と 2 は必須）、queue_depth（tag 0x40、u8: 積めるフレームの数。mode 3 では未読の置き場の数の上限）、
-  max_stretch_us（tag 0x41、u32: stretch が受ける最大の µs。1 以上。features の bit1 を宣言する probe は必ず載せる）。
+  bit1 stretch、bit2 内部プルアップ。mode 1 と 2 は必須）、queue_depth（tag 0x40、u8: 積めるフレームの数。mode 3 では未読の置き場の数の上限）、
+  max_stretch_us（tag 0x41、u32: stretch が受ける最大の µs。1 以上。features の bit1 を宣言する probe は必ず載せる）、
+  pullup_ohms（tag 0x42、u32: 内部プルアップのおおよその抵抗値。features の bit2 を宣言する probe は必ず載せる）。
 - 通知は送らない（subscribe は rejected unsupported）。
 
 ## 4. `oep.fixture.spi-target`
@@ -175,6 +180,8 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   出すバイト（count ≤ length。足りない分は 0）。待っている間の arm は rejected unavailable（1 回に 1 つ）。**arm していない間の転送は
   MOSI を捨て、transactions と errors を数える**。**MISO は tx の外（未 arm、tx を使い切った後）では 0**。CS が有効になってから SCK が
   1 回も来ずに無効に戻ったもの（0 ビット）は転送とみなさない: 何も積まず、transactions も errors も数えず、arm は待ち続ける。
+- **configure から plan を解くまで、probe は CS が有効な間だけ MISO を駆動する。** CS が無効な間は MISO を駆動しない（プルの無い入力）。
+  「MISO は tx の外では 0」は、CS が有効な間の転送のビットのことである。SCK、MOSI、CS は常に入力。configure の前は channel は空きの状態のまま（core §8）。
 - 転送が CS で終わると、MOSI のバイトと、実際に来たビット数（bits）を列に積み、transactions を 1 増やす。data の byte 数は bits を 8 で
   割って切り上げた数で、length で止める。length を超えた分は捨て、errors を 1 増やす（その転送は、bits を実際に来た数のまま、data を
   length までにして積む）。列に queue_depth 個あるときに終わった転送は積まずに捨て、errors を 1 増やす（transactions には数える）。

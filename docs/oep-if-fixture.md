@@ -122,6 +122,10 @@ retrieves them with read_rx.
 - This fn's plan holds roles 1 and 2 exactly once each, on different channels (a plan_apply where either is missing, where a role appears twice, or where both
   roles are on the same channel is rejected malformed). Releasing or replacing the plan stops the target and returns it to the state right after describe (state 0,
   mode 0, the queue, the wait, the placements and the cumulative counts cleared, and the stretch value 0).
+- SDA and SCL are driven **open-drain only**: the probe pulls them low or releases them, and never drives them high.
+- **Internal pull-ups**: a probe that enables pull-ups of its own on SDA / SCL while configured declares it with features bit2 (internal pull-ups) and describe
+  tag 0x42 pullup_ohms (u32, approximate). A probe that does not declare it enables none. v1 has no request that switches them.
+- In state 0 the probe ACKs no address and leaves both lines released (it neither pulls them low nor enables pull-ups; until configure the channels keep their idle state, core §8).
 - configure recreates the target (the queued frames, the wait, the placements, rx_frames and errors are lost. The stretch value is kept). When this fn has no plan,
   it is rejected unavailable (cause 6). If address exceeds 0x7F or mode is undefined (0, 4 or more), rejected malformed. A mode that is in the definition but
   not in the declaration is rejected unsupported.
@@ -149,8 +153,9 @@ retrieves them with read_rx.
   (otherwise unknown_operation). If stretch_us exceeds the max_stretch_us of describe, rejected unsupported. It is accepted in any state
   (state 0 too), and the value takes effect from the next received byte. configure and reset do not change the value.
 - describe: role_channels, max_length (the maximum bytes of one frame), max_clock_hz (the verified upper limit of SCL), features (bit0 mode 3,
-  bit1 stretch. modes 1 and 2 are mandatory), queue_depth (tag 0x40, u8: the number of frames that can be queued. In mode 3 also the upper limit of unread placements),
-  max_stretch_us (tag 0x41, u32: the largest µs stretch accepts. 1 or more. A probe that declares bit1 of features always includes it).
+  bit1 stretch, bit2 internal pull-ups. modes 1 and 2 are mandatory), queue_depth (tag 0x40, u8: the number of frames that can be queued. In mode 3 also the upper limit of unread placements),
+  max_stretch_us (tag 0x41, u32: the largest µs stretch accepts. 1 or more. A probe that declares bit1 of features always includes it),
+  pullup_ohms (tag 0x42, u32: the approximate resistance of the internal pull-ups. A probe that declares bit2 of features always includes it).
 - No notifications are sent (subscribe is rejected unsupported).
 
 ## 4. `oep.fixture.spi-target`
@@ -175,6 +180,8 @@ The probe becomes an SPI target, answers one transfer delimited by CS with the M
   transfer (count ≤ length. The shortfall is 0). An arm while waiting is rejected unavailable (one at a time). **A transfer while not armed
   discards MOSI and counts transactions and errors.** **MISO is 0 outside tx (not armed, after tx is used up).** CS becoming active and returning to inactive with no
   SCK cycle at all (0 bits) is not a transfer: nothing is queued, neither transactions nor errors is counted, and the arm keeps waiting.
+- **From configure until the plan is released, the probe drives MISO only while CS is active.** While CS is inactive it does not drive MISO (an input with no pull).
+  "MISO is 0 outside tx" refers to the bits of a transfer while CS is active. SCK, MOSI and CS are always inputs. Before configure the channels keep their idle state (core §8).
 - When a transfer ends with CS, the MOSI bytes and the number of bits actually received (bits) are queued, and transactions is incremented by 1. The number of data bytes is bits divided by 8
   rounded up, capped at length. Anything beyond length is discarded and errors is incremented by 1 (that transfer is queued with bits left as the number actually received and data
   up to length). A transfer that ends while the queue holds queue_depth entries is discarded without queuing and errors is incremented by 1 (it is counted in transactions).

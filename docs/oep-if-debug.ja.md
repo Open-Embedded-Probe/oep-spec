@@ -33,6 +33,11 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
     使わないもの」。count = 0 の並びは swdio の昇順、その中で swclk の昇順とし、**今ほかのもの（plan、ほかの線の接続、設定の
     資源）が持っている channel を含む組は並べない**（count = 0 は動かしてよい組だけを試す）。組を並べた要求に、持たれている
     channel があれば、§8.1 のとおり全体を rejected unavailable。
+  - **idle の項目がある channel**: count = 0 の並びと、pins の無い attach の候補からは、ほかのものが持つ channel と無効にした channel に加えて、
+    probe の設定に **idle の項目**がある channel（mode を問わない、[probe の設定](oep-if-probe-config.ja.md) §1）をすべて外す。
+    そういう channel を明示した要求（組を並べた scan、attach の pins）は、idle が入力（mode 0〜2）なら受ける。
+    idle が出力（mode 3 / 4）なら rejected unavailable（cause 5、その channel、holder_kind 7 = 設定の idle）。
+  - （参考）count = 0 は空いている候補のピンを順に全部動かす。利用者の同意なしに、host は配線を知らない治具へ count = 0 を送らない。
   - 線は、生きている接続が使っている組の channel を持つ（接続が無くなれば放す）。持っている間、その channel を plan や設定が
     取ろうとすれば rejected unavailable（core §8.1）。
   - scan の応答の `tried` は、要求の並び（count = 0 なら上の count = 0 の並び。channel_group の線では describe に出した順）の
@@ -102,6 +107,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   コンソールの読みの中で判定したら、mark link-lost を付けて閉じる。
 - **probe は connection を閉じるとき、target の状態を必要以上に変えない**（target を reset しない。止めていた hart は、閉じる前の
   host の操作のままにする）。
+- connection が閉じたら、その組の channel は core §8 の空きの状態になる（idle_clock の駆動もやめる）。
 
 **connection と hart の状態機械**:
 
