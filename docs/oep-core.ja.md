@@ -203,7 +203,9 @@ UART を USB-UART の変換チップで出したもの、USB CDC、USB-Serial/JT
 - **探りの規則**: host が見分けずに開く device と口（名指した device、利用者の選んだ口、host が自分で扱う device、暫定の手がかりで
   見つけた device）では、host が最初に送るのは confirm（§7.1）だけである（§5.2 の 1 回の送り直しを含む）。confirm の待ち時間
   （§4.4。confirm には引数で決まる時間が無いので 1000 ms）が過ぎても正しい confirm の応答が来なければ（送り直したときは、送り直した
-  confirm の待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。正しい confirm の応答とは、送った
+  confirm の待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。ただし UART bridge（transport の
+  kind 1）の口では、送り直しの代わりに §3.5 の host の義務 7 の間 confirm を繰り返してよい（前の host が上げた速さの残りを待つため。
+  送るのは confirm だけで、その間に正しい応答が来なければ閉じる）。正しい confirm の応答とは、送った
   confirm と同じ corr の completed で、payload が §7.1 の形（`OEP!` で始まる）のものをいう。正しい応答が来た device と口は OEP の
   probe として扱う。
 - **口の選び方**: OEP の probe と分かった device（プロジェクトの VID:PID、名指した device、正しい confirm の応答が来た device）の中の

@@ -203,7 +203,9 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 - **The probing rule**: on a device or port the host opens without having identified it (a named device, a port the user chose, a device the host handles on its own, a device found by
   a temporary clue), the first thing the host sends is a confirm (§7.1) only (including the single resend of §5.2). When the wait for the confirm
   (§4.4; confirm has no time set by its arguments, so 1000 ms) has passed without a valid confirm answer (when resent, when the wait for the resent
-  confirm has passed without one), the host closes the device or port and sends nothing else. A valid confirm answer is a completed answer with the same corr as the sent
+  confirm has passed without one), the host closes the device or port and sends nothing else. On a UART bridge port (transport
+  kind 1), however, the host may repeat the confirm for the time of host obligation 7 in §3.5 instead of the single resend (to wait out a rate a previous host raised;
+  it sends confirms only, and closes the port when no valid answer has come by then). A valid confirm answer is a completed answer with the same corr as the sent
   confirm whose payload has the shape of §7.1 (starting with `OEP!`). A device or port that gave a valid answer is treated as an OEP
   probe.
 - **Choosing the ports**: inside a device known to be an OEP probe (the project's VID:PID, a named device, a device that gave a valid confirm answer), the
