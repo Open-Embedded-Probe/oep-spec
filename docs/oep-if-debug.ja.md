@@ -201,7 +201,7 @@ host が raw の DMI（dmi の op）で何をしても、host が途中で死ん
 
 戻す値は、その op の中で読んだ「触る前の値」。高水準の op の中で DM の状態（abstractcs.busy の解除、allhalted、allresumeack）を待つ
 上限は、1 つの待ちにつき 100 ms。過ぎたときの status は各 op の節のとおり（halt は timeout、resume / step は state）。DMI の busy は
-probe の中で【決める: 回数。参照の firmware は PHY が決める】回まで再試行し、使い切れば status wait。
+probe の中で 100 回まで再試行し、使い切れば status wait（§6 の WAIT と同じ）。
 
 | op | 名前 | 要求（connection の後ろ） | 応答 |
 |---:|---|---|---|
@@ -274,7 +274,7 @@ malformed。dmi の max_reads / max_us = 0 は 1 回読む。run の timeout_ms 
 
 - outcome success の条件は、mode 0 と 2 では flags bit0、mode 1 では bit1。満たさなければ completed failed（形は同じ。status は
   止まらない / 走らない = timeout、DM が応えない = line、cmderr = fault）。ndmreset を解いてから hart が止まる / 走るのを待つ上限は
-  1 回の手順につき【決める: ms。案は 100 ms】、手順のやり直し（flags bit2）は【決める: 回数。案は 1 回】まで。
+  1 回の手順につき 100 ms、手順のやり直し（flags bit2）は 1 回まで。
 - flags のほかの bit は 0。reset の後は havereset を確認応答し、haltreq を下ろす（mode 2 は止めたまま）。
 
 TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target のシステムリセットには共通の手順が無いので、host が dmi で
@@ -356,7 +356,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 - ack は最後の転送の生の ACK（`swd_ack`: 線の順で bit0 が最初。OK = 1、WAIT = 2、FAULT = 4。無応答は status line）。req の bit4-7 が
   0 でなければ rejected malformed。nvals は読んだ値の数（最初の done 個の転送のうち読み出しの数）。
 - transfer は生の転送で、AP の読み出しが 1 つ遅れて返るのもそのまま（host が RDBUFF か次の AP の読み出しで受け取る）。
-  WAIT は probe の中で【決める: 回数。参照の firmware は 100】回まで再試行し、使い切れば status wait。FAULT で止まるので、host は ABORT で sticky を消す。
+  WAIT は probe の中で 100 回まで再試行し、使い切れば status wait。FAULT で止まるので、host は ABORT で sticky を消す。
 - read_block / write_block の 1 回の長さと読みの意味は riscv-dm（§4.5）と同じ: describe の max_length（byte 数、4 の倍数、要求も応答も
   max_frame に収まる値）を必ず出し、count × 4 がそれを超えれば rejected unsupported（payload `0x00`）。host は max_length から count を
   決める。read_block は target のバスを通して読み、probe の側に写しを持たない。

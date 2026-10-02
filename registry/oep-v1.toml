@@ -76,6 +76,8 @@ probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restar
 host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
 heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
 port_speed_idle_max_ms = 3000   # a raised port_speed goes back after this long without a good frame, whatever idle_ms said (core §3.5)
+host_wait_add_ms = 1000         # host: waits the request's own argument time plus this; the cap is max_op_ms plus this (core §4.4)
+notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §11.4)
 
 [describe_common]               # declaration tags every interface's describe may use (core §7.4); 0x04 reserved, 0x3F response meta
 role_channels = 0x01
@@ -104,6 +106,12 @@ unit_id_max_bytes = 32
 slot_name_max_bytes = 32
 interface_name_max_bytes = 64
 max_op_ms_reference = 10000     # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
+resource_reuse_distance = 1024  # a closed resource number is not reused among the most recently closed this many (core §9)
+dm_wait_ms = 100                # riscv-dm: one wait for a DM state inside a high-level op (oep-if-debug §1)
+dmi_busy_retries = 100          # riscv-dm: DMI busy is retried this many times, then status wait (oep-if-debug §1)
+reset_wait_ms = 100             # riscv-dm reset: wait for the hart after releasing ndmreset, per attempt (oep-if-debug §4.3)
+reset_retries = 1               # riscv-dm reset: the sequence is repeated at most this many times (flags bit2) (oep-if-debug §4.3)
+swd_wait_retries = 100          # arm-adi transfer: WAIT is retried this many times, then status wait (oep-if-debug §6)
 
 [common.enum.read_from]         # positioned streams (oep-if-common §1.2)
 position = 0
