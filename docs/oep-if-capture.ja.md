@@ -1,5 +1,7 @@
 # OEP 標準インターフェース: キャプチャ v1
 
+[English](oep-if-capture.md)
+
 状態: **規範**（2026-09-26。2026-09-30 に凍結前の決定を入れた: 名前 `oep.fixture.logic`、アナログの番号を確定。2026-10-01 に[ゼロベースの再検討](v1-zero-base-proposal.ja.md)を反映）。本体は [OEP core](oep-core.ja.md)。
 番号の唯一の定義は `registry/oep-v1.toml`。ロジアナとしての設計、基本と拡張の線引き、根拠の実測は
 [キャプチャ（設計と実測）](logic-capture.ja.md)。
