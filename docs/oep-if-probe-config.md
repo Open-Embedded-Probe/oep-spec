@@ -63,6 +63,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
     bytes, or an undefined drive_kind, is rejected malformed. On a probe whose describe of `oep.fixture.gpio` declares drive_levels,
     kind 0 with drive_value equal to the number of levels or more is rejected unsupported. A probe that does not declare drive_levels (including a probe without `oep.fixture.gpio`)
     keeps this field but does not apply it (the strength stays the default).
+    After drive_value (from the 7th byte of the value) is the place for fields added later (core §2.3. The probe skips it and, as in §2, keeps it without truncation).
     (Informative) Unlike gpio set, whose drive TLV ignores a level out of range, this item refuses it so that a mistake in a setting that is
     stored and used at every boot is reported when it is written.
   - An idle with mode 3 / 4 applies its level and its strength together (both at boot and at release).
@@ -158,6 +159,7 @@ port(u8), mode(u8), selected(u8), n(u8), n × (len(u8), kind(u8), id(u16))
 ### 1.3 Line names (the label convention)
 
 Among the texts of label (§1), the following names state the role of a line. A text and a name are compared ignoring ASCII case.
+Only the settings' label items (§1) are searched, not the label (0x46) of the core's describe or other names.
 
 | Name | Line | Used by |
 |---|---|---|

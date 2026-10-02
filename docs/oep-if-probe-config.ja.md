@@ -63,6 +63,7 @@
     byte、または drive_kind が未定義なら rejected malformed。`oep.fixture.gpio` の describe が drive_levels を宣言する probe では、
     kind 0 で drive_value が段の数以上なら rejected unsupported。drive_levels を宣言しない probe（`oep.fixture.gpio` の無い probe を
     含む）は、このフィールドを持つが効かせない（強さは既定のまま）。
+    drive_value の後ろ（値の 7 byte 目から）は、後から足すフィールドの場所（core §2.3。probe は読み飛ばし、§2 のとおり切らずに持つ）。
     （参考）gpio の set の drive の TLV が範囲外の段を無視するのと違い、ここで断るのは、保存して起動のたびに使う設定の誤りを、書いたときに
     知らせるためである。
   - mode 3 / 4 の idle は、その level と強さを一緒に掛ける（起動時も解放のときも）。
@@ -158,6 +159,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
 ### 1.3 線の名前（label の決まり）
 
 label（§1）の text のうち、次の名前は線の役目を表す。text と名前は、ASCII の大文字と小文字を区別せずに比べる。
+探すのは設定の label の項目（§1）だけで、core の describe の label（0x46）やほかの名前は探さない。
 
 | 名前 | 線 | 使うもの |
 |---|---|---|
