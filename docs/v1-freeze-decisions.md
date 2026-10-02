@@ -29,7 +29,7 @@ The v1 freeze stops the promises that let a host and a probe mesh even when they
 | The form of frames (COBS + CRC-16, `length(u16)`, the HID report, the order and length of headers, the 64 bytes before confirm) | [core](oep-core.md) §3 |
 | The form of messages (the fixed parts of request / answer / event / data, the form of TLVs and the critical rule, reject reason, outcome, the order of refusals) | core §2, §4 |
 | The payloads of the standard interfaces (the op tables, fixed parts, TLV tags, events, status, the lifetime of resources) | `oep-if-*.ja.md` |
-| **Every number in registry/oep-v1.toml** (op, tag, reason, status, enum, `timing`, `limits`, `usb`, the names and revisions of interfaces) | [registry](../registry/oep-v1.toml), generated files |
+| **Every number in registry/oep-v1.toml** (op, tag, reason, status, enum, `timing`, `limits`, `usb`, the names and revisions of interfaces). Values whose names start with `reference_` (`reference_vid`, `reference_pid`, `max_op_ms_reference`) are the reference firmware's values, not normative, and are not frozen | [registry](../registry/oep-v1.toml), generated files |
 | The normative sentences of the core and `oep-if-*` (sentences of the form "does ..." / "does not ...". Including [dmseq](target-console-dmseq.ja.md) (Japanese)) | Each document |
 
 To change these after the freeze, **raise the revision** (an interface that changes a fixed part or a meaning raises its revision; the form of the core raises the protocol
