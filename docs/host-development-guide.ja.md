@@ -334,3 +334,60 @@ link_sink（core §12）で流す。確かめは**使う流し方だけ**でよ�
 - **数字の由来**: 確かめの床 5 % は、CH340 の 1.5 M（全部 5 % 超）を落とし 500000 / 921600 を通す値。使用中の床 10 % は、CH340 の
   基準の上限（10 %）と同じで、921600 の 3 秒平均をおおむね通す値。窓を 3 秒（時間）で取るのは、100 フレームが 921600 では 0.7 s と
   短く、まとめて落ちる線で割合が跳ねるから。基準を使う n で測るのは、CH552 の n = 2 の基準が n = 1 では見えないから。
+
+## 8. target の電源とリセット（参考）
+
+target の電源とリセットの線は、probe の設定のスロットの項目に入れない（[案と決めた経緯](v1-open-proposals.ja.md) §10）。host が
+label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分で扱う。この節は規範ではない。
+
+### 8.1 線の名前（label の決まり）
+
+`oep.probe.config` の label の項目（tag 0x02）で、線に次の名前を付けて保存する。host は設定の get で label を読んで線を探す。
+
+| 名前 | 線 |
+|---|---|
+| `nrst` | target のリセットの線 |
+| `power_hi` | high のとき target の電源が入る線 |
+| `power_lo` | low のとき target の電源が入る線 |
+
+- スロットが 2 つ以上ある probe では、`<スロットの name>.nrst`、`<スロットの name>.power_hi`、`<スロットの name>.power_lo` と付ける
+  （スロットの name は [probe の設定](oep-if-probe-config.ja.md) §1.1）。名前だけ（`nrst` など）は、スロットが 1 つの probe でだけ使う。
+- host は、使うスロットについて `<スロット>.<名前>` を先に探し、無ければ名前だけを探す。どちらも無ければ、その線は無いものとして扱う
+  （リセットの線を探すなら §4.6）。
+- 1 つの target に付けるのは `power_hi` と `power_lo` のどちらか 1 つ。
+
+### 8.2 電源の入れ直し
+
+1. 電源の channel を `oep.fixture.gpio` の plan で取る（plan_apply）。取った直後の level は定まっていないので、すぐ次の set を送る。
+2. 電源が入らない level（`power_hi` なら出力 low、`power_lo` なら出力 high）を 200 ms 以上保つ。200 ms は既定で、もっと長く要る
+   target には host の設定で延ばす。
+3. 電源が入る level にする。
+4. attach する。アプリが走る前に止めたいなら、止める attach（method 1）にする。
+5. plan を解く（plan_release）。channel は空きの状態（core §8）に戻る。電源を入れたままにするには、その channel に、電源が入る level の
+   出力の idle（`power_hi` なら mode 4 出力 high、`power_lo` なら mode 3 出力 low、[probe の設定](oep-if-probe-config.ja.md) §1）を
+   置いて保存しておく。保存した出力の idle は起動時にも掛かり、at boot のスロットの attach より先に target の電源が入る。
+
+### 8.3 リセットをかけながらの attach
+
+- `nrst` の channel を attach の reset TLV（[線とデバッグ](oep-if-debug.ja.md) §3）に渡す。その channel は probe が describe の
+  role_channels の role 3（reset）で宣言していなければならない。
+- 使うのは host が選んだときだけ（書き込み、復旧、reset の直後で止める）。走っている target へのふつうの attach には付けない
+  （target がリセットされる）。
+- target のリセットの線が有効かどうかは、probe からは見えない（線を無効にできる target がある）。無効のとき、reset TLV は何もしない
+  のと同じで、attach は走っている target に対して行われる。
+
+### 8.4 電源を入れたところを取る
+
+- トリガを待っているキャプチャ（state 2、[キャプチャ](oep-if-capture.ja.md) §3.2）は聞くだけで、その channel をほかの機能と共有する
+  （キャプチャ §1.2 のピンの共有）。host は待っている間に、電源の channel を gpio で駆動してよい。
+- 電源の channel そのものを、取る channel の 1 つにしてよい（電源を入れた瞬間をトリガにできる）。
+- 共有を許すかは probe が決める（core §8.1）。許さない probe では、gpio の plan_apply が rejected unavailable になる。
+
+### 8.5 実測の例（2026-10-02）
+
+測った例であって規則ではない。
+
+- host の側だけで電源を入れ直した（gpio で電源を切って 200 ms → 入れる → その応答を受けたらすぐ止める attach）: **8 回中 8 回、dpc 0
+  （最初の命令の前）で止まった**。電源を入れた応答から止まるまで約 15 ms。
+- `nrst` の channel に reset TLV を付けた attach: **6 回中 6 回、dpc 0 で止まった**。
+- 出力の idle を置いていない電源の channel で、gpio の plan を解いたら、target の電源が切れた（§8.2 の 5 の理由）。
