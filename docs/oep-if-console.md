@@ -28,7 +28,7 @@ A stream is opened over a debug connection by specifying a mechanism. There is o
 | 0x08 | streams | first(u8) | more(u8), count(u8), count × (len(u8), stream(u16), connection(u16), mechanism(u8), users(u8), state(u8)), [TLV] | Not required |
 
 - read, marks, clear, mark, write take the form of [common parts](oep-if-common.md) §1 (with stream first).
-- mechanism: 0 SDI, 1 DMDATA, 2 dmseq (the framing is [target-console-dmseq](target-console-dmseq.ja.md) (Japanese)). **The mechanism number determines the mechanism
+- mechanism: 0 SDI, 1 DMDATA, 2 dmseq (the framing is [target-console-dmseq](target-console-dmseq.md)). **The mechanism number determines the mechanism
   exactly** (it has no version). When a mechanism changes, a new number is used (3 onwards, added to the registry), and the meaning of the old number does not change. An unknown mechanism, and
   a mechanism not in the mechanisms of describe, is rejected unsupported (payload `0x00`, core §4.3).
 - describe: tag 0x40 mechanisms (a sequence of u8. The mechanisms that probe can open). Always emitted.
@@ -77,9 +77,11 @@ of the mechanism.
 |---:|---|---|---|
 | 0 | SDI | target → host | 3.1 below |
 | 1 | DMDATA | both directions | 3.2 below |
-| 2 | dmseq | both directions | [target-console-dmseq](target-console-dmseq.ja.md) (Japanese) (with sequence numbers and CRC) |
+| 2 | dmseq | both directions | [target-console-dmseq](target-console-dmseq.md) (with sequence numbers and CRC) |
 
-### 3.1 SDI (WCH's SDI printf)
+### 3.1 SDI
+
+(Reference) This is the layout of WCH's SDI printf.
 
 - The target waits for DATA0 to become 0, then writes DATA1 = bytes 3 to 6, DATA0 = length (1 to 7) | bytes 0 to 2 << 8 (little endian,
   DATA0 written last).
@@ -87,7 +89,9 @@ of the mechanism.
   A low byte of 0 means nothing. 8 or more is not a slot (not discarded).
 - There is no host → target direction (write accepts nothing: accepted 0, completed failed).
 
-### 3.2 DMDATA (minichlink's framing)
+### 3.2 DMDATA
+
+(Reference) This is the framing the minichlink tool uses.
 
 - The low byte of DATA0 is the status byte. bit 7 = 1 is the target's slot, the low 6 bits are length + 4.
 - In a target's slot (bit 7 = 1), if length + 4 is 5 or more, the probe also reads DATA1 and receives length (1 to 7) bytes (the layout is the same as SDI). 4 is the target's

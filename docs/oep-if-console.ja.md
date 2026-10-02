@@ -79,7 +79,9 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 | 1 | DMDATA | 両方向 | 下の 3.2 |
 | 2 | dmseq | 両方向 | [target-console-dmseq](target-console-dmseq.ja.md)（通番と CRC つき） |
 
-### 3.1 SDI（WCH の SDI printf）
+### 3.1 SDI
+
+（参考）WCH の SDI printf の形である。
 
 - target は DATA0 が 0 になるのを待ち、DATA1 = バイト 3〜6、DATA0 = 長さ（1〜7）| バイト 0〜2 << 8 を書く（little endian、
   DATA0 を最後に書く）。
@@ -87,7 +89,9 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
   下位 byte が 0 は何も無い。8 以上は枠ではない（読み捨てない）。
 - host → target の向きは無い（write は何も受け付けない: accepted 0、completed failed）。
 
-### 3.2 DMDATA（minichlink の framing）
+### 3.2 DMDATA
+
+（参考）minichlink というツールが使う framing である。
 
 - DATA0 の下位 byte が状態の byte。bit 7 = 1 は target の枠、下位 6 bit は長さ + 4。
 - target の枠（bit 7 = 1）で長さ + 4 が 5 以上なら、DATA1 も読んで長さ（1〜7）の分を受け取る（並びは SDI と同じ）。4 は target の

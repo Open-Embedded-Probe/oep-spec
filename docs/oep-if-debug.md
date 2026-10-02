@@ -8,11 +8,13 @@ connections, §3 status). The only definition of the numbers is `registry/oep-v1
 
 | Name | revision | Role |
 |---|---:|---|
-| `oep.wire.rvswd` | 1 | Connects to a RISC-V DM over WCH's 2-wire (RVSWD) |
-| `oep.wire.swio` | 1 | Connects to a RISC-V DM over WCH's 1-wire (SWIO) |
+| `oep.wire.rvswd` | 1 | Connects to a RISC-V DM over the 2-wire RVSWD |
+| `oep.wire.swio` | 1 | Connects to a RISC-V DM over the 1-wire SWIO |
 | `oep.wire.swd` | 1 | Connects to ADI over ARM's SWD |
 | `oep.target.riscv-dm` | 1 | Operations on a RISC-V Debug Module |
 | `oep.target.arm-adi` | 1 | Operations on ARM ADI (DP / AP) |
+
+(Reference) RVSWD and SWIO are the 2-wire and 1-wire debug wires of WCH's RISC-V MCUs; the registry name `wch_dmi_7f` of target_id scheme 1 also comes from WCH's debug module.
 
 - `oep.wire.*` creates connections, and `oep.target.*` operates on the target over a connection. The interfaces that handle targets
   appear in list before attach, and a request without a connection is rejected no_connection.
@@ -163,7 +165,7 @@ TLVs:
 | attach answer | 0x10 | target_id | scheme(u8), value |
 | attach answer | 0x11 | dpc | u32 (8 bytes for RV64). The dpc when the hart is halted (flags bit3) |
 
-The schemes of target_id (`target_id_scheme`): 1 = the u32 read from DMI 0x7F of WCH's DM (length 4). 0 and 0xFFFFFFFF mean "none" (not attached).
+The schemes of target_id (`target_id_scheme`): 1 = the u32 read from DMI address 0x7F (length 4). 0 and 0xFFFFFFFF mean "none" (not attached).
 2 = the targetsel of swd (u32, used only in the entries of connections. Not used for the lock). The length of the value per scheme is held in the registry
 (used to verify the length of the mask / value of a slot's lock).
 
@@ -286,7 +288,7 @@ dmi).
 
 - For calling the host's loader. The probe sets the ebreakm and prv = M of dcsr, runs from pc, and waits for it to stop. **The probe does not reissue
   run** (even if the stopped position is still the start position, it cannot be told from having run and returned). Whether it did not run is decided by the host from dpc,
-  and it retries only when the loader may be run twice. **Not used for gdb's continue** (it changes prv and ebreakm).
+  and it retries only when the loader may be run twice. **Not used for a debugger's continue** (it changes prv and ebreakm).
 - timeout_ms is 1 to the core's max_op_ms (0 is rejected malformed, exceeding it is rejected unsupported). Until it returns the answer to run, the probe does not answer other requests on this
   connection (the lease is not counted during execution, core §6.1. Console reads of other connections continue).
   When it stops, stopped = 1 (success). When the limit is reached, the probe halts the hart, then reads dpc and the values, and returns stopped = 0, status timeout, outcome
