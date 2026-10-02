@@ -33,7 +33,7 @@ how to write flash and chip-specific procedures are in the host.
   paths, TCP. For these there are only the tests against the fake (`uv run pytest`, 247 cases) and manual checks.
 - The way of deciding is "experiment and prototype first, then fix the specification with the results". Experiment numbers and dates are kept in **record documents**, and are not placed in the normative text
   (the normative text has no chip names, board names or dates, and its numbers are values, not guides).
-- The documents are **Japanese first**. English versions are made after things settle (the existing English documents are old).
+- The documents are **written in Japanese**. The normative documents (core, oep-if-*), the freeze scope and this guide have English versions (`.md`). Where they disagree, the Japanese is right. Records and guides are Japanese only.
 
 ## 3. The shortest reading order (review of the v1 freeze)
 
