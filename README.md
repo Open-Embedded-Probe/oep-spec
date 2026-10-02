@@ -29,9 +29,9 @@ register slots and binds (`oep.probe.config`). Implementations:
 - [oep-probe-arduino](https://github.com/Open-Embedded-Probe/oep-probe-arduino) — the Arduino library `OpenEmbeddedProbe` and probe firmware
 - [oep-client-python](https://github.com/Open-Embedded-Probe/oep-client-python) — the Python host (`pip install oep-client-python`, `import oep_client`), the `oep` command and a fake probe
 
-USB identity: until a pid.codes PID is granted, hosts know an OEP probe by an iProduct starting `OEP`; the application and the
-plan for the PID are in [docs/usb-identity.ja.md](docs/usb-identity.ja.md) and [docs/pid-codes-application/](docs/pid-codes-application/README.ja.md)
-(Japanese; the pid.codes files themselves are English).
+USB identity: hosts know an OEP probe by an iProduct starting `OEP` and its describe, never by VID:PID. The firmware currently
+runs with a temporary USB ID (the board's default VID:PID), which may not be used for distribution. When the project obtains a
+PID of its own, the firmware will switch to it. See [docs/usb-identity.ja.md](docs/usb-identity.ja.md) (Japanese).
 
 ## Current documentation and language approach
 

@@ -29,7 +29,7 @@ The v1 freeze stops the promises that let a host and a probe mesh even when they
 | The form of frames (COBS + CRC-16, `length(u16)`, the HID report, the order and length of headers, the 64 bytes before confirm) | [core](oep-core.md) §3 |
 | The form of messages (the fixed parts of request / answer / event / data, the form of TLVs and the critical rule, reject reason, outcome, the order of refusals) | core §2, §4 |
 | The payloads of the standard interfaces (the op tables, fixed parts, TLV tags, events, status, the lifetime of resources) | `oep-if-*.ja.md` |
-| **Every number in registry/oep-v1.toml** (op, tag, reason, status, enum, `timing`, `limits`, `usb`, the names and revisions of interfaces). Values whose names contain `reference` (`reference_vid`, `reference_pid`, `max_op_ms_reference`) are the reference firmware's values, not normative, and are not frozen | [registry](../registry/oep-v1.toml), generated files |
+| **Every number in registry/oep-v1.toml** (op, tag, reason, status, enum, `timing`, `limits`, `usb`, the names and revisions of interfaces). Values whose names contain `reference` (`max_op_ms_reference`) are the reference firmware's values, not normative, and are not frozen | [registry](../registry/oep-v1.toml), generated files |
 | The normative sentences of the core and `oep-if-*` (sentences of the form "does ..." / "does not ...". Including [dmseq](target-console-dmseq.ja.md) (Japanese)) | Each document |
 
 To change these after the freeze, **raise the revision** (an interface that changes a fixed part or a meaning raises its revision; the form of the core raises the protocol
@@ -128,8 +128,9 @@ Follows: probe (the save form of OepConfig), fake, show of the client.
 - **(b) The vendor bulk path**: write in core §3.3 that it is the 1 pair of bulk IN / OUT of the interface with `bInterfaceClass 0xFF` whose `iInterface` starts with `OEP`
   (the present client grabs "the first bulk pair", and misses when DFU or CDC comes first).
 - **(c) The HID path**: write the usage page / usage, report ID and report length in core §3.3 (fixed at the values of the present implementation).
-- **(d) After getting a PID**: the firmware only switches its VID:PID to 1209:4F45. Host discovery still looks at `OEP` of iProduct, so there is no effect.
-  Hard-coded VID:PIDs in bench etc. are changed by then to look by serial (unit_id) or iProduct. Correct the iProduct of usb-identity to the present value.
+- **(d) The VID:PID**: the firmware currently runs with a temporary USB ID (the board's default VID:PID), which may not be used for
+  distribution. When the project obtains a PID of its own, the firmware will switch to it. Host discovery looks at `OEP` of iProduct, so
+  that has no effect on hosts. Hard-coded VID:PIDs in bench etc. are changed to look by serial (unit_id) or iProduct. Correct the iProduct of usb-identity to the present value.
 
 Follows: probe (USB serial), client (discovery, how vendor is chosen), ch32rv, bench (toml, dfu.py), the values saved by the IDE of ArduinoCore-CH32.
 
