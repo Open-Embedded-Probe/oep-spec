@@ -21,7 +21,7 @@ target の節（§3）を先に読み、その target の落とし穴を除い�
    CC、治具の都合で low にしてはいけない線）を候補から外す。電源の入り切りで pull-up / pull-down の読みを比べると候補は出るが、
    **候補を出すだけ**（idle-high の UART の線は SWIO / NRST と同じに見える。§3.1 の 22/23）。
 3. **線を scan する。** その target の max_speed と idle_clock（§2）を scan にも付ける（付けないと probe の最も遅い速さと既定の
-   休ませ方で試す。L103 は SWCLK high で休むと debug の線が reset される）。count = 0 は「今動かしてよい組だけ」を並べる
+   休ませ方で試す。L103 は SWCLK high で休むと debug の線が reset されるという記録がある、§3.3）。count = 0 は「今動かしてよい組だけ」を並べる
    （debug §1）ので、plan で持たれたピンは外れる。
 4. **target を確かめる。** attach の応答の target_id（scheme 1 = DMI 0x7F）で系統を見る。**同じ系統の板が 2 枚以上あるときは
    ESIG の UID で照合する**（L103 も X035 も 2 枚ずつあり、2 つの probe が「同じ target に届いている」と取り違えた。材料）。
@@ -41,10 +41,10 @@ target の節（§3）を先に読み、その target の落とし穴を除い�
 | target | wire | 治具のピン（channel） | max_speed | idle_clock | NRST | reset の挙動 | 電源 | 触らないピン |
 |---|---|---|---|---|---|---|---|---|
 | CH32V00x（V003。V006 は LinkE だけ） | swio（1 線） | classic ESP32 + UIAPduino: SWIO 16、NRST 23（bench v003-esp32）。P4 30eda0ea068b + V003: SWIO 19、NRST 4（材料 10-02） | toml に指定なし | —（swio） | 配線済み。有効かは option の RST_MODE（出荷時は無効、PD7 = GPIO） | reset TLV（NRST 4）で dpc 0、6/6。通電から 15.0〜15.2 ms で dpc 0（8/8）。DM は havereset を ack するまで halt / running を凍らせる | P4 GPIO5 から直結の板は host の gpio で入れ直せる。V006 の板は probe 給電でなく `probe power cycle` が cold boot にならない | PD3 / PD4（ソフト USB、治具に未配線、variant が PD4 を low に保持）。PC1 / PC2 は 2.2 kΩ の pull-up |
-| CH32X035 | rvswd | P4 治具 F8U6: SWDIO 2 / SWCLK 54（PC18 / PC19）。WeAct F8U6: 22 / 23 | 0（probe の最速。attach で SWCLK 6.3〜6.4 MHz、E158） | high（low で休むと接続できない、E171） | どちらの治具も未配線。reset は ndmreset だけ | ndmreset 後に hart が PC 0 に駐留しうる（6/200、E158）。resethaltreq は無い（E159）。reset は最遅（half 500 ns）で行い、止まってから速さを取り直す | P4 治具は入れ直し不要だった。WeAct は信号線から逆給電され、3V3 と信号線を両方外さないと落ちない | PC14 / PC15（USB PD の CC）、PC16 / PC17（USB。P4 治具では I2C に配線）、PC18 / PC19 を DUT の I2C に使わない |
-| CH32L103 | rvswd | RP2350 Pro Micro: SWDIO GP0 / SWCLK GP1（420 組中これだけ） | 1 MHz（reset 直後の遅い clock では 680 kHz で parity エラー。下限 500 ns） | low（high で休むと debug の線が reset される） | 未配線 | 走ったまま ndmreset → 線を離して wake で確認は 9/20、reset-halt + resume で 20/20。haltreq が効かず走り続けた件は未解決 | 当初は無給電（LinkE が抜けていた）で、どの線も答えなかった | GP0 / GP1 は Serial1 の既定ピン（fixture.uart は別の組に） |
-| CH32V103 / V203 / V307 | rvswd（OEP の治具は無い） | WCH-Link だけ（V103 は WCH-Link(CH549) fw 2.12、V203 / V307 は LinkE fw 2.22）。UART は PA9 / PA10 | 記録なし | LinkE は SWCLK 0 / SWDIO 1 で休ませる（V203、E171） | 未配線 | LinkE の attach で RCC / ACTLR が書き換わる（V203 / V307、E162） | V203 は LinkE の 3V3 / 5V を切っても動き続けた（E162） | 記録なし |
-| ARM SWD の target | swd | 記録なし（OEP の治具で試した ARM の target はまだ無い） | — | — | — | — | — | — |
+| CH32X035 | rvswd | P4 治具 F8U6: SWDIO 2 / SWCLK 54（PC18 / PC19）。WeAct F8U6: 22 / 23 | 0（probe の最速。attach で SWCLK 6.3〜6.4 MHz、E158） | high（low で休むと接続できない、E171） | どちらの治具も未配線。reset は ndmreset だけ | ndmreset 後に hart が PC 0 に駐留しうる（6/200、E158）。resethaltreq は無い（E159）。reset は最遅（half 500 ns）で行い、止まってから速さを取り直す | P4 治具は入れ直し不要だった。WeAct は信号線から逆給電され、3V3 と信号線を両方外さないと落ちない | PC14 / PC15（USB PD の CC）、PC16 / PC17（USB。P4 治具では I2C に配線）、PC18 / PC19 を DUT の I2C に使わない。PB3 / PB11 / PB12 は high の後の解放が遅く、pull の判定に使わない（原因未確定、§4） |
+| CH32L103 | rvswd | RP2350 Pro Micro: SWDIO GP0 / SWCLK GP1（420 組中これだけ） | 1 MHz（reset 直後の遅い clock では 680 kHz で parity エラー。下限 500 ns） | low（high で休むと debug の線が reset される、LM §3。bench では照合していない） | 未配線 | 走ったまま ndmreset → 線を離して wake で確認は 9/20、reset-halt + resume で 20/20。haltreq が効かず走り続けた件は未解決 | 当初は無給電（LinkE が抜けていた）で、どの線も答えなかった | GP0 / GP1 は Serial1 の既定ピン（fixture.uart は別の組に） |
+| CH32V103 / V203 / V307 | rvswd（OEP の治具は無い） | WCH-Link だけ（V103 は WCH-Link(CH549)、V203 / V307 は LinkE）。WCH-Link の fw は 09-16 に V006 の LinkE（2.22）以外すべて 2.12（V103 の WCH-Link(CH549) も 2.12）、E162 / 09-25 の収録では LinkE 2.22（後で更新した可能性）。未確定、頼る前に `ch32rv probe info` で読む。UART は PA9 / PA10 | 記録なし | LinkE は SWCLK 0 / SWDIO 1 で休ませる（V203、E171） | 未配線 | LinkE の attach で RCC / ACTLR が書き換わる（V203 / V307、E162） | V203 は LinkE の 3V3 / 5V を切っても動き続けた（E162） | 記録なし |
+| RP2350（ARM SWD、Cortex-M33） | swd（v1 `oep.wire.swd` + `oep.target.arm-adi`） | RP2040-Zero の probe（Rp2040ZeroProbe）→ Pro Micro RP2350: SWCLK GP0、SWDIO GP1 | half 500 ns（SIO の bit-bang） | —（swd） | 記録なし | DPIDR 0x4c013477（ADIv6、DPv3）。multidrop の TARGETSEL は要らず、どの wake でも起きる。flash の後は必ず Rom.reboot()（AIRCR だけでは C_MASKINTS が残り USB が列挙されない） | 記録なし | 記録なし。scan では erratum E9（離した入力が high にラッチ）に注意 |
 
 ## 3. target ごと
 
@@ -119,7 +119,7 @@ pull-up（R4 / R5）付きで、pull の判定に使えない。
 - **USB_PHY_V33（AFIO_CTLR bit6、reset 値で立っている）が立っていると、PC16 / PC17 は open-drain でも離さず high を出す**。pull の
   判定や scan の候補に使うと誤る。
 - **読み出し保護は scan では分からない**（§3.2 の保護の項）。
-- **P4 の slow_release の channel を pull の判定に使わない**（§4）。
+- **PB3 / PB11 / PB12 を pull の判定に使わない**: probe が high を駆動した後の解放が遅い（§4。原因は未確定）。
 
 **reset と halt**:
 
@@ -137,7 +137,7 @@ pull-up（R4 / R5）付きで、pull の判定に使えない。
 - WeAct の出荷デモは RDP が有効で、書き込みが通らなかった。OEP 経由で `ch32rv target protect off` で解除（ch32rv dev 7da2e60 /
   f65ea53）。option は a55a1fe0 に。scan と attach は通り、flash を読もうとして初めて分かる。
 - アプリが RCC_CFGR0.HPRE に 1xxx（bit7 = 1）を書くと、LinkE の attach で止まる（E164。/2 の 0001 と /6 の 0101 は止まらない、option
-  byte は変わらない、L103 では起きない）。回復は LinkE の特殊消去を応答 0x0f まで繰り返す（E164、E169）。引き金は特殊消去そのもので、
+  byte は変わらない、L103 では起きない）。回復は LinkE の特殊消去を 2 回目の 0x0f まで繰り返す（E164、E169）。引き金は特殊消去そのもので、
   AttachChip / RedetectChip / 待つだけでは変わらない（E169）。
 
 **電源**: P4 治具では入れ直しは要らなかった。要ったのは LinkE 側の特殊消去の回復だけ。WeAct は P4 の 3V3 から給電（bench
@@ -162,8 +162,8 @@ LinkE の `probe power 3v3 off` の間も X035 は動き続けた（E166）。
 l103-rp2350、SparkFun Pro Micro RP2350、firmware 0.0.19。09-30 に count = 0 の scan で発見、420 組のうち答えたのはこの 1 組）。
 この L103 の UID は 3a6fabcda284bc48 で、LinkE 0E028F0692F1 の後ろの L103 とは別の板（bench）。
 
-- idle_clock low の理由: L103 は SWCLK が high で休むと debug の線を reset する（09-23〜25、LM §3）。LinkE も L103 では SWCLK 0 /
-  SWDIO 1 で休ませる（E171）。
+- idle_clock low の理由: L103 は SWCLK が high で休むと debug の線を reset する（09-23〜25、LM §3。**bench では照合していない**）。
+  LinkE も L103 では SWCLK 0 / SWDIO 1 で休ませる（E171。E171 は休ませ方の観測で、reset されることは確かめていない）。
 - max_speed 1 MHz の理由: reset 直後の遅い clock では 1 MHz を超えると書き込みの確かめが落ちる（LM §3）。
 
 **scan の落とし穴**:
@@ -193,12 +193,29 @@ UART で確かめられない。LinkE の bench（l103-linke）は USART1 PA9 / 
 
 ### 3.4 CH32V103 / V203 / V307
 
-OEP の治具はまだ無い。どれも WCH-Link の bench（V103 は WCH-Link(CH549) fw 2.12、V203 / V307 は LinkE fw 2.22）で、UART は
-USART1 PA9 / PA10（bench v103 / v203 / v307-linke）。LinkE の attach で clock が書き換わる（§5）。V103 は long 形式に応答する（E165）。
+OEP の治具はまだ無い。どれも WCH-Link の bench（V103 は WCH-Link(CH549)、V203 / V307 は LinkE）で、UART は
+USART1 PA9 / PA10（bench v103 / v203 / v307-linke）。firmware: 09-16 は V006 の LinkE（2.22）以外すべて 2.12（V103 の CH549 も 2.12）、
+E162 / 09-25 の収録と今の bench の toml では 2.22（V103 は 2.12）。その間に更新した可能性があるが未確定で、頼る前に `ch32rv probe info` で読む。LinkE の attach で clock が書き換わる（§5）。V103 は long 形式に応答する（E165）。
 
-### 3.5 ARM SWD の target
+### 3.5 RP2350（ARM SWD）
 
-OEP の治具で試した ARM の target は、2026-10-02 の時点で無い。
+出典: bench、2026-09-23〜24。
+
+**線と設定**: RP2040-Zero の OEP probe（Rp2040ZeroProbe、v1 の `oep.wire.swd` + `oep.target.arm-adi`）から Pro Micro RP2350 へ SWD。
+SWCLK = GP0、SWDIO = GP1。SIO の bit-bang で half 500 ns。DPIDR 0x4c013477（ADIv6、DPv3）。multidrop の TARGETSEL は要らず、
+どの wake でも起きる。
+
+**AP**: 0x2000 / 0x4000（M33 の AHB-AP）、0xA000（APB-AP）、0x80000（RP-AP）。MEM-AP の読みは約 47 KiB/s。
+
+**落とし穴**:
+
+- **AHB-AP は non-secure で上がる**（CSW bit 30）。対処: bit 30 を下ろす。下ろさないと SRAM の読みが FAULT になる。
+- **scan で全ピンが pull-up ありに見える**: RP2350 の erratum E9（離した入力が high にラッチされる）。対処: pad 自身の pull を当てて読む（§4）。
+
+**flash と reset**: ROM 経由の書き込みが通る（98 KiB / 5.5 s）。**最後は必ず Rom.reboot()**。AIRCR だけの reset では C_MASKINTS が
+立ったまま残り、USB が列挙されない。
+
+**NRST、保護、触らないピン**: 記録なし。
 
 ## 4. probe 側の注意
 
@@ -207,12 +224,10 @@ OEP の治具で試した ARM の target は、2026-10-02 の時点で無い。
 | P4 の GPIO の速さと SWIO | P4 の GPIO レジスタのアクセスは約 260 ns（94 cycles、`gpio_ll` では約 300 ns/access）で、SWIO の短パルス（250〜280 ns）と同じ長さ。classic ESP32 の書き方は使えず、dedicated GPIO（1 bit 94.5 ns）が要る | E151、E152、材料 10-02、oep-probe-arduino 272dd38 |
 | RVSWD の PHY: open-drain と push-pull | open-drain + 内部 pull-up は X035 で half 300 ns 以下で崩れる（上限約 1 MHz、`gpio_ll` では half 0 ns だけ崩れる）。push-pull + 明示の turnaround は half 0 ns まで全数一致（1 DMI read 10.1 µs） | E152、E153 |
 | half 0 ns の parity | half 0 ns の DMI read が run によって 6〜8 割 parity 不一致になることがある。reset 直後の attach では 31 % が half 0 で clean にならない | LEDGER `x035-dmi-parity-intermittent`、E159 |
-| RP2350 erratum E9 | 離した入力が high にラッチされ、全ピンが pull-up ありに見える。pull の判定は pad 自身の pull を当てて読む | 材料（L103） |
-| P4 の SD の pad の遅い解放 | high を駆動した後の解放が数百 ms 遅い channel があり、idle のレベルが DUT の事実にならない。P4 治具では 13 / 9 / 14（PB3 / PB11 / PB12）、WeAct の P4 では 2 / 54 / 53（同じく PB3 / PB11 / PB12）と bench にある。**どちらも DUT の同じ pad なので、原因が P4 の pad か X035 側かは確かめていない**（下の注） | bench x035-p4 / x035-weact |
+| RP2350 erratum E9 | 離した入力が high にラッチされ、全ピンが pull-up ありに見える。pull の判定は pad 自身の pull を当てて読む（probe 側でも target 側でも同じ: L103 の治具の RP2350 probe、SWD の target の RP2350） | 材料（L103）、bench 2026-09-23〜24（SWD） |
+| X035 の PB3 / PB11 / PB12 の遅い解放 | PB3 / PB11 / PB12 は、probe が high を駆動した後の解放が遅い（数百 ms）。2 つの P4 治具の別の channel（x035-p4 は 13 / 9 / 14、WeAct は 2 / 54 / 53）で同じ。原因は未確定（X035 側が有力。DUT を外して同じ channel を測ったことはなく、2 台とも F8U6）。仮説の 1 つは P4 の SD の pad だった。idle のレベルは DUT の事実として使わない | bench x035-p4 / x035-weact、bench の確認 2026-10-02 |
 | 長い op と線の速さ | 線の op の時間はリンクではなく線の速さで決まる | LM §1.3 |
 
-注（遅い解放）: 材料は「P4 の ch 2/54/53（GPIO 9/13/14、SD の pad）」と書くが、bench では 2 / 54 は P4 治具の SWDIO / SWCLK で、
-P4 治具の slow_release は 13 / 9 / 14、WeAct の slow_release が 2 / 54 / 53 である。channel の番号は治具ごとに読むこと。
 
 ## 5. WCH-Link の注意（参考、比べるとき用）
 
@@ -220,7 +235,8 @@ P4 治具の slow_release は 13 / 9 / 14、WeAct の slow_release が 2 / 54 / 
 |---|---|---|
 | attach で clock を書き換える | LinkE（fw 2.22 でも）は attach のたびに target の RCC / ACTLR を固定の PLL 設定に書き換える。L103 CFGR0 0 → 0x001c040a・ACTLR 0x1（ループ約 6 倍）、V203 / V307 は約 1.3 倍、アプリの UART が文字化け。V003 と既定 clock の X035 は変化なし。V006 でも書き換わる（材料）。core は SysTick で直す（5e0e646） | E162、材料 |
 | HPRE 1xxx の X035 で止まる | §3.2。回復は特殊消去を 0x0f まで繰り返す | E164、E169 |
-| RST_MODE | HPRE /2 で動かした X035C8T6 が接続の後に応答しなくなり、USER の RST_MODE が 00（PA21 = 外部 reset）になっていた。特殊消去の直後の同じ session で option byte を書き直して復旧（E162）。E164 では option byte は変わらないとしており、RST_MODE が変わった原因は未確定 | E162、E164 |
+| X035C8T6 の RST_MODE（E162） | HPRE /2 で動く X035C8T6 に LinkE で接続 → 応答しなくなった → USER が 0x07（RST_MODE 00、PA21 が外部 reset）だった → 特殊消去の窓で USER を 0x1f（RST_MODE 11）に書き戻して回復。接続が RST_MODE を変えたかは未確定（事故の前に option byte を読んでいない） | E162 |
+| HPRE 1xxx の停止（E164、別の件） | HPRE 1xxx の X035 は attach で止まる。option byte は変わらない。特殊消去を 2 回目の 0x0f まで繰り返して回復 | E164 |
 | 休ませ方 | L103 / V203 は SWCLK 0・SWDIO 1、X035 は SWCLK 1・SWDIO 1 で休ませる（OEP の治具の観測と同じ向き） | E171 |
 | 速さの段 | SetSpeed の high / medium / low の線上の Hz | E163 |
 | 識別が固まる | probe-rs / minichlink のセッションの後、chip の識別が古い値のまま固まる。`81 0d 01 03` の redetect で回復（V003） | 材料 |
@@ -244,6 +260,8 @@ P4 治具の slow_release は 13 / 9 / 14、WeAct の slow_release が 2 / 54 / 
 | bench | ArduinoCore-CH32RV `tests/benches/*.toml`（x035-p4、x035-weact、l103-rp2350、v003-esp32、*-linke） | 2026-10-02 に読んだ版 |
 | LM §3 | [リンクの計測](link-measurements.ja.md) §3 | 2026-10-02 |
 | 材料 | bench の経験のまとめ（wch-protocols の E 番号つき）と dev-oep の実験（P4 30eda0ea068b + V003） | 2026-10-02 |
+| bench（SWD） | RP2040-Zero の probe → Pro Micro RP2350 の SWD（DPIDR、AP、CSW bit 30、Rom.reboot） | 2026-09-23〜24 |
+| bench の確認 | 遅い解放の pad、E162 の RST_MODE の順、LinkE の fw、ARM の記録 | 2026-10-02 |
 | commit | ch32rv dev 7da2e60 / f65ea53（`target protect off`）、core 5e0e646（SysTick で clock を直す）、oep-probe-arduino 272dd38（P4 の SWIO PHY） | — |
 
 E 番号の日付は各 README に最初に出る日付（wch-protocols `experiments/<e番号>/README.ja.md`）。本文の日付（09-24 など）は 2026 年。
