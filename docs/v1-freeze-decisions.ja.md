@@ -15,7 +15,7 @@
 13（client の API）、11（予約は今の文書のまま）。
 1 の bind の並びは漏れていて、2026-10-01 に probe-config §1.2 に入れた（応答の並びと同じく各要素の前に len）。
 12 は 2026-10-01 のゼロベースの再検討で変わった: 設定の label は core の describe には出さず probe.config の get で読む（describe は宣言だけ）。
-3(b)（iProduct `OEP`）は恒久の規範になり、3(c)（HID の report）は記述子に任せる形で反映した。11 の参照「probe-cdc §6 / §7」は
+3(b)（iProduct `OEP`）は恒久の規範になり（2026-10-02 に置き換え: [core §3.3](oep-core.ja.md)。iProduct と interface の文字列は見分けに使わない。暫定の手がかりは host 開発ガイド §1.7）、3(c)（HID の report）は記述子に任せる形で反映した。11 の参照「probe-cdc §6 / §7」は
 open-proposals §6 / §7 の誤り。その後の決定は [ゼロベースの再検討と仕様案](v1-zero-base-proposal.ja.md)。
 
 ## 0. v1 の凍結の範囲（2026-10-02）
@@ -126,11 +126,11 @@ revision。core §2.7）。後ろに足す（任意の TLV、任意の op、出�
   アドレスは `oep://<unit_id>/<slot の名前>`。host は serial で探し、見つからなければ describe の unit id で探す。
   **unit_id は 1〜32 byte の `a-z 0-9 -`**（slot の名前は今も `a-z 0-9 - _`）。どちらも URL の中で encode が要らない。
 - **(b) vendor bulk の経路**: `bInterfaceClass 0xFF` で、`iInterface` が `OEP` で始まるインターフェースの bulk IN / OUT 1 組、と
-  core §3.3 に書く（今の client は「最初の bulk 対」を掴んでいて、DFU や CDC が先にあると外れる）。
+  core §3.3 に書く（今の client は「最初の bulk 対」を掴んでいて、DFU や CDC が先にあると外れる）。（2026-10-02 に置き換え: [core §3.3](oep-core.ja.md)。iProduct と interface の文字列は見分けに使わない。暫定の手がかりは host 開発ガイド §1.7）
 - **(c) HID の経路**: usage page / usage、report ID、report の長さを core §3.3 に書く（今の実装の値で固める）。
 - **(d) VID:PID**: 今は仮の USB の ID（ボードの既定の VID:PID）で動かしていて、配布には使えない。専用の PID を取得できたら、
   それに切り替える予定。host の発見は iProduct の `OEP` で見るので、host には影響なし。bench などの VID:PID の決め打ちは、serial（unit_id）か
-  iProduct で探す形に替える。usb-identity の iProduct を今の値に直す。
+  iProduct で探す形に替える。usb-identity の iProduct を今の値に直す。（2026-10-02 に置き換え: [core §3.3](oep-core.ja.md)。iProduct と interface の文字列は見分けに使わない。暫定の手がかりは host 開発ガイド §1.7）
 
 追随: probe（USB の serial）、client（発見、vendor の選び方）、ch32rv、bench（toml、dfu.py）、ArduinoCore-CH32 の IDE の保存値。
 
