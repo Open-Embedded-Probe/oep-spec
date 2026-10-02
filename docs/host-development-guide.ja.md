@@ -399,6 +399,13 @@ label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分
   （最初の命令の前）で止まった**。電源を入れた応答から止まるまで約 15 ms。
 - `nrst` の channel に reset TLV を付けた attach: **6 回中 6 回、dpc 0 で止まった**。
 - 出力の idle を置いていない電源の channel で、gpio の plan を解いたら、target の電源が切れた（§8.2 の 5 の理由）。
+- 電源の channel に出力の idle（mode 4）を置いて保存した後（oep-probe-arduino ec1df99）: plan が無くても target は動き続け、その
+  channel を gpio の plan で取っても（set を送る前）、plan を置き換えて残しても、解いても、電源は切れなかった。probe を再起動しても、
+  plan の無いまま target は起動直後から動いていた。label の `v003.nrst` / `v003.power_hi` から線を引けた。
+- 電源を入れたところを取った（§8.4）: logic を電源の channel の立ち上がりで待たせ（状態 2）、その間に gpio で電源を入れた。電源の
+  channel 自身も取る channel に入れた。リセットの線は通電の 4.4 ms 後に上がり、target の UART の線は通電の 2 µs 後に high に
+  なった。この probe の logic は最遅 1 MHz、1 回 約 6 万サンプルまでなので、1 回の窓は約 60 ms（target のアプリが動き出す約
+  138 ms 後は窓の外）。
 
 ## 9. ピンの探し方（参考）
 
