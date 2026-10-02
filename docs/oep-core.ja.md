@@ -522,7 +522,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 - **ページングの終わり**（describe、state、connections、streams、segments、get に共通）: first が数以上なら count 0 と more 0 を
   返す。host は more = 0 で止める。list は more を持たず、total で終わりが分かる（§7.2）。
 
-### 7.4 describe の共通タグ（0x01〜0x3F）
+### 7.4 describe の共通タグ（0x01〜0x3E。0x3F は応答のメタ情報）
 
 | tag | 名前 | 値 |
 |---:|---|---|

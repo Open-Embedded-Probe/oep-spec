@@ -34,7 +34,7 @@ Open Embedded Probe（OEP）は、組み込み開発用probeが提供する機�
   - [probe 開発ガイド](docs/probe-development-guide.ja.md)
   - [USB の識別](docs/usb-identity.ja.md)（PID を取るまでの見分け方、取った後に直す所）と [pid.codes への申請の資料](docs/pid-codes-application/README.ja.md)
   - [core wire model v1（v0 からの差分、経緯）](docs/v1-core-wire-delta.ja.md)
-- v1 の案と決めた経緯: [案と決めた経緯](docs/v1-open-proposals.ja.md)、[凍結前の決定（2026-09-30）](docs/v1-freeze-decisions.ja.md)、[凍結前の全面見直し（2026-10-01、未決）](docs/v1-freeze-review-2026-10-01.ja.md)、[ゼロベース再検討と仕様案（2026-10-01、未決）](docs/v1-zero-base-proposal.ja.md)、第三者レビュー（2026-09-26）の [1](docs/review-answer-2026-09-26.ja.md) と [2（移植性）](docs/review-answer-portability-2026-09-26.ja.md)、[レビューへの対応](docs/review-response-2026-09-26.ja.md)
+- v1 の案と決めた経緯: [案と決めた経緯](docs/v1-open-proposals.ja.md)、[凍結前の決定と凍結の範囲（2026-10-02）](docs/v1-freeze-decisions.ja.md)、[凍結前の全面見直し（2026-10-01、対応済み）](docs/v1-freeze-review-2026-10-01.ja.md)、[ゼロベース再検討と仕様案（2026-10-01、採用・反映済み）](docs/v1-zero-base-proposal.ja.md)、[ゼロベース再点検（2026-10-02）](docs/v1-zero-base-review-2026-10-02.ja.md)、第三者レビュー（2026-09-26）の [1](docs/review-answer-2026-09-26.ja.md) と [2（移植性）](docs/review-answer-portability-2026-09-26.ja.md)、[レビューへの対応](docs/review-response-2026-09-26.ja.md)
 - 2026-09-26 版（oep-spec 2ff1d62、probe 3160dee、client 75ee13e）へのレビューと調査（未対応）: [実機・ソース・テスト項目レビュー](docs/hardware-source-review-2026-09-26.ja.md)、[コア・標準インターフェースの移植性と復旧性レビュー](docs/review-answer-core-standard-portability-2026-09-26.ja.md)、[操作・状態遷移・テスト監査](docs/v1-operation-test-audit-2026-09-26.ja.md)、[未決事項（IP 経路、設定からの復旧）の事前調査](docs/v1-open-issues-research-2026-09-26.ja.md)
 - 上流の合意（目的・要求・モデル）
   - [プロジェクトの目的と範囲](docs/project-concept.ja.md)
