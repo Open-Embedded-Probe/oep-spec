@@ -93,24 +93,37 @@ retrieves them with read_rx.
 - mode: 1 fixed-length reception (a write of exactly the length of arm_rx is one frame), 2 length-prefixed reception (a 1-byte length write and,
   **within the same transaction**, the following write is the body of that length (no repeated start). The body is one frame. It becomes ready to receive at configure),
   3 preloaded transmission (answers the controller's reads in the order placed by preload_tx). The modes that can be handled are declared with the features of describe.
-- configure recreates the target (the queued frames and counts are lost). Before the plan it is rejected unavailable (cause 6). If address exceeds 0x7F or
-  mode is undefined (0, 4 or more), rejected malformed. A mode that is in the definition but not in the declaration is rejected unsupported.
+- This fn's plan holds roles 1 and 2 exactly once each, on different channels (a plan_apply where either is missing, where a role appears twice, or where both
+  roles are on the same channel is rejected malformed). Releasing or replacing the plan stops the target and returns it to the state right after describe (state 0,
+  mode 0, the queue, the wait, the placements and the cumulative counts cleared, and the stretch value 0).
+- configure recreates the target (the queued frames, the wait, the placements, rx_frames and errors are lost. The stretch value is kept). When this fn has no plan,
+  it is rejected unavailable (cause 6). If address exceeds 0x7F or mode is undefined (0, 4 or more), rejected malformed. A mode that is in the definition but
+  not in the declaration is rejected unsupported.
 - arm_rx is for mode 1 only (otherwise rejected unavailable cause 6). length is 1 to the max_length of describe (0 is malformed, above max_length is
-  unsupported). If already waiting, the current wait is dropped and it waits with the new length. **A write from the controller while not armed is ACKed and discarded, and
-  errors is counted** (the bus is not stalled).
-- read_rx takes the oldest frame out and returns it (count 0 if none). pending is the number remaining after taking it out (capped at 255).
-  If the queue overflows, new frames are discarded and errors is incremented. The depth of the queue is the queue_depth of describe.
-- preload_tx is for mode 3 only. count is 1 to max_length (0 is malformed). slots is the serial number of placements (u8, wraps). Even if the number of bytes the controller
+  unsupported). If already waiting, the current wait is dropped and it waits with the new length. The wait does not end when a frame is received: it keeps receiving with the same length until the next arm_rx, reset,
+  configure or plan release (armed stays 1). **A write from the controller while not armed is ACKed and discarded, and
+  errors is incremented by 1** (the bus is not stalled).
+- A write from the controller is handled per transaction (from START to STOP or the next START), and in every case each byte is ACKed.
+  A write with no data (only the address byte) counts nothing in any mode. In mode 1 while waiting, a write whose number of data bytes differs from
+  length is discarded and errors is incremented by 1 (the wait continues). In mode 2, a write whose first byte (the length L) is 0 or exceeds max_length, or whose
+  following bytes differ in number from L, is discarded and errors is incremented by 1. A write in mode 3 is discarded and errors is incremented by 1.
+- read_rx takes the oldest frame out and returns it (count 0 if none). In state 0 it is rejected unavailable (cause 6). pending is
+  the number remaining after taking it out (capped at 255). When the next frame arrives while the queue holds queue_depth frames, that new frame is discarded and errors is
+  incremented by 1 (it is not counted in rx_frames). The depth of the queue is the queue_depth of describe.
+- preload_tx is for mode 3 only. count is 1 to max_length (0 is malformed). slots is the serial number of placements (u8, wraps). Unread placements are
+  up to queue_depth. A preload_tx while all are filled places nothing and is rejected unavailable (cause 2). Even if the number of bytes the controller
   read differs from the placed length, the next read is answered from the next placement. **When the placements are empty (and when read in mode 1 / 2),
   0xFF is emitted.** Quirks of the chip's FIFO (emitting an extra byte at the end of a read, etc.) are absorbed by the probe.
 - status: state 0 not configured, 1 running. mode is the value of configure. armed is whether it is waiting to receive in mode 1 (0 / 1). queued is the number of queued
-  frames (capped at 255). rx_frames is the cumulative count of received frames, tx_slots is the number of placements placed by preload_tx and not yet read (mode 3. Otherwise 0),
-  errors is the cumulative count of overflows, receive errors and writes discarded while not armed (u32).
+  frames (capped at 255). rx_frames is the cumulative count of frames put in the queue (those discarded by overflow are not counted), tx_slots is the number of placements placed by preload_tx and
+  not yet read (mode 3. Otherwise 0), errors is the cumulative count of overflows and of the write errors above (length errors, writes while not armed and in mode 3) (u32).
 - reset returns to the state right after configure (clears the queue, the wait and the cumulative counts. Keeps mode and address). In state 0 it is rejected unavailable (cause 6).
 - stretch is the time SCL is held low after the ACK of each received byte (µs, 0 = none). Only for probes that declare bit1 of features
-  (otherwise unknown_operation). A length that cannot be handled is rejected unsupported.
+  (otherwise unknown_operation). If stretch_us exceeds the max_stretch_us of describe, rejected unsupported. It is accepted in any state
+  (state 0 too), and the value takes effect from the next received byte. configure and reset do not change the value.
 - describe: role_channels, max_length (the maximum bytes of one frame), max_clock_hz (the verified upper limit of SCL), features (bit0 mode 3,
-  bit1 stretch. modes 1 and 2 are mandatory), queue_depth (tag 0x40, u8: the number of frames that can be queued).
+  bit1 stretch. modes 1 and 2 are mandatory), queue_depth (tag 0x40, u8: the number of frames that can be queued. In mode 3 also the upper limit of unread placements),
+  max_stretch_us (tag 0x41, u32: the largest µs stretch accepts. 1 or more. A probe that declares bit1 of features always includes it).
 - No notifications are sent (subscribe is rejected unsupported).
 
 ## 4. `oep.fixture.spi-target`
@@ -125,15 +138,23 @@ The probe becomes an SPI target, answers one transfer delimited by CS with the M
 | 0x04 | status | — | state(u8), mode(u8), bit_order(u8), armed(u8), queued(u8), transactions(u32), errors(u32), [TLV] | Not required |
 | 0x05 | reset | — | — | Required |
 
-- configure recreates the target. Before the plan it is rejected unavailable (cause 6). mode exceeding 3, or bit_order exceeding 1, is
-  rejected malformed. bit_order 1 without bit0 of features is rejected unsupported. **CS is active low** (active high comes later as a TLV).
+- This fn's plan holds roles 1 to 4 exactly once each, on different channels (a plan_apply where a role is missing, where a role appears twice, or where two roles are on the same
+  channel is rejected malformed). Releasing or replacing the plan stops the target and returns it to the state right after describe (state 0,
+  mode and bit_order 0, the queue, the wait and the cumulative counts cleared).
+- configure recreates the target (the queued transfers, the wait, transactions and errors are lost). When this fn has no plan, it is rejected unavailable
+  (cause 6). mode exceeding 3, or bit_order exceeding 1, is rejected malformed. bit_order 1 without bit0 of features is rejected
+  unsupported. **CS is active low** (active high comes later as a TLV).
 - arm waits for the next single transfer: length is the maximum bytes to receive (1 to max_length. 0 is malformed, excess is unsupported), tx is the bytes to put out on MISO in that
   transfer (count ≤ length. The shortfall is 0). An arm while waiting is rejected unavailable (one at a time). **A transfer while not armed
-  discards MOSI and counts transactions and errors.** **MISO is 0 outside tx (not armed, after tx is used up).**
-- When a transfer ends with CS, the MOSI bytes and the number of bits actually received (bits) are queued. Anything beyond length is discarded (bits is the number actually received, data is
-  up to length). read_rx returns the oldest (count 0 if none). pending is the remainder after taking it out (capped at 255).
+  discards MOSI and counts transactions and errors.** **MISO is 0 outside tx (not armed, after tx is used up).** CS becoming active and returning to inactive with no
+  SCK cycle at all (0 bits) is not a transfer: nothing is queued, neither transactions nor errors is counted, and the arm keeps waiting.
+- When a transfer ends with CS, the MOSI bytes and the number of bits actually received (bits) are queued, and transactions is incremented by 1. The number of data bytes is bits divided by 8
+  rounded up, capped at length. Anything beyond length is discarded and errors is incremented by 1 (that transfer is queued with bits left as the number actually received and data
+  up to length). A transfer that ends while the queue holds queue_depth entries is discarded without queuing and errors is incremented by 1 (it is counted in transactions).
+  A transfer that both exceeds length and overflows the queue increments errors by 2. read_rx returns the oldest (count 0 if none). In state 0 it is rejected
+  unavailable (cause 6). pending is the remainder after taking it out (capped at 255).
 - status: state 0 not configured, 1 running. armed is whether it is waiting for a transfer. queued (capped at 255), transactions (the cumulative count of finished transfers),
-  errors (the cumulative count of overflows, not armed, and length excess, u32).
+  errors (the cumulative count of overflows, not armed, and length excess, each counted as 1, u32).
 - reset returns to the state right after configure (clears the queue, the wait and the cumulative counts. Keeps mode and bit_order). In state 0 it is rejected unavailable (cause 6).
 - describe: role_channels, max_length (the maximum bytes of one transfer), max_clock_hz (the verified upper limit of SCK), features (bit0 LSB first),
   queue_depth (tag 0x40, u8).

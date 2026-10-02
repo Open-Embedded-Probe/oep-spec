@@ -93,24 +93,37 @@ read_rx で取り出す。
 - mode: 1 決まった長さの受信（arm_rx の length ちょうどの書き込みを 1 フレームとする）、2 長さつきの受信（1 byte の長さの書き込みと、
   **同じトランザクションの中で**続く書き込みがその長さの本文（repeated start は無し）。本文を 1 フレームとする。configure で受けられる
   状態になる）、3 送信の先置き（controller の読み出しに、preload_tx で置いた順に答える）。describe の features で扱える mode を宣言する。
-- configure は target を作り直す（積んだフレームと数は消える）。plan の前は rejected unavailable（cause 6）。address が 0x7F を超える、
-  mode が未定義（0、4 以上）なら rejected malformed。定義にあるが宣言に無い mode は rejected unsupported。
+- この fn の plan は role 1 と 2 をちょうど 1 つずつ、別々の channel で持つ（どちらかが無い、同じ role が 2 つある、両方の role が同じ
+  channel の plan_apply は rejected malformed）。plan を解く・置き換えると target は止まり、describe の直後と同じ状態に戻る（state 0、
+  mode 0、列・待ち・置き場・累計を消し、stretch の値は 0）。
+- configure は target を作り直す（積んだフレーム、待ち、置き場、rx_frames と errors は消える。stretch の値は保つ）。この fn の plan が
+  無いときは rejected unavailable（cause 6）。address が 0x7F を超える、mode が未定義（0、4 以上）なら rejected malformed。定義にあるが
+  宣言に無い mode は rejected unsupported。
 - arm_rx は mode 1 だけ（ほかは rejected unavailable cause 6）。length は 1〜describe の max_length（0 は malformed、max_length 超は
-  unsupported）。すでに待っていれば、今の待ちを捨てて新しい length で待つ。**arm していないときの controller の書き込みは ACK して捨て、
-  errors を数える**（線を止めない）。
-- read_rx は、いちばん古いフレームを取り出して返す（無ければ count 0）。pending は、取り出した後に残っている数（255 で止める）。
-  列があふれたら新しいフレームを捨て、errors を増やす。列の深さは describe の queue_depth。
-- preload_tx は mode 3 だけ。count は 1〜max_length（0 は malformed）。slots は置いた数の通し番号（u8、一周する）。controller が
+  unsupported）。すでに待っていれば、今の待ちを捨てて新しい length で待つ。待ちはフレームを受けても終わらず、次の arm_rx、reset、
+  configure、plan を解くまで同じ length で受け続ける（armed は 1 のまま）。**arm していないときの controller の書き込みは ACK して捨て、
+  errors を 1 増やす**（線を止めない）。
+- controller の書き込みは 1 回のトランザクション（START から STOP または次の START まで）を単位に扱い、どの場合も各 byte に ACK を
+  返す。データの無い書き込み（アドレスの byte だけのもの）は、どの mode でも何も数えない。mode 1 で待っているとき、データの byte 数が
+  length と違う書き込みは捨て、errors を 1 増やす（待ちは続く）。mode 2 で、最初の byte（長さ L）が 0 か max_length を超える、または
+  続く byte の数が L と違う書き込みは捨て、errors を 1 増やす。mode 3 の書き込みは捨て、errors を 1 増やす。
+- read_rx は、いちばん古いフレームを取り出して返す（無ければ count 0）。state 0 では rejected unavailable（cause 6）。pending は、
+  取り出した後に残っている数（255 で止める）。列に queue_depth 個あるときに次のフレームが来たら、その新しいフレームを捨て、errors を
+  1 増やす（rx_frames には数えない）。列の深さは describe の queue_depth。
+- preload_tx は mode 3 だけ。count は 1〜max_length（0 は malformed）。slots は置いた数の通し番号（u8、一周する）。未読の置き場は
+  queue_depth 個まで。すべて埋まっているときの preload_tx は何も置かずに rejected unavailable（cause 2）。controller が
   読んだバイト数が置いた長さと違っても、次の読み出しは次の置き場から答える。**置き場が空のとき（と mode 1 / 2 で読み出されたとき）は
   0xFF を出す**。チップの FIFO の癖（読み出しの最後に余分なバイトを出す、など）は probe が吸収する。
 - status: state 0 未設定、1 動いている。mode は configure の値。armed は mode 1 で受信を待っているか（0 / 1）。queued は積んだ
-  フレームの数（255 で止める）。rx_frames は受けたフレームの累計、tx_slots は preload_tx で置いて未読の置き場の数（mode 3。ほかは 0）、
-  errors はあふれと受信の誤りと未 arm で捨てた書き込みの累計（u32）。
+  フレームの数（255 で止める）。rx_frames は列に積んだフレームの累計（あふれて捨てたものは数えない）、tx_slots は preload_tx で置いて
+  未読の置き場の数（mode 3。ほかは 0）、errors はあふれと、上の書き込みの誤り（長さの誤り、未 arm と mode 3 の書き込み）の累計（u32）。
 - reset は configure 直後と同じ状態に戻す（列、待ち、累計を消す。mode と address は保つ）。state 0 では rejected unavailable（cause 6）。
 - stretch は、受けたバイトごとに、その byte の ACK の後で SCL を low に保つ時間（µs、0 = しない）。features の bit1 を宣言する probe
-  だけ（ほかは unknown_operation）。扱えない長さは rejected unsupported。
+  だけ（ほかは unknown_operation）。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け
+  （state 0 でも）、値は次に受ける byte から効く。configure と reset は値を変えない。
 - describe: role_channels、max_length（1 フレームの最大 byte）、max_clock_hz（確かめた SCL の上限）、features（bit0 mode 3、
-  bit1 stretch。mode 1 と 2 は必須）、queue_depth（tag 0x40、u8: 積めるフレームの数）。
+  bit1 stretch。mode 1 と 2 は必須）、queue_depth（tag 0x40、u8: 積めるフレームの数。mode 3 では未読の置き場の数の上限）、
+  max_stretch_us（tag 0x41、u32: stretch が受ける最大の µs。1 以上。features の bit1 を宣言する probe は必ず載せる）。
 - 通知は送らない（subscribe は rejected unsupported）。
 
 ## 4. `oep.fixture.spi-target`
@@ -125,15 +138,23 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
 | 0x04 | status | — | state(u8)、mode(u8)、bit_order(u8)、armed(u8)、queued(u8)、transactions(u32)、errors(u32)、[TLV] | 不要 |
 | 0x05 | reset | — | — | 必要 |
 
-- configure は target を作り直す。plan の前は rejected unavailable（cause 6）。mode が 3 を超える、bit_order が 1 を超える は
-  rejected malformed。features の bit0 が無いのに bit_order 1 は rejected unsupported。**CS は low で有効**（high で有効は後から TLV で）。
+- この fn の plan は role 1〜4 をちょうど 1 つずつ、別々の channel で持つ（role が欠ける、同じ role が 2 つある、2 つの role が同じ
+  channel の plan_apply は rejected malformed）。plan を解く・置き換えると target は止まり、describe の直後と同じ状態に戻る（state 0、
+  mode と bit_order は 0、列・待ち・累計を消す）。
+- configure は target を作り直す（積んだ転送、待ち、transactions と errors は消える）。この fn の plan が無いときは rejected unavailable
+  （cause 6）。mode が 3 を超える、bit_order が 1 を超える は rejected malformed。features の bit0 が無いのに bit_order 1 は rejected
+  unsupported。**CS は low で有効**（high で有効は後から TLV で）。
 - arm は次の 1 回の転送を待つ: length は受ける最大 byte（1〜max_length。0 は malformed、超過は unsupported）、tx はその転送で MISO に
   出すバイト（count ≤ length。足りない分は 0）。待っている間の arm は rejected unavailable（1 回に 1 つ）。**arm していない間の転送は
-  MOSI を捨て、transactions と errors を数える**。**MISO は tx の外（未 arm、tx を使い切った後）では 0**。
-- 転送が CS で終わると、MOSI のバイトと、実際に来たビット数（bits）を列に積む。length を超えた分は捨てる（bits は実際に来た数、data は
-  length まで）。read_rx はいちばん古いものを返す（無ければ count 0）。pending は取り出した後の残り（255 で止める）。
+  MOSI を捨て、transactions と errors を数える**。**MISO は tx の外（未 arm、tx を使い切った後）では 0**。CS が有効になってから SCK が
+  1 回も来ずに無効に戻ったもの（0 ビット）は転送とみなさない: 何も積まず、transactions も errors も数えず、arm は待ち続ける。
+- 転送が CS で終わると、MOSI のバイトと、実際に来たビット数（bits）を列に積み、transactions を 1 増やす。data の byte 数は bits を 8 で
+  割って切り上げた数で、length で止める。length を超えた分は捨て、errors を 1 増やす（その転送は、bits を実際に来た数のまま、data を
+  length までにして積む）。列に queue_depth 個あるときに終わった転送は積まずに捨て、errors を 1 増やす（transactions には数える）。
+  length を超え、かつ列があふれた転送は errors を 2 増やす。read_rx はいちばん古いものを返す（無ければ count 0）。state 0 では rejected
+  unavailable（cause 6）。pending は取り出した後の残り（255 で止める）。
 - status: state 0 未設定、1 動いている。armed は転送を待っているか。queued（255 で止める）、transactions（終わった転送の累計）、
-  errors（あふれ、未 arm、length 超過の累計、u32）。
+  errors（あふれ、未 arm、length 超過をそれぞれ 1 と数えた累計、u32）。
 - reset は configure 直後と同じ状態に戻す（列、待ち、累計を消す。mode と bit_order は保つ）。state 0 では rejected unavailable（cause 6）。
 - describe: role_channels、max_length（1 回の転送の最大 byte）、max_clock_hz（確かめた SCK の上限）、features（bit0 LSB が先）、
   queue_depth（tag 0x40、u8）。
