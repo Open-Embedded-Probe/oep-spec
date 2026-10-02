@@ -1,32 +1,26 @@
-# target.console framing 2: dmseq
+# OEP コンソールの mechanism 2: dmseq
 
-状態: **規範**。`oep.target.console` の mechanism 2（[コンソール](oep-if-console.ja.md) §3）の framing を規定する（v0 のときは target.console
-（owner 0x0000、id 0x0013）の framing 2 と呼んでいた）。
-根拠と実測は [experiments/dm-console-seq](../experiments/dm-console-seq/SPEC-draft.md)。
-ch32rv 側のレビュー 2 回を経て合意済み（2026-09-24）。
+[English](target-console-dmseq.md)
 
-## なぜ
+状態: **規範**。この文書は `oep.target.console` の mechanism 2（dmseq、[コンソール](oep-if-console.ja.md) §3）の framing を規定する。
+この文書の原文は英語版で、日本語版はその訳である。
+理由、経緯、実測は [dmseq の記録](target-console-dmseq-notes.ja.md)（記録）にある。
 
-framing 1（ArduinoCore-CH32 の `SerialDMDATA`、minichlink の framing）には通し番号がない。
-host の答えの DMI 書込みが黙って落ちると target の word がもう一度読まれて**重複**し、
-それを読み戻しで救おうとすると、同じ内容の次のフレームと区別できずに**欠落**する。
-dmseq は両方向に 1 bit の通し番号と CRC-8 を持たせ、この二つを区別できるようにする。
+## 目的
 
-CRC は必須である。WCH の probe では、attach が DATA0 に `0xffffffff` を、CH32V30x の
-flash が `0xe339e339`（bit 7 が 0）を残すことが実測で分かっており、CRC がないと後者を
-target が有効な答えとして受け取る。
+dmseq は両方向に 1 bit の通し番号と CRC-8 を持たせる。
+これにより host は、もう一度読んだフレーム（**重複**）と、同じ内容の新しいフレームを区別でき、二重に渡すことも欠落もしない。
+CRC は必須である。
 
-名前: framing 名 **dmseq**。ch32rv では `monitor --source dmseq`、ArduinoCore-CH32 の
-target ライブラリは `SerialDMSeq`。
+名前: framing 名は **dmseq**（`registry/oep-v1.toml`: `oep.target.console` の `[interface.enum.mechanism]`、`dmseq = 2`）。
 
 ## 搬送と所有権
 
-debug module の DATA0/DATA1（framing 0/1 と同じ）。所有権は厳密に交代する。
+debug module の DATA0 と DATA1（[コンソール](oep-if-console.ja.md) §3）。所有権は厳密に交代する。
 
 - target は DATA0 の bit 7 が 0 のとき（答えがある、またはまだ何もない）だけ書く。
 - host は bit 7 が 1 のとき（target のフレームがある）だけ書く。
-- どちらも相手の word を上書きしない。framing 1 で要った「空フレームを 1 poll 分寝かせる」
-  回避策はこれで不要になる。
+- どちらも相手の word を上書きしない。
 
 ## target のフレーム（target → host）
 
@@ -36,13 +30,12 @@ debug module の DATA0/DATA1（framing 0/1 と同じ）。所有権は厳密に�
     CRC-8 は payload の直後（byte 1+N）。N = 0..6。
 
 - N <= 2 のフレームは DATA0 に収まり、target は DATA1 を書かず、host は読まない。
-  （WCH-LinkE では DMI 1 回が USB 1 往復、約 0.4 ms かかるので、短いフレームの費用の 1/3 が浮く。）
 - target は DATA1 を（使うときは）DATA0 より先に書く。
 - **S**: このフレームの通し番号。ack されると反転する。
 - **A**: target が最後に受け取った host payload の番号（H）。
 - **SYN**: begin() から最初の有効な答えを受けるまでの全フレームで 1。
 - **TO**: target が答えを待つのをやめたフレーム（「タイムアウト」参照）。そのフレーム限りで、
-  次に出すフレームでは 0 に戻る。
+  target が次に出すフレームでは 0 に戻る。
 - **N = 0** は空フレーム（host に答えを促す）。空でもフレームには番号があり、答えを受ける。
 
 ## host の答え（host → target）
@@ -55,13 +48,12 @@ debug module の DATA0/DATA1（framing 0/1 と同じ）。所有権は厳密に�
 
 ## CRC-8
 
-poly 0x07、init 0xFF、反転なし、最終 XOR なし。byte0 と payload（1+N または 1+M byte）に
-かけ、その直後に置く。init 0xFF により全 0 の word は常に無効になるので、値を保持しない
-レジスタ（debugger 未接続の V4 は 0 を返す）や host が mailbox を 0 で消した状態を、フレーム
-や答えと取り違えない。CRC は DATA1 の byte も覆うので、target の書き直しをまたいで読んだ
+poly 0x07、init 0xFF、反転なし、最終 XOR なし。byte0 と payload（1+N または 1+M byte）にかけ、その直後に置く。
+init 0xFF により全 0 の word は常に無効になるので、値を保持しないレジスタ（0 と読める）や、host が mailbox を 0 で
+消した状態を、フレームや答えと取り違えない。CRC は DATA1 の byte も覆うので、target の書き直しをまたいで読んだ
 DATA0/DATA1 の組は通らない。
 
-計算方法は問わない（同じ値が出れば適合）。ArduinoCore-CH32 は 16 要素の表で 4 bit ずつ計算する。
+計算方法は問わない（同じ値が出れば適合）。
 
 ## host の状態
 
@@ -70,8 +62,8 @@ DATA0/DATA1 の組は通らない。
 - `last_syn`: 最後に受理したフレームが SYN 付きだった。
 - `h`、`pending`: まだ届いたと分かっていない host payload の番号と中身。
 
-session は未同期で始まる。**target を reset した host は新しい session を始める**（上の
-状態を全部捨てる）。ch32rv の `run`/`monitor` と OEP probe の reset はそうする。
+session は未同期で始まる。**target を reset した host は新しい session を始める**（上の状態を全部捨てる）。
+OEP の probe については [線とデバッグ](oep-if-debug.ja.md) §4.6。
 
 ## host の規則（bit 7 が 1 の word を読んだとき）
 
@@ -79,28 +71,25 @@ session は未同期で始まる。**target を reset した host は新しい s
 答えを書くのはその後（答えた時点で target は次のフレームを出して DATA1 を上書きしてよい）。
 
 1. **無効**なら答えず、次の poll で読み直す。無効とは N > 6、または CRC 不一致。CRC の位置を
-   求める前に N を見る（N = 7 では byte 1+N が存在せず、attach が残す `0xffffffff` はちょうど
-   N = 7 になる）。無効が 3 回続き、かつ synced なら、K = `last_s`、M = 0 で答える。
-   （その word は host 自身の答えが bit 7 = 1 に化けたものかもしれない。K = `last_s` は
-   target が何を出していても安全: その S のフレームは受理済みであり、新しいフレームは
-   S が違うので K 検査で落ち、target が出し直す。）
-2. **重複**: synced かつ S == `last_s` かつ（SYN が 0、または `last_syn`）なら payload を捨て、
-   5 のとおり答える。（出し直された SYN フレームも、ほかと同じく重複である。）
-3. **再同期**: 未同期、または SYN が 1 で 2 の重複でないなら、`last_s` := not S（このフレームを
-   新しいものとして数えるため）、`h` := not A、`pending` を捨て、`synced` := true。
-   **3 のあとはそのまま 4 へ進む**（別の分岐ではない）。host が SYN フレームを受理した直後に
-   target が再起動し、たまたま同じ S を使った場合、その 1 フレームは落ちる。1 bit では
-   区別できないので、target を reset した host は新しい session を始める。
+   求める前に N を見る（N = 7 では byte 1+N が存在せず、attach が残すことのある全 1 の word `0xffffffff` はちょうど N = 7 になる）。
+   無効が 3 回続き、かつ synced なら、K = `last_s`、M = 0 で答える。
+   （その word は host 自身の答えが bit 7 = 1 に化けたものかもしれない。K = `last_s` は target が何を出していても安全: その S の
+   フレームは受理済みであり、新しいフレームは S が違うので K 検査で落ち、target が出し直す。）
+2. **重複**: synced かつ S == `last_s` かつ（SYN が 0、または `last_syn`）なら payload を捨て、5 のとおり答える。
+   （出し直された SYN フレームも、ほかと同じく重複である。）
+3. **再同期**: 未同期、または SYN が 1 で 2 の重複でないなら、`last_s` := not S（このフレームを新しいものとして数えるため）、
+   `h` := not A、`pending` を捨て、`synced` := true。
+   **3 のあとはそのまま 4 へ進む**（別の分岐ではない）。host が SYN フレームを受理した直後に target が再起動し、
+   たまたま同じ S を使った場合、その 1 フレームは落ちる。1 bit では区別できないので、target を reset した host は新しい session を始める。
 4. **受理**: S != `last_s` なら payload を渡し、`last_s` := S、`last_syn` := SYN。
 5. `pending` があり A == `h` なら届いている: `h` := not `h`、`pending` を空にする。
    `pending` が空なら次の最大 2 byte を入れる。K = S、H = `h`、M = len(`pending`)、CRC で答える。
 
 ## target の規則（フレームを出している間に DATA0 を読んだとき）
 
-0. **bit 7 が 1 で、自分が出した語と違う**（probe の attach が残した `0xffffffff` など）なら、答えを待たずに**すぐ同じ
-   フレームを出し直す**。タイムアウトの前でも後でも同じ。bit 7 が 1 の語は host の番なので、放っておくと、未同期の host は
-   無効な word として答えず、target は「まだ自分のフレーム」と読んで待ち、双方が止まる（WCH-LinkE の AttachChip は ESIG を
-   読んだ後に DATA0 に 0xffffffff を残す。V006 / X035 で開き直したコンソールが流れなかった、2026-09-29）。
+0. **bit 7 が 1 で、自分が出した語と違う**（attach が残した `0xffffffff` など）なら、答えを待たずに**すぐ同じフレームを
+   出し直す**。タイムアウトの前でも後でも同じ。bit 7 が 1 の語は host の番なので、放っておくと、未同期の host は
+   無効な word として答えず、target は「まだ自分のフレーム」と読んで待ち、双方が止まる。
 
 bit 7 が 0 を読んだとき:
 
@@ -110,10 +99,9 @@ bit 7 が 0 を読んだとき:
    置き場所があれば payload を取り、最後に受け取った H := H。置き場所がなければ取らない
    （host が送り直す）。
 3. 送るものがあれば次のフレームを出す。空フレームは**暇なときだけ**出す（送るものがなく、
-   前の答えのあと sketch が書いていない）。書き続けている target は、データフレームへの
-   答えに乗って入力を受け取れる。印字の合間に空フレームを挟むと 1 往復余計にかかる
-   （LinkE では出力の速さが半分になる）。空フレームを一度も出さない target は、印字した
-   ときしか入力を受け取れない（入力は答えにしか乗らないため）。
+   前の答えのあとアプリケーションが書いていない）。書き続けている target は、データフレームへの
+   答えに乗って入力を受け取れる。書込みの合間に空フレームを挟むと 1 往復余計にかかる。
+   空フレームを一度も出さない target は、書いたときしか入力を受け取れない（入力は答えにしか乗らないため）。
 
 ## タイムアウト
 
@@ -131,27 +119,20 @@ payload は同じ、CRC は計算し直す）、**出したままにする**。�
 元に戻る。
 
 **出したままにする**とは、待っている間 **短い方の待ち時間（20 ms）ごとにそのフレームを出し直し
-続ける**ことである。答えを待っている間に DATA0 が自分の語でなくなったとき（bit 7 が 1 の別の語）は、タイムアウトを待たずに
-すぐ出し直す（target の規則 0）。host はこれのために何かを書く必要はない。
+続ける**ことである。答えを待っている間に DATA0 が自分の語でなくなったとき（bit 7 が 1 の別の語）は、
+タイムアウトを待たずにすぐ出し直す（target の規則 0）。host はこれのために何かを書く必要はない。
 
-- host（任意の保険）: 規則 0 を持たない古い target のために、未同期の host は、`0xffffffff` を 3 回続けて読んだら、DATA0 に
-  bit 7 が 0 の無効な語（例 `0x7f7f7f7f`、CRC が合わない）を書いてよい。bit 7 が 1 の語は host の番なので所有権の規則に
-  反せず、target は規則 1 でそれを無効な答えと読んで出し直す。`0xffffffff` は N = 7 で有効なフレームになり得ないので、
+- host（任意）: 未同期の host は、`0xffffffff` を 3 回続けて読んだら、DATA0 に bit 7 が 0 の無効な語
+  （例 `0x7f7f7f7f`、CRC が合わない）を書いてよい。bit 7 が 1 の語は host の番なので所有権の規則に反せず、
+  target は規則 1 でそれを無効な答えと読んで出し直す。`0xffffffff` は N = 7 で有効なフレームになり得ないので、
   本物のフレームを消すことはない。
-
 - host（debugger）: **切り離すときにデバッグモジュールを reset しない**（DMCONTROL.dmactive を下ろさない）。下ろすと DATA0
   が 0 に戻り、target が出していたフレームが消える。target は 0 を沈黙と読んでタイムアウトまで待つ。その待ちは target が
-  DATA0 を読んだ回数で数えるので、debugger が DMI を速く読んでいると延びる。OEP の probe では、断った自動の attach の後に
-  コンソールが戻るまで 1〜10 s かかった。dmactive を残すとすぐ戻った（2026-09-26、oep-spec probe-cdc-and-persistence
-  §7.5.1）。DATA0 が消えるのを確かめたのは CH32X035（ほかの系統は未確認）。WCH-LinkE は DetachChip で dmactive を下ろす
-  （`W dmcontrol 0x40000001` → `R dmstatus` → `W dmcontrol 0x40000000`、L103 / V203 / V003 / X035 で同じ。wch-protocols
-  link-to-target §5）が、次の AttachChip が ESIG を読んで DATA0 に 0 でない語を残す。bit 7 が 0 の語（V203 の 0xe339e339）なら target は
-  規則 1 で答えの検査に通らない語と読んですぐ出し直し、bit 7 が 1 の語（V006 / X035 の 0xffffffff）なら規則 0 で出し直す
-  （規則 0 の無い target はここで止まっていた）。DATA0 に何も書かない attach（OEP の probe）の後では、0 が残って待たされた。
+  DATA0 を読んだ回数で数えるので、debugger が DMI を速く読んでいると延びる。
 - host（debugger、hart を止める側）: 止めている間に abstract command で DATA0 / DATA1 を使ったら、走らせる前に、止めたときの
   DATA1、DATA0 を書き戻す。書き戻さないと、target の出していたフレーム（または host の答え）が消え、target はタイムアウトまで
-  待つ。OEP の probe は riscv-dm の halt / resume でこれを行う（oep-if-debug §4.2）。
-- host: TO フレームは普通のフレームとして扱う（規則 2/4 が適用される）。再同期の理由にはしない。
-  host は「誰も答えていない間の出力が捨てられた」と利用者に伝えてよい。
+  待つ。OEP の probe は、DATA0 / DATA1 を使う op の答えの前にそれらを書き戻す（[線とデバッグ](oep-if-debug.ja.md) §4.2）。
+- host: TO フレームは普通のフレームとして扱う（規則 2 と 4 が適用される）。再同期の理由にはしない。
+  host は「誰も答えていない間に書かれた出力は捨てられた」と利用者に伝えてよい。
 - host: 未同期のまま、フレームでない word（CRC 不一致、または bit 7 が 0）だけを長く読み続けた
   場合、その target には dmseq のコンソールがない。host は黙っているより、そう報告してよい。
