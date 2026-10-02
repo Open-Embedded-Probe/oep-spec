@@ -9,8 +9,14 @@ Only the project name is settled at this time. Everything in this repository—i
 **Update (2026-09-26):** a v1 candidate specification now exists, in Japanese first: the normative core
 [docs/oep-core.ja.md](docs/oep-core.ja.md), the standard interfaces `docs/oep-if-*.ja.md`, and the number registry
 [registry/oep-v1.toml](registry/oep-v1.toml). The implementations follow it and are checked on hardware. It is not a released
-specification and may still change incompatibly. English versions will follow once it settles; the English documents below
-predate it. A map of the documents is [docs/review-guide.ja.md](docs/review-guide.ja.md) (Japanese).
+specification and may still change incompatibly. The Japanese documents are the originals; English translations of the
+normative documents are available for review: [OEP core](docs/oep-core.md), and the standard interfaces
+[common parts](docs/oep-if-common.md), [wire and debug](docs/oep-if-debug.md), [console](docs/oep-if-console.md),
+[fixture](docs/oep-if-fixture.md), [capture](docs/oep-if-capture.md) and [probe settings](docs/oep-if-probe-config.md)
+(the console framing [dmseq](docs/target-console-dmseq.ja.md) is Japanese only), together with
+[the v1 freeze decisions and scope](docs/v1-freeze-decisions.md) and the [review guide](docs/review-guide.md), a map of the
+documents. Where a translation and its Japanese original disagree, the Japanese original is right. The other English
+documents below predate the v1 candidate.
 
 The work begins by defining the problem, purpose, meaning of interoperability, scope, and success criteria. Function classification, protocol structure, connection methods, and the treatment of USB and PIDs will be considered incrementally from that upstream agreement.
 
