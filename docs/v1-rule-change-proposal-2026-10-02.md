@@ -9,7 +9,7 @@ C-11 (USB identification) is decided (no change) and is not included. Wording-on
 
 The premise is the review's: people we have never met build probes and hosts from the text alone, for OSes, USB stacks, MCUs, debug wires and targets we have never seen. Each item starts with that user's case.
 
-**How to answer.** For each item: agree, object, or agree with conditions. Answer the numbered questions (Q1 to Q31). After agreement the order of work is spec → fake → probe → clients, as before.
+**How to answer.** For each item: agree, object, or agree with conditions. Answer the numbered questions (Q1 to Q32). After agreement the order of work is spec → fake → probe → clients, as before.
 
 **Terms in "Today".**
 - *probe*: oep-probe-arduino `src/`.
@@ -24,11 +24,11 @@ The premise is the review's: people we have never met build probes and hosts fro
 ## Decisions
 
 **Status of an item.**
-- **agreed**: all three peers accepted it. bench answered "OK overall" and ch32rv "OK except" the items marked otherwise. WireSkein answered for topics 3 and 8 (C-06, P2-★4, P2-★6, P2-○9, P2-○10, P2-○11, P2-○15, Q14, Q17, Q18) and raised no objection to the rest.
+- **agreed**: all three peers accepted it. bench answered "OK overall" and ch32rv "OK except" the items marked otherwise. WireSkein answered for topics 3 and 8 (C-06, P2-★4, P2-★6, P2-○9, P2-○10, P2-○11, P2-○15, Q14, Q17, Q18) and then confirmed "no objection" to every other topic (2026-10-02).
 - **agreed with condition**: accepted on the condition stated in the item. The condition is folded into the proposed text unless the item says it is still to be met.
 - **open**: not settled. The item says what is missing.
 
-Open items: C-05, C-16 and P2-★7 (a rule for TCP endpoints and for wires without pins was added in this revision to settle ch32rv's question; ch32rv to confirm it), and P2-★4's cold-attach measurement (bench, before the freeze).
+Open items: P2-★4's cold-attach measurement (bench, before the freeze), and P2-★8 (added in this revision; peers to confirm).
 
 **Final answers.**
 
@@ -42,13 +42,13 @@ Open items: C-05, C-16 and P2-★7 (a rule for TCP endpoints and for wires witho
 | Q6 | P2-★4 | 200 ms per request and 1000 ms of real time adopted. **The attach budget is 1000 ms, not 500 ms** (bench measurement). Optional attach answer TLV `search_retries`. No host relies on "status line ⇒ the connection is gone". Bench measures one cold attach before the freeze |
 | Q7 | C-07 | Discard up to the gap |
 | Q8 | C-09 | Yes: 115200 for every probe |
-| Q9 | C-05 | The confirm TLV. A TCP endpoint reports its listener's index (rule added; open until ch32rv confirms) |
+| Q9 | C-05 | The confirm TLV. A TCP endpoint reports its listener's index; a relaying broker that answers the session ops reports 0xFF (ch32rv confirmed) |
 | Q10 | C-15 | Yes: per transport; on TCP, per connection (C-05) |
 | Q11 | P2-★1 | Yes |
 | Q12 | P2-★2 | A rule with no option. Measured: one probe already meets it, the other drives MISO low while CS is high and is being fixed |
 | Q13 | P2-★3 | Declare the pull-ups (features bit2 + pullup_ohms); do not forbid them |
 | Q14 | P2-○13 | Adopt the rule |
-| Q15 | P2-★7 | Yes: the `n × (role, channel)` form. Added: a wire that declares no pin combination need not implement scan (open until ch32rv confirms) |
+| Q15 | P2-★7 | Yes: the `n × (role, channel)` form. Added: a wire that declares no pin combination need not implement scan (ch32rv confirmed) |
 | Q16 | P2-○4 | Clear haltreq when halt times out |
 | Q17 | P2-★6 | Yes: 0 = blocks, 1 = answers |
 | Q18 | P2-○8 | mode, rate, trigger, pretrigger and frontend are sent critical. samples and segments are not: the probe rounds samples to its limit and the answer's value is authoritative. rate critical means "the nearest realisable value within range; out of range is unsupported" |
@@ -65,6 +65,7 @@ Open items: C-05, C-16 and P2-★7 (a rule for TCP endpoints and for wires witho
 | Q29 | C-32 | Yes: ±2 %. verify_ms 0 is malformed for step 0 (try) only |
 | Q30 | DS-1 | Post again every short wait (DS-1 adopted). The host safeguard of DS-8 goes only together with it |
 | Q31 | DS-3 to DS-10 | ch32rv conforms to DS-4. DS-5 takes ch32rv's details (count saturates while unsynchronised) |
+| Q32 | P2-★8 | Open: peers to confirm (recommended: form A) |
 
 ## Index
 
@@ -81,14 +82,15 @@ Open items: C-05, C-16 and P2-★7 (a rule for TCP endpoints and for wires witho
 | C-07 | 4 transports | ★ | No 200 ms restart on TCP; over-long lengths; resync waits 250 ms after the host's last write | yes | agreed |
 | C-08 | 4 transports | ★ | max_frame / window / max_inflight are per transport | no | agreed |
 | C-09 | 4 transports | ★ | UART bridge 115200 8N1 without flow control; line coding and DTR do not gate OEP | no | agreed |
-| C-05 | 4 transports | ★ | confirm's answer says which transport it came on; a TCP endpoint is a probe | no | open |
+| C-05 | 4 transports | ★ | confirm's answer says which transport it came on; a TCP endpoint is a probe | no | agreed with condition |
 | C-15 | 5 revision scope | ★ | What a protocol revision covers; confirm never changes; the range in the refusal | yes | agreed |
 | P2-★1 | 6 electrical safety | ★ | scan count = 0 leaves out channels with an idle item; output-idle channels are refused | yes | agreed |
 | P2-★2 | 6 electrical safety | ★ | spi-target drives MISO only while CS is active | yes (one probe build, measured) | agreed |
 | P2-★3 | 6 electrical safety | ★ | i2c-target is open-drain only; internal pull-ups are declared | no | agreed |
 | P2-○13 | 6 electrical safety | ○ | Taking a plan does not change a pin; logic capture only listens | yes | agreed |
 | P2-★5 | 7 debug wires | ★ | A combination the declaration does not allow → unsupported | no (the probe does it already) | agreed |
-| P2-★7 | 7 debug wires | ★ | What every wire shares, and what a new wire (JTAG...) defines; a wire without pins | no | open |
+| P2-★7 | 7 debug wires | ★ | What every wire shares, and what a new wire (JTAG...) defines; a wire without pins | no | agreed |
+| P2-★8 | 7 debug wires | ★ | What the probe may write before the speed is verified; scan writes only the wake / configuration sequence and dmactive | no | open |
 | P2-○1 | 7 debug wires | ○ | "Found" is DMSTATUS.version ≥ 2 and ≠ 15, for the ops too | yes | agreed |
 | P2-○4 | 7 debug wires | ○ | What a failed halt / step leaves on the target | yes | agreed |
 | P2-○6 | 7 debug wires | ○ | Console rules split into "every mechanism" and "the DATA0 mechanisms" | no | agreed |
@@ -108,7 +110,7 @@ Open items: C-05, C-16 and P2-★7 (a rule for TCP endpoints and for wires witho
 | PC-7 | 9 probe-config | △ | Canonical form details for the hash (wording) | no | agreed |
 | PC-8 | 9 probe-config | ○ | Transport indexes do not change across firmware versions; bind at boot | no | agreed |
 | C-10 | 10 conformance | ★ | Normative words; what every probe and host must have | no | agreed |
-| C-16 | 11 other core | ○ | Rejected answers go into the resend table too; §5.2 binds TCP endpoints | no | open |
+| C-16 | 11 other core | ○ | Rejected answers go into the resend table too; §5.2 binds TCP endpoints | no | agreed with condition |
 | C-17 | 11 other core | ○ | When the lease restarts; the answer's lease_ms range | yes (fake) | agreed |
 | C-18 | 11 other core | ○ | session_id random and not 0; open only as role 0x01 | yes | agreed |
 | C-22 | 11 other core | ○ | Booleans 0 / 1; text without control characters | yes | agreed |
@@ -140,13 +142,13 @@ Items per topic:
 | 4 transports | 4 |
 | 5 revision scope | 1 |
 | 6 electrical safety | 4 |
-| 7 debug wires | 6 |
+| 7 debug wires | 7 |
 | 8 capture | 6 |
 | 9 probe-config | 8 |
 | 10 conformance | 1 |
 | 11 other core | 11 |
 | 12 console dmseq | 10 |
-| **Total** | **59** |
+| **Total** | **60** |
 
 Dropped findings and the reasons are listed at the end, followed by implementation bugs found while checking.
 
@@ -446,7 +448,7 @@ Core §3.5 "Boot speed: the port speed determined by the board profile" becomes 
 
 ### C-05 ★ confirm says which transport it came on
 
-**Status: open** — the TCP-endpoint rule was added in this revision for ch32rv's question; ch32rv to confirm.
+**Status: agreed with condition** — ch32rv's correction for a broker that answers the session ops itself is folded in below (2026-10-02).
 
 **Problem.** port_speed's `port` must be "the port this request came on", but a host cannot learn that index. On a probe with two UART bridges, the reference hosts pick the first one, so speed cannot be raised from the second.
 
@@ -460,6 +462,7 @@ Core §3.5: "port: the index of the transport this request came on (TLV transpor
 **Added for ch32rv's question (which index a TCP broker reports).** Core §3.1, after the TCP bullet (it also replaces "the broker is a host implementation, outside this specification"):
 
 > - **An endpoint that answers OEP requests itself is a probe**, whatever carries it and whatever is behind it (for example a program that serves OEP on TCP and drives another debugger). Every probe rule applies to it. A broker that only relays requests to an OEP probe is a host towards that probe.
+> - **A relaying broker that answers the session ops itself** (confirm, open, end, keepalive, lock_state) and relays every other request to one OEP probe has no describe of its own: fn 0's describe it relays is the probe's. In the transport TLV of its confirm it reports index 0xFF ("not in describe"). Towards the probe it is a host. Every rule on those session ops applies to its answers.
 > - **TCP transports**: a probe that listens on TCP lists each listening socket as one transport in the describe of fn 0 (kind 6, interface 0xFF). Every connection accepted on that socket reports that index in the transport TLV of confirm. The rules that §3.3, §4.4, §7.1 and §11.4 apply per transport (the 0x81 requests of a session on one transport, max_frame / window / max_inflight, the revision in use, where notifications go) apply to each accepted connection separately.
 
 So the transport TLV always names an entry of the describe of fn 0 returned on the same connection. port_speed (UART bridges, §3.5) and bind (serial ports, probe-config §1.2) never take a TCP index; their refusals are unchanged.
@@ -472,7 +475,7 @@ So the transport TLV always names an entry of the describe of fn 0 returned on t
 
 **Q9.** A confirm TLV (recommended) or `port = 0xFF` meaning "this port"? The TLV also gives the host the index that probe.config bind needs (PC-8).
 
-**Answers.** bench and WireSkein: no objection. ch32rv (broker_wch.rs changes) was unsure which index a TCP broker reports; the TCP-endpoint rule above answers it. Open until ch32rv confirms that rule.
+**Answers.** bench and WireSkein: no objection. ch32rv confirmed the TCP-endpoint rule and asked for the relaying-broker case (a broker that answers the session ops locally and relays the rest). Of its two options, index 0xFF and no transport TLV, this proposal picks 0xFF: the TLV stays always present, and a host can tell that it talks to a broker.
 
 ---
 
@@ -624,7 +627,7 @@ So the breaking column becomes "yes (one probe build)".
 
 ### P2-★7 ★ What every wire shares, and what a new wire defines
 
-**Status: open** — "A wire without pins" was added in this revision for ch32rv's question; ch32rv to confirm.
+**Status: agreed** — ch32rv confirmed it (2026-10-02).
 
 **Problem.** The first thing a third party brings is likely a RISC-V JTAG DTM, cJTAG or an ARM JTAG-DP. The "all wires" rules are written with swdio / swclk, DMSTATUS and a two-pin fixed part. Nobody can tell which rules bind a new wire, nor how a 4- or 5-pin wire writes its pins.
 
@@ -659,7 +662,54 @@ probe.config §1.1, added:
 
 **Q15.** Shall the `n × (role, channel)` form be fixed now for wires that are not two pins? Recommendation: yes. Otherwise each new wire invents its own and hosts must special-case each.
 
-**Answers.** bench and WireSkein: no objection. ch32rv was unsure: if every wire MUST have scan and connections, the WCH broker needs both. Resolution: "A wire without pins" above. connections stays required everywhere (a host checks with it after status line, P2-★4, and an endpoint always knows its own connections); scan is optional only where there are no pins to search. Open until ch32rv confirms.
+**Answers.** bench and WireSkein: no objection. ch32rv was unsure: if every wire MUST have scan and connections, the WCH broker needs both. Resolution: "A wire without pins" above. connections stays required everywhere (a host checks with it after status line, P2-★4, and an endpoint always knows its own connections); scan is optional only where there are no pins to search. ch32rv confirmed it (2026-10-02).
+
+### P2-★8 ★ What the probe may write before the speed is verified
+
+**Status: open** — new in this revision; peers to confirm.
+
+**Problem.** debug §1 says "The probe does not write to the target until it has finished verifying the wire speed (it selects the speed by reading only)" and "The only thing scan writes to the target is dmactive". A third party bringing a wire whose debug module answers nothing until it is woken and configured cannot meet either sentence: written as is, the probe never finds such a target. The text also does not say how the write path is verified at the chosen speed, nor what that verification may leave on the target. Reads alone are not enough: a speed whose reads are clean can still garble writes (measured on the reference probe, OepRvswdPhy.cpp:347-351; [link measurements](link-measurements.ja.md) §3), so a write check is needed.
+
+**Today** (probe).
+- rvswd attach (OepRvswdPhy.cpp:415-478): at the slowest speed, before anything is verified, writes the wake sequence, DMSHDWCFGR / DMCFGR (DMI 0x7E / 0x7D) twice each and dmactive (skipped when the module is plainly active). It chooses the speed by DMSTATUS reads only, then verifies the write path at that speed (`writesLand`, :361-379): ABSTRACTAUTO = 0, then 256 writes and read-backs of PROGBUF0, leaving PROGBUF0 = 0, not its earlier value.
+- swio attach (OepSwioPhy.cpp:148-166, 398-416): the configuration pair twice and dmactive twice at its one speed, verified by reading DMCFGR back.
+- scan (OepTarget.cpp:335) calls `Ch32Dm::probe` (OepCh32Dm.cpp:41-46), which runs the full attach: wake, configuration pair, dmactive, ABSTRACTAUTO and 256 PROGBUF0 writes, and the wake resets the debug module of some targets. `RvswdPhy::probeOnce` (OepRvswdPhy.cpp:316-326: wake, dmactive, one DMSTATUS read) is close to what §1 says, but nothing calls it.
+- swd scan (OepSwd.cpp:106-122): the JTAG-to-SWD / dormant wake, TARGETSEL when given, and a DPIDR read. Nothing else is written.
+
+**Proposed text, form A** (recommended). Debug §1, replaces the first bullet ("The probe does not write to the target until ..."):
+
+> - **Writes before the speed is verified.** Until the probe has verified the wire speed, it writes to the target only:
+>   1. the wake / configuration sequence that the wire's section defines (for example a wake pattern, a line reset, a target select, or the debug-module configuration registers the module needs before it answers), sent at the wire's slowest speed;
+>   2. dmactive, on a wire whose connections reach a RISC-V DM, and only when DMCONTROL does not already read dmactive = 1 (the write clears haltreq).
+> - **Verifying the speed.** The probe chooses the speed by reads only. It then verifies the write path at the chosen speed by writing and reading back only the debug-module registers that the wire's section names as free scratch (registers no part of the target uses while no debug command runs), together with any write the wire's section names as making them free. Before the check it reads each scratch register, and after the check it writes that value back. A speed whose writes do not read back is not used.
+> - Nothing else is written to the target before the speed is verified.
+
+Debug §1, replaces "The only thing scan writes to the target is dmactive (to read DMSTATUS)":
+
+> - **What scan writes**: only the writes of item 1 and 2 above, to read the identifier of "found". scan does not verify the write path and writes no scratch register. It may choose the speed by reads as attach does.
+
+Debug §3 (rvswd / swio), added:
+
+> - **Wake / configuration sequence** (§1 item 1): rvswd: the wake pattern, then DMI 0x7E and DMI 0x7D each written 0x5AA50400, the pair twice. swio: DMI 0x7E and DMI 0x7D each written 0x5AA50400, the pair twice.
+> - **Scratch** (§1): PROGBUF0 (DMI 0x20). Making it free: ABSTRACTAUTO (DMI 0x18) = 0, which is not restored (an autoexec left armed by an earlier session would run on each access).
+
+Debug §5 (swd), added:
+
+> - **Wake / configuration sequence** (§1 item 1): the JTAG-to-SWD switch, the dormant wake, and TARGETSEL when one is given. swd names no scratch register.
+
+P2-★7's list of what a new wire's document defines gains "its wake / configuration sequence and its scratch registers (§1)".
+
+**Form B.** §1 says only "Before the speed is verified the probe writes nothing except what the wire's section lists", and each wire lists its writes (as above) with no general bound. Simpler, but a new wire's author gets no rule to follow, and a host cannot rely on anything for a wire it has not read.
+
+**Recommendation: form A.** It keeps a bound that holds for every wire (a sequence the wire defines, dmactive, and restored scratch) and leaves only the concrete registers to each wire.
+
+**Changes.**
+- probe: scan uses a bring-up without the write check (the wake / configuration sequence, dmactive, DMSTATUS read; for example `probeOnce` at the slowest speed, or an attach with `writesLand` left out). `writesLand` saves PROGBUF0 before the check and writes it back. The comment on `Ch32Dm::probe` ("nothing else written") becomes true. swio and swd: none.
+- fake, hosts: none (fake: not checked).
+
+**Breaking:** no. scan writes less than today; attach writes what it writes today, plus PROGBUF0's restore.
+
+**Q32.** Form A (recommended) or form B? And may a wire name a write that is not restored, as ABSTRACTAUTO = 0 above, to make its scratch free? Recommendation: yes, named per wire; an autoexec left armed is never what the next attach wants, and without the write the check fails on every attach until power-cycle.
 
 ### P2-○1 ○ "Found" is DMSTATUS.version ≥ 2 and ≠ 15, for the ops too
 
@@ -997,7 +1047,7 @@ Core §12 gains a column "Required" (yes / if plan roles / optional). Core §0 r
 
 ### C-16 ○ Rejected answers go into the resend table
 
-**Status: open** — the paragraph on TCP endpoints and relays was added in this revision for ch32rv's question; ch32rv to confirm.
+**Status: agreed with condition** — ch32rv confirmed it and asked for the per-connection corr map of a relaying broker (folded in, 2026-10-02).
 
 **Proposed text** (core §5.2, added):
 
@@ -1005,7 +1055,7 @@ Core §12 gains a column "Required" (yes / if plan roles / optional). Core §0 r
 
 **Added for ch32rv's question (does §5.2 bind a TCP endpoint such as the broker?).** Core §5.2, added:
 
-> §5.2 binds every probe (C-05: every endpoint that answers OEP requests itself) on every transport, TCP included. TCP does not lose frames, but a host still resends after its wait (§4.4) when an answer is late, so the probe keeps the table to avoid executing a request twice. The table is one per probe, shared by all its transports and TCP connections, as the session is. A broker that only relays to an OEP probe keeps no table of its own; when it renumbers corr, it relays a client's resend with the same corr it used the first time.
+> §5.2 binds every probe (C-05: every endpoint that answers OEP requests itself) on every transport, TCP included. TCP does not lose frames, but a host still resends after its wait (§4.4) when an answer is late, so the probe keeps the table to avoid executing a request twice. The table is one per probe, shared by all its transports and TCP connections, as the session is. A broker that only relays to an OEP probe keeps no table of its own; when it renumbers corr, it relays a client's resend with the same corr it used the first time. For that it keeps, per accepted client connection, the map from the client's corr to the corr it used upstream for at least the client's last max_inflight requests, and drops the map when that connection closes.
 
 **Changes:** none for the probe, which stores every answer (OepEndpoint.cpp:450-463). fake: not checked. A TCP endpoint such as the WCH broker keeps the table.
 
@@ -1089,9 +1139,11 @@ Core §7.5 chip:
 
 **Proposed text** (core §7.5, replaces the build-constant sentence):
 
-> A probe with storage but no unique number creates its unit_id at first boot from a random number and saves it. A probe with neither uses a unit_id that starts with `x-` (not unique). A host does not group transports by a unit_id that starts with `x-`, and does not name a probe by it.
+> A probe with storage but no unique number creates its unit_id at first boot from a random number and saves it. A probe with neither uses a unit_id that starts with `x-` (not unique). A host does not group transports by a unit_id that starts with `x-`, does not name a probe by it, and does not key anything it keeps across sessions by it (for example a record of a port's link speed), so that another unit on the same port inherits nothing.
 
 **Changes:** the probe omits unit_id on platforms without one (Oep.h:478), which breaks "mandatory". It must send an `x-` value. Hosts: one check.
+
+**Answers.** WireSkein asked that the client's speed record (keyed by port + unit_id) treat an `x-` unit_id as naming no unit; folded into the text above.
 
 ### C-25 ○ Exclusive open, HID output, WinUSB
 
@@ -1303,6 +1355,7 @@ These are bugs against **today's** text; they need no peer decision.
 | probe OepCh32Dm.cpp:79, 145, 451; OepDmConsole.cpp:48 | Ops and the console require DMSTATUS.version == 2. A 1.0 DM is found but never treated as halted (P2-○1) |
 | probe OepRvswdPhy.cpp:207-213, OepTarget.cpp:128-140 | After a connection closes, RVSWD with idle_clock low keeps driving SWCLK. Channels without an idle keep the PHY's state. Against core §8 ("must not leave a pin under its own drive") |
 | probe scan | Tried pins are left Hi-Z, not returned to their idle state (debug §1) |
+| probe OepTarget.cpp:335, OepCh32Dm.cpp:41-46 | rvswd / swio scan runs the full attach (wake, configuration, dmactive, ABSTRACTAUTO, 256 PROGBUF0 writes), not dmactive only (debug §1; P2-★8) |
 | probe OepCapture.cpp:466-475, OepSampler.cpp:193-202 | Logic capture switches pins to input and does not restore them (P2-○13) |
 | probe OepP4SpiTarget.cpp:22 | A channel outside the declaration is refused unavailable, not unsupported (core §8 plan_apply table) |
 | probe OepConfig.cpp:261 | idle's unsupported carries 0x00 instead of the item's tag as received (probe-config §1, 9ed53e7) |
