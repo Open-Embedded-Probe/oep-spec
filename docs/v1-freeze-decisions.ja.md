@@ -29,7 +29,7 @@ v1 の凍結は、host と probe が別々に作られても噛み合うため�
 | フレームの形（COBS + CRC-16、`length(u16)`、HID の report、見出しの並びと長さ、confirm の前の 64 byte） | [core](oep-core.ja.md) §3 |
 | メッセージの形（要求 / 応答 / 出来事 / データの固定部、TLV の形と critical の規則、reject reason、outcome、断り方の順） | core §2、§4 |
 | 標準インターフェースの payload（op の表、固定部、TLV の tag、出来事、status、資源の寿命） | `oep-if-*.ja.md` |
-| **registry/oep-v1.toml のすべての数**（op、tag、reason、status、enum、`timing`、`limits`、`usb`、インターフェースの名前と revision）。ただし名前が `reference_` で始まる値（`reference_vid`、`reference_pid`、`max_op_ms_reference`）は参照 firmware の値で、規範ではなく凍結しない | [registry](../registry/oep-v1.toml)、生成物 |
+| **registry/oep-v1.toml のすべての数**（op、tag、reason、status、enum、`timing`、`limits`、`usb`、インターフェースの名前と revision）。ただし名前に `reference` を含む値（`reference_vid`、`reference_pid`、`max_op_ms_reference`）は参照 firmware の値で、規範ではなく凍結しない | [registry](../registry/oep-v1.toml)、生成物 |
 | core と `oep-if-*` の規範の文（「〜する」「〜しない」の文。[dmseq](target-console-dmseq.ja.md) を含む） | 各文書 |
 
 凍結の後にこれらを変えるときは **revision を上げる**（固定部か意味を変えるインターフェースはその revision、本体の形はプロトコルの
