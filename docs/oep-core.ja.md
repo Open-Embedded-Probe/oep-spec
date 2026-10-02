@@ -27,7 +27,7 @@ OEP は 3 つの層からなる。
    （判定の問い: 第三者が、本体を変えずに、独自の名前で同じものを定義できたか）。
 3. 本体は、特定のインターフェースの名前にも意味にも触れない（`oep.core` を除く）。
 4. 標準インターフェースに、本体の上での特別扱いは無い。独自のインターフェースと同じ仕組みだけを使う。違いは、名前が
-   `oep.` で、番号が project の registry にあり、project が適合試験を持つことだけである。
+   `oep.` で、番号が project の registry にあり、project が registry と適合の資料（試験のベクタ、host が試すための偽の probe）を保守することだけである。
 5. インターフェースどうしの関係（あるインターフェースが別のインターフェースの資源を使う、など）は、関係するインターフェースの
    文書が定める。
 6. 版は層ごとに独立する（§2.7）。
@@ -52,6 +52,24 @@ OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、
 | lease | ロックの期限。keepalive などの要求で延びる |
 | channel | probe のピンの番号（u16） |
 | plan | どのインターフェースのどの役（role）に、どの channel を使うかの割り当て |
+
+### 1.1 規範の語
+
+大文字の MUST、MUST NOT、SHOULD、SHOULD NOT、MAY は RFC 2119 と RFC 8174 のとおりに使う。probe や host がすることを現在形で述べた文（「probe は〜を返す」）は要件（MUST）である。「できれば」は SHOULD。（参考）と記した文、例、注は規範ではない。日本語の訳では、「〜する／〜しない」が MUST / MUST NOT、「〜してよい」が MAY、「できれば〜する」が SHOULD にあたる。
+
+### 1.2 適合
+
+probe が実装しなければならない（MUST）もの:
+- §3 の経路の少なくとも 1 つと、そのフレーム;
+- §4〜§6;
+- fn 0 の confirm、list、describe、open、end、keepalive、lock_state、subscribe と unsubscribe、link_source と link_sink;
+- fn 0 の describe の unit_id、transport、max_op_ms。
+
+plan_apply と plan_release は、どれかのインターフェースが plan の role を持つときに要る。どれも持たない probe は unknown_operation で答える。任意: port_speed（§3.5）、fn 0 のハートビート以外の通知、すべてのインターフェース。
+
+probe は、実装しない op には unknown_operation で、実装する op の任意の機能には unsupported で答える。
+
+host がしなければならない（MUST）こと: 知らない TLV と tag を読み飛ばす（§2.3、§2.4）。§3.2 と §3.3 の探りの規則に従う。§4.4 のとおり待つ。§5.2 のとおり送り直す。§11.1 のとおりフレームを振り分ける。
 
 ## 2. 共通の規則
 
@@ -760,22 +778,22 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 
 ## 12. core（fn 0）の操作一覧
 
-| op | 名前 | 要求 | 応答 | ロック |
-|---:|---|---|---|---|
-| 0x01 | confirm | §7.1 | §7.1 | 不要 |
-| 0x02 | list | §7.2 | §7.2 | 不要 |
-| 0x03 | describe | §7.3 | §7.3 | 不要 |
-| 0x04 | plan_apply | role_assignment の TLV の並び | — | 必要 |
-| 0x05 | plan_release | n(u8)、n × fn(u16) | — | 必要 |
-| 0x10 | open | session_id(u32)、lease_ms(u32)、force(u8)、[TLV owner] | lease_ms(u32)、boot_id(u32)、resumed(u8: 0 / 1 / 2、§6.4) | open がロックを取る（role 0x01） |
-| 0x11 | end | — | — | 必要 |
-| 0x12 | keepalive | — | — | 必要 |
-| 0x13 | lock_state | — | locked(u8)、remaining_ms(u32)、[TLV owner] | 不要 |
-| 0x14 | port_speed | §3.5（任意。describe の port_speed を出す probe だけ） | baud(u32) | 必要 |
-| 0x30 | subscribe | §11.3 | — | 必要 |
-| 0x32 | unsubscribe | §11.3 | — | 必要 |
-| 0x40 | link_source | length(u32) | length バイト（1 フレームに入る分まで。k バイト目は k & 0xFF） | 不要 |
-| 0x41 | link_sink | 任意のバイト（数を持たない並び） | 受け取った長さ(u32) | 不要 |
+| op | 名前 | 要求 | 応答 | ロック | 要否 |
+|---:|---|---|---|---|---|
+| 0x01 | confirm | §7.1 | §7.1 | 不要 | 必須 |
+| 0x02 | list | §7.2 | §7.2 | 不要 | 必須 |
+| 0x03 | describe | §7.3 | §7.3 | 不要 | 必須 |
+| 0x04 | plan_apply | role_assignment の TLV の並び | — | 必要 | plan の role があれば |
+| 0x05 | plan_release | n(u8)、n × fn(u16) | — | 必要 | plan の role があれば |
+| 0x10 | open | session_id(u32)、lease_ms(u32)、force(u8)、[TLV owner] | lease_ms(u32)、boot_id(u32)、resumed(u8: 0 / 1 / 2、§6.4) | open がロックを取る（role 0x01） | 必須 |
+| 0x11 | end | — | — | 必要 | 必須 |
+| 0x12 | keepalive | — | — | 必要 | 必須 |
+| 0x13 | lock_state | — | locked(u8)、remaining_ms(u32)、[TLV owner] | 不要 | 必須 |
+| 0x14 | port_speed | §3.5（任意。describe の port_speed を出す probe だけ） | baud(u32) | 必要 | 任意 |
+| 0x30 | subscribe | §11.3 | — | 必要 | 必須 |
+| 0x32 | unsubscribe | §11.3 | — | 必要 | 必須 |
+| 0x40 | link_source | length(u32) | length バイト（1 フレームに入る分まで。k バイト目は k & 0xFF） | 不要 | 必須 |
+| 0x41 | link_sink | 任意のバイト（数を持たない並び） | 受け取った長さ(u32) | 不要 | 必須 |
 
 link_source / link_sink は線の速さを測るためのもので、状態を変えない。この 2 つだけが、長さを持たない並びで終わる形を持つ
 （§2.3 の例外。後ろに TLV は付かない）。

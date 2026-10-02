@@ -27,7 +27,7 @@ OEP consists of 3 layers.
    (the test question: could a third party have defined the same thing under its own name without changing the core?).
 3. The core touches neither the name nor the meaning of any particular interface (except `oep.core`).
 4. Standard interfaces receive no special treatment on top of the core. They use only the same mechanisms as independent interfaces. The only differences are that the name
-   is `oep.`, the numbers are in the project's registry, and the project has conformance tests.
+   is `oep.`, the numbers are in the project's registry, and the project maintains the registry and the conformance material (test vectors, a fake probe for hosts to test against).
 5. Relations between interfaces (one interface using the resources of another, and so on) are defined by the documents of the interfaces
    concerned.
 6. Versions are independent per layer (§2.7).
@@ -52,6 +52,24 @@ Outside OEP: updating the probe's own firmware (DFU, Mass Storage, etc.), the de
 | lease | The expiry of the lock. Extended by requests such as keepalive |
 | channel | The number of a pin of the probe (u16) |
 | plan | The assignment of which channel is used for which role of which interface |
+
+### 1.1 Normative words
+
+In capitals, MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119 and RFC 8174. A statement in the present tense about what a probe or host does ("the probe returns ...") is a requirement (MUST). "Preferably" is SHOULD. Text marked (Informative), examples and notes are not normative. In the Japanese translation 「〜する／〜しない」 = MUST / MUST NOT, 「〜してよい」 = MAY, 「できれば〜する」 = SHOULD.
+
+### 1.2 Conformance
+
+A probe MUST implement:
+- at least one transport of §3, with its frame;
+- §4 to §6;
+- fn 0 confirm, list, describe, open, end, keepalive, lock_state, subscribe and unsubscribe, link_source and link_sink;
+- in describe of fn 0, unit_id, transport and max_op_ms.
+
+plan_apply and plan_release are required when any of its interfaces has plan roles. A probe without one answers unknown_operation. Optional: port_speed (§3.5), notifications other than fn 0's heartbeat, and every interface.
+
+A probe answers an op it does not implement with unknown_operation, and an optional function of an op it implements with unsupported.
+
+A host MUST: skip unknown TLVs and tags (§2.3, §2.4); follow §3.2 and the probing rule of §3.3; wait as §4.4 says; resend as §5.2 says; dispatch frames as §11.1 says.
 
 ## 2. Common rules
 
@@ -760,22 +778,22 @@ event   role=0x05 | fn(u16) | seq(u16) | kind(u8) | fixed part | [TLV]          
 
 ## 12. List of core (fn 0) operations
 
-| op | Name | Request | Answer | Lock |
-|---:|---|---|---|---|
-| 0x01 | confirm | §7.1 | §7.1 | Not required |
-| 0x02 | list | §7.2 | §7.2 | Not required |
-| 0x03 | describe | §7.3 | §7.3 | Not required |
-| 0x04 | plan_apply | Sequence of role_assignment TLVs | — | Required |
-| 0x05 | plan_release | n(u8), n × fn(u16) | — | Required |
-| 0x10 | open | session_id(u32), lease_ms(u32), force(u8), [TLV owner] | lease_ms(u32), boot_id(u32), resumed(u8: 0 / 1 / 2, §6.4) | open takes the lock (role 0x01) |
-| 0x11 | end | — | — | Required |
-| 0x12 | keepalive | — | — | Required |
-| 0x13 | lock_state | — | locked(u8), remaining_ms(u32), [TLV owner] | Not required |
-| 0x14 | port_speed | §3.5 (optional. Only probes that emit port_speed in describe) | baud(u32) | Required |
-| 0x30 | subscribe | §11.3 | — | Required |
-| 0x32 | unsubscribe | §11.3 | — | Required |
-| 0x40 | link_source | length(u32) | length bytes (up to what fits in one frame. Byte k is k & 0xFF) | Not required |
-| 0x41 | link_sink | Arbitrary bytes (a sequence without a count) | Received length (u32) | Not required |
+| op | Name | Request | Answer | Lock | Required |
+|---:|---|---|---|---|---|
+| 0x01 | confirm | §7.1 | §7.1 | Not required | yes |
+| 0x02 | list | §7.2 | §7.2 | Not required | yes |
+| 0x03 | describe | §7.3 | §7.3 | Not required | yes |
+| 0x04 | plan_apply | Sequence of role_assignment TLVs | — | Required | if plan roles |
+| 0x05 | plan_release | n(u8), n × fn(u16) | — | Required | if plan roles |
+| 0x10 | open | session_id(u32), lease_ms(u32), force(u8), [TLV owner] | lease_ms(u32), boot_id(u32), resumed(u8: 0 / 1 / 2, §6.4) | open takes the lock (role 0x01) | yes |
+| 0x11 | end | — | — | Required | yes |
+| 0x12 | keepalive | — | — | Required | yes |
+| 0x13 | lock_state | — | locked(u8), remaining_ms(u32), [TLV owner] | Not required | yes |
+| 0x14 | port_speed | §3.5 (optional. Only probes that emit port_speed in describe) | baud(u32) | Required | optional |
+| 0x30 | subscribe | §11.3 | — | Required | yes |
+| 0x32 | unsubscribe | §11.3 | — | Required | yes |
+| 0x40 | link_source | length(u32) | length bytes (up to what fits in one frame. Byte k is k & 0xFF) | Not required | yes |
+| 0x41 | link_sink | Arbitrary bytes (a sequence without a count) | Received length (u32) | Not required | yes |
 
 link_source / link_sink are for measuring the speed of the wire and do not change state. Only these two have a form ending in a sequence without a length
 (the exception of §2.3. No TLVs follow).
