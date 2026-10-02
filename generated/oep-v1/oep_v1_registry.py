@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "3d7dc24784c064f2"
+REGISTRY_HASH = "3861100e11fb3b22"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -54,7 +54,7 @@ FIXTURE_UART = _NS(name="oep.fixture.uart", revision=1, op={"configure": 0x01, "
     closed_tail={}, tlv={"configure": {"format": 0x01}, "describe": {"formats": 0x40}}, event={}, enum={"role": {"rx": 0x01, "tx": 0x02}, "uart_configured": {"default": 0x00, "session": 0x01, "item": 0x02, "item_fallback": 0x03}, "format_field": {"data_bits_mask": 0x03, "parity_mask": 0x0C, "parity_even": 0x04, "parity_odd": 0x08, "stop_bits_2": 0x10}}, own={})
 INTERFACES["oep.fixture.uart"] = FIXTURE_UART
 FIXTURE_I2C_TARGET = _NS(name="oep.fixture.i2c-target", revision=1, op={"configure": 0x01, "arm_rx": 0x02, "read_rx": 0x03, "preload_tx": 0x04, "status": 0x05, "reset": 0x06, "stretch": 0x07}, lock_free={0x05},
-    closed_tail={}, tlv={"describe": {"queue_depth": 0x40}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sda": 0x01, "scl": 0x02}, "mode": {"fixed_rx": 0x01, "framed_rx": 0x02, "preloaded_tx": 0x03}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"preloaded_tx": 0x01, "stretch": 0x02}}, own={})
+    closed_tail={}, tlv={"describe": {"queue_depth": 0x40, "max_stretch_us": 0x41}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sda": 0x01, "scl": 0x02}, "mode": {"fixed_rx": 0x01, "framed_rx": 0x02, "preloaded_tx": 0x03}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"preloaded_tx": 0x01, "stretch": 0x02}}, own={})
 INTERFACES["oep.fixture.i2c-target"] = FIXTURE_I2C_TARGET
 FIXTURE_SPI_TARGET = _NS(name="oep.fixture.spi-target", revision=1, op={"configure": 0x01, "arm": 0x02, "read_rx": 0x03, "status": 0x04, "reset": 0x05}, lock_free={0x04},
     closed_tail={}, tlv={"describe": {"queue_depth": 0x40}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sck": 0x01, "mosi": 0x02, "miso": 0x03, "cs": 0x04}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"lsb_first": 0x01}}, own={})
