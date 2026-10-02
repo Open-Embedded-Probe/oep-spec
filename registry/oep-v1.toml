@@ -327,7 +327,7 @@ existing = 0x02
 dormant_woken = 0x04
 halted = 0x08
 [interface.enum.features]       # describe features bits (common tag 0x06)
-attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound
+attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound and the §2 rule for lines while the wire does not answer
 [interface.enum.attach_method]
 run = 0
 halt = 1
@@ -377,7 +377,7 @@ existing = 0x02
 dormant_woken = 0x04
 halted = 0x08
 [interface.enum.features]       # describe features bits (common tag 0x06)
-attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound
+attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound and the §2 rule for lines while the wire does not answer
 [interface.enum.attach_method]
 run = 0
 halt = 1
@@ -425,7 +425,7 @@ existing = 0x02
 dormant_woken = 0x04
 halted = 0x08
 [interface.enum.features]       # describe features bits (common tag 0x06)
-attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound
+attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound and the §2 rule for lines while the wire does not answer
 [interface.enum.attach_method]
 run = 0                         # halt (1) is rejected unsupported on swd
 [interface.enum.pin_role]       # the roles of the pins in describe's channel_group / role_channels

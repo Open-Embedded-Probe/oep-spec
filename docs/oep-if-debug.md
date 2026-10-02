@@ -28,7 +28,7 @@ Every `oep.wire.*` interface:
 1. uses op 0x01 scan, 0x02 attach, 0x03 detach and 0x05 connections with the meanings of §1 to §2.1 (a wire may add ops from 0x06). attach, detach and connections
    are required on every wire. scan is required on every wire that declares a pin combination (channel_group or role_channels);
 2. follows §1 (verify the speed by reading before writing, count = 0 and what it leaves out, seats and max_connections, the scan and attach budgets, refusals) and
-   §2 (lifetime, wire loss, the state machine, closing does not change the target), reading swdio / swclk as "the channel of pin role 1 / 2";
+   §2 (lifetime, wire loss, the lines while the wire does not answer, the state machine, closing does not change the target), reading swdio / swclk as "the channel of pin role 1 / 2";
 3. creates the connections of [common parts](oep-if-common.md) §2 that `oep.target.*` interfaces use.
 
 A wire whose combination is not two pins writes, in its own document, its pins TLV, its scan entries and its connections entry with `n(u8), n × (role(u8), channel(u16))`
@@ -46,6 +46,7 @@ A new wire's document also defines:
 
 - its pin roles and how its speed is chosen;
 - its wake / configuration sequence and its scratch registers (§1);
+- its exchanges and the rest state of its lines between exchanges (§2);
 - its "found" criterion and its scan_kind values;
 - the target_id schemes it uses (from the single space of §1) and how wire loss is seen;
 - which `oep.target.*` interfaces take its connections, and whether consoles and probe.config slots ride on them.
@@ -63,7 +64,7 @@ A new wire's document also defines:
 - Nothing else is written to the target before the speed is verified (a write at a mismatched speed could write a garbled value into a target register).
 - **A probe that attaches through another debugger.** The bound above applies to a probe that drives the wire itself. A probe whose attach goes through another debugger
   it does not control (it cannot see or bound what that debugger writes) sets bit0 `attach_writes_unbounded` of the wire's describe features (common tag 0x06,
-  core §7.4), and is then outside this bound. A host treats an attach on such a wire like a reset of unknown effect: it does not expect the target's registers or the
+  core §7.4), and is then outside this bound and outside the rule of §2 for the lines while the wire does not answer. A host treats an attach on such a wire like a reset of unknown effect: it does not expect the target's registers or the
   running program to survive it.
 - **Pin combinations**:
   - The combinations the probe can use are declared with the common tags of describe (core §7.4). Fixed combinations with channel_group; if any pin can be assigned,
@@ -77,6 +78,8 @@ A new wire's document also defines:
     in the probe's settings (any mode, [probe settings](oep-if-probe-config.md) §1), in addition to channels held by something else and disabled channels.
     A request that names such a channel explicitly (a scan listing combinations, the pins of attach) is accepted when the idle is an input (mode 0 to 2).
     It is rejected unavailable (cause 5, the channel, holder_kind 7 = settings idle) when the idle is an output (mode 3 / 4).
+    The reset TLV of attach (TLV 0x05, §3) naming a channel whose idle is an output (mode 3 / 4) is rejected unavailable in the same way, without executing anything
+    (cause 5, that channel, holder_kind 7 = settings idle).
     An attach without pins whose only allowed combination contains a channel with an idle item (any mode, inputs included) has no candidate left: it is rejected
     unavailable (cause 5, that channel, holder_kind 7 = settings idle).
   - (Informative) count = 0 drives every free candidate pin in turn. Without the user's consent, a host does not send count = 0 to a fixture whose wiring it does not know.
@@ -163,6 +166,14 @@ In addition to [common parts](oep-if-common.md) §2:
 - **Wire loss is decided only inside a request or inside a console read** (idle connections are not monitored. The liveness check of at boot slots is
   [probe settings](oep-if-probe-config.md) §3.1). A status line alone does not mean that the connection closed: the host checks with connections.
   When decided inside a console read, a mark link-lost is attached and it closes.
+- **Lines while the wire does not answer** (electrical safety): an exchange is one frame or packet that the wire's section defines, or one wake pattern, together with
+  the line levels the section requires right before it. From an exchange that fails with no answer from the wire (the failures counted toward wire loss above) until
+  an exchange on that wire succeeds, or until the connection is lost, the probe rests the wire's lines in the free state between exchanges and drives them only
+  during an exchange (each retry is an exchange). The free state is undriven, with no pull or with a pull toward the line's rest level on that connection. For a
+  clock line of a connection that uses idle_clock 1 (low), that is no pull or a pull-down, never a pull-up. When an exchange succeeds again, the probe restores the
+  rest state of the connection (the clock line at the idle_clock level, and the data line's rest state) before the next exchange. While exchanges succeed, the rest
+  state between exchanges is the one the wire's section defines, unchanged by this rule.
+- (Informative) Otherwise, a target that has lost power is powered back through the protection diodes of its pins by the lines the probe keeps driving.
 - **When the probe closes a connection, it does not change the target's state more than necessary** (it does not reset the target. A hart that was halted is left as the
   host's last operation left it).
 - When a connection closes, the channels of its combination go to the idle state of core §8 (the drive of idle_clock stops).
@@ -224,7 +235,7 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
 - **There is no default reset wire**: which wire is used for reset is specified explicitly by the host every time with channel (a reset on the wrong wire could damage the target or the
   fixture). The channels the probe may use for reset are declared with role 3 (reset) of the role_channels of describe. An undeclared
   channel is rejected unsupported (tag 0x05) without executing anything. A channel held by an existing plan or connection is rejected
-  unavailable as the contention of §8.1. **The reset wire is pulled low open-drain, and when released it stops pulling and goes to the idle state of core §8** (no short with an external reset button or
+  unavailable as the contention of §8.1. A channel whose idle is an output is rejected unavailable as §1 says. **The reset wire is pulled low open-drain, and when released it stops pulling and goes to the idle state of core §8** (no short with an external reset button or
   another driver). The channel is held only for the duration of the op. On a probe without it, the host sends the release of `oep.fixture.gpio` and the attach together
   and retries.
 

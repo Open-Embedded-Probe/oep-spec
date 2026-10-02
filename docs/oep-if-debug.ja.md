@@ -28,7 +28,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 1. op 0x01 scan、0x02 attach、0x03 detach、0x05 connections を §1〜§2.1 の意味で使う（wire は 0x06 から op を足してよい）。attach、detach、connections は
    すべての wire で必須。scan は、ピンの組（channel_group か role_channels）を宣言するすべての wire で必須;
 2. §1（書く前に読んで速さを確かめる、count = 0 と外すもの、席と max_connections、scan と attach の予算、断り方）と §2（寿命、線切れ、
-   状態機械、閉じても target を変えない）に従う。swdio / swclk は「ピンの役 1 / 2 の channel」と読み替える;
+   線が応えない間の線、状態機械、閉じても target を変えない）に従う。swdio / swclk は「ピンの役 1 / 2 の channel」と読み替える;
 3. `oep.target.*` のインターフェースが使う [共通部品](oep-if-common.ja.md) §2 の connection を作る。
 
 組が 2 本のピンでない wire は、自分の文書で、pins の TLV、scan の entry、connections の entry を、2 つの u16 の欄の代わりに `n(u8)、n × (role(u8)、channel(u16))`
@@ -46,6 +46,7 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
 
 - ピンの役と、速さの選び方;
 - wake / 設定の手順と、scratch のレジスタ（§1）;
+- やり取りと、やり取りの間の線の休み方（§2）;
 - 「見つかった」の基準と、scan_kind の値;
 - 使う target_id の scheme（§1 の 1 つの空間から）と、線切れの見え方;
 - その connection を受ける `oep.target.*` のインターフェースと、コンソールや probe.config のスロットが乗るかどうか。
@@ -63,7 +64,7 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
 - 速さを確かめる前に、これ以外のものを target に書かない（速さの合わない書き込みは、化けた値を target のレジスタに書きうる）。
 - **別のデバッガを通して attach する probe.** 上の制限は、自分で線を駆動する probe に掛かる。attach が、自分では制御できない別のデバッガを
   通る probe（そのデバッガが書くものを見ることも抑えることもできない）は、その wire の describe の features（共通 tag 0x06、core §7.4）の
-  bit0 `attach_writes_unbounded` を立て、この制限の外になる。host は、そういう wire での attach を、効き目の分からない reset と同じに扱う:
+  bit0 `attach_writes_unbounded` を立て、この制限の外になり、線が応えない間の線についての §2 の規則の外にもなる。host は、そういう wire での attach を、効き目の分からない reset と同じに扱う:
   target のレジスタや走っているプログラムがそれを越えて残るとは期待しない。
 - **ピンの組**:
   - probe が使える組は describe の共通タグ（core §7.4）で宣言する。決まった組は channel_group、どのピンにも割り当てられる
@@ -77,6 +78,8 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
     probe の設定に **idle の項目**がある channel（mode を問わない、[probe の設定](oep-if-probe-config.ja.md) §1）をすべて外す。
     そういう channel を明示した要求（組を並べた scan、attach の pins）は、idle が入力（mode 0〜2）なら受ける。
     idle が出力（mode 3 / 4）なら rejected unavailable（cause 5、その channel、holder_kind 7 = 設定の idle）。
+    idle が出力（mode 3 / 4）の channel を名指した attach の reset TLV（TLV 0x05、§3）も、同じく何も実行せずに rejected unavailable
+    （cause 5、その channel、holder_kind 7 = 設定の idle）。
     pins の無い attach で、許される組がただ 1 つで、それが idle の項目を持つ channel を含むもの（どの mode でも。入力も含む）は、候補が残らない: rejected
     unavailable（cause 5、その channel、holder_kind 7 = 設定の idle）。
   - （参考）count = 0 は空いている候補のピンを順に全部動かす。利用者の同意なしに、host は配線を知らない治具へ count = 0 を送らない。
@@ -163,6 +166,13 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
 - **線切れの判定は、要求の中かコンソールの読みの中でだけ行う**（idle な connection は監視しない。at boot のスロットの生存確認は
   [probe の設定](oep-if-probe-config.ja.md) §3.1）。status line だけでは connection が閉じたことにならない: host は connections で確かめる。
   コンソールの読みの中で判定したら、mark link-lost を付けて閉じる。
+- **線が応えない間の線**（電気的な安全）: やり取りとは、wire の節が定める 1 つの frame か packet、または 1 回の wake pattern で、節がその直前に求める
+  線の level を含む。線からの応答無しで失敗したやり取り（上の線切れに数える失敗）から、その線でやり取りが成功するまで、または connection を失うまで、
+  probe はやり取りの間、その線を放した状態で休ませ、やり取りの最中だけ駆動する（再試行の 1 回 1 回もやり取り）。放した状態とは駆動しない状態で、
+  pull 無しか、その connection でのその線の休みの level に向けた pull とする。idle_clock 1（low）を使う connection のクロックの線では、
+  pull 無しか pull-down で、pull-up にはしない。やり取りがまた成功したら、probe は次のやり取りの前に connection の休み方（クロックの線は
+  idle_clock の level、データの線はその休み方）に戻す。やり取りが成功している間の、やり取りの間の休み方は wire の節が定めるとおりで、この規則では変わらない。
+- （参考）そうしないと、電源を失った target は、probe が駆動し続ける線から、ピンの保護ダイオードを通して逆に給電される。
 - **probe は connection を閉じるとき、target の状態を必要以上に変えない**（target を reset しない。止めていた hart は、閉じる前の
   host の操作のままにする）。
 - connection が閉じたら、その組の channel は core §8 の空きの状態になる（idle_clock の駆動もやめる）。
@@ -224,7 +234,7 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 - **reset の線に既定は無い**: どの線を reset に使うかは host が毎回 channel で明示する（線を取り違えた reset は target や治具を
   壊しうる）。probe が reset に使ってよい channel は describe の role_channels の role 3（reset）で宣言する。宣言していない
   channel は、何も実行せずに rejected unsupported（tag 0x05）。今ある plan や接続が持つ channel は、§8.1 の取り合いとして rejected
-  unavailable。**reset の線はオープンドレインで low に引き、離すときは引くのをやめて core §8 の空きの状態にする**（外部の reset ボタンや
+  unavailable。idle が出力の channel は、§1 のとおり rejected unavailable。**reset の線はオープンドレインで low に引き、離すときは引くのをやめて core §8 の空きの状態にする**（外部の reset ボタンや
   ほかの driver と短絡しない）。channel は op の間だけ持つ。持たない probe では、host は `oep.fixture.gpio` の解放と attach をまとめて
   送って再試行する。
 
