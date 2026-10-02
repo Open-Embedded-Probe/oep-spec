@@ -63,7 +63,7 @@
   その channel を出力として駆動できない probe では、mode 3 / 4 の idle は rejected unsupported。そのプルを持たない channel では、mode 1 か 2 の idle は rejected unsupported（受け取ったままの項目の tag）。（参考）`oep.fixture.gpio` の無い probe では、どの channel がプルや出力を持つかを host が前もって知る方法は無い。mode が 5 以上なら rejected unsupported（受け取ったままの項目の tag、core §2.5）。
   （参考）出力の idle が target の出力とぶつからないようにするのは、配線の責任である。
   - **強さ（任意）**: mode の後ろに drive_kind(u8)、drive_value(u16) を置ける（[fixture](oep-if-fixture.ja.md) §1.1 の強さの指定と同じ
-    kind と value）。置かなければ既定の段。置けるのは mode 3 / 4 だけで、ほかの mode で置けば rejected malformed。値の長さが 4 か 5
+    kind と value）。置かなければ既定の段。置けるのは mode 3 / 4 だけで、mode 0〜2 で置けば rejected malformed（mode が 5 以上なら mode について rejected unsupported、core §4.3）。値の長さが 4 か 5
     byte なら rejected malformed。未定義の drive_kind（2 以上）は rejected unsupported（受け取ったままの項目の tag。後の revision が定めうる、core §2.5）。`oep.fixture.gpio` の describe が drive_levels を宣言する probe では、
     kind 0 で drive_value が段の数以上なら rejected unsupported。drive_levels を宣言しない probe（`oep.fixture.gpio` の無い probe を
     含む）は、このフィールドを持つが効かせない（強さは既定のまま）。
@@ -91,10 +91,10 @@ boot_reset を置ける（置かなければ 0）。その後ろは、後から�
 | slot | スロットの番号（キー）。0 から、describe の slots_max 未満 |
 | wire_fn | 線のインターフェースの fn。**target_id の scheme を持つ線**（`oep.wire.rvswd` / `oep.wire.swio`）だけ。ほか（`oep.wire.swd`）は rejected unsupported |
 | swdio、swclk | ピンの組。attach の pins と同じ（1 本の線は swclk = 0xFFFF）。その線が許す組でなければ rejected unsupported |
-| attach | attach の方針: 0 host、1 at boot（§3.1） |
+| attach | attach の方針: 0 host、1 at boot（§3.1）。2 以上は rejected unsupported（core §2.5） |
 | retry_ms | at boot のスロットで、いないときに attach をやり直す間隔（ms）。0 はやり直さない。at boot でなければ 0（ほかは rejected malformed） |
 | max_speed_hz | そのスロットの attach に渡す線の速さの上限（Hz、attach の max_speed と同じ）。0 は上限なし。その線が守れない上限（決まった速さがそれより速い、min_clock_hz より遅い）は rejected unsupported |
-| idle_clock | そのスロットの attach に渡す線の休ませ方（attach の idle_clock と同じ: 0 = high、1 = low）。`oep.wire.rvswd` だけが 1 を持てる（ほかの線で 1 は rejected unsupported。attach と同じ） |
+| idle_clock | そのスロットの attach に渡す線の休ませ方（attach の idle_clock と同じ: 0 = high、1 = low）。`oep.wire.rvswd` だけが 1 を持てる（ほかの線で 1 は rejected unsupported。attach と同じ）。2 以上は rejected unsupported（core §2.5） |
 | mechanism | コンソールの方式（`oep.target.console` の mechanism）、または **0xFF = コンソールなし**（bind に載せない、console を持たない probe）。その probe の console が宣言しない方式は rejected unsupported |
 | name | スロットの名前。1〜32 byte で、使える文字は `a-z 0-9 - _` だけ（ほかは rejected malformed）。probe の中で重ならない（重なれば rejected malformed）。host がスロットを名指すのに使い（IDE の address `oep://<unit_id>/<name>` にそのまま入る。unit_id は core §7.5。どちらも URL の中で encode が要らない文字だけ）、mixed の行の印（§1.2）にも使う |
 | lock_len | 錠の部分の長さ。0（錠なし）か 1 + 2n（n ≥ 1）。ほかは rejected malformed |
@@ -128,7 +128,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (len(u8)、kind(u8)、id(u16))
 | port | シリアルの口の番号（core の describe の transport の index）。シリアルの口でなければ rejected unsupported。index は firmware の版を越えて変わらない（core §7.5） |
 | mode | 0 last-reset、1 manual、2 mixed（下）。describe の bind_modes に無い mode は rejected unsupported |
 | selected | manual の選択（並びの中の番号、n 未満。外れていれば rejected malformed）。last-reset と mixed では 0 を送り、probe は見ない |
-| n、並び | 流すストリーム（n ≥ 1）。各要素の前に要素の長さ len を置く（応答の並びと同じ形、core §2.3）。len は 3 以上（3 未満は rejected malformed）で、probe は 3 byte より後ろを読み飛ばす。host は今は 3 を送る。kind 1 = スロットのコンソール（id = slot）、kind 2 = fixture UART の受信（id = `oep.fixture.uart` の fn）。無いスロットを指せば rejected malformed（設定どうしの矛盾）、fn が無ければ unknown_function、fn が `oep.fixture.uart` でなければ rejected unsupported。mechanism 0xFF のスロットは載せられない（rejected malformed） |
+| n、並び | 流すストリーム（n ≥ 1）。各要素の前に要素の長さ len を置く（応答の並びと同じ形、core §2.3）。len は 3 以上（3 未満は rejected malformed）で、probe は 3 byte より後ろを読み飛ばす。host は今は 3 を送る。kind 1 = スロットのコンソール（id = slot）、kind 2 = fixture UART の受信（id = `oep.fixture.uart` の fn）。ほかの kind は rejected unsupported（core §2.5）。無いスロットを指せば rejected malformed（設定どうしの矛盾）、fn が無ければ unknown_function、fn が `oep.fixture.uart` でなければ rejected unsupported。mechanism 0xFF のスロットは載せられない（rejected malformed） |
 
 | mode | 口に流すもの | 口から来た生のバイト |
 |---|---|---|
@@ -224,11 +224,14 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 
 **断り方の表**（core §4.3 の順）:
 
+- 項目についての rejected unsupported は、どの項目でも（plan、label、idle、slot、bind、uart、disable）、下のどの行によるものでも、payload にその項目の受け取ったままの tag を載せる（core §4.3）。保存の無い probe の save / erase は tag 0x00 を載せる。
+- 定義されていない値を持つフィールドは unsupported で断り、それが関わる矛盾（malformed の行）は確かめない（core §4.3）。
+
 | 状況 | reason |
 |---|---|
-| 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset の値と host のスロットの boot_reset 1、mode 3 / 4 でない idle の drive と、idle の drive の長さ、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
+| 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset の値と host のスロットの boot_reset 1、mode 0〜2 の idle の drive と、idle の drive の長さ、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
 | 指す fn が無い（plan、slot の wire_fn、bind の kind 2、uart） | unknown_function |
-| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か reserved にある label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、idle の未定義の drive_kind、その線が持たない lock_scheme（定義にあってもなくても）、保存の無い probe の save / erase | unsupported |
+| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か reserved にある label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、idle の未定義の drive_kind、2 以上の slot の attach、2 以上の slot の idle_clock、1 / 2 以外の bind のストリームの kind、その線が持たない lock_scheme（定義にあってもなくても）、保存の無い probe の save / erase | unsupported |
 | plan_roles 超え、ピンや資源の取り合い、at boot のスロットが max_connections を超える、保存先が足りない | unavailable（cause 2 / 1 / 2 / 3） |
 
 ## 3. スロットの接続と状態

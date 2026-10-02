@@ -107,7 +107,9 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
 - **Events and data** (§11.2) are the same as answers: after the fixed part comes a sequence of TLVs.
 - **Requests**: the only thing that can be appended to a request is a sequence of TLVs. The host **sets the critical bit** when the request is meaningless unless that item
   takes effect (items that may be ignored may be sent without it). TLVs that an interface's definition says are sent critical (a speed limit,
-  pins, and other items for safety) always carry it. If the probe sees an unknown critical
+  pins, and other items for safety) always carry it. **An interface's definition may also say that a probe treats a TLV as critical whether or not bit 7 is set**
+  ([capture](oep-if-capture.md) §3.3, §4.1). A probe that implements such a TLV applies every rule for a critical TLV to it: a value it cannot handle, or a value
+  longer than it knows, is rejected unsupported (the tag as received), and the TLV is never ignored. A probe that does not implement the tag treats it as unknown, by the bit as received. If the probe sees an unknown critical
   TLV it refuses with rejected unsupported (the tag as received in the payload). It ignores unknown non-critical TLVs and appends ignored
   (tag 0x7F, below) to the answer. It does so on every completed answer, also when the op's status is a failure.
 - ignored lists the numbers (bit 7 cleared) of the ignored TLVs **in the order they appear in the request**, one entry per ignored TLV, at most 16 entries (`ignored_max_entries`). When more than 16 TLVs were ignored, the probe lists the first 15 and puts **0x00** as the 16th entry ("more were ignored"; 0x00 is never a tag, §2.2). A host that sees 0x00 treats every TLV of its request that is not listed as possibly ignored.
@@ -422,6 +424,8 @@ The detail of rejected is the reason, and other information goes in the payload.
 7. **Cannot be accepted in the current state or with the current resources** (plan, connection, running, capacity, bound into a group) → unavailable (with cause).
 8. The resource designated by number is unknown → no_connection.
 
+**Contradictions and undefined values**: the contradiction check of order 5 applies only among fields that hold defined values. A field that holds a value its definition leaves unused (order 6: an unused value of an enum, a reserved bit) is refused unsupported for that value, and no contradiction that involves that field (a rule that compares it with another field, or that depends on its value) is checked. The other checks of order 5 (the length, the counts, the TLV encoding, a value the definition excludes for every revision, a value whose length is unknown) are not affected and still come first. Example: an idle item of probe.config with mode 5 that carries a drive is rejected unsupported for the mode, not malformed for a drive on a mode other than 3 / 4.
+
 When an fn designated inside the payload (describe, subscribe, plan, settings items) does not exist, unknown_function is reused.
 
 **The payload of unavailable** (an optional sequence of TLVs. The host skips unknown tags and copes without any. The probe attaches what it knows):
@@ -447,7 +451,8 @@ the interface's index, etc.), except that there 0x01 is supported, the refusal o
 - max_frame, window and max_inflight of confirm are the limits **of the transport the confirm came on**. Each transport is counted separately, and requests outstanding on one transport do not use the receive room of another. The table of §5.2 stays one per probe (the 0x81 requests of a session are sent on one transport, §3.3).
 - **The host's wait time**: the absence of an answer is decided only by timeout (§3.1). For each request the host waits **at least**: the time set by the request's arguments (the timeout_ms of run,
   the hold_ms of reset, the sum of the waits of dmi, save, etc.; for attach, `attach_budget_ms` plus the hold_ms of its reset TLV; for scan, `scan_budget_ms` + `attach_budget_ms` ([wire and debug](oep-if-debug.md) §1); 0 if none; at most max_op_ms, §7.5) + 1000 ms (`host_wait_add_ms`) + the transfer time. The wait starts when the request has been written, or, while earlier requests on the same transport are outstanding, when the answer to the request before it arrives (the probe answers in order).
-  The transfer time is 0 except on a UART bridge. On a UART bridge it is (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud seconds, where L is the length on the wire of the request's frame and baud is the port's current speed. A host may wait longer. When the wait has passed, it proceeds to the resend of §5.2.
+  The transfer time is 0 except on a UART bridge. On a UART bridge it is (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud seconds, where L is the length on the wire of the request's frame and baud is the port's current speed. A host that cannot tell whether a serial port is a UART bridge (for example before it has read the transport kinds in the describe of fn 0, §7.5) counts this transfer time on that serial port, with baud the speed it has set on the port. Waiting longer than this floor is always allowed. When the wait has passed, it proceeds to the resend of §5.2.
+- **This floor applies to every request** a host sends, its own link requests (confirm, link_source, link_sink, port_speed) included. The waits §3.5 states for the port_speed steps (20 ms or more before the confirm that verifies a new speed, verify_ms, idle_ms, and the repeat of confirm for port_speed_idle_max_ms + 1000 ms) stay as §3.5 states them. They are times between requests, not waits for an answer, and they do not shorten this floor for any request sent within them.
 
 ## 5. Recovery and resend
 

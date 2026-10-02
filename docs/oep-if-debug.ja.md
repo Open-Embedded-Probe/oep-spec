@@ -77,6 +77,8 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
     probe の設定に **idle の項目**がある channel（mode を問わない、[probe の設定](oep-if-probe-config.ja.md) §1）をすべて外す。
     そういう channel を明示した要求（組を並べた scan、attach の pins）は、idle が入力（mode 0〜2）なら受ける。
     idle が出力（mode 3 / 4）なら rejected unavailable（cause 5、その channel、holder_kind 7 = 設定の idle）。
+    pins の無い attach で、許される組がただ 1 つで、それが idle の項目を持つ channel を含むもの（どの mode でも。入力も含む）は、候補が残らない: rejected
+    unavailable（cause 5、その channel、holder_kind 7 = 設定の idle）。
   - （参考）count = 0 は空いている候補のピンを順に全部動かす。利用者の同意なしに、host は配線を知らない治具へ count = 0 を送らない。
   - 線は、生きている接続が使っている組の channel を持つ（接続が無くなれば放す）。持っている間、その channel を plan や設定が
     取ろうとすれば rejected unavailable（core §8.1）。

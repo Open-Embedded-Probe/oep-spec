@@ -77,6 +77,8 @@ A new wire's document also defines:
     in the probe's settings (any mode, [probe settings](oep-if-probe-config.md) §1), in addition to channels held by something else and disabled channels.
     A request that names such a channel explicitly (a scan listing combinations, the pins of attach) is accepted when the idle is an input (mode 0 to 2).
     It is rejected unavailable (cause 5, the channel, holder_kind 7 = settings idle) when the idle is an output (mode 3 / 4).
+    An attach without pins whose only allowed combination contains a channel with an idle item (any mode, inputs included) has no candidate left: it is rejected
+    unavailable (cause 5, that channel, holder_kind 7 = settings idle).
   - (Informative) count = 0 drives every free candidate pin in turn. Without the user's consent, a host does not send count = 0 to a fixture whose wiring it does not know.
   - A wire holds the channels of the combination a live connection is using (released when the connection is gone). While held, if a plan or the settings tries
     to take that channel, rejected unavailable (core §8.1).

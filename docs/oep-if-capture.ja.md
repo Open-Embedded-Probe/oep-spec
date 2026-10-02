@@ -225,8 +225,8 @@ configure の応答の blocking_ms が core の max_op_ms を超える構成は�
 
 ### 3.3 configure
 
-**設定の TLV**（critical を立てた TLV（または値）を probe が扱えなければ configure 全体を
-rejected unsupported（0x0B、payload に tag）で断り、立てていなければ無視して応答の `ignored`（0x7F）に載せる。core §2.3）:
+**設定の TLV**（critical である TLV（または値）を probe が扱えなければ configure 全体を
+rejected unsupported（0x0B、payload に tag）で断り、critical でなければ無視して応答の `ignored`（0x7F）に載せる。core §2.3。下で「常に」の TLV は critical の bit が無くても critical。「critical で送るもの」を見よ）:
 
 | tag | 名前 | 値 | 対象 | critical で送るか |
 |---|---|---|---|---|
@@ -236,7 +236,7 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 | 0x44 | segments | u32（リピートの区画の数。省略すれば probe に任せる） | 両方 | 立てずに送ってよい |
 | 0x45 | trigger | type(u8)、role(u8)、value(u32) | 両方 | 常に |
 | 0x46 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 | 常に |
-| 0x47 | frontend | role(u8)、frontend(u8: describe の frontend の番号) | アナログ | 常に |
+| 0x47 | frontend | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。繰り返す（core §2.3）。同じ role に 2 つあれば rejected malformed | アナログ | 常に |
 
 - **問い合わせは別の操作（0x09）**。configure の TLV のフラグにすると、probe はロックの要否を操作の番号で決めるので、
   ロックなしの問い合わせができない（[設計](logic-capture.ja.md) §7.8）。問い合わせは今の設定と取ったデータを壊さない。
@@ -246,8 +246,9 @@ rejected unsupported（0x0B、payload に tag）で断り、立てていなけ�
 - トリガは開始の条件だけ。リピートとストリーミングでも、効くのは最初だけ（§2.1）。
 - **samples は区画の総数**（pretrigger を含む）。トリガが早く立ってプリトリガの分が足りなければ、区画は短く、trigger_index はそのまま
   小さい。force で始めたときは trigger_index = その瞬間のサンプルで triggered を送る。type 0（即時）では triggered を送らない。
-- **critical で送るもの**: mode、rate、trigger、pretrigger、frontend は常に critical で送る。そのどれかに従えない probe は configure を断る
-  （unsupported、受け取ったままの tag）。
+- **critical で送るもの**: host は mode、rate、trigger、pretrigger、frontend を critical の bit を立てて送らなければならない（MUST）。probe は、bit が立っていても
+  いなくても、そのそれぞれを critical として扱う（core §2.3）: そのどれかに従えなければ configure を断り（unsupported、受け取ったままの tag）、どれも無視せず、どれも
+  ignored に載せない。query でも同じ。
 - **rate**: critical で送ったとき、probe は宣言した rate_range の中で実現できる最も近い値を使う（向きは問わない。どれかは actual_rate
   で分かる）。範囲の外の rate は rejected unsupported（tag 0x42）。
 - **samples と segments** は critical を立てずに送ってよい。probe が持てる量を超える samples は、その上限に切り下げ、応答の actual_samples（0x52）
@@ -375,7 +376,7 @@ bind の TLV:
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x01 | trigger_track | fn(u16)。組の開始の条件を持つトラック（そのトラックの configure の trigger と pretrigger）。無ければ即時。**critical で送る**（無視されると意味が変わる） |
+| 0x01 | trigger_track | fn(u16)。組の開始の条件を持つトラック（そのトラックの configure の trigger と pretrigger）。無ければ即時。**critical で送る**（無視されると意味が変わる）: host は critical の bit を立てなければならず（MUST）、probe は bit が立っていてもいなくても critical として扱う（従えなければ unsupported、無視しない。core §2.3） |
 
 - **bind** は、configure 済みのトラック（`oep.fixture.logic` / `oep.fixture.analog` の fn）を束ねる。n = 0 で解く（state 3 のときは
   rejected unavailable cause 6。束ねていないときの n = 0 は何もせず成功）。断り方: 同じ fn の重複は malformed、宣言（tracks）に無い fn
@@ -422,7 +423,7 @@ kind の番号はトラック（§3.4）と揃える（triggered 3、stopped 2�
 | 0x40 | tracks | n(u8)、n × fn(u16)。束ねられるトラック |
 | 0x41 | max_tracks | u8。1 つの組に入れられるトラックの数 |
 | 0x42 | budget | max_sps(u32、チャネル数 × レートの合計の上限、sample/s)、n(u8)、n × fn(u16)。挙げた fn を一緒に束ねたときに分け合う上限（繰り返してよい。例: 1 つの ADC を 2 つのトラックで使う、DMA を分け合う） |
-| 0x43 | start_skew | fn(u16)、typical_ns(u32)。そのトラックの開始が組の開始から遅れる目安（区画の start_ns で実際の値が分かるので、表示のため） |
+| 0x43 | start_skew | fn(u16)、typical_ns(u32)。トラックごとに 1 つ。繰り返す。そのトラックの開始が組の開始から遅れる目安（区画の start_ns で実際の値が分かるので、表示のため） |
 
 - どのトラックの組が束ねられるかは tracks と budget で宣言し、確かめたいときは bind を試す（断られても何も変わらない）。
 - 1 つのトラックの中の複数チャネル（1 つの ADC を順番に切り替える）は今までどおり、そのトラックの order と skew（§1.2、§3.3）。

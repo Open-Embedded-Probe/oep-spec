@@ -225,8 +225,8 @@ A configuration where blocking_ms of the answer to configure exceeds the core's 
 
 ### 3.3 configure
 
-**TLVs of the settings** (if the probe cannot handle a TLV (or value) with critical set, the whole configure is
-refused with rejected unsupported (0x0B, the tag in the payload); if critical is not set, it is ignored and listed in `ignored` (0x7F) of the answer. core §2.3):
+**TLVs of the settings** (if the probe cannot handle a TLV (or value) that is critical, the whole configure is
+refused with rejected unsupported (0x0B, the tag in the payload); if it is not critical, it is ignored and listed in `ignored` (0x7F) of the answer. core §2.3. A TLV marked "Always" below is critical even without the critical bit, see "Sent critical"):
 
 | tag | Name | Value | Applies to | Sent critical |
 |---|---|---|---|---|
@@ -236,7 +236,7 @@ refused with rejected unsupported (0x0B, the tag in the payload); if critical is
 | 0x44 | segments | u32 (the number of segments of repeat. If omitted, left to the probe) | Both | May be sent without |
 | 0x45 | trigger | type(u8), role(u8), value(u32) | Both | Always |
 | 0x46 | pretrigger | u32 (the number of samples to keep before the trigger) | Both | Always |
-| 0x47 | frontend | role(u8), frontend(u8: the number of the frontend of describe) | Analog | Always |
+| 0x47 | frontend | role(u8), frontend(u8: the number of the frontend of describe). One per channel; it repeats (core §2.3). Two for the same role are rejected malformed | Analog | Always |
 
 - **Querying is a separate operation (0x09)**. If it were a flag in the TLVs of configure, querying without the lock would not be possible, since the probe decides whether the lock is required
   by the operation number ([design](logic-capture.ja.md) (Japanese) §7.8). A query does not break the current settings or the captured data.
@@ -246,8 +246,9 @@ refused with rejected unsupported (0x0B, the tag in the payload); if critical is
 - A trigger is only a start condition. Even in repeat and streaming, it takes effect only at the beginning (§2.1).
 - **samples is the total of the segment** (including pretrigger). If the trigger fires early and the pretrigger part is short, the segment is short and trigger_index is
   correspondingly small. When started by force, triggered is sent with trigger_index = the sample at that instant. With type 0 (immediate), triggered is not sent.
-- **Sent critical**: mode, rate, trigger, pretrigger and frontend are always sent critical. A probe that cannot honour one refuses the configure (unsupported, the tag
-  as received).
+- **Sent critical**: a host MUST send mode, rate, trigger, pretrigger and frontend with the critical bit set. A probe treats each of them as critical whether or not
+  the bit is set (core §2.3): when it cannot honour one, it refuses the configure (unsupported, the tag as received); it never ignores one of them and never lists one in
+  ignored. The same holds for query.
 - **rate**: sent critical, it means that the probe applies the nearest value it can realise within its declared rate_range (in either direction; actual_rate says
   which). A rate outside the range is rejected unsupported (tag 0x42).
 - **samples and segments** may be sent without the critical bit. A samples above what the probe can hold is rounded down to its limit, and actual_samples (0x52)
@@ -375,7 +376,7 @@ TLVs of bind:
 
 | tag | Name | Value |
 |---:|---|---|
-| 0x01 | trigger_track | fn(u16). The track that holds the condition for starting the group (the trigger and pretrigger of that track's configure). If absent, immediate. **Sent critical** (if ignored, the meaning changes) |
+| 0x01 | trigger_track | fn(u16). The track that holds the condition for starting the group (the trigger and pretrigger of that track's configure). If absent, immediate. **Sent critical** (if ignored, the meaning changes): a host MUST set the critical bit, and the probe treats it as critical whether or not the bit is set (unsupported when it cannot honour it, never ignored; core §2.3) |
 
 - **bind** bundles configured tracks (fns of `oep.fixture.logic` / `oep.fixture.analog`). n = 0 unbinds (in state 3,
   rejected unavailable cause 6. n = 0 when nothing is bound does nothing and succeeds). Ways of refusing: a duplicate of the same fn is malformed, an fn not in the declaration (tracks)
@@ -422,7 +423,7 @@ The kind numbers match those of a track (§3.4) (triggered 3, stopped 2). trigge
 | 0x40 | tracks | n(u8), n × fn(u16). Tracks that can be bundled |
 | 0x41 | max_tracks | u8. The number of tracks that can be put in one group |
 | 0x42 | budget | max_sps(u32, the upper limit of the sum of number of channels × rate, sample/s), n(u8), n × fn(u16). The limit shared when the listed fns are bound together (may be repeated. Examples: using one ADC for 2 tracks, sharing DMA) |
-| 0x43 | start_skew | fn(u16), typical_ns(u32). A guide to how much that track's start lags the group's start (the actual value is seen in the segment's start_ns, so this is for display) |
+| 0x43 | start_skew | fn(u16), typical_ns(u32). One per track; it repeats. A guide to how much that track's start lags the group's start (the actual value is seen in the segment's start_ns, so this is for display) |
 
 - Which groups of tracks can be bundled is declared with tracks and budget; to check, try bind (nothing changes even if refused).
 - Several channels within one track (one ADC switched in turn) are, as before, the order and skew of that track (§1.2, §3.3).

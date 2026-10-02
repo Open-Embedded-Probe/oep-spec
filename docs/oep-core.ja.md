@@ -107,7 +107,9 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
 - **出来事とデータ**（§11.2）も応答と同じ: 固定部分の後ろは TLV の並び。
 - **要求**: 要求の後ろに足せるのは TLV の並びだけ。host は、その項目が効かなければ要求に意味がないときに **critical の bit を
   付ける**（効かなくても構わない項目は付けずに送ってよい）。インターフェースの定義が critical で送ると決めた TLV（速さの上限、
-  pins など、安全のための項目）は必ず付ける。probe は、知らない critical の
+  pins など、安全のための項目）は必ず付ける。**インターフェースの定義は、bit 7 が立っていてもいなくても probe が critical として扱う TLV を決めることもできる**
+  （[捕捉](oep-if-capture.ja.md) §3.3、§4.1）。そうした TLV を実装する probe は、critical の TLV の規則をすべてそれに当てはめる: 扱えない値も、知っている長さより
+  長い値も rejected unsupported（受け取ったままの tag）で断り、その TLV を無視することはない。その tag を実装しない probe は、受け取った bit のとおり知らない TLV として扱う。probe は、知らない critical の
   TLV があれば rejected unsupported（payload に受け取ったままの tag）で断る。知らない非 critical の TLV は無視し、応答の
   後ろに ignored（tag 0x7F、下）を付ける。結果が completed なら、op の status が失敗でも付ける。
 - ignored は、無視した TLV の番号（bit 7 を落としたもの）を**要求に現れた順に**、無視した TLV 1 つにつき 1 つ、多くても 16 個（`ignored_max_entries`）並べる。無視した TLV が 16 を超えたら、probe は最初の 15 個を並べ、16 個目に **0x00** を置く（「ほかにも無視した」。0x00 は tag にならない、§2.2）。0x00 を見た host は、自分の要求の TLV のうち並んでいないものをすべて、無視されたかもしれないものとして扱う。
@@ -422,6 +424,8 @@ rejected の detail は reason で、そのほかの情報は payload に置く�
 7. **今の状態・資源で受けられない**（plan、接続、動いている、容量、組に束ねられている）→ unavailable（cause 付き）。
 8. 番号で指す資源を知らない → no_connection。
 
+**矛盾と定義されていない値**: 順 5 の矛盾の確かめは、定義された値を持つフィールドどうしにだけ当てはめる。定義が使わずに残した値（順 6: enum の使っていない値、予約のビット）を持つフィールドは、その値について unsupported で断り、そのフィールドが関わる矛盾（そのフィールドを別のフィールドと比べる規則、またはその値によって決まる規則）は確かめない。順 5 のほかの確かめ（長さ、数、TLV の符号化、定義がどの revision でも除く値、長さが分からない値）はこれに影響されず、先に来る。例: drive を持つ mode 5 の probe.config の idle の項目は、mode について unsupported で断り、mode 3 / 4 以外の drive として malformed にはしない。
+
 payload の中で指す fn（describe、subscribe、plan、設定の項目）が無いときは unknown_function を流用する。
 
 **unavailable の payload**（任意の TLV の並び。host は知らない tag を飛ばし、無くても扱えるようにする。probe は分かる範囲で付ける）:
@@ -447,7 +451,8 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 - confirm の max_frame、window、max_inflight は、**その confirm が来た経路の**上限である。経路ごとに別々に数え、ある経路で未解決の要求は、ほかの経路の受けの余地を使わない。§5.2 の表は probe に 1 つのまま（セッションの 0x81 の要求は 1 つの経路で送る、§3.3）。
 - **host の待ち時間**: 応答が来ないことは時間切れだけで判断する（§3.1）。host は要求ごとに**少なくとも**次を待つ: その要求の引数で決まる時間（run の timeout_ms、
   reset の hold_ms、dmi の待ちの和、save など。attach は `attach_budget_ms` にその reset TLV の hold_ms を足したもの、scan は `scan_budget_ms` + `attach_budget_ms`（[線とデバッグ](oep-if-debug.ja.md) §1）。無ければ 0。多くても max_op_ms、§7.5）+ 1000 ms（`host_wait_add_ms`）+ 転送の時間。待ちは、要求を書き終えた時から始める。同じ経路に先の要求が未解決の間は、その 1 つ前の要求の応答が届いた時から始める（probe は順に答える）。
-  転送の時間は UART bridge 以外では 0。UART bridge では (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒で、L はその要求のフレームの線の上の長さ、baud は口の今の速さ。host はもっと長く待ってよい。待ちが過ぎたら §5.2 の送り直しに進む。
+  転送の時間は UART bridge 以外では 0。UART bridge では (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒で、L はその要求のフレームの線の上の長さ、baud は口の今の速さ。シリアルの口が UART bridge かどうか分からない host（たとえば fn 0 の describe で経路の種類を読む前、§7.5）は、そのシリアルの口でこの転送の時間を数え、baud は自分がその口に設定した速さとする。この下限より長く待つことはいつでも許される。待ちが過ぎたら §5.2 の送り直しに進む。
+- **この下限はすべての要求に当てはまる**。host 自身のリンクの要求（confirm、link_source、link_sink、port_speed）も含む。§3.5 が port_speed の段階について決める待ち（新しい速さを確かめる confirm の前の 20 ms 以上、verify_ms、idle_ms、port_speed_idle_max_ms + 1000 ms の間の confirm の繰り返し）は §3.5 のとおりのまま。それらは要求と要求の間の時間で、応答を待つ時間ではなく、その間に送るどの要求についてもこの下限を縮めない。
 
 ## 5. 立て直しと送り直し
 
