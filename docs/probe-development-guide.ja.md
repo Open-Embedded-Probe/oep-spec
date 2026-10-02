@@ -199,6 +199,17 @@ host は transport の数でロックの奪い方を決める（host 開発ガ�
   - いまは probe のビルドの設定（治具のプロファイル）で持っている。rvswd は WCH の線（名前で特化が分かるインターフェース、
     core §13 の規則 8）なので、target ごとの休ませ方をこの線の規則として持ってもよい。1 台の probe が両方の target を相手に
     するようになったら、host が attach で指定する形を考える。
+- **debug の線は、線のタイミングが許すいちばん弱い出力の強さで駆動する。** 線の鋭いエッジは、同じ治具の隣の fixture の線に
+  乗る。classic ESP32 の既定（20 mA）の SWIO では、コンソールを読んでいる間、1 MHz の spi-target が bit を落とす・ずらす
+  （36 frame 中 23 だけ正しい。最弱（約 5 mA）では 72 中 72 で、線の速さは変わらない。2026-10-02、oep-probe-arduino d4f6293）。
+  配線の同じ P4 の治具では起きなかった（P4 の RVSWD はもとから最弱で、入力も違う）。参照の firmware の PHY はどれも最弱にする
+  （RVSWD: P4 は CAP_0、RP2 は 2 mA。SWIO: classic と P4 は CAP_0）。新しい PHY や移植でも設定する。記録は
+  [対象ごとのスキャンの記録](target-scan-notes.ja.md) §4。
+- **debug の線が忙しいときだけ壊れる fixture は、CPU より線のエッジを先に疑う。** 線が休んでいるとき（コンソールを外す）と
+  忙しいときで同じ手順を回し、まず出力の強さを見る。直ったかは前後を同じ手順で測る（arm した frame の直後に読む。DUT の周期
+  より長く待つと、arm していない次の frame が入って失敗に見える）。
+- **問題を直したら、同じ仕組みの箇所を探して確かめる**（ほかの PHY、ほかの SoC、線を駆動する fixture、client と fake）。
+  どれが大丈夫でどれが未確認かを記録に残す。
 - **resume と run は出し直さない**（oep-if-debug §4.2、§4.4）。CH32V006 の 1 回で出ない resumereq、CH32L103 の allresumeack
   無しは host が扱う。以前 probe が dpc を見て出し直していたのは、汎用の名前の riscv-dm に CH32 の知識を入れる形だったので
   やめた（2026-09-26）。
