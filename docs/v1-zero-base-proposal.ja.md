@@ -124,7 +124,7 @@ boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロッ�
 - **(b) 名前**: 1〜64 byte、`a-z 0-9 - .`（見直し 15）。
 - **(c) instance**: 同名のインターフェースを fn の昇順に 0 から。probe は同名の口の順を firmware の版を越えて保つ（見直し 30）。
 - **(d) iProduct `OEP` 接頭を恒久の規範に**。vendor bulk は class 0xFF かつ `bInterfaceSubClass = 0x4F ('O'), bInterfaceProtocol = 0x45 ('E')`、
-  HID は usage page 0xFF4F / usage 0x45 に固定（見直し 16）。1209:4F45 は参照 firmware の値として usb-identity に置き、取得後に core を
+  HID は usage page 0xFF4F / usage 0x45 に固定（見直し 16）。プロジェクトの VID:PID は参照 firmware の値として usb-identity に置き、取得後に core を
   書き換える計画をやめる。「serial = unit_id は probe が serial を選べる口に限る。unit_id は個体で一意。固有番号の無い probe は乱数を
   保存して使う」。
 - **(e) アドレス** `oep://<unit_id>[/<slot name>]` を core §7.5 の小節に（見直し 46）。
@@ -272,7 +272,7 @@ boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロッ�
 | 4 | describe から状態を出して state op に（3.4a） | 出す | 今のまま。「状態の TLV は宣言の後ろ」と順序だけ決める |
 | 5 | block op の自己完結（3.8a） | する | 今の probe の動きを規範に書く |
 | 6 | attach の一本化（3.8b） | する | attach_under_reset に flags を足すだけ |
-| 7 | iProduct `OEP` を恒久の規範に、interface の subclass / protocol を固定（3.4d） | する | 1209:4F45 取得後に core を書き換える今の計画 |
+| 7 | iProduct `OEP` を恒久の規範に、interface の subclass / protocol を固定（3.4d） | する | プロジェクトの VID:PID の取得後に core を書き換える今の計画 |
 | 8 | 時刻を ns（u64）の一本に（3.5） | する | mark の後ろに time_ns を足すだけ（ms も残る） |
 | 9 | capture の read に generation を要求する（3.10a） | する | status に generation を足すだけ（read は黙って返す） |
 
@@ -438,7 +438,7 @@ boot_id は起動ごとに必ず変える（0「不明」は廃止）。ロッ�
 - 開発ガイドの追随: host ガイド §3（boot_id は confirm から、ロック無しの Monitor の動線）、§4（max_op_ms）、§2.5（expired の扱い: 専用の例外、
   黙って open し直さない）、§5（uart の位置の規則）。probe ガイド §3.8（iProduct / subclass / protocol / HID usage）、§3.9（max_op_ms と lease）、
   boot_id の作り方。usb-identity §3 / §4 を「計画をやめた」形に書き替える。
-- registry に `[usb]`（subclass 0x4F、protocol 0x45、HID usage page 0xFF4F / usage 0x45、参照 firmware の 1209:4F45）と `[limits]`（lease 1000〜60000、
+- registry に `[usb]`（subclass 0x4F、protocol 0x45、HID usage page 0xFF4F / usage 0x45、参照 firmware の VID:PID）と `[limits]`（lease 1000〜60000、
   owner / unit_id / slot name 1〜32、インターフェース名 1〜64、max_op_ms 既定 2000、min_max_frame 64）を置き、生成コードで検査できるようにする。
 
 ### 7.6 ★ 判断の記録（原則だけでは決まらなかったもの）
