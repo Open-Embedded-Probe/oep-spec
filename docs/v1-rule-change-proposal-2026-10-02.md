@@ -2,9 +2,9 @@
 
 [日本語](v1-rule-change-proposal-2026-10-02.ja.md)
 
-Status: **proposal to the peers (not normative)**. This English version is authoritative; the Japanese version is its translation.
+Status: **proposal to the peers, revised with their answers (not normative)**. This English version is authoritative; the Japanese version is its translation.
 Readers: ch32rv (Rust host and broker), WireSkein (capture recorder), bench (HIL jigs).
-Base: oep-spec 78137fb (dmseq: cdd26b4). Source: [the third zero-base review](v1-zero-base-review-3-2026-10-02.ja.md) (Japanese): every rule-change finding (規則) marked ★ or ○, plus the dmseq questions raised after it.
+Base: oep-spec 78137fb (dmseq: cdd26b4). Revision 2 folds in the three peers' answers to the first version (ad9f8be): ch32rv (checked against its a3bf2fa), WireSkein, and bench (with measurements). Each item now carries a status line, and the final answers are in "Decisions" below. Source: [the third zero-base review](v1-zero-base-review-3-2026-10-02.ja.md) (Japanese): every rule-change finding (規則) marked ★ or ○, plus the dmseq questions raised after it.
 C-11 (USB identification) is decided (no change) and is not included. Wording-only fixes that were applied separately (78137fb: C-12, C-13, C-14, C-35 and others) are not repeated.
 
 The premise is the review's: people we have never met build probes and hosts from the text alone, for OSes, USB stacks, MCUs, debug wires and targets we have never seen. Each item starts with that user's case.
@@ -21,69 +21,114 @@ The premise is the review's: people we have never met build probes and hosts fro
 
 **Breaking** = an implementation or a saved setting that follows today's text or today's reference code must change its behaviour on the wire.
 
+## Decisions
+
+**Status of an item.**
+- **agreed**: all three peers accepted it. bench answered "OK overall" and ch32rv "OK except" the items marked otherwise. WireSkein answered for topics 3 and 8 (C-06, P2-★4, P2-★6, P2-○9, P2-○10, P2-○11, P2-○15, Q14, Q17, Q18) and raised no objection to the rest.
+- **agreed with condition**: accepted on the condition stated in the item. The condition is folded into the proposed text unless the item says it is still to be met.
+- **open**: not settled. The item says what is missing.
+
+Open items: C-05, C-16 and P2-★7 (a rule for TCP endpoints and for wires without pins was added in this revision to settle ch32rv's question; ch32rv to confirm it), and P2-★4's cold-attach measurement (bench, before the freeze).
+
+**Final answers.**
+
+| Q | Item | Answer |
+|---|---|---|
+| Q1 | C-01 | Yes: the registry writes `role_assignment = 0x10`; the generated constant changes with it |
+| Q2 | C-02 | Yes: every unused enum value and reserved request bit → unsupported; malformed only for the listed values |
+| Q3 | C-03 | Yes: a request TLV is never extended; a new field gets a new tag |
+| Q4 | C-04 | Yes: at most 16 entries, 0x00 as the 16th for "more" |
+| Q5 | C-06 | Yes: the formula is a floor. Scan and attach budgets count as argument time (P2-★4) |
+| Q6 | P2-★4 | 200 ms per request and 1000 ms of real time adopted. **The attach budget is 1000 ms, not 500 ms** (bench measurement). Optional attach answer TLV `search_retries`. No host relies on "status line ⇒ the connection is gone". Bench measures one cold attach before the freeze |
+| Q7 | C-07 | Discard up to the gap |
+| Q8 | C-09 | Yes: 115200 for every probe |
+| Q9 | C-05 | The confirm TLV. A TCP endpoint reports its listener's index (rule added; open until ch32rv confirms) |
+| Q10 | C-15 | Yes: per transport; on TCP, per connection (C-05) |
+| Q11 | P2-★1 | Yes |
+| Q12 | P2-★2 | A rule with no option. Measured: one probe already meets it, the other drives MISO low while CS is high and is being fixed |
+| Q13 | P2-★3 | Declare the pull-ups (features bit2 + pullup_ohms); do not forbid them |
+| Q14 | P2-○13 | Adopt the rule |
+| Q15 | P2-★7 | Yes: the `n × (role, channel)` form. Added: a wire that declares no pin combination need not implement scan (open until ch32rv confirms) |
+| Q16 | P2-○4 | Clear haltreq when halt times out |
+| Q17 | P2-★6 | Yes: 0 = blocks, 1 = answers |
+| Q18 | P2-○8 | mode, rate, trigger, pretrigger and frontend are sent critical. samples and segments are not: the probe rounds samples to its limit and the answer's value is authoritative. rate critical means "the nearest realisable value within range; out of range is unsupported" |
+| Q19 | PC-1 | Firmware labels as step (c) |
+| Q20 | PC-3 | Yes |
+| Q21 | PC-5 | Yes: 32 bytes |
+| Q22 | PC-8 | Index invariance |
+| Q23 | C-10 | Keep the present-tense convention with the new §1.1 |
+| Q24 | C-10 | Yes: link_source / link_sink are mandatory |
+| Q25 | C-18 | The broker uses a random non-zero session_id, reopens with the same id, and always opens as 0x01: it conforms |
+| Q26 | C-22 | Probe-side validation |
+| Q27 | C-23 | Yes |
+| Q28 | C-25 | SHOULD |
+| Q29 | C-32 | Yes: ±2 %. verify_ms 0 is malformed for step 0 (try) only |
+| Q30 | DS-1 | Post again every short wait (DS-1 adopted). The host safeguard of DS-8 goes only together with it |
+| Q31 | DS-3 to DS-10 | ch32rv conforms to DS-4. DS-5 takes ch32rv's details (count saturates while unsynchronised) |
+
 ## Index
 
-| id | topic | sev | one line | breaking |
-|---|---|:---:|---|:---:|
-| C-01 | 1 errors / extensibility | ★ | The tag number is the low 7 bits; the registry writes 0x10, not 0x90 | no (registry constant changes) |
-| C-02 | 1 errors / extensibility | ★ | A value a later revision may define → unsupported, not malformed | yes |
-| C-03 | 1 errors / extensibility | ★ | Repeated, short and extended request TLVs | yes |
-| O-5 | 1 errors / extensibility | ○ | 0xF0 to 0xFE of u8 enums are experimental | no |
-| C-04 | 2 ignored cap | ★ | ignored: at most 16 entries, 0x00 marks "more", never left out | yes |
-| C-06 | 3 timing | ★ | The host's wait adds the UART transfer time and starts after the previous answer | no |
-| P2-★4 | 3 timing | ★ | Wire retries 200 ms per request, wire loss 1000 ms of real time, attach budget 500 ms | yes |
-| P2-○3 | 3 timing | ○ | dmi: only time-based waits count against max_op_ms | no |
-| C-07 | 4 transports | ★ | No 200 ms restart on TCP; over-long lengths; resync waits 250 ms after the host's last write | yes |
-| C-08 | 4 transports | ★ | max_frame / window / max_inflight are per transport | no |
-| C-09 | 4 transports | ★ | UART bridge 115200 8N1 without flow control; line coding and DTR do not gate OEP | no |
-| C-05 | 4 transports | ★ | confirm's answer says which transport it came on | no |
-| C-15 | 5 revision scope | ★ | What a protocol revision covers; confirm never changes; the range in the refusal | yes |
-| P2-★1 | 6 electrical safety | ★ | scan count = 0 leaves out channels with an idle item; output-idle channels are refused | yes |
-| P2-★2 | 6 electrical safety | ★ | spi-target drives MISO only while CS is active | no (to be checked on hardware) |
-| P2-★3 | 6 electrical safety | ★ | i2c-target is open-drain only; internal pull-ups are declared | no |
-| P2-○13 | 6 electrical safety | ○ | Taking a plan does not change a pin; logic capture only listens | yes |
-| P2-★5 | 7 debug wires | ★ | A combination the declaration does not allow → unsupported | no (the probe does it already) |
-| P2-★7 | 7 debug wires | ★ | What every wire shares, and what a new wire (JTAG...) defines | no |
-| P2-○1 | 7 debug wires | ○ | "Found" is DMSTATUS.version ≥ 2 and ≠ 15, for the ops too | yes |
-| P2-○4 | 7 debug wires | ○ | What a failed halt / step leaves on the target | yes |
-| P2-○6 | 7 debug wires | ○ | Console rules split into "every mechanism" and "the DATA0 mechanisms" | no |
-| P2-○5 | 7 debug wires | ○ | target_id_scheme is one space for the probe | no |
-| P2-★6 | 8 capture | ★ | Modes, streaming rules and `background` move into the normative text | no |
-| P2-○8 | 8 capture | ○ | Which configure TLVs the host sends critical | yes (hosts) |
-| P2-○9 | 8 capture | ○ | What host and probe do during blocking_ms | no |
-| P2-○10 | 8 capture | ○ | capture-group state table | yes (fake) |
-| P2-○11 | 8 capture | ○ | Positioned read: beyond the write position, how much, from 3 | no |
-| P2-○15 | 8 capture | ○ | analog trigger enum loses level / edge | no |
-| PC-1 | 9 probe-config | ○ | Line names are also found in the firmware's fixed labels | yes (at boot) |
-| PC-2 | 9 probe-config | ○ | Names not in the table state no role; standard names in the registry; `x-` for private ones | no |
-| PC-3 | 9 probe-config | ○ | idle with a pull the channel lacks → unsupported | yes |
-| PC-4 | 9 probe-config | ○ | The channel of label / idle / disable is < channels and not reserved | yes |
-| PC-5 | 9 probe-config | ○ | label text: 1 to 32 bytes of UTF-8 without control characters | yes |
-| PC-6 | 9 probe-config | ○ | get's answer: items run to the end of the payload (wording) | no |
-| PC-7 | 9 probe-config | △ | Canonical form details for the hash (wording) | no |
-| PC-8 | 9 probe-config | ○ | Transport indexes do not change across firmware versions; bind at boot | no |
-| C-10 | 10 conformance | ★ | Normative words; what every probe and host must have | no |
-| C-16 | 11 other core | ○ | Rejected answers go into the resend table too | no |
-| C-17 | 11 other core | ○ | When the lease restarts; the answer's lease_ms range | yes (fake) |
-| C-18 | 11 other core | ○ | session_id random and not 0; open only as role 0x01 | yes |
-| C-22 | 11 other core | ○ | Booleans 0 / 1; text without control characters | yes |
-| C-23 | 11 other core | ○ | Grammar of names, model, chip | yes |
-| C-24 | 11 other core | ○ | unit_id without a unique number or storage: `x-` | yes |
-| C-25 | 11 other core | ○ | Exclusive open, HID output, WinUSB | no |
-| C-29 | 11 other core | ○ | Registry keys are frozen; what the hash means | no |
-| C-30 | 11 other core | ○ | instance is counted per (name, revision) | no |
-| C-32 | 11 other core | ○ | port_speed: ±2 % baud tolerance, verify_ms 0 | yes |
-| C-33 | 11 other core | ○ | Heartbeat period may be rounded up to 100 ms | no |
-| DS-1 | 12 console dmseq | ★ | DATA0 = 0 is no answer: keep waiting, post again every short wait | yes (target) |
-| DS-2 | 12 console dmseq | ★ | The ownership rule lists the target's repost exceptions | no |
-| DS-3 | 12 console dmseq | ★ | The waits are real-time lower bounds, counted so they end with interrupts off | no |
-| DS-4 | 12 console dmseq | ★ | Byte k is bits 8k..8k+7 of the register | no |
-| DS-5 | 12 console dmseq | ○ | What restarts the host's count of invalid words | no |
-| DS-6 | 12 console dmseq | ○ | The target's state at begin() | no |
-| DS-7 | 12 console dmseq | ○ | "Reading for a long time" becomes 3 s, informative | no |
-| DS-8 | 12 console dmseq | ★ | Remove the optional host safeguard (rule 0 is mandatory) | no |
-| DS-9 | 12 console dmseq | ○ | Clearing dmactive *may* clear DATA0 | no |
-| DS-10 | 12 console dmseq | ○ | CRC-8 check values | no |
+| id | topic | sev | one line | breaking | status |
+|---|---|:---:|---|:---:|---|
+| C-01 | 1 errors / extensibility | ★ | The tag number is the low 7 bits; the registry writes 0x10, not 0x90 | no (registry constant changes) | agreed |
+| C-02 | 1 errors / extensibility | ★ | A value a later revision may define → unsupported, not malformed | yes | agreed |
+| C-03 | 1 errors / extensibility | ★ | Repeated, short and extended request TLVs | yes | agreed |
+| O-5 | 1 errors / extensibility | ○ | 0xF0 to 0xFE of u8 enums are experimental | no | agreed |
+| C-04 | 2 ignored cap | ★ | ignored: at most 16 entries, 0x00 marks "more", never left out | yes | agreed |
+| C-06 | 3 timing | ★ | The host's wait adds the UART transfer time and starts after the previous answer | no | agreed |
+| P2-★4 | 3 timing | ★ | Wire retries 200 ms per request, wire loss 1000 ms of real time, attach budget 1000 ms, scan budget 500 ms | yes | agreed with condition |
+| P2-○3 | 3 timing | ○ | dmi: only time-based waits count against max_op_ms | no | agreed |
+| C-07 | 4 transports | ★ | No 200 ms restart on TCP; over-long lengths; resync waits 250 ms after the host's last write | yes | agreed |
+| C-08 | 4 transports | ★ | max_frame / window / max_inflight are per transport | no | agreed |
+| C-09 | 4 transports | ★ | UART bridge 115200 8N1 without flow control; line coding and DTR do not gate OEP | no | agreed |
+| C-05 | 4 transports | ★ | confirm's answer says which transport it came on; a TCP endpoint is a probe | no | open |
+| C-15 | 5 revision scope | ★ | What a protocol revision covers; confirm never changes; the range in the refusal | yes | agreed |
+| P2-★1 | 6 electrical safety | ★ | scan count = 0 leaves out channels with an idle item; output-idle channels are refused | yes | agreed |
+| P2-★2 | 6 electrical safety | ★ | spi-target drives MISO only while CS is active | yes (one probe build, measured) | agreed |
+| P2-★3 | 6 electrical safety | ★ | i2c-target is open-drain only; internal pull-ups are declared | no | agreed |
+| P2-○13 | 6 electrical safety | ○ | Taking a plan does not change a pin; logic capture only listens | yes | agreed |
+| P2-★5 | 7 debug wires | ★ | A combination the declaration does not allow → unsupported | no (the probe does it already) | agreed |
+| P2-★7 | 7 debug wires | ★ | What every wire shares, and what a new wire (JTAG...) defines; a wire without pins | no | open |
+| P2-○1 | 7 debug wires | ○ | "Found" is DMSTATUS.version ≥ 2 and ≠ 15, for the ops too | yes | agreed |
+| P2-○4 | 7 debug wires | ○ | What a failed halt / step leaves on the target | yes | agreed |
+| P2-○6 | 7 debug wires | ○ | Console rules split into "every mechanism" and "the DATA0 mechanisms" | no | agreed |
+| P2-○5 | 7 debug wires | ○ | target_id_scheme is one space for the probe | no | agreed |
+| P2-★6 | 8 capture | ★ | Modes, streaming rules and `background` move into the normative text | no | agreed |
+| P2-○8 | 8 capture | ○ | Which configure TLVs the host sends critical (samples is not) | yes (hosts) | agreed with condition |
+| P2-○9 | 8 capture | ○ | What host and probe do during blocking_ms | no | agreed |
+| P2-○10 | 8 capture | ○ | capture-group state table | yes (fake) | agreed |
+| P2-○11 | 8 capture | ○ | Positioned read: beyond the write position, how much, from 3 | no | agreed |
+| P2-○15 | 8 capture | ○ | analog trigger enum loses level / edge | no | agreed |
+| PC-1 | 9 probe-config | ○ | Line names are also found in the firmware's fixed labels | yes (at boot) | agreed |
+| PC-2 | 9 probe-config | ○ | Names not in the table state no role; standard names in the registry; `x-` for private ones | no | agreed |
+| PC-3 | 9 probe-config | ○ | idle with a pull the channel lacks → unsupported | yes | agreed |
+| PC-4 | 9 probe-config | ○ | The channel of label / idle / disable is < channels and not reserved | yes | agreed |
+| PC-5 | 9 probe-config | ○ | label text: 1 to 32 bytes of UTF-8 without control characters | yes | agreed |
+| PC-6 | 9 probe-config | ○ | get's answer: items run to the end of the payload (wording) | no | agreed |
+| PC-7 | 9 probe-config | △ | Canonical form details for the hash (wording) | no | agreed |
+| PC-8 | 9 probe-config | ○ | Transport indexes do not change across firmware versions; bind at boot | no | agreed |
+| C-10 | 10 conformance | ★ | Normative words; what every probe and host must have | no | agreed |
+| C-16 | 11 other core | ○ | Rejected answers go into the resend table too; §5.2 binds TCP endpoints | no | open |
+| C-17 | 11 other core | ○ | When the lease restarts; the answer's lease_ms range | yes (fake) | agreed |
+| C-18 | 11 other core | ○ | session_id random and not 0; open only as role 0x01 | yes | agreed |
+| C-22 | 11 other core | ○ | Booleans 0 / 1; text without control characters | yes | agreed |
+| C-23 | 11 other core | ○ | Grammar of names, model, chip | yes | agreed |
+| C-24 | 11 other core | ○ | unit_id without a unique number or storage: `x-` | yes | agreed |
+| C-25 | 11 other core | ○ | Exclusive open, HID output, WinUSB | no | agreed |
+| C-29 | 11 other core | ○ | Registry keys are frozen; what the hash means | no | agreed |
+| C-30 | 11 other core | ○ | instance is counted per (name, revision) | no | agreed |
+| C-32 | 11 other core | ○ | port_speed: ±2 % baud tolerance, verify_ms 0 in a try | yes | agreed with condition |
+| C-33 | 11 other core | ○ | Heartbeat period may be rounded up to 100 ms | no | agreed |
+| DS-1 | 12 console dmseq | ★ | DATA0 = 0 is no answer: keep waiting, post again every short wait | yes (target) | agreed |
+| DS-2 | 12 console dmseq | ★ | The ownership rule lists the target's repost exceptions | no | agreed |
+| DS-3 | 12 console dmseq | ★ | The waits are real-time lower bounds, counted so they end with interrupts off | no | agreed |
+| DS-4 | 12 console dmseq | ★ | Byte k is bits 8k..8k+7 of the register | no | agreed |
+| DS-5 | 12 console dmseq | ○ | What restarts the host's count of invalid words | no | agreed |
+| DS-6 | 12 console dmseq | ○ | The target's state at begin() | no | agreed |
+| DS-7 | 12 console dmseq | ○ | "Reading for a long time" becomes 3 s, informative | no | agreed |
+| DS-8 | 12 console dmseq | ★ | Remove the optional host safeguard (rule 0 is mandatory), together with DS-1 | yes (ch32rv host) | agreed with condition |
+| DS-9 | 12 console dmseq | ○ | Clearing dmactive *may* clear DATA0 | no | agreed |
+| DS-10 | 12 console dmseq | ○ | CRC-8 check values | no | agreed |
 
 Items per topic:
 
@@ -111,6 +156,8 @@ Dropped findings and the reasons are listed at the end, followed by implementati
 
 ### C-01 ★ The tag number is the low 7 bits
 
+**Status: agreed.**
+
 **Problem.** An implementer reads `role_assignment = 0x90` in the registry next to `max_speed = 0x01  # critical`. From that alone they cannot tell that 0x90 already includes the critical bit. The text never says that the tag number is the low 7 bits.
 
 **Proposed text** (core §2.2, replaces the bullet "Bit 7 of the tag is critical"):
@@ -131,6 +178,8 @@ Core §7.4 and §8 write "role_assignment (0x10, sent critical as 0x90)". In the
 **Q1.** May the registry value of `role_assignment` change from 0x90 to 0x10? The generated constant changes with it. Recommendation: yes. Every other tag in the registry is already written without the bit.
 
 ### C-02 ★ A value a later revision may define is refused as unsupported
+
+**Status: agreed.**
 
 **Problem.** Suppose a host is written for a later extension: gpio mode 8, i2c mode 4, a new drive kind. An old probe answers malformed (the host's error). A new probe that lacks the value answers unsupported. So the host gets two reasons for one situation, against "no two reasons for the same situation" (core §4.3). Reserved bits in request flags (list's flags) have no rule at all.
 
@@ -174,6 +223,8 @@ These stay malformed: i2c `address > 0x7F`, spi mode > 3 and bit_order > 1 (the 
 
 ### C-03 ★ Repeated, short and extended request TLVs
 
+**Status: agreed.**
+
 **Problem.** A safety item such as the attach's max_speed sent twice is read as the first value by one probe and as the last by another, and two different speeds can be applied. A host that appends a field to a critical TLV's value expects it to take effect. An old probe that "skips the unknown tail" (§2.3) silently ignores it, which defeats the critical mark.
 
 **Proposed text** (core §2.3, added):
@@ -200,6 +251,8 @@ The registry marks the request tags that repeat with the comment `# repeats` (ro
 
 ### O-5 ○ Experimental enum values
 
+**Status: agreed.**
+
 **Problem.** Someone trying out a new console framing, transport kind or cause has no number they can use without colliding with a later standard value. Only op has an experimental range (0xF0 to 0xFF).
 
 **Proposed text** (core §2.5, added):
@@ -215,6 +268,8 @@ The registry notes the range on each u8 enum. Existing values above 0xF0 (mechan
 ## 2. ignored cap
 
 ### C-04 ★ ignored: at most 16 entries, never left out
+
+**Status: agreed.**
 
 **Problem.** A host sends a gpio set with 20 non-critical drive TLVs to a probe that cannot apply them. The probe lists the first 16 and silently drops the rest. If the answer has no room, it drops the whole ignored TLV. The host then believes every drive took effect.
 
@@ -239,11 +294,13 @@ The registry notes the range on each u8 enum. Existing values above 0xF0 (mechan
 
 ### C-06 ★ The host's wait covers the transfer time of a slow port
 
+**Status: agreed.**
+
 **Problem.** A user on a 115200 bps UART bridge with max_frame 4096 sends a request whose answer is large. The answer alone takes about 0.36 s on the line. Before it may come up to two max_frame of pending notifications (§11.4). With pipelining, the earlier answers come first too. A host that waits exactly "arguments + 1000 ms" times out on a correct answer and resends. The slower the port, the worse it gets.
 
 **Proposed text** (core §4.4, replaces "The host's wait time"):
 
-> - **The host's wait time**: the absence of an answer is decided only by timeout (§3.1). For each request the host waits **at least**: the time set by the request's arguments (the timeout_ms of run, the hold_ms of reset, the sum of the waits of dmi, save, etc.; 0 if none; at most max_op_ms) + 1000 ms (`host_wait_add_ms`) + the transfer time. The wait starts when the request has been written, or, while earlier requests on the same transport are outstanding, when the answer to the request before it arrives (the probe answers in order). The transfer time is 0 except on a UART bridge. On a UART bridge it is (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud seconds, where L is the length on the wire of the request's frame and baud is the port's current speed. A host may wait longer. When the wait has passed, it proceeds to the resend of §5.2.
+> - **The host's wait time**: the absence of an answer is decided only by timeout (§3.1). For each request the host waits **at least**: the time set by the request's arguments (the timeout_ms of run, the hold_ms of reset, the sum of the waits of dmi, save, etc.; for attach, `attach_budget_ms` plus the hold_ms of its reset TLV; for scan, `scan_budget_ms` + `attach_budget_ms` (debug §1); 0 if none; at most max_op_ms) + 1000 ms (`host_wait_add_ms`) + the transfer time. The wait starts when the request has been written, or, while earlier requests on the same transport are outstanding, when the answer to the request before it arrives (the probe answers in order). The transfer time is 0 except on a UART bridge. On a UART bridge it is (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud seconds, where L is the length on the wire of the request's frame and baud is the port's current speed. A host may wait longer. When the wait has passed, it proceeds to the resend of §5.2.
 
 Core §7.5 max_op_ms: "The host waits at least this value plus the time ... (§4.4)" becomes "The host waits as §4.4 says."
 
@@ -256,28 +313,43 @@ Starting the clock at the previous answer means the earlier answers' sizes need 
 **Today.**
 - Python: each reply's deadline is taken when that reply is read, so the clock in effect starts at the previous answer. The wait is `max(link timeout, expected + 0.5 s)` with a link timeout of 3 s (TCP 15 s), not capped at max_op_ms + 1000 ms.
 - JS: 3 s.
-- Rust: not checked.
+- Rust: a fixed 3 s, which can be below the floor for long requests. ch32rv will compute it per request.
+
+**Answers.** WireSkein and ch32rv agree; bench OK. Scan and attach budgets were added to the argument time so that the attach budget of P2-★4 does not end at the same instant as the host's wait.
 
 **Q5.** Shall the formula be a floor (the host may wait longer)? Recommendation: yes. The failure we are fixing is waits that are too short.
 
 ### P2-★4 ★ Wire retries, wire loss and attach have time bounds that fit the host's wait
 
+**Status: agreed with condition** — bench measures one cold attach against the 1000 ms budget before the freeze (still to be met).
+
 **Problem.** A host sends dmi (no argument time, so it waits 1000 ms) to a target whose wire is flaky. If the probe applies "no answer for 1000 ms" inside one request, the probe's answer and the host's timeout fall on the same instant, and pipelined requests behind it time out first. The time after a reset release and the attach's speed search have no bound at all.
 
 **Proposed text** (debug §2, replaces the bullet "The wire is considered lost ..."):
 
-> - **Retries inside one request**: the probe spends at most 200 ms (registry `limits.wire_retry_ms`) of one request retrying the wire, retries at a slower speed included. When that is used up, it ends that request with status line. That alone does not decide wire loss.
+> - **Retries inside one request**: the probe spends at most 200 ms (registry `limits.wire_retry_ms`) of one request retrying the wire, retries at a slower speed included. When that is used up, it ends that request with status line. That alone does not decide wire loss. The speed search of attach (and of a scan combination) is bounded by the attach budget of §1 instead.
 > - **Wire loss**: the wire is lost when operations on a connection have failed with no answer from the wire (status line, inside requests or inside console reads) for **1000 ms of real time** (`limits.wire_lost_ms`), with no successful operation on that connection in between. The time the probe asserts reset or holds a reset line (the plan, the reset TLV of attach), and the 1000 ms after it releases it, are not counted. When the probe decides wire loss inside a request, it answers that request with status line, then closes the connection.
 
 Debug §1, added after the scan budget:
 
-> - **attach budget**: one attach answer takes at most 500 ms of the probe's time, the speed search included and the hold_ms of the reset TLV excluded. When no speed works within it, completed failed with status line. The 500 ms of scan and of attach is min(500 ms, max_op_ms).
+> - **attach budget**: one attach answer takes at most 1000 ms (registry `limits.attach_budget_ms`) of the probe's time, the speed search and its retries included and the hold_ms of the reset TLV excluded. When no speed works within it, completed failed with status line.
+> - **scan budget**: the probe starts no combination later than 500 ms (`limits.scan_budget_ms`) after the scan request arrived (at least one combination is tried, as today). The try of one combination is bounded by the attach budget. One scan answer therefore takes at most `scan_budget_ms` + `attach_budget_ms`.
+> - Both budgets are capped at max_op_ms. The host's wait counts them as argument time (core §4.4, C-06).
+
+Attach answer, added to every wire (registry `[interface.tlv.attach_answer] search_retries = 0x12`):
+
+> TLV 0x12 search_retries (u16, optional): the number of tries of the speed search that failed before the speed in speed_hz was verified (0 = the first try worked; 0xFFFF = 65535 or more). A host may log it to see a wire that is close to failing.
+
+Timing consistency: per-request retries (200 ms) < scan budget (500 ms) < attach budget (1000 ms) = the time without an answer that decides wire loss (1000 ms of real time, across requests) = host_wait_add_ms. Because the host's wait for attach and scan adds their budgets to host_wait_add_ms, no bound ends at the same instant as the host's wait.
+
+**Measurement (bench, 2026-10-02).** An RP2350 probe (0.0.28) attaching over RVSWD to an L103 target, `max_speed` 1 MHz, 16 warm attaches 0.2 s apart, two runs: successes typically 210 ms, slow ones 240 to 550 ms; the speed always settled at about 679 kHz. In the second run 4 of 10 attaches ended completed failed after 515 to 739 ms. A 500 ms budget would cut successful attaches short; 1000 ms covers every measured attach, successful or failed. A cold attach (the target ignored its first wake and the speed search needed retries) was not measured yet: it needs a power cycle of the target, and bench is asking the user.
 
 **Changes.**
 - probe:
   - time-box the PHY retries (today they are bounded by counts: RvswdPhy 200 attempts plus up to 14 bring-ups; SwioPhy 4);
   - keep a per-connection "failing since" time. Today `failure()` (OepTarget.cpp:562-570) decides wire loss after 3 DMSTATUS reads, about 3 ms, inside one request;
   - give attach a budget (today it is bounded only by counts);
+  - attach `search_retries` to the attach answer (optional);
   - the console already uses 1000 ms of real time (`kLostMs`).
 - fake: none (no timing model).
 - hosts: a status line no longer always means that the connection has closed. The host checks with connections, as the text already says.
@@ -286,7 +358,11 @@ Debug §1, added after the scan budget:
 
 **Q6.** Are 200 ms per request and 1000 ms of real time acceptable? Does any host rely on "status line ⇒ the connection is gone"? Recommendation: adopt both numbers. ch32rv and bench: please say if a target of yours needs a longer bound after reset.
 
+**Answers.** WireSkein OK. ch32rv and bench: no host relies on "status line ⇒ the connection is gone". bench measured the attach (above): 500 ms is too small, so the attach budget became 1000 ms, and bench's suggestion of an attach answer TLV with the retry count became `search_retries`. Condition still to be met: bench measures one cold attach against 1000 ms before the freeze.
+
 ### P2-○3 ○ dmi: only time-based waits count against max_op_ms
+
+**Status: agreed.**
 
 **Problem.** "The sum of the waits (0x04 us, the limits of 0x03 / 0x05)" includes 0x03, whose limit is a number of reads with no time. Host and probe cannot compute the same sum.
 
@@ -302,6 +378,8 @@ Debug §1, added after the scan budget:
 ## 4. Transports
 
 ### C-07 ★ TCP, over-long lengths, and the resync wait
+
+**Status: agreed.**
 
 **Problem.**
 1. Over a tunnel or Wi-Fi, a 200 ms pause inside a TCP frame is normal. A probe that restarts its read there takes the rest of the frame for a new length and loses the stream for good.
@@ -332,6 +410,8 @@ Core §5.1, added:
 
 ### C-08 ★ Limits are per transport
 
+**Status: agreed.**
+
 **Problem.** A monitoring host on CDC (lock-free describe, link tests) and a session host on vendor bulk do not know each other. If window and max_inflight were shared by the whole probe, the monitor could use them up and the session host's requests would be refused or lost. Neither host could avoid that.
 
 **Proposed text** (core §4.4, added):
@@ -341,6 +421,8 @@ Core §5.1, added:
 **Changes:** none in today's code. **Today:** probe: one `Limits` shared by all transports. window and max_inflight are reported but not enforced, and requests are handled one at a time inside `poll()`, each transport with its own reader. fake: the same values, not enforced.
 
 ### C-09 ★ The UART bridge line, line coding, DTR / RTS
+
+**Status: agreed.**
 
 **Problem.** A host written from the text alone cannot open an unknown probe's UART bridge. "The boot speed is decided by the board profile", and data bits, parity, stop bits and flow control are written nowhere normative. The 115200 decision lives only in the guides. Some USB stacks stop a CDC port's output while DTR is deasserted, and firmware cannot always change that.
 
@@ -364,6 +446,8 @@ Core §3.5 "Boot speed: the port speed determined by the board profile" becomes 
 
 ### C-05 ★ confirm says which transport it came on
 
+**Status: open** — the TCP-endpoint rule was added in this revision for ch32rv's question; ch32rv to confirm.
+
 **Problem.** port_speed's `port` must be "the port this request came on", but a host cannot learn that index. On a probe with two UART bridges, the reference hosts pick the first one, so speed cannot be raised from the second.
 
 **Proposed text** (core §7.1):
@@ -373,6 +457,13 @@ Core §3.5 "Boot speed: the port speed determined by the board profile" becomes 
 
 Core §3.5: "port: the index of the transport this request came on (TLV transport of the confirm answer)". The registry gains `[interface.tlv.confirm_answer] transport = 0x01`. The answer grows from 22 to 25 bytes, within 64.
 
+**Added for ch32rv's question (which index a TCP broker reports).** Core §3.1, after the TCP bullet (it also replaces "the broker is a host implementation, outside this specification"):
+
+> - **An endpoint that answers OEP requests itself is a probe**, whatever carries it and whatever is behind it (for example a program that serves OEP on TCP and drives another debugger). Every probe rule applies to it. A broker that only relays requests to an OEP probe is a host towards that probe.
+> - **TCP transports**: a probe that listens on TCP lists each listening socket as one transport in the describe of fn 0 (kind 6, interface 0xFF). Every connection accepted on that socket reports that index in the transport TLV of confirm. The rules that §3.3, §4.4, §7.1 and §11.4 apply per transport (the 0x81 requests of a session on one transport, max_frame / window / max_inflight, the revision in use, where notifications go) apply to each accepted connection separately.
+
+So the transport TLV always names an entry of the describe of fn 0 returned on the same connection. port_speed (UART bridges, §3.5) and bind (serial ports, probe-config §1.2) never take a TCP index; their refusals are unchanged.
+
 **Changes.**
 - probe, fake: add the TLV. The fake builds its transport list in TLV order and ignores the index byte (endpoint.py:454-455); fix that too.
 - Python (`_speed_port`, link.py:1275) and JS (`speedPort`, speed.js:162): use the TLV.
@@ -381,11 +472,15 @@ Core §3.5: "port: the index of the transport this request came on (TLV transpor
 
 **Q9.** A confirm TLV (recommended) or `port = 0xFF` meaning "this port"? The TLV also gives the host the index that probe.config bind needs (PC-8).
 
+**Answers.** bench and WireSkein: no objection. ch32rv (broker_wch.rs changes) was unsure which index a TCP broker reports; the TCP-endpoint rule above answers it. Open until ch32rv confirms that rule.
+
 ---
 
 ## 5. Revision scope
 
 ### C-15 ★ What a protocol revision covers
+
+**Status: agreed.**
 
 **Problem.** A revision-2 host meeting a revision-1 probe cannot proceed safely. Nothing says that confirm itself never changes, what the chosen revision applies to, or what the refusal carries.
 
@@ -401,6 +496,9 @@ Core §3.5: "port: the index of the transport this request came on (TLV transpor
 - fake: the same.
 - Python: the link's own confirms (resync, `confirm_raw`, link.py:422, 550) send 0..0xFF. Against a later probe that would switch the revision in the middle of a session, so they must send the revision in use.
 - JS: not checked.
+- Rust: re-confirms send 0..0xFF today; ch32rv will send the revision in use everywhere.
+
+On TCP, "the transport" is each accepted connection (C-05).
 
 **Today:** both sides know only revision 1, so nothing breaks yet.
 
@@ -411,6 +509,8 @@ Core §3.5: "port: the index of the transport this request came on (TLV transpor
 ## 6. Electrical safety
 
 ### P2-★1 ★ scan count = 0 does not drive channels the settings have taken charge of
+
+**Status: agreed.**
 
 **Problem.** A user saves an idle item, output high, on the pin that switches the target's power. A later host runs scan with count = 0 on an unknown fixture. That pin is not "held" by a plan or a connection, so the probe drives it as SWCLK or SWDIO. The target's power switches on and off, or two outputs fight.
 
@@ -438,7 +538,11 @@ The registry gains `holder_kind.settings_idle = 7`.
 
 **Q11.** Shall all idle channels be left out of count = 0, and output-idle channels be refused when named? Recommendation: yes. The review also proposed leaving out labelled channels. I dropped that: users label exactly the debug pins they want scanned.
 
+**Answers.** Yes (bench: its jigs set idles only on the DUT's RX lines; ch32rv: agree, its host sends count = 0 itself and will find fewer pins on fixtures with idle items).
+
 ### P2-★2 ★ spi-target drives MISO only while CS is active
+
+**Status: agreed.**
 
 **Problem.** Most DUTs share one SPI bus among several targets. "MISO is 0 outside tx" reads as "drive MISO low all the time". A deselected target that drives MISO fights the selected one.
 
@@ -446,11 +550,19 @@ The registry gains `holder_kind.settings_idle = 7`.
 
 > - **From configure until the plan is released, the probe drives MISO only while CS is active.** While CS is inactive it does not drive MISO (an input with no pull). "MISO is 0 outside tx" refers to the bits of a transfer while CS is active. SCK, MOSI and CS are always inputs. Before configure the channels keep their idle state (P2-○13).
 
-**Changes:** probe: depends on the SPI peripheral. If a peripheral drives MISO while CS is high, the firmware must switch MISO's output enable from CS. Not checked: the probe hands MISO to the ESP-IDF spi_slave driver (OepP4SpiTarget.cpp:69-87). fake: none (no electrical model).
+**Changes:** probe: depends on the SPI peripheral. If a peripheral drives MISO while CS is high, the firmware must switch MISO's output enable from CS. The ESP32-P4 build (ESP-IDF spi_slave, OepP4SpiTarget.cpp:69-87) meets the rule; the classic SPI slave build does not (bench's measurement below). fake: none (no electrical model).
 
 **Q12 (bench).** Does your spi-target hardware leave MISO undriven while CS is high? Please measure once. Recommendation: make it a rule with no option. A probe that cannot do it is not a bus-safe SPI target.
 
+**Answers.** Adopted as a rule with no option (bench's answer; no objection from ch32rv or WireSkein). **Measurement (bench, 2026-10-02):**
+- the X035 jig's probe (ESP32-P4, ESP-IDF spi_slave): MISO undriven in every state. It meets the rule;
+- the V003 jig's probe (classic SPI slave build, d4f6293): MISO undriven before configure and after release, but **driven low while CS is high** from configure on (configured, armed, after a CS cycle, re-armed). It fails the rule and is being fixed: the firmware must switch MISO's output enable from CS. bench reruns its test on the next build.
+
+So the breaking column becomes "yes (one probe build)".
+
 ### P2-★3 ★ i2c-target is open-drain only; internal pull-ups are declared
+
+**Status: agreed.**
 
 **Problem.**
 - A probe that drives SDA / SCL push-pull shorts the controller.
@@ -467,7 +579,11 @@ The registry gains `holder_kind.settings_idle = 7`.
 
 **Q13.** Declare the pull-ups (recommended), or forbid internal pull-ups as the review proposed? Forbidding them breaks the bench jig, which has no external pull-ups. Declaring lets a host tell the user.
 
+**Answers.** Declare (bench: the X035 jig relies on the internal pull-ups; the V003 jig has 2.2 kΩ external ones). Internal pull-ups are not forbidden.
+
 ### P2-○13 ○ Taking a plan does not change a pin; logic capture only listens
+
+**Status: agreed.**
 
 **Problem.** A user's idle output powers the target. They take a logic plan on that pin to watch it. If the probe turns the pin into an input, it cuts the target's power. Nothing in the text forbids that.
 
@@ -483,11 +599,15 @@ The registry gains `holder_kind.settings_idle = 7`.
 
 **Q14.** Can every capture peripheral you use read a pin without changing its direction? Recommendation: adopt the rule. A capture that changes the pins it watches breaks the circuit it is watching.
 
+**Answers.** Adopt (WireSkein: its power-up test needs it).
+
 ---
 
 ## 7. Debug wire generality
 
 ### P2-★5 ★ A combination the declaration does not allow → unsupported
+
+**Status: agreed.**
 
 **Problem.** debug §1 refuses an undeclared pin combination as unavailable, while core §4.3 order 6, plan_apply and probe.config refuse the same mistake as unsupported. A host can get two reasons.
 
@@ -504,6 +624,8 @@ The registry gains `holder_kind.settings_idle = 7`.
 
 ### P2-★7 ★ What every wire shares, and what a new wire defines
 
+**Status: open** — "A wire without pins" was added in this revision for ch32rv's question; ch32rv to confirm.
+
 **Problem.** The first thing a third party brings is likely a RISC-V JTAG DTM, cJTAG or an ARM JTAG-DP. The "all wires" rules are written with swdio / swclk, DMSTATUS and a two-pin fixed part. Nobody can tell which rules bind a new wire, nor how a 4- or 5-pin wire writes its pins.
 
 **Proposed text** (debug, new §0 before §1):
@@ -511,11 +633,17 @@ The registry gains `holder_kind.settings_idle = 7`.
 > ## 0. What every wire shares, and what a new wire defines
 >
 > Every `oep.wire.*` interface:
-> 1. uses op 0x01 scan, 0x02 attach, 0x03 detach and 0x05 connections with the meanings of §1 to §2.1 (a wire may add ops from 0x06);
-> 2. follows §1 (verify the speed by reading before writing, count = 0 and what it leaves out, seats and max_connections, the 500 ms budgets, refusals) and §2 (lifetime, wire loss, the state machine, closing does not change the target), reading swdio / swclk as "the channel of pin role 1 / 2";
+> 1. uses op 0x01 scan, 0x02 attach, 0x03 detach and 0x05 connections with the meanings of §1 to §2.1 (a wire may add ops from 0x06). attach, detach and connections are required on every wire. scan is required on every wire that declares a pin combination (channel_group or role_channels);
+> 2. follows §1 (verify the speed by reading before writing, count = 0 and what it leaves out, seats and max_connections, the scan and attach budgets, refusals) and §2 (lifetime, wire loss, the state machine, closing does not change the target), reading swdio / swclk as "the channel of pin role 1 / 2";
 > 3. creates the connections of common §2 that `oep.target.*` interfaces use.
 >
 > A wire whose combination is not two pins writes, in its own document, its pins TLV, its scan entries and its connections entry with `n(u8), n × (role(u8), channel(u16))` in place of the two u16 fields, keeping the other fields and their order.
+>
+> **A wire without pins.** A wire that declares neither channel_group nor role_channels (its pins are not channels of this probe, for example a TCP endpoint that drives another debugger) has exactly one combination, the one the endpoint uses:
+> - attach is sent without pins. A pins TLV is rejected unsupported (the tag as received), like any combination the declaration does not allow (P2-★5);
+> - scan is optional. Without it the probe answers unknown_operation (C-10). With it, count = 0 tries that one combination, and a request listing combinations is rejected unsupported;
+> - connections entries and scan entries carry 0xFFFF for each channel (in the `n × (role, channel)` form, n = 0);
+> - P2-★1 and the pin rules of §1 have nothing to apply to.
 >
 > A new wire's document also defines:
 > - its pin roles and how its speed is chosen;
@@ -531,7 +659,11 @@ probe.config §1.1, added:
 
 **Q15.** Shall the `n × (role, channel)` form be fixed now for wires that are not two pins? Recommendation: yes. Otherwise each new wire invents its own and hosts must special-case each.
 
+**Answers.** bench and WireSkein: no objection. ch32rv was unsure: if every wire MUST have scan and connections, the WCH broker needs both. Resolution: "A wire without pins" above. connections stays required everywhere (a host checks with it after status line, P2-★4, and an endpoint always knows its own connections); scan is optional only where there are no pins to search. Open until ch32rv confirms.
+
 ### P2-○1 ○ "Found" is DMSTATUS.version ≥ 2 and ≠ 15, for the ops too
+
+**Status: agreed.**
 
 **Problem.** A RISC-V DM of a later debug specification version (4 onwards) is reported as "not there". Worse, the reference probe finds a version-3 DM (1.0, used by most non-WCH RISC-V chips) but never sees it halted.
 
@@ -546,6 +678,8 @@ Debug §4, added:
 **Changes:** probe: `Ch32Dm::probe` (OepCh32Dm.cpp:41-46) requires 2 or 3. `checkHalted` (:79), the halt shortcut (:145), `resetHalt` (:451) and the console (OepDmConsole.cpp:48) require exactly 2. fake: does no check.
 
 ### P2-○4 ○ What a failed halt or step leaves on the target
+
+**Status: agreed.**
 
 **Problem.** A host's step times out on a target that is running motors. Was dcsr.step left set, so that the target stops after one instruction the next time anything resumes it? Was haltreq left set, so that it halts later? The invariant table says "clears dcsr.step", which cannot be done on a running hart.
 
@@ -562,6 +696,8 @@ The registry gains `[interface.tlv.step_answer] step_left = 0x01`.
 
 ### P2-○6 ○ Console rules: every mechanism, and the DATA0 mechanisms
 
+**Status: agreed.**
+
 **Problem.** An ARM console (a memory ring read through the MEM-AP, semihosting, SWO) cannot be added as a new mechanism. "One live stream per connection (all use DATA0)", "pause during riscv-dm requests" and "DMSTATUS every 20 ms" are written as rules of the whole interface.
 
 **Proposed text.** console §2 keeps the rules for every mechanism: numbering, open returning the existing (connection, mechanism) stream, reopening at the same place, lifetime, close, closed streams staying readable, the meaning of write, draining regardless of sessions. Added:
@@ -576,6 +712,8 @@ Console §3, intro:
 
 ### P2-○5 ○ target_id_scheme is one space for the probe
 
+**Status: agreed.**
+
 **Problem.** The registry keeps the schemes per wire. A slot's lock compares only the scheme number, so a new wire's "scheme 1" could collide with rvswd's.
 
 **Proposed text** (debug §1): "The target_id scheme numbers are one space for the whole probe (registry `[common.enum.target_id_scheme]`: 1 the u32 at DMI 0x7F of that debug module, 2 swd targetsel). Each wire states which schemes it uses." The registry moves the enum; numbers and the key `wch_dmi_7f` are unchanged.
@@ -587,6 +725,8 @@ Console §3, intro:
 ## 8. Capture
 
 ### P2-★6 ★ Modes, streaming rules and `background` in the normative text
+
+**Status: agreed.**
 
 **Problem.** describe's mode carries `background(u8)`, whose meaning and values are written nowhere normative. The streaming rules are only in a Japanese record. An English reader cannot implement capture.
 
@@ -628,17 +768,25 @@ All of this is as proposed.
 
 ### P2-○8 ○ Which configure TLVs the host sends critical
 
+**Status: agreed with condition** — WireSkein: samples stays non-critical, rounded to the limit, the answer authoritative (folded in).
+
 **Problem.** A host sends mode = 3 without the critical bit to a probe without streaming. The probe ignores it and configures one-shot. If the host overlooks ignored, it records the wrong mode.
 
 **Proposed text** (capture §3.3, a column "sent critical" in the table):
 
-> mode, rate, samples, trigger, pretrigger and frontend are always sent critical; segments may be sent without the critical bit. A probe that cannot honour one refuses the configure (unsupported, the tag as received).
+> - mode, rate, trigger, pretrigger and frontend are always sent critical. A probe that cannot honour one refuses the configure (unsupported, the tag as received).
+> - rate sent critical means: the probe applies the nearest value it can realise within its declared range (actual_rate says which); a rate outside the range is unsupported.
+> - samples and segments may be sent without the critical bit. A samples above what the probe can hold is rounded down to its limit, and actual_samples (0x52) in the answer is authoritative. The host reads actual_samples and actual_segments rather than assuming the values it sent.
 
-**Changes:** hosts that send these without the bit must set it (WireSkein, Python capture.py: not checked). probe, fake: none.
+**Changes:** hosts that send these without the bit must set it (WireSkein will send mode critical; Python capture.py: not checked). probe: round samples to its limit and report it in actual_samples (not checked whether it does today). fake: not checked.
 
 **Q18 (WireSkein).** Is this list right for your recorder? Recommendation: yes.
 
+**Answers.** WireSkein: mode, trigger, pretrigger and frontend critical, yes; rate critical, yes with the meaning above. For samples it offered two forms: critical, with an over-limit samples refused unsupported carrying max_samples; or non-critical, rounded to the limit with the answer authoritative. It recommended the second, which is adopted (the first proposal had samples critical).
+
 ### P2-○9 ○ During blocking_ms
+
+**Status: agreed.**
 
 **Proposed text** (capture §3.2, replaces "The lease is not counted during blocking"):
 
@@ -647,6 +795,8 @@ All of this is as proposed.
 **Changes:** none: no probe blocks today (background = 1 everywhere). Python passes blocking_ms as the start request's expect_ms, which is harmless.
 
 ### P2-○10 ○ capture-group state table
+
+**Status: agreed.**
 
 **Proposed text** (capture §4.1, added):
 
@@ -660,6 +810,8 @@ All of this is as proposed.
 
 ### P2-○11 ○ Positioned read: beyond the write position, amount, from 3
 
+**Status: agreed.**
+
 **Proposed text** (common §1.2, added):
 
 > - If the requested position (from 0) is beyond the write position, the answer is start = the write position, len 0, flags 0.
@@ -671,6 +823,8 @@ All of this is as proposed.
 
 ### P2-○15 ○ analog trigger enum
 
+**Status: agreed.**
+
 **Proposed text:** registry `oep.fixture.analog` `[interface.enum.trigger]` loses level = 1 and edge = 2. The text already says 1 to 2 are for logic. **Changes:** generated constants removed. **Today:** the probe declares 0 / 3 / 4 only (OepAnalog.cpp:98) and refuses 1 / 2.
 
 ---
@@ -678,6 +832,8 @@ All of this is as proposed.
 ## 9. probe-config
 
 ### PC-1 ○ Line names are also found in the firmware's fixed labels
+
+**Status: agreed.**
 
 **Problem.** The most common user has a ready-made probe whose reset pin is fixed by the board. Its firmware can name that pin only in describe's 0x46 label. Today boot_reset does nothing until the user sets a settings label, and a host cannot find the reset line by any normative means.
 
@@ -698,7 +854,11 @@ The sentence "Only the settings' label items are searched" is removed.
 
 **Q19.** Firmware labels as step (c) (recommended), or a new fn 0 tag `line(channel, name)`? A new tag would duplicate label.
 
+**Answers.** Step (c) (bench welcomes it; ch32rv agrees and adds the step to its host).
+
 ### PC-2 ○ Names not in the table; standard and private names
+
+**Status: agreed.**
 
 **Proposed text** (probe-config §1.3, added):
 
@@ -707,6 +867,8 @@ The sentence "Only the settings' label items are searched" is removed.
 **Changes:** none. **Today:** no implementation checks names; only `nrst` is used by the probe.
 
 ### PC-3 ○ idle with a pull the channel lacks → unsupported
+
+**Status: agreed.**
 
 **Proposed text** (probe-config §1 idle, and the unsupported row of the refusal table):
 
@@ -718,7 +880,11 @@ The review proposed malformed for mode ≥ 5. Under C-02 it is unsupported inste
 
 **Q20.** Is it acceptable that such a saved setting now fails at boot? Recommendation: yes. Today it reports success and the pin floats.
 
+**Answers.** Yes (bench).
+
 ### PC-4 ○ The channel of label / idle / disable
+
+**Status: agreed.**
 
 **Proposed text** (probe-config §1, before the table):
 
@@ -729,6 +895,8 @@ disable's "(the same as idle)" then points here.
 **Changes.** probe: label has no channel check today (OepConfig.cpp:250-252). idle and disable check the pin table's allowed set; that check can stay. fake: not checked for label. Saved settings: a saved label on a channel outside the range fails at boot.
 
 ### PC-5 ○ label text
+
+**Status: agreed.**
 
 **Proposed text** (probe-config §1 label):
 
@@ -742,6 +910,8 @@ The parenthesis "(the label item itself is not restricted)" in §1.2 is removed.
 
 ### PC-6 ○ get's answer (wording)
 
+**Status: agreed.**
+
 **Proposed text** (probe-config §2, get row):
 
 > answer: more(u8), hash(u32), the items to the end of the payload. Tag 0x7E is reserved for answer meta information, and a v1 probe does not place it. get takes no TLV (one is rejected malformed, core §7.3).
@@ -750,6 +920,8 @@ The parenthesis "(the label item itself is not restricted)" in §1.2 is removed.
 
 ### PC-7 △ The canonical form (wording)
 
+**Status: agreed.**
+
 **Proposed text** (probe-config §2 hash, added):
 
 > In the canonical form a tag has its critical bit cleared. Keys are compared as numbers, and multi-field keys field by field from the first.
@@ -757,6 +929,8 @@ The parenthesis "(the label item itself is not restricted)" in §1.2 is removed.
 A test vector (items, canonical bytes, hash) goes in `tests/`. **Changes:** none if probe, fake and Python agree (not checked).
 
 ### PC-8 ○ Transport indexes across firmware versions; bind at boot
+
+**Status: agreed.**
 
 **Problem.** A user updates the vendor's firmware and never looks at bind again. If the USB configuration changes, the saved bind silently points at another port.
 
@@ -776,11 +950,15 @@ probe-config §2, added:
 
 **Q22.** Index invariance (recommended), or keeping the transport kind with the bind? Invariance also keeps bind usable across updates, which a kind check would only detect.
 
+**Answers.** Index invariance (bench: its files store bind ports as numbers).
+
 ---
 
 ## 10. Conformance
 
 ### C-10 ★ Normative words and what every probe and host must have (with O-14, O-15)
+
+**Status: agreed.**
 
 **Problem.** An implementer cannot find in one place which core ops a probe must answer (link_source? plan_apply on a probe without pins?) or what a minimal host must do. The English uses present tense and lower-case may / preferably without saying which are requirements.
 
@@ -819,13 +997,23 @@ Core §12 gains a column "Required" (yes / if plan roles / optional). Core §0 r
 
 ### C-16 ○ Rejected answers go into the resend table
 
+**Status: open** — the paragraph on TCP endpoints and relays was added in this revision for ch32rv's question; ch32rv to confirm.
+
 **Proposed text** (core §5.2, added):
 
 > The probe stores the answer of every request of the last session that passes order 2 of §4.3, rejected answers included, and advances the newest corr with it. A host that corrects a rejected request sends it with a new corr.
 
-**Changes:** none for the probe, which stores every answer (OepEndpoint.cpp:450-463). fake: not checked.
+**Added for ch32rv's question (does §5.2 bind a TCP endpoint such as the broker?).** Core §5.2, added:
+
+> §5.2 binds every probe (C-05: every endpoint that answers OEP requests itself) on every transport, TCP included. TCP does not lose frames, but a host still resends after its wait (§4.4) when an answer is late, so the probe keeps the table to avoid executing a request twice. The table is one per probe, shared by all its transports and TCP connections, as the session is. A broker that only relays to an OEP probe keeps no table of its own; when it renumbers corr, it relays a client's resend with the same corr it used the first time.
+
+**Changes:** none for the probe, which stores every answer (OepEndpoint.cpp:450-463). fake: not checked. A TCP endpoint such as the WCH broker keeps the table.
+
+**Answers.** bench and WireSkein: no objection. ch32rv was unsure whether §5.2 binds a TCP endpoint; the paragraph above answers yes. Open until ch32rv confirms.
 
 ### C-17 ○ When the lease restarts; the answer's lease_ms
+
+**Status: agreed.**
 
 **Proposed text.**
 
@@ -841,6 +1029,8 @@ Core §6.4:
 
 ### C-18 ○ session_id; open only as role 0x01
 
+**Status: agreed.**
+
 **Problem.** Two hosts that both use a fixed session_id (1, or a hash of the process name) silently resume each other's sessions.
 
 **Proposed text** (core §6.1, §4.1):
@@ -851,7 +1041,11 @@ Core §6.4:
 
 **Q25 (ch32rv).** How does the broker choose its session_id? Does it ever send open with 0x81?
 
+**Answers.** ch32rv: a random non-zero session_id, reopened with the same id; open is always sent as 0x01, never 0x81. It conforms.
+
 ### C-22 ○ Booleans and text
+
+**Status: agreed.**
 
 **Problem.** owner is shown on other users' terminals. A host can put ANSI escape sequences into it.
 
@@ -868,6 +1062,8 @@ Core §6.4:
 **Q26.** Probe-side validation (recommended), or host-side only? The probe is the one place every viewer's text passes through.
 
 ### C-23 ○ Grammar of names, model and chip
+
+**Status: agreed.**
 
 **Proposed text.**
 
@@ -889,6 +1085,8 @@ Core §7.5 chip:
 
 ### C-24 ○ unit_id without a unique number or storage
 
+**Status: agreed.**
+
 **Proposed text** (core §7.5, replaces the build-constant sentence):
 
 > A probe with storage but no unique number creates its unit_id at first boot from a random number and saves it. A probe with neither uses a unit_id that starts with `x-` (not unique). A host does not group transports by a unit_id that starts with `x-`, and does not name a probe by it.
@@ -896,6 +1094,8 @@ Core §7.5 chip:
 **Changes:** the probe omits unit_id on platforms without one (Oep.h:478), which breaks "mandatory". It must send an `x-` value. Hosts: one check.
 
 ### C-25 ○ Exclusive open, HID output, WinUSB
+
+**Status: agreed.**
 
 **Proposed text** (core §3.3, added):
 
@@ -909,6 +1109,8 @@ Core §7.5 chip:
 
 ### C-29 ○ Registry keys and the hash
 
+**Status: agreed.**
+
 **Proposed text** (core §0, after the registry sentence):
 
 > After the freeze the registry's keys (and so the generated identifiers) are not renamed; new keys are added. REGISTRY_HASH only tells whether generated code matches the registry and says nothing about wire compatibility. Values that are not the specification's (max_op_ms_reference) are kept in a `[reference]` table outside the freeze.
@@ -916,6 +1118,8 @@ Core §7.5 chip:
 **Changes:** none on the wire.
 
 ### C-30 ○ instance per (name, revision)
+
+**Status: agreed.**
 
 **Proposed text** (core §7.2, replaces "Those with the same name are numbered from 0 in ascending order of fn"):
 
@@ -925,15 +1129,21 @@ Core §7.5 chip:
 
 ### C-32 ○ port_speed: baud tolerance and verify_ms 0
 
+**Status: agreed with condition** — ch32rv: verify_ms 0 is malformed in step 0 (try) only (folded in).
+
 **Proposed text** (core §3.5 refusals):
 
-> If the nearest speed the UART can produce differs from the request by more than 2 %, rejected unsupported. The answer's baud is the speed actually applied. verify_ms 0 is rejected malformed.
+> If the nearest speed the UART can produce differs from the request by more than 2 %, rejected unsupported. The answer's baud is the speed actually applied. verify_ms 0 in step 0 (try) is rejected malformed. In step 1 (commit) and step 2 (revert) verify_ms has no meaning and any value is accepted.
 
-**Changes:** probe: the per-platform handler decides what it can produce (its tolerance was not checked). verify_ms 0 is accepted today and reverts at once. fake: not checked.
+**Changes:** probe: the per-platform handler decides what it can produce (its tolerance was not checked). verify_ms 0 in a try is accepted today and reverts at once. fake: not checked.
+
+**Answers.** ch32rv sends verify_ms 0 on commit and revert; its condition, "malformed for step 0 (try) only", is folded in above.
 
 **Q29.** Is ±2 % acceptable? Recommendation: yes. With both ends at ±2 % the total stays inside what 8N1 sampling tolerates.
 
 ### C-33 ○ Heartbeat floor
+
+**Status: agreed.**
 
 **Proposed text** (core §11.3): "The probe may round a heartbeat period shorter than 100 ms up to 100 ms."
 **Changes:** none required (the probe has no floor; that conforms).
@@ -945,6 +1155,8 @@ Core §7.5 chip:
 Checked against: `docs/target-console-dmseq.md` (cdd26b4), `experiments/dm-console-seq/DmSeqTest/DmSeq.h` (the 2026-09-24 experiment), the shipped target library ArduinoCore-CH32RV `libraries/SerialDMSeq` (outside this repo), and the probe's `src/OepDmConsole.cpp`.
 
 ### DS-1 ★ DATA0 = 0 is no answer
+
+**Status: agreed.**
 
 **Problem.** Target rule 1 makes a 0 word an invalid answer (its CRC fails), so the target posts again at once. The debugger bullet says the target reads 0 as silence and waits until its timeout. The two implementations differ:
 - The experiment posts again at once, on every poll.
@@ -960,7 +1172,11 @@ The debugger bullet changes to match DS-9.
 
 **Q30 (ch32rv).** Post again every short wait (recommended), at once (the experiment), or never (the library before the timeout)? Posting at once costs a store on every poll of a target with no debugger (the library's reason). Never posting costs up to 1 s of console after a debugger cleared DATA0.
 
+**Answers.** Every short wait, adopted. ch32rv prefers it: its host reads bit 7 = 0 (0 included) as "nothing yet" and polls every 2 ms, and its DM accesses can leave DATA0 = 0. bench and WireSkein: no objection. DS-8 depends on it.
+
 ### DS-2 ★ The ownership rule lists the target's exceptions
+
+**Status: agreed.**
 
 **Proposed text** (Carrier and ownership, replaces the three bullets):
 
@@ -975,6 +1191,8 @@ The debugger bullet changes to match DS-9.
 
 ### DS-3 ★ The waits are real-time lower bounds
 
+**Status: agreed.**
+
 **Proposed text** (Timeout, replaces "So that the wait ends even while interrupts are disabled, it is counted in register reads, not with a clock"):
 
 > The short wait lasts **at least 20 ms** and the long wait **at least 1 s** of real time. The target measures them in a way that still ends while interrupts are disabled. "Every short wait" (keeping a frame posted, DS-1) uses the same measure. (Informative) Counting reads of DATA0, the reference targets use F_CPU / 8000 reads per ms, assuming one read loop takes at least 8 cycles.
@@ -982,6 +1200,8 @@ The debugger bullet changes to match DS-9.
 **Changes:** none. A host relies only on "a synced host that polls at least once per second loses nothing".
 
 ### DS-4 ★ Byte order
+
+**Status: agreed.**
 
 **Proposed text** (Target frame, added):
 
@@ -991,13 +1211,19 @@ The debugger bullet changes to match DS-9.
 
 ### DS-5 ○ What restarts the count of invalid words
 
+**Status: agreed.**
+
 **Proposed text** (host rule 1, added):
 
-> The host counts consecutive polls that read an invalid word with bit 7 = 1. The count restarts at 0 when it reads a valid frame, after it answers under this rule, and when a session starts. A poll that reads a word with bit 7 = 0 does not change the count.
+> The host counts consecutive polls that read an invalid word with bit 7 = 1 (`0xffffffff` included). The count restarts at 0 when it reads a valid frame, after it answers under this rule, and when a session starts. A poll that reads a word with bit 7 = 0 does not change the count. The rule-1 answer is sent only while the host is synced. While it is not, the count stops at 3 (it does not wrap) and the host does not answer; the next valid frame syncs the host and restarts the count.
 
-**Changes:** probe: as proposed (OepDmConsole.cpp:195-204), except that `start()` does not reset `seq_bad_run_`. Add that.
+**Changes:** probe: as proposed (OepDmConsole.cpp:195-204), except that `start()` does not reset `seq_bad_run_`. Add that, and check that the count saturates while unsynchronised (not checked).
+
+**Answers.** ch32rv conforms and gave these details of its host, folded in above: the count resets on a valid frame, after the rule-1 answer and at session start; the rule-1 answer fires only when synced, and the count saturates while unsynced; an unsynced `0xffffffff` goes to its leftover count, the one its DS-8 safeguard uses. When the safeguard goes (DS-8), that word is simply one more invalid word in the count above.
 
 ### DS-6 ○ The target's state at begin()
+
+**Status: agreed.**
 
 **Proposed text** (Target frame, added):
 
@@ -1007,6 +1233,8 @@ The debugger bullet changes to match DS-9.
 
 ### DS-7 ○ "After reading for a long time"
 
+**Status: agreed.**
+
 **Proposed text** (replaces the last host bullet):
 
 > (Informative) A target that prints or polls its input posts a frame at least once per long wait plus a short wait. A host that has read no valid frame for 3 s while unsynchronised may tell the user that no dmseq console is answering. A target that neither prints nor reads posts nothing, so this is not proof that it has no console.
@@ -1015,13 +1243,22 @@ The debugger bullet changes to match DS-9.
 
 ### DS-8 ★ Remove the optional host safeguard
 
+**Status: agreed with condition** — ch32rv: removed only together with DS-1 (folded in).
+
 **Problem.** The bullet "an unsynchronised host that reads 0xffffffff 3 times may write an invalid word with bit 7 = 0" exists for targets without rule 0, and rule 0 is mandatory. It is also the only rule that lets a host write while bit 7 is 1 for a reason other than answering.
 
-**Proposed text:** delete the bullet "host (optional): ...".
+**Proposed text:** delete the bullet "host (optional): ...", **in the same change as DS-1** and not before it.
 
-**Changes:** none. No host writes such a word: the probe has no 0x7f7f7f7f path. The shipped library implements rule 0 (SerialDMSeq.cpp:127-141). The 2026-09-24 experiment does not, but it is a record, not a target anyone ships.
+**Changes.**
+- ch32rv: **its host does write the word** (corrected from the first version): an unsynchronised host that reads `0xffffffff` 3 times writes 0x7f7f7f7f, because a WCH-Link attach leaves the last ESIG word in DATA0 on some targets. ch32rv drops the write once the target library re-posts every short wait (DS-1).
+- probe: none (no 0x7f7f7f7f path).
+- target library: none for DS-8 itself. It implements rule 0 (SerialDMSeq.cpp:127-141), and DS-1 makes it re-post every short wait. The 2026-09-24 experiment implements neither, but it is a record, not a target anyone ships.
+
+**Answers.** ch32rv's condition: remove the safeguard only if the target always re-posts (DS-1). Adopted: DS-1 and DS-8 go in together.
 
 ### DS-9 ○ Clearing dmactive *may* clear DATA0
+
+**Status: agreed.**
 
 **Proposed text** (debugger bullet):
 
@@ -1031,6 +1268,8 @@ The debugger bullet changes to match DS-9.
 
 ### DS-10 ○ CRC-8 check values
 
+**Status: agreed.**
+
 **Proposed text** (CRC-8, added):
 
 > Check values: the 9 ASCII bytes "123456789" → 0xFB; the single byte 0x00 → 0xF3.
@@ -1038,6 +1277,8 @@ The debugger bullet changes to match DS-9.
 **Verified:** both values computed with a bit-wise implementation of poly 0x07, init 0xFF, no reflection, no final XOR. That is the same function as the probe's `seqCrc8` and the library's 16-entry-table form. The DS-4 examples come from the same computation.
 
 **Q31.** None of DS-3 to DS-10 changes the wire. ch32rv: please confirm that your host side (if it reads dmseq itself) agrees with DS-4 and DS-5.
+
+**Answers.** ch32rv: DS-4 conforms; DS-5 conforms with the details folded into DS-5. bench and WireSkein: no objection.
 
 ---
 
@@ -1069,3 +1310,4 @@ These are bugs against **today's** text; they need no peer decision.
 | fake endpoint.py:454-455 | The transport list is built in TLV order, ignoring the index byte |
 | Python link.py:422, 550 | Resync confirms send the range 0..0xFF (C-15) |
 | JS link.js | No confirm-based resync on length-prefixed ports (core §5.1) |
+| Rust (ch32rv, reported by ch32rv) | single_serial flattened the transport TLV's value instead of reading its kind byte. Fixed locally by ch32rv |

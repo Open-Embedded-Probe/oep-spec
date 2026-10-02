@@ -2,9 +2,9 @@
 
 [English](v1-rule-change-proposal-2026-10-02.md)
 
-状態: **peers への提案（規範ではない）**。この文書は英語版が正で、日本語版はその訳。
+状態: **peers への提案。peers の答えを入れて改めた（規範ではない）**。この文書は英語版が正で、日本語版はその訳。
 読む人: ch32rv（Rust の host と broker）、WireSkein（キャプチャの記録）、bench（HIL の治具）。
-元: oep-spec 78137fb（dmseq は cdd26b4）。出典: [3 回目のゼロベース点検](v1-zero-base-review-3-2026-10-02.ja.md)。規則の変更（規則）のうち ★ と ○ の指摘すべてと、その後に出た dmseq の問い。
+元: oep-spec 78137fb（dmseq は cdd26b4）。第 2 版は、初版（ad9f8be）への 3 つの peers の答えを入れた: ch32rv（自分の a3bf2fa で確かめた）、WireSkein、bench（測った値つき）。各項目に状態の行を付け、最後の答えは下の「決定」にまとめた。出典: [3 回目のゼロベース点検](v1-zero-base-review-3-2026-10-02.ja.md)。規則の変更（規則）のうち ★ と ○ の指摘すべてと、その後に出た dmseq の問い。
 C-11（USB の見分け）は決まった（変えない）ので含めない。別に入れた文言だけの修正（78137fb の C-12、C-13、C-14、C-35 など）は繰り返さない。
 
 前提は点検と同じ。会ったことのない人が、見たことのない OS、USB スタック、MCU、debug の線、target で、本文だけを読んで probe と host を作る。各項目は、その利用者の場面から書き始める。
@@ -21,69 +21,114 @@ C-11（USB の見分け）は決まった（変えない）ので含めない。
 
 **壊す** = 今の文か今の参照のコードに従う実装や保存した設定が、線の上での振る舞いを変えなければならないこと。
 
+## 決定
+
+**項目の状態。**
+- **合意**: 3 つの peers が受け入れた。bench は「全体に OK」、ch32rv は「下の印の付いた項目を除いて OK」と答えた。WireSkein は話題 3 と 8（C-06、P2-★4、P2-★6、P2-○9、P2-○10、P2-○11、P2-○15、Q14、Q17、Q18）に答え、ほかには異議を出していない。
+- **条件付き合意**: 項目に書いた条件つきで受け入れた。条件は、まだ満たすべきと項目に書いていない限り、案の文に入れてある。
+- **未決**: 決まっていない。足りないものは項目に書いた。
+
+未決の項目: C-05、C-16、P2-★7（ch32rv の問いに答えるため、TCP の端点とピンを持たない線の規則を今回足した。ch32rv の確認待ち）と、P2-★4 の cold attach の測定（bench、凍結の前）。
+
+**最後の答え。**
+
+| Q | 項目 | 答え |
+|---|---|---|
+| Q1 | C-01 | そうする: registry は `role_assignment = 0x10` と書き、生成する定数も変わる |
+| Q2 | C-02 | そうする: 使っていない enum の値と要求の予約のビットはすべて unsupported。malformed は並べた値だけ |
+| Q3 | C-03 | そうする: 要求の TLV は伸ばさず、新しい欄は新しい tag |
+| Q4 | C-04 | そうする: 多くて 16 個、「もっと」は 16 個目の 0x00 |
+| Q5 | C-06 | そうする: 式は下限。scan と attach の上限は引数の時間に数える（P2-★4） |
+| Q6 | P2-★4 | 要求ごとの 200 ms と実時間の 1000 ms を採る。**attach の上限は 500 ms でなく 1000 ms**（bench の測定）。attach の応答に任意の TLV `search_retries`。「status line ⇒ connection が無くなった」に頼る host は無い。凍結の前に bench が cold attach を 1 回測る |
+| Q7 | C-07 | 間（gap）まで捨てる |
+| Q8 | C-09 | そうする: どの probe も 115200 |
+| Q9 | C-05 | confirm の TLV。TCP の端点は listen している socket の index を言う（規則を足した。ch32rv の確認まで未決） |
+| Q10 | C-15 | そうする: 経路ごと。TCP では接続ごと（C-05） |
+| Q11 | P2-★1 | そうする |
+| Q12 | P2-★2 | 選択肢の無い規則にする。測った: 1 つの probe はすでに満たし、もう 1 つは CS が high の間 MISO を low に駆動していて、直している |
+| Q13 | P2-★3 | プルアップを宣言する（features bit2 + pullup_ohms）。禁じない |
+| Q14 | P2-○13 | 規則にする |
+| Q15 | P2-★7 | そうする: `n × (role, channel)` の形。足した: ピンの組を宣言しない線は scan を持たなくてよい（ch32rv の確認まで未決） |
+| Q16 | P2-○4 | halt が時間切れのとき haltreq を下ろす |
+| Q17 | P2-★6 | そうする: 0 = 止まる、1 = 答える |
+| Q18 | P2-○8 | mode、rate、trigger、pretrigger、frontend は critical で送る。samples と segments は送らない: probe は samples を上限に丸め、応答の値を正とする。rate の critical は「範囲の中ならいちばん近い作れる値、範囲の外は unsupported」 |
+| Q19 | PC-1 | firmware の label を (c) にする |
+| Q20 | PC-3 | よい |
+| Q21 | PC-5 | 足りる: 32 byte |
+| Q22 | PC-8 | index の不変 |
+| Q23 | C-10 | 現在形の約束を新しい §1.1 と一緒に残す |
+| Q24 | C-10 | する: link_source / link_sink は必須 |
+| Q25 | C-18 | broker は 0 でない乱数の session_id を使い、開き直しは同じ id、open はいつも 0x01: 適合している |
+| Q26 | C-22 | probe の側で確かめる |
+| Q27 | C-23 | これでよい |
+| Q28 | C-25 | SHOULD |
+| Q29 | C-32 | これでよい: ±2 %。verify_ms 0 を malformed にするのは step 0（try）だけ |
+| Q30 | DS-1 | 短い待ちごとに出し直す（DS-1 を採る）。DS-8 の host の保険は、これと一緒にだけ消す |
+| Q31 | DS-3〜DS-10 | ch32rv は DS-4 に合っている。DS-5 には ch32rv の細部（同期していない間は数が止まる）を入れた |
+
 ## 一覧
 
-| id | 話題 | 重さ | 一言 | 壊す |
-|---|---|:---:|---|:---:|
-| C-01 | 1 断りの種類と伸ばし方 | ★ | tag の番号は下の 7 bit。registry は 0x90 でなく 0x10 と書く | いいえ（registry の定数は変わる） |
-| C-02 | 1 断りの種類と伸ばし方 | ★ | 後の revision が定めうる値 → malformed でなく unsupported | はい |
-| C-03 | 1 断りの種類と伸ばし方 | ★ | 要求の TLV の繰り返し、短すぎ、後ろへの伸ばし | はい |
-| O-5 | 1 断りの種類と伸ばし方 | ○ | u8 の enum の 0xF0〜0xFE は実験用 | いいえ |
-| C-04 | 2 ignored の上限 | ★ | ignored は多くて 16 個、0x00 は「ほかにも」、落とさない | はい |
-| C-06 | 3 時間 | ★ | host の待ち時間に UART の転送時間を足し、前の応答から数え始める | いいえ |
-| P2-★4 | 3 時間 | ★ | 線の再試行は要求ごとに 200 ms、線切れは実時間 1000 ms、attach は 500 ms まで | はい |
-| P2-○3 | 3 時間 | ○ | dmi: max_op_ms に数えるのは時間で決まる待ちだけ | いいえ |
-| C-07 | 4 経路 | ★ | TCP では 200 ms のやり直しをしない。長すぎる length。立て直しは host が最後に書いてから 250 ms 待つ | はい |
-| C-08 | 4 経路 | ★ | max_frame / window / max_inflight は経路ごと | いいえ |
-| C-09 | 4 経路 | ★ | UART bridge は 115200 8N1、流れの制御なし。line coding と DTR で OEP を止めない | いいえ |
-| C-05 | 4 経路 | ★ | confirm の応答は、どの経路で来たかを言う | いいえ |
-| C-15 | 5 revision の範囲 | ★ | プロトコルの revision が何に効くか。confirm は変わらない。断りに範囲を付ける | はい |
-| P2-★1 | 6 電気の安全 | ★ | scan の count = 0 は idle の項目のある channel を外す。出力の idle の channel は断る | はい |
-| P2-★2 | 6 電気の安全 | ★ | spi-target は CS が有効な間だけ MISO を駆動する | いいえ（実機で確かめる） |
-| P2-★3 | 6 電気の安全 | ★ | i2c-target はオープンドレインだけ。内蔵のプルアップは宣言する | いいえ |
-| P2-○13 | 6 電気の安全 | ○ | plan を取ってもピンは変わらない。ロジックのキャプチャは聞くだけ | はい |
-| P2-★5 | 7 debug の線の一般化 | ★ | 宣言が許さない組 → unsupported | いいえ（probe はすでにそう） |
-| P2-★7 | 7 debug の線の一般化 | ★ | どの線にも共通のことと、新しい線（JTAG など）が定めること | いいえ |
-| P2-○1 | 7 debug の線の一般化 | ○ | 「見つかった」は DMSTATUS.version ≥ 2 かつ ≠ 15。op も同じ | はい |
-| P2-○4 | 7 debug の線の一般化 | ○ | halt / step が失敗したとき target に何を残すか | はい |
-| P2-○6 | 7 debug の線の一般化 | ○ | コンソールの規則を「どの mechanism にも」と「DATA0 の mechanism」に分ける | いいえ |
-| P2-○5 | 7 debug の線の一般化 | ○ | target_id_scheme は probe で 1 つの空間 | いいえ |
-| P2-★6 | 8 キャプチャ | ★ | モード、ストリーミングの決めごと、`background` を規範の文へ | いいえ |
-| P2-○8 | 8 キャプチャ | ○ | configure のどの TLV を host が critical で送るか | はい（host） |
-| P2-○9 | 8 キャプチャ | ○ | blocking_ms の間に host と probe が何をするか | いいえ |
-| P2-○10 | 8 キャプチャ | ○ | capture-group の状態の表 | はい（fake） |
-| P2-○11 | 8 キャプチャ | ○ | 位置つきの read: 書き込み位置より先、量、from 3 | いいえ |
-| P2-○15 | 8 キャプチャ | ○ | analog の trigger の enum から level / edge を外す | いいえ |
-| PC-1 | 9 probe-config | ○ | 線の名前を firmware の固定の label からも探す | はい（起動時） |
-| PC-2 | 9 probe-config | ○ | 表に無い名前は役目を表さない。標準の名前は registry に。独自の名前は `x-` | いいえ |
-| PC-3 | 9 probe-config | ○ | channel に無い pull の idle → unsupported | はい |
-| PC-4 | 9 probe-config | ○ | label / idle / disable の channel は channels 未満で reserved でない | はい |
-| PC-5 | 9 probe-config | ○ | label の text は制御文字を含まない 1〜32 byte の UTF-8 | はい |
-| PC-6 | 9 probe-config | ○ | get の応答: 項目は payload の終わりまで（文言） | いいえ |
-| PC-7 | 9 probe-config | △ | hash の正規形の細部（文言） | いいえ |
-| PC-8 | 9 probe-config | ○ | transport の index は firmware の版を越えて変えない。起動時の bind | いいえ |
-| C-10 | 10 適合 | ★ | 規範の語。どの probe と host も持つもの | いいえ |
-| C-16 | 11 core のほかの規則 | ○ | rejected の応答も送り直しの表に覚える | いいえ |
-| C-17 | 11 core のほかの規則 | ○ | lease が数え直される時と、応答の lease_ms の範囲 | はい（fake） |
-| C-18 | 11 core のほかの規則 | ○ | session_id は乱数で 0 でない。open は role 0x01 だけ | はい |
-| C-22 | 11 core のほかの規則 | ○ | 真偽値は 0 / 1。text に制御文字を入れない | はい |
-| C-23 | 11 core のほかの規則 | ○ | 名前、model、chip の文法 | はい |
-| C-24 | 11 core のほかの規則 | ○ | 固有の番号も保存も無い probe の unit_id は `x-` | はい |
-| C-25 | 11 core のほかの規則 | ○ | 排他で開く、HID の output、WinUSB | いいえ |
-| C-29 | 11 core のほかの規則 | ○ | registry のキーを止める。hash の意味 | いいえ |
-| C-30 | 11 core のほかの規則 | ○ | instance は (name, revision) ごとに数える | いいえ |
-| C-32 | 11 core のほかの規則 | ○ | port_speed: baud の誤差 ±2 %、verify_ms 0 | はい |
-| C-33 | 11 core のほかの規則 | ○ | ハートビートの周期は 100 ms に切り上げてよい | いいえ |
-| DS-1 | 12 コンソールの dmseq | ★ | DATA0 = 0 は答えではない: 待ち続け、短い待ちごとに出し直す | はい（target） |
-| DS-2 | 12 コンソールの dmseq | ★ | 持ち主の規則に、target が出し直す例外を書く | いいえ |
-| DS-3 | 12 コンソールの dmseq | ★ | 待ち時間は実時間の下限。割り込みを止めても終わる数え方で数える | いいえ |
-| DS-4 | 12 コンソールの dmseq | ★ | byte k はレジスタの bit 8k〜8k+7 | いいえ |
-| DS-5 | 12 コンソールの dmseq | ○ | host の無効な語の数を何が 0 に戻すか | いいえ |
-| DS-6 | 12 コンソールの dmseq | ○ | begin() のときの target の状態 | いいえ |
-| DS-7 | 12 コンソールの dmseq | ○ | 「長く読んでも」を 3 s にして参考にする | いいえ |
-| DS-8 | 12 コンソールの dmseq | ★ | host の任意の保険を消す（規則 0 は必須） | いいえ |
-| DS-9 | 12 コンソールの dmseq | ○ | dmactive を下ろすと DATA0 が 0 に戻る*ことがある* | いいえ |
-| DS-10 | 12 コンソールの dmseq | ○ | CRC-8 の確かめ値 | いいえ |
+| id | 話題 | 重さ | 一言 | 壊す | 状態 |
+|---|---|:---:|---|:---:|---|
+| C-01 | 1 断りの種類と伸ばし方 | ★ | tag の番号は下の 7 bit。registry は 0x90 でなく 0x10 と書く | いいえ（registry の定数は変わる） | 合意 |
+| C-02 | 1 断りの種類と伸ばし方 | ★ | 後の revision が定めうる値 → malformed でなく unsupported | はい | 合意 |
+| C-03 | 1 断りの種類と伸ばし方 | ★ | 要求の TLV の繰り返し、短すぎ、後ろへの伸ばし | はい | 合意 |
+| O-5 | 1 断りの種類と伸ばし方 | ○ | u8 の enum の 0xF0〜0xFE は実験用 | いいえ | 合意 |
+| C-04 | 2 ignored の上限 | ★ | ignored は多くて 16 個、0x00 は「ほかにも」、落とさない | はい | 合意 |
+| C-06 | 3 時間 | ★ | host の待ち時間に UART の転送時間を足し、前の応答から数え始める | いいえ | 合意 |
+| P2-★4 | 3 時間 | ★ | 線の再試行は要求ごとに 200 ms、線切れは実時間 1000 ms、attach は 1000 ms まで、scan は 500 ms まで | はい | 条件付き合意 |
+| P2-○3 | 3 時間 | ○ | dmi: max_op_ms に数えるのは時間で決まる待ちだけ | いいえ | 合意 |
+| C-07 | 4 経路 | ★ | TCP では 200 ms のやり直しをしない。長すぎる length。立て直しは host が最後に書いてから 250 ms 待つ | はい | 合意 |
+| C-08 | 4 経路 | ★ | max_frame / window / max_inflight は経路ごと | いいえ | 合意 |
+| C-09 | 4 経路 | ★ | UART bridge は 115200 8N1、流れの制御なし。line coding と DTR で OEP を止めない | いいえ | 合意 |
+| C-05 | 4 経路 | ★ | confirm の応答は、どの経路で来たかを言う。TCP の端点も probe | いいえ | 未決 |
+| C-15 | 5 revision の範囲 | ★ | プロトコルの revision が何に効くか。confirm は変わらない。断りに範囲を付ける | はい | 合意 |
+| P2-★1 | 6 電気の安全 | ★ | scan の count = 0 は idle の項目のある channel を外す。出力の idle の channel は断る | はい | 合意 |
+| P2-★2 | 6 電気の安全 | ★ | spi-target は CS が有効な間だけ MISO を駆動する | はい（1 つの probe の build。測った） | 合意 |
+| P2-★3 | 6 電気の安全 | ★ | i2c-target はオープンドレインだけ。内蔵のプルアップは宣言する | いいえ | 合意 |
+| P2-○13 | 6 電気の安全 | ○ | plan を取ってもピンは変わらない。ロジックのキャプチャは聞くだけ | はい | 合意 |
+| P2-★5 | 7 debug の線の一般化 | ★ | 宣言が許さない組 → unsupported | いいえ（probe はすでにそう） | 合意 |
+| P2-★7 | 7 debug の線の一般化 | ★ | どの線にも共通のことと、新しい線（JTAG など）が定めること。ピンを持たない線 | いいえ | 未決 |
+| P2-○1 | 7 debug の線の一般化 | ○ | 「見つかった」は DMSTATUS.version ≥ 2 かつ ≠ 15。op も同じ | はい | 合意 |
+| P2-○4 | 7 debug の線の一般化 | ○ | halt / step が失敗したとき target に何を残すか | はい | 合意 |
+| P2-○6 | 7 debug の線の一般化 | ○ | コンソールの規則を「どの mechanism にも」と「DATA0 の mechanism」に分ける | いいえ | 合意 |
+| P2-○5 | 7 debug の線の一般化 | ○ | target_id_scheme は probe で 1 つの空間 | いいえ | 合意 |
+| P2-★6 | 8 キャプチャ | ★ | モード、ストリーミングの決めごと、`background` を規範の文へ | いいえ | 合意 |
+| P2-○8 | 8 キャプチャ | ○ | configure のどの TLV を host が critical で送るか（samples は送らない） | はい（host） | 条件付き合意 |
+| P2-○9 | 8 キャプチャ | ○ | blocking_ms の間に host と probe が何をするか | いいえ | 合意 |
+| P2-○10 | 8 キャプチャ | ○ | capture-group の状態の表 | はい（fake） | 合意 |
+| P2-○11 | 8 キャプチャ | ○ | 位置つきの read: 書き込み位置より先、量、from 3 | いいえ | 合意 |
+| P2-○15 | 8 キャプチャ | ○ | analog の trigger の enum から level / edge を外す | いいえ | 合意 |
+| PC-1 | 9 probe-config | ○ | 線の名前を firmware の固定の label からも探す | はい（起動時） | 合意 |
+| PC-2 | 9 probe-config | ○ | 表に無い名前は役目を表さない。標準の名前は registry に。独自の名前は `x-` | いいえ | 合意 |
+| PC-3 | 9 probe-config | ○ | channel に無い pull の idle → unsupported | はい | 合意 |
+| PC-4 | 9 probe-config | ○ | label / idle / disable の channel は channels 未満で reserved でない | はい | 合意 |
+| PC-5 | 9 probe-config | ○ | label の text は制御文字を含まない 1〜32 byte の UTF-8 | はい | 合意 |
+| PC-6 | 9 probe-config | ○ | get の応答: 項目は payload の終わりまで（文言） | いいえ | 合意 |
+| PC-7 | 9 probe-config | △ | hash の正規形の細部（文言） | いいえ | 合意 |
+| PC-8 | 9 probe-config | ○ | transport の index は firmware の版を越えて変えない。起動時の bind | いいえ | 合意 |
+| C-10 | 10 適合 | ★ | 規範の語。どの probe と host も持つもの | いいえ | 合意 |
+| C-16 | 11 core のほかの規則 | ○ | rejected の応答も送り直しの表に覚える。§5.2 は TCP の端点も縛る | いいえ | 未決 |
+| C-17 | 11 core のほかの規則 | ○ | lease が数え直される時と、応答の lease_ms の範囲 | はい（fake） | 合意 |
+| C-18 | 11 core のほかの規則 | ○ | session_id は乱数で 0 でない。open は role 0x01 だけ | はい | 合意 |
+| C-22 | 11 core のほかの規則 | ○ | 真偽値は 0 / 1。text に制御文字を入れない | はい | 合意 |
+| C-23 | 11 core のほかの規則 | ○ | 名前、model、chip の文法 | はい | 合意 |
+| C-24 | 11 core のほかの規則 | ○ | 固有の番号も保存も無い probe の unit_id は `x-` | はい | 合意 |
+| C-25 | 11 core のほかの規則 | ○ | 排他で開く、HID の output、WinUSB | いいえ | 合意 |
+| C-29 | 11 core のほかの規則 | ○ | registry のキーを止める。hash の意味 | いいえ | 合意 |
+| C-30 | 11 core のほかの規則 | ○ | instance は (name, revision) ごとに数える | いいえ | 合意 |
+| C-32 | 11 core のほかの規則 | ○ | port_speed: baud の誤差 ±2 %、try の verify_ms 0 | はい | 条件付き合意 |
+| C-33 | 11 core のほかの規則 | ○ | ハートビートの周期は 100 ms に切り上げてよい | いいえ | 合意 |
+| DS-1 | 12 コンソールの dmseq | ★ | DATA0 = 0 は答えではない: 待ち続け、短い待ちごとに出し直す | はい（target） | 合意 |
+| DS-2 | 12 コンソールの dmseq | ★ | 持ち主の規則に、target が出し直す例外を書く | いいえ | 合意 |
+| DS-3 | 12 コンソールの dmseq | ★ | 待ち時間は実時間の下限。割り込みを止めても終わる数え方で数える | いいえ | 合意 |
+| DS-4 | 12 コンソールの dmseq | ★ | byte k はレジスタの bit 8k〜8k+7 | いいえ | 合意 |
+| DS-5 | 12 コンソールの dmseq | ○ | host の無効な語の数を何が 0 に戻すか | いいえ | 合意 |
+| DS-6 | 12 コンソールの dmseq | ○ | begin() のときの target の状態 | いいえ | 合意 |
+| DS-7 | 12 コンソールの dmseq | ○ | 「長く読んでも」を 3 s にして参考にする | いいえ | 合意 |
+| DS-8 | 12 コンソールの dmseq | ★ | host の任意の保険を消す（規則 0 は必須）。DS-1 と一緒に | はい（ch32rv の host） | 条件付き合意 |
+| DS-9 | 12 コンソールの dmseq | ○ | dmactive を下ろすと DATA0 が 0 に戻る*ことがある* | いいえ | 合意 |
+| DS-10 | 12 コンソールの dmseq | ○ | CRC-8 の確かめ値 | いいえ | 合意 |
 
 話題ごとの数:
 
@@ -111,6 +156,8 @@ C-11（USB の見分け）は決まった（変えない）ので含めない。
 
 ### C-01 ★ tag の番号は下の 7 bit
 
+**状態: 合意.**
+
 **問題。** 実装者は registry で `role_assignment = 0x90` を、`max_speed = 0x01  # critical` の隣に読む。それだけでは、0x90 がすでに critical の bit を含むと分からない。本文は、tag の番号が下の 7 bit だとどこにも書いていない。
 
 **案の文**（core §2.2。「tag の bit 7 は critical」の項と差し替える）:
@@ -131,6 +178,8 @@ core §7.4 と §8 は「role_assignment（0x10。critical で 0x90 として送
 **Q1.** registry の `role_assignment` の値を 0x90 から 0x10 に変えてよいか。生成物の定数も一緒に変わる。勧め: 変える。registry のほかの tag は、すでに bit を外して書いている。
 
 ### C-02 ★ 後の revision が定めうる値は unsupported で断る
+
+**状態: 合意.**
 
 **問題。** 後の拡張（gpio の mode 8、i2c の mode 4、新しい drive の kind）のために書いた host を考える。古い probe は malformed（host の誤り）を返す。その値を持たない新しい probe は unsupported を返す。host は 1 つの状況に 2 つの理由を受け取り、「同じ状況に理由を 2 つ作らない」（core §4.3）に反する。要求の flags の予約のビット（list の flags）には規則がまったく無い。
 
@@ -174,6 +223,8 @@ malformed のまま残すもの: i2c の `address > 0x7F`、spi の mode > 3 と
 
 ### C-03 ★ 要求の TLV の繰り返し、短すぎ、後ろへの伸ばし
 
+**状態: 合意.**
+
 **問題。** attach の max_speed のような安全のための項目が 2 回送られると、ある probe は最初の値を、別の probe は最後の値を読み、違う速さが掛かりうる。critical の TLV の値の後ろに欄を足した host は、それが効くと思っている。「知らない後ろを読み飛ばす」（§2.3）古い probe はそれを黙って無視し、critical の印の意味が崩れる。
 
 **案の文**（core §2.3 に足す）:
@@ -200,6 +251,8 @@ registry は、繰り返す要求の tag にコメント `# repeats` を付け�
 
 ### O-5 ○ enum の実験用の値
 
+**状態: 合意.**
+
 **問題。** 新しいコンソールの framing、transport の kind、cause を試す人は、後の標準の値とぶつからない番号を使えない。実験用の範囲を持つのは op（0xF0〜0xFF）だけ。
 
 **案の文**（core §2.5 に足す）:
@@ -215,6 +268,8 @@ registry は u8 の enum ごとにこの範囲を書く。0xF0 を超える今�
 ## 2. ignored の上限
 
 ### C-04 ★ ignored は多くて 16 個、落とさない
+
+**状態: 合意.**
 
 **問題。** host が、drive を掛けられない probe に、critical でない drive の TLV を 20 個付けた gpio の set を送る。probe は最初の 16 個を並べ、残りを黙って捨てる。応答に場所が無ければ ignored の TLV ごと落とす。host はすべての drive が効いたと思う。
 
@@ -239,11 +294,13 @@ registry は u8 の enum ごとにこの範囲を書く。0xF0 を超える今�
 
 ### C-06 ★ host の待ち時間に遅い口の転送時間を入れる
 
+**状態: 合意.**
+
 **問題。** 115200 bps の UART bridge で max_frame 4096 の利用者が、大きな応答の返る要求を送る。応答だけで線に約 0.36 s かかる。その前に、送り待ちの通知が max_frame の 2 つぶんまで並びうる（§11.4）。パイプラインでは前の応答も先に来る。「引数 + 1000 ms」ちょうどで待つ host は、正しい応答を時間切れにして送り直す。口が遅いほど悪くなる。
 
 **案の文**（core §4.4。「host の待ち時間」と差し替える）:
 
-> - **host の待ち時間**: 応答が無いことは時間切れでだけ決める（§3.1）。host は要求ごとに**少なくとも**次の時間を待つ: 要求の引数で決まる時間（run の timeout_ms、reset の hold_ms、dmi の待ちの和、save など。無ければ 0。多くて max_op_ms）+ 1000 ms（`host_wait_add_ms`）+ 転送の時間。待ちは、要求を書き終えた時から数える。同じ経路で前の要求が未解決のあいだは、その 1 つ前の要求の応答が届いた時から数える（probe は順に答える）。転送の時間は、UART bridge でなければ 0。UART bridge では (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒。L はその要求のフレームの線の上の長さ、baud は口の今の速さ。host はもっと長く待ってよい。待ち時間が過ぎたら §5.2 の送り直しに進む。
+> - **host の待ち時間**: 応答が無いことは時間切れでだけ決める（§3.1）。host は要求ごとに**少なくとも**次の時間を待つ: 要求の引数で決まる時間（run の timeout_ms、reset の hold_ms、dmi の待ちの和、save など。attach は `attach_budget_ms` にその reset TLV の hold_ms を足したもの。scan は `scan_budget_ms` + `attach_budget_ms`（debug §1）。無ければ 0。多くて max_op_ms）+ 1000 ms（`host_wait_add_ms`）+ 転送の時間。待ちは、要求を書き終えた時から数える。同じ経路で前の要求が未解決のあいだは、その 1 つ前の要求の応答が届いた時から数える（probe は順に答える）。転送の時間は、UART bridge でなければ 0。UART bridge では (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒。L はその要求のフレームの線の上の長さ、baud は口の今の速さ。host はもっと長く待ってよい。待ち時間が過ぎたら §5.2 の送り直しに進む。
 
 core §7.5 max_op_ms の「host はこの値に線を通る時間を足した値以上を待つ（§4.4）」は「host は §4.4 のとおりに待つ」にする。
 
@@ -256,28 +313,43 @@ core §7.5 max_op_ms の「host はこの値に線を通る時間を足した値
 **今。**
 - Python: 応答ごとの期限をその応答を読む時に取るので、実際には前の応答から数えている。待ちは `max(口の timeout, expected + 0.5 s)` で、口の timeout は 3 s（TCP は 15 s）。max_op_ms + 1000 ms で止めていない。
 - JS: 3 s。
-- Rust: 未確認。
+- Rust: 決まった 3 s。長い要求では下限より短くなりうる。ch32rv は要求ごとに計算するようにする。
+
+**答え。** WireSkein と ch32rv は賛成、bench は OK。P2-★4 の attach の上限が host の待ちと同じ時に切れないよう、scan と attach の上限を引数の時間に足した。
 
 **Q5.** この式を下限にして（host はもっと長く待ってよい）よいか。勧め: そうする。直したいのは短すぎる待ち。
 
 ### P2-★4 ★ 線の再試行、線切れ、attach に、host の待ちに合う時間の上限を付ける
 
+**状態: 条件付き合意** — bench が凍結前に cold attach を 1 回 1000 ms の予算に対して測る（未了）.
+
 **問題。** host が、線の不安定な target に dmi（引数の時間が無いので 1000 ms 待つ）を送る。probe が「1000 ms 答えが無い」を 1 つの要求の中で当てると、probe の答えと host の時間切れが同じ時になり、後ろに並んだ要求は先に時間切れになる。reset の解放の後の時間と、attach の速さの探索には、上限がまったく無い。
 
 **案の文**（debug §2。「線は ……1000 ms 続けて応答が無いとき失われた」の項と差し替える）:
 
-> - **1 つの要求の中の再試行**: probe が 1 つの要求の中で線の再試行に使う時間は多くて 200 ms（registry `limits.wire_retry_ms`）。遅い速さでの再試行も含む。使い切ったら、その要求を status line で終える。それだけでは線切れと決めない。
+> - **1 つの要求の中の再試行**: probe が 1 つの要求の中で線の再試行に使う時間は多くて 200 ms（registry `limits.wire_retry_ms`）。遅い速さでの再試行も含む。使い切ったら、その要求を status line で終える。それだけでは線切れと決めない。attach の速さの探索（と scan の 1 組の試し）は、代わりに §1 の attach の上限で止める。
 > - **線切れ**: ある connection の op が、線から答えの無い失敗（status line。要求の中でも、コンソールの読みの中でも）を、間に成功を挟まずに**実時間で 1000 ms** 続けたとき（`limits.wire_lost_ms`）、線は失われた。probe が reset を出している間、reset の線を持っている間（plan、attach の reset TLV）、それを放してから 1000 ms は数えない。要求の中で線切れと決めたら、その要求を status line で返してから、connection を閉じる。
 
 debug §1、scan の上限の後ろに足す:
 
-> - **attach の上限**: 1 回の attach の応答に probe が使う時間は多くて 500 ms。速さの探索を含み、reset TLV の hold_ms は含まない。その中で使える速さが無ければ、completed failed、status line。scan と attach の 500 ms は min(500 ms, max_op_ms)。
+> - **attach の上限**: 1 回の attach の応答に probe が使う時間は多くて 1000 ms（registry `limits.attach_budget_ms`）。速さの探索とその再試行を含み、reset TLV の hold_ms は含まない。その中で使える速さが無ければ、completed failed、status line。
+> - **scan の上限**: probe は、scan の要求が着いてから 500 ms（`limits.scan_budget_ms`）より後には新しい組を始めない（今と同じく、少なくとも 1 組は試す）。1 組の試しは attach の上限で止まる。だから 1 回の scan の応答は多くて `scan_budget_ms` + `attach_budget_ms`。
+> - どちらの上限も max_op_ms を超えない。host の待ちは、これらを引数の時間に数える（core §4.4、C-06）。
+
+attach の応答に、どの線にも足す（registry `[interface.tlv.attach_answer] search_retries = 0x12`）:
+
+> TLV 0x12 search_retries（u16、任意）: speed_hz の速さを確かめるまでに、速さの探索で失敗した試しの数（0 = 最初の試しで通った。0xFFFF = 65535 以上）。host は記録に残して、失敗しかけている線を見つけてよい。
+
+時間の数の釣り合い: 要求ごとの再試行（200 ms）< scan の上限（500 ms）< attach の上限（1000 ms）= 線切れと決める答えの無い時間（要求をまたいで実時間で 1000 ms）= host_wait_add_ms。attach と scan の host の待ちは、それぞれの上限を host_wait_add_ms に足すので、どの上限も host の待ちと同じ時には切れない。
+
+**測定（bench、2026-10-02）。** RP2350 の probe（0.0.28）が RVSWD で L103 の target に attach、`max_speed` 1 MHz、0.2 s おきに温まった状態の attach を 16 回、2 回まわした: 通ったものはふつう 210 ms、遅いものは 240〜550 ms。速さはいつも約 679 kHz に落ち着いた。2 回目は 10 回のうち 4 回が 515〜739 ms の後に completed failed で終わった。500 ms の上限では通る attach を途中で切ってしまう。1000 ms なら、測ったすべての attach（通ったものも失敗したものも）が収まる。cold attach（target が最初の起こしを無視し、速さの探索に再試行が要った）はまだ測っていない。target の電源を入れ直す必要があり、bench が利用者に頼んでいる。
 
 **変わること。**
 - probe:
   - PHY の再試行に時間の枠を付ける（今は回数で止めている: RvswdPhy は 200 回と、多くて 14 回の立ち上げ。SwioPhy は 4 回）。
   - connection ごとに「失敗が始まった時刻」を持つ。今の `failure()`（OepTarget.cpp:562-570）は、1 つの要求の中で DMSTATUS を 3 回読んで（約 3 ms）線切れにしている。
   - attach に枠を付ける（今は回数だけ）。
+  - attach の応答に `search_retries` を付ける（任意）。
   - コンソールはすでに実時間の 1000 ms（`kLostMs`）。
 - fake: なし（時間の模型が無い）。
 - host: status line がいつも「connection が閉じた」を意味するわけではなくなる。本文がすでに言うとおり、host は connections で確かめる。
@@ -286,7 +358,11 @@ debug §1、scan の上限の後ろに足す:
 
 **Q6.** 要求ごとの 200 ms と実時間の 1000 ms でよいか。「status line ⇒ connection が無くなった」に頼っている host はあるか。勧め: 両方の数を採る。ch32rv と bench: reset の後にもっと長い上限の要る target があれば教えてほしい。
 
+**答え。** WireSkein は OK。ch32rv と bench: 「status line ⇒ connection が無くなった」に頼る host は無い。bench が attach を測った（上）。500 ms では小さすぎるので attach の上限を 1000 ms にし、再試行の数を attach の応答の TLV にという bench の案を `search_retries` にした。まだ満たすべき条件: 凍結の前に bench が cold attach を 1 回、1000 ms に対して測る。
+
 ### P2-○3 ○ dmi: max_op_ms に数えるのは時間で決まる待ちだけ
+
+**状態: 合意.**
 
 **問題。** 「待ち（0x04 の us、0x03 / 0x05 の上限）の和」には 0x03 が入っているが、0x03 の上限は読む回数で、時間が無い。host と probe が同じ和を計算できない。
 
@@ -302,6 +378,8 @@ debug §1、scan の上限の後ろに足す:
 ## 4. 経路
 
 ### C-07 ★ TCP、長すぎる length、立て直しの待ち
+
+**状態: 合意.**
 
 **問題。**
 1. トンネルや Wi-Fi では、TCP のフレームの途中で 200 ms 止まることはふつうにある。そこで読みをやり直す probe は、フレームの残りを新しい length として読み、流れを失ったままになる。
@@ -332,6 +410,8 @@ core §5.1 に足す:
 
 ### C-08 ★ 上限は経路ごと
 
+**状態: 合意.**
+
 **問題。** CDC で見張る host（ロックなしの describe、リンクの試験）と、vendor bulk でセッションを持つ host は、互いを知らない。window と max_inflight が probe 全体で 1 つなら、見張る側が使い切ってしまい、セッションの側の要求は断られるか失われる。どちらの host にも避けようが無い。
 
 **案の文**（core §4.4 に足す）:
@@ -341,6 +421,8 @@ core §5.1 に足す:
 **変わること:** 今のコードにはなし。**今:** probe: すべての経路で `Limits` を 1 つ共有する。window と max_inflight は知らせるだけで守らせていない。要求は `poll()` の中で 1 つずつ処理し、経路ごとに読み手がある。fake: 同じ値で、守らせていない。
 
 ### C-09 ★ UART bridge の線、line coding、DTR / RTS
+
+**状態: 合意.**
 
 **問題。** 本文だけを読んで書いた host は、知らない probe の UART bridge を開けない。「起動時の速さはボードの profile が決める」とあり、データビット、パリティ、ストップビット、流れの制御は規範のどこにも無い。115200 の決定はガイドにしか無い。USB スタックによっては、DTR が下りている間 CDC の口の出力を止め、firmware がそれを変えられるとは限らない。
 
@@ -364,6 +446,8 @@ core §3.5 の「起動時の速さ: ボードの profile が決める口の速�
 
 ### C-05 ★ confirm は、どの経路で来たかを言う
 
+**状態: 未決** — ch32rv の問いに答える TCP 端点の規則を今回加えた。ch32rv の確認待ち.
+
 **問題。** port_speed の `port` は「この要求の来た口」でなければならないが、host はその index を知る方法が無い。UART bridge が 2 つある probe では、参照の host は最初の 1 つを選ぶので、2 つ目からは速さを上げられない。
 
 **案の文**（core §7.1）:
@@ -373,6 +457,13 @@ core §3.5 の「起動時の速さ: ボードの profile が決める口の速�
 
 core §3.5: 「port: この要求の来た経路の index（confirm の応答の TLV transport）」。registry に `[interface.tlv.confirm_answer] transport = 0x01` を足す。応答は 22 byte から 25 byte になり、64 に収まる。
 
+**ch32rv の問い（TCP の broker はどの index を言うか）に答えて足す。** core §3.1、TCP の項の後ろ（「broker は host の実装で、この仕様の外」も差し替える）:
+
+> - **OEP の要求に自分で答える端点は probe である**。何で運ばれていても、後ろに何があっても（たとえば TCP で OEP を出し、別の debugger を動かすプログラム）。probe の規則はすべて当てはまる。要求を OEP の probe へ中継するだけの broker は、その probe に対しては host である。
+> - **TCP の経路**: TCP で listen する probe は、listen している socket を 1 つずつ、fn 0 の describe に 1 つの経路として並べる（kind 6、interface 0xFF）。その socket で受けたどの接続も、confirm の TLV transport にその index を入れる。§3.3、§4.4、§7.1、§11.4 が経路ごとに当てる規則（セッションの 0x81 の要求は 1 つの経路、max_frame / window / max_inflight、使っている revision、通知の行き先）は、受けた接続ごとに別々に当てる。
+
+だから TLV transport はいつも、同じ接続で返る fn 0 の describe の中の 1 つを指す。port_speed（UART bridge、§3.5）と bind（シリアルポート、probe-config §1.2）が TCP の index を取ることは無く、その断り方は変わらない。
+
 **変わること。**
 - probe、fake: TLV を足す。fake は経路の並びを TLV の順で作り、index の byte を見ていない（endpoint.py:454-455）。これも直す。
 - Python（`_speed_port`、link.py:1275）と JS（`speedPort`、speed.js:162）: TLV を使う。
@@ -381,11 +472,15 @@ core §3.5: 「port: この要求の来た経路の index（confirm の応答の
 
 **Q9.** confirm の TLV（勧め）か、「この口」を表す `port = 0xFF` か。TLV なら、probe.config の bind に要る index も host に渡せる（PC-8）。
 
+**答え。** bench と WireSkein: 異議なし。ch32rv（broker_wch.rs の変更）は、TCP の broker がどの index を言うか分からないと答えた。上の TCP の端点の規則がそれに答える。ch32rv がこの規則を確かめるまで未決。
+
 ---
 
 ## 5. revision の範囲
 
 ### C-15 ★ プロトコルの revision が何に効くか
+
+**状態: 合意.**
 
 **問題。** revision 2 の host は、revision 1 の probe に安全に話しかけられない。confirm そのものが変わらないこと、選んだ revision が何に効くか、断りに何を付けるかが書いていない。
 
@@ -401,6 +496,9 @@ core §3.5: 「port: この要求の来た経路の index（confirm の応答の
 - fake: 同じ。
 - Python: 口が自分で送る confirm（立て直し、`confirm_raw`、link.py:422、550）は 0..0xFF を送っている。後の probe に対してはセッションの途中で revision が変わってしまうので、使っている revision を送るようにする。
 - JS: 未確認。
+- Rust: 立て直しの confirm は今 0..0xFF を送る。ch32rv はどこでも使っている revision を送るようにする。
+
+TCP では「経路」は受けた接続の 1 つずつ（C-05）。
 
 **今:** どちらの側も revision 1 しか知らないので、まだ何も壊れない。
 
@@ -411,6 +509,8 @@ core §3.5: 「port: この要求の来た経路の index（confirm の応答の
 ## 6. 電気の安全
 
 ### P2-★1 ★ scan の count = 0 は、設定が受け持った channel を駆動しない
+
+**状態: 合意.**
 
 **問題。** 利用者が target の電源を切り替えるピンに、出力 high の idle の項目を保存する。後で別の host が、知らない治具で count = 0 の scan をする。そのピンは plan にも connection にも「持たれて」いないので、probe はそれを SWCLK や SWDIO として駆動する。target の電源が入り切りするか、出力どうしがぶつかる。
 
@@ -438,7 +538,11 @@ registry に `holder_kind.settings_idle = 7` を足す。
 
 **Q11.** idle の項目のある channel をすべて count = 0 から外し、出力の idle の channel を明示されたら断ってよいか。勧め: そうする。点検は label の付いた channel も外す案だったが、外した。利用者は scan したい debug のピンにこそ label を付けるから。
 
+**答え。** そうする（bench: その治具は DUT の RX の線にだけ idle を置く。ch32rv: 賛成。その host は自分で count = 0 を送るので、idle の項目のある治具では見つかるピンが減る）。
+
 ### P2-★2 ★ spi-target は CS が有効な間だけ MISO を駆動する
+
+**状態: 合意.**
 
 **問題。** 多くの DUT は 1 本の SPI のバスを複数の target で共有する。「MISO は tx の外では 0」は「MISO をずっと low に駆動する」と読める。選ばれていない target が MISO を駆動すると、選ばれた target とぶつかる。
 
@@ -446,11 +550,19 @@ registry に `holder_kind.settings_idle = 7` を足す。
 
 > - **configure から plan を放すまで、probe は CS が有効な間だけ MISO を駆動する。** CS が無効な間は MISO を駆動しない（pull の無い入力）。「MISO は tx の外では 0」は、CS が有効な間の転送のビットのこと。SCK、MOSI、CS はいつも入力。configure の前は、channel は空きの状態を保つ（P2-○13）。
 
-**変わること:** probe: SPI のペリフェラルによる。CS が high の間も MISO を駆動するペリフェラルなら、firmware が CS に合わせて MISO の出力を切り替える必要がある。未確認: probe は MISO を ESP-IDF の spi_slave の driver に渡している（OepP4SpiTarget.cpp:69-87）。fake: なし（電気の模型が無い）。
+**変わること:** probe: SPI のペリフェラルによる。CS が high の間も MISO を駆動するペリフェラルなら、firmware が CS に合わせて MISO の出力を切り替える必要がある。ESP32-P4 の build（ESP-IDF の spi_slave、OepP4SpiTarget.cpp:69-87）は規則を満たす。classic の SPI slave の build は満たさない（下の bench の測定）。fake: なし（電気の模型が無い）。
 
 **Q12（bench）.** あなたの spi-target のハードは、CS が high の間 MISO を駆動しないか。1 回測ってほしい。勧め: 選択肢の無い規則にする。それができない probe は、バスにつないで安全な SPI target ではない。
 
+**答え。** 選択肢の無い規則にする（bench の答え。ch32rv と WireSkein は異議なし）。**測定（bench、2026-10-02）:**
+- X035 の治具の probe（ESP32-P4、ESP-IDF の spi_slave）: どの状態でも MISO を駆動しない。規則を満たす。
+- V003 の治具の probe（classic の SPI slave の build、d4f6293）: configure の前と放した後は MISO を駆動しないが、configure から後は **CS が high の間 MISO を low に駆動する**（configure した、armed、CS を一巡した後、armed し直した）。規則を満たさず、直している。firmware が CS に合わせて MISO の出力を切り替える必要がある。bench は次の build で試験をもう一度まわす。
+
+だから「壊す」の欄は「はい（1 つの probe の build）」になる。
+
 ### P2-★3 ★ i2c-target はオープンドレインだけ。内蔵のプルアップは宣言する
+
+**状態: 合意.**
 
 **問題。**
 - SDA / SCL を push-pull で駆動する probe は controller と短絡する。
@@ -467,7 +579,11 @@ registry に `holder_kind.settings_idle = 7` を足す。
 
 **Q13.** プルアップを宣言する（勧め）か、点検の案のとおり内蔵のプルアップを禁じるか。禁じると、外付けのプルアップの無い bench の治具が動かなくなる。宣言なら host が利用者に伝えられる。
 
+**答え。** 宣言する（bench: X035 の治具は内蔵のプルアップに頼り、V003 の治具には 2.2 kΩ の外付けがある）。内蔵のプルアップは禁じない。
+
 ### P2-○13 ○ plan を取ってもピンは変わらない。ロジックのキャプチャは聞くだけ
+
+**状態: 合意.**
 
 **問題。** 利用者の出力の idle が target に電源を出している。そのピンを見るためにロジックの plan を取る。probe がそのピンを入力に替えれば、target の電源が切れる。本文にはそれを止める文が無い。
 
@@ -483,11 +599,15 @@ registry に `holder_kind.settings_idle = 7` を足す。
 
 **Q14.** 使っているキャプチャのペリフェラルは、どれも向きを変えずにピンを読めるか。勧め: 規則にする。見ているピンを変えるキャプチャは、見ている回路を壊す。
 
+**答え。** 規則にする（WireSkein: 電源を入れる試験にこれが要る）。
+
 ---
 
 ## 7. debug の線の一般化
 
 ### P2-★5 ★ 宣言が許さない組 → unsupported
+
+**状態: 合意.**
 
 **問題。** debug §1 は、宣言に無いピンの組を unavailable で断る。core §4.3 の順 6、plan_apply、probe.config は、同じ誤りを unsupported で断る。host は 2 つの理由を受けうる。
 
@@ -504,6 +624,8 @@ registry に `holder_kind.settings_idle = 7` を足す。
 
 ### P2-★7 ★ どの線にも共通のことと、新しい線が定めること
 
+**状態: 未決** — ch32rv の問いに答える「ピンを持たない線」を今回加えた。ch32rv の確認待ち.
+
 **問題。** 第三者が最初に持ち込むのは、たぶん RISC-V の JTAG DTM、cJTAG、ARM の JTAG-DP。「すべての線」の規則は swdio / swclk、DMSTATUS、2 本のピンの固定部分で書かれている。新しい線にどの規則が効くのか、4〜5 本の線がピンをどう書くのかが分からない。
 
 **案の文**（debug、§1 の前に新しい §0）:
@@ -511,11 +633,17 @@ registry に `holder_kind.settings_idle = 7` を足す。
 > ## 0. どの線にも共通のことと、新しい線が定めること
 >
 > どの `oep.wire.*` のインターフェースも:
-> 1. op 0x01 scan、0x02 attach、0x03 detach、0x05 connections を §1〜§2.1 の意味で使う（線は 0x06 から op を足してよい）。
-> 2. §1（書く前に読みで速さを確かめる、count = 0 と外すもの、席と max_connections、500 ms の上限、断り方）と §2（寿命、線切れ、状態機械、閉じても target を変えない）に従う。swdio / swclk は「ピンの role 1 / 2 の channel」と読み替える。
+> 1. op 0x01 scan、0x02 attach、0x03 detach、0x05 connections を §1〜§2.1 の意味で使う（線は 0x06 から op を足してよい）。attach、detach、connections はどの線にも要る。scan は、ピンの組を宣言する線（channel_group か role_channels）に要る。
+> 2. §1（書く前に読みで速さを確かめる、count = 0 と外すもの、席と max_connections、scan と attach の上限、断り方）と §2（寿命、線切れ、状態機械、閉じても target を変えない）に従う。swdio / swclk は「ピンの role 1 / 2 の channel」と読み替える。
 > 3. `oep.target.*` が使う common §2 の connection を作る。
 >
 > 組が 2 本のピンでない線は、自分の文書で、pins の TLV、scan の entry、connections の entry を、2 つの u16 の欄の代わりに `n(u8), n × (role(u8), channel(u16))` で書く。ほかの欄とその順は変えない。
+>
+> **ピンを持たない線。** channel_group も role_channels も宣言しない線（そのピンがこの probe の channel でない。たとえば別の debugger を動かす TCP の端点）は、組をちょうど 1 つ、端点が使う組を持つ:
+> - attach は pins なしで送る。pins の TLV は、宣言が許さないほかの組と同じく rejected unsupported（受け取ったままの tag。P2-★5）。
+> - scan は任意。持たなければ probe は unknown_operation と答える（C-10）。持つなら、count = 0 はその 1 組を試し、組を並べた要求は rejected unsupported。
+> - connections の entry と scan の entry は、どの channel にも 0xFFFF を入れる（`n × (role, channel)` の形では n = 0）。
+> - P2-★1 と §1 のピンの規則には当てるものが無い。
 >
 > 新しい線の文書は、ほかに次も定める:
 > - ピンの role と、速さの選び方。
@@ -531,7 +659,11 @@ probe.config §1.1 に足す:
 
 **Q15.** 2 本でない線のための `n × (role, channel)` の形を、今決めてよいか。勧め: 決める。決めないと、新しい線ごとに形を作り、host はそれぞれを特別に扱うことになる。
 
+**答え。** bench と WireSkein: 異議なし。ch32rv は分からないと答えた: どの線も scan と connections を持たなければならないなら、WCH の broker は両方が要る。答え: 上の「ピンを持たない線」。connections はどこでも要る（host は status line の後にこれで確かめる、P2-★4。端点はいつも自分の connection を知っている）。scan は、探すピンが無いところでだけ任意。ch32rv が確かめるまで未決。
+
 ### P2-○1 ○ 「見つかった」は DMSTATUS.version ≥ 2 かつ ≠ 15。op も同じ
+
+**状態: 合意.**
 
 **問題。** debug の仕様の後の版（version 4 以降）の RISC-V の DM を「無い」と答える。さらに悪いことに、参照の probe は version 3 の DM（1.0。WCH 以外の RISC-V の多く）を見つけるのに、止まったと見ることが無い。
 
@@ -546,6 +678,8 @@ debug §4 に足す:
 **変わること:** probe: `Ch32Dm::probe`（OepCh32Dm.cpp:41-46）は 2 か 3 を求める。`checkHalted`（:79）、halt の近道（:145）、`resetHalt`（:451）、コンソール（OepDmConsole.cpp:48）は、ちょうど 2 を求める。fake: 確かめていない（検査が無い）。
 
 ### P2-○4 ○ halt / step が失敗したとき target に何を残すか
+
+**状態: 合意.**
 
 **問題。** モーターを動かしている target で、host の step が時間切れになる。dcsr.step は立ったままで、次に何かが resume したとき 1 命令で止まるのか。haltreq は立ったままで、後で止まるのか。不変条件の表は「dcsr.step を下ろす」と書くが、走っている hart ではそれができない。
 
@@ -562,6 +696,8 @@ registry に `[interface.tlv.step_answer] step_left = 0x01` を足す。
 
 ### P2-○6 ○ コンソールの規則: どの mechanism にもと、DATA0 の mechanism
 
+**状態: 合意.**
+
 **問題。** ARM のコンソール（MEM-AP で読むメモリのリング、semihosting、SWO）を新しい mechanism として足せない。「1 つの connection に生きているストリームは 1 つ（どれも DATA0 を使う）」「riscv-dm の要求の間は止める」「DMSTATUS は 20 ms ごと」が、インターフェース全体の規則として書かれている。
 
 **案の文。** console §2 には、どの mechanism にも効く規則を残す: 番号、open が既にある (connection, mechanism) のストリームを返すこと、同じ所での開き直し、寿命、close、閉じたストリームを読めること、write の意味、セッションにかかわらず吸い出すこと。足す:
@@ -576,6 +712,8 @@ console §3 の冒頭:
 
 ### P2-○5 ○ target_id_scheme は probe で 1 つの空間
 
+**状態: 合意.**
+
 **問題。** registry は scheme を線ごとに持っている。slot の錠は scheme の番号だけで比べるので、新しい線の「scheme 1」が rvswd のものとぶつかりうる。
 
 **案の文**（debug §1）: 「target_id の scheme の番号は probe 全体で 1 つの空間（registry `[common.enum.target_id_scheme]`: 1 その debug module の DMI 0x7F の u32、2 swd の targetsel）。線はどれを使うかを書く」。registry は enum を移す。番号とキーの `wch_dmi_7f` は変わらない。
@@ -587,6 +725,8 @@ console §3 の冒頭:
 ## 8. キャプチャ
 
 ### P2-★6 ★ モード、ストリーミングの決めごと、`background` を規範の文へ
+
+**状態: 合意.**
 
 **問題。** describe の mode の `background(u8)` は、意味も値も規範のどこにも無い。ストリーミングの決めごとは日本語の記録にしか無い。英語の読み手はキャプチャを実装できない。
 
@@ -628,17 +768,25 @@ capture §3.5 の mode の行:
 
 ### P2-○8 ○ configure のどの TLV を host が critical で送るか
 
+**状態: 条件付き合意** — WireSkein: samples は critical にせず、上限に丸め、答えの値を正とする（反映済み）.
+
 **問題。** host がストリーミングを持たない probe に、critical なしで mode = 3 を送る。probe はそれを無視してワンショットで configure する。host が ignored を見落とすと、違うモードで記録する。
 
 **案の文**（capture §3.3。表に「critical で送る」の列を足す）:
 
-> mode、rate、samples、trigger、pretrigger、frontend はいつも critical で送る。segments は critical なしで送ってよい。そのどれかに従えない probe は configure を断る（unsupported、受け取ったままの tag）。
+> - mode、rate、trigger、pretrigger、frontend はいつも critical で送る。そのどれかに従えない probe は configure を断る（unsupported、受け取ったままの tag）。
+> - rate を critical で送ったときの意味: probe は宣言した範囲の中でいちばん近い作れる値を使う（どれかは actual_rate が言う）。範囲の外の rate は unsupported。
+> - samples と segments は critical なしで送ってよい。probe が持てるより大きい samples はその上限に丸め、応答の actual_samples（0x52）を正とする。host は、送った値を当てにせず、actual_samples と actual_segments を読む。
 
-**変わること:** これらを critical なしで送る host は bit を立てる（WireSkein、Python の capture.py: 未確認）。probe、fake: なし。
+**変わること:** これらを critical なしで送る host は bit を立てる（WireSkein は mode を critical で送る。Python の capture.py: 未確認）。probe: samples を上限に丸めて actual_samples で言う（今そうしているかは未確認）。fake: 未確認。
 
 **Q18（WireSkein）.** この並びは記録の道具に合っているか。勧め: これでよい。
 
+**答え。** WireSkein: mode、trigger、pretrigger、frontend の critical はよい。rate の critical も上の意味ならよい。samples には 2 つの形を出した: critical にして、上限を超える samples を max_samples つきの unsupported で断るか、critical にせず上限に丸めて応答を正とするか。WireSkein は後者を勧め、それを採った（初版は samples を critical にしていた）。
+
 ### P2-○9 ○ blocking_ms の間
+
+**状態: 合意.**
 
 **案の文**（capture §3.2。「blocking の間は lease を数えない」と差し替える）:
 
@@ -647,6 +795,8 @@ capture §3.5 の mode の行:
 **変わること:** なし。今は止まる probe が無い（どれも background = 1）。Python は blocking_ms を start の要求の expect_ms に渡しているが、害は無い。
 
 ### P2-○10 ○ capture-group の状態の表
+
+**状態: 合意.**
 
 **案の文**（capture §4.1 に足す）:
 
@@ -660,6 +810,8 @@ capture §3.5 の mode の行:
 
 ### P2-○11 ○ 位置つきの read: 書き込み位置より先、量、from 3
 
+**状態: 合意.**
+
 **案の文**（common §1.2 に足す）:
 
 > - 求めた位置（from 0）が書き込み位置より先なら、応答は start = 書き込み位置、len 0、flags 0。
@@ -671,6 +823,8 @@ capture §3.5 の mode の行:
 
 ### P2-○15 ○ analog の trigger の enum
 
+**状態: 合意.**
+
 **案の文:** registry の `oep.fixture.analog` の `[interface.enum.trigger]` から level = 1 と edge = 2 を外す。本文はすでに 1〜2 をロジック用と書いている。**変わること:** 生成物の定数が消える。**今:** probe は 0 / 3 / 4 だけを宣言し（OepAnalog.cpp:98）、1 / 2 は断る。
 
 ---
@@ -678,6 +832,8 @@ capture §3.5 の mode の行:
 ## 9. probe-config
 
 ### PC-1 ○ 線の名前を firmware の固定の label からも探す
+
+**状態: 合意.**
 
 **問題。** いちばん多い利用者は、リセットのピンが基板で決まった市販の probe を使う。その firmware は、そのピンを describe の 0x46 の label でしか名乗れない。今は、利用者が設定の label を置くまで boot_reset は何もせず、host は規範の手段でリセットの線を見つけられない。
 
@@ -698,7 +854,11 @@ capture §3.5 の mode の行:
 
 **Q19.** firmware の label を (c) にする（勧め）か、fn 0 に新しい tag `line(channel, name)` を足すか。新しい tag は label と重なる。
 
+**答え。** (c) にする（bench は歓迎。ch32rv は賛成し、自分の host にもこの段を足す）。
+
 ### PC-2 ○ 表に無い名前、標準の名前と独自の名前
+
+**状態: 合意.**
 
 **案の文**（probe-config §1.3 に足す）:
 
@@ -707,6 +867,8 @@ capture §3.5 の mode の行:
 **変わること:** なし。**今:** 名前を確かめる実装は無い。probe が使うのは `nrst` だけ。
 
 ### PC-3 ○ channel に無い pull の idle → unsupported
+
+**状態: 合意.**
 
 **案の文**（probe-config §1 の idle と、断り方の表の unsupported の行）:
 
@@ -718,7 +880,11 @@ capture §3.5 の mode の行:
 
 **Q20.** そうした保存した設定が起動時に失敗するようになってよいか。勧め: よい。今は成功と答えて、ピンが浮いている。
 
+**答え。** よい（bench）。
+
 ### PC-4 ○ label / idle / disable の channel
+
+**状態: 合意.**
 
 **案の文**（probe-config §1、表の前）:
 
@@ -729,6 +895,8 @@ disable の「（idle と同じ）」はここを指すようにする。
 **変わること。** probe: 今は label の channel を確かめていない（OepConfig.cpp:250-252）。idle と disable はピンの表の許す組で確かめていて、それは残してよい。fake: label は未確認。保存した設定: 範囲の外の channel に保存した label は起動時に失敗する。
 
 ### PC-5 ○ label の text
+
+**状態: 合意.**
 
 **案の文**（probe-config §1 の label）:
 
@@ -742,6 +910,8 @@ disable の「（idle と同じ）」はここを指すようにする。
 
 ### PC-6 ○ get の応答（文言）
 
+**状態: 合意.**
+
 **案の文**（probe-config §2、get の行）:
 
 > answer: more(u8), hash(u32), payload の終わりまでの項目。tag 0x7E は応答のメタ情報のための予約で、v1 の probe は置かない。get は TLV を取らない（あれば rejected malformed、core §7.3）。
@@ -750,6 +920,8 @@ disable の「（idle と同じ）」はここを指すようにする。
 
 ### PC-7 △ 正規形（文言）
 
+**状態: 合意.**
+
 **案の文**（probe-config §2 の hash に足す）:
 
 > 正規形の tag は critical の bit を外したもの。キーは数として比べ、欄の複数あるキーは最初の欄から順に比べる。
@@ -757,6 +929,8 @@ disable の「（idle と同じ）」はここを指すようにする。
 試験ベクトル（項目、正規形の byte、hash）を `tests/` に置く。**変わること:** probe、fake、Python が一致していればなし（未確認）。
 
 ### PC-8 ○ firmware の版を越えた transport の index と、起動時の bind
+
+**状態: 合意.**
 
 **問題。** 利用者は配布元の firmware を更新し、bind を見直さない。USB の構成が変わると、保存した bind は黙って別の口を指す。
 
@@ -776,11 +950,15 @@ probe-config §2 に足す:
 
 **Q22.** index の不変（勧め）か、bind に transport の kind を一緒に持つか。不変なら、更新の後も bind がそのまま使える。kind の検査は食い違いを見つけるだけ。
 
+**答え。** index の不変（bench: そのファイルは bind の口を番号で持っている）。
+
 ---
 
 ## 10. 適合
 
 ### C-10 ★ 規範の語と、どの probe と host も持つもの（O-14、O-15 を含む）
+
+**状態: 合意.**
 
 **問題。** probe がどの core の op に答えなければならないか（link_source は？ピンの無い probe の plan_apply は？）、最小の host が何をしなければならないかを、1 か所で知れない。英語版は現在形と小文字の may / preferably で書かれ、どれが要求かを言っていない。
 
@@ -819,13 +997,23 @@ core §12 の表に「必須」の列（はい / plan の role があれば / �
 
 ### C-16 ○ rejected の応答も送り直しの表に覚える
 
+**状態: 未決** — ch32rv の問いに答える TCP 端点と中継の段落を今回加えた。ch32rv の確認待ち.
+
 **案の文**（core §5.2 に足す）:
 
 > probe は、§4.3 の順 2 を過ぎた最後のセッションのすべての要求の応答を、rejected も含めて覚え、それで最も新しい corr を進める。rejected を受けた要求を直して送る host は、新しい corr を使う。
 
-**変わること:** probe はすべての応答を覚えているので、なし（OepEndpoint.cpp:450-463）。fake: 未確認。
+**ch32rv の問い（§5.2 は broker のような TCP の端点を縛るか）に答えて足す。** core §5.2 に足す:
+
+> §5.2 は、どの probe（C-05: OEP の要求に自分で答えるどの端点も）も、TCP を含むどの経路でも縛る。TCP はフレームを落とさないが、応答が遅れれば host は待ち（§4.4）の後に送り直すので、probe は要求を 2 回実行しないよう表を持つ。表は probe に 1 つで、セッションと同じく、すべての経路と TCP の接続が共有する。OEP の probe へ中継するだけの broker は自分の表を持たない。corr を付け直すなら、client の送り直しを、最初に使ったのと同じ corr で中継する。
+
+**変わること:** probe はすべての応答を覚えているので、なし（OepEndpoint.cpp:450-463）。fake: 未確認。WCH の broker のような TCP の端点は表を持つ。
+
+**答え。** bench と WireSkein: 異議なし。ch32rv は、§5.2 が TCP の端点を縛るか分からないと答えた。上の段落は「縛る」と答える。ch32rv が確かめるまで未決。
 
 ### C-17 ○ lease が数え直される時と、応答の lease_ms
+
+**状態: 合意.**
 
 **案の文。**
 
@@ -841,6 +1029,8 @@ core §6.4:
 
 ### C-18 ○ session_id。open は role 0x01 だけ
 
+**状態: 合意.**
+
 **問題。** どちらも固定の session_id（1 や、プロセスの名前のハッシュ）を使う 2 つの host は、互いのセッションを黙って再開する。
 
 **案の文**（core §6.1、§4.1）:
@@ -851,7 +1041,11 @@ core §6.4:
 
 **Q25（ch32rv）.** broker は session_id をどう選んでいるか。0x81 で open を送ることはあるか。
 
+**答え。** ch32rv: 0 でない乱数の session_id で、開き直しは同じ id。open はいつも 0x01 で送り、0x81 では送らない。適合している。
+
 ### C-22 ○ 真偽値と text
+
+**状態: 合意.**
 
 **問題。** owner はほかの利用者の端末に出る。host はそこに ANSI のエスケープを入れられる。
 
@@ -868,6 +1062,8 @@ core §6.4:
 **Q26.** probe の側で確かめる（勧め）か、host の側だけにするか。probe は、どの見る人の text も通るただ 1 つの場所。
 
 ### C-23 ○ 名前、model、chip の文法
+
+**状態: 合意.**
 
 **案の文。**
 
@@ -889,6 +1085,8 @@ core §7.5 の chip:
 
 ### C-24 ○ 固有の番号も保存も無い probe の unit_id
 
+**状態: 合意.**
+
 **案の文**（core §7.5。ビルドの定数の文と差し替える）:
 
 > 保存を持つが固有の番号を持たない probe は、最初の起動のときに乱数から unit_id を作って保存する。どちらも無い probe は `x-` で始まる unit_id（一意でない）を使う。host は `x-` で始まる unit_id で経路をまとめず、probe を名指すのにも使わない。
@@ -896,6 +1094,8 @@ core §7.5 の chip:
 **変わること:** probe は固有の番号の無いプラットフォームで unit_id を出さず（Oep.h:478）、「必須」に反している。`x-` の値を出すようにする。host: 検査が 1 つ。
 
 ### C-25 ○ 排他で開く、HID の output、WinUSB
+
+**状態: 合意.**
 
 **案の文**（core §3.3 に足す）:
 
@@ -909,6 +1109,8 @@ core §7.5 の chip:
 
 ### C-29 ○ registry のキーと hash
 
+**状態: 合意.**
+
 **案の文**（core §0、registry の文の後ろ）:
 
 > 凍結の後、registry のキー（したがって生成物の識別子）は名前を変えず、足すだけにする。REGISTRY_HASH は生成物が registry と合っているかを表すだけで、線の互換については何も言わない。仕様の値でないもの（max_op_ms_reference）は、凍結の外の `[reference]` の表に置く。
@@ -916,6 +1118,8 @@ core §7.5 の chip:
 **変わること:** 線の上ではなし。
 
 ### C-30 ○ instance は (name, revision) ごと
+
+**状態: 合意.**
 
 **案の文**（core §7.2。「同じ名前のものは fn の昇順に 0 から振る」と差し替える）:
 
@@ -925,15 +1129,21 @@ core §7.5 の chip:
 
 ### C-32 ○ port_speed: baud の誤差と verify_ms 0
 
+**状態: 条件付き合意** — ch32rv: verify_ms 0 を malformed にするのは step 0（try）だけ（反映済み）.
+
 **案の文**（core §3.5 の断り方）:
 
-> UART が作れるいちばん近い速さが要求と 2 % を超えて違えば rejected unsupported。応答の baud は実際に掛けた速さ。verify_ms 0 は rejected malformed。
+> UART が作れるいちばん近い速さが要求と 2 % を超えて違えば rejected unsupported。応答の baud は実際に掛けた速さ。step 0（try）の verify_ms 0 は rejected malformed。step 1（commit）と step 2（revert）では verify_ms に意味は無く、どの値も受ける。
 
-**変わること:** probe: 作れるかどうかはプラットフォームごとの処理が決める（その誤差は未確認）。verify_ms 0 は今は受けて、すぐに戻る。fake: 未確認。
+**変わること:** probe: 作れるかどうかはプラットフォームごとの処理が決める（その誤差は未確認）。try の verify_ms 0 は今は受けて、すぐに戻る。fake: 未確認。
+
+**答え。** ch32rv は commit と revert で verify_ms 0 を送る。その条件「malformed は step 0（try）だけ」を上に入れた。
 
 **Q29.** ±2 % でよいか。勧め: これでよい。両端が ±2 % なら、合わせても 8N1 の読み取りが許す範囲に入る。
 
 ### C-33 ○ ハートビートの下限
+
+**状態: 合意.**
 
 **案の文**（core §11.3）: 「probe は、100 ms より短いハートビートの周期を 100 ms に切り上げてよい」。
 **変わること:** 要るものはなし（probe に下限は無く、それでも適合する）。
@@ -945,6 +1155,8 @@ core §7.5 の chip:
 突き合わせたもの: `docs/target-console-dmseq.md`（cdd26b4）、`experiments/dm-console-seq/DmSeqTest/DmSeq.h`（2026-09-24 の実験）、出荷している target のライブラリ ArduinoCore-CH32RV の `libraries/SerialDMSeq`（このリポジトリの外）、probe の `src/OepDmConsole.cpp`。
 
 ### DS-1 ★ DATA0 = 0 は答えではない
+
+**状態: 合意.**
 
 **問題。** target の規則 1 では 0 の語は無効な答え（CRC が合わない）なので、target はすぐに出し直す。debugger の項は、target は 0 を沈黙と読み、時間切れまで待つと言う。2 つの実装も違う:
 - 実験は、読むたびにすぐ出し直す。
@@ -960,7 +1172,11 @@ debugger の項は DS-9 に合わせて変える。
 
 **Q30（ch32rv）.** 短い待ちごとに出し直す（勧め）か、すぐ（実験）か、出し直さない（時間切れの前のライブラリ）か。すぐ出し直すと、debugger のつながっていない target で読むたびに書き込みが 1 回要る（ライブラリの理由）。出し直さないと、debugger が DATA0 を消した後、コンソールが最大 1 s 止まる。
 
+**答え。** 短い待ちごとに出し直す、を採る。ch32rv もそれを好む: その host は bit 7 = 0（0 を含む）を「まだ何も無い」と読んで 2 ms ごとに読み、その DM の操作で DATA0 = 0 が残りうる。bench と WireSkein: 異議なし。DS-8 はこれに頼る。
+
 ### DS-2 ★ 持ち主の規則に target の例外を書く
+
+**状態: 合意.**
 
 **案の文**（郵便受けと持ち主。3 つの項と差し替える）:
 
@@ -975,6 +1191,8 @@ debugger の項は DS-9 に合わせて変える。
 
 ### DS-3 ★ 待ち時間は実時間の下限
 
+**状態: 合意.**
+
 **案の文**（時間切れ。「割り込みを止めていても待ちが終わるよう、時計でなくレジスタを読む回数で数える」と差し替える）:
 
 > 短い待ちは実時間で**少なくとも 20 ms**、長い待ちは**少なくとも 1 s**。target は、割り込みを止めていても終わる方法でそれを測る。「短い待ちごとに」（フレームを出し続けること、DS-1）も同じ測り方を使う。（参考）DATA0 を読む回数で数えるとき、参照の target は、読みの 1 回が少なくとも 8 cycle かかるとして、1 ms あたり F_CPU / 8000 回を使っている。
@@ -982,6 +1200,8 @@ debugger の項は DS-9 に合わせて変える。
 **変わること:** なし。host が頼るのは「1 秒に 1 回以上読む同期した host は何も失わない」だけ。
 
 ### DS-4 ★ byte の順
+
+**状態: 合意.**
 
 **案の文**（target のフレームに足す）:
 
@@ -991,13 +1211,19 @@ debugger の項は DS-9 に合わせて変える。
 
 ### DS-5 ○ 無効な語の数を何が 0 に戻すか
 
+**状態: 合意.**
+
 **案の文**（host の規則 1 に足す）:
 
-> host は、bit 7 = 1 の無効な語を読んだ読みが続いた数を数える。正しいフレームを読んだとき、この規則で答えた後、セッションを始めたときに 0 に戻す。bit 7 = 0 の語を読んだ読みでは数を変えない。
+> host は、bit 7 = 1 の無効な語（`0xffffffff` を含む）を読んだ読みが続いた数を数える。正しいフレームを読んだとき、この規則で答えた後、セッションを始めたときに 0 に戻す。bit 7 = 0 の語を読んだ読みでは数を変えない。規則 1 の答えは、host が同期している間だけ送る。同期していない間は、数は 3 で止まり（回り込まない）、host は答えない。次の正しいフレームで host は同期し、数は 0 に戻る。
 
-**変わること:** probe: 案のとおり（OepDmConsole.cpp:195-204）。ただし `start()` が `seq_bad_run_` を 0 に戻していないので、足す。
+**変わること:** probe: 案のとおり（OepDmConsole.cpp:195-204）。ただし `start()` が `seq_bad_run_` を 0 に戻していないので、足す。同期していない間に数が止まるかも確かめる（未確認）。
+
+**答え。** ch32rv は適合していて、その host の細部を答えた。上に入れた: 数は正しいフレーム、規則 1 の答えの後、セッションの始めに 0 に戻る。規則 1 の答えは同期しているときだけで、同期していない間は数が止まる。同期していない `0xffffffff` は残り物の数に入る。それは DS-8 の保険が使う数で、保険が無くなれば（DS-8）、その語は上の数の無効な語の 1 つになるだけ。
 
 ### DS-6 ○ begin() のときの target の状態
+
+**状態: 合意.**
 
 **案の文**（target のフレームに足す）:
 
@@ -1007,6 +1233,8 @@ debugger の項は DS-9 に合わせて変える。
 
 ### DS-7 ○ 「長く読んでも」
 
+**状態: 合意.**
+
 **案の文**（host の最後の項と差し替える）:
 
 > （参考）印字するか入力を見る target は、少なくとも「長い待ち + 短い待ち」ごとに 1 回フレームを出す。同期していない間に 3 s 正しいフレームを読まなかった host は、dmseq のコンソールが答えていないと利用者に伝えてよい。印字も読みもしない target は何も出さないので、これはコンソールが無いことの証にはならない。
@@ -1015,13 +1243,22 @@ debugger の項は DS-9 に合わせて変える。
 
 ### DS-8 ★ host の任意の保険を消す
 
+**状態: 条件付き合意** — ch32rv: DS-1 と同時にだけ削る（反映済み）.
+
 **問題。** 「同期していない host は `0xffffffff` を 3 回読んだら bit 7 = 0 の無効な語を書いてよい」の項は、規則 0 を持たない target のためにあり、規則 0 は必須。しかもこれは、bit 7 が 1 の間に、答えるためでない理由で host に書かせるただ 1 つの規則。
 
-**案の文:** 「host（任意）: ……」の項を消す。
+**案の文:** 「host（任意）: ……」の項を、**DS-1 と同じ変更で**消す。DS-1 より前には消さない。
 
-**変わること:** なし。そうした語を書く host は無い（probe に 0x7f7f7f7f の道は無い）。出荷しているライブラリは規則 0 を持つ（SerialDMSeq.cpp:127-141）。2026-09-24 の実験は持たないが、それは記録で、誰も出荷していない。
+**変わること。**
+- ch32rv: **その host はこの語を書いている**（初版を正す）。同期していない host が `0xffffffff` を 3 回読むと 0x7f7f7f7f を書く。WCH-Link の attach が、いくつかの target で DATA0 に ESIG の最後の語を残すため。target のライブラリが短い待ちごとに出し直すようになったら（DS-1）、ch32rv はこの書き込みをやめる。
+- probe: なし（0x7f7f7f7f の道は無い）。
+- target のライブラリ: DS-8 そのものではなし。規則 0 を持ち（SerialDMSeq.cpp:127-141）、DS-1 で短い待ちごとに出し直すようになる。2026-09-24 の実験はどちらも持たないが、それは記録で、誰も出荷していない。
+
+**答え。** ch32rv の条件: target がいつも出し直す（DS-1）ときだけ保険を消す。採った: DS-1 と DS-8 は一緒に入れる。
 
 ### DS-9 ○ dmactive を下ろすと DATA0 が 0 に戻る*ことがある*
+
+**状態: 合意.**
 
 **案の文**（debugger の項）:
 
@@ -1031,6 +1268,8 @@ debugger の項は DS-9 に合わせて変える。
 
 ### DS-10 ○ CRC-8 の確かめ値
 
+**状態: 合意.**
+
 **案の文**（CRC-8 に足す）:
 
 > 確かめ値: ASCII の 9 byte "123456789" → 0xFB。1 byte の 0x00 → 0xF3。
@@ -1038,6 +1277,8 @@ debugger の項は DS-9 に合わせて変える。
 **確かめた:** 多項式 0x07、初期値 0xFF、反転なし、最後の XOR なしの bit ごとの実装で、どちらの値も計算した。probe の `seqCrc8` やライブラリの 16 項目の表の形と同じ関数。DS-4 の例も同じ計算から出した。
 
 **Q31.** DS-3〜DS-10 はどれも線の上を変えない。ch32rv: host の側（自分で dmseq を読むなら）が DS-4 と DS-5 に合っているか確かめてほしい。
+
+**答え。** ch32rv: DS-4 に合っている。DS-5 も合っていて、細部は DS-5 に入れた。bench と WireSkein: 異議なし。
 
 ---
 
@@ -1069,3 +1310,4 @@ debugger の項は DS-9 に合わせて変える。
 | fake endpoint.py:454-455 | 経路の並びを TLV の順で作り、index の byte を見ない |
 | Python link.py:422、550 | 立て直しの confirm が範囲 0..0xFF を送る（C-15） |
 | JS link.js | 長さつきのフレームの口で、confirm による立て直しが無い（core §5.1） |
+| Rust（ch32rv。ch32rv の報告） | single_serial が、kind の byte を読まずに TLV transport の値を平らに読んでいた。ch32rv の手元で直した |
