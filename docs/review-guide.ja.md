@@ -51,7 +51,7 @@ flash の書き方やチップ固有の手順は host にある。
 | 10 | `docs/link-measurements.ja.md`、`docs/uart-speed-negotiation.ja.md`、`docs/logic-capture.ja.md` | **記録**（規範ではない）: USB とシリアルの経路の実測、UART の速さの実験と経緯、キャプチャの設計と実測。参考の数字の出どころ |
 | 11 | `docs/release-testing.ja.md` | リリース前の実機の試験: 誰が持つか、何を確かめるか |
 | 12 | `docs/session-and-exclusivity.ja.md`、`docs/capability-*.ja.md`（3 つ）、`docs/console-stream.ja.md`、`docs/target-connection-use-cases.ja.md`、`docs/probe-cdc-and-persistence.ja.md` | 決めた理由（セッションとロック、名前で探す方式、describe の語彙、ストリーム、target の発見、シリアルの口の共用と設定の保存） |
-| — | `docs/usb-identity.ja.md`、`docs/pid-codes-application/` | USB の識別と、pid.codes への申請の資料 |
+| — | `docs/usb-identity.ja.md` | USB の識別（core §3.3 の理由） |
 | 13 | `docs/v1-open-proposals.ja.md`、`docs/v1-freeze-review-2026-10-01.ja.md`、`docs/review-response-2026-09-26.ja.md`、`docs/review-answer-*.ja.md` | 案と決めた経緯、凍結前の全面見直し（59 項目、対応済み）、前回の第三者レビューへの対応表 |
 | — | `docs/hardware-source-review-2026-09-26.ja.md`、`docs/v1-operation-test-audit-2026-09-26.ja.md`、`docs/v1-open-issues-research-2026-09-26.ja.md` | 2026-09-26 版への 2 回目のレビューと、未決事項（IP、復旧）の事前調査。項目ごとの対応表は無い（凍結前の見直しと重なるものはそちらで扱った。IP と復旧は v1 の外） |
 | — | `docs/v1-core-wire-delta.ja.md` | 分ける前の v0 からの差分（経緯） |

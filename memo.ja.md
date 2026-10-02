@@ -42,9 +42,7 @@ E062のWindows 11観測により、初期の仮説は訂正された。正常に
 
 この結果は、任意layoutの互換性costが消えたことを意味しない。protocol capabilityは自由に変えられるが、外部に見えるUSB layoutには登録済みprofileまたは合成規則を設ける。
 
-### PID利用には割当元の了承と独立したgovernanceが必要である
-
-Openmokoとpid.codesを、MCU非依存なOSS向けPID割当候補として調査した。想定する利用範囲は一つのfirmware imageより広く、複数MCUへのportと、場合によっては独立した準拠実装が一つのproject identityを共有する。この範囲を約束する前に、割当元から明示的な了承を得る必要がある。
+### project VID:PIDの利用には別の規則が要る
 
 MIT Licenseはproject VID:PIDの利用を許可するものではない。将来の`PID-USE.md`で、利用資格、identity規則、source公開要件、適合性、USB profile、非準拠利用の扱いを別途定義する。serial、vendor ID、独自に割り当てられたIDを使う実装は、project PID規則へ同意しなくてもOEPを実装できるようにする。
 
@@ -78,7 +76,7 @@ USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準c
 8. 最初のUSB bootstrap profileとOSごとの発見方法
 9. optionalな標準class functionのUSB profile合成規則
 10. conformance levelとtestの管理主体
-11. PID割当元と、了承された複数実装での利用範囲
+11. 複数実装でのproject VID:PIDの利用範囲
 12. PID利用許可、review、version/profile互換性の方針
 13. captureのデータの持ち方の宣言。channelごとに並べる（planar）か、複数channelを同時に取った形のまま
     sampleごとに並べる（interleaved）か。probeは取得したときの形のまま送って詰め替えず、hostが詰め替える方が
@@ -160,7 +158,6 @@ USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準c
 9. 同じdraftを`oep-probe-arduino`と`oep-client-python`で実装する
 10. 単なる別board wrapperではなく独立した根拠になる段階で、二つ目の実装ecosystemを追加する
 11. conformance claimを定義し、`PID-USE.md`のdraftを作る
-12. 共通PIDを申請または利用可能と約束する前に、選択した割当元へ想定範囲を確認する
 
 ## 元資料の候補
 
@@ -169,8 +166,6 @@ USB Audio、Video、CDC、DFU等のclass functionは、内部serviceをOS標準c
 - [probe product concept](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/probe-product-concept.ja.md)
 - [Arduino probe protocol実現性](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/arduino-probe-protocol-feasibility.ja.md)
 - [probe実現性gate](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/probe-feasibility-gates.ja.md)
-- [PID取得roadmap](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/pid-acquisition-roadmap.ja.md)
-- [OSS USB PID申請調査](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/oss-usb-pid-application-report.ja.md)
 - [USB host descriptor persistence](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/usb-host-descriptor-persistence.ja.md)
 - [E062: 同一identityでのUSB layout変更](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/experiments/e062_usb_same_identity_layout_change/README.ja.md)
 - [ESP32-P4 logic analyzer調査](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/p4-logic-analyzer-investigation.ja.md)

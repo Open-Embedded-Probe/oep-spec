@@ -42,9 +42,7 @@ Windows 11 observations in experiment E062 corrected an earlier assumption: a su
 
 The design consequence is not that arbitrary layouts are free of compatibility cost. Protocol capabilities may vary freely, while externally visible USB layouts require registered profiles or composition rules.
 
-### PID use needs allocator approval and separate governance
-
-Openmoko and pid.codes were identified as possible MCU-independent OSS PID allocation routes. The intended use is broader than one firmware image: multiple MCU ports and potentially independent conforming implementations would share one project identity. Approval for that exact scope must be obtained before it is promised.
+### Project VID:PID use needs separate rules
 
 The MIT license does not grant permission to use a project VID:PID. A future `PID-USE.md` must separately define eligibility, identity rules, required source publication, conformance, USB profiles, and handling of non-compliant uses. Implementations must be usable with serial, vendor IDs, or independently assigned IDs without accepting the project PID rules.
 
@@ -78,7 +76,7 @@ The following decisions intentionally remain open:
 8. The first USB bootstrap profile and its discovery method on each OS.
 9. USB profile composition rules for optional standard-class functions.
 10. Conformance levels and test ownership.
-11. The exact PID allocator and approved multi-implementation usage scope.
+11. Project VID:PID usage scope across multiple implementations.
 12. PID authorization, review, and version/profile compatibility policy.
 13. How a capture declares its data layout: per channel (planar) or as sampled across channels (interleaved).
     Sending data in the form it was acquired and letting the host repack it probably keeps probes simpler
@@ -102,7 +100,6 @@ No numeric registry values should be assigned until the relevant namespace and l
 9. Implement the same draft in `oep-probe-arduino` and `oep-client-python`.
 10. Add a second implementation ecosystem only when it provides independent evidence rather than another board wrapper.
 11. Define conformance claims and draft `PID-USE.md`.
-12. Ask the selected allocator to confirm the intended scope before applying for or promising a shared PID.
 
 ## Candidate source material
 
@@ -111,8 +108,6 @@ The following files in `wch-protocols` are starting points, not specifications:
 - [Probe product concept](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/probe-product-concept.ja.md)
 - [Arduino probe protocol feasibility](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/arduino-probe-protocol-feasibility.ja.md)
 - [Probe feasibility gates](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/probe-feasibility-gates.ja.md)
-- [PID acquisition roadmap](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/pid-acquisition-roadmap.ja.md)
-- [Open-source USB PID application report](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/oss-usb-pid-application-report.ja.md)
 - [USB host descriptor persistence](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/usb-host-descriptor-persistence.ja.md)
 - [E062: USB layout changes with the same identity](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/experiments/e062_usb_same_identity_layout_change/README.ja.md)
 - [ESP32-P4 logic analyzer investigation](https://github.com/ch32-riscv-ug/wch-protocols/blob/main/references/p4-logic-analyzer-investigation.ja.md)
