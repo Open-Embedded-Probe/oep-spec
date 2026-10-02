@@ -223,6 +223,7 @@ SWCLK = GP0、SWDIO = GP1。SIO の bit-bang で half 500 ns。DPIDR 0x4c013477�
 
 | 項目 | 内容 | 出典 |
 |---|---|---|
+| classic ESP32 の SWIO のエッジの漏れ込み | 既定の出力の強さ（20 mA）の SWIO の線のエッジが隣の fixture の線に乗り、V003 治具で、SWIO でコンソールを読んでいる間、1 MHz の spi-target が bit を落とす・ずらす（64 B の 36 frame 中 23。失敗は中身違いの満数、または 10 bit 前後で CS の解除を見る）。スロットのコンソールを外すと 24/24、SWIO のピンを最弱（約 5 mA）にすると 72/72 で、線の速さは変わらない（read_block 64 語 36 ms）。配線は全ベンチでほぼ同じで、同じ配線の P4 治具は平気（classic の入力にはノイズのフィルタが無い）。UART bridge の損失（921600 で 0.4〜1.7 %）はこれと無関係で CH340 のもとからの分 | bench の実験 1〜4、dev-oep の実験 5〜6（10-02）、oep-probe-arduino d4f6293 |
 | P4 の GPIO の速さと SWIO | P4 の GPIO レジスタのアクセスは約 260 ns（94 cycles、`gpio_ll` では約 300 ns/access）で、SWIO の短パルス（250〜280 ns）と同じ長さ。classic ESP32 の書き方は使えず、dedicated GPIO（1 bit 94.5 ns）が要る | E151、E152、材料 10-02、oep-probe-arduino 272dd38 |
 | RVSWD の PHY: open-drain と push-pull | open-drain + 内部 pull-up は X035 で half 300 ns 以下で崩れる（上限約 1 MHz、`gpio_ll` では half 0 ns だけ崩れる）。push-pull + 明示の turnaround は half 0 ns まで全数一致（1 DMI read 10.1 µs） | E152、E153 |
 | half 0 ns の parity | half 0 ns の DMI read が run によって 6〜8 割 parity 不一致になることがある。reset 直後の attach では 31 % が half 0 で clean にならない | LEDGER `x035-dmi-parity-intermittent`、E159 |
