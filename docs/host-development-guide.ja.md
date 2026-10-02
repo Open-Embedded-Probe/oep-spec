@@ -149,12 +149,16 @@ UART bridge の probe は常に 115200 bps で開く（probe 側で固定、[pro
   偶然 0x0 に止まることはまず無いので、候補ごとに数回試し、一度でも 0x0 なら当たりとする（2026-09-24、CH32L103 の
   本物の NRST でも 10 回に 2 回外れた。原因は probe 側で、普通の attach で速度を詰めた後だと、リセット後の既定の
   クロックに対して速すぎた。直した後は 60 回中 59 回で、残る 1 回も 0x2 = 1 命令だけ進んだところ）。
-  - probe が許可していないチャンネルは rejected で返るので飛ばす。attach の失敗（completed / failed）は外れとして再試行する。
+  - probe が reset の線として許していないチャンネル（rejected unsupported）と、ほかが持っているチャンネル（その channel を名指しした
+    rejected unavailable）は飛ばす。ほかの断りはチャンネルではなくピンや線のことなので、探すのをやめる。attach の失敗
+    （completed / failed）は外れとして再試行する。
+  - 毎回の attach に pins を付ける。ピンを host が選ぶ線（role_channels）では、pins の無い attach はその線の唯一の生きた接続に
+    加わるだけで、接続が無ければ unavailable で断られる（§9.3）。
   - 当たりのあとは resume ではなく reset（走らせて確認）で、hart をベクタから確実に離す。ベクタに止まったまま残ると、次の
     外れの線でも dpc = ベクタと読めて、偽の当たりになる（2026-09-24、L103 で NRST の次の GP3 が当たった）。
   - 候補を一本ずつオープンドレインで low にする。治具の配線で low にしてはいけない線は候補から外す。
   - 実測: V003（ESP32、15 候補）で 1 回 0.7〜2.1 秒、L103（RP2350、8 候補）で約 3 秒。どちらも本物の線だけが当たった。
-  - oep-client-python: `Wire.find_reset_line(candidates)`。
+  - oep-client-python: `Wire.find_reset_line(candidates, pins=...)`。候補の出し方から通しては §9（`oep pins`）。
 - **SWD / SWIO を GPIO にしてしまったファームからの回復は、probe の中のモードを先に使う**（attach の reset TLV）。
   持たない probe（unsupported）では、`oep.fixture.gpio` の解放と attach を 1 回にまとめて送り、再試行する
   （`attach_after_gpio_reset`）。窓の縁での競争で、V003 では 5 回中 2 回届いた。解放の応答を待ってから attach を
@@ -395,3 +399,78 @@ label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分
   （最初の命令の前）で止まった**。電源を入れた応答から止まるまで約 15 ms。
 - `nrst` の channel に reset TLV を付けた attach: **6 回中 6 回、dpc 0 で止まった**。
 - 出力の idle を置いていない電源の channel で、gpio の plan を解いたら、target の電源が切れた（§8.2 の 5 の理由）。
+
+## 9. ピンの探し方（参考）
+
+規範ではない。配線の分からない target を、ピンを host が選ぶ probe（describe の role_channels）につないだときに、debug の線と
+リセットの線を探す手順。target ごとの落とし穴と実測は [対象ごとのスキャンの記録](target-scan-notes.ja.md) に集める。
+oep-client-python では `oep pins` がこの手順を行い、target の系統ごとの知識（線、target_id の照合、リセットのベクタ、option の
+読み方、max_speed / idle_clock）は 1 つの表（`targets.FAMILIES`）に置く。probe は target を知らない。
+
+### 9.1 手順
+
+1. **分類する。** `oep.fixture.gpio` が許すすべての channel を、pull-up、両方の pull（mode 7）、pull-down の順に、短い間隔で
+   十数回ずつ読む。pull で読むだけなので線を駆動しない。
+   - 読むたびに変わる: **active**（target が動かしている出力）。
+   - どちらの pull でも同じレベル: **driven**（push-pull か、probe の pull より強い pull）。
+   - pull-up で 1、pull-down で 0: **浮いている**。両方の pull でも 1 なら**弱い pull-up**（リセットの線によくある）。弱い
+     pull-down は浮いているのと区別できない。
+   - pull-down は最後に読む。リセットの線に pull-down をかけると target がリセットされる（§9.3）。
+2. **電源に従う channel を見る**（電源の channel を host が持つときだけ）。電源を切って読み、入れて読む。違って読めた channel が
+   target につながっている（電源の無い target は probe の pull-up を引き下げる）。候補を出すだけ。
+3. **リセットの線の候補を活動で探す。** active の channel があれば、浮いている / 弱い pull-up の channel を 1 本ずつオープン
+   ドレインで low に保ち、active の channel が止まるかを見る。見る長さは、走っている間の最も長い静かな間より長くする（その 3 倍、
+   0.3〜1 秒）。止まったら離し、活動が戻るのを待ってから次へ進む（リセットの後の起動は 1 秒を超えることがある）。
+4. **scan する。** 浮いている / 弱い pull-up の channel だけで線を scan する。2 本の線は組で試し、組の数に上限を置く（多すぎる
+   ときは電源に従う channel に絞る）。
+5. **識別する。** 答えた組に止める attach（method 1）をし、target_id で系統を見る。その系統が option でリセットの線を無効に
+   できるなら、option を読む（読むだけ）。無効なら、リセットの線は探さない。読んだら resume する。
+6. **リセットの線を確かめる。** 3 で止まった channel（無ければ候補を弱い pull-up のものから順に）を attach の reset TLV
+   （method 1）に渡し、dpc がリセットのベクタかを見る（§4.6）。毎回 pins を付ける。
+7. **記録を勧める。** wire、pins、reset_channel（[probe の設定](oep-if-probe-config.ja.md) §1.1）をスロットの形で示す。書くのは
+   利用者が頼んだときだけ。
+
+### 9.2 安全の決まり
+
+- driven / active の channel は駆動しない、scan しない、low に保たない。scan は線を駆動するので、push-pull の出力とぶつかる。
+- 電源の channel は、利用者が名指ししたときだけ触る。
+- low に保つのはオープンドレインだけ（high を駆動しない）。
+- 全体に時間の上限を置く（1 分以内）。最後に plan をすべて解き、自分で開いた接続を閉じる。
+- 設定は書かない（頼まれたスロットだけ）。option は読むだけで、決して書かない。
+- gpio の plan を置き換えると、probe は前の plan のピンをいったん空きの状態に戻す（core §8）。電源の channel に出力の idle
+  （§8.2 の 5）が無いと、その間 target の電源が切れ、中途半端な状態で残ることがある。電源の channel を持つときは、plan を置き
+  換えるたびに電源をきれいに入れ直す（切って 200 ms 以上、入れて起動を待つ）か、置き換えずに済む順に段を並べる。
+
+### 9.3 わかったこと（2026-10-02）
+
+- **idle-high の UART の線は、電源の入り切りの比較では debug の線やリセットの線と同じに見える。** レベルの比較は候補を出す
+  だけで、決めるのは scan（線が答えたか）と attach（dpc）。どちらの pull でも high に読むので、分類では driven になり、scan と
+  保持から外れる。
+- **target が push-pull で動かす出力は scan と保持から外す。** 読むたびに変わる channel（active）と、どちらの pull でも同じに
+  読む channel（driven）を除いた残りの全 channel の scan で、debug の線はすぐに見つかった。
+- **リセットの線は活動で探し、dpc で確かめる。** 活動を見る窓が短いと、静かな間（出力のデューティが端に寄る間）を止まったと
+  読んで、8 本を候補にした。窓を静かな間の 3 倍にすると本物の 1 本だけになった。決めるのは reset TLV の attach の dpc。
+- **reset TLV の attach には pins を付ける。** ピンを host が選ぶ線では、pins の無い attach はその線の唯一の生きた接続に加わる
+  だけで、接続が無ければ unavailable で断られる。1 本目の候補を試して detach した後は全部断られ、断りを「リセットの線ではない」
+  と読んで、本物を候補に入れたまま「無し」になった。
+- **リセットの線が有るかは target の option で決まることがある。** 無効なら見つからないのが正しい。option を読んで先に分かる。
+- **pull-down でもリセットになる。** 分類で pull-down をかけた間 target はリセットされ、ブートローダが待つ target では活動が
+  戻るまで 1 秒以上かかった。pull-down は最後に読み、次の段の前に活動が戻るのを待つ（戻らなければ電源を入れ直す）。
+- **電源の入れ直しからの止める attach** は、通電の応答から約 15 ms で最初の命令の前に止まった（§8.5）。リセットの線が無い
+  target の、もう 1 つの止め方になる。
+
+### 9.4 例: ESP32-P4 と CH32V003（2026-10-02）
+
+ESP32-P4 の probe（FS USB-Serial/JTAG、`oep.wire.swio`）に CH32V003 をつなぎ、P4 の GPIO5 から給電した。`oep pins <probe>
+--power 5 --wire swio` で、何も教えずに SWIO 19 と NRST 4 を見つけた（6 回中 6 回、1 回 7〜8 秒）。
+
+- 分類（52 channel）: 22 / 23（target の UART、idle high）と 7 / 8 / 35（P4 の板の pull-up）は driven-high、51 は driven-low、
+  21（アプリの出力、約 0.75 秒の周期で密度が変わる）は active、4 は弱い pull-up、19 は浮いている。電源に従うのは
+  4、6、9〜11、13、15、16、19〜23、32、33。
+- low に保つ探索: 45 本を 3.4 秒で試し、21 が止まったのは 4 だけ（窓 390 ms、静かな間の最長 130 ms）。
+- scan: 45 channel を 0.14 秒、答えたのは 19。target_id 0x00310510。option の USER 0xF7: RST_MODE 10（NRST 有効、12 ms の窓）。
+- reset TLV（4、保持 20 ms）の attach で dpc 0。保持 1 / 2 / 5 / 10 / 20 ms のどれでも 3 回中 3 回 dpc 0 だった。
+- P4 の firmware（0.0.27）は gpio の plan を置き換えると前のピンをいったん Hi-Z にするので、電源の channel が途切れ、そのあと
+  scan が答えなくなった（電源を入れ直すと戻った）。`oep pins` は plan を置き換えるたびに電源を入れ直す。
+
+target ごとの詳しい記録は [対象ごとのスキャンの記録](target-scan-notes.ja.md) §3.1。
