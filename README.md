@@ -31,6 +31,8 @@ Every document in `docs/` states its status in its first lines: **normative**, *
 - [registry/oep-v1.toml](registry/oep-v1.toml): the only definition of every number on the v1 wire.
   `tools/oepgen1.py` generates `generated/oep-v1/` (C++, Python, JS) from it; `python3 tools/oepgen1.py --check` verifies they
   are in sync.
+- [tests/vectors/](tests/vectors/): machine-readable test vectors (frames, headers, confirm, CRCs, the probe.config hash,
+  refusals), computed from the text by `tools/oepvectors1.py`.
 
 **Guides** (not normative):
 

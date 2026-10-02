@@ -19,6 +19,7 @@
 - `bootstrap_layout_comparison` — 仮bootstrap候補B/Cのparserとbuffer比較
 - `bootstrap_over_uart` — binding非依存bootstrap coreをUART stop-and-waitで往復
 - `message_routing` — 通常function requestの配送、header decode境界、およびrequest correlation lifecycle
+- `vectors` — `tests/vectors/*.json`（`tools/oepvectors1.py` が仕様の文書から計算する試験のベクタ）が自分自身と文書の規則に合うこと
 - `registry_v1` — `registry/oep-v1.toml` と生成物（`generated/oep-v1/`）が同期し、番号の規則を守っていること（v0 の codec の試験は、v0 の registry と一緒に 2026-09-26 に消した）
 
 ## 実行

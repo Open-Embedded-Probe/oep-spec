@@ -1,0 +1,47 @@
+{
+  "about": "confirm (core §7.1). The answer's values (max_frame 1024, window 4096, max_inflight 4, boot_id 0x12345678, transport index 0) are an example probe's.",
+  "exchanges": [
+    {
+      "name": "revision 1 asked and answered",
+      "request": {
+        "corr": 1,
+        "min_rev": 1,
+        "max_rev": 1
+      },
+      "request_hex": "0101000000014f45503f0101",
+      "request_serial_frame_hex": "0003010101010a014f45503f010137c500",
+      "request_length_frame_hex": "0c000101000000014f45503f0101",
+      "answer": {
+        "corr": 1,
+        "revision": 1,
+        "flags": 0,
+        "max_frame": 1024,
+        "window": 4096,
+        "max_inflight": 4,
+        "boot_id": 305419896,
+        "transport": 0
+      },
+      "answer_hex": "02010001004f45502101000004001000000478563412010100",
+      "answer_serial_frame_hex": "000302010201064f455021010102040210010804785634120101030dc700"
+    },
+    {
+      "name": "no revision in the range: unsupported with the supported range",
+      "request": {
+        "corr": 2,
+        "min_rev": 2,
+        "max_rev": 3
+      },
+      "request_hex": "0102000000014f45503f0203",
+      "answer": {
+        "corr": 2,
+        "reason": "unsupported",
+        "payload_tag": 0,
+        "supported": [
+          1,
+          1
+        ]
+      },
+      "answer_hex": "020200000b0001020101"
+    }
+  ]
+}

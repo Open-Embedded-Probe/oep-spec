@@ -1,0 +1,69 @@
+{
+  "about": "The hash of probe.config (oep-if-probe-config §2): items as the host sent them, the canonical form and its CRC-32. Keys compare as numbers (channel 0x0020 before 0x0102, although their little-endian bytes compare the other way), multi-field keys field by field (plan: fn, role, channel), critical bits cleared.",
+  "cases": [
+    {
+      "name": "plan, label and idle items",
+      "items_sent": [
+        {
+          "tag": 130,
+          "value_hex": "02016e727374"
+        },
+        {
+          "tag": 129,
+          "value_hex": "0001010200"
+        },
+        {
+          "tag": 3,
+          "value_hex": "040004000100"
+        },
+        {
+          "tag": 1,
+          "value_hex": "0300020500"
+        },
+        {
+          "tag": 2,
+          "value_hex": "2000782d626f6f7430"
+        },
+        {
+          "tag": 129,
+          "value_hex": "0300010700"
+        }
+      ],
+      "canonical_order": [
+        {
+          "tag": 1,
+          "value_hex": "0300010700"
+        },
+        {
+          "tag": 1,
+          "value_hex": "0300020500"
+        },
+        {
+          "tag": 1,
+          "value_hex": "0001010200"
+        },
+        {
+          "tag": 2,
+          "value_hex": "2000782d626f6f7430"
+        },
+        {
+          "tag": 2,
+          "value_hex": "02016e727374"
+        },
+        {
+          "tag": 3,
+          "value_hex": "040004000100"
+        }
+      ],
+      "canonical_hex": "01050300010700010503000205000105000101020002092000782d626f6f7430020602016e7273740306040004000100",
+      "hash": 2022326344
+    },
+    {
+      "name": "no items",
+      "items_sent": [],
+      "canonical_order": [],
+      "canonical_hex": "",
+      "hash": 0
+    }
+  ]
+}

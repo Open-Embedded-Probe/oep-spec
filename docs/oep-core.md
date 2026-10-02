@@ -28,7 +28,7 @@ OEP consists of 3 layers.
    (the test question: could a third party have defined the same thing under its own name without changing the core?).
 3. The core touches neither the name nor the meaning of any particular interface (except `oep.core`).
 4. Standard interfaces receive no special treatment on top of the core. They use only the same mechanisms as independent interfaces. The only differences are that the name
-   is `oep.`, the numbers are in the project's registry, and the project maintains the registry and the conformance material (test vectors, a fake probe for hosts to test against).
+   is `oep.`, the numbers are in the project's registry, and the project maintains the registry and the conformance material (the test vectors in [`tests/vectors/`](../tests/vectors/), computed from this text by `tools/oepvectors1.py`, and a fake probe for hosts to test against). Where a vector and the text disagree, the text is right and the vector is corrected.
 5. Relations between interfaces (one interface using the resources of another, and so on) are defined by the documents of the interfaces
    concerned.
 6. Versions are independent per layer (§2.7).

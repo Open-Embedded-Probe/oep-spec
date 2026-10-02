@@ -1,0 +1,73 @@
+{
+  "about": "Message headers (core §4.1, §4.2). All numbers little endian.",
+  "requests": [
+    {
+      "name": "request without session_id",
+      "role": 1,
+      "corr": 4660,
+      "fn": 0,
+      "op": 3,
+      "session_id": null,
+      "payload_hex": "00000000",
+      "message_hex": "01341200000300000000"
+    },
+    {
+      "name": "request with session_id",
+      "role": 129,
+      "corr": 258,
+      "fn": 515,
+      "op": 1,
+      "session_id": 287454020,
+      "payload_hex": "",
+      "message_hex": "81020103020144332211"
+    }
+  ],
+  "answers": [
+    {
+      "name": "completed success",
+      "role": 2,
+      "corr": 4660,
+      "resolution": 1,
+      "detail": 0,
+      "payload_hex": "",
+      "message_hex": "0234120100"
+    },
+    {
+      "name": "rejected malformed",
+      "role": 2,
+      "corr": 65535,
+      "resolution": 0,
+      "detail": 3,
+      "payload_hex": "",
+      "message_hex": "02ffff0003"
+    }
+  ],
+  "tlvs": [
+    {
+      "name": "short form",
+      "tag": 16,
+      "value_hex": "0102",
+      "tlv_hex": "10020102"
+    },
+    {
+      "name": "short form, critical",
+      "tag": 144,
+      "value_hex": "0102",
+      "tlv_hex": "90020102"
+    },
+    {
+      "name": "254 bytes: still the short form",
+      "tag": 65,
+      "value_len": 254,
+      "value_byte": 170,
+      "tlv_hex": "41feaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "name": "255 bytes: the long form",
+      "tag": 65,
+      "value_len": 255,
+      "value_byte": 170,
+      "tlv_hex": "41ffff00aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "about": "Check values of the three CRCs of OEP v1.",
+  "cases": [
+    {
+      "name": "crc16 123456789",
+      "spec": "core §3.1",
+      "algorithm": "crc16-ccitt-false",
+      "input_hex": "313233343536373839",
+      "crc": 10673
+    },
+    {
+      "name": "crc32 123456789",
+      "spec": "core §5.2",
+      "algorithm": "crc32-ieee",
+      "input_hex": "313233343536373839",
+      "crc": 3421780262
+    },
+    {
+      "name": "crc8 123456789",
+      "spec": "target-console-dmseq CRC-8",
+      "algorithm": "crc8-dmseq",
+      "input_hex": "313233343536373839",
+      "crc": 251
+    },
+    {
+      "name": "crc8 one zero byte",
+      "spec": "target-console-dmseq CRC-8",
+      "algorithm": "crc8-dmseq",
+      "input_hex": "00",
+      "crc": 243
+    }
+  ],
+  "dmseq_words": [
+    {
+      "name": "empty SYN frame, S = 0, A = 1",
+      "spec": "target-console-dmseq Byte order",
+      "byte0": 152,
+      "payload_hex": "",
+      "crc": 50,
+      "data0": 12952
+    },
+    {
+      "name": "host answer K = 0, H = 0, M = 0",
+      "spec": "target-console-dmseq Byte order",
+      "byte0": 0,
+      "payload_hex": "",
+      "crc": 243,
+      "data0": 62208
+    }
+  ]
+}

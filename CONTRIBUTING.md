@@ -33,7 +33,8 @@ normative text may link to.
 
 1. edit `registry/oep-v1.toml` and the normative text (both languages);
 2. run `python3 tools/oepgen1.py`, then `python3 tools/oepgen1.py --check`, and commit `generated/`;
-3. run `cd tests && uv run pytest registry_v1`.
+3. run `python3 tools/oepvectors1.py --check` (when a rule a vector covers changes, run `python3 tools/oepvectors1.py` and commit `tests/vectors/`);
+4. run `cd tests && uv run pytest registry_v1 vectors`.
 
 Until it is merged, try the idea under your own reverse-DNS name, or with the experimental op range 0xF0 to 0xFF
 (core §2.5), which shipping probes do not use.
