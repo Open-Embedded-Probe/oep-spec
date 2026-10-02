@@ -131,8 +131,19 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
   scheme は識別子の取り方。target_id の scheme の番号は probe 全体で 1 つの空間である（registry `[common.enum.target_id_scheme]`:
   1 その debug module の DMI 0x7F の u32、2 swd の targetsel）。各 wire は、どの scheme を使うかを書く。probe は読めなかったとき（scheme が「無い」と定める値だったときを含む）
   は付けない。値の意味（どのビットが系統で、どれがリビジョンか）は host が知っている。probe は解釈しない。
-- **search_retries**: どの wire の attach の応答にも TLV 0x12 search_retries（u16、任意）を付けてよい: speed_hz の速さを確かめるまでに
-  失敗した速さの探索の試行の数（0 = 最初の試行で通った。0xFFFF = 65535 以上）。host はこれを記録して、切れかけの線を見てよい。
+- **search_retries**: どの wire の attach の応答にも TLV 0x12 search_retries（u16、任意）を付けてよい。立ち上げとは、その wire の wake / 設定の手順、
+  速さを選ぶこと、それを確かめること（上）である。search_retries は、立ち上げの各段の最初の試しを超えて要った追加の試しの数で、
+  次のそれぞれを 1 と数える:
+  - やり直した、確かめの読み出し 1 つ、または書き込みとその読み返し 1 つ;
+  - やり直したパス（パスとは、probe がまとめて判断する、1 つの速さでの読み出しまたは書き込みの往復のひとまとまり）;
+  - 選んだ速さで書き込みの確かめが失敗した後の、遅い速さへの切り替え;
+  - 立ち上げ全体のやり直し;
+  - 手順に wake がある wire では、答えのあった wake より前の、答えの無かった wake。
+
+  速い速さで失敗して、速い速さの探索を終わらせた読み出しは数えない。0 は、どの段も最初の試しで通ったことを表す。値は
+  0xFFFF で止まる（65535 以上）。probe がこれを送るのは、この attach で立ち上げが行われたときだけである: 新しい connection、reset の TLV 付きの attach、
+  max_speed のために probe が速さを下げた既存の connection。立ち上げ無しに既存の connection に加わる attach では送らない。host はこれを記録して、
+  切れかけの線を見てよい。
 
 ## 2. connection の寿命（全 wire）
 

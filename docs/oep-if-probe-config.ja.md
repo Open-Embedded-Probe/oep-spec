@@ -100,7 +100,7 @@ boot_reset を置ける（置かなければ 0）。その後ろは、後から�
 | lock_len | 錠の部分の長さ。0（錠なし）か 1 + 2n（n ≥ 1）。ほかは rejected malformed |
 | lock_scheme | 錠があるときだけ。target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1）。0 は置かない（錠なしは lock_len 0）。その線が持たない scheme は、定義にあってもなくても（core §2.5）rejected unsupported |
 | lock_mask、lock_value | 錠があるときだけ。同じ長さ n = (lock_len − 1) / 2。**n はその scheme の値の長さと同じ**（scheme 1 は 4。違えば rejected malformed。長さは registry の `[common.enum.target_id_len]`）。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
-| boot_reset | 任意。起動時の自動の attach に線の応答が無かったとき、リセットの線を使ってもう 1 回 attach するか（§3.1）: 0 しない、1 する。置かなければ 0。2 以上は rejected malformed。at boot でないスロットで 1 は rejected malformed |
+| boot_reset | 任意。起動時の自動の attach に線の応答が無かったとき、リセットの線を使ってもう 1 回 attach するか（§3.1）。真偽値: 0 しない、1 する。置かなければ 0。2 以上は rejected malformed（どの revision でも除かれる値で、core §4.3、使われていない値ではない）。at boot でないスロットで 1 は rejected malformed |
 
 - max_speed と idle_clock は target の性質で（[線とデバッグ](oep-if-debug.ja.md) §3）、probe が自分でスロットを attach するとき
   （at boot、やり直し）に使う。host の attach はそれぞれの TLV で自分の値を渡す（スロットの値は使わない）。
@@ -229,7 +229,7 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 
 | 状況 | reason |
 |---|---|
-| 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset の値と host のスロットの boot_reset 1、mode 0〜2 の idle の drive と、idle の drive の長さ、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
+| 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset が 2 以上（真偽値）と host のスロットの boot_reset 1、mode 0〜2 の idle の drive と、idle の drive の長さ、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
 | 指す fn が無い（plan、slot の wire_fn、bind の kind 2、uart） | unknown_function |
 | 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か reserved にある label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、idle の未定義の drive_kind、2 以上の slot の attach、2 以上の slot の idle_clock、1 / 2 以外の bind のストリームの kind、その線が持たない lock_scheme（定義にあってもなくても）、保存の無い probe の save / erase | unsupported |
 | plan_roles 超え、ピンや資源の取り合い、at boot のスロットが max_connections を超える、保存先が足りない | unavailable（cause 2 / 1 / 2 / 3） |

@@ -131,8 +131,19 @@ A new wire's document also defines:
   scheme is how the identifier was obtained. The target_id scheme numbers are one space for the whole probe (registry `[common.enum.target_id_scheme]`:
   1 the u32 at DMI 0x7F of that debug module, 2 swd targetsel). Each wire states which schemes it uses. When the probe could not read it (including when the value is one the scheme defines as "none"),
   it does not attach it. The meaning of the value (which bits are the family, which the revision) is known to the host. The probe does not interpret it.
-- **search_retries**: the attach answer of every wire may carry TLV 0x12 search_retries (u16, optional): the number of tries of the speed search that failed
-  before the speed in speed_hz was verified (0 = the first try worked; 0xFFFF = 65535 or more). A host may log it to see a wire that is close to failing.
+- **search_retries**: the attach answer of every wire may carry TLV 0x12 search_retries (u16, optional). A bring-up is the wire's wake / configuration sequence,
+  choosing the speed and verifying it (above). search_retries is the number of extra attempts the bring-up needed beyond the first try of each of its steps,
+  each of the following counted as 1:
+  - a verification read, or a write and its read-back, that was repeated;
+  - a pass that was repeated (a pass is a set of reads or write round trips at one speed that the probe judges as a whole);
+  - a fall back to a slower speed after the write check failed at the chosen speed;
+  - a repeat of the whole bring-up;
+  - on a wire whose sequence has a wake, a wake that got no answer, before the one that did.
+
+  A read that fails at a faster speed and so ends the search for a faster speed is not counted. 0 means every step succeeded at its first try. The value saturates
+  at 0xFFFF (65535 or more). The probe sends it only when a bring-up ran for this attach: a new connection, an attach with the reset TLV, or an existing connection
+  whose speed it lowered because of max_speed. It does not send it when the attach joins an existing connection without a bring-up. A host may log it to see a wire that
+  is close to failing.
 
 ## 2. Lifetime of connections (all wires)
 

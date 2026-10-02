@@ -15,6 +15,29 @@
 # TLV tags are written as their number, the low 7 bits (core §2.2); a request sets bit 7 itself when it sends one critical.
 # A tag appears at most once in a request (core §2.3), and an answer's reader uses the first, unless its comment says `repeats`.
 # In every u8 enum, 0xF0-0xFE are experimental unless the enum says otherwise: never registered (core §2.5).
+#
+# Table kinds. The registry uses these and no others; a generator written from this list reads the whole file.
+#   [registry]         schema = integer (the layout of this file; 1).
+#   [protocol]         name = string, revision = integer, byte_order = string ("little").
+#   [constants]        name = integer (u8 unless the comment says otherwise) or string (the 4-byte ASCII confirm magics).
+#   [roles] [resolutions] [outcomes] [reject_reasons] [status]
+#                      name = integer: a u8 wire value of the core.
+#   [timing] [limits]  name = integer: a time (suffix _ms), a size (_bytes), a speed (_baud), or a count; the spec states it.
+#   [reference]        name = integer: a value that is not the specification's (outside the freeze).
+#   [describe_common]  name = integer: a describe TLV tag (u8, low 7 bits) every interface may use.
+#   [usb]              name = integer: a USB descriptor value (class / subclass / protocol u8, HID usage page / usage u16).
+#   [common.enum.<enum>]  name = integer: one value space shared by every interface (u8 unless the enum's comment says otherwise).
+#   [[interface]]      one per interface, with these keys and sub-tables only:
+#     name = string, revision = integer, fn = integer (u16; only where the fn is fixed, oep.core = 0),
+#     op = array of inline tables { code = integer (u8), name = string, lock = bool, closed_tail = bool (optional; false if absent) }
+#       (`fields` is reserved on ops);
+#     [interface.tlv.<context>]   name = integer: a TLV tag (u8, low 7 bits) in that op, answer, payload or declaration;
+#     [interface.enum.<enum>]     name = integer: a value of a field, or a bit mask for a bit set (the width is the field's);
+#     [interface.event]           name = integer: an event kind (u8, 0x01-0x7F);
+#     [interface.status] [interface.reject_reasons]   name = integer: the interface's own values (0x40-0x7F; none yet);
+#     [interface.reserved]        key = "op", an enum name, or "tlv.<context>"; value = array of [lo, hi] integer ranges;
+#     [interface.line_names]      name = string: a standard name and its description (1-32 of a-z 0-9 _ -, no x- prefix).
+# A new table kind, or a new key of [[interface]] or of an op, is a registry change made by a pull request (CONTRIBUTING.md).
 
 [registry]
 schema = 1
@@ -294,7 +317,7 @@ reset = 0x05                    # critical: channel(u16) hold_ms(u16) - hold the
 [interface.tlv.attach_answer]   # the attach result's tail
 target_id = 0x10                # scheme(u8) value: what the probe read of the target's identity (oep-if-debug §1)
 dpc = 0x11                      # u32 (8 bytes on RV64): the halted hart's dpc when flags halted is set
-search_retries = 0x12           # u16, optional: failed tries of the speed search before speed_hz was verified (0xFFFF = 65535 or more) (oep-if-debug §1)
+search_retries = 0x12           # u16, optional: extra attempts the bring-up needed beyond each step's first try (saturates at 0xFFFF); only when a bring-up ran (oep-if-debug §1)
 [interface.enum.scan_kind]      # the kind byte of a scan entry
 riscv_dm = 1
 arm_adi = 2
@@ -618,6 +641,7 @@ op = [
 ]
 [interface.tlv.describe]
 queue_depth = 0x40              # u8: transactions the queue holds
+cs_setup_ns = 0x43              # u32 ns: CS active to the first SCK edge with MISO driven with the first bit, worst case (oep-if-fixture §4)
 [interface.tlv.read_rx_answer]
 ns = 0x01                       # u64: when the transaction ended (probe clock; optional)
 [interface.enum.role]
@@ -897,7 +921,7 @@ output_high = 4
 [interface.enum.slot_attach]
 host = 0
 at_boot = 1
-[interface.enum.slot_boot_reset]  # slot's optional trailing boot_reset (oep-if-probe-config §1.1 / §3.1)
+[interface.enum.slot_boot_reset]  # slot's optional trailing boot_reset, a boolean: 2 or more is malformed, not unsupported (oep-if-probe-config §1.1 / §3.1, core §4.3)
 off = 0
 retry_with_reset = 1
 [interface.enum.slot_state]

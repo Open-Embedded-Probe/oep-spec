@@ -180,7 +180,8 @@ The probe becomes an SPI target, answers one transfer delimited by CS with the M
   transfer (count ≤ length. The shortfall is 0). An arm while waiting is rejected unavailable (one at a time). **A transfer while not armed
   discards MOSI and counts transactions and errors.** **MISO is 0 outside tx (not armed, after tx is used up).** CS becoming active and returning to inactive with no
   SCK cycle at all (0 bits) is not a transfer: nothing is queued, neither transactions nor errors is counted, and the arm keeps waiting.
-- **From configure until the plan is released, the probe drives MISO only while CS is active.** While CS is inactive it does not drive MISO (an input with no pull).
+- **From configure until the plan is released, the probe drives MISO only while CS is active.** While CS is inactive it does not drive MISO (an input with no pull),
+  apart from the cs_setup_ns after CS becomes inactive (below).
   "MISO is 0 outside tx" refers to the bits of a transfer while CS is active. SCK, MOSI and CS are always inputs. Before configure the channels keep their idle state (core §8).
 - When a transfer ends with CS, the MOSI bytes and the number of bits actually received (bits) are queued, and transactions is incremented by 1. The number of data bytes is bits divided by 8
   rounded up, capped at length. Anything beyond length is discarded and errors is incremented by 1 (that transfer is queued with bits left as the number actually received and data
@@ -191,5 +192,11 @@ The probe becomes an SPI target, answers one transfer delimited by CS with the M
   errors (the cumulative count of overflows, not armed, and length excess, each counted as 1, u32).
 - reset returns to the state right after configure (clears the queue, the wait and the cumulative counts. Keeps mode and bit_order). In state 0 it is rejected unavailable (cause 6).
 - describe: role_channels, max_length (the maximum bytes of one transfer), max_clock_hz (the verified upper limit of SCK), features (bit0 LSB first),
-  queue_depth (tag 0x40, u8).
+  queue_depth (tag 0x40, u8), cs_setup_ns (tag 0x43, u32, below).
+- **cs_setup_ns** (describe tag 0x43, u32, ns): the shortest time from CS becoming active to the first SCK edge for which the probe guarantees that MISO is
+  driven with the first bit. It is the worst case under the probe's normal load: its other interfaces active, including a debug wire attached with its console running.
+  Within that time after CS becomes active, MISO is either undriven or driving the first bit, never any other value. After CS becomes inactive, MISO is undriven
+  within the same time. A probe that drives MISO with the first bit as soon as CS is active omits the tag or declares 0. A probe that starts driving MISO in
+  software after it sees CS become active declares it. A host shows the value to the user. A master that starts SCK sooner than cs_setup_ns after CS becomes
+  active cannot rely on the first bit.
 - No notifications are sent (subscribe is rejected unsupported).

@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "c8e5cf9a2e978f8d"
+REGISTRY_HASH = "3e8771cebedafb0c"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -68,7 +68,7 @@ FIXTURE_I2C_TARGET = _NS(name="oep.fixture.i2c-target", revision=1, op={"configu
     line_names={})
 INTERFACES["oep.fixture.i2c-target"] = FIXTURE_I2C_TARGET
 FIXTURE_SPI_TARGET = _NS(name="oep.fixture.spi-target", revision=1, op={"configure": 0x01, "arm": 0x02, "read_rx": 0x03, "status": 0x04, "reset": 0x05}, lock_free={0x04},
-    closed_tail={}, tlv={"describe": {"queue_depth": 0x40}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sck": 0x01, "mosi": 0x02, "miso": 0x03, "cs": 0x04}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"lsb_first": 0x01}}, own={},
+    closed_tail={}, tlv={"describe": {"queue_depth": 0x40, "cs_setup_ns": 0x43}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sck": 0x01, "mosi": 0x02, "miso": 0x03, "cs": 0x04}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"lsb_first": 0x01}}, own={},
     line_names={})
 INTERFACES["oep.fixture.spi-target"] = FIXTURE_SPI_TARGET
 FIXTURE_LOGIC = _NS(name="oep.fixture.logic", revision=1, op={"configure": 0x01, "start": 0x02, "stop": 0x03, "force": 0x04, "status": 0x05, "read": 0x06, "segments": 0x07, "release": 0x08, "query": 0x09}, lock_free={0x05, 0x06, 0x07, 0x09},

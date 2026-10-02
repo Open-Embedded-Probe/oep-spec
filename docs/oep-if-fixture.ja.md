@@ -181,6 +181,7 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   MOSI を捨て、transactions と errors を数える**。**MISO は tx の外（未 arm、tx を使い切った後）では 0**。CS が有効になってから SCK が
   1 回も来ずに無効に戻ったもの（0 ビット）は転送とみなさない: 何も積まず、transactions も errors も数えず、arm は待ち続ける。
 - **configure から plan を解くまで、probe は CS が有効な間だけ MISO を駆動する。** CS が無効な間は MISO を駆動しない（プルの無い入力）。
+  ただし CS が無効になってから cs_setup_ns の間は除く（下）。
   「MISO は tx の外では 0」は、CS が有効な間の転送のビットのことである。SCK、MOSI、CS は常に入力。configure の前は channel は空きの状態のまま（core §8）。
 - 転送が CS で終わると、MOSI のバイトと、実際に来たビット数（bits）を列に積み、transactions を 1 増やす。data の byte 数は bits を 8 で
   割って切り上げた数で、length で止める。length を超えた分は捨て、errors を 1 増やす（その転送は、bits を実際に来た数のまま、data を
@@ -191,5 +192,11 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   errors（あふれ、未 arm、length 超過をそれぞれ 1 と数えた累計、u32）。
 - reset は configure 直後と同じ状態に戻す（列、待ち、累計を消す。mode と bit_order は保つ）。state 0 では rejected unavailable（cause 6）。
 - describe: role_channels、max_length（1 回の転送の最大 byte）、max_clock_hz（確かめた SCK の上限）、features（bit0 LSB が先）、
-  queue_depth（tag 0x40、u8）。
+  queue_depth（tag 0x40、u8）、cs_setup_ns（tag 0x43、u32、下）。
+- **cs_setup_ns**（describe の tag 0x43、u32、ns）: CS が有効になってから最初の SCK のエッジまでの時間で、MISO が最初のビットで駆動されていることを
+  probe が保証する最短のもの。probe の普段の負荷での最悪の値である: ほかのインターフェースが動いており、debug の線が attach されてコンソールが動いている場合を含む。
+  CS が有効になってからその時間の間、MISO は駆動されていないか、最初のビットを駆動しているかのどちらかで、ほかの値になることはない。CS が無効になった後は、
+  同じ時間のうちに MISO は駆動されなくなる。CS が有効になったらすぐ最初のビットで MISO を駆動する probe は、この tag を付けないか 0 を宣言する。CS が有効に
+  なったのを見てからソフトウェアで MISO を駆動し始める probe は、これを宣言する。host はこの値を利用者に見せる。CS が有効になってから cs_setup_ns より
+  早く SCK を始める master は、最初のビットに頼れない。
 - 通知は送らない（subscribe は rejected unsupported）。

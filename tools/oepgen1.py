@@ -33,6 +33,17 @@ def load() -> tuple[dict, str]:
 def check(reg: dict) -> list[str]:
     """The §0 numbering rules; a list of what is wrong."""
     errors = []
+    # The table kinds the registry header lists; anything else needs a pull request that also updates the header.
+    top = {"registry", "protocol", "constants", "roles", "resolutions", "outcomes", "reject_reasons", "status", "timing",
+           "limits", "reference", "describe_common", "usb", "common", "interface"}
+    if set(reg) - top:
+        errors.append(f"unknown table kinds {sorted(set(reg) - top)} (registry header)")
+    if set(reg.get("common", {})) - {"enum"}:
+        errors.append(f"unknown common tables {sorted(set(reg['common']) - {'enum'})} (registry header)")
+    iface_keys = {"name", "revision", "fn", "op", "tlv", "enum", "event", "status", "reject_reasons", "reserved", "line_names"}
+    for iface in reg.get("interface", []):
+        if set(iface) - iface_keys:
+            errors.append(f"{iface.get('name')}: unknown interface keys {sorted(set(iface) - iface_keys)} (registry header)")
     if reg.get("registry", {}).get("schema") != 1:
         errors.append("registry.schema must be 1")
     for name, code in reg["reject_reasons"].items():
