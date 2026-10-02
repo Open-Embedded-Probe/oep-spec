@@ -33,6 +33,7 @@ export const CORE = {
   lock_free: new Set([0x01, 0x02, 0x03, 0x10, 0x13, 0x40, 0x41]), closed_tail: new Set([0x40]),
   tlv: {plan_apply: {role_assignment: 0x10}, confirm_answer: {transport: 0x01}, open: {owner: 0x01}, lock_state_answer: {owner: 0x01}, locked_payload: {owner: 0x01}, unavailable_payload: {cause: 0x01, channel: 0x02, holder_fn: 0x03, holder_kind: 0x04, fn: 0x05}, unsupported_payload: {supported: 0x01, channel: 0x02, fn: 0x05, index: 0x40}, describe: {firmware: 0x40, model: 0x41, unit_id: 0x42, channels: 0x43, reserved: 0x44, profile: 0x45, label: 0x46, resets_on_open: 0x47, transport: 0x49, discoverable: 0x4A, plan_roles: 0x4B, chip: 0x4C, max_op_ms: 0x4D, port_speed: 0x4E}},
   event: {heartbeat: 0x01}, enum: {unavailable_cause: {pin_in_use: 0x01, limit: 0x02, storage_full: 0x03, bound_in_group: 0x04, held_by_settings: 0x05, wrong_state: 0x06}, holder_kind: {plan: 0x01, connection: 0x02, slot: 0x03, bind: 0x04, settings_plan: 0x05, disabled: 0x06, settings_idle: 0x07}, transport_kind: {uart_bridge: 0x01, usb_cdc: 0x02, usb_serial_jtag: 0x03, vendor_bulk: 0x04, hid: 0x05, tcp: 0x06}, port_speed_step: {try: 0x00, commit: 0x01, revert: 0x02}, resumed: {new: 0x00, resumed: 0x01, swept: 0x02}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.core'] = CORE;
 export const WIRE_RVSWD = {
@@ -41,6 +42,7 @@ export const WIRE_RVSWD = {
   lock_free: new Set([0x05]), closed_tail: new Set([]),
   tlv: {describe: {max_connections: 0x40}, scan: {max_speed: 0x01, skip: 0x02, idle_clock: 0x04}, detach: {force: 0x01}, attach: {max_speed: 0x01, pins: 0x03, idle_clock: 0x04, reset: 0x05}, attach_answer: {target_id: 0x10, dpc: 0x11, search_retries: 0x12}},
   event: {}, enum: {connection_users: {host_session: 0x01, slot: 0x02}, scan_kind: {riscv_dm: 0x01, arm_adi: 0x02}, attach_flags: {havereset_acked: 0x01, existing: 0x02, dormant_woken: 0x04, halted: 0x08}, features: {attach_writes_unbounded: 0x01}, attach_method: {run: 0x00, halt: 0x01}, pin_role: {swdio: 0x01, swclk: 0x02, reset: 0x03}, idle_clock: {high: 0x00, low: 0x01}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.wire.rvswd'] = WIRE_RVSWD;
 export const WIRE_SWIO = {
@@ -49,6 +51,7 @@ export const WIRE_SWIO = {
   lock_free: new Set([0x05]), closed_tail: new Set([]),
   tlv: {describe: {max_connections: 0x40}, scan: {max_speed: 0x01, skip: 0x02}, detach: {force: 0x01}, attach: {max_speed: 0x01, pins: 0x03, reset: 0x05}, attach_answer: {target_id: 0x10, dpc: 0x11, search_retries: 0x12}},
   event: {}, enum: {connection_users: {host_session: 0x01, slot: 0x02}, scan_kind: {riscv_dm: 0x01, arm_adi: 0x02}, attach_flags: {havereset_acked: 0x01, existing: 0x02, dormant_woken: 0x04, halted: 0x08}, features: {attach_writes_unbounded: 0x01}, attach_method: {run: 0x00, halt: 0x01}, pin_role: {swdio: 0x01, reset: 0x03}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.wire.swio'] = WIRE_SWIO;
 export const WIRE_SWD = {
@@ -57,6 +60,7 @@ export const WIRE_SWD = {
   lock_free: new Set([0x05]), closed_tail: new Set([]),
   tlv: {describe: {max_connections: 0x40}, scan: {max_speed: 0x01, skip: 0x02, targetsel: 0x06}, detach: {force: 0x01}, attach: {max_speed: 0x01, targetsel: 0x02, pins: 0x03, reset: 0x05}, attach_answer: {target_id: 0x10, dpc: 0x11, search_retries: 0x12}},
   event: {}, enum: {connection_users: {host_session: 0x01, slot: 0x02}, scan_kind: {riscv_dm: 0x01, arm_adi: 0x02}, attach_flags: {havereset_acked: 0x01, existing: 0x02, dormant_woken: 0x04, halted: 0x08}, features: {attach_writes_unbounded: 0x01}, attach_method: {run: 0x00}, pin_role: {swdio: 0x01, swclk: 0x02, reset: 0x03}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.wire.swd'] = WIRE_SWD;
 export const TARGET_RISCV_DM = {
@@ -65,6 +69,7 @@ export const TARGET_RISCV_DM = {
   lock_free: new Set([]), closed_tail: new Set([]),
   tlv: {describe: {}, reset: {method: 0x01}, step_answer: {step_left: 0x01}, read_block: {address_hi: 0x01}, write_block: {address_hi: 0x01}},
   event: {}, enum: {features: {block: 0x01, run: 0x02, reset: 0x04, step: 0x08}, run_stopped: {timeout_halted: 0x00, stopped: 0x01, not_halted: 0x02}, reset_flags: {reached: 0x01, verified: 0x02, retried: 0x04, confirm_failed: 0x08}, dmi_step: {write: 0x01, read: 0x02, poll_reads: 0x03, wait_us: 0x04, poll_us: 0x05}, reset_mode: {run: 0x00, run_verified: 0x01, halt_at_reset: 0x02}, reset_method: {probe_default: 0x00, ndmreset: 0x01, system_reset: 0x02}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.target.riscv-dm'] = TARGET_RISCV_DM;
 export const TARGET_ARM_ADI = {
@@ -73,6 +78,7 @@ export const TARGET_ARM_ADI = {
   lock_free: new Set([]), closed_tail: new Set([]),
   tlv: {read_block: {address_hi: 0x01}, write_block: {address_hi: 0x01}},
   event: {}, enum: {swd_ack: {ok: 0x01, wait: 0x02, fault: 0x04}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.target.arm-adi'] = TARGET_ARM_ADI;
 export const TARGET_CONSOLE = {
@@ -81,6 +87,7 @@ export const TARGET_CONSOLE = {
   lock_free: new Set([0x02, 0x03, 0x08]), closed_tail: new Set([]),
   tlv: {describe: {mechanisms: 0x40}},
   event: {}, enum: {mechanism: {sdi: 0x00, dmdata: 0x01, dmseq: 0x02, none: 0xFF}, open_flags: {existing: 0x01}, stream_state: {open: 0x00, closed: 0x01}, stream_users: {host_session: 0x01, slot: 0x02}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.target.console'] = TARGET_CONSOLE;
 export const FIXTURE_GPIO = {
@@ -89,6 +96,7 @@ export const FIXTURE_GPIO = {
   lock_free: new Set([0x02]), closed_tail: new Set([]),
   tlv: {describe: {modes: 0x40, drive_levels: 0x41}, set: {drive: 0x01}, read_answer: {drive: 0x01}, unavailable_payload: {index: 0x40}},
   event: {}, enum: {role: {line: 0x01}, mode: {input: 0x00, input_pullup: 0x01, input_pulldown: 0x02, output_low: 0x03, output_high: 0x04, open_drain_low: 0x05, open_drain_release: 0x06, input_pullup_pulldown: 0x07}, drive_kind: {level: 0x00, max_ma: 0x01}, drive_read: {not_driven: 0xFF}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.fixture.gpio'] = FIXTURE_GPIO;
 export const FIXTURE_UART = {
@@ -97,6 +105,7 @@ export const FIXTURE_UART = {
   lock_free: new Set([0x02, 0x03, 0x07]), closed_tail: new Set([]),
   tlv: {configure: {format: 0x01}, describe: {formats: 0x40}},
   event: {}, enum: {role: {rx: 0x01, tx: 0x02}, uart_configured: {default: 0x00, session: 0x01, item: 0x02, item_fallback: 0x03}, format_field: {data_bits_mask: 0x03, parity_mask: 0x0C, parity_even: 0x04, parity_odd: 0x08, stop_bits_2: 0x10}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.fixture.uart'] = FIXTURE_UART;
 export const FIXTURE_I2C_TARGET = {
@@ -105,6 +114,7 @@ export const FIXTURE_I2C_TARGET = {
   lock_free: new Set([0x05]), closed_tail: new Set([]),
   tlv: {describe: {queue_depth: 0x40, max_stretch_us: 0x41, pullup_ohms: 0x42}, read_rx_answer: {ns: 0x01}},
   event: {}, enum: {role: {sda: 0x01, scl: 0x02}, mode: {fixed_rx: 0x01, framed_rx: 0x02, preloaded_tx: 0x03}, state: {unconfigured: 0x00, running: 0x01}, features: {preloaded_tx: 0x01, stretch: 0x02, internal_pullups: 0x04}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.fixture.i2c-target'] = FIXTURE_I2C_TARGET;
 export const FIXTURE_SPI_TARGET = {
@@ -113,6 +123,7 @@ export const FIXTURE_SPI_TARGET = {
   lock_free: new Set([0x04]), closed_tail: new Set([]),
   tlv: {describe: {queue_depth: 0x40}, read_rx_answer: {ns: 0x01}},
   event: {}, enum: {role: {sck: 0x01, mosi: 0x02, miso: 0x03, cs: 0x04}, state: {unconfigured: 0x00, running: 0x01}, features: {lsb_first: 0x01}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.fixture.spi-target'] = FIXTURE_SPI_TARGET;
 export const FIXTURE_LOGIC = {
@@ -121,6 +132,7 @@ export const FIXTURE_LOGIC = {
   lock_free: new Set([0x05, 0x06, 0x07, 0x09]), closed_tail: new Set([]),
   tlv: {configure: {mode: 0x40, rate: 0x42, samples: 0x43, segments: 0x44, trigger: 0x45, pretrigger: 0x46}, configure_answer: {actual_rate: 0x50, layout: 0x51, actual_samples: 0x52, actual_segments: 0x53, timing: 0x54, blocking_ms: 0x56, rate_accuracy: 0x5A}, status_answer: {error: 0x01}, data: {generation: 0x01}, describe: {mode: 0x40, rate_range: 0x41, rate_list: 0x42, rate_limit: 0x43, channels: 0x44, trigger: 0x45, max_read: 0x47, segment_ring: 0x48}},
   event: {segment: 0x01, stopped: 0x02, triggered: 0x03}, enum: {features: {query: 0x01, force: 0x02, notify: 0x04}, mode: {one_shot: 0x01, repeat: 0x02, streaming: 0x03}, background: {blocks: 0x00, answers: 0x01}, trigger: {immediate: 0x00, level: 0x01, edge: 0x02}, state: {unconfigured: 0x00, configured: 0x01, waiting: 0x02, capturing: 0x03, done: 0x04, paused: 0x05, error: 0x06}, stopped_reason: {complete: 0x00, host: 0x01, no_free_segment: 0x02, error: 0x03}, error: {peripheral: 0x01, storage: 0x02, clock: 0x03}, status_flag: {dropped: 0x01, slipped: 0x02}, segment_flag: {gap: 0x01, short: 0x02, slipped: 0x04}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.fixture.logic'] = FIXTURE_LOGIC;
 export const FIXTURE_ANALOG = {
@@ -129,6 +141,7 @@ export const FIXTURE_ANALOG = {
   lock_free: new Set([0x05, 0x06, 0x07, 0x09, 0x0A]), closed_tail: new Set([]),
   tlv: {configure: {mode: 0x40, rate: 0x42, samples: 0x43, segments: 0x44, trigger: 0x45, pretrigger: 0x46, frontend: 0x47}, configure_answer: {actual_rate: 0x50, layout: 0x51, actual_samples: 0x52, actual_segments: 0x53, timing: 0x54, scale: 0x55, blocking_ms: 0x56, skew: 0x57, rate_accuracy: 0x5A, frontend_used: 0x58, reference: 0x59}, status_answer: {error: 0x01}, data: {generation: 0x01}, calibration_answer: {factory: 0x01, vrefint: 0x02}, describe: {mode: 0x40, rate_range: 0x41, rate_list: 0x42, rate_limit: 0x43, channels: 0x44, trigger: 0x45, frontend: 0x46, max_read: 0x47, segment_ring: 0x48, frontend_shared: 0x49}},
   event: {segment: 0x01, stopped: 0x02, triggered: 0x03}, enum: {features: {query: 0x01, force: 0x02, notify: 0x04}, mode: {one_shot: 0x01, repeat: 0x02, streaming: 0x03}, background: {blocks: 0x00, answers: 0x01}, trigger: {immediate: 0x00, cross_up: 0x03, cross_down: 0x04}, reference_source: {supply: 0x00, internal: 0x01, external: 0x02}, state: {unconfigured: 0x00, configured: 0x01, waiting: 0x02, capturing: 0x03, done: 0x04, paused: 0x05, error: 0x06}, stopped_reason: {complete: 0x00, host: 0x01, no_free_segment: 0x02, error: 0x03}, error: {peripheral: 0x01, storage: 0x02, clock: 0x03}, status_flag: {dropped: 0x01, slipped: 0x02}, segment_flag: {gap: 0x01, short: 0x02, slipped: 0x04}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.fixture.analog'] = FIXTURE_ANALOG;
 export const FIXTURE_CAPTURE_GROUP = {
@@ -137,6 +150,7 @@ export const FIXTURE_CAPTURE_GROUP = {
   lock_free: new Set([0x05]), closed_tail: new Set([]),
   tlv: {bind: {trigger_track: 0x01}, start_answer: {generations: 0x01}, describe: {tracks: 0x40, max_tracks: 0x41, budget: 0x42, start_skew: 0x43}},
   event: {stopped: 0x02, triggered: 0x03}, enum: {features: {force: 0x02, notify: 0x04}, state: {unconfigured: 0x00, configured: 0x01, waiting: 0x02, capturing: 0x03, done: 0x04, paused: 0x05, error: 0x06}, stopped_reason: {complete: 0x00, host: 0x01, no_free_segment: 0x02, error: 0x03}}, own: {},
+  line_names: Object.freeze({}),
 };
 INTERFACES['oep.fixture.capture-group'] = FIXTURE_CAPTURE_GROUP;
 export const PROBE_CONFIG = {
@@ -145,5 +159,6 @@ export const PROBE_CONFIG = {
   lock_free: new Set([0x01, 0x06]), closed_tail: new Set([]),
   tlv: {item: {plan: 0x01, label: 0x02, idle: 0x03, slot: 0x04, bind: 0x05, uart: 0x06, disable: 0x07}, describe: {storage: 0x40, items: 0x41, slots_max: 0x42, bind_modes: 0x43}},
   event: {}, enum: {idle_mode: {hi_z: 0x00, pull_up: 0x01, pull_down: 0x02, output_low: 0x03, output_high: 0x04}, slot_attach: {host: 0x00, at_boot: 0x01}, slot_boot_reset: {off: 0x00, retry_with_reset: 0x01}, slot_state: {connected: 0x00, absent: 0x01, lock_mismatch: 0x02, no_target_id: 0x03}, bind_mode: {last_reset: 0x00, manual: 0x01, mixed: 0x02}, bind_stream: {slot_console: 0x01, fixture_uart: 0x02}, bind_flow: {idle: 0x00, streaming: 0x01, held: 0x02}, storage_state: {none: 0x00, applied: 0x01, unreadable: 0x02}, storage_unreadable: {form: 0x01, interface: 0x02, refused: 0x03}}, own: {},
+  line_names: Object.freeze({nrst: "the target's reset line (the probe's retry with reset, and the host)", power_hi: "a line that powers the target when high (the host only)", power_lo: "a line that powers the target when low (the host only)"}),
 };
 INTERFACES['oep.probe.config'] = PROBE_CONFIG;

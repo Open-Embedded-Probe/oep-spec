@@ -55,3 +55,23 @@ def test_reserved_ranges_and_common_tags_are_checked():
     cap["tlv"]["describe"]["features"] = 0x06
     errors = gen.check(reg)
     assert any("reserved range" in e for e in errors) and any("repeats a common tag" in e for e in errors)
+
+
+def test_line_names_are_generated_for_every_output():
+    reg, digest = gen.load()
+    names = next(i for i in reg["interface"] if i["name"] == "oep.probe.config")["line_names"]
+    assert names
+    h, p, j = gen.cpp(reg, digest), gen.py(reg, digest), gen.js(reg, digest)
+    for name in names:
+        assert f'kLineName{gen.camel(name)} = "{name}"' in h
+        assert f"{name!r}: " in p
+        assert f"{name}: " in j
+    ns = {}
+    exec(p, ns)
+    assert ns["PROBE_CONFIG"].line_names == names
+
+
+def test_a_private_line_name_in_the_registry_is_reported():
+    reg, _ = gen.load()
+    next(i for i in reg["interface"] if i["name"] == "oep.probe.config")["line_names"]["x-acme"] = "private"
+    assert any("not a standard name" in e for e in gen.check(reg))

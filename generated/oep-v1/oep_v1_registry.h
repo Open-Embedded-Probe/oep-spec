@@ -727,6 +727,11 @@ constexpr uint8_t kStorageStateUnreadable = 0x02;
 constexpr uint8_t kStorageUnreadableForm = 0x01;
 constexpr uint8_t kStorageUnreadableInterface = 0x02;
 constexpr uint8_t kStorageUnreadableRefused = 0x03;
+constexpr const char *kLineNameNrst = "nrst";
+constexpr const char *kLineNamePowerHi = "power_hi";
+constexpr const char *kLineNamePowerLo = "power_lo";
+constexpr const char *const kLineNames[] = {"nrst", "power_hi", "power_lo"};
+constexpr unsigned kLineNameCount = 3;
 }  // namespace probe_config
 
 }  // namespace reg

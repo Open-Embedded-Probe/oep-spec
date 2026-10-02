@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import re
 import sys
 import tomllib
@@ -95,6 +96,9 @@ def check(reg: dict) -> list[str]:
             for v, v_name in items:
                 if any(lo <= v <= hi for lo, hi in ranges):
                     errors.append(f"{n}: {what} {v_name} = {v:#x} is in a reserved range")
+        for line in iface.get("line_names", {}):
+            if line.startswith("x-") or "." in line or not 1 <= len(line.encode()) <= 32 or not re.fullmatch(r"[a-z0-9_-]+", line):
+                errors.append(f"{n}: line name {line!r} is not a standard name (1-32 of a-z 0-9 _ -, no x- prefix, no '.')")
         for kind_name, kind in iface.get("event", {}).items():
             if not 0x01 <= kind <= 0x7F:
                 errors.append(f"{n}: event {kind_name} = {kind:#x} outside the interface range 0x01-0x7F")
@@ -159,6 +163,12 @@ def cpp(reg: dict, digest: str) -> str:
         for enum, values in iface.get("enum", {}).items():
             for k, v in values.items():
                 L.append(f"constexpr uint8_t k{camel(enum)}{camel(k)} = 0x{v:02X};")
+        names = list(iface.get("line_names", {}))
+        if names:
+            for k in names:
+                L.append(f'constexpr const char *kLineName{camel(k)} = "{k}";')
+            L.append("constexpr const char *const kLineNames[] = {" + ", ".join(f'"{k}"' for k in names) + "};")
+            L.append(f"constexpr unsigned kLineNameCount = {len(names)};")
         L.append(f"}}  // namespace {ns}")
     L += ["", "}  // namespace reg", "}  // namespace v1", "}  // namespace oep", ""]
     return "\n".join(L)
@@ -188,8 +198,10 @@ def py(reg: dict, digest: str) -> str:
         en = ", ".join(f'"{e}": {{' + ", ".join(f'"{k}": 0x{v:02X}' for k, v in vals.items()) + "}"
                        for e, vals in iface.get("enum", {}).items())
         own = ", ".join(f'"{k}": 0x{v:02X}' for g in ("status", "reject_reasons") for k, v in iface.get(g, {}).items())
+        lines = ", ".join(f"{k!r}: {v!r}" for k, v in iface.get("line_names", {}).items())
         L += [f'{var} = _NS(name="{iface["name"]}", revision={iface["revision"]}, op={{{ops}}}, lock_free={{{free}}},',
-              f"    closed_tail={{{closed}}}, tlv={{{tlv}}}, event={{{ev}}}, enum={{{en}}}, own={{{own}}})",
+              f"    closed_tail={{{closed}}}, tlv={{{tlv}}}, event={{{ev}}}, enum={{{en}}}, own={{{own}}},",
+              f"    line_names={{{lines}}})",
               f'INTERFACES["{iface["name"]}"] = {var}']
     return "\n".join(L) + "\n"
 
@@ -224,6 +236,7 @@ def js(reg: dict, digest: str) -> str:
               f"  lock_free: new Set([{free}]), closed_tail: new Set([{closed}]),",
               f"  tlv: {tlv},",
               f"  event: {obj(iface.get('event', {}))}, enum: {en}, own: {obj(own)},",
+              "  line_names: Object.freeze({" + ", ".join(f"{k}: {json.dumps(v)}" for k, v in iface.get("line_names", {}).items()) + "}),",
               "};",
               f"INTERFACES['{iface['name']}'] = {var};"]
     return "\n".join(L) + "\n"
