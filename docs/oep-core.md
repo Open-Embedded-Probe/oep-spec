@@ -454,12 +454,12 @@ the interface's index, etc.), except that there 0x01 is supported, the refusal o
 ### 5.1 Recovering the delimiting (length-prefixed frames)
 
 On length-prefixed frames (vendor bulk, HID, TCP), when the host sees an answer whose corr does not match, an impossible length (exceeding max_frame), or a frame that
-stopped midway (no continuation for 200 ms), it discards input until it has been quiet for 50 ms, sends confirm, and verifies that the answer with its own corr comes back
+stopped midway (no continuation for 200 ms; not on TCP, where a pause inside a frame is normal and the host keeps reading that frame, §3.2), it discards input until it has been quiet for 50 ms, sends confirm, and verifies that the answer with its own corr comes back
 before resuming. If the TLVs at the end of an answer are cut off midway, that answer is broken. When notifications keep flowing and the input does not become quiet,
 it may send unsubscribe and end without verifying (executing them twice does no harm). COBS frames can discard broken ones by the CRC, so
 this procedure is not needed there.
 
-Before the confirm of a resync, and before the first confirm after opening a length-prefixed port, the host waits until `host_resync_wait_ms` (registry, 250 ms = probe_frame_gap_ms + 50 ms) have passed since it last wrote to that port, in addition to the 50 ms of quiet input. On TCP the host may instead close the connection and open a new one.
+Before the confirm of a resync, and before the first confirm after opening a length-prefixed port, the host waits until `host_resync_wait_ms` (registry, 250 ms = probe_frame_gap_ms + 50 ms) have passed since it last wrote to that port, in addition to the 50 ms of quiet input. On TCP the host may instead close the connection and open a new one (after an over-long length the probe has closed it, §3.1).
 
 ### 5.2 Resend and deduplication
 
