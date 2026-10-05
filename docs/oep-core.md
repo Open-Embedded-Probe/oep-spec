@@ -237,8 +237,8 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
   §3.4). The list of the probe's transports is known from the transport of the describe of fn 0 (§7.5).
 - **How to tell a USB OEP probe apart**: among devices it does not know, a host identifies an OEP probe automatically only when the device has **the project's USB
   VID:PID**. The project's VID:PID is listed in the registry's `usb` when it is obtained. Until it is listed, the registry has no
-  VID:PID, and no device is identified automatically by this rule (the temporary clues until then are in [host development guide](host-development-guide.ja.md) (Japanese)
-  §1.7; they are not normative). The device string iProduct is free text for display, and the host does not use it for identification. Interface strings are also for
+  VID:PID, and no device is identified automatically by this rule (the temporary clues until then are in [host development guide](host-development-guide.md)
+  §4; they are not normative). The device string iProduct is free text for display, and the host does not use it for identification. Interface strings are also for
   display and are not used for identification.
 - **A named probe**: when the user names a probe by its unit_id (the address `oep://<unit_id>[/<slot name>]`, §7.6), the host may open the USB device whose serial number
   equals that unit_id without identifying it. After opening, the host follows the probing rule below, and uses the device as that probe only when the unit_id of the describe of fn 0
@@ -310,7 +310,7 @@ A serial port carries OEP frames and raw bytes (the target's console, etc.) on t
 An optional function to raise the link speed of a UART bridge port above the boot speed for the duration of a session. Its uses are large writes, capture, and the console
 (the time of the wire's block ops is determined by the round trips on the debug wire and does not change with the link). The speed of the probe's fixture UART is separate (that interface's
 configure and settings). This section defines only the **handshake**. Which speeds to try as candidates, the criterion for considering one passed, and the criterion for falling back while in use
-are decided by the host (reference procedure: [host development guide](host-development-guide.ja.md) (Japanese) §7).
+are decided by the host (reference procedure: [host development guide](host-development-guide.md) §17).
 
 **Definitions of terms**
 
@@ -369,7 +369,7 @@ port_speed  request: port(u8), baud(u32), step(u8: 0 try, 1 commit, 2 revert), v
 6. On receiving the answer to revert, or on receiving the answer to end, switch to the boot speed.
 7. A host opening a port repeats confirm for port_speed_idle_max_ms + 1000 ms (`port_speed_confirm_extra_ms`) if confirm does not pass at the boot speed (waiting for the leftover of a previous host's
    raise to return).
-8. Which speeds to try as candidates, the flow for verification, the criterion for considering one passed, and the criterion for falling back while in use are decided by the host (reference: [host development guide](host-development-guide.ja.md) (Japanese) §7).
+8. Which speeds to try as candidates, the flow for verification, the criterion for considering one passed, and the criterion for falling back while in use are decided by the host (reference: [host development guide](host-development-guide.md) §17).
 
 The measured values and the records of how things break are in [UART speed](uart-speed-negotiation.ja.md) (Japanese), [link measurements](link-measurements.ja.md) (Japanese).
 
@@ -665,7 +665,7 @@ appears in the answer.
   number. It does not change while the probe stays booted.
 - **Invariance of transport indexes**: a transport keeps its index across firmware versions of the same model. A firmware that adds a transport gives it an index not used before, and a removed index is not reused.
 - The host may decide how to take over the lock from the number of transports (if the only transport is a single serial port, there is no previous owner once the port has been opened
-  exclusively. [host development guide](host-development-guide.ja.md) (Japanese)).
+  exclusively. [host development guide](host-development-guide.md) §6).
 - **Uniqueness of unit_id**: unit_id is a different value per unit (the chip's unique number, etc.). A probe with storage but no unique number creates its unit_id at first boot from a random number and saves it.
   A probe with neither uses a unit_id that starts with `x-` (not unique). A host does not group transports by a unit_id that starts with `x-`, does not name a probe by it, and does not key anything it keeps across sessions by it (for example a record of a port's link speed), so that another unit on the same port inherits nothing.
 - **Invariance of unit_id**: unit_id is derived only from values of the unit (the chip's unique number, a saved random number; an `x-` unit_id is the one exception), and does not change with the firmware version, the profile, the build, or the kind of
@@ -868,4 +868,4 @@ Standard interfaces and independent interfaces are both defined by the following
 - [Serial ports and persistence](probe-cdc-and-persistence.ja.md) (Japanese): prototypes and measurements of several transports, settings, and boot modes.
 - [Open proposals for v1](v1-open-proposals.ja.md) (Japanese): the proposals before the decisions, and how they were decided.
 - [Answers to the review](review-answer-2026-09-26.ja.md) (Japanese): the third-party review.
-- [host development guide](host-development-guide.ja.md), [probe development guide](probe-development-guide.ja.md) (Japanese): implementation practice.
+- [host development guide](host-development-guide.md), [probe development guide](probe-development-guide.md): implementation practice.

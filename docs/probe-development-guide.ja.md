@@ -1,228 +1,231 @@
 # Open Embedded Probe — probe 開発ガイド
 
-状態: **ガイド**（規範ではない。2026-09-24 起草、2026-09-26 に規範の [OEP core](oep-core.ja.md) と `oep-if-*.ja.md` に
-合わせて更新）。規範が probe に求めることを実装で守るための具体的なやり方と、実測で分かった罠。規範と食い違えば規範が
-正しい。host 側は [host 開発ガイド](host-development-guide.ja.md)。
+[English](probe-development-guide.md)
 
-## 1. 開閉でリセットしない・状態を戻さない
+状態: **ガイド**（規範ではない。2026-10-06 にその日の規範の文に合わせて更新）。probe を作る人のために、[OEP core](oep-core.ja.md) と
+`oep-if-*.ja.md` が probe に求めることを満たす実務のやり方と、実際に踏んだ罠をまとめる。規範と食い違えば規範が正しい。英語版が正で、
+この日本語版はその訳。host の側は [host 開発ガイド](host-development-guide.ja.md)。
 
-- transport を開閉してもリセットしない。DTR / RTS の変化でリセットする回路（ESP32 の自動リセット回路、
-  USB-Serial/JTAG）を持つボードは、host がそれを避けて開く（host 開発ガイド §1）。probe 側は、開閉で自分から
-  再起動しない。
-- **DTR に頼らない。** arduino-pico の USB シリアルは DTR が下りていると出力しない（実測、2026-09-24）。
-  `Serial.ignoreFlowControl()` などで、host の開き方が違っても通信が止まらないようにする。
-- **transport の開閉では状態を変えない。** 経路を閉じても、attach、ピン、線の状態はそのまま。資源を外すのは、core §9 の
-  寿命の規則のときだけ（明示の release / detach、lease の期限切れと force で奪われたときの、そのセッションの分）。
-  外すときも target をリセットしない。解いたピンは設定の idle の状態（既定は Hi-Z）にし、駆動し続けない（core §8）。
-- 開くとどうしてもリセットされる probe は、probe 全体の describe で `resets_on_open` を宣言する。
+- 最初の一歩（confirm、list、describe に答えるいちばん小さい probe とバイト列）は [はじめに](getting-started.ja.md)、probe が
+  しなければならないことのチェックリストは [適合](conformance.ja.md) §1。
+- 参照のライブラリの上で probe を作る案内は、ライブラリの側にある:
+  [getting started](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/getting-started.ja.md)、
+  [writing a probe](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.ja.md)、例の
+  `examples/01.Basics/MinimalProbe`（oep-probe-arduino）。
+- 以前ここにあったチップ固有の話と日付つきの実測は、記録の [実装の記録](implementation-notes.ja.md) の、P とここの節番号の節に移した。
+  節の番号は 2026-10-06 に付け直した。古い番号と新しい番号の対応はその記録の冒頭。
+- `probe_frame_gap_ms` のような逆引用符の名前は、すべての数を持つ `registry/oep-v1.toml` のキー。
+
+## 1. 開閉でリセットしない・状態を変えない
+
+- 経路を開閉しても probe はリセットしない。DTR / RTS の変化で MCU をリセットする回路を持つボードは、host がそれを避けて開く
+  （host ガイド §1）。probe は、口が開いた・閉じたことで自分から再起動しない。
+- **DTR に頼らない。** DTR が下りている間は送らない USB シリアルのスタックがある。それを切って（スタックの「流れの制御を無視する」
+  設定など）、host の開き方が違っても話し続けるようにする。core §3.4: probe は DTR、RTS、線の状態を何の判断にも使わない。
+- **経路の開閉では状態を変えない。** attach、ピン、線の状態はそのまま。資源を外すのは core §9 の寿命の規則のときだけ（明示の
+  release / detach、lease の期限切れと force でのそのセッションの分）。外すときも target をリセットしない。解いたピンは設定の idle の
+  状態（既定は Hi-Z）にし、駆動し続けない（core §8）。
+- 開くとどうしてもリセットされる probe は、fn 0 の describe で `resets_on_open` を宣言する（core §7.5）。
+- 例: [実装の記録](implementation-notes.ja.md) §P1。
 
 ## 2. 送受信のバッファ
 
-- **受信バッファは、宣言した window（未処理のまま受け付ける byte 数）より大きくする。** 送信バッファは、
-  window 分の要求に対する応答の合計より大きくする。足りないと、probe が長い処理（flash のローダーの実行、
-  スキャン）をしている間に届いた byte がこぼれる。
-- 既定値のままにしない。ESP32 の Arduino の `HardwareSerial` は受信 256 byte が既定で、512 byte のフレーム 1 つにも
-  足りない。今の probe は `setRxBufferSize(8192)` / `setTxBufferSize(8192)` にしている（classic ESP32 の V003 用、
-  P4 の X035 用）。
-- P4 の USB-Serial/JTAG は、outstanding byte が device の ring（8 KiB）を超えるとデータを落とした（E155）。window は
-  device の ring の半分（4 KiB）で宣言している。
-- 長い処理の間も受信を吸える作り（割り込み・DMA で受ける、処理を分けて poll を回す）にする。
-- **受信は 1 byte ごとに重い処理をしない。** frame の読み取りが 1 byte ごとに時計（ESP32 の `millis()`）を読むと、
-  1 byte 約 1.2 µs かかり、HS USB でも host → probe が 0.8 MB/s で頭打ちになった（2026-09-25、P4）。届いている分を
-  まとめて読み、時計は 1 回だけ読み、本文はまとめて写す（oep-probe-arduino の `FrameReader::feed`）。Arduino の
-  `Stream::readBytes` の既定の実装も 1 byte ごとに時計を読むので使わない。
-- **宣言した max_frame の要求を丸ごと受けられるようにする。** 受信バッファ（frame 1 つ分）と、USB などの受け口の
-  ring（下の層が 1 回に置く量 × 2 以上）の両方。足りないと frame の途中がこぼれ、以後の区切りがずれる
-  （P4 の direct build で、8 KiB の ring に 16 KiB の要求が来てこぼれた）。
-- 線の速さは core の link_source / link_sink（[core](oep-core.ja.md) §12）で測れる。受信・送信の経路を変えたら測り直す。
-- **vendor bulk の OUT を、ZLP で終わる大きな転送として受けない。** host は packet の倍数の書き込みの後に ZLP を続ける
-  （core §3.1）が、ESP32-P4（TinyUSB の dwc2、EspUsbDevice の direct build）で 16 KiB の OUT の転送を張り ZLP を終わりの印に
-  すると（`CFG_TUD_VENDOR_RX_NEED_ZLP=1`）、ちょうど 512 byte の倍数で終わる要求の完了が次の OUT まで遅れ、probe は答えなかった
-  （2026-09-30、X035 の治具、1024 byte の write_block）。packet ごとに受ければ（`=0`）、どの packet もすぐ届き、ZLP は長さ 0 の
-  完了として読み飛ばされる。
+- **受信バッファは、宣言した window（受け付けてまだ処理していない要求の byte 数）より大きくする。** 送信バッファは、window 分の要求に
+  対する応答の合計より大きくする。足りないと、probe が長い処理（flash のローダー、scan）をしている間に届いた byte がこぼれる。
+- **プラットフォームの既定のバッファの大きさを、確かめずに使わない**: max_frame 1 つより小さいことが多い。
+- 長い処理の間も受信する（割り込みや DMA で受ける、処理を分けて受信の poll を回す）。
+- **受信で 1 byte ごとに重い処理をしない。** 届いている分をまとめて読み、時計は 1 回だけ読み、本文はまとめて写す。1 byte ごとに
+  時計を読むと、受信の速さが線の速さよりずっと低く頭打ちになることがある。
+- **宣言した max_frame の要求を丸ごと受けられるようにする**: フレームのバッファと、その下の受信の ring（下の層が 1 回に置く量の
+  2 倍以上）。足りないとフレームの途中がこぼれ、以後の区切りがずれる。
+- **vendor bulk の OUT は packet ごとに受ける**。ZLP で終わる大きな転送として受けない: host は wMaxPacketSize の倍数の書き込みの後に
+  長さ 0 の転送を続ける（core §3.1）ので、ちょうど packet の境で終わる要求が次の OUT まで待たされることがある。長さ 0 の完了は
+  読み飛ばす。
+- 線の速さは fn 0 の link_source / link_sink（core §12）で測る。受信・送信の経路を変えたら測り直す。
+- 例と実測: [実装の記録](implementation-notes.ja.md) §P2。
 
-## 2.5 OEP の口にほかのものを出さない・誰も読まない口で止まらない
+## 3. OEP の口にほかのものを出さない・誰も読まない口で止まらない
 
-2026-09-25 の P4 の試作で 2 回踏んだ。
-
-- **OEP の口にログを出さない。** ESP-IDF のログ（LEDC の設定エラーなど）が、OEP と同じ USB-Serial/JTAG に出てフレームを
-  壊し、host は応答が来ないとみなした。OEP をその口で話す probe は、`esp_log_level_set("*", ESP_LOG_NONE)` などでログを
+- **OEP を運ぶ口にログを出さない。** ログの行はフレームを壊し、host は応答が来ないとみなす。その口ではプラットフォームのログを
   止める。
-- **誰も読んでいない口への書き込みで loop を止めない。** OEP を HS の vendor bulk に移し、USB-Serial/JTAG には 2 秒ごとの
-  状態の行だけを出していたところ、その口を誰も開いていないと HWCDC の書き込みがタイムアウトまでブロックし、loop が
-  1.8 秒止まった。パイプラインの読み出しと通知が毎回 1.83 秒遅れ、1 回ずつの往復（0.5 ms）は loop が動いている間に
-  収まるので気づきにくい。書き込みがブロックしない設定（`Serial.setTxTimeoutMs(0)`）にするか、書かない。
+- **誰も読んでいない口への書き込みで main loop を止めない。** 開かれていない USB シリアルの口へのブロックする書き込みは、呼ぶたびに
+  タイムアウトまで待ち、すべての応答と通知を遅らせうる。ブロックしない書き込みにするか、書かない。
+- 例: [実装の記録](implementation-notes.ja.md) §P3。
 
-## 3. 信頼性のない経路には CRC と再送
+## 4. 信頼性のない経路には CRC と再送
 
-- USB（CDC、vendor bulk）はデータを保証するが、**USB-UART の変換チップを挟む経路は保証しない。** probe と変換
-  チップの間の UART、変換チップ自身、usbip で byte が落ちる・化けることがある。
-  - 2026-09-22: 変換チップが長い連続送信で byte を落とした（classic ESP32 の V003 治具）。
-  - 2026-09-24: 同じ治具で 16 KB の読み戻しが一度化け、**エラーにならずに通った**（v0 のフレームには CRC が無い）。
-    読み直すと flash は正しかった。
-- このような経路では、フレームに CRC を付け、壊れたフレームは捨てて再送する（[UART binding の信頼性モデル
-  候補](uart-reliability-model.ja.md)）。host は「応答が来た」ことを正しさの根拠にしない。
-- 実装（2026-09-24）: oep-probe-arduino の `CobsReader` / `writeCobsFrame`（COBS + CRC-16/CCITT-FALSE、仮置き）。
-  V1 の endpoint に `Framing::kCobsCrc` を渡す。classic ESP32 の V003 用 probe がこれを使う。
-- target 側の経路も同じ。RVSWD の DMI parity は 1 bit で、壊れた応答の半分を通す（E156 / E157）。memory read や
-  flash の結果は、上位の CRC か読み戻しで確かめる（[開発ガイドライン](development-guidelines.ja.md) §6-6）。
+- USB（CDC、vendor bulk）はデータを保証するが、**USB-UART の変換チップを挟む経路は保証しない**: probe と変換チップの間の UART、
+  変換チップの中、USB をネットワークで運ぶ層で、byte が落ちたり化けたりする。
+- そのためシリアルの口は COBS + CRC-16/CCITT-FALSE を運ぶ（core §3.1）: 壊れたフレームは捨てられ、host が送り直す（core §5.2）。
+  host は「応答が来た」ことを正しさの根拠にしない。
+- target の側も同じ: debug の線の 1 bit の parity は、壊れた応答の半分を通す。メモリの読み出しや flash の結果は、上位の CRC か
+  読み戻しで確かめる。
+- 例: [実装の記録](implementation-notes.ja.md) §P4。
 
-## 3.5 UART bridge の速さは 115200 固定
+## 5. UART bridge の起動時の速さ
 
-UART bridge（probe の UART を USB-UART の変換チップで出したもの）の probe は、**115200 bps 固定**にする（2026-09-29 の決定）。
+- UART bridge の probe は、いつも `uart_bridge_boot_baud`（115200 bps）8N1、流れの制御なしで起動する（core §3.4）。起動時の速さを
+  設定にしない: 設定を忘れると入れなくなり、生のバイトと OEP が混ざる口では速さの自動の検出は危うい。
+- セッションの間だけ速くするのは port_speed（core §3.5、任意）: 3 つの状態、戻る条件、describe の tag 0x4E を実装する。戻り先は
+  いつも起動時の速さ。
+- USB CDC と内蔵の USB シリアルでは、線の設定は数字が渡るだけで速さに関係しない。無視する（core §3.4）。
+- 経緯（起動時の速さが唯一の速さだったころ、速い速さの実測）: [実装の記録](implementation-notes.ja.md) §P5、
+  [UART の速さ](uart-speed-negotiation.ja.md)。
 
-- 設定で変えられるようにすると、忘れたときに入れなくなる。自動の速度検出は、生のバイトと OEP が混ざる口（core §3.4）では危うい。
-- dmseq のコンソールと書き込みには足りる（classic ESP32 + CH340 の V003 治具で、14 KB の書き込み + 確認が 4.1 秒）。速さが要る
-  なら、USB CDC / USB-Serial/JTAG / vendor bulk を持つ probe を使う。USB CDC と USB-Serial/JTAG では baud は数字が渡るだけで、
-  速さに関係しない。
-- 参考（2026-09-24、速度ごとにビルドし直した実験用の probe）: 460800 bps から先は SWIO の側が上限で速くならず、230400 は
-  変換チップの経路で通らず、2 Mbps 以上は大きなフレームで壊れた（`experiments/uart-binding/uart_rate.py`）。
+## 6. シリアルの口の共用の作り
 
-## 3.6 シリアルの口の共用の作り
+core §3.4 の規則を守るための作り:
 
-core §3.4 の規則を守るための作り（2026-09-29）。
+- **受信**: 口ごとに 1 つの読み手。0x00 の外のバイトはすぐ生のバイトの行き先（bind、[probe の設定](oep-if-probe-config.ja.md) §1.2）へ
+  渡し、0x00 から次の 0x00 までを候補としてためる。候補が解けないか CRC が合わない、または入力が `probe_frame_gap_ms` 途切れたら、
+  ためた分を生のバイトとして渡す。候補のバッファは max_frame の COBS の長さ + 2 を持つ。あふれそうになったら、その時点で中身を生の
+  バイトとして渡す。
+- **送信のキュー**: 口ごとに 1 つ。単位はフレーム丸ごとか、生のバイトの塊（64 byte 程度）。1 つの書き手が単位を割らずに出す。
+  フレームは塊より先に出してよい。塊は位置つきのストリームから読むので、口が詰まっても捨てずに待てる（位置を進めないだけ）。
+  endpoint がフレームを口に直接書き、別の処理が同じ口に生のバイトを書く形にしない: シリアルのドライバの多くは呼び出しの単位でしか
+  排他しない。
+- **口には OEP と bind の流れのほかは出さない**（§3）。
 
-- **受信**: 口ごとに 1 つの読み手が、0x00 の外のバイトはすぐ生のバイトの行き先（bind、[probe の設定](oep-if-probe-config.ja.md)
-  §1.2）へ渡し、0x00 から次の 0x00 までを候補としてためる。候補が解けないか CRC が合わない、または 200 ms 途切れたら、ためた分を
-  生のバイトとして渡す。候補のバッファは max_frame の COBS の長さ + 2 を持つ（超えたら、その時点で生のバイトとして渡す）。
-- **送信のキュー**: 口ごとに送信を 1 つにまとめる。単位はフレーム丸ごとか、生のバイトの塊（64 byte 程度）。1 つの書き手が単位を
-  割らずに出す。フレームは塊より先に出してよい。塊は位置つきのストリームから読むので、口が詰まっても捨てずに待てる（位置を
-  進めないだけ）。Arduino の `HardwareSerial::write` は呼び出しの単位でしか排他しないので、endpoint がフレームを `Serial` に
-  直接書き、別の処理が同じ口に生のバイトを書く形にしない。
-- **口に OEP 以外のものを書かない**（§2.5）。ログは OEP のフレームを壊す。生のバイトとして出してよいのは bind の流れだけ。
+## 7. probe の再起動の抑止
 
-## 3.7 probe の再起動の抑止
+口を開閉しても probe が再起動しないようにする（§1）。USB スタックの再起動のきっかけ（DTR / RTS の並び、1200 bps の「touch」、vendor の
+リセットの要求）をすべて切る。きっかけが firmware の外にあるとき（USB-UART の変換チップの先の自動リセットの回路）は、host が DTR と
+RTS を立てて開き（host ガイド §1）、それでもリセットするなら probe は `resets_on_open` を宣言する。スタックごとの例:
+[実装の記録](implementation-notes.ja.md) §P7。
 
-口を開閉しても probe が再起動しないようにする（§1）。
+## 8. 推奨の USB の作り（VID:PID、iProduct、serial number、interface）
 
-| 口 | 止め方 |
-|---|---|
-| ESP32-P4 などの USB-Serial/JTAG | `USB_DEVICE_CHIP_RST_REG` の `USB_UART_CHIP_RST_DIS`（bit2）を立てる。arduino-esp32 3.3.12 の HWCDC に API は無いので、レジスタに直接書く |
-| TinyUSB の CDC（arduino-esp32 の `USBCDC`） | `enableReboot(false)`（DTR / RTS の並びと 1200 baud の touch での再起動を止める） |
-| EspUsbDevice の CDC（P4 の HS） | 元から持たない |
-| classic ESP32 などの UART bridge | 変換チップの先の自動リセット回路なので、firmware では止められない。host が DTR と RTS を両方立てて開く（host 開発ガイド §1）。止められないものは describe の resets_on_open で宣言する |
+ネイティブ USB を持つ probe のために:
 
-## 3.8 推奨の USB の作り（VID:PID、iProduct、serial と HID の口）
-
-ネイティブ USB を持つ probe（ESP32-P4 の HS の口、RP2350 など）の推奨の形:
-
-- **VID:PID**: host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID を持つ device だけ（core §3.3）。その VID:PID は
-  取得したときに registry に載る。今は仮の USB の ID（ボードの既定の VID:PID）で動かしていて、配布には使えない。専用の PID を取得できたら、
-  それに切り替える予定。プロジェクトの VID:PID で列挙する probe は、fn 0 の describe の discoverable を 1 にする（USB-Serial/JTAG のように
-  別の口から開かれても、host がそれで分かる）。registry に載るまでは、どの probe も 0。
-- **iProduct** は表示のための自由な文字列で、host は見分けに使わない（core §3.3）。ただ、専用の PID を取得するまでの暫定の手がかり
-  （[host 開発ガイド](host-development-guide.ja.md) §1.7）に乗るよう、今は iProduct を `OEP` で始めることを勧める。
+- **VID:PID**: host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID だけ（core §3.3）。それは取得したときに
+  registry に載る。probe がそれを使うのは載ってからで、oep-probe-arduino の PID-USE の条件の下でだけ。それで列挙する probe は fn 0 の
+  describe の discoverable を 1 にする（別の口から開いた host にも分かる）。載るまでは、どの probe も 0。それまでは自分の USB の ID で
+  動く。参照の firmware は今ボードの既定の VID:PID を使っていて、配布には使えない。
+- **iProduct** は表示のための自由な文字列で、host は見分けに使わない（core §3.3）。`OEP` で始めると、プロジェクトの VID:PID が
+  できるまで、host ガイド（§4）の暫定の手がかりで見つかる。
 - **serial number は unit_id**（core §3.3）。利用者が unit_id で名指した probe は、host がこれで探す。
-- device の中の口は interface の種類で決まる（core §3.3: CDC はすべてシリアルの口、vendor bulk は class 0xFF / subclass 0x4F /
-  protocol 0x45、HID は usage page 0xFF4F / usage 0x45）。probe はこの形で出す。host はこの値だけで OEP の probe とは決めない。
-  - 参照 probe（ESP32-P4、EspUsbDevice 2.5.1）は、VID:PID は仮に 303a:0002（arduino-esp32 の TinyUSB の既定）、iProduct を
-    「OEP probe (P4 HS)」にしている（CDC の「OEP console」は表示のための名前）。
-- interface は **vendor bulk（OEP）、HID（OEP）、CDC（シリアルの口）** の組（core §3.3）。
-  - vendor bulk は host の主な経路（速い）。
-  - HID は、他の道具が vendor や CDC を握っていても読める口で、discovery がロックなしの describe / get でスロットと状態を読むのに
-    使う。OS のドライバも要らない。
+- device の中の口は core §3.3 のとおり: CDC はすべてシリアルの口。vendor bulk は class 0xFF / subclass 0x4F / protocol 0x45 の
+  interface の bulk の組（Microsoft OS 2.0 の compatible ID `WINUSB` を付ける）。HID は usage page 0xFF4F / usage 0x45 で、出力の
+  report を interrupt OUT と SET_REPORT の両方で受ける。vendor bulk と HID はそれぞれ多くて 1 つ。
+- よい組は **vendor bulk（OEP）、HID（OEP）、CDC（シリアルの口）**:
+  - vendor bulk は host の主な、速い経路;
+  - HID は、他の道具が vendor や CDC を握っていても読め、ドライバも要らず、ロック不要の発見（describe、設定の get と state）に向く;
   - CDC は IDE や端末から見えるシリアルの口。OEP も受けるが（core §3.4）、主にはコンソールを流す。
-- fn 0 の describe の transport に、実際に出している経路をすべて並べる。unit_id はどの経路からでも同じ値を返す。
+- 出している経路をすべて fn 0 の describe（transport の tag）に並べ、どの経路でも同じ unit_id を返す。
+- 参照の probe の今の記述子: [実装の記録](implementation-notes.ja.md) §P8、[USB の識別](usb-identity.ja.md)。
 
-## 3.9 ロックの奪い方に probe が答えること
+## 9. ロックの奪い方に probe が答えること
 
-host は transport の数でロックの奪い方を決める（host 開発ガイド §2）。probe は次を守る。
+host は transport の数でロックの奪い方を決める（host ガイド §6）。probe は:
 
-- transport の一覧を正しく出す（シリアルの口が 1 つだけの probe は、そう見えるように）。
-- lease の期限を守って空ける（期限切れの後始末、core §9）。lock_state の残り時間を正しく返す。
-- 1000〜60000 ms の lease の要求は、そのまま受ける（lease の範囲の規則は core §6.4）。
+- transport の一覧を正しく出す（シリアルの口が 1 つだけの probe は、そう見えるように）;
+- lease が切れたらロックを空け（後始末をし、core §9）、lock_state の残り時間を正しく返す;
+- `lease_min_ms`〜`lease_max_ms` の lease の要求はそのまま受け、ほかはその範囲に丸める（core §6.4）。
 
-## 4. target を扱う部品
+## 10. 識別子と宣言の選び方
 
-- 実行して停止を待つ（`runUntilHalt` 相当）では、dcsr の ebreakm / ebreaks / ebreaku を立て、prv を M にする。
-  ebreakm が無いと最後の ebreak が mtvec に飛んでアプリケーションが再起動する（V003、2026-09-22）。prv が U のままだと
-  割り込みを止められない（ArduinoCore-CH32 のスケッチは V3B/V4 で U モードで動く）。割り込みは host が mstatus = 0
-  を渡して止める（[flash の実験](../experiments/flash-primitives/README.ja.md)）。
-- 連続した語の読み書きは、DM の autoexec で回す（読み: E156 の reader、書き: その逆）。DATA1 に残るアドレスで
-  実行回数を数え、取りこぼしや二重実行を見つける。
-- **リンクの速度は、決めたときの target のクロックでしか保証されない。** attach で測って選んだ速度は、スケッチがクロックを
-  上げた後の値である。リセットすると CH32 は既定の遅いクロックに戻り、その速度では書き込みが化ける。ndmreset と一緒に
-  保持した haltreq が失われ、hart はリセットベクタで止まらずにイメージへ走り込んだ（2026-09-24、ESP32-P4 → CH32X035、
-  動いているスケッチから 28 回中 0 回。最も遅い半周期（500 ns）なら 28 回中 28 回。WCH-LinkE + ch32rv は別の X035
-  （C8T6、LinkE `FC928F068181` の先。P4 の治具の F8U6 とは UID が違い、線も共有していない）で 5 回中 5 回）。
-  - リセットは最も遅い速度で行い、hart が止まってから速度を測り直す。attach under reset も同じ（リセットを放す前に
-    最も遅い速度にする。保持中の attach が通らなかったときも。CH32L103 は NRST の間は haltreq を保持せず、放した直後の
-    問い合わせで捕まえている。直す前は 20 回中 16 回、直した後は 60 回中 59 回がリセットベクタ）。
-  - 測り直しには wake を使わない（RVSWD の wake は target をリセットする）。遅い速度から速めていき、最初に落ちたら
-    一つ遅い速度に戻して確かめ直す。
-  - 読み出しが化けると、DMSTATUS が「動いている」ように見える。version（下位 4 bit = 2）が合わない値は雑音として扱う。
-  - WCH-Link は DMI を固定の速度（400 kHz / 4 MHz / 6 MHz）で回し、target のクロックに合わせて詰めないので、
-    この罠に当たらないと読める。ch32rv の DMI 直叩きの reset-halt（0x80000003 → 0x80000001）は、LinkE / CH549 経由で
-    PLL 96 / 72 MHz → HSI 8 MHz に戻る V203 / V307 / V103 で各 5/5 捕まえた（ch32rv、2026-09-24。reset で dcsr.ebreakm が
-    消えることも確かめてあり、先に走った hart を見誤ってはいない）。
-  - 2026-09-22 に X035 で見た「4〜5 % でリセットベクタに留まる」も同じ原因と見られる。同じ probe で、リセットの速度の
-    切り替えだけを外すと 100 回中 3 回留まり、入れると 100 回中 0 回だった（2026-09-24）。「ndmreset の後、書き込みを
-    一回おきに受け付けない」は確かめていない。E159（2026-09-22）の「reset-halt から resume すると約 40 % で SysTick が止まる」
-    は、修正後の probe では再現しなかった（reset-halt → resume、reset とも 20 回中 20 回で millis が進んだ。
-    `experiments/flash-primitives/e159_recheck.py`）。
-- **RVSWD のアイドル中の線の向きは target の性質で、CH32X035 と CH32L103 で逆になる**（2026-09-24、OEP 側での観察。
-  `experiments/flash-primitives/idle_matrix.py`。hart を止め、host 側で d だけ待ってから、止まったまま同じ dpc かを見た。各 5 回）。
+**unit_id**（fn 0 の describe 0x42、core §7.5）: `a-z 0-9 -` の 1〜`unit_id_max_bytes`（32）byte。個体ごとに違い、個体の値だけから
+作り、どの経路でも、どの firmware の版と profile でも同じで、接尾辞を付けない。probe が serial number を選べる所では USB の serial
+number と等しい（core §3.3）。
 
-  | target（probe） | 休ませ方 | 1 ms | 5 ms | 20 ms | 100 ms 〜 2 s |
-  |---|---|---|---|---|---|
-  | X035F8U6（ESP32-P4） | 両方 high（今のビルド） | 保つ | 保つ | 保つ | 保つ |
-  | X035F8U6（ESP32-P4） | SWCLK low | attach 自体が通らない | | | |
-  | L103C8T6（RP2350） | SWCLK low（今のビルド） | 保つ | 保つ | 保つ | 保つ |
-  | L103C8T6（RP2350） | 両方 high | 保つ | 保つ | DM がリセットされ hart が走る | 同左 |
+| 元にするもの | 利点 | 欠点 |
+|---|---|---|
+| チップの固有の番号を小文字の 16 進で | 保存が要らない。全消去や書き直しでも変わらない | describe や USB の serial number を読める誰にでも、チップの工場の番号を見せる（[安全とセキュリティ](security.ja.md) §8）。128 bit の番号で 32 文字を使い切る |
+| 初回の起動で作って保存した乱数 | チップのことを何も見せない | 保存が要る。その保存を全消去すると個体が新しい識別になり、host の記録と名指しのアドレスが外れる |
+| `x-` で始まる何か | どちらも無い probe 用 | 一意でない: host はそれでまとめず、名指さず、何のキーにもしない（core §7.5） |
 
-  - probe は 300 µs を超える休止の後、最初の転送の前に線を立て直している（`reviveIfIdle`）。L103 が high でも 5 ms まで
-    保つのはそのためと見られる（2026-09-23 の測定では、立て直しなしで 1 ms で落ちた）。
-  - **WCH-Link は、どの target でも両方 high で休ませる**（2026-09-24。target 自身に自分の SWDIO / SWCLK の INDR を
-    読ませ、ch32rv の dmseq モニタの間に 20 µs 以上動かなかった区間のレベルを集計した。`pin_idle_obs.ino`、
-    `linke_pin_obs.py`）。
+16 進の数字は小文字で書く: host は大文字と小文字を区別せずに比べるが、`A-F` は使える文字に無い。
 
-    | target（リンク） | 休ませ方 | 休止の最長 |
-    |---|---|---|
-    | L103C8T6（LinkE） | 両方 high | 36 ms |
-    | X035C8T6（LinkE） | 両方 high | 5 ms |
-    | V203 / V307（LinkE） | 両方 high | 5〜13 ms |
-    | V103（CH549 のリンク） | 両方 high | 6.5 ms |
-    | V003 / V006（LinkE、SWIO） | high | 4〜14 ms |
+**transport の index**（core §7.5）: 0 から、経路ごとに 1 つ。同じ model の firmware の版をまたいで、経路ごとの index を変えない。
+新しい経路には使ったことの無い index を付け、外した index は使い回さない。保存した bind はシリアルの口を index で指す（probe の設定
+§1.2）。
 
-  - LinkE は休止明けに wake を送らず、いきなりスタート条件からフレームを 1 つ送る（`burst_obs.ino`、L103。サンプリングが
-    5.8 µs に 1 回と遅いので、クロックの周期は目安にならない）。
-  - つまり L103 は、両方 high で 36 ms 休ませても LinkE とは通信を続けられる。OEP の probe で両方 high にすると 20 ms で
-    DM がリセットされるのは、休ませ方の向きではなく、こちらの休ませ方のどこかが違うためと見られる。
-    - 休止明けの wake は原因ではなかった（wake なしの再同期に替えても同じ）。
-    - Pico の治具の L103 に自分のピンを読ませる観察（`rest_obs.ino`、`oep_rest2.py`）は、使えないと分かった。
-      プローブが静かになってまもなく hart が止まり（休止を待つループの回数が休止の長さによらず一定）、休止中の
-      ピンの値も 1 / 2 / 3 と揺れた。止めた hart が休止のあと走り出した観察と表裏で、この組み合わせ（RP2350 の probe → L103）では休止中に
-      DM が雑音を DMI の書き込みとして受け取っている可能性がある（未確認）。以前に書いた「休止中に SWDIO = low、
-      SWCLK = high と読んだ」も、この観察の上なので当てにならない。
-    - 切り分けには、線を外から見る（P4 の capture を Pico と L103 の間につなぐ）か、配線を整える必要がある。
-  - 同じ L103 で WCH-Link と OEP の probe の休ませ方をそろえられれば、target ごとの設定は要らなくなる見込みがある。
-  - いまは probe のビルドの設定（治具のプロファイル）で持っている。rvswd は WCH の線（名前で特化が分かるインターフェース、
-    core §13 の規則 8）なので、target ごとの休ませ方をこの線の規則として持ってもよい。1 台の probe が両方の target を相手に
-    するようになったら、host が attach で指定する形を考える。
-- **debug の線は、線のタイミングが許すいちばん弱い出力の強さで駆動する。** 線の鋭いエッジは、同じ治具の隣の fixture の線に
-  乗る。classic ESP32 の既定（20 mA）の SWIO では、コンソールを読んでいる間、1 MHz の spi-target が bit を落とす・ずらす
-  （36 frame 中 23 だけ正しい。最弱（約 5 mA）では 72 中 72 で、線の速さは変わらない。2026-10-02、oep-probe-arduino d4f6293）。
-  配線の同じ P4 の治具では起きなかった（P4 の RVSWD はもとから最弱で、入力も違う）。参照の firmware の PHY はどれも最弱にする
-  （RVSWD: P4 は CAP_0、RP2 は 2 mA。SWIO: classic と P4 は CAP_0）。新しい PHY や移植でも設定する。記録は
-  [対象ごとのスキャンの記録](target-scan-notes.ja.md) §4。
-- **debug の線が忙しいときだけ壊れる fixture は、CPU より線のエッジを先に疑う。** 線が休んでいるとき（コンソールを外す）と
-  忙しいときで同じ手順を回し、まず出力の強さを見る。直ったかは前後を同じ手順で測る（arm した frame の直後に読む。DUT の周期
-  より長く待つと、arm していない次の frame が入って失敗に見える）。
-- **問題を直したら、同じ仕組みの箇所を探して確かめる**（ほかの PHY、ほかの SoC、線を駆動する fixture、client と fake）。
-  どれが大丈夫でどれが未確認かを記録に残す。
-- **resume と run は出し直さない**（oep-if-debug §4.2、§4.4）。CH32V006 の 1 回で出ない resumereq、CH32L103 の allresumeack
-  無しは host が扱う。以前 probe が dpc を見て出し直していたのは、汎用の名前の riscv-dm に CH32 の知識を入れる形だったので
-  やめた（2026-09-26）。
-- **1 語ごとの DMI の記録（最終アクセス時刻の `micros()` など）を、autoexec のブロックのループから外すのは見送った**
-  （2026-09-25）。ESP32-P4 → X035 の読み出しは 122.6 → 133.2 KiB/s（約 9 %）速くなり、書き込みは変わらなかった。
-  ところが RP2350 → L103 では、smoke 全体の中で毎回 1〜2 本のスケッチがコンソールから 0 文字になった（12/14、13/14、
-  13/14。元のループに戻すと 14/14 が 2 回）。原因は突き止めていない。フレームの間隔が詰まったことが、RP2350 の probe → L103 の
-  組み合わせに効いている可能性がある（L103 の配線は他の target と同じ。配線のせいではない）。
+**model**（0x41）: 小文字の `a-z 0-9 -`、1〜`model_max_bytes`（32）byte。同じ種類のハードウェアに同じ firmware なら同じ値で、個体ごとに
+変えない。プロジェクトのものでない model は、作り手の逆ドメイン名の `.` を `-` にしたもので始める（`com-example-probe1`）。
 
-## 5. 参照の firmware が宣言に使っている値（規範は決めない所）
+**firmware**（0x40）: 自由な文字列（ふつうは版）。**chip**（0x4C、任意）: `<part> v<revision>`。part は `a-z 0-9` の 1〜24 文字、
+revision は数字に任意の `.数字` の組。revision が分からなければ part だけ。
 
-- **model**（core §7.5 の 0x41）: チップの名前をハイフンなしの小文字で（`esp32p4`、`esp32`、`rp2040`、`rp2350`）。Arduino の
-  profile の名前と同じにしている。
-- **max_op_ms**（0x4D）: 10000。
-- **chip**（0x4C）: `esp32p4 v1.3`、`rp2350 v2` のように、型番とリビジョン。
-- **UART bridge の起動時の速さ**: 115200（§3.5。core §3.5 の port_speed はこの速さが戻り先）。
+**インターフェースとその順**（core §7.2）: probe が起動している間 fn は変わらない。同じ (name, revision) の instance は fn の昇順に
+数え、保存した設定はインターフェースを (name, instance, revision) で指す: 同じ名前のインターフェースの順を firmware の版をまたいで
+変えない。インターフェースの固定部分を変えるときは revision を上げ、できれば古い revision も別の fn で出し続ける（core §2.7）。
+
+**ピン**（core §7.4）: ピンを集合のどれにでも割り当てられる機能は role_channels を、組が決まっている機能は組ごとに channel_group を
+宣言する。両方を使ってもよい。probe 自身が使う channel は `reserved`（0x44）に、配線の固定の名前は `label`（0x46）に置く。plan に
+上限があれば plan_roles を宣言する（core §8）。
+
+**max_frame、window、max_inflight**（confirm、core §4.4）、経路ごと:
+
+- max_frame: `min_max_frame`（64）以上。その長さの要求が 1 つ丸ごと受信の経路に入るように選ぶ（§2）。max_length のような
+  インターフェースの上限は、要求と応答が max_frame に収まるようにする。
+- window: max_op_ms の間忙しくしている間に持てる、待っている要求の byte 数。window が max_frame より小さいと、いっぱいの大きさの
+  要求を断ることになる。
+- max_inflight: 受け付ける待ちの要求の数。送り直しの表は応答と一緒に少なくとも max_inflight 個を持つ（core §5.2）。メモリは
+  max_inflight × 覚える最大の応答。覚える応答の大きさに上限を置いてよい（それより大きい応答の送り直しは result_lost になる）。
+- シリアルの口では、host は待つ応答の量を `host_serial_inflight_max_bytes` 以下に保つ（core §3.4）。window を大きくしても host の
+  役には立たない。
+
+**max_op_ms**（0x4D、必須）: 1 つの要求にかかる最長の時間。save と flash のローダーも含む。引数がそれを超えうる op は unsupported で
+断る。host は来ない応答を max_op_ms + `host_wait_add_ms` 待つので、要る分よりずっと大きく宣言しない。
+
+**boot_id**（core §6.5）: 起動のたびに新しい値。ハードウェアの乱数を使うか、無ければ起動時のタイミングの揺らぎ（初期化しない
+カウンタ、ADC の雑音）を混ぜる。定数にしない。
+
+**session_id** は host が選ぶ。probe は最後のものを覚えるだけで、決して返さない（core §6.4）。
+
+## 11. probe の設定と保存
+
+`oep.probe.config` を list に出す probe のために（[probe の設定](oep-if-probe-config.ja.md)）:
+
+- **項目は host が送ったまま持つ**（critical の bit は落とし、知らない後ろのフィールドは残す）。hash は正規形で計算する（probe の設定
+  §2）。自分の hash を `tests/vectors/probe_config_hash.json` で確かめる。
+- **save は丸ごと置き換え、途中で電源が落ちても前の保存か新しい保存のどちらかが読める**（probe の設定 §2）。作り方の例:
+  - 2 つの写し（A / B）。それぞれに通し番号と CRC を付ける: 新しい写しを古いほうに書き、確かめ、起動時は正しい写しのうち通し番号の
+    大きいほうを使う;
+  - 1 つの値を原子的に置き換えるキーと値の保存: 保存の形全体を 1 つの値として持つ。
+  中身が保存と同じなら書かない（probe の設定 §2）。不要な save を送る host がいても flash を消耗させない。
+- **保存は、項目が指す fn ごとに (name, instance, revision) を持ち**、起動時に今の fn に書き換える。どれかが無いか revision が違う、
+  または保存した bind の口がもうシリアルの口でなければ、保存全体を掛けない（読めない、理由 2）。
+- **起動の順**: 保存を今の設定にし、disable、idle（出力は強さと一緒に）、plan、uart を掛けてから、at boot の attach を始め、bind を
+  つなぐ（probe の設定 §2、§3.1）。
+- **max_bytes**（describe 0x40）は、いつでも保存できる正規形の長さ。識別子の表に要る分を引いて宣言する。
+- **安全**: 保存した設定は、起動のたびに host なしで線を駆動する。掛かる前のピンは MCU のリセットの状態にある（probe の設定 §5）。
+  レベルを誤ると害のある線には、それだけで安全な level を保つ外付けの pull が要ることを利用者に伝える。
+- **boot_reset の保持の時間**は `slot_retry_reset_hold_ms`（20 ms）に決まっている。もっと長い保持の要るボードのために後から足すなら、
+  slot の項目の boot_reset の後ろに hold_ms のフィールドを置く: 任意の後ろのフィールド（core §2.3）で、revision は変わらない。
+
+## 12. target を扱う部品
+
+参照の probe から取った一般の決まり。その元になった target 固有の観察は [実装の記録](implementation-notes.ja.md) §P12 と
+[対象ごとのスキャンの記録](target-scan-notes.ja.md)。
+
+- **止まるまで走らせる**: host が渡したコードを走らせる前に、どの特権のモードでも ebreak が debug モードに入るようにする debug の制御の
+  bit を立て、いちばん強い特権のモードで走らせる。最後の ebreak が trap のベクタに飛ばずに止まるようにするため。割り込みは host が
+  渡すレジスタで止める。
+- **連続した語**: ブロックの読み書きには debug module の autoexec を使い、それが残すアドレスで実行の回数を数える（取りこぼしや
+  二重の実行を見つけるため）。
+- **線の速さは、確かめたときの target のクロックでしか保証されない。** リセットで target が遅いクロックに戻ると、先に選んだ速さでは
+  書き込みが化ける。リセットは最も遅い速さで行い、hart が止まってから速さを選び直す。リセットをかけながらの attach も同じで、リセットを
+  放す前に最も遅い速さにする。wake が target をリセットする線では、wake を使わずに遅い速さから速めて測り直す。化けた読み出しで
+  DMSTATUS が「走っている」に見えることがある: version の欄が合わない値は雑音として扱う。
+- **フレームの間の線の休み方は線の定義の一部**（[線とデバッグ](oep-if-debug.ja.md) §3.1、§3.2、§5）で、idle_clock が許す所では target
+  ごとに host が選ぶ。線の節に従い、やり取りが失敗した後は線を駆動しないで休ませる（debug §2）。
+- **debug の線は、線のタイミングが許すいちばん弱い出力の強さで駆動する。** debug の線の鋭いエッジは、隣の fixture の線に乗る（コンソールを
+  読む間、近くの SPI や UART の target が bit を落とす・ずらす）。どの PHY、どの移植でも設定する。線と fixture の線の強さは probe が
+  決める（fixture §1.1）。
+- **debug の線が忙しいときだけ壊れる fixture** は、CPU より先に線のエッジを疑う。線が休んでいるときと忙しいときで同じ手順を回し、まず
+  出力の強さを見て、直ったかは前後を同じ手順で測る。
+- **問題を直したら、同じ仕組みの箇所を探す**（ほかの PHY、ほかの SoC、線を駆動する fixture、client と fake）。どこが大丈夫で、どこが
+  未確認かを記録に残す。
+- **resume と run は出し直さない**（[線とデバッグ](oep-if-debug.ja.md) §4.2、§4.4）。resume の要求が 2 回要る target や、すべて再開したと
+  知らせない target は host が扱う: 汎用の名前のインターフェースに target 固有の知識を入れると core §13 の規則 8 に反する。
+- **ブロックのループを速くする変更は、線の上のタイミングを変えうる。** 残す前に複数の target で測る。
+
+## 13. 参照の firmware が宣言する値（規範が選び方を任せる所）
+
+- **model**（core §7.5、0x41）: チップの名前をハイフンなしの小文字で（`esp32p4`、`esp32`、`rp2040`、`rp2350`）。Arduino の profile の
+  名前と同じ。
+- **max_op_ms**（0x4D）: 10000（registry の `[reference]`）。
+- **chip**（0x4C）: 型番とリビジョン。例 `esp32p4 v1.3`、`rp2350 v2`。
+- **unit_id**: チップの固有の番号を小文字の 16 進で。
+- **UART bridge の起動時の速さ**: `uart_bridge_boot_baud`（§5）。

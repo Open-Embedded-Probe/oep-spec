@@ -2,7 +2,7 @@
 
 状態: **記録**（規範ではない。追記は自由）。2026-10-02 作成。チップ名、ボード名、治具、日付つきの経験をそのまま書く。
 規範は [線とデバッグ](oep-if-debug.ja.md)（scan、attach、reset TLV、target_id）と [probe の設定](oep-if-probe-config.ja.md)
-§1.1（スロット）。ピンの探し方の一般的な手順は [host 開発ガイド](host-development-guide.ja.md)（§4.6 リセットの線、「ピンの探し方（参考）」）。
+§1.1（スロット）。ピンの探し方の一般的な手順は [host 開発ガイド](host-development-guide.ja.md)（§21 リセットの線、§19 ピンの探し方（参考））。
 
 core（ArduinoCore-CH32RV の bench）は自動の scan で何度もつまずいた（特に CH32X035）。原因の多くは target 側の性質と治具の
 配線で、規範の外にある。ここに target ごとに集め、次に同じ target をつなぐ人が同じ所で迷わないようにする。

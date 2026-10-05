@@ -19,7 +19,7 @@ USB の VID:PID で見分けるのは、「OEP の probe か」だけである�
 - host が知らない device を自動で OEP の probe と見分けるのは、**プロジェクトの USB の VID:PID を持つ device** だけ（core §3.3）。
   その VID:PID は取得したときに registry に載る。載るまでは、規範で自動で見分けられる device は無い。
 - それまでの暫定の手がかり（iProduct が `OEP` で始まる、class 0xFF / subclass 0x4F / protocol 0x45 の interface、usage page 0xFF4F の HID）は
-  [host 開発ガイド](host-development-guide.ja.md) §1.7。仕様の一部ではなく、候補は必ず confirm だけで確かめる（core §3.3 の探りの規則）。
+  [host 開発ガイド](host-development-guide.ja.md) §4。仕様の一部ではなく、候補は必ず confirm だけで確かめる（core §3.3 の探りの規則）。
   参照の firmware の iProduct は `OEP probe (ESP32-P4)`、`OEP probe (RP2040)` など。iProduct は表示のための自由な文字列。
 - 利用者が unit_id で名指した probe（`oep://<unit_id>`）は、serial number が同じ device を開き、confirm と describe の unit_id で確かめる（core §3.3）。
 - device の中の口は、OEP と分かった device の中で interface の記述子で選ぶ（CDC はすべてシリアルの口、class 0xFF / subclass 0x4F /

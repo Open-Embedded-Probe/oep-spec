@@ -85,7 +85,7 @@ keepalive(session_id)                       → 何もしない（期限を伸�
   - コンソールの write（target への入力）、clear、mark（host の印）、設定（framing、吸い出しの開始・停止）は状態を
     変えるので session_id を要する。
   - 2 つのプロセスが同じポートを同時に開いてしまうと、byte の段階で混ざって両方の通信が壊れる。これはロックの有無と
-    関係なく起き、排他で開くこと（[host 開発ガイド](host-development-guide.ja.md) §2）と壊れたフレームの検出で防ぐ。
+    関係なく起き、排他で開くこと（[host 開発ガイド](host-development-guide.ja.md) §6）と壊れたフレームの検出で防ぐ。
 - session_id が変わらなくても、target 自身の変化（リセット、電源断）は起こりうる。それは接続の喪失やコンソールの
   マークで伝える。
 

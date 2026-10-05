@@ -70,7 +70,7 @@ LinkE: CH32V003F4P6 + WCH-LinkE（USB）。OEP: UIAPduino（CH32V003）+ classic
 - 921600 bps の試験は、ビルドで速度を変えた一時的なもの（取り消した）。書き込みは LinkE と同じ 1.6 秒になったが、
   probe → host の 256 byte 以上の応答で byte が落ち、v0 の probe が 1.5 秒の無通信で target をリセットして手放した
   （今日の合意で「やめる」と決めた動き）。**速度はビルドで決めず、115200 bps で開いてから取り決める**方針にした
-  （[probe 開発ガイド](../../docs/probe-development-guide.ja.md) §3.5）。
+  （[probe 開発ガイド](../../docs/probe-development-guide.ja.md) §5）。
 - 0x1d（ページ消去 + 書き込み + 確認）のときのローダーの実行は 1 ページ 6.2 ms（16 ページで 98.5 ms）、全面で 1.58 秒で、
   これだけで LinkE の書き込み全体と同じだった。
 - 残りは UART の転送。115200 bps の上限は約 11.5 KB/s で、16 KB は片道だけで 1.4 秒以上かかる。読み戻しも同じ。

@@ -154,7 +154,7 @@ git の履歴、2026-09-26 の整理より前の版に残っている）。§6 /
 - 出力の idle（mode 3 / 4）、起動の順、解いたピンは空きの状態に戻ること: [probe の設定](oep-if-probe-config.ja.md) §1 / §2 / §3.1、
   [core](oep-core.ja.md) §8（5013ffb）。
 - 名前の決まり（`nrst`、`power_hi`、`power_lo`）とリセットでのやり直し: [probe の設定](oep-if-probe-config.ja.md) §1.1 / §1.3 / §3.1 / §3.3。
-- 電源の入れ直し、リセットをかけながらの attach、実測: [host 開発ガイド](host-development-guide.ja.md) §8。
+- 電源の入れ直し、リセットをかけながらの attach、実測: [host 開発ガイド](host-development-guide.ja.md) §18（実測は [実装の記録](implementation-notes.ja.md) §H18.4）。
 
 ## 11. fixture の出力の強さを仕様で指定する: 決着（採用、2026-10-02）
 
@@ -171,7 +171,7 @@ git の履歴、2026-09-26 の整理より前の版に残っている）。§6 /
   ロック不要の read に足した。
 - 起動時は、idle の出力の level と強さを一緒に、at boot の attach より先に掛ける。
 - debug の線と、UART / SPI / I2C target の周辺の線は指定させない。
-- 強めると困る線と下の実験の数は [host 開発ガイド](host-development-guide.ja.md) §8.6 に置いた。
+- 強めると困る線と下の実験の数は [host 開発ガイド](host-development-guide.ja.md) §18.5 に置いた（実験の数は [実装の記録](implementation-notes.ja.md) §H18.5 に移した）。
 
 規範の置き場: [fixture](oep-if-fixture.ja.md) §1.1、[probe の設定](oep-if-probe-config.ja.md) §1 / §2、[core](oep-core.ja.md) §8、
 registry の gpio の `drive_levels` / `drive` / `drive_kind`。

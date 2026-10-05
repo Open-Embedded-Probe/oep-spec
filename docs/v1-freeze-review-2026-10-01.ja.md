@@ -124,7 +124,7 @@
   PID 取得後に core §3.3 / §7.5 を書き換える計画で、独自実装（自分の VID:PID）が discovery に出る手段が iProduct 以外に無いのに、
   その判定を消すことになっている。USJ の serial は firmware が選べず serial ≠ unit_id になるが例外が書かれていない。
 - 案: vendor bulk は class 0xFF かつ bInterfaceSubClass / bInterfaceProtocol を OEP 固有の値に固定（または iInterface `OEP` 接頭を
-  規範に）、HID は usage ID まで固定。「iProduct が `OEP` で始まる device は OEP の probe」を恒久の規範にし（2026-10-02 に置き換え: [core §3.3](oep-core.ja.md)。iProduct と interface の文字列は見分けに使わない。暫定の手がかりは host 開発ガイド §1.7）、プロジェクトの VID:PID は参照
+  規範に）、HID は usage ID まで固定。「iProduct が `OEP` で始まる device は OEP の probe」を恒久の規範にし（2026-10-02 に置き換え: [core §3.3](oep-core.ja.md)。iProduct と interface の文字列は見分けに使わない。暫定の手がかりは host 開発ガイド §4）、プロジェクトの VID:PID は参照
   firmware の値として実務文書に置く。「serial = unit_id は probe が serial を選べる口に限る。unit_id は個体で一意、固有番号の無い
   probe は乱数を保存して使う」。
 

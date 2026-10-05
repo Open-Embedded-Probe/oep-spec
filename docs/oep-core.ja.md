@@ -238,7 +238,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **USB の OEP の probe の見分け方**: host が知らない device の中から OEP の probe を自動で見分けるのは、**プロジェクトの USB の
   VID:PID を持つ device** だけである。プロジェクトの VID:PID は、取得したときに registry の `usb` に載せる。載るまでは registry に
   VID:PID は無く、この規則で自動で見分けられる device は無い（それまでの暫定の手がかりは [host 開発ガイド](host-development-guide.ja.md)
-  §1.7。規範ではない）。device の文字列 iProduct は表示のための自由な文字列で、host は見分けに使わない。interface の文字列も表示の
+  §4。規範ではない）。device の文字列 iProduct は表示のための自由な文字列で、host は見分けに使わない。interface の文字列も表示の
   ためのもので、見分けには使わない。
 - **名指した probe**: 利用者が probe を unit_id で名指したとき（アドレス `oep://<unit_id>[/<slot name>]`、§7.6）、host は、serial number
   がその unit_id と同じ USB の device を、見分けずに開いてよい。開いた後は下の探りの規則に従い、confirm の後に送る fn 0 の describe の
@@ -310,7 +310,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 UART bridge の口で、セッションの間だけリンクの速さを起動時の速さより上げる任意の機能。用途は大きな書き込み、キャプチャ、コンソール
 （線の block op の時間はデバッグの線の往復で決まり、リンクでは変わらない）。probe の fixture UART の速さは別（そのインターフェースの
 configure と設定）。この節が決めるのは**握手**だけである。どの速さを候補にするか、通ったとみなす基準、使っている間に戻す基準は
-host が決める（参考の手順: [host 開発ガイド](host-development-guide.ja.md) §7）。
+host が決める（参考の手順: [host 開発ガイド](host-development-guide.ja.md) §17）。
 
 **語の定義**
 
@@ -369,7 +369,7 @@ port_speed  要求: port(u8)、baud(u32)、step(u8: 0 試す、1 決める、2 �
 6. 戻すの応答を受けたら、または end の応答を受けたら、起動時の速さに切り替える。
 7. 口を開く host は、起動時の速さで confirm が通らなければ port_speed_idle_max_ms + 1000 ms（`port_speed_confirm_extra_ms`）の間 confirm を繰り返す（前の host が
    上げた残りが戻るのを待つ）。
-8. どの速さを候補にするか、確かめの流し方、通ったとみなす基準、使用中に戻す基準は host が決める（参考: [host 開発ガイド](host-development-guide.ja.md) §7）。
+8. どの速さを候補にするか、確かめの流し方、通ったとみなす基準、使用中に戻す基準は host が決める（参考: [host 開発ガイド](host-development-guide.ja.md) §17）。
 
 測った値と壊れ方の記録は [UART の速さ](uart-speed-negotiation.ja.md)、[リンクの計測](link-measurements.ja.md)。
 
@@ -665,7 +665,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
   使う。probe の起動の間は変わらない。
 - **経路の index の不変性**: 経路は、同じ model の firmware の版を越えて index を保つ。経路を足す firmware は、それまで使っていない index を付け、外した index は使い直さない。
 - host は transport の数で、ロックの奪い方を決めてよい（経路がシリアルの口 1 つだけなら、口を排他で開けた時点で前の持ち主は
-  いない。[host 開発ガイド](host-development-guide.ja.md)）。
+  いない。[host 開発ガイド](host-development-guide.ja.md) §6）。
 - **unit_id の一意性**: unit_id は個体ごとに違う値にする（チップの固有の番号、など）。保存はあるが固有の番号の無い probe は、最初の起動で乱数から unit_id を作って保存する。
   どちらも無い probe は `x-` で始まる unit_id を使う（一意ではない）。host は `x-` で始まる unit_id で経路をまとめず、それで probe を名指さず、セッションを越えて持つもの（たとえば口のリンクの速さの記録）のキーにしない。同じ口のほかの個体が何も引き継がないためである。
 - **unit_id の不変性**: unit_id は個体の値（チップの固有の番号、保存した乱数。`x-` の unit_id だけは例外）だけから作り、firmware の版、profile、ビルド、経路の種類で
