@@ -142,6 +142,8 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
 ### 2.4 Unknown values
 
 - Frames with an unknown role are discarded.
+- The probe discards, without answering, a message whose role is not a request role (0x01, 0x81), and a request shorter than its header (6 bytes, or 10 with session_id). The host discards a message whose role is a request role.
+- The host treats an answer shorter than 5 bytes, and an event or data frame shorter than its header, as a broken frame (§5.1, §5.2).
 - An unknown resolution, and an unknown outcome of completed, are treated as failure.
 - Unknown values of an interface's status or reason are treated as failure.
 - Events of an unknown kind are discarded (seq is still counted).
@@ -167,13 +169,14 @@ Unless its definition says otherwise, every unused value of an enum and every re
 
 ### 2.6 Wrapping values
 
-seq (u16), resource numbers (§9), and those serial numbers and times defined by an interface that are defined to wrap, are compared by taking the difference as a signed value of the same
-width (serial number arithmetic). The probe keeps the range that is meaningful at the same time well below half of that width. Values that do not wrap are u64
-(the positions of streams and the times of the standard interfaces, etc.).
+seq (u16) and those serial numbers and times defined by an interface that are defined to wrap are compared by taking the difference as a signed value of the same width w
+(serial number arithmetic). Among the values of one such space that the probe holds at the same time (marks still readable, segments not yet released, placements not yet read),
+the newest minus the oldest is less than 2^(w−2) (a quarter of the width). Values that do not wrap are u64
+(the positions of streams and the times of the standard interfaces, etc.). Resource numbers (§9) are compared only for equality; their reuse is governed by §9.
 
 ### 2.6a Clock
 
-The probe has one clock: **ns since boot (u64)**. Wherever a time is returned (marks, segments, heartbeat, the "time of the last attempt" of a state) it is this value, and
+The probe has one clock: **ns since boot (u64)**. The clock does not decrease and does not wrap while the boot_id is the same. A probe whose hardware counter is narrower than 64 bits extends it in software (counting its wraps), and reads it often enough not to miss a wrap. Wherever a time is returned (marks, segments, heartbeat, the "time of the last attempt" of a state) it is this value, and
 "not yet" is all bits 1. Durations (timeout_ms, hold_ms, wait_us, elapsed_us, etc.) may stay in their own units.
 
 ### 2.7 Names and revisions
@@ -429,14 +432,14 @@ The detail of rejected is the reason, and other information goes in the payload.
 2. Resend (the table of §5.2): corr_reused / result_lost / the remembered answer.
 3. Session (§6.2): no_session / expired / locked.
 4. window_exceeded.
-5. **Format** → malformed: the length, a count that does not match the contents, a TLV encoding error, a contradiction between fields, and a value the field's definition excludes for every revision (the 7-bit `address > 0x7F`, a boolean other than 0 / 1, a value the definition calls invalid, a value whose length is unknown so that the rest of the request cannot be read, such as an unknown dmi step kind).
+5. **Format** → malformed: the length, a count that does not match the contents, a TLV encoding error, a contradiction between fields, and a value the field's definition excludes for every revision (the 7-bit `address > 0x7F`, a boolean other than 0 / 1, a value the definition calls invalid, a value whose length is unknown so that the rest of the request cannot be read, such as an unknown dmi step kind). Then, when the format is correct: an fn designated inside the payload (describe, subscribe, unsubscribe, plan_apply, the items of probe.config) that does not exist → unknown_function.
 6. **Not handled by this probe** → unsupported: a value the definition leaves unused (an unused value of an enum, a reserved bit of a request's flags), a value in the definition that this probe does not declare (mode, format, rate, trigger type), an unknown critical TLV, a pin combination the declaration does not allow. The payload's tag is 0x00 for a value in the fixed part, and the TLV's tag as received for a value inside a critical TLV (a non-critical TLV with such a value is ignored, §2.3).
 7. **Cannot be accepted in the current state or with the current resources** (plan, connection, running, capacity, bound into a group) → unavailable (with cause).
 8. The resource designated by number is unknown → no_connection.
 
 **Contradictions and undefined values**: the contradiction check of order 5 applies only among fields that hold defined values. A field that holds a value its definition leaves unused (order 6: an unused value of an enum, a reserved bit) is refused unsupported for that value, and no contradiction that involves that field (a rule that compares it with another field, or that depends on its value) is checked. The other checks of order 5 (the length, the counts, the TLV encoding, a value the definition excludes for every revision, a value whose length is unknown) are not affected and still come first. Example: an idle item of probe.config with mode 5 that carries a drive is rejected unsupported for the mode, not malformed for a drive on a mode other than 3 / 4.
 
-When an fn designated inside the payload (describe, subscribe, plan, settings items) does not exist, unknown_function is reused.
+When an fn designated inside the payload (describe, subscribe, plan, settings items) does not exist, unknown_function is reused, at the end of order 5.
 
 **The payload of unavailable** (an optional sequence of TLVs. The host skips unknown tags and copes without any. The probe attaches what it knows):
 
@@ -461,7 +464,7 @@ the interface's index, etc.), except that there 0x01 is supported, the refusal o
 - max_frame, window and max_inflight of confirm are the limits **of the transport the confirm came on**. Each transport is counted separately, and requests outstanding on one transport do not use the receive room of another. The table of §5.2 stays one per probe (the 0x81 requests of a session are sent on one transport, §3.3).
 - **The host's wait time**: the absence of an answer is decided only by timeout (§3.1). For each request the host waits **at least**: the time set by the request's arguments (the timeout_ms of run,
   the hold_ms of reset, the sum of the waits of dmi, save, etc.; for attach, `attach_budget_ms` plus the hold_ms of its reset TLV; for scan, `scan_budget_ms` + `attach_budget_ms` ([wire and debug](oep-if-debug.md) §1); 0 if none; at most max_op_ms, §7.5) + 1000 ms (`host_wait_add_ms`) + the transfer time. The wait starts when the request has been written, or, while earlier requests on the same transport are outstanding, when the answer to the request before it arrives (the probe answers in order).
-  The transfer time is 0 except on a UART bridge. On a UART bridge it is (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud seconds, where L is the length on the wire of the request's frame and baud is the port's current speed. A host that cannot tell whether a serial port is a UART bridge (for example before it has read the transport kinds in the describe of fn 0, §7.5) counts this transfer time on that serial port, with baud the speed it has set on the port. Waiting longer than this floor is always allowed. When the wait has passed, it proceeds to the resend of §5.2.
+  The transfer time is 0 except on a UART bridge. On a UART bridge it is (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud seconds, where L is the length on the wire of the request's frame and baud is the port's current speed. Until the host has received a confirm answer on that transport, it uses `min_max_frame` (64) as max_frame; after that, the max_frame of the latest confirm answer there. A host that cannot tell whether a serial port is a UART bridge (for example before it has read the transport kinds in the describe of fn 0, §7.5) counts this transfer time on that serial port, with baud the speed it has set on the port. Waiting longer than this floor is always allowed. A host that reads a max_op_ms of 0 or above `max_op_ms_max` treats the probe as not conforming and does not use it. When the wait has passed, it proceeds to the resend of §5.2.
 - **This floor applies to every request** a host sends, its own link requests (confirm, link_source, link_sink, port_speed) included. The waits §3.5 states for the port_speed steps (20 ms or more before the confirm that verifies a new speed, verify_ms, idle_ms, and the repeat of confirm for port_speed_idle_max_ms + 1000 ms) stay as §3.5 states them. They are times between requests, not waits for an answer, and they do not shorten this floor for any request sent within them.
   The confirms that §3.5 (host obligations 5 and 7) and §3.3 have the host repeat are new requests, each with a new corr, not resends of §5.2: a host may send the next one before the floor of an earlier one has passed. It still accepts or skips an answer that arrives later for an earlier corr, and does not treat an earlier confirm as unanswered before its floor has passed. link_source, link_sink and port_speed are not repeated this way; each waits for its own floor.
 
@@ -482,6 +485,7 @@ Before the confirm of a resync, and before the first confirm after opening a len
 - When an answer was broken or did not arrive, the host **may resend once with the same corr** (registry `resend_max`; state-changing requests too). While the session holds the port
   (§3.4; raw transfer is stopped), a broken frame that arrives may be treated as belonging to the awaited answer, and the host may resend without waiting out the wait time. When unsubscribe
   and end were sent during recovery, the session has ended, so the original request is not resent.
+- When the wait for the resend also passes without an answer, the host treats the transport as failed: the outcome of that request is unknown, and the requests outstanding on that transport fail with it. Before it sends anything else there, the host recovers with the confirm of §5.1 (on every kind of frame, COBS included: quiet input, then a confirm whose answer carries its own corr) or closes and reopens the transport. A changed boot_id in that confirm means a reboot (§6.5). After recovering, the host reads the state before it repeats a state-changing request.
 - The probe remembers, for the requests of the last session (role 0x81), at least the most recent max_inflight entries of (corr, fn, op, CRC-32 of the request payload,
   answer), and the newest corr of that session. **The identity of a request is determined by corr alone** (the ordering of §4.1). The CRC is only for
   detecting a numbering mistake by the host.
@@ -556,10 +560,11 @@ declares lock-free must not change state.
 
 ### 6.5 boot_id
 
-boot_id is a value that changes at every boot of the probe, carried in the answers of confirm (§7.1) and open (the same value). A 32-bit random number is fine (the host accepts
-the probability of equal values). Even a probe with neither non-volatile storage nor a source of randomness always changes the value, from the variation in boot timing and the like. 0 is an ordinary value. When the boot_id changes,
+boot_id is a value that changes at every boot of the probe, carried in the answers of confirm (§7.1) and open (the same value). The probe takes the boot_id, in this order of preference, from: a hardware random source (32 bits); a value kept in non-volatile storage that it changes at every boot (a counter, or a random value it saves); or, with neither, a mix of values that vary between boots (uninitialised RAM, the conversion noise of an ADC input, the count of a free-running timer when an external event such as the first USB or UART activity arrives). A timer read at a fixed point of the start-up code is not such a value. A probe that has only the last source may repeat a boot_id, and the host accepts that probability. 0 is an ordinary value. When the boot_id changes,
 the host considers the session's resources (plan, interface resources), the remembered fn mapping, the resource numbers and the stream positions all invalid.
 A host that does not hold the lock (monitoring, discovery) learns of a reboot through confirm.
+
+The host also learns of a reboot from open: an open with the session_id it used last, answered resumed = 0, means the probe no longer knows that session (a reboot, or another host's session in between). The host then lists again before it uses a remembered fn mapping (§7.2).
 
 ## 7. Discovery
 
@@ -573,7 +578,7 @@ answer:  "OEP!", revision(u8), flags(u8), max_frame(u16), window(u32), max_infli
 - TLV 0x01 transport (u8): the index (§7.5) of the transport this confirm came on. The probe always attaches it. It names an entry of the describe of fn 0 returned on the same connection (0xFF from a relaying broker, §3.1). port_speed (UART bridges, §3.5) and bind (serial ports, [probe settings](oep-if-probe-config.md) §1.2) never take a TCP index.
 
 The host sends the range of protocol revisions it can handle, and the probe returns the highest revision within it that it can handle. If there is none in the range it can handle,
-rejected unsupported (below). flags is reserved (0). boot_id is §6.5 (the place to learn of a reboot without the lock). Both request and answer fit in 64 bytes
+rejected unsupported (below). flags is reserved (0). max_frame is 64 or more (§3.3), window is max_frame or more, and max_inflight is 1 or more. A host that receives a confirm answer outside these bounds treats that transport as not usable: it sends nothing more on it and reports the values. The host ignores the bits of flags (reserved, §2.4). boot_id is §6.5 (the place to learn of a reboot without the lock). Both request and answer fit in 64 bytes
 (§3.3).
 
 - The confirm request and the fixed part of its answer, the magic `OEP?` / `OEP!`, and the rules before confirm (64 bytes, the frames of §3.1, §3.3) are the same in every protocol revision.
@@ -599,7 +604,8 @@ entry:   fn(u16), instance(u16), revision(u8), flags(u8), name_len(u8), name
   across firmware versions (because saved settings designate an interface by (name, instance, revision)). flags is reserved (0).
 - When a single interface is designated in text (CLI, settings files, logs), it is written `name#instance` (instance is this value, from 0.
   `#0` may be omitted). Example: `oep.fixture.uart#1` is the second `oep.fixture.uart`.
-- fn does not change while the probe stays booted. The host may remember the mapping from name to fn while the boot_id is the same.
+- The answer of list (which interfaces exist, their fn, instance, revision and name) does not change while the boot_id is the same. A probe that gains or loses an interface reboots (a new boot_id). The host may remember the mapping from name to fn while the boot_id is the same.
+- If first is at or beyond the number of matching entries, the answer has that total and count 0.
 
 ### 7.3 describe
 
@@ -653,11 +659,11 @@ appears in the answer.
 | 0x46 | label | channel(u16), text. A **fixed** channel name **held by the firmware (the wiring profile)** (NRST, etc.). Names given through the settings are read with the get of `oep.probe.config` (describe is declarations only, §7.3) |
 | 0x47 | resets_on_open | u8. Whether the probe resets when the transport is opened |
 | 0x48 | — | Reserved |
-| 0x49 | transport | index(u8), kind(u8), interface(u8: the USB interface number, 0xFF if not USB). One per transport of the probe. **Mandatory** |
+| 0x49 | transport | index(u8), kind(u8), interface(u8): for USB CDC (kind 2), the bInterfaceNumber of the CDC communication interface (the first interface of the function); for built-in USB serial (kind 3), the same number as the hardware presents it, or 0xFF if the probe cannot know it; for vendor bulk and HID, the number of that interface; 0xFF for a UART bridge (kind 1) and for TCP. One per transport of the probe. **Mandatory** |
 | 0x4A | discoverable | u8. 1 = the probe also enumerates with the project's USB VID:PID (§3.3) (even if the current transport is not one). Until the project's VID:PID is listed in the registry, every probe sends 0 |
 | 0x4B | plan_roles | u32. The number of role_assignments the plan can hold at once (the total over all fns. Includes the settings plan). A probe with a limit always emits it (§8) |
 | 0x4C | chip | text. The part number and revision of the probe's MCU: `<part> v<revision>`. part is 1 to 24 of `a-z 0-9`. revision is digits with optional `.digits` groups. When the revision is unknown, the part alone (e.g. `abc123 v1.0`, `abc123`). So that captured data records which chip captured it (optional) |
-| 0x4D | max_op_ms | u32. The longest time the probe spends on one request. **Mandatory.** Ops that could exceed it (run, the sum of the waits of dmi, the start of capture, save, the hold_ms of the reset of attach) are rejected unsupported if the sum of their arguments exceeds it. The lease is not counted during execution (§6.1). Reading the other transports and the consoles of connections continues. The value is decided by the probe. The host waits as §4.4 says |
+| 0x4D | max_op_ms | u32. The longest time the probe spends on one request. **Mandatory.** 1 to 600000 (`max_op_ms_max`, 10 minutes). Ops that could exceed it (run, the sum of the waits of dmi, the start of capture, save, the hold_ms of the reset of attach) are rejected unsupported if the sum of their arguments exceeds it. The lease is not counted during execution (§6.1). Reading the other transports and the consoles of connections continues. The value is decided by the probe. The host waits as §4.4 says |
 | 0x4E | port_speed | u8. 1 = this probe accepts op port_speed (§3.5) (emitted only when the firmware has the function ON) |
 
 - The kind of transport: 1 UART bridge, 2 USB CDC, 3 built-in USB serial (a USB serial port implemented by the MCU's hardware, whose USB descriptors, the serial number included, the probe cannot choose), 4 vendor bulk, 5 HID, 6 TCP (the registry's `transport_kind`).
@@ -699,6 +705,7 @@ The plan is held **per fn**.
   Hi-Z (input, no pull)**. An interface must not leave a pin under its own drive after it is released (when the idle state is an output, that drive belongs to
   the settings' idle. The setting of the idle state is the idle of `oep.probe.config`,
   [probe settings](oep-if-probe-config.md)).
+- **At boot**, before it answers its first request, the probe puts every channel that is not reserved (§7.5) in its idle state (above: the idle of the settings when they define one, otherwise Hi-Z: input, no pull). Until then the pins are in the MCU's reset state (informative: a line whose wrong level is harmful needs an external pull, [probe settings](oep-if-probe-config.md) §5).
 - **Taking a plan does not change a pin's electrical state.** A pin keeps its idle state until the interface that holds it starts to use it. Each interface's document says which of its operations starts that use (for some interfaces the plan itself). An interface that only reads a pin never changes it: it does not stop an output, and it does not change the pull or direction of a pin that another function or an idle output drives.
 - When an interface's document refuses a plan on a channel whose idle is an output (mode 3 / 4), the refusal is unavailable (cause 5, holder_kind 7).
 - The lifetime of the plan is §9 (per fn).

@@ -163,6 +163,7 @@ console_dmstatus_poll_ms = 20   # console: while reading, the probe checks DMSTA
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused or not used (oep-if-fixture §2, oep-if-probe-config §1)
 uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)
 fixture_count_max = 255         # i2c-target / spi-target: u8 counts (pending, queued) stop at this (oep-if-fixture §3, §4)
+max_op_ms_max = 600000          # fn 0 describe max_op_ms is 1 to this (10 minutes); a host that reads 0 or more than this does not use the probe (core §7.5, §4.4)
 
 [reference]                     # values that are not the specification's, outside the freeze (core, top)
 max_op_ms = 10000               # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
@@ -192,8 +193,8 @@ host = 0x07
 link_lost = 0x08
 closed = 0x09
 [common.enum.mark_detail_reset]
-ndmreset = 1
-nrst = 2
+ndmreset = 1                    # the reset op (oep-if-debug §4.3)
+# 2 reserved: the reset op never drives a reset line (oep-if-debug §4.3)
 attach_reset = 3                # the attach request's reset TLV (NRST)
 [common.enum.mark_detail_restart]
 havereset = 1
@@ -334,9 +335,8 @@ reset = 0x05                    # critical: channel(u16) hold_ms(u16) - hold the
 target_id = 0x10                # scheme(u8) value: what the probe read of the target's identity (oep-if-debug §1)
 dpc = 0x11                      # u32 (8 bytes on RV64): the halted hart's dpc when flags halted is set
 search_retries = 0x12           # u16, optional: extra attempts the bring-up needed beyond each step's first try (saturates at 0xFFFF); only when a bring-up ran (oep-if-debug §1)
-[interface.enum.scan_kind]      # the kind byte of a scan entry
+[interface.enum.scan_kind]      # the kind byte of a scan entry; on rvswd only riscv-dm (oep-if-debug §3)
 riscv_dm = 1
-arm_adi = 2
 [interface.enum.attach_flags]   # the attach answer's flags, every wire
 havereset_acked = 0x01
 existing = 0x02
@@ -384,9 +384,8 @@ reset = 0x05                    # critical: channel(u16) hold_ms(u16)
 target_id = 0x10
 dpc = 0x11
 search_retries = 0x12           # u16, optional (oep-if-debug §1)
-[interface.enum.scan_kind]
+[interface.enum.scan_kind]      # on swio only riscv-dm (oep-if-debug §3)
 riscv_dm = 1
-arm_adi = 2
 [interface.enum.attach_flags]
 havereset_acked = 0x01
 existing = 0x02

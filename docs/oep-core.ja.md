@@ -142,6 +142,8 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
 ### 2.4 知らない値
 
 - 知らない role のフレームは捨てる。
+- probe は、role が要求の role（0x01、0x81）でない message と、見出し（6 byte、session_id つきなら 10 byte）より短い要求を、答えずに捨てる。host は、role が要求の role の message を捨てる。
+- host は、5 byte より短い応答と、見出しより短い出来事やデータのフレームを、壊れたフレームとして扱う（§5.1、§5.2）。
 - 知らない resolution、completed の知らない outcome は失敗として扱う。
 - インターフェースの status や reason の知らない値は失敗として扱う。
 - 知らない出来事の kind は捨てる（seq は数える）。
@@ -167,13 +169,14 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
 
 ### 2.6 一周する値
 
-seq（u16）、資源の番号（§9）と、インターフェースが定める通し番号や時刻のうち一周すると定めたものは、差を同じ幅の符号付きとして
-比べる（serial number arithmetic）。probe は同時に意味を持つ範囲を、その幅の半分より十分小さく保つ。一周させない値は u64 にする
-（標準インターフェースのストリームの位置、時刻など）。
+seq（u16）と、インターフェースが定める通し番号や時刻のうち一周すると定めたものは、差を同じ幅 w の符号付きとして
+比べる（serial number arithmetic）。そうした 1 つの空間の値のうち、probe が同時に持つもの（まだ読めるマーク、まだ解放しない区画、まだ読まれない置き場）では、
+いちばん新しいものからいちばん古いものを引いた差は 2^(w−2)（幅の 4 分の 1）未満。一周させない値は u64 にする
+（標準インターフェースのストリームの位置、時刻など）。資源の番号（§9）は等しいかどうかだけを比べ、使い回しは §9 で決まる。
 
 ### 2.6a 時計
 
-probe の時計は 1 つ: **起動からの ns（u64）**。時刻を返す所（マーク、区画、ハートビート、状態の「最後に試した時刻」）はすべてこの値で、
+probe の時計は 1 つ: **起動からの ns（u64）**。時計は、同じ boot_id の間、減らず、一周しない。ハードウェアの数え器が 64 bit より狭い probe は、ソフトウェアで広げ（一周の数を数える）、一周を見逃さないだけの頻度で読む。時刻を返す所（マーク、区画、ハートビート、状態の「最後に試した時刻」）はすべてこの値で、
 「まだ無い」は全ビット 1。継続時間（timeout_ms、hold_ms、wait_us、elapsed_us など）はそれぞれの単位のままでよい。
 
 ### 2.7 名前と revision
@@ -429,14 +432,14 @@ rejected の detail は reason で、そのほかの情報は payload に置く�
 2. 送り直し（§5.2 の表）: corr_reused / result_lost / 覚えた応答。
 3. セッション（§6.2）: no_session / expired / locked。
 4. window_exceeded。
-5. **書式** → malformed: 長さ、中身と合わない数、TLV の符号化の誤り、フィールドどうしの矛盾、そしてフィールドの定義がどの revision でも除く値（7 bit の `address > 0x7F`、0 / 1 以外の真偽値、定義が無効と言う値、長さが分からず要求の残りを読めなくなる値、たとえば知らない dmi の step の kind）。
+5. **書式** → malformed: 長さ、中身と合わない数、TLV の符号化の誤り、フィールドどうしの矛盾、そしてフィールドの定義がどの revision でも除く値（7 bit の `address > 0x7F`、0 / 1 以外の真偽値、定義が無効と言う値、長さが分からず要求の残りを読めなくなる値、たとえば知らない dmi の step の kind）。書式が正しければ続けて: payload の中で指す fn（describe、subscribe、unsubscribe、plan_apply、probe.config の項目）が無い → unknown_function。
 6. **この probe が扱わない** → unsupported: 定義が使わずに残した値（enum の使っていない値、要求の flags の予約のビット）、定義にあるがこの probe が宣言しない値（mode、format、rate、trigger の type）、知らない critical の TLV、宣言が許さないピンの組。payload の tag は、固定部分の値なら 0x00、critical の TLV の中の値ならその TLV の受け取ったままの tag（そうした値を持つ critical でない TLV は無視する、§2.3）。
 7. **今の状態・資源で受けられない**（plan、接続、動いている、容量、組に束ねられている）→ unavailable（cause 付き）。
 8. 番号で指す資源を知らない → no_connection。
 
 **矛盾と定義されていない値**: 順 5 の矛盾の確かめは、定義された値を持つフィールドどうしにだけ当てはめる。定義が使わずに残した値（順 6: enum の使っていない値、予約のビット）を持つフィールドは、その値について unsupported で断り、そのフィールドが関わる矛盾（そのフィールドを別のフィールドと比べる規則、またはその値によって決まる規則）は確かめない。順 5 のほかの確かめ（長さ、数、TLV の符号化、定義がどの revision でも除く値、長さが分からない値）はこれに影響されず、先に来る。例: drive を持つ mode 5 の probe.config の idle の項目は、mode について unsupported で断り、mode 3 / 4 以外の drive として malformed にはしない。
 
-payload の中で指す fn（describe、subscribe、plan、設定の項目）が無いときは unknown_function を流用する。
+payload の中で指す fn（describe、subscribe、plan、設定の項目）が無いときは、順 5 の終わりで unknown_function を流用する。
 
 **unavailable の payload**（任意の TLV の並び。host は知らない tag を飛ばし、無くても扱えるようにする。probe は分かる範囲で付ける）:
 
@@ -461,7 +464,7 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 - confirm の max_frame、window、max_inflight は、**その confirm が来た経路の**上限である。経路ごとに別々に数え、ある経路で未解決の要求は、ほかの経路の受けの余地を使わない。§5.2 の表は probe に 1 つのまま（セッションの 0x81 の要求は 1 つの経路で送る、§3.3）。
 - **host の待ち時間**: 応答が来ないことは時間切れだけで判断する（§3.1）。host は要求ごとに**少なくとも**次を待つ: その要求の引数で決まる時間（run の timeout_ms、
   reset の hold_ms、dmi の待ちの和、save など。attach は `attach_budget_ms` にその reset TLV の hold_ms を足したもの、scan は `scan_budget_ms` + `attach_budget_ms`（[線とデバッグ](oep-if-debug.ja.md) §1）。無ければ 0。多くても max_op_ms、§7.5）+ 1000 ms（`host_wait_add_ms`）+ 転送の時間。待ちは、要求を書き終えた時から始める。同じ経路に先の要求が未解決の間は、その 1 つ前の要求の応答が届いた時から始める（probe は順に答える）。
-  転送の時間は UART bridge 以外では 0。UART bridge では (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒で、L はその要求のフレームの線の上の長さ、baud は口の今の速さ。シリアルの口が UART bridge かどうか分からない host（たとえば fn 0 の describe で経路の種類を読む前、§7.5）は、そのシリアルの口でこの転送の時間を数え、baud は自分がその口に設定した速さとする。この下限より長く待つことはいつでも許される。待ちが過ぎたら §5.2 の送り直しに進む。
+  転送の時間は UART bridge 以外では 0。UART bridge では (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒で、L はその要求のフレームの線の上の長さ、baud は口の今の速さ。その経路で confirm の応答を受け取るまで、host は max_frame として `min_max_frame`（64）を使う。その後は、そこでのいちばん新しい confirm の応答の max_frame を使う。シリアルの口が UART bridge かどうか分からない host（たとえば fn 0 の describe で経路の種類を読む前、§7.5）は、そのシリアルの口でこの転送の時間を数え、baud は自分がその口に設定した速さとする。この下限より長く待つことはいつでも許される。max_op_ms が 0 か `max_op_ms_max` を超えると読んだ host は、その probe を適合しないものとして扱い、使わない。待ちが過ぎたら §5.2 の送り直しに進む。
 - **この下限はすべての要求に当てはまる**。host 自身のリンクの要求（confirm、link_source、link_sink、port_speed）も含む。§3.5 が port_speed の段階について決める待ち（新しい速さを確かめる confirm の前の 20 ms 以上、verify_ms、idle_ms、port_speed_idle_max_ms + 1000 ms の間の confirm の繰り返し）は §3.5 のとおりのまま。それらは要求と要求の間の時間で、応答を待つ時間ではなく、その間に送るどの要求についてもこの下限を縮めない。
   §3.5（host の務め 5 と 7）と §3.3 が host に繰り返させる confirm は、それぞれ新しい corr の新しい要求で、§5.2 の送り直しではない: host は、前の confirm の下限が過ぎる前に次を送ってよい。後から届いた前の corr への応答は受けるか読み飛ばし、下限が過ぎる前に前の confirm を答えが無いものとは扱わない。link_source、link_sink、port_speed はこのように繰り返さない。どれも自分の下限まで待つ。
 
@@ -482,6 +485,7 @@ unsubscribe と end を確かめずに送ってよい（二度実行しても害
 - 応答が壊れたか来なかったとき、host は**同じ corr で 1 回送り直してよい**（registry の `resend_max`。状態を変える要求も）。セッションが口を持っている間
   （§3.4、生の転送は止まっている）に届いた壊れたフレームは、待っている答えのものとして扱ってよく、待ち時間を待たずに送り直してよい。立て直しの中で unsubscribe
   と end を送ったときは、セッションが終わっているので、元の要求は送り直さない。
+- 送り直しの待ち時間も答えなしに過ぎたら、host はその経路が失敗したとして扱う: その要求の結果は分からず、その経路で出ている要求もいっしょに失敗する。そこで何かを送る前に、host は §5.1 の confirm で立て直す（COBS を含むどの種類のフレームでも: 入力が静かになってから、自分の corr を持つ応答が返る confirm）か、経路を閉じて開き直す。その confirm で boot_id が変わっていれば再起動（§6.5）。立て直した後、host は状態を変える要求を繰り返す前に状態を読む。
 - probe は、最後のセッションの要求（role 0x81）について、直近の max_inflight 個以上の (corr, fn, op, 要求の payload の CRC-32,
   応答) と、そのセッションで最も新しい corr を覚えておく。**要求の同一性は corr だけで決まる**（§4.1 の順序）。CRC は host の
   番号付けの誤りを見つけるためだけのもの。
@@ -556,10 +560,11 @@ probe は、ロックの有無、最後の session_id、その ID のロック�
 
 ### 6.5 boot_id
 
-boot_id は probe の起動ごとに変わる値で、confirm（§7.1）と open の応答に入る（同じ値）。32 bit の乱数でよい（同じ値になる確率は host が
-受け入れる）。不揮発の記憶も乱数源も無い probe も、起動の時刻のばらつきなどから必ず値を変える。0 も普通の値。host は、boot_id が変わった
+boot_id は probe の起動ごとに変わる値で、confirm（§7.1）と open の応答に入る（同じ値）。probe は boot_id を、次の好ましい順に取る: ハードウェアの乱数源（32 bit）。不揮発の記憶に置き、起動ごとに変える値（数え上げ、または保存した乱数）。どちらも無ければ、起動ごとに変わる値を混ぜたもの（初期化していない RAM、ADC の入力の変換の雑音、最初の USB や UART の動きなど外からの出来事が来たときの、止まらないタイマーの数）。起動のコードの決まった場所で読んだタイマーは、そうした値ではない。最後の素しか持たない probe は boot_id を繰り返しうるし、host はその確率を受け入れる。0 も普通の値。host は、boot_id が変わった
 とき、そのセッションの資源（plan、インターフェースの資源）と、覚えた fn の対応、資源の番号、ストリームの位置がすべて無効になったとみなす。
 ロックを持たない host（監視、発見）は confirm で再起動を知る。
+
+host は open からも再起動を知る: 最後に使った session_id での open に resumed = 0 が返れば、probe はそのセッションをもう知らない（再起動か、間に別の host のセッションがあった）。host は、覚えた fn の対応を使う前に list をやり直す（§7.2）。
 
 ## 7. 発見
 
@@ -573,7 +578,7 @@ boot_id は probe の起動ごとに変わる値で、confirm（§7.1）と open
 - TLV 0x01 transport（u8）: この confirm が来た経路の index（§7.5）。probe は必ず付ける。同じ接続で返す fn 0 の describe の entry を指す（中継のブローカーからは 0xFF、§3.1）。port_speed（UART bridge、§3.5）と bind（シリアルの口、[probe の設定](oep-if-probe-config.ja.md) §1.2）が TCP の index を取ることはない。
 
 host は扱えるプロトコルの revision の範囲を送り、probe はその中で扱える最大の revision を返す。範囲に扱えるものが無ければ
-rejected unsupported（下）。flags は予約（0）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も 64 byte に収まる
+rejected unsupported（下）。flags は予約（0）。max_frame は 64 以上（§3.3）、window は max_frame 以上、max_inflight は 1 以上。この範囲を外れた confirm の応答を受けた host は、その経路を使えないものとして扱う: そこにはもう何も送らず、値を知らせる。host は flags のビットを無視する（予約、§2.4）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も 64 byte に収まる
 （§3.3）。
 
 - confirm の要求とその応答の固定部分、magic の `OEP?` / `OEP!`、confirm の前の規則（64 byte、§3.1 のフレーム、§3.3）は、どのプロトコルの revision でも同じ。
@@ -599,7 +604,8 @@ entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
   順を firmware の版を越えて保つ（保存した設定が (name, instance, revision) でインターフェースを指すため）。flags は予約（0）。
 - 文字で 1 つのインターフェースを指すとき（CLI、設定のファイル、ログ）は `name#instance` と書く（instance はこの値、0 から。
   `#0` は省いてよい）。例: `oep.fixture.uart#1` は 2 つめの `oep.fixture.uart`。
-- fn は probe の起動の間は変わらない。host は boot_id が同じ間、名前から fn への対応を覚えてよい。
+- list の応答（どのインターフェースがあるか、その fn、instance、revision、名前）は、同じ boot_id の間変わらない。インターフェースが増えたり減ったりする probe は再起動する（新しい boot_id）。host は boot_id が同じ間、名前から fn への対応を覚えてよい。
+- first が一致する entry の数以上なら、応答はその total と count 0。
 
 ### 7.3 describe
 
@@ -653,11 +659,11 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x46 | label | channel(u16)、text。**firmware（配線の profile）が持つ固定の** channel の名前（NRST など）。設定で付けた名前は `oep.probe.config` の get で読む（describe は宣言だけ、§7.3） |
 | 0x47 | resets_on_open | u8。経路を開くと probe がリセットするか |
 | 0x48 | — | 予約 |
-| 0x49 | transport | index(u8)、kind(u8)、interface(u8: USB の interface 番号、0xFF は USB でない)。probe の経路ごとに 1 つ。**必須** |
+| 0x49 | transport | index(u8)、kind(u8)、interface(u8): USB CDC（kind 2）は CDC の通信の interface の bInterfaceNumber（その機能の最初の interface）。内蔵の USB シリアル（kind 3）は、ハードウェアが見せるその同じ番号、probe が知れなければ 0xFF。vendor bulk と HID はその interface の番号。UART bridge（kind 1）と TCP は 0xFF。probe の経路ごとに 1 つ。**必須** |
 | 0x4A | discoverable | u8。1 = probe はプロジェクトの USB の VID:PID（§3.3）でも列挙している（今の経路がそうでなくても）。プロジェクトの VID:PID が registry に載るまでは、どの probe も 0 |
 | 0x4B | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
 | 0x4C | chip | text。probe の MCU の型番とリビジョン: `<part> v<revision>`。part は `a-z 0-9` の 1〜24 文字。revision は数字で、`.数字` の組が続いてよい。リビジョンが分からなければ part だけ（例 `abc123 v1.0`、`abc123`）。取ったデータに、どのチップで取ったかを残すため（任意） |
-| 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host は §4.4 のとおり待つ |
+| 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。1〜600000（`max_op_ms_max`、10 分）。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host は §4.4 のとおり待つ |
 | 0x4E | port_speed | u8。1 = この probe は op port_speed（§3.5）を受ける（firmware が機能を ON にしたときだけ出す） |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 内蔵の USB シリアル（MCU のハードウェアが持つ USB のシリアルの口で、serial number を含む USB の記述子を probe が選べないもの）、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
@@ -699,6 +705,7 @@ plan は **fn ごと**に持つ。
   Hi-Z（入力、プルなし）**にする。インターフェースは、解いた後もピンを自分の駆動のまま残してはならない（空きの状態が出力なら、その駆動は
   設定の idle のもの。空きの状態の設定は `oep.probe.config` の idle、
   [probe の設定](oep-if-probe-config.ja.md)）。
+- **起動時**、probe は最初の要求に答える前に、reserved（§7.5）でないすべての channel を空きの状態にする（上: 設定が idle を定めればその idle、そうでなければ Hi-Z: 入力、プルなし）。それまでピンは MCU のリセットの状態（参考: 誤った水準が害になる線には外付けのプルが要る、[probe の設定](oep-if-probe-config.ja.md) §5）。
 - **plan を取ってもピンの電気の状態は変わらない。** ピンは、それを持つインターフェースが使い始めるまで空きの状態を保つ。どの操作で使い始めるかは、各インターフェースの文書が定める（plan そのもののインターフェースもある）。ピンを読むだけのインターフェースは決して変えない: 出力を止めず、ほかの機能や出力の idle が駆動するピンのプルや向きも変えない。
 - idle が出力（mode 3 / 4）の channel への plan をインターフェースの文書が断るとき、その断りは unavailable（cause 5、holder_kind 7）である。
 - plan の寿命は §9（fn ごと）。
