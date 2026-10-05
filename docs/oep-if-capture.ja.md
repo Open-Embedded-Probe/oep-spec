@@ -189,6 +189,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | 0x09 | query | 設定の TLV（configure と同じ） | 実際の値の TLV（設定はしない） | 不要 |
 | 0x0A | calibration | — | 較正の情報の TLV（§3.8）。アナログだけ（ロジックは unknown_operation） | 不要 |
 
+- query（0x09）と force（0x04）は任意で、features の bit0 と bit1 で宣言する（§3.5）。そのビットの無い probe は、その op に unknown_operation で答える（core §1.2）。この表のほかの op は必ず持つ。calibration はアナログでは必ず持ち、ロジックの op ではない。
 - state: 0 未設定、1 設定済み、2 トリガ待ち、3 取得中、4 完了（ワンショット）、5 止まっている（リピートで空き区画なし）、
   6 エラー。
 - `serial_done` は終わった区画の数、`write_pos` は取り終えたバイト位置（position の空間。**捨てた分を含む**: 次に書くバイトの位置）。
@@ -203,7 +204,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 - read の max は u32（1 回で大きく読むため、[設計](logic-capture.ja.md) §7.2）。実際に返す量は、probe の frame と `max_read`（宣言）で決まる。
 - segments の more は、まだ返していない区画があること。from_serial が serial_done より先なら空の成功。
 
-**状態の遷移**（行 = 今の state、列 = 契機。「—」は何もせず成功）:
+**状態の遷移**（行 = 今の state、列 = 契機。「—」は何もせず成功。force の列は force を宣言する probe に当てはまる）:
 
 | state | configure | start | stop | force | release | 自動 |
 |---:|---|---|---|---|---|---|
@@ -291,7 +292,7 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 
 | tag | 名前 | 値 |
 |---|---|---|
-| 0x06 | features | 共通のビット。bit0 query（op 0x09）、bit1 force、bit2 通知 |
+| 0x06 | features | 共通のビット。bit0 query（op 0x09）、bit1 force（op 0x04）、bit2 通知（無ければ、この fn への subscribe は rejected unsupported、core §11.3） |
 | 0x40 | mode | mode(u8)、background(u8: 1 = このモードで取っている間も probe は要求に答え続け、start の blocking_ms は 0。0 = 取っている間は答えず、start の blocking_ms がその長さを示す、§3.2。ほかの値は予約)、max_samples(u32、1 区画)、max_segments(u32)（モードごとに 1 つ。**最大**の置き場で答える。describe は宣言だけなので、その時点の空きでは答えない） |
 | 0x41 | rate_range | min_hz(u32)、max_hz(u32)、exact(u8: 1 = 範囲内の任意の値を指定できる) |
 | 0x42 | rate_list | n(u8)、n × rate_hz(u32)。代表的なレート。UI の一覧の候補。1 つの TLV に入らなければ繰り返してよい（和集合） |
@@ -344,7 +345,7 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 ### 3.8 calibration（アナログ）
 
 ADC の値を電圧に換算するための、probe が持っている情報を**生のまま**返す。probe は補正を適用しない（read の値はいつも生の値。
-換算は host が選ぶ。曲線の補正は測れる範囲の上下を削ることがあり、保存の段階で強制しない）。持たない情報は返さない。
+換算は host が選ぶ。曲線の補正は測れる範囲の上下を削ることがあり、保存の段階で強制しない）。持たない情報は返さない。そうした情報を何も持たない probe は、TLV を返さない（空の成功）。
 
 | tag | 名前 | 値 |
 |---|---:|---|
@@ -372,6 +373,8 @@ ADC の値を電圧に換算するための、probe が持っている情報を*
 | 0x04 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
 | 0x05 | status | — | state(u8)、start_ns(u64)、trigger_ns(u64)、trigger_fn(u16)、[TLV] | 不要 |
 
+- force は任意で、features の bit1 で宣言する（§4.3）。無ければ probe は force に unknown_operation で答える（core §1.2）。ほかの op は必ず持つ。
+
 bind の TLV:
 
 | tag | 名前 | 値 |
@@ -386,7 +389,7 @@ bind の TLV:
   （cause 4、holder_fn = 組の fn。組の op を使う。configure し直すときは、いったん n = 0 で解く）。束ねたトラックの plan の
   plan_release / plan_apply も rejected unavailable（cause 4）。**bind はセッションの資源**（core §9: end で残り、lease の期限切れと
   force で解ける）。
-- トラックを束ねていないとき: start は rejected unavailable cause 6。stop と force は何もせず成功。state は 0。
+- トラックを束ねていないとき: start は rejected unavailable cause 6。stop と、宣言していれば force は、何もせず成功。state は 0。
 - **start** は、どのトラックを始めるよりも前に全トラックの前提を確かめ（ストリーミングで購読の無いトラックがあれば、start は TLV fn（0x05）=
   そのトラックを付けて rejected unavailable cause 6）、それから束ねたトラックをできるだけ同時に始め、組の開始の時刻 start_ns（probe の時計）と、
   各トラックの新しい世代を返す（各トラックの start と同じく generation を +1）。始めた後にトラックが失敗したら、組は state 6、

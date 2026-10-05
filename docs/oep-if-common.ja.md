@@ -9,7 +9,7 @@
 ## 1. 位置つきのストリーム
 
 使うもの: `oep.target.console`、`oep.fixture.uart`。キャプチャ（`oep.fixture.logic` / `oep.fixture.analog`）は位置を持つが、区画と世代を
-持つ別の形で、この部品は使わない（[キャプチャ](oep-if-capture.ja.md) §2）。
+持つ別の形で、この部品は使わない（[キャプチャ](oep-if-capture.ja.md) §2）。この部品を使うインターフェースは、read、marks、clear、mark、write を必須の op として持つ。
 
 ### 1.1 位置
 

@@ -12,7 +12,7 @@
 | `oep.fixture.i2c-target` | 1 | I2C の target（被制御側）。DUT の I2C controller を試す | 1 = SDA、2 = SCL |
 | `oep.fixture.spi-target` | 1 | SPI の target。DUT の SPI controller を試す | 1 = SCK、2 = MOSI、3 = MISO、4 = CS |
 
-どれも plan（core §8）で割り当てたチャンネルだけを扱う。
+どれも plan（core §8）で割り当てたチャンネルだけを扱う。下の表の op は、その節が任意と書かない限り、すべて必須（core §1.2）。
 
 ## 1. `oep.fixture.gpio`
 
@@ -140,7 +140,7 @@ read_rx で取り出す。
 - read_rx は、いちばん古いフレームを取り出して返す（無ければ count 0）。state 0 では rejected unavailable（cause 6）。pending は、
   取り出した後に残っている数（255 で止める。registry の `fixture_count_max`）。列に queue_depth 個あるときに次のフレームが来たら、その新しいフレームを捨て、errors を
   1 増やす（rx_frames には数えない）。列の深さは describe の queue_depth。
-- preload_tx は mode 3 だけ。count は 1〜max_length（0 は malformed）。slots は置いた数の通し番号（u8、一周する）。未読の置き場は
+- preload_tx は必須で、mode 3 だけ: mode 3 でないとき（mode 3 を宣言しない probe でも）は rejected unavailable（cause 6）。count は 1〜max_length（0 は malformed）。slots は置いた数の通し番号（u8、一周する）。未読の置き場は
   queue_depth 個まで。すべて埋まっているときの preload_tx は何も置かずに rejected unavailable（cause 2）。controller が
   読んだバイト数が置いた長さと違っても、次の読み出しは次の置き場から答える。**置き場が空のとき（と mode 1 / 2 で読み出されたとき）は
   0xFF を出す**。チップの FIFO の癖（読み出しの最後に余分なバイトを出す、など）は probe が吸収する。
@@ -150,7 +150,7 @@ read_rx で取り出す。
 - reset は configure 直後と同じ状態に戻す（列、待ち、累計を消す。mode と address は保つ）。state 0 では rejected unavailable（cause 6）。
 - stretch は、受けたデータの byte ごとに、8 bit 目の後、ACK を出した状態で ACK の clock の前に SCL を low に保つ時間（µs、0 = しない）。
   read では、アドレスが一致した後に同じだけ保つ。write のアドレスの byte では保たない。features の bit1 を宣言する probe
-  だけ（ほかは unknown_operation）。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け
+  だけ（ほかは unknown_operation、core §1.2）。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け
   （state 0 でも）、値は次に受ける byte から効く。configure と reset は値を変えない。
 - describe: role_channels、max_length（1 フレームの最大 byte）、max_clock_hz（確かめた SCL の上限）、features（bit0 mode 3、
   bit1 stretch、bit2 内部プルアップ。mode 1 と 2 は必須）、queue_depth（tag 0x40、u8: 積めるフレームの数。mode 3 では未読の置き場の数の上限）、

@@ -25,8 +25,8 @@ connections, §3 status). The only definition of the numbers is `registry/oep-v1
 
 Every `oep.wire.*` interface:
 
-1. uses op 0x01 scan, 0x02 attach, 0x03 detach and 0x05 connections with the meanings of §1 to §2.1 (a wire may add ops from 0x06). attach, detach and connections
-   are required on every wire. scan is required on every wire that declares a pin combination (channel_group or role_channels);
+1. uses op 0x01 scan, 0x02 attach, 0x03 detach and 0x05 connections with the meanings of §1 to §2.1 (a wire may add ops from 0x06). All four are
+   required on every wire;
 2. follows §1 (verify the speed by reading before writing, count = 0 and what it leaves out, seats and max_connections, the scan and attach budgets, refusals) and
    §2 (lifetime, wire loss, the lines while the wire does not answer, the state machine, closing does not change the target), reading swdio / swclk as "the channel of pin role 1 / 2";
 3. creates the connections of [common parts](oep-if-common.md) §2 that `oep.target.*` interfaces use.
@@ -38,7 +38,7 @@ in place of the two u16 fields, keeping the other fields and their order.
 another debugger) has exactly one combination, the one the endpoint uses:
 
 - attach is sent without pins. A pins TLV is rejected unsupported (the tag as received), like any combination the declaration does not allow (§1);
-- scan is optional. Without it the probe answers unknown_operation. With it, count = 0 tries that one combination, and a request listing combinations is rejected unsupported;
+- scan with count = 0 tries that one combination, and a request listing combinations is rejected unsupported;
 - connections entries and scan entries carry 0xFFFF for each channel (in the `n × (role, channel)` form, n = 0);
 - the pin rules of §1 (what count = 0 leaves out, held channels) have nothing to apply to.
 
@@ -231,12 +231,12 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
 - **attach while applying reset**: with the TLV 0x05 reset (critical: `channel(u16), hold_ms(u16)`), the probe holds the reset wire (channel) for
   hold_ms and then releases it. With method 1 it keeps issuing halt while releasing, to halt as early as possible (flags bit3, dpc TLV). **There is no guarantee of halting before the first
   instruction** (some execution happens between the release of the reset wire and the halt taking effect; reasons: [link measurements](link-measurements.ja.md) (Japanese) §3). When a guarantee of halting at the position right after
-  reset is needed, use reset mode 2 of riscv-dm (release ndmreset while holding haltreq). With method 0 it attaches with the target running. An optional function; a probe without it is rejected unsupported (tag 0x05). An attach with the reset TLV to an existing connection
+  reset is needed, use reset mode 2 of riscv-dm (release ndmreset while holding haltreq). With method 0 it attaches with the target running. An optional function, declared by role 3 (reset) of role_channels; a probe without it rejects a reset TLV unsupported (the tag as received, 0x85, core §2.3). An attach with the reset TLV to an existing connection
   resets that target and then returns the same connection (treated the same as the NRST of the reset op: mark reset detail 3). hold_ms is
   subject to the core's max_op_ms.
 - **There is no default reset wire**: which wire is used for reset is specified explicitly by the host every time with channel (a reset on the wrong wire could damage the target or the
   fixture). The channels the probe may use for reset are declared with role 3 (reset) of the role_channels of describe. An undeclared
-  channel is rejected unsupported (tag 0x05) without executing anything. A channel held by an existing plan or connection is rejected
+  channel is rejected unsupported (the tag as received, 0x85) without executing anything. A channel held by an existing plan or connection is rejected
   unavailable as the contention of core §8.1. A channel whose idle is an output is rejected unavailable as §1 says. **The reset wire is pulled low open-drain, and when released it stops pulling and goes to the idle state of core §8** (no short with an external reset button or
   another driver). The channel is held only for the duration of the op. On a probe without it, the host sends the release of `oep.fixture.gpio` and the attach together
   and retries.
@@ -365,7 +365,7 @@ the rise through the pull-up).
 Requests start with connection(u16).
 
 - **The mandatory ops are dmi, halt, resume.** reset, read_block / write_block, run, step are optional and declared with the features of describe
-  (bit0 read_block / write_block, bit1 run, bit2 reset, bit3 step). Undeclared ops are unknown_operation. The host can build the same thing with dmi even without the
+  (bit0 read_block / write_block, bit1 run, bit2 reset, bit3 step). A probe answers an undeclared one with unknown_operation (core §1.2). The host can build the same thing with dmi even without the
   optional ops.
 - **Scope of the ops other than dmi (the high-level ops)**: they handle hart 0 of RV32 only (addresses, register values, pc are u32). Inside a high-level op the probe
   sets the hartsel of DMCONTROL to 0 and **returns with it set to 0** (a hartsel selected by the host with dmi lasts only within that dmi request). Other harts and RV64 are
@@ -524,7 +524,7 @@ dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rej
 
 - The kind of scan is 2 = arm-adi, id is DPIDR. The forms of request and answer are the same as §3 (one form for the 3 wires).
 - The TLVs use the same numbers as §3: scan 0x01 max_speed, 0x02 skip, 0x06 targetsel (below). attach 0x01 max_speed (mandatory), 0x02 targetsel,
-  0x03 pins, 0x05 reset (a probe without it is rejected unsupported). detach 0x01 force. attach answer 0x10 target_id, 0x12 search_retries (§1).
+  0x03 pins, 0x05 reset (optional, as §3). detach 0x01 force. attach answer 0x10 target_id, 0x12 search_retries (§1).
 - **How the speed is selected**: SWD cannot select the speed by reading, so it starts at `min(max_speed, the max_clock_hz of describe)`.
 - **Wake / configuration sequence** (§1 item 1): the JTAG-to-SWD switch, the dormant wake, and TARGETSEL when one is given. swd names no scratch register.
 - attach tries the switch from JTAG to SWD, and if there is no answer wakes it from dormant (flags bit2). Power-up (the CDBGPWRUPREQ /
@@ -549,7 +549,7 @@ dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rej
 
 ## 6. `oep.target.arm-adi`
 
-Requests start with connection(u16).
+Requests start with connection(u16). All three ops are required. arm-adi has no optional op and declares no features.
 
 | op | Name | Request (after connection) | Answer |
 |---:|---|---|---|

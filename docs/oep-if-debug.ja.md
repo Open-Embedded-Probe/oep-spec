@@ -25,8 +25,8 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 
 すべての `oep.wire.*` のインターフェースは:
 
-1. op 0x01 scan、0x02 attach、0x03 detach、0x05 connections を §1〜§2.1 の意味で使う（wire は 0x06 から op を足してよい）。attach、detach、connections は
-   すべての wire で必須。scan は、ピンの組（channel_group か role_channels）を宣言するすべての wire で必須;
+1. op 0x01 scan、0x02 attach、0x03 detach、0x05 connections を §1〜§2.1 の意味で使う（wire は 0x06 から op を足してよい）。4 つとも
+   すべての wire で必須;
 2. §1（書く前に読んで速さを確かめる、count = 0 と外すもの、席と max_connections、scan と attach の予算、断り方）と §2（寿命、線切れ、
    線が応えない間の線、状態機械、閉じても target を変えない）に従う。swdio / swclk は「ピンの役 1 / 2 の channel」と読み替える;
 3. `oep.target.*` のインターフェースが使う [共通部品](oep-if-common.ja.md) §2 の connection を作る。
@@ -38,7 +38,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
 
 - attach は pins なしで送る。pins の TLV は、宣言が許さないほかの組と同じく rejected unsupported（受け取ったままの tag）（§1）;
-- scan は任意。持たなければ probe は unknown_operation で答える。持つなら、count = 0 はその 1 つの組を試し、組を並べた要求は rejected unsupported;
+- scan の count = 0 はその 1 つの組を試し、組を並べた要求は rejected unsupported;
 - connections の entry と scan の entry は、各 channel に 0xFFFF を入れる（`n × (role, channel)` の形では n = 0）;
 - §1 のピンの規則（count = 0 が外すもの、持たれている channel）は当てはめる相手が無い。
 
@@ -230,12 +230,12 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 - **reset をかけながらの attach**: TLV 0x05 reset（critical: `channel(u16)、hold_ms(u16)`）を付けると、probe はリセットの線（channel）を
   hold_ms 保ってから離す。method 1 なら離しながら halt を打ち続け、できるだけ早く止める（flags bit3、dpc TLV）。**最初の命令の前で
   止まる保証は無い**（reset の線の解放から halt が効くまでに走った分がある。理由: [リンクの計測](link-measurements.ja.md) §3）。reset の直後の位置で
-  止める保証が要るときは、riscv-dm の reset mode 2（ndmreset を haltreq を保ったまま解く）を使う。method 0 なら走ったまま attach する。任意の機能で、持たない probe は rejected unsupported（tag 0x05）。既存の connection に reset TLV を付けた
+  止める保証が要るときは、riscv-dm の reset mode 2（ndmreset を haltreq を保ったまま解く）を使う。method 0 なら走ったまま attach する。任意の機能で、role_channels の role 3（reset）で宣言する。持たない probe は reset の TLV を rejected unsupported で断る（受け取ったままの tag、0x85、core §2.3）。既存の connection に reset TLV を付けた
   attach は、その target を reset してから同じ connection を返す（reset の op の NRST と同じ扱い: mark reset detail 3）。hold_ms は
   core の max_op_ms の対象。
 - **reset の線に既定は無い**: どの線を reset に使うかは host が毎回 channel で明示する（線を取り違えた reset は target や治具を
   壊しうる）。probe が reset に使ってよい channel は describe の role_channels の role 3（reset）で宣言する。宣言していない
-  channel は、何も実行せずに rejected unsupported（tag 0x05）。今ある plan や接続が持つ channel は、core §8.1 の取り合いとして rejected
+  channel は、何も実行せずに rejected unsupported（受け取ったままの tag、0x85）。今ある plan や接続が持つ channel は、core §8.1 の取り合いとして rejected
   unavailable。idle が出力の channel は、§1 のとおり rejected unavailable。**reset の線はオープンドレインで low に引き、離すときは引くのをやめて core §8 の空きの状態にする**（外部の reset ボタンや
   ほかの driver と短絡しない）。channel は op の間だけ持つ。持たない probe では、host は `oep.fixture.gpio` の解放と attach をまとめて
   送って再試行する。
@@ -364,7 +364,7 @@ low の駆動をやめた後と、0 を読んだ後に、probe は 1 回 30 ns �
 要求の先頭は connection(u16)。
 
 - **必須の op は dmi、halt、resume**。reset、read_block / write_block、run、step は任意で、describe の features で宣言する
-  （bit0 read_block / write_block、bit1 run、bit2 reset、bit3 step）。宣言していない op は unknown_operation。host は、任意の op が
+  （bit0 read_block / write_block、bit1 run、bit2 reset、bit3 step）。probe は宣言していない op に unknown_operation で答える（core §1.2）。host は、任意の op が
   無くても dmi で同じことを組める。
 - **dmi 以外の op（高水準の op）の範囲**: RV32 の hart 0 だけを扱う（番地、レジスタの値、pc は u32）。probe は高水準の op の中で
   DMCONTROL の hartsel を 0 にし、**0 にして返す**（host が dmi で選んだ hartsel は、その dmi の要求の中だけ）。ほかの hart と RV64 は、
@@ -523,7 +523,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 
 - scan の kind は 2 = arm-adi、id は DPIDR。要求と応答の形は §3 と同じ（3 線で 1 つの形）。
 - TLV は §3 と同じ番号: scan 0x01 max_speed、0x02 skip、0x06 targetsel（下）。attach 0x01 max_speed（必須）、0x02 targetsel、
-  0x03 pins、0x05 reset（持たない probe は rejected unsupported）。detach 0x01 force。attach の応答 0x10 target_id、0x12 search_retries（§1）。
+  0x03 pins、0x05 reset（任意、§3 のとおり）。detach 0x01 force。attach の応答 0x10 target_id、0x12 search_retries（§1）。
 - **speed の選び方**: SWD は読んで速さを選べないので、`min(max_speed, describe の max_clock_hz)` で始める。
 - **wake / 設定の手順**（§1 の 1）: JTAG から SWD への切り替え、dormant からの wake、与えられたときの TARGETSEL。swd は scratch のレジスタを名指さない。
 - attach は JTAG から SWD への切り替えを試し、答えがなければ dormant から起こす（flags bit2）。電源投入（CTRL/STAT の CDBGPWRUPREQ /
@@ -548,7 +548,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 
 ## 6. `oep.target.arm-adi`
 
-要求の先頭は connection(u16)。
+要求の先頭は connection(u16)。3 つの op はすべて必須。arm-adi は任意の op を持たず、features を宣言しない。
 
 | op | 名前 | 要求（connection の後ろ） | 応答 |
 |---:|---|---|---|

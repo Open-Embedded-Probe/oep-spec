@@ -9,7 +9,7 @@ The parts are not the core. They take effect for a standard interface only when 
 ## 1. Positioned streams
 
 Used by: `oep.target.console`, `oep.fixture.uart`. Capture (`oep.fixture.logic` / `oep.fixture.analog`) has positions, but in a different form with segments and generations,
-and does not use this part ([capture](oep-if-capture.md) §2).
+and does not use this part ([capture](oep-if-capture.md) §2). An interface that uses this part offers read, marks, clear, mark and write as required ops (core §1.2).
 
 ### 1.1 Position
 

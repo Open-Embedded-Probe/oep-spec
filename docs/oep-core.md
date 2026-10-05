@@ -66,9 +66,11 @@ A probe MUST implement:
 - fn 0 confirm, list, describe, open, end, keepalive, lock_state, subscribe and unsubscribe, link_source and link_sink;
 - in describe of fn 0, unit_id, transport and max_op_ms.
 
-plan_apply and plan_release are required when any of its interfaces has plan roles. A probe none of whose interfaces has plan roles answers them with unknown_operation. Optional: port_speed (§3.5), notifications other than fn 0's heartbeat, and every interface.
+plan_apply and plan_release are required when any of its interfaces has plan roles (roles that the interface's document assigns through the plan, §8; the pin roles that a wire's attach selects by argument are not plan roles). A probe none of whose interfaces has plan roles answers them with unknown_operation. Optional: port_speed (§3.5), notifications other than fn 0's heartbeat, and every interface.
 
-A probe answers an op it does not implement with unknown_operation, and an optional function of an op it implements with unsupported.
+**Required and optional ops.** Every op in an interface's op table (§12 for fn 0, the op table of the interface's document otherwise) is required of a probe that lists that interface, unless the document marks the op optional. A document that marks an op optional names what declares it: a bit of features (§7.4), another tag of describe, or the presence in list of the interfaces that use it. A probe offers an optional op exactly when it makes that declaration.
+
+A probe answers a request for an op the interface does not define, and for an optional op it does not offer, with rejected unknown_operation (§4.3 order 1). It answers a request that asks an op it offers for an optional function it does not declare (a mode, a format, a value, a critical TLV, a pin combination) with rejected unsupported (§4.3 order 6).
 
 A host MUST: skip unknown TLVs and tags (§2.3, §2.4); follow §3.2 and the probing rule of §3.3; wait as §4.4 says; resend as §5.2 says; dispatch frames as §11.1 says.
 
@@ -179,7 +181,7 @@ The probe has one clock: **ns since boot (u64)**. Wherever a time is returned (m
 - The form and meaning of the **fixed part** of an interface's payload is **determined by (name, revision)** (the revision of list, u8).
 - **The revision is raised only when the meaning or length of the fixed part changes.** The host does not use an interface whose revision it does not know.
 - Adding optional request TLVs, response TLVs, optional ops or optional events without changing the fixed part does not change the revision. A host that does not know them
-  does not use them. The presence of optional ops or modes is declared by describe (features etc.). **The "append at the end" of §2.3 does not change the revision either**
+  does not use them. The presence of optional ops is declared as §1.2 says, and the presence of optional functions (modes, formats, etc.) by describe (features etc.). **The "append at the end" of §2.3 does not change the revision either**
   (the value of a TLV, the payload of an event, the tail of an element of an answer's sequence).
 - A probe that introduces a revision changing the fixed part preferably also exposes the old revision at the same time as a separate fn.
 - The name changes only when the meaning of the interface changes.
@@ -414,7 +416,7 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           header 5
 | 0x08 | locked | Another session holds the lock | Remaining time in ms (u32), [TLV owner (§6.4)] |
 | 0x09 | session_required | A state-changing request has no session_id | — |
 | 0x0A | no_connection | The probe does not know the resource of the request (connection, stream, etc.; anything designated by number). The host recreates it. Every interface uses this for an unknown number | — |
-| 0x0B | unsupported | It is in the definition, but this probe cannot handle it (a critical TLV, a value in the fixed part, the function of an optional op) | `tag(u8)`, [TLV]. tag is the value as received for a critical TLV, 0x00 for a value in the fixed part. To indicate which element, TLVs follow (same tag space as unavailable: channel, index) |
+| 0x0B | unsupported | It is in the definition, but this probe cannot handle it (a critical TLV, a value in the fixed part, an optional function of an op this probe offers) | `tag(u8)`, [TLV]. tag is the value as received for a critical TLV, 0x00 for a value in the fixed part. To indicate which element, TLVs follow (same tag space as unavailable: channel, index) |
 | 0x0C | result_lost | The result of a resent request is not remembered (§5.2) | — |
 | 0x0D | corr_reused | A request arrived with the same corr but a different fn, op or contents (§5.2) | — |
 | 0x0E | expired | The lock of this session_id ended by lease expiry and the resources were removed (§9). The host starts over from open (the side taken by force gets locked while the taker holds it, and no_session afterwards: the probe remembers only the last session_id) | — |
@@ -423,7 +425,7 @@ The detail of rejected is the reason, and other information goes in the payload.
 
 **Order of refusal** (the probe checks in the following order and refuses with the first reason that applies. No two reasons are created for the same situation):
 
-1. Header: unknown_function → unknown_operation → session_required.
+1. Header: unknown_function → unknown_operation (an op the interface does not define, or an optional op this probe does not offer, §1.2) → session_required.
 2. Resend (the table of §5.2): corr_reused / result_lost / the remembered answer.
 3. Session (§6.2): no_session / expired / locked.
 4. window_exceeded.
@@ -809,13 +811,13 @@ event   role=0x05 | fn(u16) | seq(u16) | kind(u8) | fixed part | [TLV]          
 | 0x01 | confirm | §7.1 | §7.1 | Not required | yes |
 | 0x02 | list | §7.2 | §7.2 | Not required | yes |
 | 0x03 | describe | §7.3 | §7.3 | Not required | yes |
-| 0x04 | plan_apply | Sequence of role_assignment TLVs | — | Required | if plan roles |
-| 0x05 | plan_release | n(u8), n × fn(u16) | — | Required | if plan roles |
+| 0x04 | plan_apply | Sequence of role_assignment TLVs | — | Required | if plan roles (§1.2) |
+| 0x05 | plan_release | n(u8), n × fn(u16) | — | Required | if plan roles (§1.2) |
 | 0x10 | open | session_id(u32), lease_ms(u32), force(u8), [TLV owner] | lease_ms(u32), boot_id(u32), resumed(u8: 0 / 1 / 2, §6.4) | open takes the lock (role 0x01) | yes |
 | 0x11 | end | — | — | Required | yes |
 | 0x12 | keepalive | — | — | Required | yes |
 | 0x13 | lock_state | — | locked(u8), remaining_ms(u32), [TLV owner] | Not required | yes |
-| 0x14 | port_speed | §3.5 (optional. Only probes that emit port_speed in describe) | baud(u32) | Required | optional |
+| 0x14 | port_speed | §3.5 (optional, declared by describe tag 0x4E) | baud(u32) | Required | optional |
 | 0x30 | subscribe | §11.3 | — | Required | yes |
 | 0x32 | unsubscribe | §11.3 | — | Required | yes |
 | 0x40 | link_source | length(u32) | length bytes (up to what fits in one frame. Byte k is k & 0xFF) | Not required | yes |
@@ -831,7 +833,7 @@ Standard interfaces and independent interfaces are both defined by the following
 1. **Name**: `oep.` is reserved by the project. Independent interfaces use reverse DNS (`io.github.<owner>.<name>`, etc.). Names are cut by what the host
    uses them for (not by the name of the probe's peripheral). **1 to 64 bytes; the usable characters are `a-z 0-9 - .`** (the registry's `limits`).
    Each label of a name is 1 or more of `a-z 0-9 -`, and does not start or end with `-`. A name has at least two labels.
-2. **What the definition decides**: the revision, the table of ops (number, request, answer, whether the lock is required), the TLV tags of each op (the space of that op's context),
+2. **What the definition decides**: the revision, the table of ops (number, request, answer, whether the lock is required, and which ops are optional and what declares each, §1.2), the TLV tags of each op (the space of that op's context),
    the interface-specific describe tags (0x40 to 0x7F), the role numbers of the plan, reject reasons (0x40 to 0x7F), event kinds
    (0x01 to 0x7F), the form of the payload of notification data, the resources the interface creates and their lifetime (on top of §9).
 3. **Rules of form**: as in §2.3 (fixed part + TLVs, a count before a variable sequence, no omittable fields, safety arguments critical).

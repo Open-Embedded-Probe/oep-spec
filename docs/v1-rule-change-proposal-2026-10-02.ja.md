@@ -28,7 +28,7 @@ C-11（USB の見分け）は決まった（変えない）ので含めない。
 - **条件付き合意**: 項目に書いた条件つきで受け入れた。条件は、まだ満たすべきと項目に書いていない限り、案の文に入れてある。
 - **未決**: 決まっていない。足りないものは項目に書いた。
 
-未決の項目: P2-★4 の cold attach の測定（bench、凍結の前）。debug §3.1 / §3.2 の RVSWD と SWIO のフレーム（7392817。参照の probe から書いた規則の追加、上の項目には無い）: ch32rv が 2026-10-02 に見た。指摘は反映済み（休んだ後の同期の取り直しを参考に、85 区切りの状態の問い合わせを注記、SWIO の low の範囲を 240〜310 / 840〜1060 ns に広げた、swio の swclk ≠ 0xFFFF は attach と同じく scan でも unsupported）。
+未決の項目: なし。P2-★4 の cold attach の測定は、ユーザーの判断で閉じた（2026-10-06: cold start には probe の USB を手で抜く必要があり、今の段階ではそこまで細かくしない）。温まった状態のデータを 1000 ms の上限の根拠とする: 0.0.28 は失敗 4 %、p90 519 ms。直したビルドは 400 回中 0 回の失敗で約 138 / 223 ms、1000 ms を超えた裾はリンクの時間だった。debug §3.1 / §3.2 の RVSWD と SWIO のフレーム（7392817。参照の probe から書いた規則の追加、上の項目には無い）: ch32rv が 2026-10-02 に見た。指摘は反映済み（休んだ後の同期の取り直しを参考に、85 区切りの状態の問い合わせを注記、SWIO の low の範囲を 240〜310 / 840〜1060 ns に広げた、swio の swclk ≠ 0xFFFF は attach と同じく scan でも unsupported）。
 
 **最後の答え。**
 
@@ -39,7 +39,7 @@ C-11（USB の見分け）は決まった（変えない）ので含めない。
 | Q3 | C-03 | そうする: 要求の TLV は伸ばさず、新しい欄は新しい tag |
 | Q4 | C-04 | そうする: 多くて 16 個、「もっと」は 16 個目の 0x00 |
 | Q5 | C-06 | そうする: 式は下限。scan と attach の上限は引数の時間に数える（P2-★4） |
-| Q6 | P2-★4 | 要求ごとの 200 ms と実時間の 1000 ms を採る。**attach の上限は 500 ms でなく 1000 ms**（bench の測定）。attach の応答に任意の TLV `search_retries`。「status line ⇒ connection が無くなった」に頼る host は無い。凍結の前に bench が cold attach を 1 回測る |
+| Q6 | P2-★4 | 要求ごとの 200 ms と実時間の 1000 ms を採る。**attach の上限は 500 ms でなく 1000 ms**（bench の測定）。attach の応答に任意の TLV `search_retries`。「status line ⇒ connection が無くなった」に頼る host は無い。cold attach の測定はユーザーの判断でやめた（2026-10-06）。温まった状態のデータを根拠とする |
 | Q7 | C-07 | 間（gap）まで捨てる |
 | Q8 | C-09 | そうする: どの probe も 115200 |
 | Q9 | C-05 | confirm の TLV。TCP の端点は listen している socket の index を言う。session の op に自分で答える中継の broker は 0xFF を言う（ch32rv が確かめた） |
@@ -48,7 +48,7 @@ C-11（USB の見分け）は決まった（変えない）ので含めない。
 | Q12 | P2-★2 | 選択肢の無い規則にする。測った: 1 つの probe はすでに満たし、もう 1 つは CS が high の間 MISO を low に駆動していて、直している |
 | Q13 | P2-★3 | プルアップを宣言する（features bit2 + pullup_ohms）。禁じない |
 | Q14 | P2-○13 | 規則にする |
-| Q15 | P2-★7 | そうする: `n × (role, channel)` の形。足した: ピンの組を宣言しない線は scan を持たなくてよい（ch32rv が確かめた） |
+| Q15 | P2-★7 | そうする: `n × (role, channel)` の形。足した: ピンの組を宣言しない線は scan を持たなくてよい（ch32rv が確かめた）。2026-10-06 に置き換えた: scan はどの線でも必須（debug §0。ピンの無い線の count = 0 はその 1 つの組を試す） |
 | Q16 | P2-○4 | halt が時間切れのとき haltreq を下ろす |
 | Q17 | P2-★6 | そうする: 0 = 止まる、1 = 答える |
 | Q18 | P2-○8 | mode、rate、trigger、pretrigger、frontend は critical で送る。samples と segments は送らない: probe は samples を上限に丸め、応答の値を正とする。rate の critical は「範囲の中ならいちばん近い作れる値、範囲の外は unsupported」 |
@@ -77,7 +77,7 @@ C-11（USB の見分け）は決まった（変えない）ので含めない。
 | O-5 | 1 断りの種類と伸ばし方 | ○ | u8 の enum の 0xF0〜0xFE は実験用 | いいえ | 合意。d48ca6d で適用 |
 | C-04 | 2 ignored の上限 | ★ | ignored は多くて 16 個、0x00 は「ほかにも」、落とさない | はい | 合意。cd15f53 で適用 |
 | C-06 | 3 時間 | ★ | host の待ち時間に UART の転送時間を足し、前の応答から数え始める | いいえ | 合意。f7d6d21 で適用 |
-| P2-★4 | 3 時間 | ★ | 線の再試行は要求ごとに 200 ms、線切れは実時間 1000 ms、attach は 1000 ms まで、scan は 500 ms まで | はい | 条件付き合意。3a88ec9（debug）、f7d6d21（core）、18d7eac（registry）で適用。cold attach の測定はまだ未決 |
+| P2-★4 | 3 時間 | ★ | 線の再試行は要求ごとに 200 ms、線切れは実時間 1000 ms、attach は 1000 ms まで、scan は 500 ms まで | はい | 条件付き合意。3a88ec9（debug）、f7d6d21（core）、18d7eac（registry）で適用。cold attach の測定はユーザーの判断で閉じた（2026-10-06）。温まった状態のデータで足りる |
 | P2-○3 | 3 時間 | ○ | dmi: max_op_ms に数えるのは時間で決まる待ちだけ | いいえ | 合意。3a88ec9 で適用 |
 | C-07 | 4 経路 | ★ | TCP では 200 ms のやり直しをしない。長すぎる length。立て直しは host が最後に書いてから 250 ms 待つ | はい | 合意。48b8cbe、0bb10e8（TCP での §5.1）で適用 |
 | C-08 | 4 経路 | ★ | max_frame / window / max_inflight は経路ごと | いいえ | 合意。48b8cbe で適用 |
@@ -89,7 +89,7 @@ C-11（USB の見分け）は決まった（変えない）ので含めない。
 | P2-★3 | 6 電気の安全 | ★ | i2c-target はオープンドレインだけ。内蔵のプルアップは宣言する | いいえ | 合意。0517c2f、18d7eac（registry）で適用 |
 | P2-○13 | 6 電気の安全 | ○ | plan を取ってもピンは変わらない。ロジックのキャプチャは聞くだけ | はい | 合意。0517c2f（capture）、18d7eac（core、registry）、3d51d4a（インターフェースの名前を出さない core §8、fixture）で適用 |
 | P2-★5 | 7 debug の線の一般化 | ★ | 宣言が許さない組 → unsupported | いいえ（probe はすでにそう） | 合意。78403b2 で適用 |
-| P2-★7 | 7 debug の線の一般化 | ★ | どの線にも共通のことと、新しい線（JTAG など）が定めること。ピンを持たない線 | いいえ | 合意。78403b2（debug）、18d7eac（probe-config）で適用 |
+| P2-★7 | 7 debug の線の一般化 | ★ | どの線にも共通のことと、新しい線（JTAG など）が定めること。ピンを持たない線 | いいえ | 合意。78403b2（debug）、18d7eac（probe-config）で適用。ピンの無い線の scan は 2026-10-06 に必須にした（点検 3 の C-21、必須と任意の op） |
 | P2-★8 | 7 debug の線の一般化 | ★ | 速さを確かめる前に probe が書いてよいもの。scan が書くのは wake / 設定の並びと dmactive だけ | いいえ | 条件付き合意。78403b2、18d7eac（registry）で適用 |
 | P2-○1 | 7 debug の線の一般化 | ○ | 「見つかった」は DMSTATUS.version ≥ 2 かつ ≠ 15。op も同じ | はい | 合意。78403b2 で適用 |
 | P2-○4 | 7 debug の線の一般化 | ○ | halt / step が失敗したとき target に何を残すか | はい | 合意。78403b2、18d7eac（registry）で適用 |
@@ -323,7 +323,7 @@ core §7.5 max_op_ms の「host はこの値に線を通る時間を足した値
 
 ### P2-★4 ★ 線の再試行、線切れ、attach に、host の待ちに合う時間の上限を付ける
 
-**状態: 条件付き合意** — bench が凍結前に cold attach を 1 回 1000 ms の予算に対して測る（未了）.
+**状態: 条件付き合意。条件は閉じた** — cold attach の測定はユーザーの判断でやめた（2026-10-06: cold start には probe の USB を手で抜く必要があり、今の段階ではそこまで細かくしない）。温まった状態のデータを 1000 ms の上限の根拠とする: 0.0.28 は失敗 4 %、p90 519 ms。直したビルドは 400 回中 0 回の失敗で約 138 / 223 ms、1000 ms を超えた裾はリンクの時間だった。
 
 **問題。** host が、線の不安定な target に dmi（引数の時間が無いので 1000 ms 待つ）を送る。probe が「1000 ms 答えが無い」を 1 つの要求の中で当てると、probe の答えと host の時間切れが同じ時になり、後ろに並んだ要求は先に時間切れになる。reset の解放の後の時間と、attach の速さの探索には、上限がまったく無い。
 
@@ -360,7 +360,7 @@ attach の応答に、どの線にも足す（registry `[interface.tlv.attach_an
 
 **Q6.** 要求ごとの 200 ms と実時間の 1000 ms でよいか。「status line ⇒ connection が無くなった」に頼っている host はあるか。勧め: 両方の数を採る。ch32rv と bench: reset の後にもっと長い上限の要る target があれば教えてほしい。
 
-**答え。** WireSkein は OK。ch32rv と bench: 「status line ⇒ connection が無くなった」に頼る host は無い。bench が attach を測った（上）。500 ms では小さすぎるので attach の上限を 1000 ms にし、再試行の数を attach の応答の TLV にという bench の案を `search_retries` にした。まだ満たすべき条件: 凍結の前に bench が cold attach を 1 回、1000 ms に対して測る。
+**答え。** WireSkein は OK。ch32rv と bench: 「status line ⇒ connection が無くなった」に頼る host は無い。bench が attach を測った（上）。500 ms では小さすぎるので attach の上限を 1000 ms にし、再試行の数を attach の応答の TLV にという bench の案を `search_retries` にした。条件（凍結の前に cold attach を 1 回、1000 ms に対して測る）は、2026-10-06 にユーザーの判断で閉じた。温まった状態のデータを根拠とする。
 
 ### P2-○3 ○ dmi: max_op_ms に数えるのは時間で決まる待ちだけ
 
@@ -663,6 +663,8 @@ probe.config §1.1 に足す:
 **Q15.** 2 本でない線のための `n × (role, channel)` の形を、今決めてよいか。勧め: 決める。決めないと、新しい線ごとに形を作り、host はそれぞれを特別に扱うことになる。
 
 **答え。** bench と WireSkein: 異議なし。ch32rv は分からないと答えた: どの線も scan と connections を持たなければならないなら、WCH の broker は両方が要る。答え: 上の「ピンを持たない線」。connections はどこでも要る（host は status line の後にこれで確かめる、P2-★4。端点はいつも自分の connection を知っている）。scan は、探すピンが無いところでだけ任意。ch32rv が確かめた（2026-10-02）。
+
+**置き換え（2026-10-06）。** 「ピンの無い線では scan は任意」は置き換えた: scan はどの線でも必須で、ピンの無い線では count = 0 がその 1 つの組を試す（debug §0、core §1.2: 任意の op は何がそれを宣言するかを書く。これには宣言が無かった）。ch32rv、WireSkein、bench が同意した。
 
 ### P2-★8 ★ 速さを確かめる前に probe が書いてよいもの
 

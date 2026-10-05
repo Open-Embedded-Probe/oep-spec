@@ -27,7 +27,7 @@ A probe conforms when it does everything in this list for the transports and int
 - Headers of requests and answers (§4.1, §4.2); one answer per request on the transport it came from, in order (§4.2, §4.4).
 - rejected only for what was not accepted; completed failed / partial for what was accepted and failed (§4.2).
 - The order of refusal, first reason that applies (§4.3), with the payloads of §4.3 (unavailable TLVs, unsupported tag).
-- Unknown op: unknown_operation; an optional function of an implemented op: unsupported (§1.2).
+- An op the interface does not define, or an optional op the probe does not declare: unknown_operation; an optional function of an op the probe offers: unsupported (§1.2). Every op of an interface's table is required unless its document marks it optional.
 - Request TLVs: critical bit, unknown critical TLV unsupported, unknown non-critical TLV ignored, a TLV longer than known, a short TLV,
   a repeated non-repeating TLV, tags 0x7F / 0xFF (§2.2, §2.3).
 - ignored (tag 0x7F) on every completed answer that needs it, in request order, at most 16 entries with 0x00 as the 16th, room always kept (§2.3).
@@ -91,7 +91,7 @@ A probe that lists an `oep.` name follows that interface's whole document. The s
 | Interface | Required | Optional, declared by |
 |---|---|---|
 | Positioned streams ([common parts](oep-if-common.md) §1) | read, marks, clear, mark, write as §1 for each interface that uses them; status values of §3 | — |
-| `oep.wire.rvswd`, `oep.wire.swio`, `oep.wire.swd` ([wire and debug](oep-if-debug.md) §0 to §3, §5) | attach (max_speed mandatory), detach, connections; scan when the wire declares pins; §1 attach rules and budgets; §2 lifetime and line states | scan on a wire without pins; the reset TLV of attach |
+| `oep.wire.rvswd`, `oep.wire.swio`, `oep.wire.swd` ([wire and debug](oep-if-debug.md) §0 to §3, §5) | scan (on a wire without pins, count = 0 tries its one combination), attach (max_speed mandatory), detach, connections; §1 attach rules and budgets; §2 lifetime and line states | the reset TLV of attach (role 3 of role_channels) |
 | `oep.target.riscv-dm` (§4) | dmi, halt, resume | reset, read_block / write_block, run, step: features bits 0 to 3; max_length with read_block / write_block |
 | `oep.target.arm-adi` (§6) | transfer, read_block, write_block; max_length always emitted | — |
 | `oep.target.console` ([console](oep-if-console.md)) | the ops of §1; describe mechanisms always emitted; mechanism 2 framed as [dmseq](target-console-dmseq.md) | which mechanisms (describe mechanisms) |
@@ -99,9 +99,9 @@ A probe that lists an `oep.` name follows that interface's whole document. The s
 | `oep.fixture.uart` (§2) | the ops of §2; describe formats with 8N1 | other formats |
 | `oep.fixture.i2c-target` (§3) | the ops of §3 except stretch; modes 1 and 2 | stretch (features bit1, with max_stretch_us); mode 3 (bit0); pull-ups (bit2, with pullup_ohms) |
 | `oep.fixture.spi-target` (§4) | the ops of §4; cs_setup_ns when MISO is driven in software | LSB first (features bit0) |
-| `oep.fixture.logic`, `oep.fixture.analog` ([capture](oep-if-capture.md) §1 to §3) | the ops of §3.2; describe of §3.5; calibration on analog only | query (features bit0), force (bit1), notifications (bit2) |
-| `oep.fixture.capture-group` (§4) | the ops of §4.1; describe of §4.3 | force (bit1), notifications (bit2) |
-| `oep.probe.config` ([probe settings](oep-if-probe-config.md)) | listed only by a probe that handles settings; get, set, unset, state; hash; refusals of §2; describe of §4 | save / erase (refused unsupported when max_bytes is 0); slots; bind (bind_modes bits 0 and 1 when present) |
+| `oep.fixture.logic`, `oep.fixture.analog` ([capture](oep-if-capture.md) §1 to §3) | the ops of §3.2 except query and force; describe of §3.5; calibration on analog only | query (features bit0), force (bit1), notifications (bit2) |
+| `oep.fixture.capture-group` (§4) | the ops of §4.1 except force; describe of §4.3 | force (bit1), notifications (bit2) |
+| `oep.probe.config` ([probe settings](oep-if-probe-config.md)) | listed only by a probe that handles settings; get, set, unset, state; hash; refusals of §2; describe of §4 | save / erase (storage max_bytes above 0; without it unknown_operation); slots; bind (bind_modes bits 0 and 1 when present) |
 
 ## 4. How to check
 

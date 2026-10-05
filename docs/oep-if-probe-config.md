@@ -211,8 +211,8 @@ Among the texts of labels (the settings' label items, §1, and the firmware's la
 - **save is only an explicit operation of the host**, and saves the current settings as they are (if the content is the same, nothing is written). While writing, it does not answer other requests
   (subject to the core's max_op_ms). **A save replaces the whole**, and even if power is lost partway, either the previous save or the new save can be read. `max_bytes` of
   describe is the number of bytes of the canonical form, and settings up to that length can always be saved (the probe subtracts the part for the table of identifiers when declaring it). If exceeded,
-  rejected unavailable (cause 3). erase deletes the save (it does not change the current settings. After deletion, state 0, hash 0). On a probe without saving
-  (max_bytes 0), save / erase are rejected unsupported.
+  rejected unavailable (cause 3). erase deletes the save (it does not change the current settings. After deletion, state 0, hash 0). save and erase are
+  optional, offered when the storage of describe declares max_bytes above 0; a probe without saving answers them with unknown_operation (core §1.2). get, set, unset and state are required.
 - **A save holds the interfaces the items point to by (name, instance, revision)** (because fn numbers can change at every boot). The fns pointed to are fn of plan,
   wire_fn of slot, id of kind 2 of bind, and fn of uart. At boot, the probe looks up that combination in the current list, rewrites the fn, and then applies it (the forms of set and get stay
   with fn). If an interface pointed to does not exist, or the revision differs, **the whole save is not applied** (putting in only part would make the fixture behave half-way. The storage
@@ -224,14 +224,14 @@ Among the texts of labels (the settings' label items, §1, and the firmware's la
 
 **Table of refusals** (in the order of core §4.3):
 
-- Every rejected unsupported that is about an item, whatever the item (plan, label, idle, slot, bind, uart, disable) and whichever row below gives it, carries in its payload that item's tag as received (core §4.3). save / erase on a probe without saving carry tag 0x00.
+- Every rejected unsupported that is about an item, whatever the item (plan, label, idle, slot, bind, uart, disable) and whichever row below gives it, carries in its payload that item's tag as received (core §4.3).
 - A field that holds an undefined value is refused unsupported, and the contradictions that involve it (the malformed row) are not checked (core §4.3).
 
 | Situation | reason |
 |---|---|
 | Form errors, the same key twice, characters of name, the length and characters of a label's text, range of selected, retry_ms not 0 on a host slot, length of lock, boot_reset 2 or more (a boolean) and boot_reset 1 on a host slot, a drive of an idle with mode 0 to 2, and the length of an idle's drive, putting a slot with mechanism 0xFF on a bind, a bind pointing to a nonexistent slot, two slots with the same wire_fn and the same pins, duplicate name | malformed |
 | The fn pointed to does not exist (plan, wire_fn of slot, kind 2 of bind, uart) | unknown_function |
-| An undeclared item, a pin combination the wire does not allow, a wire_fn whose wire cannot have a lock, a mechanism the console does not declare, an idle with mode 3 / 4 on a channel that cannot be driven as an output, an idle's level number equal to the number of levels or more, idle_clock 1 on other than rvswd, a max_speed_hz that cannot be kept, an idle with mode 1 / 2 on a channel without that pull, the channel of a label / idle / disable at or beyond channels or in reserved, a mode not in bind_modes, a port that is not a serial port, an fn that is not uart, an unrealisable baud / format, an unused value or reserved bit of format, an idle mode of 5 or more, an undefined drive_kind of an idle, a slot attach of 2 or more, a slot idle_clock of 2 or more, a bind stream kind other than 1 / 2, a lock_scheme the wire does not have (defined or not), save / erase on a probe without saving | unsupported |
+| An undeclared item, a pin combination the wire does not allow, a wire_fn whose wire cannot have a lock, a mechanism the console does not declare, an idle with mode 3 / 4 on a channel that cannot be driven as an output, an idle's level number equal to the number of levels or more, idle_clock 1 on other than rvswd, a max_speed_hz that cannot be kept, an idle with mode 1 / 2 on a channel without that pull, the channel of a label / idle / disable at or beyond channels or in reserved, a mode not in bind_modes, a port that is not a serial port, an fn that is not uart, an unrealisable baud / format, an unused value or reserved bit of format, an idle mode of 5 or more, an undefined drive_kind of an idle, a slot attach of 2 or more, a slot idle_clock of 2 or more, a bind stream kind other than 1 / 2, a lock_scheme the wire does not have (defined or not) | unsupported |
 | plan_roles exceeded, contention for pins or resources, at boot slots exceeding max_connections, not enough room to save | unavailable (cause 2 / 1 / 2 / 3) |
 
 ## 3. Slot connections and state
@@ -304,7 +304,7 @@ describe is only a declaration (core §7.3). The state is in state (§3.3).
 
 | tag | Name | Value |
 |---:|---|---|
-| 0x40 | storage | max_bytes(u32, the number of bytes of the canonical form. 0 = no saving) |
+| 0x40 | storage | max_bytes(u32, the number of bytes of the canonical form. 0 = no saving; save and erase are then not offered, §2) |
 | 0x41 | items | A sequence of the tags of the items handled (u8) |
 | 0x42 | slots_max | u8. The number of slots that can be registered (0 does not handle slots) |
 | 0x43 | bind_modes | Bits of a u32: bit0 last-reset, bit1 manual, bit2 mixed. A probe that handles bind always sets bit0 and bit1 |

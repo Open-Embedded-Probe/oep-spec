@@ -66,9 +66,11 @@ probe が実装しなければならない（MUST）もの:
 - fn 0 の confirm、list、describe、open、end、keepalive、lock_state、subscribe と unsubscribe、link_source と link_sink;
 - fn 0 の describe の unit_id、transport、max_op_ms。
 
-plan_apply と plan_release は、どれかのインターフェースが plan の role を持つときに要る。plan の role を持つインターフェースが 1 つも無い probe は、それらに unknown_operation で答える。任意: port_speed（§3.5）、fn 0 のハートビート以外の通知、すべてのインターフェース。
+plan_apply と plan_release は、どれかのインターフェースが plan の role（インターフェースの文書が plan を通して割り当てる role、§8。wire の attach が引数で選ぶピンの role は plan の role ではない）を持つときに要る。plan の role を持つインターフェースが 1 つも無い probe は、それらに unknown_operation で答える。任意: port_speed（§3.5）、fn 0 のハートビート以外の通知、すべてのインターフェース。
 
-probe は、実装しない op には unknown_operation で、実装する op の任意の機能には unsupported で答える。
+**必ず持つ op と任意の op。** インターフェースの op の表（fn 0 は §12、ほかはそのインターフェースの文書の op の表）の op は、そのインターフェースを list に載せる probe が必ず持つ。文書が任意と書いた op は除く。op を任意と書く文書は、何がそれを宣言するかを書く: features のビット（§7.4）、describe のほかの tag、またはそれを使うインターフェースが list にあること。probe は、その宣言をしたときに限り、その任意の op を持つ。
+
+probe は、インターフェースが定義しない op の要求と、持たない任意の op の要求に rejected unknown_operation で答える（§4.3 順 1）。持つ op に、宣言しない任意の機能（mode、format、値、critical の TLV、ピンの組み合わせ）を求める要求には rejected unsupported で答える（§4.3 順 6）。
 
 host がしなければならない（MUST）こと: 知らない TLV と tag を読み飛ばす（§2.3、§2.4）。§3.2 と §3.3 の探りの規則に従う。§4.4 のとおり待つ。§5.2 のとおり送り直す。§11.1 のとおりフレームを振り分ける。
 
@@ -179,7 +181,7 @@ probe の時計は 1 つ: **起動からの ns（u64）**。時刻を返す所�
 - インターフェースの payload の**固定部分**の形と意味は **(名前, revision) で決まる**（list の revision、u8）。
 - **revision を上げるのは、固定部分の意味か長さを変えるときだけ**。host は知らない revision のインターフェースを使わない。
 - 固定部分を変えずに、任意の request TLV、response TLV、任意の op、任意の event を足すときは、revision を変えない。知らない
-  host はそれらを使わない。任意の op やモードの有無は describe（features など）で宣言する。**§2.3 の「後ろに足す」も revision を
+  host はそれらを使わない。任意の op の有無は §1.2 のとおりに、任意の機能（モード、format など）の有無は describe（features など）で宣言する。**§2.3 の「後ろに足す」も revision を
   変えない**（TLV の値、出来事の payload、応答の並びの要素の後ろ）。
 - 固定部分を変える revision を入れる probe は、できれば古い revision も別の fn として同時に出す。
 - 名前を変えるのは、インターフェースの意味が変わるときだけ。
@@ -414,7 +416,7 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出�
 | 0x08 | locked | 他のセッションがロックを持つ | 残り時間 ms（u32）、[TLV owner（§6.4）] |
 | 0x09 | session_required | 状態を変える要求に session_id が無い | — |
 | 0x0A | no_connection | 要求の資源（connection、stream など、番号で指すもの）を probe が知らない。host は作り直す。どのインターフェースでも、知らない番号にはこれを使う | — |
-| 0x0B | unsupported | 定義にはあるが、この probe が扱えない（critical の TLV、固定部分の値、任意の op の機能） | `tag(u8)`、[TLV]。tag は critical の TLV なら受け取ったままの値、固定部分の値なら 0x00。どの要素かを示すときは後ろに TLV（unavailable と同じ tag の空間: channel、index） |
+| 0x0B | unsupported | 定義にはあるが、この probe が扱えない（critical の TLV、固定部分の値、この probe が持つ op の任意の機能） | `tag(u8)`、[TLV]。tag は critical の TLV なら受け取ったままの値、固定部分の値なら 0x00。どの要素かを示すときは後ろに TLV（unavailable と同じ tag の空間: channel、index） |
 | 0x0C | result_lost | 送り直された要求の結果を覚えていない（§5.2） | — |
 | 0x0D | corr_reused | 同じ corr で fn、op、中身のどれかが違う要求が来た（§5.2） | — |
 | 0x0E | expired | この session_id のロックは lease の期限切れで終わり、資源は外した（§9）。host は open からやり直す（force で奪われた側は、奪った側が持つ間は locked、その後は no_session になる: probe は最後の session_id しか覚えない） | — |
@@ -423,7 +425,7 @@ rejected の detail は reason で、そのほかの情報は payload に置く�
 
 **断り方の順**（probe は次の順に見て、最初に当たった理由で断る。同じ状況に 2 つの理由を作らない）:
 
-1. 見出し: unknown_function → unknown_operation → session_required。
+1. 見出し: unknown_function → unknown_operation（インターフェースが定義しない op、またはこの probe が持たない任意の op、§1.2）→ session_required。
 2. 送り直し（§5.2 の表）: corr_reused / result_lost / 覚えた応答。
 3. セッション（§6.2）: no_session / expired / locked。
 4. window_exceeded。
@@ -809,13 +811,13 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 | 0x01 | confirm | §7.1 | §7.1 | 不要 | 必須 |
 | 0x02 | list | §7.2 | §7.2 | 不要 | 必須 |
 | 0x03 | describe | §7.3 | §7.3 | 不要 | 必須 |
-| 0x04 | plan_apply | role_assignment の TLV の並び | — | 必要 | plan の role があれば |
-| 0x05 | plan_release | n(u8)、n × fn(u16) | — | 必要 | plan の role があれば |
+| 0x04 | plan_apply | role_assignment の TLV の並び | — | 必要 | plan の role があれば（§1.2） |
+| 0x05 | plan_release | n(u8)、n × fn(u16) | — | 必要 | plan の role があれば（§1.2） |
 | 0x10 | open | session_id(u32)、lease_ms(u32)、force(u8)、[TLV owner] | lease_ms(u32)、boot_id(u32)、resumed(u8: 0 / 1 / 2、§6.4) | open がロックを取る（role 0x01） | 必須 |
 | 0x11 | end | — | — | 必要 | 必須 |
 | 0x12 | keepalive | — | — | 必要 | 必須 |
 | 0x13 | lock_state | — | locked(u8)、remaining_ms(u32)、[TLV owner] | 不要 | 必須 |
-| 0x14 | port_speed | §3.5（任意。describe の port_speed を出す probe だけ） | baud(u32) | 必要 | 任意 |
+| 0x14 | port_speed | §3.5（任意。describe の tag 0x4E で宣言する） | baud(u32) | 必要 | 任意 |
 | 0x30 | subscribe | §11.3 | — | 必要 | 必須 |
 | 0x32 | unsubscribe | §11.3 | — | 必要 | 必須 |
 | 0x40 | link_source | length(u32) | length バイト（1 フレームに入る分まで。k バイト目は k & 0xFF） | 不要 | 必須 |
@@ -831,7 +833,7 @@ link_source / link_sink は線の速さを測るためのもので、状態を�
 1. **名前**: `oep.` は project が予約する。独自のインターフェースは逆 DNS（`io.github.<owner>.<name>` など）。名前は host が何に
    使うかで切る（probe のペリフェラルの名前にしない）。**1〜64 byte、使える文字は `a-z 0-9 - .`**（registry の `limits`）。
    名前の label はそれぞれ `a-z 0-9 -` の 1 文字以上で、`-` で始まらず `-` で終わらない。名前は label を 2 つ以上持つ。
-2. **定義が決めるもの**: revision、op の表（番号、要求、応答、ロックの要否）、各 op の TLV の tag（その op の文脈の空間）、
+2. **定義が決めるもの**: revision、op の表（番号、要求、応答、ロックの要否、どの op が任意でそれぞれを何が宣言するか、§1.2）、各 op の TLV の tag（その op の文脈の空間）、
    describe のインターフェース固有のタグ（0x40〜0x7F）、plan の role の番号、reject reason（0x40〜0x7F）、出来事の kind
    （0x01〜0x7F）、通知のデータの payload の形、インターフェースが作る資源とその寿命（§9 の上で）。
 3. **形の規則**: §2.3 のとおり（固定部分 + TLV、可変の並びの前に数、省略できるフィールドを置かない、安全の引数は critical）。

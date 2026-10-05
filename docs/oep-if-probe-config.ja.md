@@ -211,8 +211,8 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 - **save は host の明示的な操作だけ**で、今の設定をそのまま保存する（同じ内容なら書かない）。書いている間はほかの要求に答えない
   （core の max_op_ms の対象）。**保存は丸ごと置き換え**で、途中で電源が落ちても前の保存か新しい保存のどちらかが読める。describe の
   `max_bytes` は正規形の byte 数で、その長さ以下の設定は必ず保存できる（識別子の表の分は probe が差し引いて宣言する）。超えれば
-  rejected unavailable（cause 3）。erase は保存を消す（今の設定は変えない。消した後は状態 0、hash 0）。保存の無い probe
-  （max_bytes 0）では save / erase は rejected unsupported。
+  rejected unavailable（cause 3）。erase は保存を消す（今の設定は変えない。消した後は状態 0、hash 0）。save と erase は
+  任意で、describe の storage が max_bytes を 0 より大きく宣言するときに持つ。保存の無い probe はそれらに unknown_operation で答える（core §1.2）。get、set、unset、state は必須。
 - **保存は、項目が指す interface を (name、instance、revision) で持つ**（fn の番号は起動ごとに変わりうるため）。指す fn は、plan の
   fn、slot の wire_fn、bind の kind 2 の id、uart の fn。起動時に、その組を今の list で探して fn を読み替えてから適用する（set と get の形は
   fn のまま）。指す interface が無いか、revision が違えば、**保存全体を適用しない**（一部だけ入れると治具が半端に動く。storage の
@@ -224,14 +224,14 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 
 **断り方の表**（core §4.3 の順）:
 
-- 項目についての rejected unsupported は、どの項目でも（plan、label、idle、slot、bind、uart、disable）、下のどの行によるものでも、payload にその項目の受け取ったままの tag を載せる（core §4.3）。保存の無い probe の save / erase は tag 0x00 を載せる。
+- 項目についての rejected unsupported は、どの項目でも（plan、label、idle、slot、bind、uart、disable）、下のどの行によるものでも、payload にその項目の受け取ったままの tag を載せる（core §4.3）。
 - 定義されていない値を持つフィールドは unsupported で断り、それが関わる矛盾（malformed の行）は確かめない（core §4.3）。
 
 | 状況 | reason |
 |---|---|
 | 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset が 2 以上（真偽値）と host のスロットの boot_reset 1、mode 0〜2 の idle の drive と、idle の drive の長さ、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
 | 指す fn が無い（plan、slot の wire_fn、bind の kind 2、uart） | unknown_function |
-| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か reserved にある label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、idle の未定義の drive_kind、2 以上の slot の attach、2 以上の slot の idle_clock、1 / 2 以外の bind のストリームの kind、その線が持たない lock_scheme（定義にあってもなくても）、保存の無い probe の save / erase | unsupported |
+| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か reserved にある label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、idle の未定義の drive_kind、2 以上の slot の attach、2 以上の slot の idle_clock、1 / 2 以外の bind のストリームの kind、その線が持たない lock_scheme（定義にあってもなくても） | unsupported |
 | plan_roles 超え、ピンや資源の取り合い、at boot のスロットが max_connections を超える、保存先が足りない | unavailable（cause 2 / 1 / 2 / 3） |
 
 ## 3. スロットの接続と状態
@@ -304,7 +304,7 @@ describe は宣言だけ（core §7.3）。状態は state（§3.3）。
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x40 | storage | max_bytes(u32、正規形の byte 数。0 = 保存なし) |
+| 0x40 | storage | max_bytes(u32、正規形の byte 数。0 = 保存なし。そのとき save と erase は持たない、§2) |
 | 0x41 | items | 扱う項目の tag の並び（u8） |
 | 0x42 | slots_max | u8。登録できるスロットの数（0 はスロットを扱わない） |
 | 0x43 | bind_modes | u32 のビット: bit0 last-reset、bit1 manual、bit2 mixed。bind を扱う probe は bit0 と bit1 を必ず立てる |

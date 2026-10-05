@@ -189,6 +189,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | 0x09 | query | TLVs of the settings (the same as configure) | TLVs of the actual values (sets nothing) | Not required |
 | 0x0A | calibration | — | TLVs of the calibration information (§3.8). Analog only (logic: unknown_operation) | Not required |
 
+- query (0x09) and force (0x04) are optional, declared by bit0 and bit1 of features (§3.5). A probe without the bit answers that op with unknown_operation (core §1.2). The other ops of this table are required; calibration is required on analog and is not an op of logic.
 - state: 0 not configured, 1 configured, 2 waiting for the trigger, 3 capturing, 4 complete (one-shot), 5 stopped (no free segment in repeat),
   6 error.
 - `serial_done` is the number of finished segments, `write_pos` is the byte position captured so far (the position space. **Including what was discarded**: the position of the next byte to be written).
@@ -203,7 +204,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 - max of read is u32 (to read large amounts at once, [design](logic-capture.ja.md) (Japanese) §7.2). The amount actually returned is decided by the probe's frame and `max_read` (declared).
 - more of segments means there are segments not yet returned. If from_serial is beyond serial_done, an empty success.
 
-**State transitions** (row = the current state, column = the trigger. "—" does nothing and succeeds):
+**State transitions** (row = the current state, column = the trigger. "—" does nothing and succeeds. The force column applies to a probe that declares force):
 
 | state | configure | start | stop | force | release | Automatic |
 |---:|---|---|---|---|---|---|
@@ -291,7 +292,7 @@ segments.
 
 | tag | Name | Value |
 |---|---|---|
-| 0x06 | features | Common bits. bit0 query (op 0x09), bit1 force, bit2 notifications |
+| 0x06 | features | Common bits. bit0 query (op 0x09), bit1 force (op 0x04), bit2 notifications (without it, a subscribe to this fn is rejected unsupported, core §11.3) |
 | 0x40 | mode | mode(u8), background(u8: 1 = while capturing in this mode the probe keeps answering requests, and start's blocking_ms is 0; 0 = it does not answer while capturing, and start's blocking_ms says for how long, §3.2; other values reserved), max_samples(u32, 1 segment), max_segments(u32) (one per mode. Answered with the **largest** storage. describe is only a declaration, so it does not answer with the free space at that moment) |
 | 0x41 | rate_range | min_hz(u32), max_hz(u32), exact(u8: 1 = any value within the range can be specified) |
 | 0x42 | rate_list | n(u8), n × rate_hz(u32). Representative rates. Candidates for a list in a UI. If they do not fit in one TLV, it may be repeated (union) |
@@ -344,7 +345,7 @@ Streaming (1 analog channel, 44.1 kHz)
 ### 3.8 calibration (analog)
 
 Returns **raw** the information the probe has for converting ADC values to voltage. The probe applies no correction (the values of read are always raw values.
-The host chooses the conversion. Curve correction can trim the top and bottom of the measurable range, so it is not forced at the storage stage). Information it does not have is not returned.
+The host chooses the conversion. Curve correction can trim the top and bottom of the measurable range, so it is not forced at the storage stage). Information it does not have is not returned. A probe with no such information returns no TLV (an empty success).
 
 | tag | Name | Value |
 |---|---:|---|
@@ -372,6 +373,8 @@ the difference between the group's start (start_ns) and the start_ns of each tra
 | 0x04 | force | — | — (if waiting for the trigger, start right now) | Required |
 | 0x05 | status | — | state(u8), start_ns(u64), trigger_ns(u64), trigger_fn(u16), [TLV] | Not required |
 
+- force is optional, declared by bit1 of features (§4.3); without it the probe answers force with unknown_operation (core §1.2). The other ops are required.
+
 TLVs of bind:
 
 | tag | Name | Value |
@@ -386,7 +389,7 @@ TLVs of bind:
   (cause 4, holder_fn = the group's fn. Use the group's ops. To configure again, first unbind with n = 0). plan_release / plan_apply of the plan of a bound track
   are also rejected unavailable (cause 4). **bind is a session resource** (core §9: it remains on end, and is released on lease expiry and
   force).
-- With no track bound: start is rejected unavailable cause 6; stop and force do nothing and succeed; state is 0.
+- With no track bound: start is rejected unavailable cause 6; stop, and force when declared, do nothing and succeed; state is 0.
 - **start** checks the prerequisites of every track before starting any (in streaming, a track without a subscription makes start rejected unavailable cause 6
   with TLV fn (0x05) = that track), then starts the bound tracks as simultaneously as possible, and returns the group's start time start_ns (the probe's clock) and
   the new generation of each track (generation +1, the same as the start of each track). If a track fails after starting, the group goes to state 6,

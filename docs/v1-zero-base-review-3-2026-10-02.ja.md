@@ -22,7 +22,7 @@
 | O-8 | 3 | ★ | 適合の確かめ方（第三者の probe を点検する手順と道具） |
 | C-19 | 1 | ○ | boot_id の「必ず値を変える」は乱数源も保存も無い MCU では作れない |
 | C-20 | 1 | ○ | confirm の値の制約（max_inflight ≥ 1、window ≥ max_frame、外れた応答の扱い） |
-| C-21 | 1 | ○ | payload の中の fn の unknown_function を §4.3 の順のどこで見るか |
+| C-21 | 1 | ○ | payload の中の fn の unknown_function を §4.3 の順のどこで見るか（後半の unknown_operation と unsupported の書き分けは 2026-10-06 に済み） |
 | C-31 | 1 | ○ | 時計は同じ boot_id の間減らない（規則と判断、peers へ） |
 | ○2 | 2 | ○ | reset の method 0「probe が選ぶ」と「reset の線に既定は無い」がぶつかる |
 | G-1 | 3 | ○ | 最小の host / probe までの道（手順、バイト列、チェックリスト） |
@@ -50,7 +50,7 @@
 | PC-10 | 3 | △ | boot_reset の保持の時間を伸ばす道をガイドに（ガイドの担当へ渡した） |
 | G-7 | 3 | △ | ガイドの節番号を揃える（ガイドの担当へ渡した） |
 
-決着のうち O-6 は、特許の非主張と「OEP」を名乗る条件がまだ決まっていない（ユーザーの判断）。対応済みのうち ★4（P2-★4）は、凍結の前に bench が cold attach を 1 回計る条件が残っている。
+決着のうち O-6 は、特許の非主張と「OEP」を名乗る条件がまだ決まっていない（ユーザーの判断）。対応済みのうち ★4（P2-★4）の cold attach の計測は、ユーザーの判断で取りやめた（2026-10-06）。温まった状態のデータを根拠とする。
 
 前提（ユーザーの指定）: OEP を OSS の共通仕様として公開し、会ったことのない多くの人が、見たことのない環境（ほかの OS、USB スタック、MCU、
 debug の線、target、ブラウザ、CI）で、本文だけを読んで probe と host を作って使う。判断の基準は今の仮の bench ではなく、その人たちに何が要るか。
@@ -376,7 +376,7 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-21 ○ §4.3: payload の中の fn と、任意の op の断り方の位置（文言）
 
-状態: 未対応（後半は core §1.2「実装していない op は unknown_operation、任意の機能は unsupported」で済み。payload の中の fn の unknown_function を §4.3 の順のどこで見るかが無い）
+状態: 後半は対応済み（2026-10-06、必須と任意の op: core §1.2 必須と任意の op、§4.3 の 0x0B の行と順 1、§2.7、§12、§13 規則 2、capture §3.2 / §4.1、debug §0 / §3 / §4 / §6、fixture、console、common §1、probe-config §2 / §4、conformance §3。ch32rv、WireSkein、bench が同意）。前半（payload の中の fn の unknown_function を §4.3 の順のどこで見るか）は未対応で、[2026-10-06 の提案](v1-rule-change-proposal-2026-10-06.md) の C-21 に入れた
 
 - 「payload の中で指す fn が無いときは unknown_function」が、順のどこで見るかが無い（plan_apply の表は malformed の後）。案: 「順 5 と順 6 の間」。
 - 0x0B の「任意の op の機能」と、port_speed の「OFF は unknown_operation」がぶつかって見える。案: 「実装していない op は unknown_operation、
@@ -653,7 +653,7 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 
 #### ★4 線切れの 1000 ms、reset の後の待ち、attach の速さの探索に、host の待ち時間との釣り合いが無い
 
-状態: 対応済み（3a88ec9、f7d6d21、18d7eac、debug §1 attach / scan の budget、§2 要求の中の 200 ms と線切れの実時間 1000 ms、core §4.4。bench の cold attach の計測は凍結の前に未）
+状態: 対応済み（3a88ec9、f7d6d21、18d7eac、debug §1 attach / scan の budget、§2 要求の中の 200 ms と線切れの実時間 1000 ms、core §4.4。cold attach の計測はユーザーの判断で取りやめた（2026-10-06: cold start には probe の USB を手で抜く必要があり、今の段階ではそこまで細かくしない）。温まった状態のデータが 1000 ms の上限の根拠: 0.0.28 は失敗 4 %、p90 519 ms。直したビルドは 400 回中 0 回の失敗で約 138 / 223 ms、1000 ms を超えた裾はリンクの時間だった）
 
 - **場所**: oep-if-debug §2（線切れ）、§1（attach、scan の 500 ms）、core §4.4（host の待ち時間 = 引数の時間 + 1000 ms）
 - **問題**:
@@ -703,7 +703,7 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 
 #### ★7 新しい wire / target を足す道が書かれていない（ほかの debug の線、JTAG、ほかの 1 線のプロトコル）
 
-状態: 対応済み（78403b2、18d7eac、debug §0「What every wire shares, and what a new wire defines」、probe-config §1.1 slot）
+状態: 対応済み（78403b2、18d7eac、debug §0「What every wire shares, and what a new wire defines」、probe-config §1.1 slot）。ピンの無い線の「scan は任意」は 2026-10-06 に置き換えた: scan はどの線でも必須で、count = 0 がその 1 つの組を試す（C-21 と同じ変更）
 
 - **場所**: oep-if-debug §1〜§3、common §2、registry（wire ごとの `pin_role`、`scan_kind`、`target_id_scheme`）、probe-config §1.1 の slot（相互参照）
 - **問題**: 第三者が最初に持ち込むのは、RISC-V の JTAG DTM（RISC-V の標準の debug transport）、cJTAG、ARM の JTAG-DP、ほかのベンダーの 1 線の

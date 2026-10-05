@@ -28,7 +28,7 @@ The premise is the review's: people we have never met build probes and hosts fro
 - **agreed with condition**: accepted on the condition stated in the item. The condition is folded into the proposed text unless the item says it is still to be met.
 - **open**: not settled. The item says what is missing.
 
-Open items: P2-★4's cold-attach measurement (bench, before the freeze). The RVSWD and SWIO frames of debug §3.1 / §3.2 (7392817), a rule addition written from the reference probe (no item above): reviewed by ch32rv 2026-10-02, its points applied (the re-sync after a rest made informative, the 85-cell status query noted, the SWIO low ranges widened to 240 to 310 / 840 to 1060 ns, swio swclk ≠ 0xFFFF unsupported in scan as in attach).
+Open items: none. P2-★4's cold-attach measurement is closed by the user's decision (2026-10-06: a cold start needs the probe's USB unplugged by hand, which is more detail than this stage needs); the warm data is the evidence for the 1000 ms budget: 0.0.28 failed 4 % with p90 519 ms; the fixed build failed 0 of 400 at about 138 / 223 ms, and the tail over 1000 ms was link time. The RVSWD and SWIO frames of debug §3.1 / §3.2 (7392817), a rule addition written from the reference probe (no item above): reviewed by ch32rv 2026-10-02, its points applied (the re-sync after a rest made informative, the 85-cell status query noted, the SWIO low ranges widened to 240 to 310 / 840 to 1060 ns, swio swclk ≠ 0xFFFF unsupported in scan as in attach).
 
 **Final answers.**
 
@@ -39,7 +39,7 @@ Open items: P2-★4's cold-attach measurement (bench, before the freeze). The RV
 | Q3 | C-03 | Yes: a request TLV is never extended; a new field gets a new tag |
 | Q4 | C-04 | Yes: at most 16 entries, 0x00 as the 16th for "more" |
 | Q5 | C-06 | Yes: the formula is a floor. Scan and attach budgets count as argument time (P2-★4) |
-| Q6 | P2-★4 | 200 ms per request and 1000 ms of real time adopted. **The attach budget is 1000 ms, not 500 ms** (bench measurement). Optional attach answer TLV `search_retries`. No host relies on "status line ⇒ the connection is gone". Bench measures one cold attach before the freeze |
+| Q6 | P2-★4 | 200 ms per request and 1000 ms of real time adopted. **The attach budget is 1000 ms, not 500 ms** (bench measurement). Optional attach answer TLV `search_retries`. No host relies on "status line ⇒ the connection is gone". The cold-attach measurement was dropped by the user's decision (2026-10-06); the warm data stands |
 | Q7 | C-07 | Discard up to the gap |
 | Q8 | C-09 | Yes: 115200 for every probe |
 | Q9 | C-05 | The confirm TLV. A TCP endpoint reports its listener's index; a relaying broker that answers the session ops reports 0xFF (ch32rv confirmed) |
@@ -48,7 +48,7 @@ Open items: P2-★4's cold-attach measurement (bench, before the freeze). The RV
 | Q12 | P2-★2 | A rule with no option. Measured: one probe already meets it, the other drives MISO low while CS is high and is being fixed |
 | Q13 | P2-★3 | Declare the pull-ups (features bit2 + pullup_ohms); do not forbid them |
 | Q14 | P2-○13 | Adopt the rule |
-| Q15 | P2-★7 | Yes: the `n × (role, channel)` form. Added: a wire that declares no pin combination need not implement scan (ch32rv confirmed) |
+| Q15 | P2-★7 | Yes: the `n × (role, channel)` form. Added: a wire that declares no pin combination need not implement scan (ch32rv confirmed). Replaced 2026-10-06: scan is required on every wire (debug §0; a pinless wire's count = 0 tries its one combination) |
 | Q16 | P2-○4 | Clear haltreq when halt times out |
 | Q17 | P2-★6 | Yes: 0 = blocks, 1 = answers |
 | Q18 | P2-○8 | mode, rate, trigger, pretrigger and frontend are sent critical. samples and segments are not: the probe rounds samples to its limit and the answer's value is authoritative. rate critical means "the nearest realisable value within range; out of range is unsupported" |
@@ -77,7 +77,7 @@ Open items: P2-★4's cold-attach measurement (bench, before the freeze). The RV
 | O-5 | 1 errors / extensibility | ○ | 0xF0 to 0xFE of u8 enums are experimental | no | agreed; applied d48ca6d |
 | C-04 | 2 ignored cap | ★ | ignored: at most 16 entries, 0x00 marks "more", never left out | yes | agreed; applied cd15f53 |
 | C-06 | 3 timing | ★ | The host's wait adds the UART transfer time and starts after the previous answer | no | agreed; applied f7d6d21 |
-| P2-★4 | 3 timing | ★ | Wire retries 200 ms per request, wire loss 1000 ms of real time, attach budget 1000 ms, scan budget 500 ms | yes | agreed with condition; applied 3a88ec9 (debug), f7d6d21 (core), 18d7eac (registry). The cold-attach measurement is still open |
+| P2-★4 | 3 timing | ★ | Wire retries 200 ms per request, wire loss 1000 ms of real time, attach budget 1000 ms, scan budget 500 ms | yes | agreed with condition; applied 3a88ec9 (debug), f7d6d21 (core), 18d7eac (registry). The cold-attach measurement was closed by the user's decision (2026-10-06), with the warm data |
 | P2-○3 | 3 timing | ○ | dmi: only time-based waits count against max_op_ms | no | agreed; applied 3a88ec9 |
 | C-07 | 4 transports | ★ | No 200 ms restart on TCP; over-long lengths; resync waits 250 ms after the host's last write | yes | agreed; applied 48b8cbe, 0bb10e8 (§5.1 on TCP) |
 | C-08 | 4 transports | ★ | max_frame / window / max_inflight are per transport | no | agreed; applied 48b8cbe |
@@ -89,7 +89,7 @@ Open items: P2-★4's cold-attach measurement (bench, before the freeze). The RV
 | P2-★3 | 6 electrical safety | ★ | i2c-target is open-drain only; internal pull-ups are declared | no | agreed; applied 0517c2f, 18d7eac (registry) |
 | P2-○13 | 6 electrical safety | ○ | Taking a plan does not change a pin; logic capture only listens | yes | agreed; applied 0517c2f (capture), 18d7eac (core, registry), 3d51d4a (core §8 without interface names, fixture) |
 | P2-★5 | 7 debug wires | ★ | A combination the declaration does not allow → unsupported | no (the probe does it already) | agreed; applied 78403b2 |
-| P2-★7 | 7 debug wires | ★ | What every wire shares, and what a new wire (JTAG...) defines; a wire without pins | no | agreed; applied 78403b2 (debug), 18d7eac (probe-config) |
+| P2-★7 | 7 debug wires | ★ | What every wire shares, and what a new wire (JTAG...) defines; a wire without pins | no | agreed; applied 78403b2 (debug), 18d7eac (probe-config). Pinless scan made required 2026-10-06 (review 3 C-21, required and optional ops) |
 | P2-★8 | 7 debug wires | ★ | What the probe may write before the speed is verified; scan writes only the wake / configuration sequence and dmactive | no | agreed with condition; applied 78403b2, 18d7eac (registry) |
 | P2-○1 | 7 debug wires | ○ | "Found" is DMSTATUS.version ≥ 2 and ≠ 15, for the ops too | yes | agreed; applied 78403b2 |
 | P2-○4 | 7 debug wires | ○ | What a failed halt / step leaves on the target | yes | agreed; applied 78403b2, 18d7eac (registry) |
@@ -323,7 +323,7 @@ Starting the clock at the previous answer means the earlier answers' sizes need 
 
 ### P2-★4 ★ Wire retries, wire loss and attach have time bounds that fit the host's wait
 
-**Status: agreed with condition** — bench measures one cold attach against the 1000 ms budget before the freeze (still to be met).
+**Status: agreed with condition; the condition is closed** — the cold-attach measurement was dropped by the user's decision (2026-10-06: a cold start needs the probe's USB unplugged by hand, which is more detail than this stage needs); the warm data is the evidence for the 1000 ms budget: 0.0.28 failed 4 % with p90 519 ms; the fixed build failed 0 of 400 at about 138 / 223 ms, and the tail over 1000 ms was link time.
 
 **Problem.** A host sends dmi (no argument time, so it waits 1000 ms) to a target whose wire is flaky. If the probe applies "no answer for 1000 ms" inside one request, the probe's answer and the host's timeout fall on the same instant, and pipelined requests behind it time out first. The time after a reset release and the attach's speed search have no bound at all.
 
@@ -360,7 +360,7 @@ Timing consistency: per-request retries (200 ms) < scan budget (500 ms) < attach
 
 **Q6.** Are 200 ms per request and 1000 ms of real time acceptable? Does any host rely on "status line ⇒ the connection is gone"? Recommendation: adopt both numbers. ch32rv and bench: please say if a target of yours needs a longer bound after reset.
 
-**Answers.** WireSkein OK. ch32rv and bench: no host relies on "status line ⇒ the connection is gone". bench measured the attach (above): 500 ms is too small, so the attach budget became 1000 ms, and bench's suggestion of an attach answer TLV with the retry count became `search_retries`. Condition still to be met: bench measures one cold attach against 1000 ms before the freeze.
+**Answers.** WireSkein OK. ch32rv and bench: no host relies on "status line ⇒ the connection is gone". bench measured the attach (above): 500 ms is too small, so the attach budget became 1000 ms, and bench's suggestion of an attach answer TLV with the retry count became `search_retries`. The condition (one cold attach against 1000 ms before the freeze) was closed by the user's decision on 2026-10-06; the warm data stands.
 
 ### P2-○3 ○ dmi: only time-based waits count against max_op_ms
 
@@ -663,6 +663,8 @@ probe.config §1.1, added:
 **Q15.** Shall the `n × (role, channel)` form be fixed now for wires that are not two pins? Recommendation: yes. Otherwise each new wire invents its own and hosts must special-case each.
 
 **Answers.** bench and WireSkein: no objection. ch32rv was unsure: if every wire MUST have scan and connections, the WCH broker needs both. Resolution: "A wire without pins" above. connections stays required everywhere (a host checks with it after status line, P2-★4, and an endpoint always knows its own connections); scan is optional only where there are no pins to search. ch32rv confirmed it (2026-10-02).
+
+**Replaced (2026-10-06).** The rule "scan is optional on a wire without pins" is replaced: scan is required on every wire, and on a pinless wire count = 0 tries its one combination (debug §0, core §1.2: every optional op names what declares it, and this one had no declaration). ch32rv, WireSkein and bench agreed.
 
 ### P2-★8 ★ What the probe may write before the speed is verified
 

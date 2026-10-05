@@ -12,7 +12,7 @@ streams). The only definition of the numbers is `registry/oep-v1.toml`. Capture 
 | `oep.fixture.i2c-target` | 1 | I2C target (the controlled side). Tests the DUT's I2C controller | 1 = SDA, 2 = SCL |
 | `oep.fixture.spi-target` | 1 | SPI target. Tests the DUT's SPI controller | 1 = SCK, 2 = MOSI, 3 = MISO, 4 = CS |
 
-All of them handle only the channels assigned by the plan (core §8).
+All of them handle only the channels assigned by the plan (core §8). Every op in the tables below is required unless its section marks it optional (core §1.2).
 
 ## 1. `oep.fixture.gpio`
 
@@ -140,7 +140,7 @@ retrieves them with read_rx.
 - read_rx takes the oldest frame out and returns it (count 0 if none). In state 0 it is rejected unavailable (cause 6). pending is
   the number remaining after taking it out (capped at 255, registry `fixture_count_max`). When the next frame arrives while the queue holds queue_depth frames, that new frame is discarded and errors is
   incremented by 1 (it is not counted in rx_frames). The depth of the queue is the queue_depth of describe.
-- preload_tx is for mode 3 only. count is 1 to max_length (0 is malformed). slots is the serial number of placements (u8, wraps). Unread placements are
+- preload_tx is required and is for mode 3 only: outside mode 3 (including on a probe that does not declare mode 3) it is rejected unavailable (cause 6). count is 1 to max_length (0 is malformed). slots is the serial number of placements (u8, wraps). Unread placements are
   up to queue_depth. A preload_tx while all are filled places nothing and is rejected unavailable (cause 2). Even if the number of bytes the controller
   read differs from the placed length, the next read is answered from the next placement. **When the placements are empty (and when read in mode 1 / 2),
   0xFF is emitted.** Quirks of the chip's FIFO (emitting an extra byte at the end of a read, etc.) are absorbed by the probe.
@@ -150,7 +150,7 @@ retrieves them with read_rx.
 - reset returns to the state right after configure (clears the queue, the wait and the cumulative counts. Keeps mode and address). In state 0 it is rejected unavailable (cause 6).
 - stretch is the time SCL is held low for each received data byte, after its 8th bit, with the ACK driven, before the ACK clock (µs, 0 = none).
   On a read, it is held the same time after the address matched. It is not held on a write's address byte. Only for probes that declare bit1 of features
-  (otherwise unknown_operation). If stretch_us exceeds the max_stretch_us of describe, rejected unsupported. It is accepted in any state
+  (otherwise unknown_operation, core §1.2). If stretch_us exceeds the max_stretch_us of describe, rejected unsupported. It is accepted in any state
   (state 0 too), and the value takes effect from the next received byte. configure and reset do not change the value.
 - describe: role_channels, max_length (the maximum bytes of one frame), max_clock_hz (the verified upper limit of SCL), features (bit0 mode 3,
   bit1 stretch, bit2 internal pull-ups. modes 1 and 2 are mandatory), queue_depth (tag 0x40, u8: the number of frames that can be queued. In mode 3 also the upper limit of unread placements),

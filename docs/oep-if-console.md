@@ -27,6 +27,8 @@ A stream is opened over a debug connection by specifying a mechanism. There is o
 | 0x07 | close | stream(u16) | — | Required |
 | 0x08 | streams | first(u8) | more(u8), count(u8), count × (len(u8), stream(u16), connection(u16), mechanism(u8), users(u8), state(u8)), [TLV] | Not required |
 
+Every op of this table is required (core §1.2). The mechanisms are declared by mechanisms of describe.
+
 - read, marks, clear, mark, write take the form of [common parts](oep-if-common.md) §1 (with stream first).
 - mechanism: 0 SDI, 1 DMDATA, 2 dmseq (the framing is [target-console-dmseq](target-console-dmseq.md)). **The mechanism number determines the mechanism
   exactly** (it has no version). When a mechanism changes, a new number is used (3 onwards, added to the registry), and the meaning of the old number does not change. An unknown mechanism, and
