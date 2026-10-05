@@ -2,6 +2,72 @@
 
 状態: **記録**（規範ではない。点検）。対象は oep-spec 82e6b9f。直すかどうか、どう直すかは、この後にユーザーと peers（ch32rv / WireSkein / bench）で決める。
 
+## 対応の状態（2026-10-06）
+
+各指摘の見出しの下（△ の表は「状態」の列）に、今の規範の文（英語版 `.md`）と registry で確かめた状態を書いた。対応済み = 規範に入った（commit と節）、決着 = ユーザーが決めた、取り下げ = 直さないと決めた、未対応 = まだ。規則の変更は [規則の変更の提案](v1-rule-change-proposal-2026-10-02.md) の index（applied）とも突き合わせた。
+
+| 部 | 対応済み | 決着 | 取り下げ | 未対応 | 計 |
+|---|---:|---:|---:|---:|---:|
+| 1 部（core、registry） | 27 | 2 | 0 | 18 | 47 |
+| 2 部（標準インターフェース） | 23 | 0 | 2 | 12 | 37 |
+| 3 部（probe-config、ガイド、OSS） | 15 | 4 | 0 | 16 | 35 |
+| 計 | 65 | 6 | 2 | 46 | 119 |
+
+数は ★ / ○ / △ のすべての指摘（見出しの 94 件と、△ の表の 25 件）。
+
+**未対応**（第三者のレビューの前に残っている仕事。★ が先）:
+
+| id | 部 | 重さ | 一言 |
+|---|---:|:---:|---|
+| O-8 | 3 | ★ | 適合の確かめ方（第三者の probe を点検する手順と道具） |
+| C-19 | 1 | ○ | boot_id の「必ず値を変える」は乱数源も保存も無い MCU では作れない |
+| C-20 | 1 | ○ | confirm の値の制約（max_inflight ≥ 1、window ≥ max_frame、外れた応答の扱い） |
+| C-21 | 1 | ○ | payload の中の fn の unknown_function を §4.3 の順のどこで見るか |
+| C-26 | 1 | ○ | 共用の口のロックなしの答えは target の出力で偽造できる、の注意 |
+| C-27 | 1 | ○ | 本文にしか無い数（6 KiB、2 KiB、20 ms、3、model 32 byte、送り直し 1 回）を registry に |
+| C-31 | 1 | ○ | 時計は同じ boot_id の間減らない |
+| ○2 | 2 | ○ | reset の method 0「probe が選ぶ」と「reset の線に既定は無い」がぶつかる |
+| ○16 | 2 | ○ | 本文にしか無い数と enum（console 20 ms、uart ±5 %、TAR 1 KiB など）を registry に |
+| PC-11 | 3 | ○ | 設定が線を駆動することの安全の注意（参考） |
+| G-1 | 3 | ○ | 最小の host / probe までの道（手順、バイト列、チェックリスト） |
+| G-2 | 3 | ○ | host ガイドに断りごとの動き、通知、probe.config の手順、fake |
+| G-3 | 3 | ○ | ガイドからチップ固有の話と実測を記録へ移す |
+| G-4 | 3 | ○ | probe ガイドの古い記述（仮置き、115200 固定、日付） |
+| G-5 | 3 | ○ | probe ガイドに識別子と宣言の選び方 |
+| G-6 | 3 | ○ | host / probe ガイドの英語版 |
+| O-7 | 3 | ○ | 版と凍結の方針を独立の文書に、タグ、CHANGELOG |
+| O-12 | 3 | ○ | 安全とセキュリティ（参考）の節 |
+| O-13 | 3 | ○ | 用語集（ja / en） |
+| R-1 | 3 | ○ | 実装の README の spec への入口（oep-client-python ほか） |
+| C-36 | 1 | △ | 見出しより短い message と向きの違う role の扱い |
+| C-37 | 1 | △ | host の受けの上限（65800 byte を超える候補を捨てる） |
+| C-38 | 1 | △ | 送り直しにも答えが無いときはリンクの失敗 |
+| C-39 | 1 | △ | list が同じ boot_id の間変わらないこと、§7.2「ports」の誤り、first ≥ total |
+| C-40 | 1 | △ | §2.6「十分小さく」に値が無い |
+| C-41 | 1 | △ | CDC の transport の interface 番号はどちらか |
+| C-42 | 1 | △ | TCP の port と発見はこの仕様の外、と書く |
+| C-43 | 1 | △ | bind は文字の流れ向き（0x00 ごとに遅れる）の参考 |
+| C-44 | 1 | △ | C の header と SPDX の行 |
+| C-45 | 1 | △ | core の状態の行と registry の 1 行目が古い |
+| C-46 | 1 | △ | owner に秘密を入れない |
+| C-47 | 1 | △ | host は自分の上限で待ち時間を切ってよい |
+| △2 | 2 | △ | 規範の文の中の記録への行内のリンク（link-measurements） |
+| △4 | 2 | △ | debug §1「§8.1」を「core §8.1」に |
+| △5 | 2 | △ | i2c-target の予約のアドレスの断り方 |
+| △6 | 2 | △ | spi arm の count > length、TX の無い uart の write などの断り方 |
+| △7 | 2 | △ | マークのリングがあふれたことを serial の飛びで知る、の 1 文 |
+| △8 | 2 | △ | lease 切れでは target は止まったまま、の安全の注意 |
+| △9 | 2 | △ | 符号付きの ADC の値の表し方 |
+| △10 | 2 | △ | rvswd / swio の scan_kind 2（arm-adi）の扱い |
+| △12 | 2 | △ | probe-config の無い probe の起動時のピンの状態を core §8 に |
+| △13 | 2 | △ | read_block を走ったまま読む機能を後から足す道 |
+| PC-9 | 3 | △ | state のページング（2 つの first、ページの間の storage_*） |
+| PC-10 | 3 | △ | boot_reset の保持の時間を伸ばす道をガイドに |
+| G-7 | 3 | △ | ガイドの節番号を揃える |
+| R-2 | 3 | △ | spec から oep-probe-arduino のガイドへのリンク |
+
+決着のうち O-6 は、特許の非主張と「OEP」を名乗る条件がまだ決まっていない（ユーザーの判断）。対応済みのうち ★4（P2-★4）は、凍結の前に bench が cold attach を 1 回計る条件が残っている。
+
 前提（ユーザーの指定）: OEP を OSS の共通仕様として公開し、会ったことのない多くの人が、見たことのない環境（ほかの OS、USB スタック、MCU、
 debug の線、target、ブラウザ、CI）で、本文だけを読んで probe と host を作って使う。判断の基準は今の仮の bench ではなく、その人たちに何が要るか。
 この点検の後に第三者のレビューを受ける。
@@ -50,6 +116,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-01 ★ §2.2 / §8 / registry: tag の bit 7 と registry の書き方が揃っていない（規則の明確化。実装はすでにこの形なので peers には確認だけ）
 
+状態: 対応済み（d48ca6d、core §2.2 tag の番号は下の 7 bit、§7.4 / §8 は 0x10（0x90 で送る）、registry `role_assignment = 0x10`）
+
 - **問題**: registry の書き方が場所によって違う。`plan_apply.role_assignment = 0x90` は critical の bit を含めた値で、`attach.max_speed = 0x01  # critical`
   は bit を含めない値になっている。生成物も `kTlv…RoleAssignment = 0x90` と `kTlv…MaxSpeed = 0x01` で、第三者には、max_speed は 0x81 で送り、
   role_assignment はそのまま送る、ということが読み取れない。本文にも「tag の同一性は下の 7 bit」という定めが無い。0x10 と 0x90 が同じ TLV なのか、
@@ -63,6 +131,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
   §8 の「0x90」は「0x10（critical、0x90 で送る）」に直す。ゼロベース再点検の「plan_apply の TLV 0x91〜」も「0x11〜」に読み替える。
 
 #### C-02 ★ §4.3 の順 5 / §2.4: 「未定義の値 → malformed」と、後から値を足す道がぶつかる（規則）
+
+状態: 対応済み（d48ca6d、fb44490、core §4.3 順 5 / 6 と「Contradictions and undefined values」、§2.4、§2.5 末尾。各インターフェースの未定義の値も unsupported）
 
 - **問題**: 順 5 は「未定義の値（`mode > 3` など）」を malformed にする。ところが凍結の後の伸ばす道（v1-freeze-decisions §0.4、再点検 (a)）は、
   gpio の mode 8〜、i2c の mode 4〜、cause 7〜、step 3〜 のように**同じ欄に後から値を足す**。その後で、新しい host が新しい値を古い probe に
@@ -80,6 +150,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-03 ★ §2.2 / §2.3: 繰り返してはいけない tag の繰り返し、知っている TLV の長さの誤り、critical の値の知らない後ろ（規則）
 
+状態: 対応済み（d48ca6d、core §2.3 の繰り返し・短い値・要求の TLV を後ろに伸ばさない）
+
 - **問題**: (a) 「同じ tag の繰り返しは並びを表す」だけで、繰り返すと定めていない TLV（attach の critical の max_speed など）が 2 つ来たとき、最初を
   使うのか、最後を使うのか、malformed なのかが決まっていない。実装ごとに違う値を使うと、安全のための項目で事故になる。
   (b) 知っている TLV の値が、定めた形より短いときと、値域の外のときに、critical でなければ ignored に入れるのか malformed なのかが決まっていない
@@ -94,6 +166,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
   >   rejected unsupported（その tag）、そうでなければ値全体を無視して ignored に載せる。応答、出来事、probe が覚えて読み返す値は、今のとおり後ろに伸ばしてよい。
 
 #### C-04 ★ §2.3 ignored: 並べる数に上限が無い（既知の未決: 参照の probe は 16 で黙って切り、入らなければ黙って落とす）（規則）
+
+状態: 対応済み（cd15f53、core §2.3 ignored は 16 個まで、0x00 の印、落とさない。registry `ignored_max_entries`）
 
 - **問題**: §2.3 は「無視した TLV ごとに 1 つ並べる」と定めたが、上限も、応答に入らないときのことも書いていない。参照の probe
   （`Oep.h` の `RequestIgnored::kMax = 16`、`append` は入らなければ何も付けない）は、17 個目からを黙って捨て、応答に入らないと ignored を
@@ -112,6 +186,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-05 ★ §3.5 port_speed の `port`: host は自分のいる経路の index を知る方法が無い（規則）
 
+状態: 対応済み（48b8cbe、案 A: core §7.1 confirm の応答の TLV 0x01 transport、§3.5 port、§3.1 TCP と中継の broker）
+
 - **問題**: 要求の `port(u8)` は「この要求の来た口」でなければならない（違えば unavailable 6）。ところが host は、describe の transport
   （§7.5）から「今どの index の経路で話しているか」を知る方法が無い。参照の client は「最初の UART bridge」を選んでいる（`link.py`
   `_speed_port` が `bridges[0]` を返す）ので、UART bridge が 2 つある probe では、2 つ目の口から上げられない。
@@ -122,6 +198,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 - registry の `[interface.tlv.confirm_answer]` に足す。
 
 #### C-06 ★ §4.4 host の待ち時間: 遅い口の転送時間が入っていない（規則・時間）
+
+状態: 対応済み（f7d6d21、d24cdd6、3c6691a、core §4.4 転送の時間、前の応答から数える、すべての要求に効く下限）
 
 - **問題**: 待ち時間は「引数の時間 + 1000 ms、ただし max_op_ms + 1000 ms を超えない」。§7.5 の max_op_ms の行には「線を通る時間を足した値
   以上を待つ」とあり、§4.4 の上限とぶつかる。115200 bps の UART bridge では、max_frame = 4096 の応答 1 つで約 0.36 s、65535 byte なら約 5.7 s かかる。
@@ -134,6 +212,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 - §7.5 の max_op_ms の行の「線を通る時間を足した値以上を待つ」を「§4.4 の待ち時間で待つ」に揃える。
 
 #### C-07 ★ §3.1 / §3.2 / §5.1: 長さつきのフレームの口で、probe 側の受け方と立て直しの時間が噛み合わない（規則・時間）
+
+状態: 対応済み（48b8cbe、0bb10e8、core §3.1 長すぎる length、§3.2 TCP ではやり直さない、§5.1 `host_resync_wait_ms`）
 
 - **問題**:
   1. §3.2「probe はフレームの途中で 200 ms 途切れたら最初から読み直す」は、**TCP** では間違った動きになる。トンネルや Wi-Fi では 200 ms の遅れは
@@ -155,6 +235,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-08 ★ §4.4 / §3.3: window、max_inflight、max_frame は経路ごとか probe で 1 つか（規則の明確化）
 
+状態: 対応済み（48b8cbe、core §4.4 max_frame / window / max_inflight は経路ごと）
+
 - **問題**: 複数の経路は「セッションとロックを 1 つ共有する」が、confirm の上限が経路ごとのものかどうかは書いていない。probe で 1 つなら、
   CDC にいる監視の host（ロックなしの describe や link_source）が window を使い切り、vendor bulk でセッションを持つ host の要求が
   window_exceeded になるか、黙って失われる。互いを知らない 2 つの host には、守りようが無い。
@@ -163,6 +245,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
   > 要求のために、ほかの経路の受けの余地を使わない。§5.2 の表（最後のセッションの要求）は経路をまたいで 1 つ（§3.3 の「0x81 は 1 つの経路で」のまま）。
 
 #### C-09 ★ §3.4 / §3.5: UART bridge の線の設定（速さ、8N1、流れの制御）と DTR / RTS が規範に無い（規則。決めたことを規範に上げる）
+
+状態: 対応済み（48b8cbe、core §3.4 UART bridge の線・line coding・制御線、§3.5 起動時の速さ。registry `uart_bridge_boot_baud`）
 
 - **問題**: 規範は「起動時の速さはボードの profile が決める」とだけ書いている。115200 bps に固定することは probe 開発ガイド §3.5
   （2026-09-29 の決定）と host 開発ガイド §1.5 にしか無い。データビット、パリティ、ストップビット、流れの制御は、どこにも書いていない。
@@ -178,6 +262,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-10 ★ 新しい節「適合」: 必ず持つものと任意のもの、規範の語（文言 + 規則の確認）
 
+状態: 対応済み（4e62116、core §1.1 規範の語、§1.2 適合、§12 Required の列、§0 規則 4 は tests/vectors（e21a9a2）を指す）
+
 - **問題**: probe が必ず実装する core の op が、1 か所にまとまっていない。本文から拾えるのは、confirm / list / describe / open / end /
   keepalive / lock_state、fn 0 の subscribe / unsubscribe（§11.3「どの probe も」）、port_speed は任意、ということ。link_source / link_sink、
   plan_apply / plan_release（plan を使うインターフェースが無い probe）、ハートビートが必須かどうかは読み取れない。host が最小限で
@@ -192,6 +278,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 - 適合試験の置き場（fake か、別のリポジトリか）を決め、§0 から指す。決まらないなら §0 の「適合試験を持つ」を消す。
 
 #### C-11 ★ §3.3 の自動の見分け: 第三者のハードウェアは見つけられない（規則。**今日決めた点だが、前提で答えが変わる**）
+
+状態: 決着（2026-10-02、ユーザーの判断）: 今のまま。自動の見分けはプロジェクトの VID:PID だけ（core §3.3）
 
 **決着: 今のまま（2026-10-02、ユーザー）。** 自動の見分けはプロジェクトの VID:PID だけで、それ以外は利用者が probe を名指すか口を選ぶ。
 
@@ -212,6 +300,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-12 ★ registry `discoverable` のコメントが core と食い違う（文言）
 
+状態: 対応済み（78137fb、registry `discoverable` のコメントを core §3.3 / §7.5 に揃えた）
+
 **対応済み**（78137fb）: 案のとおりに直した。
 
 - registry L202: `discoverable = 0x4A  # u8: 1 = the probe also enumerates as a USB device whose iProduct starts with "OEP" (core §3.3)`。
@@ -221,6 +311,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-13 ★ §7.4 / §7.5: bitmap のビットの順が無い（文言）
 
+状態: 対応済み（78137fb、core §2.1 bitmap のビットの順と長さ）
+
 **対応済み**（78137fb）: 実装（oep-probe-arduino `Oep.h` の roleChannels / describeCore、oep-client-python `catalog.py`）はどちらも bit i = byte ⌊i/8⌋ の bit (i mod 8)、LSB が先、長さは値の残り。そのとおりに core §2.1 に書き、0x44 reserved にも「bit i が立っていれば」を足した。
 
 - role_channels と reserved の `base(u16)、bitmap` は「bit i が立っていれば channel base+i」とだけあり、byte の中のビットの順（LSB が先か）と、
@@ -228,6 +320,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 - **案**（§2.1 に足す）: 「**bitmap** は byte の並びで、bit i は byte ⌊i/8⌋ の bit (i mod 8)（bit 0 = LSB）。長さは、それを含む値の残り全部。」
 
 #### C-14 ★ 言語: 規範の dmseq に英語版が無く、英語の core はどちらが原文かを書いていない（文言・文書）
+
+状態: 決着（2026-10-02、ユーザーの判断）: 英語が正、日本語は訳。core §0「Language」（78137fb）、dmseq の英語版 target-console-dmseq.md（cdd26b4）
 
 **決着: 英語が正、日本語は訳（2026-10-02、ユーザー）。** core §0 に書いた（78137fb）。dmseq の英語版は cdd26b4。
 
@@ -237,6 +331,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
   するなら、そう決める）。第三者のレビューの前に `target-console-dmseq.md` を作る。
 
 #### C-15 ★ §7.1 / §2.7: プロジェクトの revision の交渉の範囲と、confirm の形の不変（規則。凍結の約束に関わる）
+
+状態: 対応済み（929bbb7、core §7.1 confirm は不変、revision は経路ごと、断りに TLV 0x01 supported）
 
 - **問題**: 凍結の範囲は「本体の形を変えるのはプロジェクトの revision（confirm で交渉）」で、将来の道を閉じないことを理由にしている。けれど本文は、
   (a) 選んだ revision が何に効くのか（その経路のその後の全部か、confirm を送った host だけか、次の confirm までか）、(b) confirm 自身と、
@@ -254,12 +350,16 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-16 ○ §5.2: rejected の応答も表に覚えるか、最も新しい corr を進めるか（規則）
 
+状態: 対応済み（fc17225、core §5.2 rejected も表に覚える、TCP にも効く、中継の broker の corr の対応）
+
 - 順 2（送り直し）より後で rejected になった 0x81 の要求（window_exceeded、malformed、unavailable など）を表に覚えるかが書いていない。
   覚える probe では同じ corr の送り直しで同じ rejected が返り、覚えない probe では実行される。
 - **案**: 「順 2 を過ぎた最後のセッションの要求は、rejected も completed も表に覚え、最も新しい corr を進める。host は rejected を受けた要求を
   直して送るときは新しい corr を使う」。
 
 #### C-17 ○ §6.1 / §6.4: lease の延び方と丸め（文言 + 規則）
+
+状態: 対応済み（fc17225、core §6.1 lease の数え直し、§6.4 応答の lease_ms は 1000〜60000）
 
 - 「完了するたびに延びる」は、「その応答を送った時から lease_ms を数え直す」と書く。rejected の 0x81（自分のセッションの malformed など）でも
   数え直すのかを決める（案: 順 3 を過ぎた要求は rejected でも数え直す）。
@@ -268,6 +368,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-18 ○ §6.1 / §4.1: session_id の選び方と、open を 0x81 で送ったとき（規則）
 
+状態: 対応済み（fc17225、core §6.1 session_id は予測できない乱数で 0 を使わない、§6.4 open は role 0x01 だけ）
+
 - 「乱数でよい」だと、固定の値（1 や、プロセスの名前のハッシュ）を使う host どうしが互いのセッションを黙って再開する（§6.2「自分が持つ、
   同じ open → resumed = 1」）。session_id 0 を使ってよいかも書いていない。
 - **案**: 「host は session_id をセッションごとに 32 bit の乱数（予測できない値）から選ぶ。固定の値を使わない。0 は使わない（probe は open の
@@ -275,16 +377,22 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-19 ○ §6.5 boot_id: 「必ず値を変える」は作れない場合がある（文言）
 
+状態: 未対応（core §6.5 はまだ「乱数源の無い probe も必ず値を変える」。案の緩め方は入っていない）
+
 - 不揮発の記憶も乱数源も無い MCU は、起動の時間が決まっていて、毎回同じ値になりうる。
 - **案**: 「乱数の素（ADC の雑音、初期化していない RAM、起動の時刻の差など）か、不揮発の数え上げで作る。どれも無い probe は、同じ値になる確率を
   減らせないことを受け入れる。host は再起動を boot_id だけでなく、open の resumed と no_session でも知る」。
 
 #### C-20 ○ §7.1 confirm の値の制約（文言）
 
+状態: 未対応（一部だけ: max_frame ≥ 64 は core §3.3、flags の扱いは §2.4、unsupported の payload は §7.1。max_inflight ≥ 1 と window ≥ max_frame、外れた応答の扱いが無い）
+
 - 「max_inflight ≥ 1、max_frame ≥ 64、window ≥ max_frame。外れた応答は壊れた応答として扱う」。「flags の知らないビットは host が無視する」。
   C-15 の unsupported の payload もここに書く。
 
 #### C-21 ○ §4.3: payload の中の fn と、任意の op の断り方の位置（文言）
+
+状態: 未対応（後半は core §1.2「実装していない op は unknown_operation、任意の機能は unsupported」で済み。payload の中の fn の unknown_function を §4.3 の順のどこで見るかが無い）
 
 - 「payload の中で指す fn が無いときは unknown_function」が、順のどこで見るかが無い（plan_apply の表は malformed の後）。案: 「順 5 と順 6 の間」。
 - 0x0B の「任意の op の機能」と、port_speed の「OFF は unknown_operation」がぶつかって見える。案: 「実装していない op は unknown_operation、
@@ -292,12 +400,16 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-22 ○ §2.1 文字列と真偽値の検証（規則）
 
+状態: 対応済み（fc17225、core §2.1 真偽値と text）
+
 - text の UTF-8 が壊れているとき、制御文字（ANSI のエスケープを含む）が入っているときの扱いが無い。owner はほかの利用者の端末に見せる値なので、
   端末を操る列を差し込める。真偽値の u8 で 0 / 1 以外の値（resets_on_open、force、port_speed）の扱いも無い。
 - **案**: 「text は正しい UTF-8 で、C0 の制御文字（0x00〜0x1F）と 0x7F を含めない。probe はそうでない要求の text を malformed で断る。host は
   そうでない応答の text を、見せる前に置き換える（U+FFFD など）」。「u8 の真偽値は 0 が偽、1 が真。要求でほかの値なら malformed、応答では真」。
 
 #### C-23 ○ §7.2 / §13 / §7.5: 名前、model、chip の文法（規則）
+
+状態: 対応済み（fc17225、core §13 規則 1 の label の文法、§7.5 model の接頭と chip の文法）
 
 - インターフェースの名前は `a-z 0-9 - .` だけで、空の label（`a..b`）、先頭か末尾の `.`、`-` で始まる label が許されるかが無い。案:
   「label は 1 文字以上の `a-z 0-9 -` で、`-` で始めない・終えない。名前は 2 つ以上の label」。
@@ -309,12 +421,16 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-24 ○ §7.5 unit_id の一意性: ビルドの定数は害が大きい（規則）
 
+状態: 対応済み（fc17225、core §7.5「Uniqueness of unit_id」の保存した乱数と `x-`）
+
 - 「固有の番号も保存も無い probe はビルド定数でよい」では、同じ firmware の probe が 2 台あると、§3.3 の名指し（serial で開く）と、
   transport を unit_id でまとめる規則が、別の probe を 1 つにまとめてしまう。
 - **案**: 「保存があれば、初めて起動したときに乱数で作って保存する。固有の番号も保存も無い probe は unit_id を `x-` で始め（一意でない印）、
   host は `x-` で始まる unit_id で経路をまとめず、名指しにも使わない」（または describe に「一意でない」の tag を足す）。
 
 #### C-25 ○ §3.3 / §3.4: 同じ口を使うほかのソフトウェアと、OS ごとの USB の差（規則 + 実務の文書）
+
+状態: 対応済み（fc17225、core §3.3 末尾の排他で開く・HID の output・WinUSB。udev / ModemManager / brltty の host ガイドの話は未）
 
 - host が口を排他で開くことが規範に無い。Linux の tty は複数のプロセスが同時に開け、HID の hidraw も同じで、2 つの host の書き込みが
   フレームの途中で混ざる（HID ではフレームが report をまたぐ）。§7.5 の「口を排他で開けた時点で前の持ち主はいない」は、排他で開いたことが前提。
@@ -327,12 +443,16 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-26 ○ §3.4 / §11.1: 共用の口のロックなしの答えは、target の出力で偽造できる（文言）
 
+状態: 未対応（core §3.4 にロックなしの答えを偽造できる旨の文が無い）
+
 - ロックを持っていない間は、口に target の生のバイトが流れる。corr は 1 ずつ進むので予測でき、target の firmware（試験中のもの、壊れたもの）が
   CRC の合ったフレームを出せば、host は describe などの答えとして受けてしまう。
 - **案**: §3.4 に「ロックなしで送る要求の答えは、生のバイトと区別できないことがある。答えの中身を信じる必要のある host は、ロックを持ってから
   送る（生の転送が止まる）か、長さつきのフレームの口を使う」。
 
 #### C-27 ○ registry に無い、規範の文の数（registry）
+
+状態: 未対応（一部だけ: `uart_bridge_boot_baud`、`ignored_max_entries`、`host_resync_wait_ms` は registry に入った。6 KiB、2 KiB、20 ms、3、model の 32 byte、送り直しの 1 回は本文にしか無い）
 
 - registry は「数の唯一の定義」と言っているが、次の数は本文にしか無い: §3.4 の 6 KiB（未解決の要求の応答の見込み量）と 2 KiB（min_bytes）、
   §3.5 host の義務 2 の 20 ms、戻る条件 4 の 3 つ、§3.3 の confirm の待ち時間 1000 ms（`host_wait_add_ms` の流用であることを明記）、
@@ -341,6 +461,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
   `port_speed_switch_wait_ms = 20`、`port_speed_broken_run = 3`、`model_max_bytes = 32`、`resend_max = 1` など。
 
 #### C-28 ○ registry のコメントの誤り（文言。「似た仕組みも確かめる」の結果）
+
+状態: 対応済み（78137fb、registry `swept`、`result_lost` のコメント）
 
 **対応済み**（78137fb）: `swept`、`result_lost` を案のとおりに直した。似たコメントでは、`mark_detail_closed.expired`（期限切れ / force）は正しいのでそのまま。`notify_pending_max_frames` の置き場（△）は生成物の名前が変わるので残した。
 
@@ -352,6 +474,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-29 ○ registry と生成物の約束（規則の明確化）
 
+状態: 対応済み（fc17225、core 冒頭: 凍結の後キーは改名しない、REGISTRY_HASH は wire の互換を表さない、registry `[reference]`）
+
 - 凍結は「registry のすべての数」を止めるが、キーの名前（生成物の識別子 `kTlvDescribeDiscoverable` など）を止めるかが無い。`oep_pid` →
   `discoverable` のような改名は、写して使う第三者のコードを壊す。案: 「凍結の後、registry のキーの名前は変えない（足すだけ）」。
 - `REGISTRY_HASH` はコメントを直すたびに変わる。版の一致の判定に使う実装が出る。案: 生成物に「hash は生成の同期を確かめるためだけで、wire の
@@ -360,6 +484,8 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-30 ○ §2.7 / §7.2: 古い revision を別の fn で並べるときの instance（規則）
 
+状態: 対応済み（fc17225、core §7.2 instance は (name, revision) ごと）
+
 - 「できれば古い revision も別の fn で」と「同じ名前のものを fn の昇順に 0 から振る」を合わせると、rev 1 と rev 2 を並べた probe が後の版で rev 1 を
   消したとき、instance がずれる（「名前の順を版を越えて保つ」に反する）。保存した設定は (name, instance, revision) で指す。
 - **案**: 「instance は (name, revision) ごとに振る」。または「並べる古い revision は、新しい revision の後ろの fn に置き、instance は新しい
@@ -367,24 +493,34 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-31 ○ §2.6a 時計: 単調であること（文言）
 
+状態: 未対応（core §2.6a に「同じ boot_id の間は減らない」が無い）
+
 - 「起動からの ns」に「同じ boot_id の間、減らない」を足す。
 
 #### C-32 ○ §3.5 port_speed: baud の誤差と verify_ms 0（規則）
+
+状態: 対応済み（fc17225、core §3.5 ±2 %、応答の baud は実際の値、try の verify_ms 0 は malformed）
 
 - 「baud を作れない」の基準（誤差の許し）が無い。案: 「作れる値の誤差が ±2 % を超えるなら unsupported。応答の baud は実際の値」。
   verify_ms = 0 の扱いが無い（idle_ms は 0 を最長と定めている）。案: 「verify_ms 0 は malformed」か「最長と同じ」。
 
 #### C-33 ○ §11.3 ハートビートの周期の下限（規則）
 
+状態: 対応済み（fc17225、core §11.3 100 ms に丸めてよい）
+
 - max_delay_ms = 1 で 1 kHz のハートビートを頼める。案: 「probe は 100 ms より短い周期を 100 ms に丸めてよい」。
 
 #### C-34 ○ §13: 凍結の後に標準の名前と番号を足す手続き（文言）
+
+状態: 対応済み（6bcf7e3、CONTRIBUTING「Adding an `oep.` name or a registry value」の手順と試作の扱い。インターフェースの op 0xF0〜0xFF の実験用は core §2.5 にある）
 
 - `oep.` の新しいインターフェースや、標準のインターフェースの新しい tag を、第三者が誰に、どう頼むかが無い。試作の間の番号の使い方も無い。
   案: 「標準の番号は registry への変更（公開のリポジトリへの提案と project の確認）でだけ割り当てる。試作は独自の名前か、op 0xF0〜0xFF で
   行う。0xF0〜0xFF はどのインターフェースでも出荷する probe では使わない」（core の op だけでなく、インターフェースの op も揃える）。
 
 #### C-35 ○ 規範の文に残る今の環境（文言）
+
+状態: 対応済み（78137fb、core §6.4 owner の例、§7.5 chip の例、transport kind 3 を性質で）
 
 **対応済み**（78137fb）: owner の例を "flash-tool pid 1234"、chip の例を `abc123 v1.0` にし、kind 3 を「内蔵の USB シリアル」と性質で書いた（registry のキー `usb_serial_jtag` は生成物の識別子なので残し、コメントで意味を書いた）。
 
@@ -400,20 +536,20 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### △ あるとよい
 
-| id | 節 | 問題 | 案 | 種類 |
-|---|---|---|---|---|
-| C-36 | §4.1 / §2.5 | 見出しより短い message（corr を読めない 3 byte 未満、fn を読めない 6 byte 未満）と、向きの違う role（host から 0x02）の扱いが無い | 「corr を読めなければ捨てる。読めて見出しが足りなければ malformed（順 1 より前）。向きの違う role は応答せずに捨てる」 | 規則（小） |
-| C-37 | §3.1 | host の受けの上限: 65535 + CRC + COBS の分を超えた候補を、どこまでためるか | 「host は 65800 byte を超える候補を捨てる」 | 文言 |
-| C-38 | §5.2 | 送り直しにも答えが無いときの次（シリアルの口） | 「リンクの失敗として扱う（§5.1 か口を閉じる）」 | 文言 |
-| C-39 | §7.2 / §7.3 | list の内容が同じ boot_id の間変わらないこと。§7.2 の「同じ名前の口の順」の「口」は「インターフェース」の誤り。list の first ≥ total は count 0 | 書き足す | 文言 |
-| C-40 | §2.6 | 「十分小さく」は値が無い | 「同時に意味を持つ値の差を、幅の 1/4 以下に保つ」など数にするか、消す（資源の番号は §9 の 1024 で足りている） | 文言 |
-| C-41 | §7.5 transport | CDC は interface が 2 つ（通信と data）あり、どちらの番号かが無い | 「CDC は通信の interface の番号」 | 文言 |
-| C-42 | §3.1 TCP | 既定の port と発見は定めない、と明記する | 「TCP の port と発見はこの仕様の外」 | 文言 |
-| C-43 | §3.4 bind | 0x00 を含む二進の流れは、0x00 ごとに最長 200 ms 止まる | 「bind は文字の流れ向き（0x00 を含む二進の流れは遅れる）」と参考に書く | 文言 |
-| C-44 | generated | C++ だけで C の header が無い（C の firmware、Zephyr、Rust の build.rs）。SPDX の行が無い | `oep_v1_registry_c.h`（`#define`）か JSON を足す。`// SPDX-License-Identifier: MIT` を付ける | 文言 |
-| C-45 | 冒頭 | 状態の行が「候補、2026-09-26」のままで、英語版は日本語の提案を指す | 公開の前に「v1（凍結）」と版の日付に直す。registry の 1 行目の「2026-09-25, working toward the freeze」と「C++ header and the Python module」（JS が抜けている）も直す | 文言 |
-| C-46 | §6.4 owner | owner は lock_state でだれでも読め、プロセスの番号や利用者の名前を出す | 「owner には秘密を入れない」と書く | 文言 |
-| C-47 | §4.4 | host が max_op_ms をそのまま信じると、壊れた値（0xFFFFFFFF）で何日も待つ | 「host は自分の上限で待ち時間を切ってよい（切ったらリンクの失敗）」 | 文言 |
+| id | 節 | 問題 | 案 | 種類 | 状態 |
+|---|---|---|---|---|---|
+| C-36 | §4.1 / §2.5 | 見出しより短い message（corr を読めない 3 byte 未満、fn を読めない 6 byte 未満）と、向きの違う role（host から 0x02）の扱いが無い | 「corr を読めなければ捨てる。読めて見出しが足りなければ malformed（順 1 より前）。向きの違う role は応答せずに捨てる」 | 規則（小） | 未対応 |
+| C-37 | §3.1 | host の受けの上限: 65535 + CRC + COBS の分を超えた候補を、どこまでためるか | 「host は 65800 byte を超える候補を捨てる」 | 文言 | 未対応 |
+| C-38 | §5.2 | 送り直しにも答えが無いときの次（シリアルの口） | 「リンクの失敗として扱う（§5.1 か口を閉じる）」 | 文言 | 未対応 |
+| C-39 | §7.2 / §7.3 | list の内容が同じ boot_id の間変わらないこと。§7.2 の「同じ名前の口の順」の「口」は「インターフェース」の誤り。list の first ≥ total は count 0 | 書き足す | 文言 | 未対応（§7.2 の「ports」もそのまま） |
+| C-40 | §2.6 | 「十分小さく」は値が無い | 「同時に意味を持つ値の差を、幅の 1/4 以下に保つ」など数にするか、消す（資源の番号は §9 の 1024 で足りている） | 文言 | 未対応 |
+| C-41 | §7.5 transport | CDC は interface が 2 つ（通信と data）あり、どちらの番号かが無い | 「CDC は通信の interface の番号」 | 文言 | 未対応 |
+| C-42 | §3.1 TCP | 既定の port と発見は定めない、と明記する | 「TCP の port と発見はこの仕様の外」 | 文言 | 未対応 |
+| C-43 | §3.4 bind | 0x00 を含む二進の流れは、0x00 ごとに最長 200 ms 止まる | 「bind は文字の流れ向き（0x00 を含む二進の流れは遅れる）」と参考に書く | 文言 | 未対応 |
+| C-44 | generated | C++ だけで C の header が無い（C の firmware、Zephyr、Rust の build.rs）。SPDX の行が無い | `oep_v1_registry_c.h`（`#define`）か JSON を足す。`// SPDX-License-Identifier: MIT` を付ける | 文言 | 未対応 |
+| C-45 | 冒頭 | 状態の行が「候補、2026-09-26」のままで、英語版は日本語の提案を指す | 公開の前に「v1（凍結）」と版の日付に直す。registry の 1 行目の「2026-09-25, working toward the freeze」と「C++ header and the Python module」（JS が抜けている）も直す | 文言 | 未対応（core と registry の 1 行目のまま。registry の JS は済み） |
+| C-46 | §6.4 owner | owner は lock_state でだれでも読め、プロセスの番号や利用者の名前を出す | 「owner には秘密を入れない」と書く | 文言 | 未対応 |
+| C-47 | §4.4 | host が max_op_ms をそのまま信じると、壊れた値（0xFFFFFFFF）で何日も待つ | 「host は自分の上限で待ち時間を切ってよい（切ったらリンクの失敗）」 | 文言 | 未対応 |
 
 ---
 
@@ -485,6 +621,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 #### ★ 第三者レビューの前に直す
 
 #### ★1 scan の count = 0 が、空いているピンの組をすべて駆動する（idle の出力のピンも）
+
+状態: 対応済み（0517c2f、18d7eac、debug §1「Channels with an idle item」と（Informative）の 1 文、core §4.3 holder_kind 7。label の channel を外す案は取り下げ）
+
 - **場所**: oep-if-debug §1「ピンの組」、probe-config §1 idle（相互参照）
 - **問題**: role_channels で宣言した線では、count = 0 は「role 1 の候補 × role 2 の候補」のうち「今ほかのもの（plan、ほかの線の接続、設定の資源）が
   持っている」ものを除いたすべての組を試す。idle の項目（特に mode 3 / 4。probe-config には「target の電源のスイッチなど」のためとある）は
@@ -502,6 +641,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則（holder_kind の追加、候補から外す規則）→ peers に相談。
 
 #### ★2 spi-target: CS が無効な間、MISO を駆動するかが決まっていない
+
+状態: 対応済み（0517c2f、73a0c37、fixture §4 MISO は CS が有効な間だけ、SCK / MOSI / CS は入力、describe の cs_setup_ns）
+
 - **場所**: oep-if-fixture §4（arm、「MISO は tx の外では 0」）
 - **問題**: 「MISO は tx の外（未 arm、tx を使い切った後）では 0」とあり、CS が無効な間の MISO の状態が書かれていない。素直に読むと、probe は
   ずっと MISO を low に駆動してよいように読める。SPI のバスに target が複数つながっている DUT（よくある形）では、選ばれていない target が
@@ -512,6 +654,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則（決まっていなかった所を決める）→ 相談。参照の実装はたぶんすでにそうなっているので、確かめるだけで済むはず。
 
 #### ★3 i2c-target: SDA / SCL の駆動の方式とプルアップが決まっていない
+
+状態: 対応済み（0517c2f、18d7eac、fixture §3 オープンドレインだけ、内蔵のプルアップは features bit2 と pullup_ohms で宣言、state 0 は ACK しない）
+
 - **場所**: oep-if-fixture §3
 - **問題**: probe が SDA / SCL を**オープンドレインでしか駆動しない**こと（high に押し上げない）が書かれていない。内蔵のプルアップを入れるかも
   書かれていない。push-pull の実装は、controller やほかの target と短絡する。内蔵のプルアップは、外部のプルアップのある DUT では電圧の分け方を
@@ -523,6 +668,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則 → 相談。
 
 #### ★4 線切れの 1000 ms、reset の後の待ち、attach の速さの探索に、host の待ち時間との釣り合いが無い
+
+状態: 対応済み（3a88ec9、f7d6d21、18d7eac、debug §1 attach / scan の budget、§2 要求の中の 200 ms と線切れの実時間 1000 ms、core §4.4。bench の cold attach の計測は凍結の前に未）
+
 - **場所**: oep-if-debug §2（線切れ）、§1（attach、scan の 500 ms）、core §4.4（host の待ち時間 = 引数の時間 + 1000 ms）
 - **問題**:
   - 「最遅の速さで再試行しても 1000 ms 続けて応答が無い」で線切れとし、「要求の中で判定したら、その要求を status line で返す」。この 1000 ms が
@@ -538,6 +686,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則 → 相談（probe の実装、fake、client の待ち時間）。
 
 #### ★5 許していないピンの組の断り方が、core §4.3 の順とほかの文書に反している
+
+状態: 対応済み（78403b2、debug §1「A combination the declaration ... does not allow is rejected unsupported」）
+
 - **場所**: oep-if-debug §1「許していない組は、何も実行せずに rejected unavailable」
 - **問題**: core §4.3 の断り方の順 6 は「定義にはあるが、この probe が持たない（…、**ピンの組**）→ unsupported」と書いている。同じ考え方で、
   plan_apply（channel が role_channels に無い → unsupported）、attach の reset の channel（宣言に無い → unsupported、tag 0x05）、probe-config の
@@ -548,6 +699,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則（断りの理由が変わる）→ 相談（probe、fake、client の例外の対応表）。
 
 #### ★6 capture の意味の一部が、規範ではない記録（logic-capture）にしか無い
+
+状態: 対応済み（a35acb0、18d7eac、capture §2.1 モードとストリーミングの決めごと、§3.5 mode の background）
+
 - **場所**: oep-if-capture 冒頭（「モードの意味は設計 §2.4、レートの決め方は同 §2.10」）、§3.5（describe mode の `background(u8)`）、
   §3.3（「宣言は目安」）、§3.4（ストリーミング）
 - **問題**: 文書だけで実装できない。
@@ -564,6 +718,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: background の値を決めるのは規則 → 相談。ほかは決まっていることを写すだけなので文言。
 
 #### ★7 新しい wire / target を足す道が書かれていない（ほかの debug の線、JTAG、ほかの 1 線のプロトコル）
+
+状態: 対応済み（78403b2、18d7eac、debug §0「What every wire shares, and what a new wire defines」、probe-config §1.1 slot）
+
 - **場所**: oep-if-debug §1〜§3、common §2、registry（wire ごとの `pin_role`、`scan_kind`、`target_id_scheme`）、probe-config §1.1 の slot（相互参照）
 - **問題**: 第三者が最初に持ち込むのは、RISC-V の JTAG DTM（RISC-V の標準の debug transport）、cJTAG、ARM の JTAG-DP、ほかのベンダーの 1 線の
   プロトコルのどれかになりそうだ。ところが今の文書では:
@@ -590,12 +747,18 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 #### ○ 直すべき
 
 #### ○1 「見つかった」を DMSTATUS.version 2 / 3 に限っている
+
+状態: 対応済み（78403b2、debug §1「What scan writes」: version ≥ 2 かつ ≠ 15）
+
 - **場所**: debug §1 scan
 - **問題**: Debug Spec の新しい版（version 4 以降）の DM を、scan が「無い」と答える。
 - **直す**: 「version が 2 以上 15 未満（0 = DM なし、15 = 準拠しない、1 = 0.11 は扱わない）」。
 - **区分**: 規則（小さい）→ 相談。
 
 #### ○2 reset の method 0「probe が選ぶ」と「reset の線に既定は無い」がぶつかる
+
+状態: 未対応（debug §4.3 の method 0 はまだ「the probe chooses」、common §1.3 も「probe が選んだとき」のまま）
+
 - **場所**: debug §4.3 TLV method、common §1.3 mark reset の detail（「probe が選んだときは実際に使った方法」に 2 NRST がある）
 - **問題**: method 0 で probe が NRST を選べるなら channel の指定が要り、§3 の「reset の線に既定は無い」に反する。選べないなら、method 0 と 1 は同じ
   になる。
@@ -603,6 +766,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 文言（今の意味を明らかにするだけ）。ただし NRST を選ぶ実装があるなら規則になる。
 
 #### ○3 dmi の待ちの和に、回数で決まる 0x03 が入っている
+
+状態: 対応済み（3a88ec9、debug §4.1 和に入れるのは 0x04 と 0x05 だけ）
+
 - **場所**: debug §4.1（「待ち（0x04 の us、0x03 / 0x05 の上限）の和は max_op_ms を超えてはならない」）
 - **問題**: 0x03 の上限は max_reads（回数）で、時間に直す方法が無い。probe と host で計算が合わない。
 - **直す**: 「和に入れるのは 0x04 の wait_us と 0x05 の max_us。0x03 は和に入れず、probe は要求の中で max_op_ms を使い切ったら、その手順を
@@ -610,6 +776,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 文言に近い規則 → 相談。
 
 #### ○4 halt / step が失敗したときに、target に何を残すか
+
+状態: 対応済み（78403b2、18d7eac、debug §4.2 halt の timeout で haltreq を下ろす、step の step_left、§4 の表）
+
 - **場所**: debug §4 の表、§4.2
 - **問題**: step が 100 ms 以内に戻らないと status state だが、そのとき hart は走っているかもしれない（dcsr.step は立っているのか、下ろすのか）。
   halt の timeout で haltreq を残すのかも書かれていない。「op の境界の不変条件」から読み取れない。
@@ -619,6 +788,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則 → 相談。
 
 #### ○5 target_id の scheme が wire ごとの表に分かれているのに、番号は 1 つの空間として使われている
+
+状態: 対応済み（78403b2、18d7eac、debug §1 target_id の scheme は probe で 1 つの空間、registry `[common.enum.target_id_scheme]`）
+
 - **場所**: registry `[interface.enum.target_id_scheme]`（rvswd / swio は 1、swd は 2）、debug §1「wire ごとに registry が定める」、probe-config の
   slot の lock_scheme
 - **問題**: 「wire ごと」なら、新しい wire の scheme 1 と rvswd の scheme 1 が衝突してよいことになる。slot の錠は scheme の番号だけで比べる。
@@ -627,6 +799,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: registry の形と文言（番号は変わらない）。
 
 #### ○6 console の規則が、DATA0 を使う方式と riscv-dm を前提にしている
+
+状態: 対応済み（78403b2、console §2「Each mechanism defines」、§3 に 0〜2 の方式の値）
+
 - **場所**: oep-if-console §2、§3 冒頭
 - **問題**: 「1 つの connection に生きているストリームは 1 つ（3 方式とも DATA0 を郵便受けにする）」、「読みを止めるのは riscv-dm の要求の間と
   hart が止まっている間」、「DMSTATUS を見る間隔は 20 ms 以下」が、インターフェース全体の規則として書かれている。ARM の target でよく使う
@@ -638,6 +813,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 文言（構成を変えるだけ。3 方式の意味は変えない）。peers にも差分を見せる。
 
 #### ○7 未定義の値の断り方が、インターフェースごとに違う
+
+状態: 取り下げ（C-02 と逆向き。console と capture の unsupported が正しく、fixture の方を unsupported に直した: fb44490）
+
 - **場所**: console §1（知らない mechanism → unsupported）、capture §3.3（宣言に無い trigger の type → unsupported。未定義と、定義にあるが宣言に無い、を
   区別していない）、それに対して gpio（未定義の mode → malformed）、uart（format の未定義のビット → malformed）、i2c（mode 0 / 4 以上 → malformed）
 - **問題**: core §4.3 の 5（未定義の値 → malformed）と 6（定義にあるが持たない → unsupported）を、console と capture が混ぜている。
@@ -646,6 +824,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則（断りの理由が変わる）→ 相談。
 
 #### ○8 capture の configure: どの TLV を critical で送るかが決まっていない
+
+状態: 対応済み（a35acb0、3c6691a、capture §3.3「Sent critical」の列と文、samples は critical でない）
+
 - **場所**: capture §3.3
 - **問題**: 「critical を立てた TLV を扱えなければ断る、立てていなければ無視して ignored に載せる」。でも、どの tag を critical で送るべきかが
   書かれていない。ストリーミングを持たない probe に mode = 3 を critical なしで送ると、probe は mode を無視して既定のモードで configure し、
@@ -656,6 +837,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則 → 相談。
 
 #### ○9 blocking_ms の間に、host と probe が何をするか
+
+状態: 対応済み（a35acb0、capture §3.2 blocking_ms の間はどの経路にも送らない、後は §5.1）
+
 - **場所**: capture §3.2（start の blocking_ms、「blocking の間は lease を数えない」）、§4.1 group の start
 - **問題**: probe がほかの経路でも答えないのか、届いたフレームを捨てるのか、host はいつ送ってよいのかが無い。UART の probe では、その間に届いた
   バイトが失われ、host は送り直しを使い切りうる。
@@ -665,6 +849,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則 → 相談。
 
 #### ○10 capture-group に状態の遷移表が無い
+
+状態: 対応済み（a35acb0、capture §4.1 束ねていない組、start の確かめ、組の state）
+
 - **場所**: capture §4.1
 - **問題**: 束ねていない組への start / stop / force、トラックごとの状態がそろわないとき（片方は 5、もう片方は 3）の組の state、ストリーミングで
   トラックが購読されていないときの組の start が、どれも決まっていない。
@@ -673,6 +860,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則 → 相談。
 
 #### ○11 位置つきのストリームの read: まだ無い位置と、1 回の量の上限
+
+状態: 対応済み（a35acb0、common §1.2 書き込み位置より先、len の上限、from 3 の arg > 0xFF）
+
 - **場所**: common §1.2
 - **問題**: arg がまだ書かれていない位置（今の書き込み位置より先。古い boot の位置を持ったままの host など）のときの start と flags が無い
   （capture §3.2 は「まだ取れていない位置なら、あるところまで返す」と書いている）。max が 1 フレームに入る量より大きいときに切ってよいことも
@@ -682,6 +872,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則（小さい）→ 相談。
 
 #### ○12 I/O の電圧（target の電圧）を宣言する所が無い
+
+状態: 取り下げ（任意の describe の tag は凍結の後も revision を変えずに足せる、core §2.7。番号は level shifter を持つ probe と一緒に決める）
+
 - **場所**: core §7.5（fn 0 の describe）。fixture §1、debug §1 の「何を駆動してよいか」に関係する
 - **問題**: probe は何 V で駆動するのか（3.3 V 固定、1.8〜5 V に追従する level shifter、VTref を読む）を host が知る方法が無い。
   不特定の target（1.8 V の MCU、5 V の治具）では、host や利用者が電圧の合わない駆動を防げない。市販の debug probe の多くは VTref を持っている。
@@ -690,6 +883,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則（tag を足す。壊すものは無い）→ 相談。凍結の後でも足せるので ○。
 
 #### ○13 plan を取ったピンが、configure の前と、聞くだけの機能で、どの電気の状態になるか
+
+状態: 対応済み（0517c2f、18d7eac、3d51d4a、core §8「Taking a plan does not change a pin's electrical state」、capture §1.2、fixture §2〜§4）
+
 - **場所**: capture §1.2「ピンの共有」、fixture §2〜§4、gpio §1（「最初の set までそれまでの状態を保つ」）
 - **問題**: gpio は「plan を取っても level は変わらない」と書いている。logic / analog / i2c-target / spi-target は書いていない。idle が mode 3 / 4
   （target の電源を出している）のピンを logic の plan に取ると、probe がそれを入力に替えて電源を切ってしまう、という実装を止める文が無い。
@@ -700,6 +896,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 規則 → 相談。
 
 #### ○14 接続が閉じたときの線のピンの状態
+
+状態: 対応済み（0517c2f、debug §2「When a connection closes, the channels ... go to the idle state of core §8」）
+
 - **場所**: debug §1（「接続が無くなれば放す」）、§2
 - **問題**: scan では「外れた組のピンは core §8 の空きの状態に戻す」と書いているが、connection が閉じたときは「放す」だけで、空きの状態
   （idle、または Hi-Z）にするとは書いていない。SWCLK を low のまま駆動し続ける実装も許してしまう。
@@ -707,12 +906,18 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 文言（core §8 の「どの経路で解いても」と同じ意味）。
 
 #### ○15 registry: analog の trigger の enum が文と合わない
+
+状態: 対応済み（a35acb0、18d7eac、registry analog の trigger から level / edge を外した。capture §3.3 と一致）
+
 - **場所**: registry `oep.fixture.analog` の `[interface.enum.trigger]`（level = 1、edge = 2 がある）、capture §3.3「1〜2 はロジック、3〜4 はアナログ」
 - **直す**: analog の enum から level / edge を外すか、文を「analog は 1 / 2 も宣言してよい（o / b で切り出した値の 0 / それ以外）」に替える。
   どちらにするか決める。
 - **区分**: 外すなら文言。analog で level / edge を許すなら規則。
 
 #### ○16 規範の数のうち、registry に無いもの
+
+状態: 未対応（一部だけ: 線切れ 1000 ms と scan 500 ms は registry に入った（18d7eac）。console の 20 ms、uart の ±5 % と既定の 8N1、TAR の 1 KiB、max_frame − 24、pending / queued の 255、jitter_kind などの enum は本文にしか無い）
+
 - **場所**: registry `[limits]`、`[timing]`
 - **問題**: review-guide は「registry は番号と数の唯一の定義」と言うが、規範の文にしか無い数がある: 線切れの 1000 ms と scan の 500 ms（debug §1 / §2）、
   コンソールで DMSTATUS を見る間隔の 20 ms（console §2）、uart の ±5 % と既定の 115200 8N1（fixture §2）、TAR の 1 KiB（debug §6）、max_length ≤
@@ -722,6 +927,9 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 - **区分**: 文言（registry に写すだけ。値は変えない）。
 
 #### ○17 rvswd / swio の線のプロトコルそのものが、どこにも定められていない
+
+状態: 対応済み（7392817、e9cd891、debug §3.1 RVSWD の frame、§3.2 SWIO の frame。外を指す代わりに規範に定めた。ch32rv のレビュー済み）
+
 - **場所**: debug §3 冒頭の表
 - **問題**: OEP は API の層を決め、線の bit の並びは決めない。SWD は ARM の公開の仕様を指せるが、RVSWD / SWIO には公開の仕様が無い。
   第三者は「文書だけで」`oep.wire.rvswd` を実装できない。
@@ -732,21 +940,21 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 
 #### △ 直すとよい
 
-| id | 場所 | 問題 | 直す | 区分 |
-|---|---|---|---|---|
-| △1 | debug §3 表（「WCH の 2 線 / 1 線」）、console §3.1「WCH の SDI printf」、§3.2「minichlink の framing」、debug §3 の target_id scheme 1「WCH の DM の DMI 0x7F」 | 規範の文にベンダーやツールの名前がある（spec-writing-rules） | 規範の文は方式の定義だけにして、名前の由来は「（参考）」の注に移す。registry の識別子 `wch_dmi_7f` はそのままでよい | 文言。対応済み（78137fb）: 名前は「（参考）」の注へ。gdb は「デバッガ」に |
-| △2 | debug §1 / §3 / §4.2 / §4.5 / §4.6 の「[リンクの計測] §3」6 か所、§4.2 の「target によっては…」、capture §3.7 の「44642/1 など（設計 §7.4）」 | 規範の文の中に、記録への理由のリンクと実例の話がある | 「（理由: …）」の形にまとめて、規範の文から切り離す | 文言 |
-| △3 | registry `[limits]` の dm_wait_ms と dmi_busy_retries のコメント「(oep-if-debug §1)」、logic の `[interface.tlv.configure]` のコメント（応答の tag 0x55、0x57〜0x59 が挙がっている） | 節の番号と tag の誤り | §4 にする。configure の tag は 0x47 だけを挙げる | 文言。対応済み（78137fb） |
-| △4 | debug §1「§8.1 のとおり」 | どの文書の §8.1 か書いていない（debug に §8 は無い） | 「core §8.1」 | 文言 |
-| △5 | fixture §3 configure の address | 予約のアドレス（0x00〜0x07、0x78〜0x7F。general call、10 bit の前置き）を受けてよいかが無い | 「予約のアドレスは rejected unsupported（宣言で許す probe だけ受ける）」など | 規則（小さい） |
-| △6 | spi arm の count > length、uart の TX の無い plan での write、console open の mechanism 0xFF | 断り方が書かれていない | malformed / unavailable 6 / malformed と書く | 文言に近い |
-| △7 | common §1.3 marks | マークのリングがあふれたとき、host がどう知るかが書かれていない（serial が連続しているので、飛びで分かる） | 「serial の飛びが、押し出されたマークの数」と 1 文足す | 文言 |
-| △8 | debug §2 の状態機械（lease 切れでは hart に触らない） | host が死ぬと target は止まったままになる（モーターを動かしている target などで危ない）。gdb の detach に慣れた利用者は、走り出すと思いやすい | 規則はそのままで、「安全の注意: lease 切れでは target は止まったまま。host は end の前に resume する」を規範の注に | 文言 |
-| △9 | capture §1.2 | 符号付きの ADC（2 の補数で値を出す差動の ADC）を表す方法が書かれていない | 「符号付きの値は、probe が 2^(b−1) を足して符号なしにし、zero をそれに合わせる」と 1 文 | 文言 |
-| △10 | debug §3 の scan_kind（rvswd / swio に 2 = arm-adi） | 2 線や 1 線で arm-adi の connection ができるのか、できるなら swd §5 の非対称（slot、console が乗らない）が効くのかが分からない | rvswd / swio の kind を 1 に限るか、arm-adi になる場合の扱いを書く | 文言か規則 |
-| △11 | debug §1「速さを確かめ終えるまで書き込まない」と、scan の dmactive の書き込み、swd の固定の速さ | 順番が読み取りにくい | 「scan も attach も、読みで速さを確かめた後にだけ dmactive を書く。swd は速さを確かめられないので、min(max_speed, max_clock_hz) から始める（例外）」 | 文言 |
-| △12 | core §8（相互参照） | probe-config を持たない probe の、起動時のピンの状態が core に無い | core §8 に「起動時はすべての channel を空きの状態にする」 | 規則（小さい） |
-| △13 | debug §4.5 | read_block は hart が止まっていないと status state。system bus を持つ DM では走ったままでも読める | v1 はそのままでよい。後から features のビットで「走っていても読む」を足せることを、伸ばす道に書く | 文言 |
+| id | 場所 | 問題 | 直す | 区分 | 状態 |
+|---|---|---|---|---|---|
+| △1 | debug §3 表（「WCH の 2 線 / 1 線」）、console §3.1「WCH の SDI printf」、§3.2「minichlink の framing」、debug §3 の target_id scheme 1「WCH の DM の DMI 0x7F」 | 規範の文にベンダーやツールの名前がある（spec-writing-rules） | 規範の文は方式の定義だけにして、名前の由来は「（参考）」の注に移す。registry の識別子 `wch_dmi_7f` はそのままでよい | 文言。対応済み（78137fb）: 名前は「（参考）」の注へ。gdb は「デバッガ」に | 対応済み（78137fb、debug 冒頭と console §3.1 / §3.2 の（Reference）） |
+| △2 | debug §1 / §3 / §4.2 / §4.5 / §4.6 の「[リンクの計測] §3」6 か所、§4.2 の「target によっては…」、capture §3.7 の「44642/1 など（設計 §7.4）」 | 規範の文の中に、記録への理由のリンクと実例の話がある | 「（理由: …）」の形にまとめて、規範の文から切り離す | 文言 | 未対応（debug §1 / §3 / §4.2 / §4.5 / §4.6 に link-measurements への行内のリンクが残る） |
+| △3 | registry `[limits]` の dm_wait_ms と dmi_busy_retries のコメント「(oep-if-debug §1)」、logic の `[interface.tlv.configure]` のコメント（応答の tag 0x55、0x57〜0x59 が挙がっている） | 節の番号と tag の誤り | §4 にする。configure の tag は 0x47 だけを挙げる | 文言。対応済み（78137fb） | 対応済み（78137fb、registry のコメント） |
+| △4 | debug §1「§8.1 のとおり」 | どの文書の §8.1 か書いていない（debug に §8 は無い） | 「core §8.1」 | 文言 | 未対応（debug §1 にまだ「as in §8.1」） |
+| △5 | fixture §3 configure の address | 予約のアドレス（0x00〜0x07、0x78〜0x7F。general call、10 bit の前置き）を受けてよいかが無い | 「予約のアドレスは rejected unsupported（宣言で許す probe だけ受ける）」など | 規則（小さい） | 未対応 |
+| △6 | spi arm の count > length、uart の TX の無い plan での write、console open の mechanism 0xFF | 断り方が書かれていない | malformed / unavailable 6 / malformed と書く | 文言に近い | 未対応 |
+| △7 | common §1.3 marks | マークのリングがあふれたとき、host がどう知るかが書かれていない（serial が連続しているので、飛びで分かる） | 「serial の飛びが、押し出されたマークの数」と 1 文足す | 文言 | 未対応 |
+| △8 | debug §2 の状態機械（lease 切れでは hart に触らない） | host が死ぬと target は止まったままになる（モーターを動かしている target などで危ない）。gdb の detach に慣れた利用者は、走り出すと思いやすい | 規則はそのままで、「安全の注意: lease 切れでは target は止まったまま。host は end の前に resume する」を規範の注に | 文言 | 未対応 |
+| △9 | capture §1.2 | 符号付きの ADC（2 の補数で値を出す差動の ADC）を表す方法が書かれていない | 「符号付きの値は、probe が 2^(b−1) を足して符号なしにし、zero をそれに合わせる」と 1 文 | 文言 | 未対応 |
+| △10 | debug §3 の scan_kind（rvswd / swio に 2 = arm-adi） | 2 線や 1 線で arm-adi の connection ができるのか、できるなら swd §5 の非対称（slot、console が乗らない）が効くのかが分からない | rvswd / swio の kind を 1 に限るか、arm-adi になる場合の扱いを書く | 文言か規則 | 未対応 |
+| △11 | debug §1「速さを確かめ終えるまで書き込まない」と、scan の dmactive の書き込み、swd の固定の速さ | 順番が読み取りにくい | 「scan も attach も、読みで速さを確かめた後にだけ dmactive を書く。swd は速さを確かめられないので、min(max_speed, max_clock_hz) から始める（例外）」 | 文言 | 対応済み（78403b2、debug §1「Writes before the speed is verified」に順を書いた） |
+| △12 | core §8（相互参照） | probe-config を持たない probe の、起動時のピンの状態が core に無い | core §8 に「起動時はすべての channel を空きの状態にする」 | 規則（小さい） | 未対応 |
+| △13 | debug §4.5 | read_block は hart が止まっていないと status state。system bus を持つ DM では走ったままでも読める | v1 はそのままでよい。後から features のビットで「走っていても読む」を足せることを、伸ばす道に書く | 文言 | 未対応 |
 
 ---
 
@@ -807,62 +1015,95 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 英語版は日本語版と同じ commit（3cc50c8）まで追従していて、確かめた所（0x7E、unset の宣言していない tag、last_try_at_ns、idle の変更が効く時）は一致している。規範の文には日付・チップ名・逸話がほとんど無い（状態の行の日付だけ）。形は全体によく閉じている。以下は、知らない人が一から実装するときに迷う所。
 
 #### PC-1 ○ §1.3 線の名前を、firmware の固定のラベルからは探せない（規則）
+
+状態: 対応済み（20967d7、probe-config §1.3 の探し方 (c) firmware の label 0x46）
+
 - **場所**: §1.3「探すのは設定の label の項目（§1）だけで、core の describe の label（0x46）やほかの名前は探さない」、§3.1 のリセットでのやり直し、host ガイド §8.1。
 - **問題**: 一般の利用者がいちばん多く使うのは、配線の決まった市販の probe（リセットのピンが基板で決まっている）。この形の firmware は自分のリセットの線を describe の 0x46（`NRST` など自由な文字列）でしか言えず、§1.3 の決まりには乗らない。そうなると、(1) boot_reset は利用者が label を set して保存するまで効かない。(2) host は「この probe のリセットの線はどれか」を規範の手段で知れず、自由な文字列の照合か、ガイド §4.6 の総当たりになる。「設定の既定の値は持たない」（§1 冒頭）は守るとしても、**固定の配線の宣言**は宣言そのもの（原則 5 に反しない）。
 - **直し方**: §1.3 の探し方に 1 段足す。(a) 設定の `S.N`、(b)（スロットが 1 つ以下のとき）設定の `N`、(c) 同じ規則で describe の 0x46 の text。同じ段で一致が 2 つ以上なら無し、は今のまま。設定の label は (c) より強い。0x46 の text には、§1.3 の比べ方（ASCII の大文字と小文字を区別しない）を当てる。代わりに、fn 0 に線の宣言の tag（`line`: channel(u16)、name）を新しく足し、名前は §1.3 の表から取る形でもよい。
 - **種類**: 規則（peer に送る）。
 
 #### PC-2 ○ §1.3 表に無い名前の扱いと、名前を足す道が無い（規則）
+
+状態: 対応済み（20967d7、probe-config §1.3 表に無い名前、registry `[line_names]`、`x-`）
+
 - **問題**: `nrst` / `power_hi` / `power_lo` の 3 つだけで、次のことが書かれていない。(1) 表に無い名前（`boot0`、`vref`、`swo` など）は意味を持たないのか。(2) 標準の名前を後から足すときは revision を上げるのか。(3) 独自の意味を持たせたい人はどうするのか。第三者の firmware や host が `boot0` に独自の意味を付けると、後に標準で足したときにぶつかる。
 - **直し方**: §1.3 に「表に無い名前は線の役目を表さない（ただの名前）。標準の名前は registry の `[line_names]` に足し（revision は変えない。§2.7 の任意の追加）、独自の役目は `x-` で始める（例 `x-acme.boot0`）」と書く。表は registry に移し、文書はその写しにする。
 - **種類**: 規則。
 
 #### PC-3 ○ idle の mode 1 / 2（pull）を持たない channel の断り方が無い（規則の明示）
+
+状態: 対応済み（20967d7、probe-config §1 idle の pull の無い channel は unsupported、mode 5 以上も unsupported（C-02））
+
 - **場所**: §1 の idle の項、§2 の断り方の表。
 - **問題**: 「出力として駆動できない channel への mode 3 / 4 は unsupported」はあるが、pull-up や pull-down を持たないピン（そういう SoC はよくある）への mode 1 / 2 の扱いが無い。未定義の mode（5 以上）も、表の「形の誤り」から読むしかない。core §4.3 の順から推せはするが、2 人の実装者が違う理由を返しうる。
 - **直し方**: idle の項に「その channel がその pull を持たない probe では、mode 1 / 2 は rejected unsupported。mode 5 以上は malformed」と書き、断り方の表の unsupported と malformed の行に足す。どのピンが pull や出力を持つかを host が先に知る手段は、gpio の無い probe には無い。そのことを（参考）として書く。
 - **種類**: 規則の明示（core §4.3 から導けると peer が見るなら文言）。
 
 #### PC-4 ○ 「firmware が宣言していない channel」が何かを決めていない。「idle と同じ」の参照先も無い（規則の明示）
+
+状態: 対応済み（20967d7、probe-config §1「The channel of an item」）
+
 - **場所**: §1 の disable「firmware が宣言していない channel の disable は rejected unsupported（idle と同じ）」。
 - **問題**: idle の項には、宣言していない channel の規則が書かれていない（参照先が無い）。何をもって「宣言した」とするか（fn 0 の `channels`（0x43）未満か、どれかの role_channels / channel_group にあるか）も決まっていない。label の channel にも同じ問題がある。
 - **直し方**: §1 の冒頭に定義を 1 つ置く。「channel を持つ項目（label、idle、disable）の channel は fn 0 の channels（0x43）未満でなければならず、外れれば rejected unsupported（payload の tag は項目の tag）」。idle と label にも当て、表に入れる。
 - **種類**: 規則（小さいが、probe の返す値が変わりうる）。
 
 #### PC-5 ○ label の text に長さと文字の決まりが無い（規則）
+
+状態: 対応済み（20967d7、probe-config §1 label の text 1〜32 byte、registry `label_max_bytes`）
+
 - **問題**: slot の name（1〜32 byte）や owner（1〜32 byte）には上限があるが、label の text には無い。mixed の印（`[name] `）、保存の max_bytes、host の表示が上限を持てない。空の text、壊れた UTF-8（core §2.1 は UTF-8）の扱いも無い。
 - **直し方**: 「text は 1〜32 byte の UTF-8（registry の `limits.label_max_bytes`）。0 byte、上限の超え、UTF-8 として壊れたものは rejected malformed」。§1.3 の名前は ASCII だけなので影響しない。
 - **種類**: 規則。
 
 #### PC-6 ○ get の応答の「…」が何かを決めていない（文言）
+
+状態: 対応済み（20967d7、probe-config §2 get の項目は payload の終わりまで、0x7E は置かない）
+
 - **場所**: §2 の表、get の応答「more(u8)、hash(u32)、項目の並び（今の設定）、…」。
 - **問題**: 項目の並びは TLV の並びで、応答の TLV（ignored など）と同じ形をしている。「…」が何を指すのか、読む側がどこで項目を読み終えるのかが文から決まらない（0x7E の予約が §1 にあるだけ）。
 - **直し方**: 「…」を消し、「payload の終わりまでが項目の並び。tag 0x7E は応答のメタ情報のために予約する（v1 の probe は置かない）。要求に TLV は置かない（core §7.3）」と書く。英語版も同じにする。
 - **種類**: 文言。
 
 #### PC-7 △ hash の正規形の細部（文言）
+
+状態: 対応済み（20967d7、e21a9a2、probe-config §2 hash の正規形、tests/vectors に正規形と hash）
+
 - **問題**: (1) 正規形の TLV の tag は critical の bit を外した値か（probe は外して持つ、と §2 にあるので、そう読める）。(2) 「キーの昇順」は、数としての比較か、little endian のバイト列の比較か（u16 では順が違う）。(3) plan の (fn, role, channel) は前のフィールドから比べるのか。
 - **直し方**: 「正規形の tag は critical の bit を 0 にした値。キーは数として比べ、組は前のフィールドから比べる」を 1 文で足す。registry か tests に正規形と hash の例を 1 つ置く（O-8 の試験ベクトル）。
 - **種類**: 文言。
 
 #### PC-8 ○ bind の port（transport の index）は保存の読み替えの外で、読み替えの理由 3 の意味も曖昧（規則）
+
+状態: 対応済み（20967d7、core §7.5「Invariance of transport indexes」、probe-config §2 起動時の bind と理由 3 は保存全体）
+
 - **場所**: §1.2 の port「firmware の更新で USB の構成が変わると index も変わりうる（bind を見直す）」、§2 の保存の読み替え、§3.3 の unreadable_reason 3。
 - **問題**: fn は (name、instance、revision) で読み替えるのに、port は数のまま保存される。firmware を更新すると、保存した bind は黙って別の口を指すか、シリアルの口でない口を指す。この記述は「利用者が見直す」としか言っていない。一般の利用者は配布元の firmware を更新するだけで、bind を見直さない。そのうえ起動時に適用が断られたとき（reason 3）、保存の全部を適用しないのか、断られた項目だけを外すのかが書かれていない（読み替えの理由 2 では全部を適用しない）。
 - **直し方**: (a) 保存は port と一緒に transport の kind を持ち、起動時に同じ index の kind が違えば理由 2 と同じに扱う。または (b) ★5（unit_id の不変）と同じく「transport の index は firmware の版を越えて変えない」を core §7.5 に書く。どちらの場合も、§2 に「起動時の適用で断られたものがあれば、保存全体を適用しない（理由 3）」と、全部か一部かを決めて書く。
 - **種類**: 規則。
 
 #### PC-9 △ state のページング（文言）
+
+状態: 未対応（probe-config §3.3 はまだ「受け取った数を first に足す」で、2 つの first とページの間の storage_* を書いていない）
+
 - **場所**: §3.3「more = 1 なら続きがあり、host は first に受け取った数を足してもう一度聞く」。
 - **問題**: first は 2 つある（first_slot と first_bind）。storage_state / storage_hash がページの間で変わったときの扱いも無い。
 - **直し方**: 「first_slot に n_slots を、first_bind に n_binds を足す。storage_* はどのページでもその時の値（ページの間で変わりうる。host は最後のページの値を使う）」。
 - **種類**: 文言。
 
 #### PC-10 △ boot_reset の保持の時間を変えられない（文書）
+
+状態: 未対応（ガイドに hold_ms を伸ばす道を書いていない）
+
 - **問題**: hold_ms は registry の 20 ms に固定。NRST に大きな容量や監視 IC を持つ基板では足りないことがある。
 - **直し方**: 今は変えなくてよい（boot_reset の後ろは足し場所）。ガイドに「長い保持が要るなら、boot_reset の後ろに hold_ms を足すのが道（そのときは任意のフィールド、revision は変えない）」と書いておく。
 - **種類**: 文書。
 
 #### PC-11 ○ 設定が線を駆動することの安全の注意がまとまっていない（文書）
+
+状態: 未対応（probe-config に（参考）安全の小節が無い。O-12 と一緒に）
+
 - **問題**: 保存した設定は起動のたびに、host の居ないところで出力を駆動する（mode 3 / 4 の idle、at boot の attach、boot_reset のリセット）。注意は host ガイド §8 と §9.2 に散っていて、仕様の側には無い。たとえば、(1) リセットから firmware が idle を掛けるまで、DFU の間、firmware が壊れたときは、ピンは SoC のリセットの状態にある。電源のスイッチの線には、切れる側に固定する外付けの pull が要る。(2) disable は、ロックを取った host が unset すれば外れる。保護ではなく利用者の宣言である。(3) 設定は、ロックを取ったどの host からでも変えられる（認証が無い）。
 - **直し方**: probe-config の末尾に「（参考）安全」の小節を置くか、O-12 の安全の節に probe-config の項を作る。規範の文は増やさない。
 - **種類**: 文書。
@@ -874,11 +1115,17 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 **結論: 足りない。** どちらのガイドも中身は濃いが、実装した人の「踏んだ罠と実測の記録」が中心で、初めての人が順に読んで最小の実装を組める形になっていない。規範（core と oep-if-*）は、実装に要るものを文としてほぼ持っている。それでも「どこから書き始め、何が必須で何が任意か、合っているかをどう確かめるか」の道が無い。
 
 #### G-1 ○ 最小の実装までの道が無い（文書。必須 / 任意の表は O-16 で規則）
+
+状態: 未対応（両ガイドに最小の host / probe までの道が無い。状態の行の書き方だけ 6bcf7e3 で直した）
+
 - **host ガイドに足すもの**（§0「最初の host」）: 口を開く（§1 の DTR / RTS）→ COBS で confirm（corr、待ち時間 1000 ms）→ list → describe のページング → boot_id で cache → open（session_id の乱数、lease）→ 要求 1 つ（例 gpio の read）→ keepalive の間隔 → end。各段に core の節番号と、**実際のバイト列**（16 進）を付ける。
 - **probe ガイドに足すもの**（§0「最小の probe」）: 必ず答える op（confirm / list / describe / open / end / keepalive / lock_state）、必ず出す describe の tag（unit_id、transport、max_op_ms など、core §7.5 の「必須」）、送り直しの表（core §5.2 の大きさ）、断り方の順（§4.3）、時計（§2.6a）、lease の数え方、boot_id の作り方を、チェックリストにする。任意のもの（plan、subscribe、port_speed、probe.config、各インターフェース）の一覧も付ける。
 - oep-probe-arduino の `examples/01.Basics/Minimal`、`docs/guide/writing-a-probe.md`、`docs/guide/getting-started.md` にはすでにこの役の文書がある。oep-spec のガイドからリンクする（今はリンクが無い）。
 
 #### G-2 ○ host ガイドに無い話題（文書）
+
+状態: 未対応（host ガイドに断りごとの動き、通知、probe.config の手順、fake の節が無い）
+
 足すもの（どれも規範はあり、host の実務の書き方が無い）:
 - reject reason ごとの host の動き（malformed = 自分の誤り、unsupported = 宣言を見直す、unavailable = cause と holder、no_session / expired / locked、result_lost）を 1 つの表にする。今は §2.5 と §3 に一部があるだけ。
 - revision の確かめ（知らない revision のインターフェースは使わない）、知らない非 critical の TLV と ignored の扱い、並びの要素の知らない後ろの読み飛ばし（core §2.3）。
@@ -888,22 +1135,36 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 - 経路が複数あるときの選び方と、同じ probe を unit_id でまとめること（§3 の発見の段の中に埋もれている）。
 
 #### G-3 ○ ガイドに target 固有の話と日付つきの実測が混ざっている（文書）
+
+状態: 未対応（チップ固有の話と日付つきの実測がガイドに残る。host §2.5 の「（必須）」も残る）
+
 - **host ガイド**: §4.5（CH32 の書き込みの方式の表、RP2350 の C_MASKINTS）、§4.6 の L103 の逸話、§8.5 / §8.6 の実験、§9.3 / §9.4 の ESP32-P4 と CH32V003。
 - **probe ガイド**: §4 の大半（RVSWD の休ませ方の表、WCH-LinkE の観察、LinkE の個体の serial `FC928F068181`、未解決の原因の推測）。
 - **問題**: 初めての人には、どれが一般の規則でどれが特定のチップの話かが分からない。規則としては「ローダーは命令セットで選ぶ」「debug の線は弱い強さで駆動する」の 1 文ずつで足りる。
 - **直し方**: 一般の規則を 1〜2 文で残し、チップごとの事実と実測は target-scan-notes などの記録に移してリンクする。もう 1 つ、規範でないガイドが「（必須）」を見出しに書いている（host §2.5）。必須なのは core §5 なので、「core §5.1 / §5.2 が求めること」と書き換える。
 
 #### G-4 ○ probe ガイドに古い記述が残っている（文書）
+
+状態: 未対応（probe ガイド §3 の「仮置き」、§3.5 の「115200 固定」の見出し、状態の行の 2026-09-26 が残る）
+
 - §3「COBS + CRC-16/CCITT-FALSE、**仮置き**」「V1 の endpoint に `Framing::kCobsCrc` を渡す」。core §3.1 で確定しているので「仮置き」は誤り。v0 の検討の文書（uart-reliability-model）を根拠にしている所もある。
 - §3.5 の見出し「UART bridge の速さは 115200 固定」は、port_speed（core §3.5）を入れた今は「起動時の速さは 115200」が正しい。
 - 状態の行が、どちらのガイドも「2026-09-26 に合わせて更新」のまま（その後 10-01 / 10-02 の変更が入っている）。
 
 #### G-5 ○ probe ガイドに、識別子と宣言の選び方が無い（文書）
+
+状態: 未対応（probe ガイドに unit_id、index、宣言、窓、保存の原子性の作り方が無い）
+
 - unit_id の作り方（チップの固有の番号を小文字の 16 進にする、保存した乱数を使う、の利点と欠点）と、版を越えて変えないこと（★5）。transport の index を変えないこと（PC-8）。model / firmware / chip の文字列。role_channels と channel_group の選び方。max_frame / window / max_inflight の決め方（今の §2 は ESP32 の例だけ）。save の原子性（前の保存か新しい保存のどちらかが読める）を NVS / flash でどう作るか。
 
 #### G-6 ○ 2 つのガイドに英語版が無い（文書）。O-10 に含める。
 
+状態: 未対応（両ガイドの英語版が無い）
+
 #### G-7 △ 節の番号が不揃い（文書）
+
+状態: 未対応（節番号は不揃いのまま）
+
 1、1.5、1.6、1.7、2、2.1、2.5、3、… の並びを整える。外から節番号で参照されているので、変えるなら一度にまとめて変える。
 
 ---
@@ -911,6 +1172,8 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 #### C. oep-spec 全体の OSS / 共通仕様としての準備
 
 #### O-1 ★ 決まっていない VID:PID と申請の状態がリポジトリにある（文書）
+
+状態: 決着（2026-10-02、ユーザーの判断）: 申請の資料を木から外し、案内も消す。VID:PID は取得してから書く。7ff4dce（履歴は書き換えない）
 
 **決着: 木から外し、案内も消す（2026-10-02、ユーザー）。** 7ff4dce: ディレクトリ、review-guide §3 の行、memo（en / ja）の割当元の調査と申請の手順と参照を消した。
 - **場所**:
@@ -926,6 +1189,8 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 
 #### O-2 ★ 記録の文書が、今の規範と逆の USB の識別を「決定」として書いている（文書）
 
+状態: 対応済み（769ffeb、v1-freeze-decisions（ja / en）などの置き換えた決定に core §3.3 への注）
+
 **対応済み**（769ffeb）: v1-freeze-decisions（ja / en）、v1-zero-base-review ★11 と表の 11、v1-zero-base-proposal 3.4(d) / 表の 7 / 12、v1-freeze-review の 16 の案に、置き換えの注と core §3.3 へのリンクを付けた（本文は書き換えていない）。
 - **場所**: v1-freeze-decisions（.ja / .md）の冒頭「3(b)（iProduct `OEP`）は恒久の規範になり」、§3(b)「iInterface が `OEP` で始まる」、§3(d)「host の発見は iProduct の `OEP` で見るので」。v1-zero-base-review ★11「iProduct `OEP` 接頭は恒久（core §3.3）」。
 - **問題**: core §3.3 は今「自動で見分けるのはプロジェクトの VID:PID だけ、iProduct は見分けに使わない」。review-guide は freeze-decisions を **2 番目に読む文書**としていて、レビューをする人はまずこの食い違いに当たる。
@@ -934,6 +1199,8 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 
 #### O-3 ★ 入口の README.md（英語）が古く、中で食い違っている（文書）
 
+状態: 対応済み（6bcf7e3、README（en / ja）を書き直し、project-concept.md を今の文に）
+
 **対応済み**（6bcf7e3）: README（en / ja）を書き直し、project-concept.md を今の合意の文に揃えた。
 - **問題**: 次のように書いてある。「Only the project name is settled at this time. Everything … is an exploratory draft」「The other English documents below predate the v1 candidate」「Language rules … remain undecided」「governance … undecided」。これは v1 の候補と凍結の範囲（§0）と食い違う。`docs/project-concept.md` も「Exploratory upstream draft. Only the project name is settled」のまま（review-guide も「英語版は古い」と言っている）。英語の README は文書の一覧をほとんど持たない。
 - **直し方**: README（en / ja）を書き直す。中身は、OEP とは何か（3 行）、今の状態（v1 の候補、凍結の約束へのリンク）、**文書の地図を状態ごとに**（規範 / 実務 / 記録 / 経緯）、実装の始め方（spec → registry → generated → fake → tests）、貢献のしかた（O-4）、license（O-6）。project-concept.md は今の .ja.md に合わせて訳し直すか、冒頭に「古い」と書く。
@@ -941,17 +1208,24 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 
 #### O-4 ★ 貢献と変更の手順が無い（判断 + 文書）
 
+状態: 決着（2026-10-02、ユーザーの判断）: spec のリポジトリが唯一の正で、変更は直接の編集か pull request。CONTRIBUTING（en / ja、6bcf7e3）
+
 **決着: spec のリポジトリが唯一の正で、変更はそこへの直接の編集か pull request（2026-10-02、ユーザー）。** CONTRIBUTING（en / ja、6bcf7e3）。
 - **問題**: CONTRIBUTING も、issue のひな形も、誰が決めるか（governance）も無い。第三者が次のことをどうすればよいか分からない。(1) 誤りを報告する。(2) 新しい `oep.` インターフェースや、標準インターフェースへの任意の TLV を提案する。(3) enum の値（mechanism、transport kind、target_id_scheme など）を取る。(4) 凍結の後の errata。
 - **直し方**: CONTRIBUTING（ja / en）に手順を書く。issue → 案の文書 → peer（ch32rv / WireSkein / bench と外部）のレビュー → registry の PR（`oepgen1.py --check`、tests/registry_v1）→ fake → 実装。誰が決めるか、凍結の後の変更は revision の規則（core §2.7）と CHANGELOG に記録すること、「規範の文は実装できる文だけ」（spec-writing rules）もここに置く。
 - **種類**: 判断（誰が決めるか）+ 文書。
 
 #### O-5 ○ 第三者のための番号の空間が、op 以外に無い（規則）
+
+状態: 対応済み（d48ca6d、core §2.5「Experimental values」u8 の enum の 0xF0〜0xFE）
+
 - **問題**: op には実験用の 0xF0〜0xFF があるが、u8 の enum（console の mechanism、transport kind、target_id_scheme、probe.config の項目の tag、unavailable の cause / holder_kind、capture の trigger type など）には実験用の範囲も、取り方も無い。新しいコンソールの framing や経路を試作する人は、衝突しない番号を使えない。core §13-7 で標準インターフェースに独自の tag を混ぜられないため、独自の framing は独自のインターフェースにするしかない。そうすると bind（slot の mechanism）に乗れない。逆 DNS の名前に、登録の要らないことは README（probe-arduino）にしか書かれていない。
 - **直し方**: core §2.5 に「u8 の enum は、定義が別に決めない限り 0xF0〜0xFE を実験用（出荷する probe は使わない）とする」を足し、registry の各 enum に `reserved` として入れる。標準の値の取り方は O-4 の手順に置く。必要なら「知られている拡張の一覧」（登録ではなく、見つけるための表）を README に置く。
 - **種類**: 規則。
 
 #### O-6 ○ 仕様の文の license、特許、名前の使い方（判断）
+
+状態: 決着（2026-10-02、ユーザーの判断）: 仕様は MIT のまま（README、6bcf7e3）。特許の非主張と「OEP」を名乗る条件はまだ決めていない
 
 **決着: 仕様は MIT のまま（2026-10-02、ユーザー）。** 特許と名前の使い方は未決。
 - **問題**: LICENSE は MIT（文の対象は "Software"）で、README は「リポジトリの中身は MIT」と書く。仕様の文にも当たるとは読めるが、仕様の文書でよく使う形ではない。特許の扱い（実装者が特許の主張を受けない約束）が無い。project-concept の「非互換な派生を OEP として識別しない」原則があるのに、「OEP 準拠」を名乗る条件（O-8）と名前の扱いの決まりが無い（PID-USE.md は PID の条件だけ）。
@@ -959,11 +1233,17 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 - **種類**: 判断。
 
 #### O-7 ○ 版と凍結の約束が、決定の記録の中にしかない。spec のタグも無い（文書 + 判断）
+
+状態: 未対応（凍結の範囲は v1-freeze-decisions §0 の中のまま。タグ、CHANGELOG、独立した版の方針の文書が無い）
+
 - **問題**: 何を止め何を止めないかは v1-freeze-decisions §0 によく書けている。ただしそれは、日付つきの 13 項目の決定の記録（一部は置き換え済み、O-2）の中にある。spec には git のタグも release も無く（「commit で指す」）、凍結の後に revision を変えずに足したもの（任意の TLV、op、出来事）を実装者が見分ける版の印も無い。
 - **直し方**: §0 を独立した「安定性と版の方針」（ja / en）に移し、README からリンクする。レビューの版にタグ（例 `v1.0.0-rc.1`）を付け、凍結で `v1.0.0` を付ける。凍結の後の追加は CHANGELOG に日付と commit で残す。registry に版の文字列（`[registry] edition`）を置くかは peer と決める（registry の変更）。
 - **種類**: 文書（タグはユーザーの判断。registry に足すなら規則）。
 
 #### O-8 ★ 適合の確かめ方が無い。core が「適合試験を持つ」と言っているのに、それが存在しない（文書 + 道具）
+
+状態: 未対応（一部だけ: tests/vectors（e21a9a2）と core §0 規則 4（4e62116）、README に fake と `oep dump`（6bcf7e3）。第三者の probe を確かめる点検の手順と道具がまだ無い）
+
 - **場所**: core §0 の線引きの規則 4「project が適合試験を持つことだけである」。
 - **事実**:
   - `oep-client-python/tests/hw` は参照の firmware と参照のボード（`OEP_HW_BOARDS`、焼くところから）の試験で、第三者の probe には当てられない。
@@ -976,12 +1256,17 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 - **種類**: 文書 + 道具（core の文言の変更は peer に見せる）。
 
 #### O-9 ★ 規範の dmseq に英語版が無く、文に製品名・逸話・日付が入っている（文書）
+
+状態: 対応済み（cdd26b4、67863b1、target-console-dmseq.md が英語の規範、理由と実測は target-console-dmseq-notes へ）
+
 - **場所**: `docs/target-console-dmseq.ja.md`（規範。target の firmware を書く人が読む）。L6「ch32rv 側のレビュー 2 回を経て合意済み（2026-09-24）」、L10（ArduinoCore-CH32、minichlink）、L15、L19、L39（WCH-LinkE の 0.4 ms）、L64、L74、L102-103、L145-149（V006 / X035、日付、wch-protocols）。v0 の owner / id への言及もある。
 - **問題**: 規範の文書で、ただ 1 つ英語版が無い（README もそう明記している）。spec の書き方の決まり（規範の文にチップ名・逸話・互換の注を置かない）にも反している。ほかの規範の文書は、例としての名前（chip の `esp32p4 v1.3` など）を除けば満たしている。
 - **直し方**: 理由と実測を記録の文書（`experiments/dm-console-seq` か新しい記録）に移し、規範の文だけを残してから英語版を作る。どの文が規範かは peer（ch32rv）に差分で見せる。
 - **種類**: 文書（差分は peer が見る）。
 
 #### O-10 ○ 英語で読めるもの（文書 + 判断）
+
+状態: 決着（2026-10-02、ユーザーの判断）: 英語が正、日本語は訳。規範の文書はすべて英語版を持つ。README、review-guide、core §0（78137fb、6bcf7e3）。ガイドの英語版は G-6
 
 **決着: 英語が正、日本語は訳。規範の文書はすべて英語版を持ち、英語が完全であること（2026-10-02、ユーザー）。**
 - **規範**: dmseq（O-9）以外はある。
@@ -990,6 +1275,8 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 - **判断**: 凍結の後も「日本語が正」を続けるか、英語を同格にするかを決めて README に書く。今の README は「Whether this becomes a formal project rule remains undecided」のまま。
 
 #### O-11 ○ 記録と規範が同じ所に並び、状態の書き方も揃っていない（文書）
+
+状態: 対応済み（6bcf7e3、すべての文書の冒頭を 規範 / ガイド / 記録 に。ディレクトリは分けず、地図は README と review-guide §5.1）
 
 **対応済み**（6bcf7e3）: `docs/` のすべての文書の冒頭を「規範 / ガイド / 記録」の 3 つの形にした。ディレクトリは分けていない（地図は README と review-guide §5.1）。
 - **事実**: `docs/` に 80 の文書が平らに並ぶ。状態の行が無いもの: console-stream、hardware-source-review-2026-09-26、link-measurements、review-answer-portability-2026-09-26、v1-open-issues-research-2026-09-26、v1-operation-test-audit-2026-09-26（review-guide は太字の状態が無い）。状態の言葉も揃っていない。
@@ -1005,6 +1292,9 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 - **種類**: 文書。
 
 #### O-12 ○ 安全とセキュリティの考え方が 1 か所に無い（文書）
+
+状態: 未対応（core に「安全とセキュリティ（参考）」の節が無い）
+
 - **事実**: 断片はあるが、散らばっている。core §3.1（TCP は信頼できる接続でだけ、認証なし）、§6.4（force は認証ではない）、§3.3（知らない device を開く時は confirm だけ）、probe-config の disable、host ガイド §9.2（ピンを探す時の安全）、§4.5（読み出しの保護）。
 - **直し方**: core の末尾に「安全とセキュリティ（参考）」の節（ja / en）を置き、次をまとめる。
   - 信頼のモデル（同じ PC のプロセスと USB は信頼する。認証も暗号も無い）。
@@ -1020,16 +1310,25 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 - **種類**: 文書。
 
 #### O-13 ○ 用語集が無い。日本語の造語と英語の対応も無い（文書）
+
+状態: 未対応（用語集が無い）
+
 - **事実**: core §1 に 12 語、review-guide §9 に別の 9 語。規範には独自の言葉が多い（シリアルの口、錠、線、出来事、断り、空きの状態、握手、口の位置）。英語版はそれぞれ訳語を選んでいるが、対応の表が無い。slot / bind / label / idle / unit_id / boot_id / corr / critical / outcome / stream / mark が 1 か所で引けない。
 - **直し方**: `docs/glossary`（ja / en の 2 列、定義の節へのリンク付き）を 1 つ作り、core §1 からリンクする。
 - **種類**: 文書。
 
 #### O-14 ○ 要求の強さの言葉を定義していない（文言。peer に見せる）
+
+状態: 対応済み（4e62116、core §1.1 Normative words、RFC 2119 / 8174）
+
 - **問題**: 規範は「〜する / 〜しない / 〜してよい」で書き、「（参考）」「目安」「例」は規範ではない、と review-guide §10 が言っている。core 自身はそれを定めていない。英語版は小文字の must / may で、RFC 2119 の言葉と同じかどうかが分からない。
 - **直し方**: core §0 か §1 に、言葉の表（する = MUST、しない = MUST NOT、してよい = MAY、することを勧める = SHOULD、（参考）と例 = 規範ではない）を置く。英語版で RFC 2119 / 8174 を使うかを決める。
 - **種類**: 文言（意味の取り方が変わりうるので peer に見せる）。
 
 #### O-15 ○ probe が最低限持つものを、core が 1 か所で言っていない（規則の明示）
+
+状態: 対応済み（4e62116、core §1.2 Conformance、§12 の Required の列）
+
 - **問題**: core §12 の op の表は「任意」を port_speed にしか書いていない。plan_apply / plan_release（ピンを持たない probe）、subscribe（通知を持たない probe）、link_source / link_sink が必須かどうかは文から決まらない。describe の必須の tag は §7.5 に散っている。
 - **直し方**: §12 の表に「必須 / 任意（条件）」の列を置く（例: plan_* は、plan の role を持つインターフェースがあれば必須。subscribe は、出来事か通知のデータを出す probe で必須。link_* は必須）。任意のものに当たったときの断り方（unsupported）も書く。G-1 の probe のチェックリストはこの表を写す。
 - **種類**: 規則（今の実装の振る舞いを書くだけでも、peer に確かめる）。
@@ -1039,6 +1338,9 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 #### D. 実装のリポジトリの README（spec をどう見せているか、だけ）
 
 #### R-1 ○ 3 つの README の、spec への入口（文書）
+
+状態: 未対応（oep-client-python の README はまだ review-guide.ja.md と oep-core.ja.md を指す。spec の外のリポジトリ）
+
 - **oep-probe-arduino README.md**:
   - spec の入口は `review-guide.ja.md`（日本語、レビューのための地図）と `oep-core.ja.md`。英語版があるのに「Japanese first; English follows once it settles」と書いている（古い）。
   - 冒頭の「**The protocol is fixed**」は、同じ README の「until the v1 freeze every release may break」と食い違って読める。意図は「形は決まっていて、能力は開いている」。
@@ -1047,6 +1349,9 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 - **直し方**: 3 つとも「Specification: oep-spec の README（英語）から」とする。規範は英語版（`oep-core.md` など）へ、日本語版は「原文」としてリンクする。凍結前であることの書き方を揃える。
 
 #### R-2 △ 良い所を spec 側から使う（文書）
+
+状態: 未対応（spec の README は fake を案内する（6bcf7e3）が、oep-probe-arduino の getting-started / writing-a-probe へのリンクが無い）
+
 oep-probe-arduino の `docs/guide/getting-started.md` と `writing-a-probe.md`、client の fake は、初めての人に要る道そのもの。oep-spec の README とガイドからリンクする（G-1、O-8）。
 
 ---
