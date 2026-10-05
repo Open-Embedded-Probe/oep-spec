@@ -94,12 +94,12 @@ RTS を立てて開き（host ガイド §1）、それでもリセットする�
 
 ネイティブ USB を持つ probe のために:
 
-- **VID:PID**: host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID だけ（core §3.3）。それは取得したときに
-  registry に載る。probe がそれを使うのは載ってからで、oep-probe-arduino の PID-USE の条件の下でだけ。それで列挙する probe は fn 0 の
-  describe の discoverable を 1 にする（別の口から開いた host にも分かる）。載るまでは、どの probe も 0。それまでは自分の USB の ID で
-  動く。参照の firmware は今ボードの既定の VID:PID を使っていて、配布には使えない。
-- **iProduct** は表示のための自由な文字列で、host は見分けに使わない（core §3.3）。`OEP` で始めると、プロジェクトの VID:PID が
-  できるまで、host ガイド（§4）の暫定の手がかりで見つかる。
+- **VID:PID**: host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID `1209:4F45`（VID 0x1209、PID 0x4F45。
+  registry の `usb`。core §3.3）だけ。probe は oep-probe-arduino の PID-USE の条件の下でそれを使う。それで列挙する probe は
+  fn 0 の describe の discoverable を 1 にする（別の口から開いた host にも分かる）。そうでない probe は 0 を返し、利用者が名指すか
+  口を選ぶ。USB-UART の bridge の向こうの口と、ハードウェアが記述子を決める内蔵の USB シリアルは、プロジェクトの VID:PID を
+  持てない。
+- **iProduct** は人のための名前で、何もそれで probe を見分けない（core §3.3）。
 - **serial number は unit_id**（core §3.3）。利用者が unit_id で名指した probe は、host がこれで探す。
 - device の中の口は core §3.3 のとおり: CDC はすべてシリアルの口。vendor bulk は class 0xFF / subclass 0x4F / protocol 0x45 の
   interface の bulk の組（Microsoft OS 2.0 の compatible ID `WINUSB` を付ける）。HID は usage page 0xFF4F / usage 0x45 で、出力の

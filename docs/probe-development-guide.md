@@ -96,13 +96,12 @@ sequence unless its chip-reset-disable bit is set; TinyUSB's CDC in arduino-esp3
 
 For probes with native USB:
 
-- **VID:PID**: a host identifies an OEP probe automatically only by the project's USB VID:PID (core §3.3), which is listed in the registry when
-  it is obtained. A probe uses it only once it is listed, under the conditions of PID-USE in oep-probe-arduino. A probe that enumerates with it
-  sets discoverable = 1 in fn 0's describe (so a host that opened it through another port can tell). Until it is listed, every probe sends 0.
-  Until then a probe runs with a USB ID of its own; the reference firmware currently uses the board's default VID:PID, which may not be used
-  for distribution.
-- **iProduct** is free text for display; hosts do not use it for identification (core §3.3). Starting it with `OEP` lets the interim clues of
-  the host guide (§4) find the probe until the project's VID:PID exists.
+- **VID:PID**: a host identifies an OEP probe automatically only by the project's USB VID:PID, `1209:4F45` (VID 0x1209, PID 0x4F45;
+  the registry's `usb`; core §3.3). A probe uses it under the conditions of PID-USE in oep-probe-arduino. A probe that enumerates with it
+  sets discoverable = 1 in fn 0's describe (so a host that opened it through another port can tell). A probe that does not sends 0; the
+  user names it or chooses its port. A port behind a USB-UART bridge, or a built-in USB serial whose descriptors the hardware fixes, cannot
+  carry the project's VID:PID.
+- **iProduct** is a name for people; nothing identifies a probe by it (core §3.3).
 - **The serial number is the unit_id** (core §3.3). A host finds a probe the user named by its unit_id this way.
 - The ports inside the device follow core §3.3: every CDC is a serial port; vendor bulk is the bulk pair of an interface with class 0xFF /
   subclass 0x4F / protocol 0x45 (give it the Microsoft OS 2.0 compatible ID `WINUSB`); HID is usage page 0xFF4F / usage 0x45, taking output
