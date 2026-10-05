@@ -31,6 +31,7 @@ def test_only_link_source_keeps_a_closed_tail():
 def test_common_tables_are_generated():
     reg, digest = gen.load()
     assert "kUsbVendorBulkSubclass = 0x4F" in gen.cpp(reg, digest)
+    assert "kUsbProjectVid = 0x1209" in gen.cpp(reg, digest) and "kUsbProjectPid = 0x4F45" in gen.cpp(reg, digest)
     assert '"mark_detail_closed"' in gen.py(reg, digest) and "COMMON" in gen.js(reg, digest)
 
 

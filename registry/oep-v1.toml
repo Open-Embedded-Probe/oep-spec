@@ -25,7 +25,8 @@
 #   [timing] [limits]  name = integer: a time (suffix _ms), a size (_bytes), a speed (_baud), or a count; the spec states it.
 #   [reference]        name = integer: a value that is not the specification's (outside the freeze).
 #   [describe_common]  name = integer: a describe TLV tag (u8, low 7 bits) every interface may use.
-#   [usb]              name = integer: a USB descriptor value (class / subclass / protocol u8, HID usage page / usage u16).
+#   [usb]              name = integer: a USB descriptor value (the project's VID / PID u16, class / subclass / protocol u8,
+#                      HID usage page / usage u16).
 #   [common.enum.<enum>]  name = integer: one value space shared by every interface (u8 unless the enum's comment says otherwise).
 #   [[interface]]      one per interface, with these keys and sub-tables only:
 #     name = string, revision = integer, fn = integer (u16; only where the fn is fixed, oep.core = 0),
@@ -122,9 +123,10 @@ features = 0x06
 implementation = 0x07
 channel_group = 0x08            # repeats, one per combination: group(u8) n(u8) n x (role(u8) channel(u16))
 
-[usb]                           # the shape of a probe's interfaces inside a device known to be OEP (core §3.3)
-# The project's USB VID:PID is listed here when it is obtained. None is listed yet, so no device is
-# identified automatically (core §3.3). Neither these values nor iProduct identify an OEP probe on their own.
+[usb]                           # USB identification and the shape of a probe's interfaces (core §3.3)
+project_vid = 0x1209            # the project's USB VID:PID: the only automatic identification of an OEP probe (core §3.3)
+project_pid = 0x4F45
+# The interfaces inside a device known to be OEP. Neither these values nor iProduct identify an OEP probe on their own.
 vendor_bulk_class = 0xFF
 vendor_bulk_subclass = 0x4F     # 'O'
 vendor_bulk_protocol = 0x45     # 'E'
@@ -263,7 +265,7 @@ profile = 0x45
 label = 0x46                    # repeats, one per channel: channel(u16) text: the firmware's fixed channel names (settings' labels: probe.config get)
 resets_on_open = 0x47
 transport = 0x49                # repeats, one per transport: index(u8) kind(u8) interface(u8, 0xFF not USB); required (0x48 reserved)
-discoverable = 0x4A             # u8: 1 = the probe also enumerates with the project's USB VID:PID (core §3.3, §7.5); 0 until that VID:PID is listed in [usb]
+discoverable = 0x4A             # u8: 1 = the probe also enumerates with the project's USB VID:PID ([usb] project_vid / project_pid; core §3.3, §7.5)
 plan_roles = 0x4B               # u32: the most role assignments the plan holds at once, every fn together (core §8)
 chip = 0x4C                     # text: the probe MCU's part and revision (optional)
 max_op_ms = 0x4D                # u32: the longest one request may take; required (core §7.5)
