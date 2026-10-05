@@ -475,7 +475,7 @@ link_sink（core §12）で流す。確かめは**使う流し方だけ**でよ�
 
 ## 18. target の電源とリセット（参考）
 
-target の電源とリセットの線は、probe の設定のスロットの項目に入れない（[案と決めた経緯](v1-open-proposals.ja.md) §10）。host が
+target の電源とリセットの線は、probe の設定のスロットの項目に入れない。host が
 label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分で扱う。probe が自分でリセットの線を使うのは、boot_reset 1 の
 スロットの、起動直後のリセットでのやり直し（[probe の設定](oep-if-probe-config.ja.md) §3.1）だけ。この節は規範ではない（線の名前の
 決まりの規範は [probe の設定](oep-if-probe-config.ja.md) §1.3）。
