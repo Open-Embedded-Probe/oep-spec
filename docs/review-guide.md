@@ -2,7 +2,7 @@
 
 [日本語](review-guide.ja.md)
 
-Status: **guide** (not normative). A map as of 2026-10-02 (before the v1 freeze. After the decisions before the freeze and the zero-base re-examination were put into the normative text, and the remaining numbers were filled in). For someone who does not yet know OEP
+Status: **guide** (not normative). A map as of 2026-10-06 (before the v1 freeze. After the decisions before the freeze and the zero-base re-examination were put into the normative text, and the remaining numbers were filled in). For someone who does not yet know OEP
 and reviews the v1 freeze, this summarises where to start reading, what is at which PATH, and what we would like looked at. PATHs are relative to the root of each repository.
 
 ## 1. What OEP is
@@ -25,7 +25,7 @@ how to write flash and chip-specific procedures are in the host.
 - Until the freeze, breaking changes go in without raising the revision (there are no users yet). After the freeze, the revision is raised.
 - **Releases**: oep-spec is pushed to main on GitHub (there are no tags. It is pointed to by commit). The reference implementations are oep-probe-arduino **0.0.28** (Arduino library
   `OpenEmbeddedProbe`, firmware per profile in the GitHub release) and oep-client-python **0.0.28** (PyPI `oep-client-python`). oep-client-js is
-  unpublished (not on npm. Only tests against the fake). Firmware and client are paired by the same minor version.
+  unpublished (not on npm. Only tests against the fake). Firmware and client are released together with the same version number (0.0.x).
 - What **the tests on real hardware** ([release-testing](release-testing.md), oep-client-python `tests/hw/`) cover: flashing, confirm / list / describe, `oep.probe.config`
   set / get / save / reboot / unset (including disable), wires (scan, attach, the round trip halt → dmi → read_block → resume. Only boards with a target connected),
   gpio, fixture uart, port_speed (only UART bridge boards), lease expiry / expired / force. The results are JSON in `tests/hw/results/`.

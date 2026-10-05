@@ -2,7 +2,7 @@
 
 [English](review-guide.md)
 
-状態: **ガイド**（規範ではない）。2026-10-02 時点の地図（v1 の凍結前。凍結前の決定とゼロベースの再検討を規範に入れ、残っていた数を埋めた後）。OEP をまだ知らない人が
+状態: **ガイド**（規範ではない）。2026-10-06 時点の地図（v1 の凍結前。凍結前の決定とゼロベースの再検討を規範に入れ、残っていた数を埋めた後）。OEP をまだ知らない人が
 v1 の凍結のレビューをするときに、どこから読めばよいか、どの PATH に何があるか、何を見てほしいかをまとめる。PATH は各リポジトリの根からの相対。
 
 ## 1. OEP とは
@@ -25,7 +25,7 @@ flash の書き方やチップ固有の手順は host にある。
 - 凍結までは破壊的な変更を revision を上げずに入れます（利用者はまだいない）。凍結後は revision を上げます。
 - **リリース**: oep-spec は GitHub の main に push 済み（タグは無い。commit で指す）。参照の実装は oep-probe-arduino **0.0.28**（Arduino ライブラリ
   `OpenEmbeddedProbe`、GitHub release に profile ごとの firmware）、oep-client-python **0.0.28**（PyPI `oep-client-python`）。oep-client-js は
-  未公開（npm に出していない。fake に対する試験だけ）。firmware と client は同じ minor 版で組にします。
+  未公開（npm に出していない。fake に対する試験だけ）。firmware と client は同じ版の番号（0.0.x）でそろえて出します。
 - **実機の試験**（[release-testing](release-testing.ja.md)、oep-client-python `tests/hw/`）が覆うもの: 焼く、confirm / list / describe、`oep.probe.config` の
   set / get / save / 再起動 / unset（disable を含む）、線（scan、attach、halt → dmi → read_block → resume の往復。target をつないだボードだけ）、
   gpio、fixture uart、port_speed（UART bridge のボードだけ）、lease の期限切れ / expired / force。結果は `tests/hw/results/` の JSON。

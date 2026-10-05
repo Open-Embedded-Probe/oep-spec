@@ -2,7 +2,7 @@
 
 [日本語](v1-rule-change-proposal-2026-10-02.ja.md)
 
-Status: **proposal to the peers, revised with their answers (not normative)**. This English version is authoritative; the Japanese version is its translation.
+Status: **agreed by the peers and applied (not normative)**: every item is in the normative text (the index gives each item's commit). This English version is authoritative; the Japanese version is its translation.
 Readers: ch32rv (Rust host and broker), WireSkein (capture recorder), bench (HIL jigs).
 Base: oep-spec 78137fb (dmseq: cdd26b4). Revision 2 folds in the three peers' answers to the first version (ad9f8be): ch32rv (checked against its a3bf2fa), WireSkein, and bench (with measurements). Each item now carries a status line, and the final answers are in "Decisions" below. Source: [the third zero-base review](v1-zero-base-review-3-2026-10-02.ja.md) (Japanese): every rule-change finding (規則) marked ★ or ○, plus the dmseq questions raised after it.
 C-11 (USB identification) is decided (no change) and is not included. Wording-only fixes that were applied separately (78137fb: C-12, C-13, C-14, C-35 and others) are not repeated.

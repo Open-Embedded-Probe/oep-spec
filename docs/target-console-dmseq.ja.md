@@ -2,7 +2,7 @@
 
 [English](target-console-dmseq.md)
 
-状態: **規範**。この文書は `oep.target.console` の mechanism 2（dmseq、[コンソール](oep-if-console.ja.md) §3）の framing を規定する。
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。この文書は `oep.target.console` の mechanism 2（dmseq、[コンソール](oep-if-console.ja.md) §3）の framing を規定する。
 この文書の原文は英語版で、日本語版はその訳である。
 理由、経緯、実測は [dmseq の記録](target-console-dmseq-notes.ja.md)（記録）にある。
 

@@ -2,7 +2,7 @@
 
 [日本語](target-console-dmseq.ja.md)
 
-Status: **normative**. This document defines the framing of mechanism 2 (dmseq) of `oep.target.console` ([console](oep-if-console.md) §3).
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). This document defines the framing of mechanism 2 (dmseq) of `oep.target.console` ([console](oep-if-console.md) §3).
 This English version is authoritative; the Japanese version is its translation.
 The reasons, the history and the measurements are in [dmseq notes](target-console-dmseq-notes.ja.md) (Japanese, record).
 
