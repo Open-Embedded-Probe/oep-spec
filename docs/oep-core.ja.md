@@ -3,8 +3,8 @@
 [English](oep-core.md)
 
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。この文書は OEP のプロトコル本体だけを定める。標準インターフェース
-（線、デバッグ、コンソール、fixture、キャプチャ、probe の設定）はそれぞれの文書が定める（§14）。決めた理由と実験の記録は
-規範ではない文書に置く（§15）。この文書と、規範ではない文書が食い違えば、この文書が正しい。
+（線、デバッグ、コンソール、fixture、キャプチャ、probe の設定）はそれぞれの文書が定める（§14）。この文書はそれだけで完結する: 読む人が規則の
+理由を必要とする所では、理由を規則と一緒に書く。ガイド（§15）は実務を足すもので、規則は足さない。この文書と、規範ではない文書が食い違えば、この文書が正しい。
 
 番号（op、tag、reject reason、status、enum）の唯一の定義は `registry/oep-v1.toml` で、この文書の表はその写しである。
 食い違えば registry が正しく、文書を直す。
@@ -303,7 +303,8 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   未解決のロックなしの要求の corr を持つものを含みうる（corr は 1 ずつ進むので予測できる）。host はそれを応答として受ける。応答の中身を信じる必要のある host は、
   生の転送が止まった口（上のとおり、自分のセッションの要求が届いた後）か、長さつきのフレームの口で要求を送る。
 - **host の受けの量**: OS のシリアルドライバは、probe の送るフレームがドライバの受けの量を超えてまとまって届くと黙って失うことがある
-  （理由: [リンクの計測](link-measurements.ja.md) §1.1）。host はシリアルの口では、未解決の要求の応答の見込み量（同時数 × フレームの上限）を
+  （理由: ドライバの読みのバッファには限りがあり、入りきらない burst はエラーなしに捨てられる。よく使われるドライバの 1 つでは約 8 KiB の burst が失われたので、
+  下の上限は余裕をとっている）。host はシリアルの口では、未解決の要求の応答の見込み量（同時数 × フレームの上限）を
   6 KiB 以下に保つ（registry の `host_serial_inflight_max_bytes`）。通知も同じ: シリアルの口で購読するとき、host は subscribe の min_bytes を小さく（2 KiB 以下、`host_serial_min_bytes_max`）保ち、probe が一度に
   送る量を自分の受けに合わせる（§11.3）。大量の転送は長さ付きフレームの口（vendor bulk）を優先する。probe の max_inflight と window は
   probe の受けの上限であって、host の受けの上限ではない。
@@ -373,8 +374,6 @@ port_speed  要求: port(u8)、baud(u32)、step(u8: 0 試す、1 決める、2 �
 7. 口を開く host は、起動時の速さで confirm が通らなければ port_speed_idle_max_ms + 1000 ms（`port_speed_confirm_extra_ms`）の間 confirm を繰り返す（前の host が
    上げた残りが戻るのを待つ）。
 8. どの速さを候補にするか、確かめの流し方、通ったとみなす基準、使用中に戻す基準は host が決める（参考: [host 開発ガイド](host-development-guide.ja.md) §17）。
-
-測った値と壊れ方の記録は [UART の速さ](uart-speed-negotiation.ja.md)、[リンクの計測](link-measurements.ja.md)。
 
 ## 4. メッセージ
 
@@ -867,12 +866,11 @@ link_source / link_sink は線の速さを測るためのもので、状態を�
 | [標準インターフェース: キャプチャ](oep-if-capture.ja.md) | `oep.fixture.logic`、`oep.fixture.analog`、`oep.fixture.capture-group` |
 | [標準インターフェース: probe の設定](oep-if-probe-config.ja.md) | `oep.probe.config` |
 
-## 15. 規範ではない文書（理由と経緯）
+## 15. 規範ではない文書（ガイド）
 
-- [core wire model v1（v0 からの差分）](v1-core-wire-delta.ja.md): この文書にまとめる前の差分と、実験の記録。
-- [セッションと排他](session-and-exclusivity.ja.md)、[能力の識別方式の比較](capability-identification-comparison.ja.md)、
-  [能力の宣言モデル](capability-declaration-model.ja.md)、[能力の名前の階層](capability-name-hierarchy.ja.md): 決めた理由。
-- [シリアルの口と永続化](probe-cdc-and-persistence.ja.md): 複数の経路、設定、起動モードの試作と実測。
-- [v1 の未合意の案](v1-open-proposals.ja.md): 決める前の案と、決めた経緯。
-- [レビューへの回答](review-answer-2026-09-26.ja.md): 第三者のレビュー。
+これらは規則を足さない。
+
+- [はじめに](getting-started.ja.md): いちばん小さい probe と host を、byte つきで。
 - [host 開発ガイド](host-development-guide.ja.md)、[probe 開発ガイド](probe-development-guide.ja.md): 実装の実務。
+- [適合](conformance.ja.md): probe と host のチェックリスト。
+- [安全とセキュリティ](security.ja.md)、[用語集](glossary.ja.md)、[版と安定性](versioning.ja.md)。

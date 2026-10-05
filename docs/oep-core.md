@@ -3,8 +3,8 @@
 [日本語](oep-core.ja.md)
 
 Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). This document defines only the protocol core of OEP. The standard interfaces
-(wire, debug, console, fixture, capture, probe settings) are defined by their own documents (§14). The reasons for the decisions and the records of experiments are
-kept in non-normative documents (§15). Where this document and a non-normative document disagree, this document is right.
+(wire, debug, console, fixture, capture, probe settings) are defined by their own documents (§14). This document is complete in itself: where a reader needs the
+reason for a rule, it is given with the rule. The guides (§15) add practice, not rules. Where this document and a non-normative document disagree, this document is right.
 
 The only definition of the numbers (op, tag, reject reason, status, enum) is `registry/oep-v1.toml`; the tables in this document are copies of it.
 Where they disagree, the registry is right and the document is corrected.
@@ -303,7 +303,8 @@ A serial port carries OEP frames and raw bytes (the target's console, etc.) on t
   the corr of an outstanding lock-free request (corr advances by one, so it can be predicted), and the host takes it as the answer. A host that must trust the contents of an answer
   sends the request on a port where raw transfer is stopped (after its session's request has arrived there, above) or on a length-prefixed port.
 - **The host's receive capacity**: the OS serial driver may silently lose frames when the frames the probe sends arrive in a burst exceeding the driver's receive capacity
-  (reasons: [link measurements](link-measurements.ja.md) (Japanese) §1.1). On serial ports, the host keeps the expected volume of answers to outstanding requests (concurrency × frame limit)
+  (reason: a driver's read buffers are finite, and a burst that does not fit is dropped without an error; on one common driver, bursts of about 8 KiB were lost,
+  so the limit below keeps a margin). On serial ports, the host keeps the expected volume of answers to outstanding requests (concurrency × frame limit)
   at 6 KiB or less (registry `host_serial_inflight_max_bytes`). Notifications likewise: when subscribing on a serial port, the host keeps the min_bytes of subscribe small (2 KiB or less, `host_serial_min_bytes_max`) and matches the amount the probe
   sends at once to its own receive capacity (§11.3). Bulk transfers prefer a length-prefixed port (vendor bulk). The probe's max_inflight and window are
   the probe's receive limits, not the host's receive limits.
@@ -373,8 +374,6 @@ port_speed  request: port(u8), baud(u32), step(u8: 0 try, 1 commit, 2 revert), v
 7. A host opening a port repeats confirm for port_speed_idle_max_ms + 1000 ms (`port_speed_confirm_extra_ms`) if confirm does not pass at the boot speed (waiting for the leftover of a previous host's
    raise to return).
 8. Which speeds to try as candidates, the flow for verification, the criterion for considering one passed, and the criterion for falling back while in use are decided by the host (reference: [host development guide](host-development-guide.md) §17).
-
-The measured values and the records of how things break are in [UART speed](uart-speed-negotiation.ja.md) (Japanese), [link measurements](link-measurements.ja.md) (Japanese).
 
 ## 4. Messages
 
@@ -867,12 +866,11 @@ Standard interfaces and independent interfaces are both defined by the following
 | [Standard interfaces: capture](oep-if-capture.md) | `oep.fixture.logic`, `oep.fixture.analog`, `oep.fixture.capture-group` |
 | [Standard interfaces: probe settings](oep-if-probe-config.md) | `oep.probe.config` |
 
-## 15. Non-normative documents (reasons and history)
+## 15. Non-normative documents (guides)
 
-- [core wire model v1 (delta from v0)](v1-core-wire-delta.ja.md) (Japanese): the deltas before they were consolidated into this document, and the records of experiments.
-- [Sessions and exclusivity](session-and-exclusivity.ja.md), [Comparison of capability identification methods](capability-identification-comparison.ja.md),
-  [Capability declaration model](capability-declaration-model.ja.md), [Hierarchy of capability names](capability-name-hierarchy.ja.md) (all Japanese): the reasons for the decisions.
-- [Serial ports and persistence](probe-cdc-and-persistence.ja.md) (Japanese): prototypes and measurements of several transports, settings, and boot modes.
-- [Open proposals for v1](v1-open-proposals.ja.md) (Japanese): the proposals before the decisions, and how they were decided.
-- [Answers to the review](review-answer-2026-09-26.ja.md) (Japanese): the third-party review.
+These add no rule.
+
+- [getting started](getting-started.md): the smallest probe and host, with bytes.
 - [host development guide](host-development-guide.md), [probe development guide](probe-development-guide.md): implementation practice.
+- [conformance](conformance.md): the checklists for a probe and a host.
+- [security and safety](security.md), [glossary](glossary.md), [versioning](versioning.md).
