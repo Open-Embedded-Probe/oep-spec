@@ -27,12 +27,15 @@ probe は:
   付けられなければ何も変えない: core §8、probe の設定 §2）;
 - max_frame を超える長さのフレームは、次の途切れまでの入力と一緒に捨てる。TCP では接続を閉じる（core §3.1）;
 - フレームの途中で `probe_frame_gap_ms` 途切れたら、TCP 以外のどの経路でも読み直す（core §3.2）;
-- report が運べるより大きい count の HID の report は捨てる（core §3.1）。
+- report が運べるより大きい count の HID の report は捨てる（core §3.1）;
+- role が要求の role でないメッセージと、ヘッダより短い要求は、答えずに捨てる（core §2.4）。
 
 host は:
 
 - 候補を解き、解けないもの、CRC が合わないもの、role を知らないもの、待っていない corr のものを捨てる（core §3.1、§11.1）;
-- 固定部分より短い応答は壊れたものとし、知らない tag と後ろは読み飛ばし、知らない status と reason は失敗とする（core §2.3、§2.4）;
+- role が要求の role のメッセージは捨て、5 byte より短い応答、ヘッダより短い出来事やデータのフレーム（core §2.4）、固定部分より短い
+  応答は壊れたものとし、知らない tag と後ろは読み飛ばし、知らない status と reason は失敗とする（core §2.3、§2.4）;
+- 送り直しにも答えが無ければ、その経路は失敗したとし、そこで何かを送る前に confirm で立て直す（か開き直す）（core §5.2）;
 - 65535 byte までのメッセージを受けられる。正しい COBS のフレームは、2 つの 0x00 の間が `cobs_frame_max_bytes` より長くならない
   （core §3.1、§3.3）;
 - 応答の文字列は、見せる前に制御文字と不正な UTF-8 を置き換える（core §2.1）。
@@ -88,7 +91,8 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
   駆動する。target の出力とぶつからないようにするのは配線の責任（[probe の設定](oep-if-probe-config.ja.md) §1）。idle の項目のある
   channel は count = 0 の scan と pins の無い attach から外れ、idle が出力の channel を名指せば unavailable cause 5、holder_kind 7
   （[線とデバッグ](oep-if-debug.ja.md) §1）。
-- **保存した設定と起動**: 保存した設定は起動のたびに host なしで線を駆動する。掛かる前のピンは MCU のリセットの状態なので、level を
+- **保存した設定と起動**: 起動したら、probe は最初の応答の前に、reserved でないすべての channel を空きの状態にする（core §8）。
+  保存した設定は起動のたびに host なしで線を駆動する。firmware が動いて設定が掛かる前のピンは MCU のリセットの状態なので、level を
   誤ると害のある線にはそれだけで保つ外付けの pull が要る。disable は宣言で、守りではない。設定に認証は無い（probe の設定 §5）。
 - **逆給電**: やり取りが失敗してから、成功するか接続を失うまで、probe は線を駆動せずに休ませ、やり取りの最中だけ駆動する。電源の
   落ちた target をピンの保護ダイオード経由で給電しないため（[線とデバッグ](oep-if-debug.ja.md) §2）。接続が閉じたら、そのピンは空きの
@@ -97,9 +101,11 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
   元に戻す。別のデバッガ越しに attach する probe は、代わりに `attach_writes_unbounded` を宣言する（debug §1）。
 - **count = 0 の scan** は空いている候補のピンを順に駆動する。配線の分からない治具に、利用者の同意なしに送らない（debug §1、参考）。
 - **治具の線**: spi-target は CS が有効な間だけ MISO を駆動し（cs_setup_ns を除く）、ソフトウェアで MISO を出し始めるなら cs_setup_ns を
-  宣言する（fixture §4）。i2c-target は SDA / SCL をオープンドレインでだけ駆動し、内部の pull-up は宣言する（fixture §3）。uart の plan は
+  宣言する（fixture §4）。i2c-target は SDA / SCL をオープンドレインでだけ駆動し、内部の pull-up は宣言し、バスの general call や 10 bit の見出しに
+  答えないよう予約のアドレスを断る（fixture §3）。uart の plan は
   TX を UART の休みの level に保つ（fixture §2）。
-- **リセットの線**はオープンドレインで引く（gpio の mode 5 / 6、attach の reset TLV）。接続を閉じても target をリセットしない（debug §2）。
+- **リセットの線**はオープンドレインで引く（gpio の mode 5 / 6、attach の reset TLV）。riscv-dm の reset の op はリセットの線を
+  動かさないので、線が動くのは host が名指した所だけ（debug §4.3）。接続を閉じても target をリセットしない（debug §2）。
 - **probe のピンからの給電**は、ピンが流せる範囲でだけ。大きいものは外付けのスイッチを介す（host ガイド §18.2）。
 - 分からない target の**ピンを探す**とき: host ガイド §19.2。
 

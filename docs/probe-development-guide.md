@@ -28,6 +28,10 @@ The host side is the [host development guide](host-development-guide.md).
 - **Opening and closing a transport changes no state.** Attachments, pins and line states stay. Resources are removed only by core §9's
   lifetime rules (explicit release / detach, and the session's share on lease expiry and force). Removing them does not reset the target.
   A released pin goes to the settings' idle state (Hi-Z by default) and is not left driven (core §8).
+- **At boot, park the pins before you answer.** Before the first answer, put every channel that is not in `reserved` in its idle state: the
+  settings' idle when they define one, otherwise Hi-Z (input, no pull) (core §8). Do not leave a pin as the MCU's start-up code or a
+  peripheral's driver left it. Until your firmware runs, the pins are in the MCU's reset state, which no firmware can change; tell users
+  that a line whose wrong level is harmful needs an external pull (probe settings §5).
 - A probe that unavoidably resets when a transport is opened declares `resets_on_open` in fn 0's describe (core §7.5).
 - Example: [implementation notes](implementation-notes.ja.md) §P1.
 
@@ -164,19 +168,27 @@ in `label` (0x46). Declare plan_roles when the plan has a limit (core §8).
 
 - max_frame: at least `min_max_frame` (64). Choose it so that one whole request of that length fits the receive path (§2). Interface limits such
   as max_length must let a request and its answer fit in max_frame.
-- window: the bytes of outstanding requests the probe can hold while it is busy for max_op_ms. A window smaller than max_frame would refuse a
-  full-size request.
-- max_inflight: the outstanding requests it accepts. The resend table keeps at least max_inflight entries with their answers (core §5.2); the
+- window: the bytes of outstanding requests the probe can hold while it is busy for max_op_ms. It is max_frame or more (core §7.1); a host
+  does not use a transport whose confirm answer breaks these bounds.
+- max_inflight: the outstanding requests it accepts, 1 or more (core §7.1). The resend table keeps at least max_inflight entries with their answers (core §5.2); the
   memory is max_inflight × the largest answer you remember. You may cap the size of a remembered answer (a resend of a larger one then gets
   result_lost).
 - On a serial port, keep in mind that hosts keep the answers they wait for at `host_serial_inflight_max_bytes` or less (core §3.4); a larger
   window does not help them.
 
-**max_op_ms** (0x4D, mandatory): the longest time one request takes, save and a flash loader included. Ops whose arguments could exceed it are
+**max_op_ms** (0x4D, mandatory): the longest time one request takes, save and a flash loader included, 1 to `max_op_ms_max` (600000 ms; a
+host does not use a probe that declares 0 or more, core §4.4). Ops whose arguments could exceed it are
 refused unsupported. Hosts wait max_op_ms + `host_wait_add_ms` for an answer that never comes, so do not declare much more than you need.
 
-**boot_id** (core §6.5): a new value at every boot. Take it from a hardware random number generator, or mix timing jitter at boot (an
-uninitialised counter, ADC noise) when there is none. Never a constant.
+**boot_id** (core §6.5): a new value at every boot. Take it, in this order of preference, from a hardware random number generator; from a
+value in non-volatile storage that you change at every boot (a counter, or a random value you save); or, with neither, from a mix of values
+that vary between boots (uninitialised RAM, ADC conversion noise, a free-running timer read when the first USB or UART activity arrives). A
+timer read at a fixed point of the start-up code reads the same at every boot and is not such a value. Never a constant, and do not leave a
+library default that is the same at every boot.
+
+**The clock** (core §2.6a): ns since boot (u64), never decreasing and never wrapping while the boot_id is the same. If the hardware counter is
+narrower than 64 bits (a 32-bit microsecond counter wraps after about 71.6 minutes), extend it in software with a wrap count, and read it
+often enough (from the main loop) not to miss a wrap.
 
 **session_id** is chosen by the host; the probe only remembers the last one and never returns it (core §6.4).
 

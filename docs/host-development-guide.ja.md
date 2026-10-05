@@ -42,6 +42,10 @@ UART bridge の probe は、いつも起動時の速さ `uart_bridge_boot_baud`�
 セッションの間だけそれを上げる。上げるかどうか、候補とその確かめ方は host が決める（§17）。それでも足りなければ、probe のより速い
 経路（ネイティブ USB）を使う。
 
+UART bridge と、それと見分けられないシリアルの口では、どの応答の待ちにも core §4.4 の転送時間を足す。その口での最初の confirm の
+応答の前は、max_frame をまだ知らない: 式には `min_max_frame`（64）を使い、その後はその口でのいちばん新しい confirm の応答の
+max_frame を使う（core §4.4）。
+
 ## 4. USB の probe の見つけ方と暫定の手がかり
 
 - 規範（core §3.3）では、host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID を持つ device だけである。その
@@ -66,12 +70,16 @@ UART bridge の probe は、いつも起動時の速さ `uart_bridge_boot_baud`�
   describe で読む。
   次のコマンドで同じ ID を使い、通れば前のコマンドのあと誰も触っていない。rejected `expired` が返ったら、lease が切れて資源が
   外れている: open からやり直し、plan、attach、購読を張り直す（黙って続けない）。`no_session` が返ったら、confirm の boot_id を
-  見て再起動か他の host かを区別し、attach の状態と target の識別を確かめ直す。
+  見て再起動か他の host かを区別し、attach の状態と target の識別を確かめ直す。同じように、最後の session_id での open に
+  resumed = 0 が返ったら、probe はそのセッションをもう知らない: 覚えた fn の対応を使う前に list し直す（core §6.5）。
 - **発見の手順**: USB の device を列挙し、プロジェクトの VID:PID を持つもの（registry に載るまでは無い）、名指した unit_id と serial
   number が同じもの、§4 の暫定の手がかりに当たるものを開く（core §3.3）。serial number が unit_id。device の中の口は interface の
   記述子で選ぶ（vendor bulk: class 0xFF / subclass 0x4F / protocol 0x45、HID: usage page 0xFF4F / usage 0x45、CDC はすべてシリアルの口）。
   開いたら最初に confirm だけを送り（応答が無ければ閉じる）、boot_id と上限を取り、describe の unit_id が serial と同じことを確かめる。
   ロック無しの監視は confirm の boot_id で再起動を知る。
+- **上限は使う前に確かめる。** confirm の応答では、max_frame は 64 以上、window は max_frame 以上、max_inflight は 1 以上。
+  この範囲を外れたら、その経路にはもう何も送らず、値を知らせる（丸めない、core §7.1）。fn 0 の describe では、max_op_ms は 1〜
+  `max_op_ms_max`（600000 ms）。0 かそれより大きければ probe は適合しない: 使わない（core §4.4、§7.5）。これで応答の待ちに上限が付く。
 - 対話型の CLI やモニターのように長く開いておくものは、keepalive か普段の要求でロックを保つ。確認のプロンプトで止まる間も
   keepalive を打ち、破壊的な手順の前ごとにセッションが生きているか（`no_session` / `locked` にならないか）を確かめる。
 - **モニターは入力を送る間だけロックを取る**（open → write → end）。読み出しはロック不要なので、モニターがロックを握り続けると、
@@ -123,6 +131,10 @@ op に自分で答え、ほかを中継するブローカーは、core §3.1 と
   - result_lost: probe が応答を覚えていない（大きすぎた、表から落ちた）。実行されたかは分からないので、状態を読み直して確かめる。
   - corr_reused: host の番号付けの誤り。
   - 立て直しの中で unsubscribe と end を送ったときは、元の要求は送り直さない。
+- **送り直しにも答えが無ければ、その経路は失敗した**（core §5.2）: その要求の結果は分からず、その経路で出ている要求もいっしょに
+  失敗する。何もなかったように次の要求を送らない。COBS を含むどの種類のフレームでも、先に立て直す: 入力が静かになるのを待ち、
+  自分の corr を持つ応答が返るまで confirm する（core §5.1）か、口を閉じて開き直す。その confirm で boot_id が変わっていれば再起動
+  （やり直す、§5）。その後、状態を変える要求を繰り返す前に状態を読む。
 
 ## 9. 断りごとに host がすること
 

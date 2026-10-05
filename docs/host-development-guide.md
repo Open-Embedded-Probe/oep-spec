@@ -47,6 +47,10 @@ backquotes are keys of `registry/oep-v1.toml`, which holds every number). port_s
 optional) raises it for the duration of a session; whether to raise it, the candidates and how to check them are the host's
 choice (§17). If that is still not enough, use a faster transport of the probe (its native USB).
 
+On a UART bridge, and on any serial port you cannot tell from one, every answer wait adds the transfer time of core §4.4. Before the
+first confirm answer on the port you do not know max_frame yet: use `min_max_frame` (64) in the formula, and after it the max_frame of
+the latest confirm answer on that port (core §4.4).
+
 ## 4. Finding a USB probe, and the interim clues
 
 - By the normative rule (core §3.3) a host identifies an OEP probe automatically only by the project's USB VID:PID, which is
@@ -75,13 +79,18 @@ choice (§17). If that is still not enough, use a faster transport of the probe 
   The next command uses the same ID; if it passes, nobody touched the probe since the previous command. If rejected
   `expired` comes back, the lease ran out and the resources were removed: start over from open and set up the plan, attach and
   subscriptions again (do not continue silently). If `no_session` comes back, look at confirm's boot_id to tell a reboot from
-  another host, and check the attach state and the target's identity again.
+  another host, and check the attach state and the target's identity again. In the same way, an open with your last session_id
+  answered resumed = 0 means the probe no longer knows that session: list again before you use a remembered fn mapping (core §6.5).
 - **Discovery procedure**: list the USB devices; open those with the project's VID:PID (none until it is in the registry), those
   whose serial number equals a named unit_id, and those that match an interim clue of §4 (core §3.3). The serial number is the
   unit_id. Choose the ports inside the device by the interface descriptors (vendor bulk: class 0xFF / subclass 0x4F / protocol 0x45;
   HID: usage page 0xFF4F, usage 0x45; every CDC: a serial port). After opening, send a confirm first and nothing else (close if
   there is no answer), take boot_id and the limits, and check that describe's unit_id equals the serial number. A monitor without
   the lock learns of a reboot from confirm's boot_id.
+- **Check the limits before you use them.** In the confirm answer, max_frame is 64 or more, window is max_frame or more and
+  max_inflight is 1 or more; outside these bounds, send nothing more on that transport and report the values (do not clamp them,
+  core §7.1). In the describe of fn 0, max_op_ms is 1 to `max_op_ms_max` (600000 ms); 0 or more than that means the probe does not
+  conform: do not use it (core §4.4, §7.5). Your answer waits are then bounded.
 - Tools that stay open for a long time (an interactive CLI, a monitor) keep the lock with keepalive or ordinary requests. Keep
   sending keepalive while waiting at a confirmation prompt, and before each destructive step check that the session is still
   alive (no `no_session` / `locked`).
@@ -139,6 +148,11 @@ per client connection).
     ran: read the state again to find out.
   - corr_reused: a numbering mistake in the host.
   - If you sent unsubscribe and end during recovery, do not resend the original request.
+- **When the resend also gets no answer, the transport has failed** (core §5.2): the outcome of that request is unknown, and the
+  requests outstanding on that transport fail with it. Do not send the next request as if nothing happened. On every kind of frame,
+  COBS included, recover first: wait for quiet input and confirm until the answer with your own corr arrives (core §5.1), or close
+  and reopen the port. A changed boot_id in that confirm means a reboot (start over, §5). Then read the state before you repeat a
+  state-changing request.
 
 ## 9. What to do for each refusal
 

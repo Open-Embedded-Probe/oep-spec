@@ -26,20 +26,24 @@ A probe conforms when it does everything in this list for the transports and int
 
 - Headers of requests and answers (§4.1, §4.2); one answer per request on the transport it came from, in order (§4.2, §4.4).
 - rejected only for what was not accepted; completed failed / partial for what was accepted and failed (§4.2).
-- The order of refusal, first reason that applies (§4.3), with the payloads of §4.3 (unavailable TLVs, unsupported tag).
+- The order of refusal, first reason that applies (§4.3), with the payloads of §4.3 (unavailable TLVs, unsupported tag); an fn named inside
+  the payload checked at the end of order 5 (§4.3).
+- Messages whose role is not a request role, and requests shorter than their header, discarded without an answer (§2.4).
 - An op the interface does not define, or an optional op the probe does not declare: unknown_operation; an optional function of an op the probe offers: unsupported (§1.2). Every op of an interface's table is required unless its document marks it optional.
 - Request TLVs: critical bit, unknown critical TLV unsupported, unknown non-critical TLV ignored, a TLV longer than known, a short TLV,
   a repeated non-repeating TLV, tags 0x7F / 0xFF (§2.2, §2.3).
 - ignored (tag 0x7F) on every completed answer that needs it, in request order, at most 16 entries with 0x00 as the 16th, room always kept (§2.3).
 - Unique TLV encoding (§2.2); booleans and text in requests checked (§2.1); experimental values not used when shipping (§2.5).
 - window / max_inflight per transport (§4.4).
+- Wrapping values: the values of one space held at once span less than a quarter of the width (§2.6).
 
 **Sessions and the lock**
 
 - One lock, the decision table of §6.2, lease restart and pause during execution (§6.1).
 - open / end / keepalive / lock_state / force / owner (§6.4); lease rounded into 1000 to 60000 ms (§6.4); session_id 0 rejected (§6.1).
 - The resend table: at least max_inflight entries, rejected answers stored, discarded at every successful open, one table per probe (§5.2).
-- Lock-free ops change no state (§6.3); boot_id changes at every boot (§6.5).
+- Lock-free ops change no state (§6.3); boot_id changes at every boot, taken from the sources of §6.5 in their order (§6.5).
+- The clock: ns since boot, never decreasing or wrapping while the boot_id is the same (§2.6a).
 - Lifetime of the session's resources on end, expiry, force, re-open and reboot (§9); resource numbers (§9).
 
 **fn 0 (`oep.core`)**
@@ -47,12 +51,15 @@ A probe conforms when it does everything in this list for the transports and int
 - Required ops: the rows marked "yes" in core §12 (confirm, list, describe, open, end, keepalive, lock_state, subscribe, unsubscribe,
   link_source, link_sink). plan_apply / plan_release when any interface has plan roles, otherwise unknown_operation (§1.2). port_speed is
   optional; when present, the whole of §3.5 (states, return conditions) and the describe tag 0x4E.
-- confirm: revision choice, the transport TLV, the refusal with the supported range (§7.1).
-- list: label-boundary matching, instance numbering, stable fn while booted (§7.2).
+- confirm: revision choice, the transport TLV, the refusal with the supported range; max_frame 64 or more, window max_frame or more,
+  max_inflight 1 or more (§7.1).
+- list: label-boundary matching, instance numbering, the answer unchanged while the boot_id is the same, count 0 with the total when first
+  is beyond the matches (§7.2).
 - describe: paging, declarations only and unchanged while the boot_id is the same, no TLV in the request (§7.3).
-- Required describe tags of fn 0: unit_id, transport (one per transport) and max_op_ms (§1.2, §7.5); plan_roles when the plan has a limit (§7.5);
+- Required describe tags of fn 0: unit_id, transport (one per transport, its interface field as §7.5 says) and max_op_ms (1 to
+  `max_op_ms_max`) (§1.2, §7.5); plan_roles when the plan has a limit (§7.5);
   discoverable sent as §7.5 says. unit_id uniqueness and invariance, transport index invariance (§7.5).
-- plan: atomic per fn, its refusals, settings plans, released pins to the idle state, taking a plan changes no pin (§8, §8.1).
+- plan: atomic per fn, its refusals, settings plans, released pins to the idle state, every channel not reserved in its idle state from boot before the first answer, taking a plan changes no pin (§8, §8.1).
 - Notifications: subscribe / unsubscribe, seq, heartbeat on fn 0, answers first and the pending limit (§11.2 to §11.4).
 
 **Timing bounds** (values in `registry/oep-v1.toml`)
@@ -69,14 +76,20 @@ A probe conforms when it does everything in this list for the transports and int
   the user's choice (§3.3); the probing rule: confirm only, then close if no valid answer (§3.3); port selection inside a known probe (§3.3);
   transport order (§3.3); exclusive open (§3.3); DTR / RTS asserted (§3.4).
 - **confirm and revision**: send the range it handles, then `min_rev = max_rev` the revision in use (§7.1); do not use an interface whose
-  revision it does not know (§2.7).
-- **Waits**: the floor of §4.4 for every request, its own link requests included; the transfer time on a UART bridge (§4.4); the receive
-  capacity on serial ports (§3.4).
+  revision it does not know (§2.7); a confirm answer outside the bounds of §7.1 (max_frame, window, max_inflight): send nothing more on that
+  transport and report the values (§7.1).
+- **Waits**: the floor of §4.4 for every request, its own link requests included; the transfer time on a UART bridge, with `min_max_frame`
+  until the first confirm answer on that transport (§4.4); a max_op_ms of 0 or above `max_op_ms_max`: do not use the probe (§4.4); the
+  receive capacity on serial ports (§3.4).
 - **Resend and recovery**: at most once with the same corr (§5.2); corr advanced by 1 per request, 0 skipped (§4.1); resync on
-  length-prefixed frames and `host_resync_wait_ms` (§5.1).
+  length-prefixed frames and `host_resync_wait_ms` (§5.1); when the resend also gets no answer, the transport has failed: recover with the
+  confirm of §5.1 on every frame kind, or reopen, before sending anything else there, and read the state before repeating a state-changing
+  request (§5.2).
 - **Sessions**: a random non-zero session_id (§6.1); the answer's lease_ms is authoritative, and keepalive extends it (§6.4); react to no_session / expired /
-  locked (§4.3, §6.2); a changed boot_id invalidates its state (§6.5); the 0x81 requests of one session on one transport (§3.3).
-- **Reading answers**: skip unknown TLVs and tags, use the first of a repeated tag, read a non-zero boolean as true (§2.1, §2.3); unknown
+  locked (§4.3, §6.2); a changed boot_id invalidates its state, and an open with its last session_id answered resumed = 0 means
+  list again (§6.5); the 0x81 requests of one session on one transport (§3.3).
+- **Reading answers**: discard messages with a request role; an answer shorter than 5 bytes, or an event or data frame shorter than its
+  header, is a broken frame (§2.4); skip unknown TLVs and tags, use the first of a repeated tag, read a non-zero boolean as true (§2.1, §2.3); unknown
   values per §2.4; read ignored and its 0x00 entry (§2.3); dispatch by role and corr (§11.1); the critical bit where the request is
   meaningless without the TLV (§2.3).
 - **Strings**: replace control characters and invalid UTF-8 before showing answer text (§2.1); compare unit_id with serial numbers and
@@ -114,6 +127,7 @@ the text disagree, the text is right (core §0 rule 4). They cover:
 | `cobs.json` | COBS encoding and whole serial-port frames, including the forms the decoder also accepts (§3.1) |
 | `headers.json` | request and answer headers and TLV encoding (§2.2, §4.1, §4.2) |
 | `confirm.json` | confirm exchanges (§7.1) |
+| `discovery.json` | list (§7.2), describe of fn 0 (§7.3, §7.5), describe past the end, and the header refusals unknown_function / unknown_operation (§4.3 order 1) |
 | `probe_config_hash.json` | the canonical form and hash of probe.config ([probe settings](oep-if-probe-config.md) §2) |
 | `refusals.json` | requests and the exact answer for refusals of §4.3 and the ignored list of §2.3 |
 
@@ -136,7 +150,7 @@ python -m oep_client.fake_serve --pty     # first line: where to open; --help li
 **Looking at a probe.** `oep dump --port <port>` from the same package shows list and describe of every interface; that client's test
 suite also checks the vectors against its own code and the fake.
 
-**Not covered yet.** There is no automated conformance suite for a probe: the vectors cover encodings and a set of refusals, not the
+**Not covered yet.** There is no automated conformance suite for a probe: the vectors cover encodings, a set of refusals and the discovery of the smallest probe, not the
 session table, the resend table, paging, plan or the interfaces' behaviour. Timing (the waits, the lease, max_op_ms, the frame gap,
 port_speed's return conditions, the attach and scan budgets) is not checked by any shared tool. The electrical rules (idle states, the
 lines while a wire does not answer, cs_setup_ns) and behaviour on real hardware need the implementer's own tests on hardware.

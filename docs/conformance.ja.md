@@ -26,20 +26,24 @@ probe は、自分が出す transport とインターフェースについてこ
 
 - 要求と答えのヘッダ（§4.1、§4.2）。要求一つに答え一つ、来た transport へ、来た順に（§4.2、§4.4）。
 - rejected は受け付けなかったものだけ。受け付けて失敗したものは completed failed / partial（§4.2）。
-- 断りの順序。最初に当てはまる理由で断る（§4.3）。payload は §4.3 のとおり（unavailable の TLV、unsupported の tag）。
+- 断りの順序。最初に当てはまる理由で断る（§4.3）。payload は §4.3 のとおり（unavailable の TLV、unsupported の tag）。payload の中で
+  指す fn は順 5 の終わりで確かめる（§4.3）。
+- role が要求の role でないメッセージと、ヘッダより短い要求は、答えずに捨てる（§2.4）。
 - インターフェースが定義しない op と、probe が宣言しない任意の op は unknown_operation、probe が持つ op の任意の機能は unsupported（§1.2）。インターフェースの表の op は、文書が任意と書かない限り必須。
 - 要求の TLV: critical の印、知らない critical TLV は unsupported、知らない非 critical TLV は ignored、知っているより長い TLV、短い TLV、
   繰り返さない TLV の繰り返し、tag 0x7F / 0xFF（§2.2、§2.3）。
 - ignored（tag 0x7F）を、それが要る completed の答えすべてに、要求の順で、最大 16 項目、16 番目は 0x00、置き場を必ず残して（§2.3）。
 - TLV の符号は一意（§2.2）。要求の真偽値と文字を確かめる（§2.1）。出荷するものは実験用の値を使わない（§2.5）。
 - window / max_inflight は transport ごと（§4.4）。
+- 一周する値: 1 つの空間で同時に持つ値の広がりは幅の 4 分の 1 未満（§2.6）。
 
 **セッションとロック**
 
 - ロックは一つ、§6.2 の判定表、lease の再開始と実行中は数えないこと（§6.1）。
 - open / end / keepalive / lock_state / force / owner（§6.4）。lease は 1000〜60000 ms に丸める（§6.4）。session_id 0 は断る（§6.1）。
 - 再送の表: 少なくとも max_inflight 件、rejected の答えも覚える、成功した open のたびに捨てる、probe に一つ（§5.2）。
-- ロック不要の op は状態を変えない（§6.3）。boot_id は起動のたびに変わる（§6.5）。
+- ロック不要の op は状態を変えない（§6.3）。boot_id は起動のたびに変わり、§6.5 の素をその順に使う（§6.5）。
+- 時計: 起動からの ns で、同じ boot_id の間、減らず一周しない（§2.6a）。
 - end、期限切れ、force、開き直し、再起動でのセッションの資源の寿命（§9）。資源の番号（§9）。
 
 **fn 0（`oep.core`）**
@@ -47,12 +51,15 @@ probe は、自分が出す transport とインターフェースについてこ
 - 必須の op: core §12 で「yes」の行（confirm、list、describe、open、end、keepalive、lock_state、subscribe、unsubscribe、
   link_source、link_sink）。plan_apply / plan_release はどれかのインターフェースが plan の役割を持つとき。持たなければ unknown_operation（§1.2）。
   port_speed は任意。あるときは §3.5 のすべて（状態、戻る条件）と describe の tag 0x4E。
-- confirm: revision の選び方、transport TLV、扱える範囲つきの断り（§7.1）。
-- list: ラベル境界での一致、instance の番号、起動中は fn が変わらない（§7.2）。
+- confirm: revision の選び方、transport TLV、扱える範囲つきの断り。max_frame は 64 以上、window は max_frame 以上、
+  max_inflight は 1 以上（§7.1）。
+- list: ラベル境界での一致、instance の番号、boot_id が同じ間は答えが変わらない、first が一致の数以上なら total と count 0
+  （§7.2）。
 - describe: ページ送り、宣言だけで boot_id が同じ間は変わらない、要求に TLV を置かない（§7.3）。
-- fn 0 の describe の必須の tag: unit_id、transport（transport ごとに一つ）、max_op_ms（§1.2、§7.5）。plan に上限があれば plan_roles（§7.5）。
+- fn 0 の describe の必須の tag: unit_id、transport（transport ごとに一つ、interface の欄は §7.5 のとおり）、max_op_ms（1〜
+  `max_op_ms_max`）（§1.2、§7.5）。plan に上限があれば plan_roles（§7.5）。
   discoverable は §7.5 のとおりに送る。unit_id の一意性と不変性、transport の index の不変性（§7.5）。
-- plan: fn ごとに不可分、その断り方、設定の plan、解放したピンは idle の状態へ、plan を取ってもピンは変わらない（§8、§8.1）。
+- plan: fn ごとに不可分、その断り方、設定の plan、解放したピンは idle の状態へ、起動したら最初の答えの前に reserved でないすべての channel を idle の状態へ、plan を取ってもピンは変わらない（§8、§8.1）。
 - 通知: subscribe / unsubscribe、seq、fn 0 の heartbeat、答えを先に送ることと溜める量の上限（§11.2〜§11.4）。
 
 **時間の上限**（値は `registry/oep-v1.toml`）
@@ -69,14 +76,19 @@ probe は、自分が出す transport とインターフェースについてこ
   利用者が選ぶ（§3.3）。試し方の規則: confirm だけを送り、正しい答えがなければ閉じる（§3.3）。OEP の probe と分かった機器の中の口の選び方（§3.3）。
   transport を試す順（§3.3）。排他で開く（§3.3）。DTR / RTS を立てる（§3.4）。
 - **confirm と revision**: 扱える範囲を送り、その後は使っている revision を `min_rev = max_rev` で送る（§7.1）。revision を知らない
-  インターフェースは使わない（§2.7）。
-- **待ち**: すべての要求に §4.4 の下限、自分のリンクの要求も含む。UART ブリッジでの転送時間（§4.4）。シリアルの口での受け取れる
-  量（§3.4）。
+  インターフェースは使わない（§2.7）。§7.1 の範囲（max_frame、window、max_inflight）を外れた confirm の答え: その transport には
+  もう何も送らず、値を知らせる（§7.1）。
+- **待ち**: すべての要求に §4.4 の下限、自分のリンクの要求も含む。UART ブリッジでの転送時間、その transport での最初の confirm の
+  答えまでは `min_max_frame` で（§4.4）。max_op_ms が 0 か `max_op_ms_max` を超える: その probe を使わない（§4.4）。シリアルの口での
+  受け取れる量（§3.4）。
 - **再送と回復**: 同じ corr で一度まで（§5.2）。corr は要求ごとに 1 進め、0 を飛ばす（§4.1）。長さつきフレームの再同期と
-  `host_resync_wait_ms`（§5.1）。
+  `host_resync_wait_ms`（§5.1）。再送にも答えが無ければその transport は失敗した: そこで何かを送る前に、どの種類のフレームでも §5.1 の
+  confirm で立て直すか開き直し、状態を変える要求を繰り返す前に状態を読む（§5.2）。
 - **セッション**: 0 でない乱数の session_id（§6.1）。答えの lease_ms が正で、keepalive が延ばす（§6.4）。no_session / expired /
-  locked への対応（§4.3、§6.2）。boot_id が変われば自分の状態は無効（§6.5）。一つのセッションの 0x81 の要求は一つの transport で（§3.3）。
-- **答えの読み方**: 知らない TLV と tag を飛ばす、繰り返された tag は最初を使う、0 でない真偽値は真と読む（§2.1、§2.3）。知らない
+  locked への対応（§4.3、§6.2）。boot_id が変われば自分の状態は無効で、最後の session_id での open に
+  resumed = 0 が返れば list し直す（§6.5）。一つのセッションの 0x81 の要求は一つの transport で（§3.3）。
+- **答えの読み方**: role が要求の role のメッセージは捨てる。5 バイトより短い答えと、ヘッダより短い出来事やデータのフレームは
+  壊れたフレーム（§2.4）。知らない TLV と tag を飛ばす、繰り返された tag は最初を使う、0 でない真偽値は真と読む（§2.1、§2.3）。知らない
   値は §2.4 のとおり。ignored とその 0x00 の項目を読む（§2.3）。role と corr で振り分ける（§11.1）。TLV が効かなければ意味のない要求では
   critical の印を付ける（§2.3）。
 - **文字列**: 答えの文字を見せる前に制御文字と不正な UTF-8 を置き換える（§2.1）。unit_id とシリアル番号、unit_id どうしは ASCII の
@@ -114,6 +126,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `cobs.json` | COBS の符号とシリアルの口のフレーム全体。復号が受け入れるもう一つの形も含む（§3.1） |
 | `headers.json` | 要求と答えのヘッダ、TLV の符号（§2.2、§4.1、§4.2） |
 | `confirm.json` | confirm のやりとり（§7.1） |
+| `discovery.json` | list（§7.2）、fn 0 の describe（§7.3、§7.5）、終わりを越えた describe、ヘッダの断り unknown_function / unknown_operation（§4.3 の順 1） |
 | `probe_config_hash.json` | probe.config の正規形と hash（[probe の設定](oep-if-probe-config.ja.md) §2） |
 | `refusals.json` | §4.3 の断り方と §2.3 の ignored の一覧について、要求とそのとおりの答え |
 
@@ -134,7 +147,7 @@ python -m oep_client.fake_serve --pty     # 最初の行が開く先。profile �
 **probe を見る。** 同じパッケージの `oep dump --port <port>` が、すべてのインターフェースの list と describe を見せる。そのクライアントの
 試験も、ベクタを自分のコードと偽の probe に対して確かめる。
 
-**まだ扱っていないもの。** probe のための自動の適合試験は無い。ベクタが扱うのは符号と一部の断り方で、セッションの表、再送の表、
+**まだ扱っていないもの。** probe のための自動の適合試験は無い。ベクタが扱うのは符号、一部の断り方、いちばん小さな probe の発見で、セッションの表、再送の表、
 ページ送り、plan、インターフェースの振る舞いは扱わない。時間（待ち、lease、max_op_ms、フレームの途切れ、port_speed の戻る条件、
 attach と scan の予算）は共有の道具では確かめていない。電気的な規則（idle の状態、wire が答えない間の線、cs_setup_ns）と実機での
 振る舞いは、実装者が自分で実機の試験をする必要がある。

@@ -29,14 +29,18 @@ The probe:
   probe settings set, nothing changes unless all of it is accepted: core §8, probe settings §2);
 - discards a frame whose length exceeds max_frame, and the input up to the next pause; on TCP it closes the connection (core §3.1);
 - restarts its reader after a pause of `probe_frame_gap_ms` inside a frame on every transport except TCP (core §3.2);
-- discards a HID report whose count is larger than the report can carry (core §3.1).
+- discards a HID report whose count is larger than the report can carry (core §3.1);
+- discards, without answering, a message whose role is not a request role and a request shorter than its header (core §2.4).
 
 The host:
 
 - decodes candidates and discards those that do not decode, whose CRC does not match, whose role is unknown or whose corr it is not waiting for
   (core §3.1, §11.1);
-- treats an answer shorter than its fixed part as broken, skips unknown tags and tails, and treats unknown status and reason values as failures
+- discards a message whose role is a request role, and treats an answer shorter than 5 bytes, an event or data frame shorter than its header
+  (core §2.4) and an answer shorter than its fixed part as broken; it skips unknown tags and tails, and treats unknown status and reason values as failures
   (core §2.3, §2.4);
+- after a resend that also got no answer, treats the transport as failed and recovers with a confirm (or reopens it) before it sends anything
+  else there (core §5.2);
 - can receive messages up to 65535 bytes; no valid COBS frame is longer than `cobs_frame_max_bytes` between its two 0x00 (core §3.1, §3.3);
 - replaces control characters and invalid UTF-8 in answer text before showing it (core §2.1).
 
@@ -92,7 +96,8 @@ A probe drives real lines. The rules that keep it from harming a target, a fixtu
   host; keeping it from meeting a target's output is the wiring's responsibility ([probe settings](oep-if-probe-config.md) §1). Channels with an
   idle item are left out of scan with count = 0 and of attach without pins, and naming one whose idle is an output is refused unavailable cause 5,
   holder_kind 7 ([wire and debug](oep-if-debug.md) §1).
-- **Saved settings and boot**: saved settings drive lines at every boot without a host; before they are applied the pins are in the MCU's reset
+- **Saved settings and boot**: at boot, before its first answer, the probe puts every channel that is not reserved in its idle state (core §8);
+  saved settings drive lines at every boot without a host; before the firmware runs and the settings are applied the pins are in the MCU's reset
   state, so a line whose wrong level is harmful needs an external pull of its own; disable is a declaration, not a protection; settings have no
   authentication (probe settings §5).
 - **Back-powering**: from a failed exchange until one succeeds or the connection is lost, the probe rests a wire's lines undriven and drives them
@@ -103,9 +108,11 @@ A probe drives real lines. The rules that keep it from harming a target, a fixtu
 - **scan with count = 0** drives every free candidate pin in turn; a host does not send it to a fixture whose wiring it does not know without the
   user's consent (debug §1, informative).
 - **Fixture lines**: spi-target drives MISO only while CS is active, apart from cs_setup_ns, and declares cs_setup_ns when it starts MISO in
-  software (fixture §4); i2c-target drives SDA / SCL open-drain only and declares any internal pull-ups (fixture §3); a uart plan holds TX at the
+  software (fixture §4); i2c-target drives SDA / SCL open-drain only, declares any internal pull-ups and refuses the reserved addresses, so that it does not answer
+  the bus's general calls or 10-bit headers (fixture §3); a uart plan holds TX at the
   UART idle level (fixture §2).
-- **The reset line** is pulled open-drain (gpio modes 5 / 6, the reset TLV of attach); closing a connection never resets the target (debug §2).
+- **The reset line** is pulled open-drain (gpio modes 5 / 6, the reset TLV of attach); the reset op of riscv-dm never drives a reset line, so a
+  line moves only where the host named it (debug §4.3); closing a connection never resets the target (debug §2).
 - **Powering a target from probe pins** only within what a pin can source; larger loads need an external switch (host guide §18.2).
 - **Finding pins** on an unknown target: host guide §19.2.
 
