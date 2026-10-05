@@ -1,20 +1,22 @@
 # USB の識別（OEP の probe をどう見分けるか）
 
+[English](usb-identity.md)
+
 状態: **ガイド**（規範ではない。規範は core §3.3、§7.5。2026-09-30。2026-10-02 に改めた: 名前や vendor class の値はほかの製品と偶然重なりうるので、
 **規範はプロジェクトの USB の VID:PID だけで OEP の probe を自動で見分ける**。iProduct と interface の subclass / protocol は見分けに使わない）。
 参照の firmware の今の形と、host が probe を見分け、覚える方法をまとめる。
-PID の使い方の規則は oep-probe-arduino の [PID-USE.md](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/PID-USE.md)。
+PID の使い方の規則は oep-probe-arduino の [PID-USE.md](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/PID-USE.md)。英語版が正で、この日本語版はその訳。
 
 ## 1. 何を ID で見分けるか
 
 USB の VID:PID で見分けるのは、「OEP の probe か」だけである（host の discovery が、すべての口を開かずに一覧を作るため）。
 何ができるか（インターフェース、ピン、上限、経路）は、口を開いて confirm / list / describe で読む（core §7）。VID:PID を機能の
-表にしない（memo「引き継がない結論」）。
+表にしない。
 
 ## 2. 参照の firmware と host
 
 - 参照の firmware（OpenEmbeddedProbe の P4 の HS の口）は `303a:0002`（arduino-esp32 の TinyUSB の既定）で列挙する。
-  今は仮の USB の ID（ボードの既定の VID:PID）で動かしていて、配布には使えない。専用の PID を取得できたら、それに切り替える予定。
+  今はこの仮の USB の ID（ボードの既定の VID:PID）で動かしていて、配布には使えない。
   serial number は unit_id（core §7.5: チップの固有の番号の小文字の 16 進。2026-09-30 までは `<MAC>-hs`）。
 - host が知らない device を自動で OEP の probe と見分けるのは、**プロジェクトの USB の VID:PID を持つ device** だけ（core §3.3）。
   その VID:PID は取得したときに registry に載る。載るまでは、規範で自動で見分けられる device は無い。

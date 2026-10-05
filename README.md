@@ -12,10 +12,10 @@ the host.
 OEP v1 is a **candidate for the freeze**. The normative text and the registry are complete (no numbers are left to be
 decided), and the reference implementations follow them and are tested on hardware. Until the freeze, breaking changes go
 in without raising the revision; what the freeze stops and what stays free is in
-[the scope of the freeze](docs/v1-freeze-decisions.md) §0.
+[versioning](docs/versioning.md), and the changes are in [CHANGELOG](CHANGELOG.md).
 
 **Language**: the English text is normative. The Japanese documents (`.ja.md`) are translations; where the two differ,
-the English text is right. Some guides and records exist only in Japanese.
+the English text is right. Every guide except release testing has an English version; many records exist only in Japanese.
 
 ## Map of the documents
 
@@ -36,12 +36,16 @@ Every document in `docs/` states its status in its first lines: **normative**, *
 
 **Guides** (not normative):
 
+- [Getting started](docs/getting-started.md): the smallest probe and host, with every byte, and what to add next.
 - [Review guide](docs/review-guide.md): what is where, the shortest reading order, and the state of every document.
 - [Conformance](docs/conformance.md): what a probe and a host must do to conform to OEP v1, how to check it, and what conformance lets an implementation claim.
-- [Project purpose and scope](docs/project-concept.md).
-- Host and probe development guides, release testing, USB identification (Japanese only:
-  [host](docs/host-development-guide.ja.md), [probe](docs/probe-development-guide.ja.md),
-  [release testing](docs/release-testing.ja.md), [USB identification](docs/usb-identity.ja.md)).
+- [Host development guide](docs/host-development-guide.md) and [probe development guide](docs/probe-development-guide.md):
+  practice and traps.
+- [Security and safety](docs/security.md): the security and safety considerations of the specification in one place.
+- [Glossary](docs/glossary.md): every defined term with its section, and the English / Japanese pairs.
+- [Versioning](docs/versioning.md): what is stable, what a revision bump means, how releases are tagged; [CHANGELOG](CHANGELOG.md).
+- [Project purpose and scope](docs/project-concept.md), [USB identification](docs/usb-identity.md),
+  [release testing](docs/release-testing.ja.md) (Japanese only).
 
 **Records** (not normative): reasons for decisions, measurements, reviews, and the history before v1. They are listed in
 [the review guide](docs/review-guide.md) §5.1; most are Japanese only. The experiments are in `experiments/`, and the
@@ -49,7 +53,8 @@ test environment for them in `tests/` ([tests/README.ja.md](tests/README.ja.md))
 
 ## How to start
 
-1. Read the [OEP core](docs/oep-core.md), then the standard interfaces you need.
+1. Build the smallest probe or host of [getting started](docs/getting-started.md), then read the [OEP core](docs/oep-core.md) and
+   the standard interfaces you need.
 2. Take the numbers from `registry/oep-v1.toml`, or copy the generated files in `generated/oep-v1/`.
 3. Try a host against the fake probe of oep-client-python (`python -m oep_client.fake_serve`, on a pty or TCP), and
    look at a probe with `oep dump --port <port>` from the same package (list and describe of every interface).

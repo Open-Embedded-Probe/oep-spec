@@ -22,6 +22,8 @@ an error for open-proposals §6 / §7. Later decisions are in [the zero-base re-
 
 The v1 freeze stops the promises that let a host and a probe mesh even when they are made separately. What is stopped and what is not is written in one place.
 
+(2026-10-06) The current statement of this promise, with what a revision bump means and how releases are tagged, is [versioning](versioning.md); this section stays as the record of 2026-10-02.
+
 ### 0.1 What is frozen
 
 | What is frozen | Where |
@@ -39,7 +41,7 @@ revision. core §2.7). Adding to the tail (optional TLVs, optional ops, events, 
 
 | What is free | Where |
 |---|---|
-| The host development guide, the probe development guide, and the reference numbers in them (speed candidates, thresholds, frame counts, windows, examples of retry counts) | [host](host-development-guide.ja.md) (Japanese), [probe](probe-development-guide.ja.md) (Japanese) |
+| The host development guide, the probe development guide, and the reference numbers in them (speed candidates, thresholds, frame counts, windows, examples of retry counts) | [host](host-development-guide.md), [probe](probe-development-guide.md) |
 | Records of measurements (appending is free. The normative text does not take numbers from them) | [link measurements](link-measurements.ja.md) (Japanese), [UART speed](uart-speed-negotiation.ja.md) (Japanese), [capture](logic-capture.ja.md) (Japanese) |
 | The contents and procedure of the tests before a release | [release-testing](release-testing.ja.md) (Japanese), oep-client-python `tests/hw/` |
 | The behaviour of the fake (the false probe) where the normative text leaves it to the probe | oep-client-python `fake.py` |

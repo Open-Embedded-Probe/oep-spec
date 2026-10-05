@@ -10,9 +10,9 @@ Open Embedded Probe（OEP）は、組み込み開発用の probe（デバッガ�
 
 OEP v1 は**凍結の候補**である。規範の文と registry は揃っていて（決めていない数は残っていない）、参照の実装はそれに従い、
 実機で試験している。凍結までは、破壊的な変更を revision を上げずに入れる。凍結で何を止め、何を自由にしておくかは
-[凍結の範囲](docs/v1-freeze-decisions.ja.md) §0。
+[版と安定性](docs/versioning.ja.md)、変更の一覧は [CHANGELOG](CHANGELOG.md)。
 
-**言語**: 規範は英語の文である。日本語の文書（`.ja.md`）は訳で、両者が食い違えば英語の文が正しい。ガイドと記録の一部は
+**言語**: 規範は英語の文である。日本語の文書（`.ja.md`）は訳で、両者が食い違えば英語の文が正しい。リリースの試験を除くガイドはどれも英語版を持つ。記録の多くは
 日本語だけである。
 
 ## 文書の地図
@@ -32,19 +32,22 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
 
 **ガイド**（規範ではない）:
 
+- [はじめに](docs/getting-started.ja.md): いちばん小さい probe と host を、すべてのバイトと一緒に。次に足すもの。
 - [レビューの手引き](docs/review-guide.ja.md): どこに何があるか、最短の読む順番、すべての文書の状態。
 - [適合](docs/conformance.ja.md): probe と host が OEP v1 に適合するために何をするか、それをどう確かめるか、適合で何を名乗れるか。
-- [プロジェクトの目的と範囲](docs/project-concept.ja.md)。
-- host と probe の開発ガイド、リリースの試験、USB の識別（日本語だけ:
-  [host](docs/host-development-guide.ja.md)、[probe](docs/probe-development-guide.ja.md)、
-  [リリースの試験](docs/release-testing.ja.md)、[USB の識別](docs/usb-identity.ja.md)）。
+- [host 開発ガイド](docs/host-development-guide.ja.md) と [probe 開発ガイド](docs/probe-development-guide.ja.md): 実務と罠。
+- [安全とセキュリティ](docs/security.ja.md): 仕様の安全とセキュリティの考え方を 1 か所に。
+- [用語集](docs/glossary.ja.md): 定めた用語とその節、英語と日本語の対応。
+- [版と安定性](docs/versioning.ja.md): 何が変わらないか、revision を上げる意味、リリースのタグ。[CHANGELOG](CHANGELOG.md)。
+- [プロジェクトの目的と範囲](docs/project-concept.ja.md)、[USB の識別](docs/usb-identity.ja.md)、[リリースの試験](docs/release-testing.ja.md)。
 
 **記録**（規範ではない）: 決めた理由、実測、レビュー、v1 より前の経緯。一覧は[レビューの手引き](docs/review-guide.ja.md) §5.1
 にある。多くは日本語だけである。実験は `experiments/` に、その試験の環境は `tests/`（[tests/README.ja.md](tests/README.ja.md)）にある。
 
 ## 始め方
 
-1. [OEP core](docs/oep-core.ja.md) を読み、次に要る標準インターフェースを読む。
+1. [はじめに](docs/getting-started.ja.md) のいちばん小さい probe か host を作り、[OEP core](docs/oep-core.ja.md) と要る標準
+   インターフェースを読む。
 2. 数は `registry/oep-v1.toml` から取るか、`generated/oep-v1/` の生成物を写して使う。
 3. host は oep-client-python の偽の probe（`python -m oep_client.fake_serve`、pty か TCP）に当てて試し、probe は同じ package の
    `oep dump --port <port>`（すべてのインターフェースの list と describe）で見る。
