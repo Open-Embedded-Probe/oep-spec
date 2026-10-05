@@ -8,12 +8,9 @@ guide and the normative text differ, the normative text is right. This English t
 version is its translation. The first steps (the smallest host, with bytes) are in [getting started](getting-started.md);
 the checklist of what a host must do is in [conformance](conformance.md) §2. For the probe side, the reference library has its own
 guides: [getting started](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/getting-started.md) and
-[writing a probe](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.md) (oep-probe-arduino). Chip-specific stories and dated measurements
-that used to be here are in the record [implementation notes](implementation-notes.ja.md) (Japanese), section H plus the
-number of the section here.
+[writing a probe](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.md) (oep-probe-arduino).
 
-The sections were renumbered on 2026-10-06 (the old numbers and the new ones are listed in [implementation notes](implementation-notes.ja.md),
-at the top). They run from the first things a host does (opening a port, frames, discovery, sessions, refusals) to the optional
+The sections run from the first things a host does (opening a port, frames, discovery, sessions, refusals) to the optional
 procedures (port speed, power and reset, finding pins, writing flash).
 
 ## 1. Opening a probe without resetting it
@@ -27,7 +24,8 @@ procedures (port speed, power and reset, finding pins, writing flash).
   probe does then undefined).
 - Do not open a probe's port at 1200 bps: several USB stacks treat opening and closing at 1200 bps as a request to enter the
   bootloader.
-- Measurements per converter and board: [implementation notes](implementation-notes.ja.md) §H1.
+- These held on every board measured on Linux: USB-UART converters with an auto-reset circuit (CH340, CH343), a built-in USB serial
+  (ESP32 USB-Serial/JTAG) and a native USB stack (RP2350). Windows and macOS were not measured.
 
 ## 2. Serial ports are always COBS; bytes outside frames are noise
 
@@ -138,7 +136,7 @@ per client connection).
 ## 8. Matching answers and resending (what core §5.1 and §5.2 require)
 
 - **Do not accept an answer whose corr does not match; discard input and resynchronise** (core §5.1). On some USB paths the
-  leftover of a cancelled transfer can arrive as the next answer ([implementation notes](implementation-notes.ja.md) §H8).
+  leftover of a cancelled transfer can arrive as the next answer (seen through a USB-over-IP layer).
   Vendor bulk, HID and TCP frames have no CRC, so the corr check is the defence there.
 - **Advance corr by 1 per request** (role 0x01 requests count too; after 65535 comes 1; 0 is not used; core §4.1). The same corr
   is used again only for a resend.
@@ -320,8 +318,7 @@ levels. **The minimal form (§17.2, no checking)** switches to one candidate, co
 short CLI. **The form that adds checks per use (§17.3)** is the full procedure for hosts that need a transfer budget (streaming
 capture, estimating write times). Both satisfy core §3.5. A host may simplify further (one candidate, one flow, skipping
 criteria). Where this differs from the normative text, the normative text is right. The numbers (5 %, 10 %, 16 frames, 3 s, 60
-frames, 32 KiB, 1 s, 2 s, 1 day, 30 days) are guides taken from measurements ([implementation notes](implementation-notes.ja.md)
-§H17.5, [UART speed](uart-speed-negotiation.ja.md) §11), not rules.
+frames, 32 KiB, 1 s, 2 s, 1 day, 30 days) are guides taken from measurements (§17.5), not rules.
 
 ### 17.1 Balance (raise or not)
 
@@ -356,7 +353,7 @@ Raising the speed costs a negotiation up front. Do not raise it without a return
 
 The lightest form that works with the handshake alone: one candidate, no checking of flows, no throughput measurement. It suits
 small two-way flows such as a console or debugging, and short CLIs (500000 passed small round trips on both converters measured,
-[implementation notes](implementation-notes.ja.md) §H17.5).
+§17.5).
 
 1. One candidate (for example 500000). If the record (§17.4) says it failed for this port + unit_id, do not raise. At the boot speed,
    send port_speed (try, verify_ms 2000, idle_ms 3000) and check that your port can produce the answer's baud (do not raise on
@@ -400,7 +397,8 @@ link_source, host → probe with link_sink (core §12). Check **only the flows y
 - Order the candidates fastest first. If the record has a speed that passed, put it first.
 - A converter that can only produce integer divisors of its clock may not produce some speeds (for example 921600): confirm does
   not come back. Look at the try answer's baud (the speed actually applied); if your port cannot produce it, drop that candidate, and
-  if confirm does not come back, wait verify_ms and go to the next candidate. Example: [implementation notes](implementation-notes.ja.md) §H17.3.
+  if confirm does not come back, wait verify_ms and go to the next candidate (for example, a converter that emulates an FTDI chip on a
+  CH552 cannot produce 921600).
 
 #### 17.3.2 The full procedure (baseline → check → in use → record)
 
@@ -507,10 +505,23 @@ after switching speed, broken frames before the first good frame at the new spee
 
 ### 17.5 Measurements
 
-The measurements behind these numbers (which converters, how many runs, how they broke) are in
-[implementation notes](implementation-notes.ja.md) §H17.5 and the raw data in [UART speed](uart-speed-negotiation.ja.md) §11. They come
-from two kinds of USB-UART converters; measurements with other converters and operating systems are welcome
-([review guide](review-guide.md) §4 item 5).
+The numbers come from repeated runs on Linux with two kinds of USB-UART converters: a CH340, and a CH552 that emulates an FTDI chip.
+They are examples, not rules; measurements with other converters (genuine FTDI, CP210x, CDC MCUs) and other operating systems are
+welcome ([review guide](review-guide.md) §4 item 5).
+
+- **How the lines broke**: only the probe → host direction broke; host → probe held up to 1500000. The CH340 lost 0 to 10 % even at
+  115200, in bursts lasting seconds, so absolute counts cannot judge a speed. The CH552 converter lost nothing at 115200 with one request
+  in flight, but 17 to 45 % with two (both directions at once).
+- **5 % (check)**: on the CH340, 1500000 broke more than 5 % in every run, while 500000 and 921600 stayed under it.
+- **10 % (in use)**: the CH340's own baseline at 115200 reached 10 %, and 921600's 3-second averages mostly stayed under it.
+- **3 s window**: 100 frames take only 0.7 s at 921600, and on a line that drops frames in bursts a frame-count window jumps.
+- **Measuring at the n of use**: the CH552 converter's failure with two in flight does not show with one.
+- **32 KiB and 1 s of probation**: on the CH340, 921600 passed the 16-frame check and then broke in the middle of a 65 KB capture read;
+  32 KiB (about 0.5 s at 921600) catches that early in the read, and 1 s keeps the probation from being too short at high speeds.
+- **2 s of settling**: right after 921600 broke, 500000 lost every frame with two in flight, though it passes when not tried right
+  after a breakdown.
+- **500000**: passed small round trips on both converters (the single candidate of §17.2). 921600 does not come out of the CH552
+  converter (it divides its clock by integers only).
 
 ## 18. Target power and reset (informative)
 
@@ -571,7 +582,6 @@ reads the labels with get (and the firmware's fixed labels, tag 0x46 of fn 0's d
 - The power channel itself may be one of the captured channels (power-up can be the trigger).
 - Whether sharing is allowed is the probe's decision (core §8.1). On a probe that does not allow it, gpio's plan_apply is rejected
   unavailable.
-- Measurements of power cycling, attach after power-up and power-up capture: [implementation notes](implementation-notes.ja.md) §H18.4.
 
 ### 18.5 Output drive strength
 
@@ -591,12 +601,11 @@ effect.
   - the reset line, which is pulled open-drain whatever the strength (modes 5 / 6, attach's reset TLV).
 - The strength of debug wires and of the UART / SPI / I2C peripheral lines is the probe's choice (the host cannot set it); see
   [probe development guide](probe-development-guide.md) §12.
-- The experiment that measured strengths on a target powered from a pin: [implementation notes](implementation-notes.ja.md) §H18.5.
 
 ## 19. Finding pins (informative)
 
 Not normative. A procedure to find the debug wire and the reset line of a target with unknown wiring connected to a probe whose pins the
-host chooses (describe's role_channels). Per-target pitfalls and measurements are in [target-scan-notes](target-scan-notes.ja.md).
+host chooses (describe's role_channels).
 oep-client-python's `oep pins` runs this procedure and keeps the knowledge per target family (wires, target_id matching, the reset vector,
 how to read options, max_speed / idle_clock) in one table (`targets.FAMILIES`). The probe knows no target.
 
@@ -651,8 +660,6 @@ how to read options, max_speed / idle_clock) in one table (`targets.FAMILIES`). 
   1 s to become active again. Read with pull-down last, and wait for activity before the next step (power-cycle if it does not come back).
 - **A halting attach right after power-up** stops before the first instruction on targets without a reset line, another way to stop early
   (§18.2).
-- A worked example with one probe and one target: [implementation notes](implementation-notes.ja.md) §H19.3, §H19.4;
-  [target-scan-notes](target-scan-notes.ja.md) §3.1.
 
 ## 20. Writing flash (the host holds the target knowledge)
 
@@ -677,8 +684,6 @@ The probe knows no target; the host does (core §13 rule 8). General rules:
 - **The probe does not reissue run or resume** ([wire and debug](oep-if-debug.md) §4.2, §4.4). If a stopped dpc is still the
   start address, the code did not run. Retry only operations that are safe to run twice (erase, writing the same page). Quirks of a
   target's resume (needing a second resumereq, not setting allresumeack) are handled by the host: read dpc and resume again if needed.
-- Target-specific details (loaders per family, erased values, examples): [implementation notes](implementation-notes.ja.md) §H20,
-  [target-scan-notes](target-scan-notes.ja.md).
 
 ## 21. The reset line
 
@@ -698,4 +703,3 @@ The probe knows no target; the host does (core §13 rule 8). General rules:
 - **Recovering a target whose firmware turned the debug pins into GPIO**: use the probe's attach with the reset TLV first. On a probe
   without it (unsupported), send the release of `oep.fixture.gpio` and the attach together in one write and retry: the window is
   short, and waiting for the release's answer before sending attach can miss it.
-- Measurements: [implementation notes](implementation-notes.ja.md) §H21.

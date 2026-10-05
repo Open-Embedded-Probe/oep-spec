@@ -7,11 +7,9 @@
 日本語版はその訳。最初の一歩（いちばん小さい host とバイト列）は [はじめに](getting-started.ja.md)、host がしなければならないことの
 チェックリストは [適合](conformance.ja.md) §2。probe の側は、参照のライブラリにも案内がある:
 [getting started](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/getting-started.ja.md) と
-[writing a probe](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.ja.md)（oep-probe-arduino）。以前ここにあったチップ固有の話と日付つきの実測は、記録の
-[実装の記録](implementation-notes.ja.md) の、H とここの節番号の節に移した。
+[writing a probe](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.ja.md)（oep-probe-arduino）。
 
-節の番号は 2026-10-06 に付け直した（古い番号と新しい番号の対応は [実装の記録](implementation-notes.ja.md) の冒頭）。host が最初にする
-こと（口を開く、フレーム、発見、セッション、断り）から、任意の手順（口の速さ、電源とリセット、ピンの探し方、flash の書き込み）の順に並ぶ。
+節は、host が最初にすること（口を開く、フレーム、発見、セッション、断り）から、任意の手順（口の速さ、電源とリセット、ピンの探し方、flash の書き込み）の順に並ぶ。
 
 ## 1. probe をリセットせずに開く
 
@@ -23,7 +21,8 @@
 - DTR を下ろしたまま使わない: DTR が low の間は送らない USB シリアルのスタックがある（core §3.4 はそのときの probe の動きを決めて
   いない）。
 - probe の口を 1200 bps で開かない: 1200 bps で開いて閉じることをブートローダに入る合図にする USB スタックがいくつもある。
-- 変換チップとボードごとの実測: [実装の記録](implementation-notes.ja.md) §H1。
+- 以上は、Linux で測ったすべてのボードで成り立った: 自動リセットの回路つきの USB-UART の変換チップ（CH340、CH343）、内蔵の USB シリアル
+  （ESP32 の USB-Serial/JTAG）、ネイティブの USB スタック（RP2350）。Windows と macOS では測っていない。
 
 ## 2. シリアルの口は常に COBS、フレームの外は雑音
 
@@ -122,7 +121,7 @@ op に自分で答え、ほかを中継するブローカーは、core §3.1 と
 ## 8. 応答の対応付けと送り直し（core §5.1 と §5.2 が求めること）
 
 - **corr が合わない応答は受け取らず、入力を読み捨てて同期し直す**（core §5.1）。USB の経路によっては、取り消した転送の残りが次の
-  応答として届くことがある（[実装の記録](implementation-notes.ja.md) §H8）。vendor bulk / HID / TCP のフレームには CRC が無いので、
+  応答として届くことがある（USB-over-IP の層を通したときに見た）。vendor bulk / HID / TCP のフレームには CRC が無いので、
   corr の照合がこの防御になる。
 - **corr は要求ごとに 1 ずつ進める**（role 0x01 の要求も数える。65535 の次は 1、0 は使わない。core §4.1）。同じ corr を使うのは
   送り直しのときだけ。
@@ -290,8 +289,7 @@ core §3.5 の port_speed は**握手だけ**を決める（op の形、口の 3
 組めるように書く。手順は 2 段にした。**最小の形（§17.2、確かめなし）**は候補 1 つを切り替えて confirm で確かめ、決めるだけ（約 50 ms）で、
 短い CLI でも使える。**用途別に確かめを足す形（§17.3）**は転送量の予算が要る host（キャプチャの流し続け、書き込みの所要時間の見積もり）の
 ための完全な手順。どちらも core §3.5 の握手を満たす。host はさらに簡略化してよい（候補 1 つ、流し方 1 つ、基準の省略など）。規範と
-食い違えば規範が正しい。数字（5 %、10 %、16 フレーム、3 秒、60 フレーム、32 KiB、1 秒、2 秒、1 日、30 日）はすべて実測（[実装の記録](implementation-notes.ja.md)
-§H17.5、[UART の速さ](uart-speed-negotiation.ja.md) §11）から取った目安で、規範ではない。
+食い違えば規範が正しい。数字（5 %、10 %、16 フレーム、3 秒、60 フレーム、32 KiB、1 秒、2 秒、1 日、30 日）はすべて実測（§17.5）から取った目安で、規範ではない。
 
 ### 17.1 釣り合い（上げるか、上げないか）
 
@@ -323,7 +321,7 @@ core §3.5 の port_speed は**握手だけ**を決める（op の形、口の 3
 ### 17.2 最小の形（確かめなし）
 
 握手だけで動く、いちばん軽い形。候補 1 つ、流し方の確かめなし、スループットの計測なし。コンソール / デバッグのような小さい双方向の
-流し方に向き、短い CLI でも使える（実測では 500000 は測った 2 種類の変換のどちらでも、小さい双方向の往復で通った、[実装の記録](implementation-notes.ja.md) §H17.5）。
+流し方に向き、短い CLI でも使える（実測では 500000 は測った 2 種類の変換のどちらでも、小さい双方向の往復で通った、§17.5）。
 
 1. 候補は 1 つ（例: 500000）。記録（§17.4）にこの口 + unit_id で「通らなかった」とあれば上げない。起動時の速さで port_speed（試す、
    verify_ms 2000、idle_ms 3000）を送り、応答の baud が自分の口で作れることを見る（rejected unsupported か作れなければ上げない。
@@ -361,8 +359,8 @@ link_sink（core §12）で流す。確かめは**使う流し方だけ**でよ�
 
 - 候補の並びは速い順。記録に通った速さがあれば、それを先頭にする。
 - 変換チップがクロックの整数分周しか作れないと、作れない速さ（例: 921600）があり、confirm が返らない。host は試すの応答の baud
-  （実際に掛かる速さ）を見て、自分の口で作れなければその候補を捨て、confirm が返らなければ verify_ms を待って次の候補へ進む。
-  例は [実装の記録](implementation-notes.ja.md) §H17.3。
+  （実際に掛かる速さ）を見て、自分の口で作れなければその候補を捨て、confirm が返らなければ verify_ms を待って次の候補へ進む
+  （例: CH552 で FTDI のチップをまねる変換は 921600 を作れない）。
 
 #### 17.3.2 完全な手順（基準 → 確かめ → 使用中 → 記録）
 
@@ -458,9 +456,22 @@ link_sink（core §12）で流す。確かめは**使う流し方だけ**でよ�
 
 ### 17.5 実測
 
-この数字の根拠の実測（どの変換チップで、何回、どう壊れたか）は [実装の記録](implementation-notes.ja.md) §H17.5、生データは
-[UART の速さ](uart-speed-negotiation.ja.md) §11。2 種類の USB-UART の変換チップから取った値で、ほかの変換チップや OS での実測を
-歓迎する（[レビューの手引き](review-guide.ja.md) §4 の 5）。
+数字は、Linux で 2 種類の USB-UART の変換チップを繰り返し測って取った: CH340 と、CH552 で FTDI のチップをまねるもの。
+測った例であって規則ではない。ほかの変換チップ（本物の FTDI、CP210x、CDC の MCU）やほかの OS での実測を歓迎する
+（[レビューの手引き](review-guide.ja.md) §4 の 5）。
+
+- **線の壊れ方**: 壊れたのは probe → host の向きだけで、host → probe は 1500000 まで持った。CH340 は 115200 でも 0〜10 % を、数秒まとめて
+  落としたので、絶対数では速さを判定できない。CH552 の変換は、同時 1 では 115200 で何も落とさなかったが、同時 2 では 17〜45 % 落とした
+  （両方向が同時に動くとき）。
+- **5 %（確かめ）**: CH340 で、1500000 はどの回も 5 % を超えて壊れ、500000 と 921600 はその下に収まった。
+- **10 %（使用中）**: CH340 自身の 115200 の基準が 10 % に届き、921600 の 3 秒平均はおおむねその下に収まった。
+- **3 秒の窓**: 100 フレームは 921600 では 0.7 秒しかなく、まとめて落とす線ではフレーム数の窓の割合が跳ねる。
+- **使う n で測る**: CH552 の変換の同時 2 での壊れは、同時 1 では見えない。
+- **試用期間の 32 KiB と 1 秒**: CH340 で、921600 は 16 フレームの確かめを通ったあと、65 KB のキャプチャの読み出しの途中で壊れた。
+  32 KiB（921600 で約 0.5 秒）は読み出しの前半でそれを拾い、1 秒は速い速さで試用期間が短くなりすぎないようにする。
+- **落ち着き待ちの 2 秒**: 921600 が壊れた直後に、500000 が同時 2 で全部失われた。壊れた直後でなければ通る速さである。
+- **500000**: 2 つの変換のどちらでも、小さい往復で通った（§17.2 の 1 候補）。CH552 の変換からは 921600 が出ない（クロックを整数で
+  しか分周しない）。
 
 ## 18. target の電源とリセット（参考）
 
@@ -518,7 +529,6 @@ label を読み（firmware の固定のラベル、fn 0 の describe の tag 0x4
   （キャプチャ §1.2 のピンの共有）。host は待っている間に、電源の channel を gpio で駆動してよい。
 - 電源の channel そのものを、取る channel の 1 つにしてよい（電源を入れた瞬間をトリガにできる）。
 - 共有を許すかは probe が決める（core §8.1）。許さない probe では、gpio の plan_apply が rejected unavailable になる。
-- 電源の入れ直し、電源を入れた後の attach、電源を入れたところの取り込みの実測: [実装の記録](implementation-notes.ja.md) §H18.4。
 
 ### 18.5 出力の強さ
 
@@ -540,12 +550,11 @@ read の応答の drive で読める。
   - リセットの線。これは強さを選ばず、オープンドレインで引く（mode 5 / 6、attach の reset TLV）。
 - debug の線と、UART / SPI / I2C の周辺の線の強さは probe が決める（host は指定できない）。debug の線の強さは
   [probe 開発ガイド](probe-development-guide.ja.md) §12。
-- ピンから給電した target で強さを測った実験: [実装の記録](implementation-notes.ja.md) §H18.5。
 
 ## 19. ピンの探し方（参考）
 
 規範ではない。配線の分からない target を、ピンを host が選ぶ probe（describe の role_channels）につないだときに、debug の線と
-リセットの線を探す手順。target ごとの落とし穴と実測は [対象ごとのスキャンの記録](target-scan-notes.ja.md) に集める。
+リセットの線を探す手順。
 oep-client-python では `oep pins` がこの手順を行い、target の系統ごとの知識（線、target_id の照合、リセットのベクタ、option の
 読み方、max_speed / idle_clock）は 1 つの表（`targets.FAMILIES`）に置く。probe は target を知らない。
 
@@ -600,8 +609,6 @@ oep-client-python では `oep pins` がこの手順を行い、target の系統�
   戻るまで 1 秒以上かかる。pull-down は最後に読み、次の段の前に活動が戻るのを待つ（戻らなければ電源を入れ直す）。
 - **電源を入れた直後の止める attach** は、リセットの線が無い target でも最初の命令の前で止まる。早く止めるもう 1 つの方法になる
   （§18.2）。
-- 1 つの probe と 1 つの target での通しの例: [実装の記録](implementation-notes.ja.md) §H19.3、§H19.4、
-  [対象ごとのスキャンの記録](target-scan-notes.ja.md) §3.1。
 
 ## 20. flash の書き込み（target の知識は host が持つ）
 
@@ -625,8 +632,6 @@ probe は target を知らず、host が知っている（core §13 の規則 8�
 - **probe は run と resume を出し直さない**（[線とデバッグ](oep-if-debug.ja.md) §4.2、§4.4）。止まった dpc が開始位置のままなら
   走っていない。二度走らせてよい操作（消去、同じページの書き込み）だけやり直す。target の resume の癖（resumereq が 2 回要る、
   allresumeack を立てない）は host が扱う: dpc を読み、要ればもう一度 resume する。
-- target ごとの細部（系統ごとのローダー、消去後の値、例）: [実装の記録](implementation-notes.ja.md) §H20、
-  [対象ごとのスキャンの記録](target-scan-notes.ja.md)。
 
 ## 21. リセットの線
 
@@ -645,4 +650,3 @@ probe は target を知らず、host が知っている（core §13 の規則 8�
 - **debug のピンを GPIO にしてしまった firmware からの回復**: まず probe の、reset TLV を付けた attach を使う。持たない probe
   （unsupported）では、`oep.fixture.gpio` の解放と attach を 1 回の書き込みにまとめて送り、再試行する: 窓が短く、解放の応答を
   待ってから attach を送ると間に合わないことがある。
-- 実測: [実装の記録](implementation-notes.ja.md) §H21。
