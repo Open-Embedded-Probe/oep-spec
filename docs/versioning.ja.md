@@ -2,8 +2,8 @@
 
 [English](versioning.md)
 
-状態: **ガイド**（規範ではない）。何が変わらないかの約束を、[凍結の範囲](v1-freeze-decisions.ja.md) §0（記録、2026-10-02）、レビューの
-手引き、core §2.7 から集めた。規則そのものは [OEP core](oep-core.ja.md)（§2.3、§2.5、§2.7、§7.1、§13）と、core と `registry/oep-v1.toml`
+状態: **ガイド**（規範ではない）。何が変わらないかの約束を、core §2.7 と、2026-10-02 に合意した凍結の
+範囲から集めた。規則そのものは [OEP core](oep-core.ja.md)（§2.3、§2.5、§2.7、§7.1、§13）と、core と `registry/oep-v1.toml`
 の冒頭にあり、このページと食い違えばそちらが正しい。§6 のリリースのタグは、維持する人の判断を待つ**案**。英語版が正で、この日本語版は
 その訳。
 
@@ -38,6 +38,29 @@ OEP v1 は凍結の候補。凍結までは、壊す変更も **どの revision 
 
 凍結の後も自由なもの: ガイドとその中の参考の数字、記録（追記は自由）、リリースの前の試験、仕様が probe に選び方を任せる所での fake の
 動き、各実装の方針と宣言する値。
+
+### 3.1 意図して固定するものと、その理由
+
+次のものは意図して固定し、伸ばさない。理由を崩す使い方があれば、それは凍結の前に直す候補になる。
+
+| 固定するもの | 理由 | もし要るなら |
+|---|---|---|
+| フレームの見出し（要求 6 / 10 byte、応答 5 byte、通知 5 / 6 byte） | 替えるのは本体の revision。confirm で revision を交渉するので将来の道は閉じない | プロトコルの revision |
+| COBS + CRC-16 / `length(u16)` / HID report の詰め方 | 経路の種類ごとに決まる | 新しい transport kind が自分の方式を定める |
+| op（u8）、TLV の tag（u8、bit 7 critical）、reject reason（u8）、出来事の kind（u8） | 足りなくなったらインターフェースを分ける。空間を広げるより名前で分ける方が host に優しい | 別の名前のインターフェース（別の fn） |
+| 要求の並びの要素に len を置かない | host は revision と describe で probe を知ってから送る（要求は probe に合わせる）。足すものは TLV | 要求の TLV |
+| 応答の固定部 | 固定部を変えるのは revision と新しい fn。足すものは TLV（伸ばし方は 1 つ） | TLV、revision |
+| link_source / link_sink の意味 | 線の試験のためにある。意味を足す理由が無い | — |
+| confirm の前の 64 byte | 交渉の前の約束。小さいほど安全 | — |
+| probe.config の項目のキー（slot u8、port u8、fn u16、channel u16） | 1 台の probe の中の数。u8 / u16 で足りる | — |
+| confirm に host の受けの上限を入れない | 応答の量は host が同時に出す要求の数で、通知の量は min_bytes で決める。probe が host の上限を知っても使い道が無い（通知に ack が無い） | confirm の非 critical の要求 TLV を後から |
+| max_frame は両方向の上限 | シリアルの口の受けの問題は 1 フレームではなく burst の量（core §3.4 の host の規則） | — |
+| DFU / firmware の更新は OEP の外（core §0） | USB の記述子にすべてある。OEP が写しを持つと版ごとに食い違う。unit_id = USB の serial は変わらないので、焼く側は個体を見失わない | `oep.probe.firmware` のような名前つきのインターフェース |
+| read_block に `max_count` の宣言や専用の理由を足さない | max_length（byte）で表せる。断りは unsupported | address_hi は予約（RV64） |
+| port_speed で probe は速さの候補を宣言しない | 通る速さは host 側の変換チップで決まり、probe からは見えない。候補は host の表 | 「試した結果」を運ぶ要求 TLV を後から |
+| ブリッジの実際の baud（整数分周のずれ）は出さない | host 側の性質で probe は知れない。応答の baud（probe の UART の実際の値）で足りる | — |
+| block の転送をまとめる op（system bus のまとめ読みなど）は足さない | read_block の意味は「target のバスを通して読む」で、手段は probe が選ぶ | riscv-dm の features ビットと op 0x09〜 |
+| 予約の番号: 長い操作、role 0x03 / 0x04、u32 の番地の dmi の step、reset の method 2、swd の 0x04 attach_under_reset、capture の 0x40 以降の値 | 使う実例が無いまま形を決めない | 予約の番号に後から定める |
 
 ## 4. revision を変えずに足せるもの
 

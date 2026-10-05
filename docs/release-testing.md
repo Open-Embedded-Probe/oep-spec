@@ -56,7 +56,7 @@ The boards are `OEP_HW_BOARDS` (a list of board-identify ids, for example `esp32
 6. port_speed (UART bridge probes only): run the `linktest` matrix under the default conditions (the current speed and the candidate speeds,
    in / out / duplex, 1 and max in flight) and record the results. **First measure the same matrix (the same n) at the boot speed as the
    baseline**, and compare the candidates' broken and lost rates with it (a CH340 drops 1 to 3 % even at 115200, so absolute counts cannot
-   decide; [link measurements](link-measurements.ja.md) (Japanese) §1.4). How to take the baseline and the thresholds: [host development
+   decide). How to take the baseline and the thresholds: [host development
    guide](host-development-guide.md) §17.3.2 (a reference procedure; core §3.5 decides only the handshake).
 7. Sessions: lease expiry, expired, force there and back.
 8. The host's receiving limit on serial ports (CDC, USB-Serial/JTAG, UART bridge): `linktest` in, with the expected amount of outstanding

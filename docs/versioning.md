@@ -2,8 +2,8 @@
 
 [日本語](versioning.ja.md)
 
-Status: **guide** (not normative). The promise of what stays stable, gathered from [the scope of the freeze](v1-freeze-decisions.md) §0 (record,
-2026-10-02), the review guide and core §2.7. The rules themselves are in [OEP core](oep-core.md) (§2.3, §2.5, §2.7, §7.1, §13) and at the top of
+Status: **guide** (not normative). The promise of what stays stable, gathered from core §2.7 and the
+scope of the freeze agreed on 2026-10-02. The rules themselves are in [OEP core](oep-core.md) (§2.3, §2.5, §2.7, §7.1, §13) and at the top of
 core and `registry/oep-v1.toml`; where this page and they differ, they are right. The release tagging in §6 is a **proposal** that waits for the
 maintainers' decision. This English text is authoritative; the Japanese version is its translation.
 
@@ -40,6 +40,29 @@ An interface that changes its fixed part or a meaning raises its revision; a cha
 
 What stays free after the freeze: the guides and the reference numbers in them, the records (appending is free), the release tests, the fake's
 behaviour where the specification leaves the choice to the probe, and every implementation's own policy and declared values.
+
+### 3.1 What is fixed on purpose, and why
+
+These are fixed on purpose and not extended. If a use breaks a reason, that is a candidate to fix before the freeze.
+
+| What is fixed | Reason | If it is needed |
+|---|---|---|
+| Frame headers (request 6 / 10 bytes, answer 5 bytes, notification 5 / 6 bytes) | Changing them is a core revision. confirm negotiates the revision, so the future path is not closed | Protocol revision |
+| COBS + CRC-16 / `length(u16)` / the packing of the HID report | Each is decided per kind of transport | A new transport kind defines its own scheme |
+| op (u8), TLV tag (u8, bit 7 critical), reject reason (u8), event kind (u8) | If they run short, split the interface: splitting by name is kinder to the host than widening the space | An interface with another name (another fn) |
+| No len on the elements of sequences in requests | The host sends after knowing the probe from the revision and describe (requests fit the probe). Additions are TLVs | Request TLVs |
+| The fixed part of answers | Changing a fixed part is a revision and a new fn. Additions are TLVs (one way to extend) | TLV, revision |
+| The meaning of link_source / link_sink | They exist to test the link; there is no reason to add meaning | — |
+| The 64 bytes before confirm | A promise before negotiation: the smaller, the safer | — |
+| The keys of probe.config items (slot u8, port u8, fn u16, channel u16) | Numbers within one probe; u8 / u16 is enough | — |
+| No host receive limit in confirm | The host sets the amount of answers by how many requests it keeps in flight, and the amount of notifications by min_bytes. The probe would have no use for the host's limit (notifications have no ack) | A non-critical request TLV of confirm later |
+| max_frame is the limit for both directions | The receive problem of serial ports is the size of a burst, not of one frame (the host rule of core §3.4) | — |
+| DFU / firmware update is outside OEP (core §0) | The USB descriptors carry everything; a copy in OEP would diverge per version. unit_id = USB serial does not change, so the flashing side does not lose the unit | A named interface such as `oep.probe.firmware` |
+| No `max_count` declaration or dedicated reason for read_block | max_length (bytes) expresses it; the refusal is unsupported | address_hi is reserved (RV64) |
+| With port_speed the probe does not declare speed candidates | The speeds that work are decided by the converter on the host's side, which the probe cannot see. The candidates are the host's table | A request TLV carrying "results tried" later |
+| The bridge's actual baud (the error of integer division) is not exposed | A property of the host's side that the probe cannot know. The answer's baud, the probe UART's actual value, is enough | — |
+| No ops to batch block transfers (system-bus bulk reads, etc.) | read_block means "read through the target's bus", and the probe chooses the means | riscv-dm features bits and ops 0x09 onwards |
+| Reserved numbers: long operations, roles 0x03 / 0x04, the dmi steps with a u32 address, reset method 2, the 0x04 attach_under_reset of swd, capture values 0x40 onwards | No form is decided while there is no actual use | Defined later in the reserved numbers |
 
 ## 4. What can be added without a revision
 
