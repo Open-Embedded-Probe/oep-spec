@@ -2,7 +2,7 @@
 
 [日本語](oep-if-capture.ja.md)
 
-Status: **normative** (2026-09-26. On 2026-09-30 the decisions before the freeze were put in: the name `oep.fixture.logic`, and the analog numbers were fixed. Reflects the [zero-base re-examination](v1-zero-base-proposal.ja.md) (Japanese) of 2026-10-01). The core is [OEP core](oep-core.md).
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md).
 The only definition of the numbers is `registry/oep-v1.toml`. The design as a logic analyser, the line between basic and extension, and the measurements behind them are in
 [capture (design and measurements)](logic-capture.ja.md) (Japanese).
 
@@ -194,7 +194,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 - `serial_done` is the number of finished segments, `write_pos` is the byte position captured so far (the position space. **Including what was discarded**: the position of the next byte to be written).
 - `flags` of status: bit0 data was dropped inside the probe (the capture queue or ring overflowed), bit1 the time base was bent
   (the same as bit2 of a segment's flags). The other bits are reserved (0). **Reset to 0 at start, cumulative for that run**. In state 6, the reason is returned with the TLV 0x01 error (u8:
-  1 DMA / peripheral, 2 storage, 3 clock, 0x40 onwards probe-specific) of the answer.
+  1 DMA / peripheral, 2 storage, 3 clock, 0x40 onwards probe-specific; registry enum `error`) of the answer.
 - **generation**: read and release put the current generation in the request. If it differs, rejected unavailable (cause 6). 0 before start.
 - If the position requested by read has already been reused (or pushed out), the position of the answer moves forward and gap is set.
   If it is a position not yet captured, it returns up to where there is data (empty if there is nothing. max = 0 is also an empty success).
@@ -262,13 +262,13 @@ refused with rejected unsupported (0x0B, the tag in the payload); if it is not c
 | 0x51 | layout | Logic: w(u8), C(u8), pos[C](u8). Analog: s(u8), o(u8), b(u8), C(u8), order[C](u8) (§1) | Both |
 | 0x52 | actual_samples | u32 | Both |
 | 0x53 | actual_segments | u32 | Both |
-| 0x54 | timing | jitter_kind(u8: 0 none / 1 fractional division / 2 software), jitter_ns(u32) | Both |
+| 0x54 | timing | jitter_kind(u8, registry enum `jitter_kind`: 0 none / 1 fractional division / 2 software), jitter_ns(u32) | Both |
 | 0x57 | skew | role(u8), skew_ns(u32). One per channel (channels with a delay of 0 may be omitted) | Analog |
 | 0x55 | scale | role(u8), zero(i32, value), scale_nv(i32, nV per 1 value. Negative is an inverting frontend). One per channel. A linear expression to the voltage at the probe's input pin (§1.2) | Analog |
 | 0x56 | blocking_ms | u32 (the expected time the probe does not answer while capturing. If 0, it answers) | Both |
 | 0x58 | frontend_used | role(u8), frontend(u8: the number of the frontend of describe). One per channel. The meaning of the value (measurable range, attenuation) is decided by the declaration of that frontend | Analog |
-| 0x5A | rate_accuracy | how(u8: 0 nominal value calculated from the division, 1 measured value), ppm(u32: a guide to the uncertainty of actual_rate, 0 is unknown). A guide to whether the time scale factor between tracks should be aligned | Both |
-| 0x59 | reference | source(u8: 0 supply, 1 internal, 2 external), mv(u32), how(u8: 0 nominal, 1 measured). The reference voltage of the ADC. With an ADC whose reference is the supply, the meaning of the same raw value changes with the supply voltage. The linear expression of scale is a conversion that assumes this voltage | Analog |
+| 0x5A | rate_accuracy | how(u8, enum `rate_accuracy_how`: 0 nominal value calculated from the division, 1 measured value), ppm(u32: a guide to the uncertainty of actual_rate, 0 is unknown). A guide to whether the time scale factor between tracks should be aligned | Both |
+| 0x59 | reference | source(u8, enum `reference_source`: 0 supply, 1 internal, 2 external), mv(u32), how(u8, enum `reference_how`: 0 nominal, 1 measured). The reference voltage of the ADC. With an ADC whose reference is the supply, the meaning of the same raw value changes with the supply voltage. The linear expression of scale is a conversion that assumes this voltage | Analog |
 | 0x7F | ignored | A sequence of tag(u8) (the ignored common to all contexts of core §2.3) | Both |
 
 ### 3.4 Notifications (core §11)
@@ -337,7 +337,7 @@ Repeat (a long time without breaks, at the host's pace)
 Streaming (1 analog channel, 44.1 kHz)
   plan_apply(analog: role0 = GPIO16)
   configure(mode=3, rate=44100, frontend(role 0, number 2))
-    → actual_rate 44642/1 etc. (as in [design](logic-capture.ja.md) §7.4, it does not come out as requested), layout s=16 o=0 b=12
+    → actual_rate 44642/1 etc. (it does not come out as requested; reasons: [design](logic-capture.ja.md) (Japanese) §7.4), layout s=16 o=0 b=12
   subscribe(analog, min_bytes=1024, max_delay_ms=20) → start → data arrives
 ```
 

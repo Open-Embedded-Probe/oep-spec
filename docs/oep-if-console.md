@@ -2,7 +2,7 @@
 
 [日本語](oep-if-console.ja.md)
 
-Status: **normative** (2026-09-26. Reflects the [zero-base re-examination](v1-zero-base-proposal.ja.md) (Japanese) of 2026-10-01). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§1 positioned
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§1 positioned
 streams, §2 debug connections). The only definition of the numbers is `registry/oep-v1.toml`. The thinking and the reasons are in
 [console streams](console-stream.ja.md) (Japanese).
 
@@ -73,7 +73,7 @@ of the mechanism.
   (during a long request on another connection, reading on this connection continues. core §7.5 max_op_ms). To avoid contending with abstract commands for DATA0, the host puts a whole abstract-command sequence into one dmi request
   ([wire and debug](oep-if-debug.md) §4.1). "The hart is halted" is seen by the probe in DMSTATUS: whether the host halts or runs the hart inside a dmi request
   (even if the debugger writes the haltreq / resumereq of dmcontrol itself), the probe keeps reading (resumes) while the hart is running. The interval at which the probe
-  checks DMSTATUS is 20 ms or less (after the host halts it raw, the probe may read DATA0 only within that interval).
+  checks DMSTATUS is 20 ms or less (registry `console_dmstatus_poll_ms`; after the host halts it raw, the probe may read DATA0 only within that interval).
   The host need not use the resume op of riscv-dm for the console's sake.
 
 | mechanism | Name | Direction | Definition |

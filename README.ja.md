@@ -26,7 +26,7 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
   [コンソール](docs/oep-if-console.ja.md)（framing: [dmseq](docs/target-console-dmseq.ja.md)）、[fixture](docs/oep-if-fixture.ja.md)、
   [キャプチャ](docs/oep-if-capture.ja.md)、[probe の設定](docs/oep-if-probe-config.ja.md)。
 - [registry/oep-v1.toml](registry/oep-v1.toml): v1 の wire 上のすべての数の唯一の定義。`tools/oepgen1.py` がそこから
-  `generated/oep-v1/`（C++、Python、JS）を作る。`python3 tools/oepgen1.py --check` で同期を確かめる。
+  `generated/oep-v1/`（C++、C、Python、JS）を作る。`python3 tools/oepgen1.py --check` で同期を確かめる。
 - [tests/vectors/](tests/vectors/): 機械で読める試験のベクタ（フレーム、ヘッダ、confirm、CRC、probe.config の hash、断り方）。
   `tools/oepvectors1.py` が文書から計算する。
 
@@ -53,7 +53,8 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
 参照の実装:
 
 - [oep-probe-arduino](https://github.com/Open-Embedded-Probe/oep-probe-arduino): Arduino のライブラリ `OpenEmbeddedProbe` と
-  probe の firmware。
+  probe の firmware。そのガイドの[始め方](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/getting-started.ja.md)と
+  [probe の書き方](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.ja.md)は、動く probe までの短い道である。
 - [oep-client-python](https://github.com/Open-Embedded-Probe/oep-client-python): Python の host
   （`pip install oep-client-python`）、`oep` の命令と偽の probe。
 

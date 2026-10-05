@@ -29,7 +29,7 @@ Every document in `docs/` states its status in its first lines: **normative**, *
   [console](docs/oep-if-console.md) (framing: [dmseq](docs/target-console-dmseq.md)), [fixture](docs/oep-if-fixture.md),
   [capture](docs/oep-if-capture.md), [probe settings](docs/oep-if-probe-config.md).
 - [registry/oep-v1.toml](registry/oep-v1.toml): the only definition of every number on the v1 wire.
-  `tools/oepgen1.py` generates `generated/oep-v1/` (C++, Python, JS) from it; `python3 tools/oepgen1.py --check` verifies they
+  `tools/oepgen1.py` generates `generated/oep-v1/` (C++, C, Python, JS) from it; `python3 tools/oepgen1.py --check` verifies they
   are in sync.
 - [tests/vectors/](tests/vectors/): machine-readable test vectors (frames, headers, confirm, CRCs, the probe.config hash,
   refusals), computed from the text by `tools/oepvectors1.py`.
@@ -58,7 +58,8 @@ test environment for them in `tests/` ([tests/README.ja.md](tests/README.ja.md))
 Reference implementations:
 
 - [oep-probe-arduino](https://github.com/Open-Embedded-Probe/oep-probe-arduino): the Arduino library `OpenEmbeddedProbe`
-  and probe firmware.
+  and probe firmware. Its guides [getting started](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/getting-started.md) and
+  [writing a probe](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.md) are a short path to a working probe.
 - [oep-client-python](https://github.com/Open-Embedded-Probe/oep-client-python): the Python host
   (`pip install oep-client-python`), the `oep` command and a fake probe.
 

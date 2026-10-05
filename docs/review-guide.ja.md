@@ -93,8 +93,8 @@ flash の書き方やチップ固有の手順は host にある。
 | PATH | 中身 |
 |---|---|
 | `registry/oep-v1.toml` | **v1 の wire 上の全数値の唯一の定義**（op、TLV の tag、reject reason、status、enum、timing、limits、USB の識別、インターフェースの名前と revision） |
-| `tools/oepgen1.py` | registry から C++ ヘッダ、Python、JS のモジュールを生成し、番号の規則（core §2）を検査する。`python3 tools/oepgen1.py --check` で同期を確かめる |
-| `generated/oep-v1/oep_v1_registry.{h,py,js}` | 生成物。probe と client はこれを写して使う（`OepRegistry.h`、`oep_client/registry.py`） |
+| `tools/oepgen1.py` | registry から C++ ヘッダ、C ヘッダ、Python、JS のモジュールを生成し、番号の規則（core §2）を検査する。`python3 tools/oepgen1.py --check` で同期を確かめる |
+| `generated/oep-v1/oep_v1_registry.{h,py,js}`、`oep_v1_registry_c.h` | 生成物（C ヘッダは同じ値を `#define` のマクロで持つ）。probe と client はこれを写して使う（`OepRegistry.h`、`oep_client/registry.py`） |
 | `tests/registry_v1/` | registry と生成物の試験（`cd tests && uv run pytest registry_v1`） |
 
 ### 5.3 そのほか

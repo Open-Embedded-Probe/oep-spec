@@ -2,7 +2,7 @@
 
 [English](oep-if-fixture.md)
 
-状態: **規範**（2026-09-26。2026-10-01 に[ゼロベースの再検討](v1-zero-base-proposal.ja.md)を反映）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
 ストリーム）。番号の唯一の定義は `registry/oep-v1.toml`。キャプチャは [キャプチャ](oep-if-capture.ja.md)。
 
 | 名前 | revision | 役割 | plan の role |
@@ -84,10 +84,10 @@
 - configure の TLV 0x01 format（u8）: bit0-1 データ長（0 = 8、1 = 7）、bit2-3 パリティ（0 なし、1 偶数、2 奇数）、bit4 ストップ
   ビット（0 = 1、1 = 2）。無ければ 8N1。未定義の値（bit0-1 の 2 / 3、bit2-3 の 3、bit5-7。後の revision が定めうる、core §2.5）と、宣言（formats）に
   無い値は rejected unsupported（受け取ったままの tag）。host は critical で送る（黙って 8N1 にならないため）。baud は実現できる値を返し、要求から
-  ±5% を超えて外れれば rejected unsupported（payload `0x00`）。ピンの無い fn（plan に RX も TX も無い）の configure は rejected
+  ±5%（registry の `uart_baud_tolerance_pct`）を超えて外れれば rejected unsupported（payload `0x00`）。ピンの無い fn（plan に RX も TX も無い）の configure は rejected
   unavailable（cause 6）。
 - **status**（ロック不要）: 何が掛かっているか（`uart_configured`）と実際の baud / format。読むだけの host が知るため。uart 項目の
-  baud は set の時に範囲で確かめるが、実際の分周は plan で UART が動くときに決まる。そのとき ±5% を超えれば既定（115200 8N1）に
+  baud は set の時に範囲で確かめるが、実際の分周は plan で UART が動くときに決まる。そのとき ±5% を超えれば既定（115200 8N1、registry の `uart_default_baud`）に
   して configured = 3 で知らせる。
 - **ストリームは plan が作り、plan を解くと消える**。セッションの configure も plan を解くと消える。受信は plan から（configure の前は
   `oep.probe.config` の uart 項目があればその値、無ければ 115200 8N1）、セッションに関係なく貯める。configure をやり直しても貯めた分と位置はそのまま
@@ -138,7 +138,7 @@ read_rx で取り出す。
   length と違う書き込みは捨て、errors を 1 増やす（待ちは続く）。mode 2 で、最初の byte（長さ L）が 0 か max_length を超える、または
   続く byte の数が L と違う書き込みは捨て、errors を 1 増やす。mode 3 の書き込みは捨て、errors を 1 増やす。
 - read_rx は、いちばん古いフレームを取り出して返す（無ければ count 0）。state 0 では rejected unavailable（cause 6）。pending は、
-  取り出した後に残っている数（255 で止める）。列に queue_depth 個あるときに次のフレームが来たら、その新しいフレームを捨て、errors を
+  取り出した後に残っている数（255 で止める。registry の `fixture_count_max`）。列に queue_depth 個あるときに次のフレームが来たら、その新しいフレームを捨て、errors を
   1 増やす（rx_frames には数えない）。列の深さは describe の queue_depth。
 - preload_tx は mode 3 だけ。count は 1〜max_length（0 は malformed）。slots は置いた数の通し番号（u8、一周する）。未読の置き場は
   queue_depth 個まで。すべて埋まっているときの preload_tx は何も置かずに rejected unavailable（cause 2）。controller が
@@ -187,7 +187,7 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   割って切り上げた数で、length で止める。length を超えた分は捨て、errors を 1 増やす（その転送は、bits を実際に来た数のまま、data を
   length までにして積む）。列に queue_depth 個あるときに終わった転送は積まずに捨て、errors を 1 増やす（transactions には数える）。
   length を超え、かつ列があふれた転送は errors を 2 増やす。read_rx はいちばん古いものを返す（無ければ count 0）。state 0 では rejected
-  unavailable（cause 6）。pending は取り出した後の残り（255 で止める）。
+  unavailable（cause 6）。pending は取り出した後の残り（255 で止める。`fixture_count_max`）。
 - status: state 0 未設定、1 動いている。armed は転送を待っているか。queued（255 で止める）、transactions（終わった転送の累計）、
   errors（あふれ、未 arm、length 超過をそれぞれ 1 と数えた累計、u32）。
 - reset は configure 直後と同じ状態に戻す（列、待ち、累計を消す。mode と bit_order は保つ）。state 0 では rejected unavailable（cause 6）。

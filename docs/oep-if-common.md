@@ -2,7 +2,7 @@
 
 [日本語](oep-if-common.ja.md)
 
-Status: **normative** (2026-09-26. Reflects the [zero-base re-examination](v1-zero-base-proposal.ja.md) (Japanese) of 2026-10-01). The core is [OEP core](oep-core.md). This document defines the parts that several standard interfaces use in the same form.
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md). This document defines the parts that several standard interfaces use in the same form.
 The parts are not the core. They take effect for a standard interface only when that interface says it uses the part
 (independent interfaces are free to use the same parts). The only definition of the numbers is `registry/oep-v1.toml`.
 

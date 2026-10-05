@@ -2,7 +2,7 @@
 
 [English](oep-core.md)
 
-状態: **規範**（v1 を固める候補、2026-09-26。2026-10-01 に[ゼロベースの再検討](v1-zero-base-proposal.ja.md)を反映）。この文書は OEP のプロトコル本体だけを定める。標準インターフェース
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。この文書は OEP のプロトコル本体だけを定める。標準インターフェース
 （線、デバッグ、コンソール、fixture、キャプチャ、probe の設定）はそれぞれの文書が定める（§14）。決めた理由と実験の記録は
 規範ではない文書に置く（§15）。この文書と、規範ではない文書が食い違えば、この文書が正しい。
 
@@ -206,6 +206,8 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **host の受け方（COBS）**: 口を開いた直後から最初の 0x00 までと、0x00 から次の 0x00 までを、どちらもフレームの候補として解く
   （開く前に送られたバイトや、開いた直後に落ちたバイトで前の 0x00 が届かないことがある）。解けない候補、CRC の合わない候補、
   role か corr の合わないフレーム（§11.1）は、シリアルの生のバイト（雑音）として捨てる。応答が来ないことは時間切れだけで判断する。
+  （参考）正しい COBS のフレームは、2 つの 0x00 の間に 65796 byte より多くを持たない（registry の `cobs_frame_max_bytes`: 65535 byte の message とその CRC-16、
+  254 byte ごとに COBS の code の 1 byte）。だから、それより長くなった候補は、閉じの 0x00 を待たずに生のバイトとして捨ててよい。
 - **USB の束ね方**（vendor bulk）: host は、書き込みの長さが wMaxPacketSize の倍数なら長さ 0 の転送を続ける。probe は、送り
   終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか最後の 1 byte を別の転送に分ける。
   続きがすぐ来るときは倍数のままでよい。
@@ -216,10 +218,11 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **OEP の要求に自分で答える端点は probe である**。何が運び、後ろに何があるかによらない（たとえば TCP で OEP を出し、別のデバッガを動かすプログラム）。probe の規則はすべてそれに掛かる。要求を OEP の probe に中継するだけのブローカーは、その probe に対しては host である。
 - **セッションの op に自分で答える中継のブローカー**（confirm、open、end、keepalive、lock_state）で、ほかの要求をすべて 1 つの OEP の probe に中継するものは、自分の describe を持たない: それが中継する fn 0 の describe は probe のもの。confirm の transport TLV では index 0xFF（「describe に無い」）を返す。probe に対しては host である。それらのセッションの op の規則はすべて、その応答に掛かる。
 - **TCP の経路**: TCP で待ち受ける probe は、待ち受けの socket 1 つを fn 0 の describe の経路 1 つとして並べる（kind 6、interface 0xFF）。その socket で受けた接続はどれも、confirm の transport TLV でその index を返す。§3.3、§4.4、§7.1、§11.4 が経路ごとに掛ける規則（セッションの 0x81 の要求は 1 つの経路で、max_frame / window / max_inflight、使っている revision、通知の送り先）は、受けた接続ごとに別々に掛かる。
+  probe が待ち受ける TCP の port と、host が TCP の probe を見つける方法は、この仕様の外である。
 
 ### 3.2 フレームの送り方
 
-- host は **1 つのフレームを 1 回の書き込みで送り**、フレームの途中で 100 ms 以上止めない。
+- host は **1 つのフレームを 1 回の書き込みで送り**、フレームの途中で 100 ms（`host_frame_pause_max_ms`）以上止めない。
 - シリアルの口、vendor bulk、HID では、フレームの途中で 200 ms（`probe_frame_gap_ms`）入力が途切れたら、probe は読み取りを最初からやり直す。**TCP ではやり直さない。** TCP は区切りを失わず、流れの壊れた TCP の接続は閉じる。
 
 ### 3.3 複数の経路
@@ -243,8 +246,8 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **ほかの device とシリアルの口**: 上の 2 つに当たらない USB の device とシリアルの口は、host が自分で扱い方を持つものか、利用者が
   明示して選んだものだけを開く。
 - **探りの規則**: host が見分けずに開く device と口（名指した device、利用者の選んだ口、host が自分で扱う device、暫定の手がかりで
-  見つけた device）では、host が最初に送るのは confirm（§7.1）だけである（§5.2 の 1 回の送り直しを含む）。confirm の待ち時間
-  （§4.4。confirm には引数で決まる時間が無いので 1000 ms と転送の時間）が過ぎても正しい confirm の応答が来なければ（送り直したときは、送り直した
+  見つけた device）では、host が最初に送るのは confirm（§7.1）だけである（§5.2 の 1 回の送り直し、registry の `resend_max` を含む）。confirm の待ち時間
+  （§4.4。confirm には引数で決まる時間が無いので 1000 ms（`host_wait_add_ms`）と転送の時間）が過ぎても正しい confirm の応答が来なければ（送り直したときは、送り直した
   confirm の待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。ただし UART bridge（transport の
   kind 1）の口では、送り直しの代わりに §3.5 の host の義務 7 の間 confirm を繰り返してよい（前の host が上げた速さの残りを待つため。
   送るのは confirm だけで、その間に正しい応答が来なければ閉じる）。正しい confirm の応答とは、送った
@@ -282,6 +285,8 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   次の候補の始まりになる。**0x00 だけで中身の無い候補**（フレームの閉じの 0x00 の後に何も来ないとき、0x00 の連続）は区切りで
   あり、200 ms 途切れても生のバイトにしない。0x00 の外で来たバイトはすぐ生のバイトとして扱う。
 - **生のバイトの行き先**: probe がその口に結んだ流れ（どの流れを結ぶかは probe の設定が決める。結んでいなければ捨てる）。
+  （参考）上の受け方により、0x00 の後に来た生のバイトは、次の 0x00 が来るか入力が 200 ms 途切れたときに初めて結んだ流れに届く。だから結んだ流れは
+  文字の流れに向く。0x00 を含む二進の流れは、0x00 ごとに最長 200 ms 遅れる。
 - **probe の送り方**: 応答と通知は `0x00 <COBS> 0x00`。1 つの口の送信は 1 つの書き手が行い、フレームの途中に生のバイトを挟ま
   ない（フレームは生のバイトより先に出してよく、生のバイトどうしの順は保つ）。
 - **生の転送を止める口**: ロックを持つセッションの要求（ロックを取った open と、その session_id の role 0x81 の要求）が 1 つでも
@@ -289,9 +294,12 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   生のバイトを捨てる。ロックの要らない要求だけが来た口と、ほかの経路でセッションが動いている口は止めない。セッションが終わった
   後、どこから生の転送を再開するかは、口に結んだ流れを定める設定が決める。
 - host は、生のバイトの中に正しいフレームに見えるものが偶然現れても、role と corr の照合（§11.1）で捨てる。
+  （参考）この照合は、わざと作ったフレームは止めない。生の転送が止まっていない口では、target の出力が、CRC の合ったフレームで、
+  未解決のロックなしの要求の corr を持つものを含みうる（corr は 1 ずつ進むので予測できる）。host はそれを応答として受ける。応答の中身を信じる必要のある host は、
+  生の転送が止まった口（上のとおり、自分のセッションの要求が届いた後）か、長さつきのフレームの口で要求を送る。
 - **host の受けの量**: OS のシリアルドライバは、probe の送るフレームがドライバの受けの量を超えてまとまって届くと黙って失うことがある
-  （[リンクの計測](link-measurements.ja.md) §1.1）。host はシリアルの口では、未解決の要求の応答の見込み量（同時数 × フレームの上限）を
-  6 KiB 以下に保つ。通知も同じ: シリアルの口で購読するとき、host は subscribe の min_bytes を小さく（2 KiB 以下）保ち、probe が一度に
+  （理由: [リンクの計測](link-measurements.ja.md) §1.1）。host はシリアルの口では、未解決の要求の応答の見込み量（同時数 × フレームの上限）を
+  6 KiB 以下に保つ（registry の `host_serial_inflight_max_bytes`）。通知も同じ: シリアルの口で購読するとき、host は subscribe の min_bytes を小さく（2 KiB 以下、`host_serial_min_bytes_max`）保ち、probe が一度に
   送る量を自分の受けに合わせる（§11.3）。大量の転送は長さ付きフレームの口（vendor bulk）を優先する。probe の max_inflight と window は
   probe の受けの上限であって、host の受けの上限ではない。
 
@@ -342,22 +350,22 @@ port_speed  要求: port(u8)、baud(u32)、step(u8: 0 試す、1 決める、2 �
      フレームが来るまでの壊れは数えない）。
   3. 決めた後、その口に正常なフレームが idle_ms 来ない。idle_ms は正常なフレームを受けた時と応答を送った時から数え直す（要求を実行して
      いる間は進まない。lease と同じ、§6.1）。
-  4. 決めた後、正常なフレームを挟まず壊れが 3 つ続いた。
+  4. 決めた後、正常なフレームを挟まず壊れが 3 つ続いた（registry の `port_speed_broken_max`）。
   5. セッションが終わった（end、lease の期限切れ、force で持ち主が替わった）。end と force は応答を送ってから戻る。
 - 試しと決めるの間、セッションの資源とロックは変わらない。生の転送（§3.4）はセッションの間止まっている。
 
 **host の義務**
 
 1. UART bridge（transport kind 1）の口から、ロックを持って送る。
-2. 試すの応答を受けたら、要求した baud（作れなければ応答の baud）に切り替え、20 ms 以上待ってから confirm で新しい速さを確かめる。
+2. 試すの応答を受けたら、要求した baud（作れなければ応答の baud）に切り替え、20 ms 以上（registry の `port_speed_switch_wait_ms`）待ってから confirm で新しい速さを確かめる。
 3. verify_ms のうちに決めるを送るか、送らずに probe が戻るのを待つ（verify_ms 経過後に起動時の速さで confirm）。
 4. 上げている間は keepalive か他の要求を idle_ms の半分より短い間隔で送る。
-5. 上げた速さで応答が待ち時間（§4.4）に来なければ、起動時の速さに戻して confirm を繰り返す（port_speed_idle_max_ms + 1000 ms を上限）。
+5. 上げた速さで応答が待ち時間（§4.4）に来なければ、起動時の速さに戻して confirm を繰り返す（port_speed_idle_max_ms + 1000 ms を上限。registry の `port_speed_confirm_extra_ms`）。
    probe がまだ上げた速さに居ても、起動時の速さの confirm は probe に壊れとして届き、正常を挟まず 3 つで戻る（戻る条件 4）ので収束する。
    通れば（boot_id が同じなら戻っただけ、違えば再起動）そのセッションでは起動時の速さで続ける。上限の間 confirm が通らなければ
    リンクの失敗（上げた速さに戻って待ち直すことはしない）。
 6. 戻すの応答を受けたら、または end の応答を受けたら、起動時の速さに切り替える。
-7. 口を開く host は、起動時の速さで confirm が通らなければ port_speed_idle_max_ms + 1000 ms の間 confirm を繰り返す（前の host が
+7. 口を開く host は、起動時の速さで confirm が通らなければ port_speed_idle_max_ms + 1000 ms（`port_speed_confirm_extra_ms`）の間 confirm を繰り返す（前の host が
    上げた残りが戻るのを待つ）。
 8. どの速さを候補にするか、確かめの流し方、通ったとみなす基準、使用中に戻す基準は host が決める（参考: [host 開発ガイド](host-development-guide.ja.md) §7）。
 
@@ -460,7 +468,7 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 ### 5.1 区切りの立て直し（長さつきのフレーム）
 
 長さつきのフレーム（vendor bulk、HID、TCP）で、host は、corr の合わない応答、あり得ない長さ（max_frame を超える）、途中で
-止まったフレーム（続きが 200 ms 来ない。TCP を除く: TCP ではフレームの途中の休みは普通のことで、host はそのフレームを読み続ける、§3.2）を見たら、入力が 50 ms 静かになるまで読み捨て、confirm を送って自分の corr の応答が返ることを
+止まったフレーム（続きが 200 ms 来ない。TCP を除く: TCP ではフレームの途中の休みは普通のことで、host はそのフレームを読み続ける、§3.2）を見たら、入力が 50 ms（`resync_quiet_ms`）静かになるまで読み捨て、confirm を送って自分の corr の応答が返ることを
 確かめてから再開する。応答の末尾の TLV が途中で切れていたら、その応答は壊れている。通知が流れ続けて入力が静かにならないときは、
 unsubscribe と end を確かめずに送ってよい（二度実行しても害がない）。COBS のフレームは CRC で壊れたものを捨てられるので、
 この手順は要らない。
@@ -469,7 +477,7 @@ unsubscribe と end を確かめずに送ってよい（二度実行しても害
 
 ### 5.2 送り直しと重複排除
 
-- 応答が壊れたか来なかったとき、host は**同じ corr で 1 回送り直してよい**（状態を変える要求も）。セッションが口を持っている間
+- 応答が壊れたか来なかったとき、host は**同じ corr で 1 回送り直してよい**（registry の `resend_max`。状態を変える要求も）。セッションが口を持っている間
   （§3.4、生の転送は止まっている）に届いた壊れたフレームは、待っている答えのものとして扱ってよく、待ち時間を待たずに送り直してよい。立て直しの中で unsubscribe
   と end を送ったときは、セッションが終わっているので、元の要求は送り直さない。
 - probe は、最後のセッションの要求（role 0x81）について、直近の max_inflight 個以上の (corr, fn, op, 要求の payload の CRC-32,
@@ -540,7 +548,7 @@ probe は、ロックの有無、最後の session_id、その ID のロック�
   付けてよい。probe は最後の session_id と一緒に owner を覚え（別の session_id の open で置き換わり、同じ session_id の再開では
   owner が付いていれば置き換え、無ければ前のまま）、ロックが持たれている間、lock_state の応答と rejected locked の payload の後ろに
   TLV 0x01 owner で付ける（owner が無ければ付けない）。**session_id は返さない**（返すと他の host がその ID で再開でき、force なしで奪える）。owner は表示のためだけのもので、
-  probe は解釈しない。
+  probe は解釈しない。（参考）owner は lock_state でどの host からも読めるので、host は秘密を入れない。
 - **force**: 他のセッションがロックを持っていても奪う。probe は、前のセッションに対して期限切れと同じ後始末をしてから（§9）
   ロックを渡す。force は認証ではなく、取り違えを防ぐだけのものである。
 
@@ -585,7 +593,7 @@ entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
   `oep` と書く）。空の prefix はすべてに一致する。exact なら完全一致だけ（空の prefix は何にも一致しない）。`oep.core`（fn 0）も最初の
   entry として数える。要求の flags の bit 1〜7 は予約: どれかが立った要求は rejected unsupported（payload の tag 0x00、§2.5）。
 - 名前は 1〜64 byte、使える文字は `a-z 0-9 - .`（§13）。
-- instance は、同じ名前のインターフェースが複数あるときの見分け。**同じ (名前, revision) のインターフェースを fn の昇順に 0 から振る**。probe は同じ名前の口の
+- instance は、同じ名前のインターフェースが複数あるときの見分け。**同じ (名前, revision) のインターフェースを fn の昇順に 0 から振る**。probe は同じ名前のインターフェースの
   順を firmware の版を越えて保つ（保存した設定が (name, instance, revision) でインターフェースを指すため）。flags は予約（0）。
 - 文字で 1 つのインターフェースを指すとき（CLI、設定のファイル、ログ）は `name#instance` と書く（instance はこの値、0 から。
   `#0` は省いてよい）。例: `oep.fixture.uart#1` は 2 つめの `oep.fixture.uart`。
@@ -635,7 +643,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | tag | 名前 | 値 |
 |---:|---|---|
 | 0x40 | firmware | text |
-| 0x41 | model | text。probe の種類（同じ firmware を載せた同じ種類のハードウェアで同じ値。個体では変わらない）。**小文字の `a-z 0-9 -`**、1〜32 byte。project のものでない model は、作り手の逆 DNS の名前の `.` を `-` に替えたもので始める（例 `com-example-probe1`） |
+| 0x41 | model | text。probe の種類（同じ firmware を載せた同じ種類のハードウェアで同じ値。個体では変わらない）。**小文字の `a-z 0-9 -`**、1〜32 byte（registry の `model_max_bytes`）。project のものでない model は、作り手の逆 DNS の名前の `.` を `-` に替えたもので始める（例 `com-example-probe1`） |
 | 0x42 | unit_id | 個体の ID。**必須**。text で 1〜32 byte、使える文字は `a-z 0-9 -` だけ（チップの固有の番号を小文字の 16 進にしたもの、など）。同じ probe の経路を host がまとめるのに使うので、どの経路の describe でも同じ値を返す。USB の serial number と同じ（§3.3）。host が probe を名指す値（アドレス `oep://<unit_id>/<スロットの名前>`、[probe の設定](oep-if-probe-config.ja.md) §1.1） |
 | 0x43 | channels | u16。channel の数 |
 | 0x44 | reserved | base(u16)、bitmap。bit i が立っていれば、channel base+i は probe が自分で使っていてインターフェースに割り当てない channel |
@@ -732,7 +740,7 @@ plan は **fn ごと**に持つ。
 - 保存した設定（インターフェースが定める）から入れた資源は、セッションの資源ではない。
 - **資源の番号は u16 で、probe で 1 つの空間**（connection、ストリームなど、インターフェースが番号で指すものすべて。別のインター
   フェースの資源を渡されたら rejected unavailable cause 6）。新しい資源を作るたびに 1 から順に進め、65535 の次は 1（§2.6）。閉じた
-  番号は十分離れてから再利用してよい（直近に閉じた 1024 個の番号は使わない）。失敗した作成（attach が
+  番号は十分離れてから再利用してよい（直近に閉じた 1024 個の番号は使わない。registry の `resource_reuse_distance`）。失敗した作成（attach が
   失敗した、同じ場所の再 open）は番号を消費しない。閉じた資源の番号を使った要求は rejected no_connection。一周の後は古い番号が
   別の資源を指しうる: host は no_connection を受けた番号を捨て、長く持つ番号は一覧の op（connections、streams）で確かめる。
 
@@ -783,7 +791,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
   1 つだけ。
 - **まとめて送る条件**: min_bytes バイトたまるか、最初のバイトから max_delay_ms 経ったら送る。0 はその条件を使わない。両方 0 なら
   あるだけすぐ送る。
-- fn 0 を購読するとハートビートが来る。周期は max_delay_ms（0 なら 1000 ms）。probe は 100 ms より短いハートビートの周期を 100 ms に切り上げてよい。
+- fn 0 を購読するとハートビートが来る。周期は max_delay_ms（0 なら 1000 ms、`heartbeat_default_ms`）。probe は 100 ms より短いハートビートの周期を 100 ms（`heartbeat_min_ms`）に切り上げてよい。
 - 流れの量の予算（クレジット）は持たない。host や線が遅れた分は probe の中で押し出され、インターフェースの payload
   （ストリームの位置など）か seq の抜けで分かる。
 

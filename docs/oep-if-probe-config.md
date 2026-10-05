@@ -2,7 +2,7 @@
 
 [日本語](oep-if-probe-config.ja.md)
 
-Status: **normative** (restructured on 2026-09-29. Reflects the [zero-base re-examination](v1-zero-base-proposal.ja.md) (Japanese) of 2026-10-01). The core is [OEP core](oep-core.md). The only definition of the numbers is `registry/oep-v1.toml`. The history and
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md). The only definition of the numbers is `registry/oep-v1.toml`. The history and
 experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.md) (Japanese).
 
 | Name | revision | Role |
@@ -38,7 +38,7 @@ experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.m
   with the settings. The host uses both together. core §7.3: describe is only a declaration). text: 1 to 32 bytes (registry `limits.label_max_bytes`) of valid UTF-8 without C0 control characters (0x00 to 0x1F) or 0x7F. Otherwise rejected malformed.
 - **uart**: applies the equivalent of configure at the point the plan of that fn (`oep.fixture.uart`) gets RX or TX (whether by the settings plan or by a session's plan_apply).
   set goes through even without a plan (it is applied when a plan is attached). A session's configure wins over this item until the plan is released or
-  the probe reboots. baud is checked at set for the realisable value, and if it deviates by more than ±5%, rejected unsupported.
+  the probe reboots. baud is checked at set for the realisable value, and if it deviates by more than ±5% (registry `uart_baud_tolerance_pct`), rejected unsupported.
   format has the same values as the TLV format of configure (an unused value or a reserved bit is rejected unsupported, core §2.5). configure on an fn without pins is, as now,
   rejected unavailable (unchanged even with the item). The line coding of a CDC port is not mirrored onto the fixture UART (only OEP's configure and this item
   take effect).
@@ -309,3 +309,16 @@ describe is only a declaration (core §7.3). The state is in state (§3.3).
 | 0x42 | slots_max | u8. The number of slots that can be registered (0 does not handle slots) |
 | 0x43 | bind_modes | Bits of a u32: bit0 last-reset, bit1 manual, bit2 mixed. A probe that handles bind always sets bit0 and bit1 |
 | 0x44, 0x45 | — | Reserved (formerly slot_state / bind_state. Moved to the state op) |
+
+## 5. Safety (informative)
+
+This section adds no rule. It gathers what the rules above mean for the lines a probe drives.
+
+- **Saved settings drive lines without a host.** At every boot the probe applies the saved idle (mode 3 / 4 drives its output), the plan, and the at boot attach with its
+  boot_reset (§2, §3.1), whether or not a host is there.
+- **Before the settings are applied, the pins are in the MCU's reset state.** From power-on or reset until the firmware applies idle, while the firmware is being updated,
+  and when the firmware is broken, the probe drives nothing the settings define. A line whose wrong level is harmful (for example one that switches the target's power) needs an
+  external pull-up or pull-down that holds it at its safe level on its own.
+- **disable is the user's declaration, not a protection.** A host that holds the lock can unset it (§2) and then use the channel.
+- **Settings have no authentication.** Any host that takes the lock can change and save them, including by force (core §6.4); on TCP the core's rule for trusted connections
+  applies (core §3.1).

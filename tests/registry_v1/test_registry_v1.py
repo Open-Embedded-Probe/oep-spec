@@ -17,6 +17,7 @@ def test_numbering_rules_hold():
 def test_generated_files_match_the_registry():
     reg, digest = gen.load()
     assert (gen.OUT / "oep_v1_registry.h").read_text() == gen.cpp(reg, digest)
+    assert (gen.OUT / "oep_v1_registry_c.h").read_text() == gen.c(reg, digest)
     assert (gen.OUT / "oep_v1_registry.py").read_text() == gen.py(reg, digest)
     assert (gen.OUT / "oep_v1_registry.js").read_text() == gen.js(reg, digest)
 

@@ -2,7 +2,7 @@
 
 [English](oep-if-capture.md)
 
-状態: **規範**（2026-09-26。2026-09-30 に凍結前の決定を入れた: 名前 `oep.fixture.logic`、アナログの番号を確定。2026-10-01 に[ゼロベースの再検討](v1-zero-base-proposal.ja.md)を反映）。本体は [OEP core](oep-core.ja.md)。
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)。
 番号の唯一の定義は `registry/oep-v1.toml`。ロジアナとしての設計、基本と拡張の線引き、根拠の実測は
 [キャプチャ（設計と実測）](logic-capture.ja.md)。
 
@@ -194,7 +194,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 - `serial_done` は終わった区画の数、`write_pos` は取り終えたバイト位置（position の空間。**捨てた分を含む**: 次に書くバイトの位置）。
 - status の `flags`: bit0 probe の中でデータを落とした（取り込みのキューやリングがあふれた）、bit1 時間の基準が曲がった
   （区画の flags の bit2 と同じ）。ほかのビットは予約（0）。**start で 0 に戻し、その回の累積**。state 6 のときは応答の TLV 0x01 error（u8:
-  1 DMA / ペリフェラル、2 置き場、3 時計、0x40〜 probe 固有）で理由を返す。
+  1 DMA / ペリフェラル、2 置き場、3 時計、0x40〜 probe 固有。registry の enum `error`）で理由を返す。
 - **generation**: read と release は今の世代を要求に置く。違えば rejected unavailable（cause 6）。start 前は 0。
 - read で要求した位置がもう使い回されていれば（または押し出されていれば）、応答の position が先に進み、gap が立つ。
   まだ取れていない位置なら、あるところまで返す（何もなければ空。max = 0 も空の成功）。
@@ -262,13 +262,13 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 | 0x51 | layout | ロジック: w(u8)、C(u8)、pos[C](u8)。アナログ: s(u8)、o(u8)、b(u8)、C(u8)、order[C](u8)（§1） | 両方 |
 | 0x52 | actual_samples | u32 | 両方 |
 | 0x53 | actual_segments | u32 | 両方 |
-| 0x54 | timing | jitter_kind(u8: 0 なし / 1 分数分周 / 2 ソフトウェア)、jitter_ns(u32) | 両方 |
+| 0x54 | timing | jitter_kind(u8、registry の enum `jitter_kind`: 0 なし / 1 分数分周 / 2 ソフトウェア)、jitter_ns(u32) | 両方 |
 | 0x57 | skew | role(u8)、skew_ns(u32)。チャネルごとに 1 つ（遅れが 0 のチャネルは省いてよい） | アナログ |
 | 0x55 | scale | role(u8)、zero(i32、値)、scale_nv(i32、1 値あたりの nV。負は反転する frontend)。チャネルごとに 1 つ。probe の入力ピンの電圧への 1 次式（§1.2） | アナログ |
 | 0x56 | blocking_ms | u32（取っている間 probe が答えない時間の見込み。0 なら答える） | 両方 |
 | 0x58 | frontend_used | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。値の意味（測れる範囲、減衰）はその frontend の宣言で決まる | アナログ |
-| 0x5A | rate_accuracy | how(u8: 0 分周から計算した公称値、1 測った値)、ppm(u32: actual_rate の不確かさの目安、0 は不明)。トラック間で時間の倍率を合わせ込むべきかの目安 | 両方 |
-| 0x59 | reference | source(u8: 0 電源、1 内部、2 外部)、mv(u32)、how(u8: 0 公称、1 測った)。ADC の基準電圧。電源が基準の ADC では、同じ生の値の意味が電源電圧で変わる。scale の 1 次式はこの電圧を前提にした換算 | アナログ |
+| 0x5A | rate_accuracy | how(u8、enum `rate_accuracy_how`: 0 分周から計算した公称値、1 測った値)、ppm(u32: actual_rate の不確かさの目安、0 は不明)。トラック間で時間の倍率を合わせ込むべきかの目安 | 両方 |
+| 0x59 | reference | source(u8、enum `reference_source`: 0 電源、1 内部、2 外部)、mv(u32)、how(u8、enum `reference_how`: 0 公称、1 測った)。ADC の基準電圧。電源が基準の ADC では、同じ生の値の意味が電源電圧で変わる。scale の 1 次式はこの電圧を前提にした換算 | アナログ |
 | 0x7F | ignored | tag(u8) の並び（core §2.3 の全文脈共通の ignored） | 両方 |
 
 ### 3.4 通知（core §11）
@@ -337,7 +337,7 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 ストリーミング（アナログ 1 チャネル、44.1 kHz）
   plan_apply(analog: role0 = GPIO16)
   configure(mode=3, rate=44100, frontend(role 0, 番号 2))
-    → actual_rate 44642/1 など（[設計](logic-capture.ja.md) §7.4 のとおり要求どおりにはならない）、layout s=16 o=0 b=12
+    → actual_rate 44642/1 など（要求どおりにはならない。理由: [設計](logic-capture.ja.md) §7.4）、layout s=16 o=0 b=12
   subscribe(analog, min_bytes=1024, max_delay_ms=20) → start → データが届く
 ```
 

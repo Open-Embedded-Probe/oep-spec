@@ -2,7 +2,7 @@
 
 [日本語](oep-core.ja.md)
 
-Status: **normative** (candidate for fixing v1, 2026-09-26. Reflects the [zero-base re-examination](v1-zero-base-proposal.ja.md) (Japanese) of 2026-10-01). This document defines only the protocol core of OEP. The standard interfaces
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). This document defines only the protocol core of OEP. The standard interfaces
 (wire, debug, console, fixture, capture, probe settings) are defined by their own documents (§14). The reasons for the decisions and the records of experiments are
 kept in non-normative documents (§15). Where this document and a non-normative document disagree, this document is right.
 
@@ -206,6 +206,8 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 - **How the host receives (COBS)**: from right after opening the port up to the first 0x00, and from one 0x00 to the next 0x00, are both decoded as candidate frames
   (bytes sent before the port was opened, or bytes dropped right after opening, may mean the leading 0x00 never arrives). Candidates that do not decode, candidates whose CRC does not match,
   and frames whose role or corr does not match (§11.1) are discarded as raw serial bytes (noise). The absence of an answer is determined only by timeout.
+  (Informative) No valid COBS frame has more than 65796 bytes between its two 0x00 (registry `cobs_frame_max_bytes`: a 65535-byte message and its CRC-16,
+  with one COBS code byte per 254 bytes), so a candidate that grows longer can be discarded as raw bytes without waiting for its closing 0x00.
 - **USB bundling** (vendor bulk): if the length of a write is a multiple of wMaxPacketSize, the host follows it with a zero-length transfer. When the probe has finished
   sending and nothing follows, if the last transfer is a multiple of wMaxPacketSize, it either sends a zero-length transfer or splits the last 1 byte into a separate transfer.
   If more follows immediately, it may stay a multiple.
@@ -216,10 +218,11 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 - **An endpoint that answers OEP requests itself is a probe**, whatever carries it and whatever is behind it (for example a program that serves OEP on TCP and drives another debugger). Every probe rule applies to it. A broker that only relays requests to an OEP probe is a host towards that probe.
 - **A relaying broker that answers the session ops itself** (confirm, open, end, keepalive, lock_state) and relays every other request to one OEP probe has no describe of its own: fn 0's describe it relays is the probe's. In the transport TLV of its confirm it reports index 0xFF ("not in describe"). Towards the probe it is a host. Every rule on those session ops applies to its answers.
 - **TCP transports**: a probe that listens on TCP lists each listening socket as one transport in the describe of fn 0 (kind 6, interface 0xFF). Every connection accepted on that socket reports that index in the transport TLV of confirm. The rules that §3.3, §4.4, §7.1 and §11.4 apply per transport (the 0x81 requests of a session on one transport, max_frame / window / max_inflight, the revision in use, where notifications go) apply to each accepted connection separately.
+  Which TCP port a probe listens on, and how a host finds a probe on TCP, are outside this specification.
 
 ### 3.2 Sending frames
 
-- The host **sends one frame in one write**, and does not pause for 100 ms or more in the middle of a frame.
+- The host **sends one frame in one write**, and does not pause for 100 ms (`host_frame_pause_max_ms`) or more in the middle of a frame.
 - On serial ports, vendor bulk and HID, if input stops for 200 ms (`probe_frame_gap_ms`) in the middle of a frame, the probe restarts the read from the beginning. **On TCP it does not.** TCP does not lose boundaries, and a TCP connection whose stream is broken is closed.
 
 ### 3.3 Several transports
@@ -243,8 +246,8 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 - **Other devices and serial ports**: of the USB devices and serial ports that fit neither of the 2 cases above, the host opens only those it has its own way of handling, or those the user
   has chosen explicitly.
 - **The probing rule**: on a device or port the host opens without having identified it (a named device, a port the user chose, a device the host handles on its own, a device found by
-  a temporary clue), the first thing the host sends is a confirm (§7.1) only (including the single resend of §5.2). When the wait for the confirm
-  (§4.4; confirm has no time set by its arguments, so 1000 ms plus the transfer time) has passed without a valid confirm answer (when resent, when the wait for the resent
+  a temporary clue), the first thing the host sends is a confirm (§7.1) only (including the single resend of §5.2, registry `resend_max`). When the wait for the confirm
+  (§4.4; confirm has no time set by its arguments, so 1000 ms (`host_wait_add_ms`) plus the transfer time) has passed without a valid confirm answer (when resent, when the wait for the resent
   confirm has passed without one), the host closes the device or port and sends nothing else. On a UART bridge port (transport
   kind 1), however, the host may repeat the confirm for the time of host obligation 7 in §3.5 instead of the single resend (to wait out a rate a previous host raised;
   it sends confirms only, and closes the port when no valid answer has come by then). A valid confirm answer is a completed answer with the same corr as the sent
@@ -282,6 +285,8 @@ A serial port carries OEP frames and raw bytes (the target's console, etc.) on t
   the start of the next candidate. **A candidate of 0x00 only with no contents** (nothing follows the closing 0x00 of a frame; consecutive 0x00) is a delimiter,
   and is not turned into raw bytes even after a 200 ms pause. Bytes arriving outside 0x00 are treated as raw bytes immediately.
 - **Where raw bytes go**: to the flow the probe has bound to that port (which flow is bound is decided by the probe's settings. If nothing is bound, they are discarded).
+  (Informative) By the receiving rule above, raw bytes that follow a 0x00 reach the bound flow only when the next 0x00 arrives or input pauses for 200 ms. A bound flow therefore
+  suits text; a binary stream that contains 0x00 is delayed by up to 200 ms at each 0x00.
 - **How the probe sends**: answers and notifications are `0x00 <COBS> 0x00`. Transmission on one port is done by one writer, and raw bytes are not interleaved
   in the middle of a frame (a frame may go out before raw bytes, and the order among raw bytes is kept).
 - **Ports where raw transfer stops**: on a port where even one request of the session that holds the lock (the open that took the lock, and the role 0x81 requests with that session_id)
@@ -289,9 +294,12 @@ A serial port carries OEP frames and raw bytes (the target's console, etc.) on t
   port. Ports where only lock-free requests arrived, and ports while a session is running on another transport, are not stopped. Where raw transfer resumes from after the session
   ends is decided by the settings that define the flow bound to the port.
 - Even if something that looks like a valid frame appears by chance in the raw bytes, the host discards it through the role and corr matching (§11.1).
+  (Informative) That matching does not stop a frame made on purpose. On a port where raw transfer is not stopped, the target's output can contain a frame with a valid CRC and
+  the corr of an outstanding lock-free request (corr advances by one, so it can be predicted), and the host takes it as the answer. A host that must trust the contents of an answer
+  sends the request on a port where raw transfer is stopped (after its session's request has arrived there, above) or on a length-prefixed port.
 - **The host's receive capacity**: the OS serial driver may silently lose frames when the frames the probe sends arrive in a burst exceeding the driver's receive capacity
-  ([link measurements](link-measurements.ja.md) (Japanese) §1.1). On serial ports, the host keeps the expected volume of answers to outstanding requests (concurrency × frame limit)
-  at 6 KiB or less. Notifications likewise: when subscribing on a serial port, the host keeps the min_bytes of subscribe small (2 KiB or less) and matches the amount the probe
+  (reasons: [link measurements](link-measurements.ja.md) (Japanese) §1.1). On serial ports, the host keeps the expected volume of answers to outstanding requests (concurrency × frame limit)
+  at 6 KiB or less (registry `host_serial_inflight_max_bytes`). Notifications likewise: when subscribing on a serial port, the host keeps the min_bytes of subscribe small (2 KiB or less, `host_serial_min_bytes_max`) and matches the amount the probe
   sends at once to its own receive capacity (§11.3). Bulk transfers prefer a length-prefixed port (vendor bulk). The probe's max_inflight and window are
   the probe's receive limits, not the host's receive limits.
 
@@ -342,22 +350,22 @@ port_speed  request: port(u8), baud(u32), step(u8: 0 try, 1 commit, 2 revert), v
      frame at the new speed, are not counted).
   3. After committing, no valid frame arrives on that port for idle_ms. idle_ms restarts whenever a valid frame is received and whenever an answer is sent (it does not advance while a request is being
      executed. Same as the lease, §6.1).
-  4. After committing, 3 broken candidates in a row with no valid frame in between.
+  4. After committing, 3 broken candidates in a row with no valid frame in between (registry `port_speed_broken_max`).
   5. The session ended (end, lease expiry, the owner changed by force). For end and force, it returns after sending the answer.
 - Between trying and committing, the session's resources and lock do not change. Raw transfer (§3.4) is stopped for the duration of the session.
 
 **Host obligations**
 
 1. Send from a UART bridge (transport kind 1) port, holding the lock.
-2. On receiving the answer to try, switch to the requested baud (or the baud of the answer if it could not be produced), wait 20 ms or more, then verify the new speed with confirm.
+2. On receiving the answer to try, switch to the requested baud (or the baud of the answer if it could not be produced), wait 20 ms or more (registry `port_speed_switch_wait_ms`), then verify the new speed with confirm.
 3. Within verify_ms, either send commit, or do not send it and wait for the probe to return (confirm at the boot speed after verify_ms has elapsed).
 4. While raised, send keepalive or other requests at intervals shorter than half of idle_ms.
-5. If an answer does not arrive within the wait time (§4.4) at the raised speed, return to the boot speed and repeat confirm (up to port_speed_idle_max_ms + 1000 ms).
+5. If an answer does not arrive within the wait time (§4.4) at the raised speed, return to the boot speed and repeat confirm (up to port_speed_idle_max_ms + 1000 ms, registry `port_speed_confirm_extra_ms`).
    Even if the probe is still at the raised speed, a confirm at the boot speed reaches the probe as broken candidates, and it returns after 3 with no valid frame in between (return condition 4), so this converges.
    If it passes (same boot_id means it merely returned; different means a reboot), continue at the boot speed for that session. If confirm does not pass within the limit, it is a
    link failure (do not go back to the raised speed and wait again).
 6. On receiving the answer to revert, or on receiving the answer to end, switch to the boot speed.
-7. A host opening a port repeats confirm for port_speed_idle_max_ms + 1000 ms if confirm does not pass at the boot speed (waiting for the leftover of a previous host's
+7. A host opening a port repeats confirm for port_speed_idle_max_ms + 1000 ms (`port_speed_confirm_extra_ms`) if confirm does not pass at the boot speed (waiting for the leftover of a previous host's
    raise to return).
 8. Which speeds to try as candidates, the flow for verification, the criterion for considering one passed, and the criterion for falling back while in use are decided by the host (reference: [host development guide](host-development-guide.ja.md) (Japanese) §7).
 
@@ -460,7 +468,7 @@ the interface's index, etc.), except that there 0x01 is supported, the refusal o
 ### 5.1 Recovering the delimiting (length-prefixed frames)
 
 On length-prefixed frames (vendor bulk, HID, TCP), when the host sees an answer whose corr does not match, an impossible length (exceeding max_frame), or a frame that
-stopped midway (no continuation for 200 ms; not on TCP, where a pause inside a frame is normal and the host keeps reading that frame, §3.2), it discards input until it has been quiet for 50 ms, sends confirm, and verifies that the answer with its own corr comes back
+stopped midway (no continuation for 200 ms; not on TCP, where a pause inside a frame is normal and the host keeps reading that frame, §3.2), it discards input until it has been quiet for 50 ms (`resync_quiet_ms`), sends confirm, and verifies that the answer with its own corr comes back
 before resuming. If the TLVs at the end of an answer are cut off midway, that answer is broken. When notifications keep flowing and the input does not become quiet,
 it may send unsubscribe and end without verifying (executing them twice does no harm). COBS frames can discard broken ones by the CRC, so
 this procedure is not needed there.
@@ -469,7 +477,7 @@ Before the confirm of a resync, and before the first confirm after opening a len
 
 ### 5.2 Resend and deduplication
 
-- When an answer was broken or did not arrive, the host **may resend once with the same corr** (state-changing requests too). While the session holds the port
+- When an answer was broken or did not arrive, the host **may resend once with the same corr** (registry `resend_max`; state-changing requests too). While the session holds the port
   (§3.4; raw transfer is stopped), a broken frame that arrives may be treated as belonging to the awaited answer, and the host may resend without waiting out the wait time. When unsubscribe
   and end were sent during recovery, the session has ended, so the original request is not resent.
 - The probe remembers, for the requests of the last session (role 0x81), at least the most recent max_inflight entries of (corr, fn, op, CRC-32 of the request payload,
@@ -540,7 +548,7 @@ declares lock-free must not change state.
   The probe remembers owner together with the last session_id (replaced by an open with a different session_id; on a resume with the same session_id, replaced if
   owner is present, otherwise kept), and while the lock is held, appends TLV 0x01 owner after the answer of lock_state and the payload of rejected locked
   (not appended if there is no owner). **The session_id is not returned** (returning it would let another host resume with that ID and take over without force). owner is for display only, and
-  the probe does not interpret it.
+  the probe does not interpret it. (Informative) Any host can read owner with lock_state, so a host puts nothing secret in it.
 - **force**: takes the lock even if another session holds it. The probe performs the same cleanup as for expiry on the previous session (§9) before
   handing over the lock. force is not authentication; it only prevents mix-ups.
 
@@ -585,7 +593,7 @@ entry:   fn(u16), instance(u16), revision(u8), flags(u8), name_len(u8), name
   write `oep`). An empty prefix matches everything. With exact, only exact matches (an empty prefix matches nothing). `oep.core` (fn 0) is also counted as the first
   entry. Bits 1 to 7 of the request's flags are reserved: a request with any of them set is rejected unsupported (payload tag 0x00, §2.5).
 - Names are 1 to 64 bytes; the usable characters are `a-z 0-9 - .` (§13).
-- instance distinguishes several interfaces of the same name. **Interfaces with the same (name, revision) are numbered from 0 in ascending order of fn.** The probe keeps the order of ports of the same name
+- instance distinguishes several interfaces of the same name. **Interfaces with the same (name, revision) are numbered from 0 in ascending order of fn.** The probe keeps the order of interfaces of the same name
   across firmware versions (because saved settings designate an interface by (name, instance, revision)). flags is reserved (0).
 - When a single interface is designated in text (CLI, settings files, logs), it is written `name#instance` (instance is this value, from 0.
   `#0` may be omitted). Example: `oep.fixture.uart#1` is the second `oep.fixture.uart`.
@@ -635,7 +643,7 @@ appears in the answer.
 | tag | Name | Value |
 |---:|---|---|
 | 0x40 | firmware | text |
-| 0x41 | model | text. The kind of probe (the same value for hardware of the same kind carrying the same firmware. Does not vary per unit). **Lowercase `a-z 0-9 -`**, 1 to 32 bytes. A model that is not the project's own starts with its maker's reverse domain name, with `.` replaced by `-` (example `com-example-probe1`) |
+| 0x41 | model | text. The kind of probe (the same value for hardware of the same kind carrying the same firmware. Does not vary per unit). **Lowercase `a-z 0-9 -`**, 1 to 32 bytes (registry `model_max_bytes`). A model that is not the project's own starts with its maker's reverse domain name, with `.` replaced by `-` (example `com-example-probe1`) |
 | 0x42 | unit_id | The ID of the unit. **Mandatory.** text of 1 to 32 bytes; the only usable characters are `a-z 0-9 -` (the chip's unique number in lowercase hex, etc.). Used by the host to group the transports of the same probe, so the describe of every transport returns the same value. Equals the USB serial number (§3.3). The value by which the host names a probe (the address `oep://<unit_id>/<slot name>`, [probe settings](oep-if-probe-config.md) §1.1) |
 | 0x43 | channels | u16. The number of channels |
 | 0x44 | reserved | base(u16), bitmap. If bit i is set, channel base+i is used by the probe itself and is not assigned to interfaces |
@@ -732,7 +740,7 @@ The plan is held **per fn**.
 - Resources put in place from saved settings (defined by the interface) are not the session's resources.
 - **Resource numbers are u16, one space per probe** (connections, streams, and everything else that interfaces designate by number. If a resource of a different interface is
   passed, rejected unavailable cause 6). Each time a new resource is created the number advances from 1, and after 65535 comes 1 (§2.6). A closed
-  number may be reused once far enough away (the 1024 most recently closed numbers are not used). A failed creation (an attach that
+  number may be reused once far enough away (the 1024 most recently closed numbers are not used, registry `resource_reuse_distance`). A failed creation (an attach that
   failed, a re-open of the same place) does not consume a number. A request using the number of a closed resource is rejected no_connection. After wrapping, an old number may
   designate a different resource: the host discards a number for which it received no_connection, and verifies long-held numbers with the listing ops (connections, streams).
 
@@ -783,7 +791,7 @@ event   role=0x05 | fn(u16) | seq(u16) | kind(u8) | fixed part | [TLV]          
   one subscription per fn.
 - **Conditions for batching**: send when min_bytes bytes have accumulated or max_delay_ms has passed since the first byte. 0 disables that condition. If both are 0,
   send whatever there is immediately.
-- Subscribing to fn 0 delivers the heartbeat. The period is max_delay_ms (1000 ms if 0). The probe may round a heartbeat period shorter than 100 ms up to 100 ms.
+- Subscribing to fn 0 delivers the heartbeat. The period is max_delay_ms (1000 ms if 0, `heartbeat_default_ms`). The probe may round a heartbeat period shorter than 100 ms up to 100 ms (`heartbeat_min_ms`).
 - There is no flow budget (credits). What the host or the wire fell behind on is pushed out inside the probe, and is seen from the interface's payload
   (the stream position, etc.) or from a gap in seq.
 

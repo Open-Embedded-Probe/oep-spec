@@ -1,6 +1,6 @@
-# OEP v1 registry: every number on the wire, in one place (2026-09-25, working toward the freeze).
+# OEP v1 registry: every number on the wire, in one place (v1, before the freeze: values may still change until then).
 # The spec text is docs/oep-core.md (the core) and docs/oep-if-*.md (the standard interfaces). tools/oepgen1.py generates
-# the C++ header and the Python and JS modules from this file; `oepgen1.py --check` fails when the committed outputs drift.
+# the C++ header, the C header and the Python and JS modules from this file; `oepgen1.py --check` fails when the committed outputs drift.
 # Numbers only: payload layouts stay in the spec tables. TLV tags live in the context of one (interface, op) or one
 # declaration; the same value in another context is another tag (core §2.2).
 # Per op: `lock` = needs the session lock; `closed_tail = true` = the response ends with a list of unknown length,
@@ -105,10 +105,13 @@ host_resync_wait_ms = 250       # host: before a resync's confirm, and the first
 uart_bridge_boot_baud = 115200  # a UART bridge's boot speed, 8N1 without flow control (core §3.4)
 host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
 heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
+heartbeat_min_ms = 100          # probe: may round a shorter heartbeat period up to this (core §11.3)
 port_speed_idle_max_ms = 3000   # a raised port_speed goes back after this long without a good frame, whatever idle_ms said (core §3.5)
 host_wait_add_ms = 1000         # host: waits at least the request's argument time (at most max_op_ms) plus this plus the transfer time (core §4.4)
 notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §11.4)
 slot_retry_reset_hold_ms = 20   # probe: hold_ms of the retry with reset of a boot_reset slot (oep-if-probe-config §3.1)
+port_speed_switch_wait_ms = 20  # host: after the answer to try, at least this long at the new speed before the confirm that verifies it (core §3.5 host obligation 2)
+port_speed_confirm_extra_ms = 1000  # host: repeats confirm at the boot speed for port_speed_idle_max_ms + this (core §3.5 host obligations 5 and 7)
 
 [describe_common]               # declaration tags every interface's describe may use (core §7.4); 0x04 reserved, 0x3F response meta
 role_channels = 0x01            # repeats: the same role may be written several times (union; core §7.4)
@@ -136,6 +139,12 @@ unit_id_max_bytes = 32
 slot_name_max_bytes = 32
 label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
 interface_name_max_bytes = 64
+model_max_bytes = 32            # fn 0 describe model text (core §7.5)
+resend_max = 1                  # host: resends of one request with the same corr (core §5.2; the probing rule of core §3.3)
+port_speed_broken_max = 3       # probe: broken candidates in a row with no valid frame, after commit, that return a raised port to the boot speed (core §3.5 return condition 4)
+host_serial_inflight_max_bytes = 6144  # host: on a serial port, the expected volume of answers to outstanding requests (concurrency x frame limit) at most this (core §3.4)
+host_serial_min_bytes_max = 2048  # host: on a serial port, subscribe's min_bytes at most this (core §3.4)
+cobs_frame_max_bytes = 65796    # the most bytes between the two 0x00 of a valid COBS frame: a 65535-byte message, its CRC-16, one code byte per 254 (core §3.1)
 ignored_max_entries = 16        # entries of the ignored TLV; 0x00 as the 16th = more were ignored (core §2.3)
 resource_reuse_distance = 1024  # a closed resource number is not reused among the most recently closed this many (core §9)
 dm_wait_ms = 100                # riscv-dm: one wait for a DM state inside a high-level op (oep-if-debug §4)
@@ -147,6 +156,13 @@ wire_retry_ms = 200             # wire: the most one request spends retrying the
 wire_lost_ms = 1000             # wire: failures with no answer from the wire for this long of real time, no success in between, = wire loss (oep-if-debug §2)
 attach_budget_ms = 1000         # wire: one attach answer at most, speed search and retries included, reset hold_ms excluded (oep-if-debug §1, core §4.4)
 scan_budget_ms = 500            # wire: no scan combination starts later than this after the request arrived (oep-if-debug §1, core §4.4)
+scan_tried_max = 255            # wire: combinations one scan request tries at most (tried is u8; oep-if-debug §1)
+block_frame_overhead_bytes = 24 # read_block / write_block: max_length is at most max_frame minus this (oep-if-debug §4.5, §6)
+tar_rewrite_bytes = 1024        # arm-adi read_block / write_block: the probe rewrites TAR at every boundary of this many bytes (oep-if-debug §6)
+console_dmstatus_poll_ms = 20   # console: while reading, the probe checks DMSTATUS at least this often (oep-if-console §3)
+uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused or not used (oep-if-fixture §2, oep-if-probe-config §1)
+uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)
+fixture_count_max = 255         # i2c-target / spi-target: u8 counts (pending, queued) stop at this (oep-if-fixture §3, §4)
 
 [reference]                     # values that are not the specification's, outside the freeze (core, top)
 max_op_ms = 10000               # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
@@ -681,9 +697,9 @@ actual_rate = 0x50
 layout = 0x51                   # w(u8) C(u8) pos[C](u8)
 actual_samples = 0x52
 actual_segments = 0x53
-timing = 0x54
+timing = 0x54                   # jitter_kind(u8, enum jitter_kind) jitter_ns(u32) (oep-if-capture §3.3)
 blocking_ms = 0x56
-rate_accuracy = 0x5A            # how(u8: 0 computed / 1 measured) ppm(u32, 0 unknown)
+rate_accuracy = 0x5A            # how(u8, enum rate_accuracy_how) ppm(u32, 0 unknown)
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error: why state is 6
 [interface.tlv.data]            # the data frame's TLV tail (core §11.2)
@@ -729,10 +745,17 @@ complete = 0
 host = 1
 no_free_segment = 2             # reserved: not sent (the probe resumes on release; oep-if-capture §3.2)
 error = 3
-[interface.enum.error]          # status_answer error / stopped's error byte
+[interface.enum.error]          # status_answer error / stopped's error byte; 0x40 onwards probe-specific (oep-if-capture §3.2)
 peripheral = 1
 storage = 2
 clock = 3
+[interface.enum.jitter_kind]    # configure answer timing's jitter_kind (oep-if-capture §3.3)
+none = 0
+fractional_division = 1
+software = 2
+[interface.enum.rate_accuracy_how]  # configure answer rate_accuracy's how (oep-if-capture §3.3)
+computed = 0                    # the nominal value calculated from the division
+measured = 1
 [interface.enum.status_flag]    # status flags, reset on start
 dropped = 0x01
 slipped = 0x02
@@ -769,13 +792,13 @@ actual_rate = 0x50
 layout = 0x51                   # s(u8) o(u8) b(u8, 1-31) C(u8) order[C](u8)
 actual_samples = 0x52
 actual_segments = 0x53
-timing = 0x54
+timing = 0x54                   # jitter_kind(u8, enum jitter_kind) jitter_ns(u32) (oep-if-capture §3.3)
 scale = 0x55                    # repeats, one per channel: role(u8) zero(i32) scale_nv(i32): the pin voltage (attenuation included)
 blocking_ms = 0x56
 skew = 0x57                     # repeats, one per channel: role(u8) skew_ns(u32)
-rate_accuracy = 0x5A            # how(u8: 0 computed / 1 measured) ppm(u32, 0 unknown)
+rate_accuracy = 0x5A            # how(u8, enum rate_accuracy_how) ppm(u32, 0 unknown)
 frontend_used = 0x58            # repeats, one per channel: role(u8) frontend(u8): the frontend each channel took
-reference = 0x59                # source(u8: 0 supply / 1 internal / 2 external) mv(u32) how(u8: 0 nominal / 1 measured)
+reference = 0x59                # source(u8, enum reference_source) mv(u32) how(u8, enum reference_how)
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error
 [interface.tlv.data]
@@ -830,10 +853,20 @@ complete = 0
 host = 1
 no_free_segment = 2             # reserved: not sent
 error = 3
-[interface.enum.error]
+[interface.enum.error]          # 0x40 onwards probe-specific (oep-if-capture §3.2)
 peripheral = 1
 storage = 2
 clock = 3
+[interface.enum.jitter_kind]    # configure answer timing's jitter_kind (oep-if-capture §3.3)
+none = 0
+fractional_division = 1
+software = 2
+[interface.enum.rate_accuracy_how]  # configure answer rate_accuracy's how (oep-if-capture §3.3)
+computed = 0                    # the nominal value calculated from the division
+measured = 1
+[interface.enum.reference_how]  # configure answer reference's how (oep-if-capture §3.3)
+nominal = 0
+measured = 1
 [interface.enum.status_flag]
 dropped = 0x01
 slipped = 0x02

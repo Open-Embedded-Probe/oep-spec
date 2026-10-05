@@ -93,8 +93,8 @@ how to write flash and chip-specific procedures are in the host.
 | PATH | Contents |
 |---|---|
 | `registry/oep-v1.toml` | **The only definition of all numeric values on the v1 wire** (op, TLV tag, reject reason, status, enum, timing, limits, USB identification, the names and revisions of interfaces) |
-| `tools/oepgen1.py` | Generates C++ headers and Python and JS modules from the registry, and checks the rules for numbers (core §2). `python3 tools/oepgen1.py --check` verifies they are in sync |
-| `generated/oep-v1/oep_v1_registry.{h,py,js}` | Generated files. The probe and the client copy and use them (`OepRegistry.h`, `oep_client/registry.py`) |
+| `tools/oepgen1.py` | Generates a C++ header, a C header and Python and JS modules from the registry, and checks the rules for numbers (core §2). `python3 tools/oepgen1.py --check` verifies they are in sync |
+| `generated/oep-v1/oep_v1_registry.{h,py,js}`, `oep_v1_registry_c.h` | Generated files (the C header has the same values as `#define` macros). The probe and the client copy and use them (`OepRegistry.h`, `oep_client/registry.py`) |
 | `tests/registry_v1/` | Tests of the registry and the generated files (`cd tests && uv run pytest registry_v1`) |
 
 ### 5.3 Others

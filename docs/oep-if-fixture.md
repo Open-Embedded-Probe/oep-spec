@@ -2,7 +2,7 @@
 
 [日本語](oep-if-fixture.ja.md)
 
-Status: **normative** (2026-09-26. Reflects the [zero-base re-examination](v1-zero-base-proposal.ja.md) (Japanese) of 2026-10-01). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§1 positioned
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§1 positioned
 streams). The only definition of the numbers is `registry/oep-v1.toml`. Capture is [capture](oep-if-capture.md).
 
 | Name | revision | Role | plan roles |
@@ -84,10 +84,10 @@ One stream per fn.
 - The TLV 0x01 format (u8) of configure: bit0-1 data length (0 = 8, 1 = 7), bit2-3 parity (0 none, 1 even, 2 odd), bit4 stop
   bits (0 = 1, 1 = 2). 8N1 if absent. Undefined values (2 / 3 in bit0-1, 3 in bit2-3, bit5-7: a later revision may define them, core §2.5) and a value not in the declaration (formats)
   are rejected unsupported (the tag as received). The host sends it critical (so that it does not silently become 8N1). baud returns the value that can be realised, and if it deviates
-  more than ±5% from the request, rejected unsupported (payload `0x00`). configure on an fn without pins (neither RX nor TX in the plan) is rejected
+  more than ±5% from the request (registry `uart_baud_tolerance_pct`), rejected unsupported (payload `0x00`). configure on an fn without pins (neither RX nor TX in the plan) is rejected
   unavailable (cause 6).
 - **status** (no lock): what is in effect (`uart_configured`) and the actual baud / format. So that a read-only host can know. The baud of a uart item
-  is range-checked at set, but the actual divider is determined when the UART starts running by the plan. If at that time it deviates more than ±5%, the default (115200 8N1)
+  is range-checked at set, but the actual divider is determined when the UART starts running by the plan. If at that time it deviates more than ±5%, the default (115200 8N1, registry `uart_default_baud`)
   is used and reported with configured = 3.
 - **The stream is created by the plan and disappears when the plan is released.** The session's configure also disappears when the plan is released. Reception starts from the plan (before configure,
   the value of the uart item of `oep.probe.config` if there is one, otherwise 115200 8N1), and accumulates regardless of sessions. Redoing configure leaves the accumulated bytes and the position as they are
@@ -138,7 +138,7 @@ retrieves them with read_rx.
   length is discarded and errors is incremented by 1 (the wait continues). In mode 2, a write whose first byte (the length L) is 0 or exceeds max_length, or whose
   following bytes differ in number from L, is discarded and errors is incremented by 1. A write in mode 3 is discarded and errors is incremented by 1.
 - read_rx takes the oldest frame out and returns it (count 0 if none). In state 0 it is rejected unavailable (cause 6). pending is
-  the number remaining after taking it out (capped at 255). When the next frame arrives while the queue holds queue_depth frames, that new frame is discarded and errors is
+  the number remaining after taking it out (capped at 255, registry `fixture_count_max`). When the next frame arrives while the queue holds queue_depth frames, that new frame is discarded and errors is
   incremented by 1 (it is not counted in rx_frames). The depth of the queue is the queue_depth of describe.
 - preload_tx is for mode 3 only. count is 1 to max_length (0 is malformed). slots is the serial number of placements (u8, wraps). Unread placements are
   up to queue_depth. A preload_tx while all are filled places nothing and is rejected unavailable (cause 2). Even if the number of bytes the controller
@@ -187,7 +187,7 @@ The probe becomes an SPI target, answers one transfer delimited by CS with the M
   rounded up, capped at length. Anything beyond length is discarded and errors is incremented by 1 (that transfer is queued with bits left as the number actually received and data
   up to length). A transfer that ends while the queue holds queue_depth entries is discarded without queuing and errors is incremented by 1 (it is counted in transactions).
   A transfer that both exceeds length and overflows the queue increments errors by 2. read_rx returns the oldest (count 0 if none). In state 0 it is rejected
-  unavailable (cause 6). pending is the remainder after taking it out (capped at 255).
+  unavailable (cause 6). pending is the remainder after taking it out (capped at 255, `fixture_count_max`).
 - status: state 0 not configured, 1 running. armed is whether it is waiting for a transfer. queued (capped at 255), transactions (the cumulative count of finished transfers),
   errors (the cumulative count of overflows, not armed, and length excess, each counted as 1, u32).
 - reset returns to the state right after configure (clears the queue, the wait and the cumulative counts. Keeps mode and bit_order). In state 0 it is rejected unavailable (cause 6).

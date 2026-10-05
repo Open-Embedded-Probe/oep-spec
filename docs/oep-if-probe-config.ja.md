@@ -2,7 +2,7 @@
 
 [English](oep-if-probe-config.md)
 
-状態: **規範**（2026-09-29 に組み直し。2026-10-01 に[ゼロベースの再検討](v1-zero-base-proposal.ja.md)を反映）。本体は [OEP core](oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。経緯と
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。経緯と
 実験は [シリアルの口と永続化](probe-cdc-and-persistence.ja.md)。
 
 | 名前 | revision | 役割 |
@@ -38,7 +38,7 @@
   変わらない。host は両方を合わせて使う。core §7.3: describe は宣言だけ）。text: 1〜32 byte（registry の `limits.label_max_bytes`）の正しい UTF-8 で、C0 の制御文字（0x00〜0x1F）と 0x7F を含まない。そうでなければ rejected malformed。
 - **uart**: その fn（`oep.fixture.uart`）の plan に RX か TX が付いた時点（設定の plan でも、セッションの plan_apply でも）で、
   configure 相当を掛ける。plan が無くても set は通る（掛かるのは plan が付いたとき）。セッションの configure は、plan を解くか
-  probe が再起動するまで、この項目より勝つ。baud は set のときに実現できる値を確かめ、±5% を超えて外れれば rejected unsupported。
+  probe が再起動するまで、この項目より勝つ。baud は set のときに実現できる値を確かめ、±5%（registry の `uart_baud_tolerance_pct`）を超えて外れれば rejected unsupported。
   format は configure の TLV format と同じ値（使っていない値と予約のビットは rejected unsupported、core §2.5）。ピンの無い fn の configure は今どおり
   rejected unavailable（項目があっても変わらない）。CDC の口の line coding は fixture UART に写さない（OEP の configure とこの項目
   だけが効く）。
@@ -309,3 +309,16 @@ describe は宣言だけ（core §7.3）。状態は state（§3.3）。
 | 0x42 | slots_max | u8。登録できるスロットの数（0 はスロットを扱わない） |
 | 0x43 | bind_modes | u32 のビット: bit0 last-reset、bit1 manual、bit2 mixed。bind を扱う probe は bit0 と bit1 を必ず立てる |
 | 0x44、0x45 | — | 予約（旧 slot_state / bind_state。state op に移った） |
+
+## 5. 安全（参考）
+
+この節は規則を足さない。上の規則が、probe の駆動する線にとって何を意味するかをまとめる。
+
+- **保存した設定は、host が居なくても線を駆動する。** 起動のたびに、probe は保存した idle（mode 3 / 4 は出力を駆動する）、plan、at boot の attach と
+  その boot_reset（§2、§3.1）を、host が居ても居なくても掛ける。
+- **設定を掛ける前は、ピンは MCU のリセットの状態にある。** 電源投入やリセットから firmware が idle を掛けるまで、firmware を更新している間、
+  firmware が壊れたときは、probe は設定が定めるものを何も駆動しない。間違った level が害になる線（たとえば target の電源を切り替える線）には、
+  それだけで安全な level に保つ外付けの pull-up か pull-down が要る。
+- **disable は利用者の宣言であって、保護ではない。** ロックを持つ host は unset で外せ（§2）、その後その channel を使える。
+- **設定には認証が無い。** ロックを取ったどの host も、force を含めて（core §6.4）変えて保存できる。TCP では、信頼できる接続についての core の規則が
+  掛かる（core §3.1）。

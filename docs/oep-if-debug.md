@@ -2,7 +2,7 @@
 
 [日本語](oep-if-debug.ja.md)
 
-Status: **normative** (2026-09-26. Reflects the [zero-base re-examination](v1-zero-base-proposal.ja.md) (Japanese) of 2026-10-01). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§2 debug
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§2 debug
 connections, §3 status). The only definition of the numbers is `registry/oep-v1.toml`. The reasons for the placement of names are in
 [hierarchy of capability names](capability-name-hierarchy.ja.md) (Japanese).
 
@@ -73,7 +73,7 @@ A new wire's document also defines:
   - On a wire declared with role_channels, the allowed combinations are "candidates of role 1 × candidates of role 2 (a 1-wire has role 1 only), not using the same channel
     twice". The count = 0 sequence is in ascending order of swdio, then ascending order of swclk within it, and **combinations containing a channel currently held by something else (a plan, the connection of another wire,
     a settings resource) are not listed** (count = 0 tries only the combinations that may be driven). If a request listing combinations contains a held
-    channel, the whole request is rejected unavailable as in §8.1.
+    channel, the whole request is rejected unavailable as in core §8.1.
   - **Channels with an idle item**: the count = 0 sequence and the candidates of an attach without pins leave out every channel that has an **idle item**
     in the probe's settings (any mode, [probe settings](oep-if-probe-config.md) §1), in addition to channels held by something else and disabled channels.
     A request that names such a channel explicitly (a scan listing combinations, the pins of attach) is accepted when the idle is an input (mode 0 to 2).
@@ -86,7 +86,7 @@ A new wire's document also defines:
   - A wire holds the channels of the combination a live connection is using (released when the connection is gone). While held, if a plan or the settings tries
     to take that channel, rejected unavailable (core §8.1).
   - The `tried` of the scan answer is the number of combinations tried from the start of the request's sequence (for count = 0, the count = 0 sequence above. On a channel_group wire, the order emitted in describe).
-    At most 255 combinations are tried in one go (tried is u8). If the found combinations would make the answer no longer fit in one frame,
+    At most 255 combinations are tried in one go (tried is u8; registry `scan_tried_max`). If the found combinations would make the answer no longer fit in one frame,
     the probe stops there. **The probe also stops where the scan budget (below) does not let it start the next combination**
     (at least one combination is tried). If tried ≥ 1, the host sends the continuation. If a request listing combinations returns tried smaller than the number listed, the host sends scan again with the remaining combinations.
   - **Continuing count = 0**: a count = 0 request can pass, in the TLV skip (0x01, u16), the number of combinations to skip from the start of the count = 0 sequence (0 if absent).
@@ -192,6 +192,8 @@ In addition to [common parts](oep-if-common.md) §2:
 | Probe reboot | Gone | The DM keeps dmactive | Gone |
 - The probe's own automatic attach (a slot of `oep.probe.config`) is also one of the users, and a host's attach joins that connection
   (flags bit1).
+- (Informative, safety) Lease expiry and force do not touch the hart: when a host dies with the hart halted, the target stays halted (unlike a debugger's
+  detach, it does not start running), whatever the target was controlling. A host that wants the target to run after it leaves resumes it before end.
 
 ### 2.1 connections (list of connections)
 
@@ -228,14 +230,14 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
   on each access).
 - **attach while applying reset**: with the TLV 0x05 reset (critical: `channel(u16), hold_ms(u16)`), the probe holds the reset wire (channel) for
   hold_ms and then releases it. With method 1 it keeps issuing halt while releasing, to halt as early as possible (flags bit3, dpc TLV). **There is no guarantee of halting before the first
-  instruction** (some execution happens between the release of the reset wire and the halt taking effect. [link measurements](link-measurements.ja.md) (Japanese) §3). When a guarantee of halting at the position right after
+  instruction** (some execution happens between the release of the reset wire and the halt taking effect; reasons: [link measurements](link-measurements.ja.md) (Japanese) §3). When a guarantee of halting at the position right after
   reset is needed, use reset mode 2 of riscv-dm (release ndmreset while holding haltreq). With method 0 it attaches with the target running. An optional function; a probe without it is rejected unsupported (tag 0x05). An attach with the reset TLV to an existing connection
   resets that target and then returns the same connection (treated the same as the NRST of the reset op: mark reset detail 3). hold_ms is
   subject to the core's max_op_ms.
 - **There is no default reset wire**: which wire is used for reset is specified explicitly by the host every time with channel (a reset on the wrong wire could damage the target or the
   fixture). The channels the probe may use for reset are declared with role 3 (reset) of the role_channels of describe. An undeclared
   channel is rejected unsupported (tag 0x05) without executing anything. A channel held by an existing plan or connection is rejected
-  unavailable as the contention of §8.1. A channel whose idle is an output is rejected unavailable as §1 says. **The reset wire is pulled low open-drain, and when released it stops pulling and goes to the idle state of core §8** (no short with an external reset button or
+  unavailable as the contention of core §8.1. A channel whose idle is an output is rejected unavailable as §1 says. **The reset wire is pulled low open-drain, and when released it stops pulling and goes to the idle state of core §8** (no short with an external reset button or
   another driver). The channel is held only for the duration of the op. On a probe without it, the host sends the release of `oep.fixture.gpio` and the attach together
   and retries.
 
@@ -260,8 +262,7 @@ The schemes of target_id these wires use (`target_id_scheme`, one space for the 
 (used to verify the length of the mask / value of a slot's lock).
 
 - **The wire settings are properties of the target, and the host holds them**: the upper limit of the wire speed (max_speed) and the way of resting (idle_clock) are what the target (chip)
-  requires (there are targets whose debug wire is reset by the way SWCLK rests, and targets whose speed limit drops because of the slow clock right after reset.
-  [link measurements](link-measurements.ja.md) (Japanese) §3). The probe does not hold them as defaults. The host passes them at every attach, and a slot that attaches without a host
+  requires (reasons: [link measurements](link-measurements.ja.md) (Japanese) §3). The probe does not hold them as defaults. The host passes them at every attach, and a slot that attaches without a host
   holds the same values in the slot's item ([probe settings](oep-if-probe-config.md) §1.1). scan accepts the same TLVs (to find such
   targets with scan without breaking them).
 - If an attach to an existing connection carries an idle_clock different from the current one, the probe changes the resting of that connection and returns it. A probe that cannot change it
@@ -377,7 +378,7 @@ Whatever the host does with raw DMI (the dmi op), and even if the host dies midw
 
 | op | What the probe touches | Before the answer |
 |---|---|---|
-| halt | haltreq | Checks allhalted. **haltreq may be left set while halted** (whether to keep or clear it is decided by the probe; the behaviour visible to the host is the same. The reason for keeping it is [link measurements](link-measurements.ja.md) (Japanese) §3). Cleared on resume / step / reset / detach and when the connection closes. When halt times out, it is cleared before the answer (§4.2) |
+| halt | haltreq | Checks allhalted. **haltreq may be left set while halted** (whether to keep or clear it is decided by the probe; the behaviour visible to the host is the same. Reasons for keeping it: [link measurements](link-measurements.ja.md) (Japanese) §3). Cleared on resume / step / reset / detach and when the connection closes. When halt times out, it is cleared before the answer (§4.2) |
 | resume | haltreq = 0, resumereq = 1 once | Remembers nothing, restores nothing |
 | step | dcsr.step, DATA0 / DATA1 (reading and writing dcsr), haltreq | Clears dcsr.step, restores DATA1, DATA0, clears haltreq. If the hart cannot be halted again, the answer says step_left (§4.2) |
 | reset | haltreq, ndmreset, acknowledging havereset | Acknowledges havereset. mode 0 / 1 clear haltreq. mode 2 stays halted and may keep haltreq like halt. The internal halt of mode 1 is restored like step |
@@ -387,8 +388,8 @@ Whatever the host does with raw DMI (the dmi op), and even if the host dies midw
 | Console read (§4.6) | DATA0 / DATA1 | Does not read while the hart is halted |
 
 The restored value is the "value before touching" read inside that op. The upper limit for waiting on DM state inside a high-level op (abstractcs.busy clearing, allhalted, allresumeack)
-is 100 ms per wait. The status when it is exceeded is as in each op's section (halt is timeout, resume / step are state). DMI busy is
-retried up to 100 times inside the probe, and when used up, status wait (same as the WAIT of §6).
+is 100 ms per wait (registry `dm_wait_ms`). The status when it is exceeded is as in each op's section (halt is timeout, resume / step are state). DMI busy is
+retried up to 100 times inside the probe (`dmi_busy_retries`), and when used up, status wait (same as the WAIT of §6).
 
 | op | Name | Request (after connection) | Answer |
 |---:|---|---|---|
@@ -431,11 +432,11 @@ it is returned twice as is. write_block / read_block on a hart that is not halte
 - **halt** does nothing and returns ok if already halted. If allhalted is not seen within 100 ms, the probe clears haltreq and answers status timeout.
 - **resume** writes haltreq = 0, resumereq = 1 once. ok means "the hart left debug mode", decided by the allresumeack of DMSTATUS (or
   allrunning and not halted). resumereq is not reissued. If not seen after waiting 100 ms, status state.
-  - For some targets this is not enough (a target that does not set allresumeack may immediately halt again at a breakpoint, or may not leave with one
+  - (Informative) For some targets this is not enough (a target that does not set allresumeack may immediately halt again at a breakpoint, or may not leave with one
     resumereq). Handling that (reading dpc and resuming again if it is not moving, etc.) is done by the host that knows the target.
 - **DATA0 / DATA1 belong to the target**: if the probe uses DATA0 / DATA1 with an abstract command (read_block etc.) while the hart is halted,
   the word the target had placed there (a console frame or answer of dmseq etc.) is lost, and after resume the console stalls until the target posts its frame
-  again under its mechanism's rules ([link measurements](link-measurements.ja.md) (Japanese) §3). Therefore an op that uses DATA0 / DATA1 restores them **before its own answer** (the table of
+  again under its mechanism's rules (reasons: [link measurements](link-measurements.ja.md) (Japanese) §3). Therefore an op that uses DATA0 / DATA1 restores them **before its own answer** (the table of
   §4). The probe remembers nothing across ops.
 - **step** sets dcsr.step, issues resume exactly once, and clears dcsr.step when it returns. It is not a failure if dpc does not move (status ok, moved = 0. An instruction that jumps to
   itself leaves dpc the same even when it executed correctly, so the host reads the instruction and decides). prv is not changed.
@@ -488,7 +489,7 @@ dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rej
 - In units of words (32 bit). 8 / 16-bit accesses are built from dmi steps.
 - **Length per request**: a probe that has read_block / write_block always emits the common tag max_length of describe (core §7.4). The unit is **number of bytes**
   (a multiple of 4). The probe declares max_length as a value such that both the read_block answer (header 5 + done 2 + status 1 + words) and the write_block request (header 10 +
-  connection 2 + address 4 + count 2 + words) fit within its own max_frame (max_frame − 24 or less. It may declare smaller). The host decides count from
+  connection 2 + address 4 + count 2 + words) fit within its own max_frame (max_frame − 24 or less, registry `block_frame_overhead_bytes`. It may declare smaller). The host decides count from
   max_length, not by calculating from max_frame. If count × 4 exceeds max_length, rejected unsupported (payload `0x00`). count = 0 is
   success, done 0. An address that is not a multiple of 4 is rejected malformed.
 - **Meaning of a read**: read_block reads through the target's bus. The probe keeps no copy on its side (it reflects what the target wrote in the preceding write_block, dmi, run).
@@ -497,13 +498,13 @@ dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rej
 - **Side effects**: the probe may use GPRs, the program buffer, the DATA registers, and sysbus. However, **before returning the answer, it restores the GPRs, DATA1,
   DATA0 and abstractauto it used to their values before use** (the table of §4). Even if the host saves nothing, halt → read_block → resume leaves the target's state
   unchanged. Without restoring, depending on where it stopped, the target would keep running with corrupted registers. Restoring at resume time fails when the host's raw DMI
-  comes in between ([link measurements](link-measurements.ja.md) (Japanese) §3). The program buffer and SBCS / SBADDRESS are not restored (the host sets them again if it uses them).
+  comes in between (reasons: [link measurements](link-measurements.ja.md) (Japanese) §3). The program buffer and SBCS / SBADDRESS are not restored (the host sets them again if it uses them).
 - run (§4.4) runs the host's loader with the registers the host specified, and the GPRs and dcsr changed during it are not restored (the host's responsibility).
 
 ### 4.6 Handling of RISC-V connections
 
-- attach first acknowledges a pending havereset (some DMs freeze the halt / running of DMSTATUS until acknowledged.
-  [link measurements](link-measurements.ja.md) (Japanese) §3).
+- attach first acknowledges a pending havereset (some DMs freeze the halt / running of DMSTATUS until acknowledged;
+  reasons: [link measurements](link-measurements.ja.md) (Japanese) §3).
 - After a target reset (the reset op, the reset TLV of attach), the probe acknowledges havereset and keeps the same connection.
 - **On seeing havereset** (whether inside a request or inside a console read), acknowledge it, return the dmseq state of the console to unsynchronised, and attach a mark restart (detail 1)
   to the streams of that connection.
@@ -558,12 +559,12 @@ Requests start with connection(u16).
 - ack is the raw ACK of the last transfer (`swd_ack`: bit0 is first in wire order. OK = 1, WAIT = 2, FAULT = 4. No response is status line). If bit4-7 of req are
   not 0, rejected malformed (req decides the length of the transfer's arguments, so an unknown req leaves the rest of the request unreadable, as an unknown dmi kind does). nvals is the number of values read (the number of reads among the first done transfers).
 - transfer is a raw transfer, and the one-transfer delay of AP reads is passed through as is (the host receives it with RDBUFF or the next AP read).
-  WAIT is retried up to 100 times inside the probe, and when used up, status wait. It stops on FAULT, so the host clears the sticky bits with ABORT.
+  WAIT is retried up to 100 times inside the probe (registry `swd_wait_retries`), and when used up, status wait. It stops on FAULT, so the host clears the sticky bits with ABORT.
 - The length per request and the meaning of a read of read_block / write_block are the same as riscv-dm (§4.5): the max_length of describe (number of bytes, a multiple of 4, a value such that both request and answer
   fit in max_frame) is always emitted, and if count × 4 exceeds it, rejected unsupported (payload `0x00`). The host decides count from
   max_length. read_block reads through the target's bus and the probe keeps no copy on its side.
 - read_block / write_block use the TAR / DRW of the current MEM-AP. SELECT and CSW (32 bit, single increment) are set by the host beforehand. The probe
-  rewrites TAR at every 1 KiB boundary and reorders the reads that lag by one. **The state of the hart does not matter** (the MEM-AP can be read while running).
+  rewrites TAR at every 1 KiB boundary (registry `tar_rewrite_bytes`) and reorders the reads that lag by one. **The state of the hart does not matter** (the MEM-AP can be read while running).
   **done is the number of words the probe sent**, not a guarantee that the target accepted them (a FAULT of a posted write is seen in a later transfer). TAR is left advanced, and
   SELECT / CSW are not changed (the arm version of the invariant of §4: the probe does not change what the host set). 64-bit AP addresses are added later with the same
   TLV 0x01 `address_hi` as riscv-dm (reserved).

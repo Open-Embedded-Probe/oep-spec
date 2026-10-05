@@ -2,7 +2,7 @@
 
 [English](oep-if-console.md)
 
-状態: **規範**（2026-09-26。2026-10-01 に[ゼロベースの再検討](v1-zero-base-proposal.ja.md)を反映）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
 ストリーム、§2 debug の connection）。番号の唯一の定義は `registry/oep-v1.toml`。考え方と理由は
 [コンソールのストリーム](console-stream.ja.md)。
 
@@ -73,7 +73,7 @@ mechanism 0、1、2 は debug module の DATA0（DMI 0x04）と DATA1（0x05）�
   だけ（ほかの connection の長い要求の間も、この connection の読みは続ける。core §7.5 max_op_ms）。抽象コマンドと DATA0 を取り合わないよう、host は抽象コマンドの一連を 1 つの dmi 要求に入れる
   （[線とデバッグ](oep-if-debug.ja.md) §4.1）。「hart が止まっている」は probe が DMSTATUS で見る: host が dmi の要求の中で hart を止めても走らせても
   （debugger が dmcontrol の haltreq / resumereq を自分で書いても）、hart が走っていれば probe は読みを続ける（戻す）。probe が
-  DMSTATUS を見る間隔は 20 ms 以下（host が raw で止めたあと、probe が DATA0 を読みうるのはその間だけ）。
+  DMSTATUS を見る間隔は 20 ms 以下（registry の `console_dmstatus_poll_ms`。host が raw で止めたあと、probe が DATA0 を読みうるのはその間だけ）。
   host は、コンソールのために riscv-dm の resume の op を使う必要はない。
 
 | mechanism | 名前 | 向き | 定義 |
