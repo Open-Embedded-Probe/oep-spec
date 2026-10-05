@@ -69,10 +69,11 @@ OEP v1 は凍結の候補。凍結までは、壊す変更も **どの revision 
 決めるのは維持する人。案:
 
 - このリポジトリに **git のタグ `vMAJOR.MINOR.PATCH`** を付け、指す commit と一緒に push する。
-  - MAJOR はプロトコルの revision（プロトコルの revision 1 は `v1.y.z`）。
+  - MAJOR は、正式リリースからはプロトコルの revision（プロトコルの revision 1 は `v1.y.z`）。その前は 0。
   - MINOR は §4 の追加、新しいインターフェースか新しいインターフェースの revision、registry への追加で増える。
   - PATCH は振る舞いを変えない errata で増える: 文言、訳、ガイド、記録、道具。
-- レビューのための**先行版**は `v1.0.0-rc.N`。**凍結はタグ `v1.0.0`**。
+- **正式リリースの前のタグは `v0.MINOR.PATCH`**（レビューのためでも凍結でも同じ）。凍結は、CHANGELOG が凍結と書く `v0` のタグで、`v1` では
+  ない。**`v1.0.0` は正式リリース**（ユーザーの判断、2026-10-06）。そこから MAJOR はプロトコルの revision に従う。
 - タグは、`python3 tools/oepgen1.py --check` と `python3 tools/oepvectors1.py --check` が通り、`cd tests && uv run pytest registry_v1 vectors`
   が通る commit にだけ付ける。
 - 根の **CHANGELOG.md** にリリースごとの変更（日付、タグ、commit）を並べ、次のタグまでの変更は「Unreleased」の節に集める。規範の文か

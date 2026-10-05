@@ -72,10 +72,11 @@ A probe that raises an interface's revision preferably keeps exposing the old re
 To decide: the maintainers. Proposed:
 
 - **Git tags `vMAJOR.MINOR.PATCH`** on this repository, pushed with the commit they name.
-  - MAJOR is the protocol revision (`v1.y.z` for protocol revision 1).
+  - MAJOR is the protocol revision from the formal release on (`v1.y.z` for protocol revision 1); before it, MAJOR is 0.
   - MINOR grows with any addition of §4, a new interface or a new interface revision, and any registry addition.
   - PATCH grows with errata that change no behaviour: wording, translations, guides, records, tools.
-- **Pre-releases** for review: `v1.0.0-rc.N`. **The freeze is the tag `v1.0.0`.**
+- **Before the formal release the tags are `v0.MINOR.PATCH`**, for review and for the freeze alike. The freeze is a `v0` tag that CHANGELOG names as
+  the freeze; it is not `v1`. **`v1.0.0` is the formal release** (decided by the user, 2026-10-06), and from it on MAJOR follows the protocol revision.
 - A tag is made only on a commit where `python3 tools/oepgen1.py --check` and `python3 tools/oepvectors1.py --check` pass and
   `cd tests && uv run pytest registry_v1 vectors` is green.
 - **CHANGELOG.md** at the root lists the changes per release (date, tag, the commits), and an "Unreleased" section collects changes until the next
