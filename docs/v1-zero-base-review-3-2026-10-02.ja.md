@@ -8,10 +8,10 @@
 
 | 部 | 対応済み | 決着 | 取り下げ | 未対応 | 計 |
 |---|---:|---:|---:|---:|---:|
-| 1 部（core、registry） | 27 | 2 | 0 | 18 | 47 |
-| 2 部（標準インターフェース） | 23 | 0 | 2 | 12 | 37 |
-| 3 部（probe-config、ガイド、OSS） | 15 | 4 | 0 | 16 | 35 |
-| 計 | 65 | 6 | 2 | 46 | 119 |
+| 1 部（core、registry） | 35 | 2 | 0 | 10 | 47 |
+| 2 部（標準インターフェース） | 29 | 0 | 2 | 6 | 37 |
+| 3 部（probe-config、ガイド、OSS） | 17 | 4 | 0 | 14 | 35 |
+| 計 | 81 | 6 | 2 | 30 | 119 |
 
 数は ★ / ○ / △ のすべての指摘（見出しの 94 件と、△ の表の 25 件）。
 
@@ -23,12 +23,8 @@
 | C-19 | 1 | ○ | boot_id の「必ず値を変える」は乱数源も保存も無い MCU では作れない |
 | C-20 | 1 | ○ | confirm の値の制約（max_inflight ≥ 1、window ≥ max_frame、外れた応答の扱い） |
 | C-21 | 1 | ○ | payload の中の fn の unknown_function を §4.3 の順のどこで見るか |
-| C-26 | 1 | ○ | 共用の口のロックなしの答えは target の出力で偽造できる、の注意 |
-| C-27 | 1 | ○ | 本文にしか無い数（6 KiB、2 KiB、20 ms、3、model 32 byte、送り直し 1 回）を registry に |
-| C-31 | 1 | ○ | 時計は同じ boot_id の間減らない |
+| C-31 | 1 | ○ | 時計は同じ boot_id の間減らない（規則と判断、peers へ） |
 | ○2 | 2 | ○ | reset の method 0「probe が選ぶ」と「reset の線に既定は無い」がぶつかる |
-| ○16 | 2 | ○ | 本文にしか無い数と enum（console 20 ms、uart ±5 %、TAR 1 KiB など）を registry に |
-| PC-11 | 3 | ○ | 設定が線を駆動することの安全の注意（参考） |
 | G-1 | 3 | ○ | 最小の host / probe までの道（手順、バイト列、チェックリスト） |
 | G-2 | 3 | ○ | host ガイドに断りごとの動き、通知、probe.config の手順、fake |
 | G-3 | 3 | ○ | ガイドからチップ固有の話と実測を記録へ移す |
@@ -39,32 +35,20 @@
 | O-12 | 3 | ○ | 安全とセキュリティ（参考）の節 |
 | O-13 | 3 | ○ | 用語集（ja / en） |
 | R-1 | 3 | ○ | 実装の README の spec への入口（oep-client-python ほか） |
-| C-36 | 1 | △ | 見出しより短い message と向きの違う role の扱い |
-| C-37 | 1 | △ | host の受けの上限（65800 byte を超える候補を捨てる） |
-| C-38 | 1 | △ | 送り直しにも答えが無いときはリンクの失敗 |
-| C-39 | 1 | △ | list が同じ boot_id の間変わらないこと、§7.2「ports」の誤り、first ≥ total |
-| C-40 | 1 | △ | §2.6「十分小さく」に値が無い |
-| C-41 | 1 | △ | CDC の transport の interface 番号はどちらか |
-| C-42 | 1 | △ | TCP の port と発見はこの仕様の外、と書く |
-| C-43 | 1 | △ | bind は文字の流れ向き（0x00 ごとに遅れる）の参考 |
-| C-44 | 1 | △ | C の header と SPDX の行 |
-| C-45 | 1 | △ | core の状態の行と registry の 1 行目が古い |
-| C-46 | 1 | △ | owner に秘密を入れない |
-| C-47 | 1 | △ | host は自分の上限で待ち時間を切ってよい |
-| △2 | 2 | △ | 規範の文の中の記録への行内のリンク（link-measurements） |
-| △4 | 2 | △ | debug §1「§8.1」を「core §8.1」に |
-| △5 | 2 | △ | i2c-target の予約のアドレスの断り方 |
-| △6 | 2 | △ | spi arm の count > length、TX の無い uart の write などの断り方 |
-| △7 | 2 | △ | マークのリングがあふれたことを serial の飛びで知る、の 1 文 |
-| △8 | 2 | △ | lease 切れでは target は止まったまま、の安全の注意 |
-| △9 | 2 | △ | 符号付きの ADC の値の表し方 |
-| △10 | 2 | △ | rvswd / swio の scan_kind 2（arm-adi）の扱い |
-| △12 | 2 | △ | probe-config の無い probe の起動時のピンの状態を core §8 に |
-| △13 | 2 | △ | read_block を走ったまま読む機能を後から足す道 |
-| PC-9 | 3 | △ | state のページング（2 つの first、ページの間の storage_*） |
-| PC-10 | 3 | △ | boot_reset の保持の時間を伸ばす道をガイドに |
-| G-7 | 3 | △ | ガイドの節番号を揃える |
-| R-2 | 3 | △ | spec から oep-probe-arduino のガイドへのリンク |
+| C-36 | 1 | △ | 見出しより短い message と向きの違う role の扱い（規則と判断、peers へ） |
+| C-38 | 1 | △ | 送り直しにも答えが無いときはリンクの失敗（規則と判断、peers へ） |
+| C-39 | 1 | △ | list が同じ boot_id の間変わらないこと、first ≥ total（§7.2「ports」は済み。残りは規則と判断、peers へ） |
+| C-40 | 1 | △ | §2.6「十分小さく」に値が無い（規則と判断、peers へ） |
+| C-41 | 1 | △ | CDC の transport の interface 番号はどちらか（規則と判断、peers へ） |
+| C-47 | 1 | △ | host は自分の上限で待ち時間を切ってよい（規則と判断、peers へ） |
+| △5 | 2 | △ | i2c-target の予約のアドレスの断り方（規則と判断、peers へ） |
+| △6 | 2 | △ | spi arm の count > length、TX の無い uart の write などの断り方（規則と判断、peers へ） |
+| △9 | 2 | △ | 符号付きの ADC の値の表し方（規則と判断、peers へ） |
+| △10 | 2 | △ | rvswd / swio の scan_kind 2（arm-adi）の扱い（規則と判断、peers へ） |
+| △12 | 2 | △ | probe-config の無い probe の起動時のピンの状態を core §8 に（規則と判断、peers へ） |
+| PC-9 | 3 | △ | state のページング: ページの間の storage_*（2 つの first は済み。残りは規則と判断、peers へ） |
+| PC-10 | 3 | △ | boot_reset の保持の時間を伸ばす道をガイドに（ガイドの担当へ渡した） |
+| G-7 | 3 | △ | ガイドの節番号を揃える（ガイドの担当へ渡した） |
 
 決着のうち O-6 は、特許の非主張と「OEP」を名乗る条件がまだ決まっていない（ユーザーの判断）。対応済みのうち ★4（P2-★4）は、凍結の前に bench が cold attach を 1 回計る条件が残っている。
 
@@ -443,7 +427,7 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-26 ○ §3.4 / §11.1: 共用の口のロックなしの答えは、target の出力で偽造できる（文言）
 
-状態: 未対応（core §3.4 にロックなしの答えを偽造できる旨の文が無い）
+状態: 対応済み（5d02a6f、core §3.4 の（参考）: 生の転送の止まっていない口ではロックなしの答えを target の出力で偽造できる。信じる要求は生の転送の止まった口か長さつきのフレームの口で）
 
 - ロックを持っていない間は、口に target の生のバイトが流れる。corr は 1 ずつ進むので予測でき、target の firmware（試験中のもの、壊れたもの）が
   CRC の合ったフレームを出せば、host は describe などの答えとして受けてしまう。
@@ -452,7 +436,7 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-27 ○ registry に無い、規範の文の数（registry）
 
-状態: 未対応（一部だけ: `uart_bridge_boot_baud`、`ignored_max_entries`、`host_resync_wait_ms` は registry に入った。6 KiB、2 KiB、20 ms、3、model の 32 byte、送り直しの 1 回は本文にしか無い）
+状態: 対応済み（5d02a6f、registry `port_speed_switch_wait_ms`、`port_speed_confirm_extra_ms`、`port_speed_broken_max`、`resend_max`、`model_max_bytes`、`host_serial_inflight_max_bytes`、`host_serial_min_bytes_max`、`heartbeat_min_ms` など。confirm の 1000 ms は `host_wait_add_ms` と明記。本文 core §3.3 / §3.4 / §3.5 / §5.2 / §7.5 / §11.3 が名前を引く）
 
 - registry は「数の唯一の定義」と言っているが、次の数は本文にしか無い: §3.4 の 6 KiB（未解決の要求の応答の見込み量）と 2 KiB（min_bytes）、
   §3.5 host の義務 2 の 20 ms、戻る条件 4 の 3 つ、§3.3 の confirm の待ち時間 1000 ms（`host_wait_add_ms` の流用であることを明記）、
@@ -493,7 +477,7 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 #### C-31 ○ §2.6a 時計: 単調であること（文言）
 
-状態: 未対応（core §2.6a に「同じ boot_id の間は減らない」が無い）
+状態: 未対応（規則と判断: peers に先に送る。oep-probe-arduino の nowNs は ESP32 / RP2040 以外で micros() の u32（約 71.6 分で一周）に頼り、同じ boot_id の間に減る。すべての実装がすでに守っているとは言えない）
 
 - 「起動からの ns」に「同じ boot_id の間、減らない」を足す。
 
@@ -538,18 +522,18 @@ USB スタック、MCU、target、ブラウザ、CI）。先に review-guide、v
 
 | id | 節 | 問題 | 案 | 種類 | 状態 |
 |---|---|---|---|---|---|
-| C-36 | §4.1 / §2.5 | 見出しより短い message（corr を読めない 3 byte 未満、fn を読めない 6 byte 未満）と、向きの違う role（host から 0x02）の扱いが無い | 「corr を読めなければ捨てる。読めて見出しが足りなければ malformed（順 1 より前）。向きの違う role は応答せずに捨てる」 | 規則（小） | 未対応 |
-| C-37 | §3.1 | host の受けの上限: 65535 + CRC + COBS の分を超えた候補を、どこまでためるか | 「host は 65800 byte を超える候補を捨てる」 | 文言 | 未対応 |
-| C-38 | §5.2 | 送り直しにも答えが無いときの次（シリアルの口） | 「リンクの失敗として扱う（§5.1 か口を閉じる）」 | 文言 | 未対応 |
-| C-39 | §7.2 / §7.3 | list の内容が同じ boot_id の間変わらないこと。§7.2 の「同じ名前の口の順」の「口」は「インターフェース」の誤り。list の first ≥ total は count 0 | 書き足す | 文言 | 未対応（§7.2 の「ports」もそのまま） |
-| C-40 | §2.6 | 「十分小さく」は値が無い | 「同時に意味を持つ値の差を、幅の 1/4 以下に保つ」など数にするか、消す（資源の番号は §9 の 1024 で足りている） | 文言 | 未対応 |
-| C-41 | §7.5 transport | CDC は interface が 2 つ（通信と data）あり、どちらの番号かが無い | 「CDC は通信の interface の番号」 | 文言 | 未対応 |
-| C-42 | §3.1 TCP | 既定の port と発見は定めない、と明記する | 「TCP の port と発見はこの仕様の外」 | 文言 | 未対応 |
-| C-43 | §3.4 bind | 0x00 を含む二進の流れは、0x00 ごとに最長 200 ms 止まる | 「bind は文字の流れ向き（0x00 を含む二進の流れは遅れる）」と参考に書く | 文言 | 未対応 |
-| C-44 | generated | C++ だけで C の header が無い（C の firmware、Zephyr、Rust の build.rs）。SPDX の行が無い | `oep_v1_registry_c.h`（`#define`）か JSON を足す。`// SPDX-License-Identifier: MIT` を付ける | 文言 | 未対応 |
-| C-45 | 冒頭 | 状態の行が「候補、2026-09-26」のままで、英語版は日本語の提案を指す | 公開の前に「v1（凍結）」と版の日付に直す。registry の 1 行目の「2026-09-25, working toward the freeze」と「C++ header and the Python module」（JS が抜けている）も直す | 文言 | 未対応（core と registry の 1 行目のまま。registry の JS は済み） |
-| C-46 | §6.4 owner | owner は lock_state でだれでも読め、プロセスの番号や利用者の名前を出す | 「owner には秘密を入れない」と書く | 文言 | 未対応 |
-| C-47 | §4.4 | host が max_op_ms をそのまま信じると、壊れた値（0xFFFFFFFF）で何日も待つ | 「host は自分の上限で待ち時間を切ってよい（切ったらリンクの失敗）」 | 文言 | 未対応 |
+| C-36 | §4.1 / §2.5 | 見出しより短い message（corr を読めない 3 byte 未満、fn を読めない 6 byte 未満）と、向きの違う role（host から 0x02）の扱いが無い | 「corr を読めなければ捨てる。読めて見出しが足りなければ malformed（順 1 より前）。向きの違う role は応答せずに捨てる」 | 規則（小） | 未対応（規則と判断: peers に先に送る。見出しより短い message と向きの違う role の扱いが無い） |
+| C-37 | §3.1 | host の受けの上限: 65535 + CRC + COBS の分を超えた候補を、どこまでためるか | 「host は 65800 byte を超える候補を捨てる」 | 文言 | 対応済み（5d02a6f、core §3.1 の（参考）: 正しい COBS のフレームは 65796 byte まで、registry `cobs_frame_max_bytes`） |
+| C-38 | §5.2 | 送り直しにも答えが無いときの次（シリアルの口） | 「リンクの失敗として扱う（§5.1 か口を閉じる）」 | 文言 | 未対応（規則と判断: peers に先に送る。送り直しにも答えが無いときの host の動きを決めることになる） |
+| C-39 | §7.2 / §7.3 | list の内容が同じ boot_id の間変わらないこと。§7.2 の「同じ名前の口の順」の「口」は「インターフェース」の誤り。list の first ≥ total は count 0 | 書き足す | 文言 | 未対応（一部だけ: §7.2 の「ports」は 5d02a6f で「interfaces」に。list が同じ boot_id の間変わらないことと、list の first ≥ total は規則と判断: peers に先に送る） |
+| C-40 | §2.6 | 「十分小さく」は値が無い | 「同時に意味を持つ値の差を、幅の 1/4 以下に保つ」など数にするか、消す（資源の番号は §9 の 1024 で足りている） | 文言 | 未対応（規則と判断: peers に先に送る。値を決めるのも消すのも probe の義務が変わる） |
+| C-41 | §7.5 transport | CDC は interface が 2 つ（通信と data）あり、どちらの番号かが無い | 「CDC は通信の interface の番号」 | 文言 | 未対応（規則と判断: peers に先に送る。transport の interface の値を決める） |
+| C-42 | §3.1 TCP | 既定の port と発見は定めない、と明記する | 「TCP の port と発見はこの仕様の外」 | 文言 | 対応済み（5d02a6f、core §3.1 TCP の経路: port と発見はこの仕様の外） |
+| C-43 | §3.4 bind | 0x00 を含む二進の流れは、0x00 ごとに最長 200 ms 止まる | 「bind は文字の流れ向き（0x00 を含む二進の流れは遅れる）」と参考に書く | 文言 | 対応済み（5d02a6f、core §3.4 生のバイトの行き先の（参考）） |
+| C-44 | generated | C++ だけで C の header が無い（C の firmware、Zephyr、Rust の build.rs）。SPDX の行が無い | `oep_v1_registry_c.h`（`#define`）か JSON を足す。`// SPDX-License-Identifier: MIT` を付ける | 文言 | 対応済み（5d02a6f、`generated/oep-v1/oep_v1_registry_c.h`（`#define OEP_V1_…`）、すべての生成物に SPDX の行、tests と review-guide、README） |
+| C-45 | 冒頭 | 状態の行が「候補、2026-09-26」のままで、英語版は日本語の提案を指す | 公開の前に「v1（凍結）」と版の日付に直す。registry の 1 行目の「2026-09-25, working toward the freeze」と「C++ header and the Python module」（JS が抜けている）も直す | 文言 | 対応済み（5d02a6f、core と各インターフェースの状態の行を「v1、凍結の前」に。registry の 1 行目も。版の日付は凍結のときに書く） |
+| C-46 | §6.4 owner | owner は lock_state でだれでも読め、プロセスの番号や利用者の名前を出す | 「owner には秘密を入れない」と書く | 文言 | 対応済み（5d02a6f、core §6.4 owner の（参考）） |
+| C-47 | §4.4 | host が max_op_ms をそのまま信じると、壊れた値（0xFFFFFFFF）で何日も待つ | 「host は自分の上限で待ち時間を切ってよい（切ったらリンクの失敗）」 | 文言 | 未対応（規則と判断: peers に先に送る。§4.4 の待ちの下限より短く切ることを許すことになる） |
 
 ---
 
@@ -916,7 +900,7 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 
 #### ○16 規範の数のうち、registry に無いもの
 
-状態: 未対応（一部だけ: 線切れ 1000 ms と scan 500 ms は registry に入った（18d7eac）。console の 20 ms、uart の ±5 % と既定の 8N1、TAR の 1 KiB、max_frame − 24、pending / queued の 255、jitter_kind などの enum は本文にしか無い）
+状態: 対応済み（5d02a6f、registry `console_dmstatus_poll_ms`、`uart_baud_tolerance_pct`、`uart_default_baud`、`tar_rewrite_bytes`、`block_frame_overhead_bytes`、`fixture_count_max`、`scan_tried_max`、capture の enum `jitter_kind`、`rate_accuracy_how`、`reference_how`、error の 0x40〜 probe 固有はコメントに。本文が名前を引く）
 
 - **場所**: registry `[limits]`、`[timing]`
 - **問題**: review-guide は「registry は番号と数の唯一の定義」と言うが、規範の文にしか無い数がある: 線切れの 1000 ms と scan の 500 ms（debug §1 / §2）、
@@ -943,18 +927,18 @@ max_length、MISO、trigger の type）に意味の食い違いは無かった�
 | id | 場所 | 問題 | 直す | 区分 | 状態 |
 |---|---|---|---|---|---|
 | △1 | debug §3 表（「WCH の 2 線 / 1 線」）、console §3.1「WCH の SDI printf」、§3.2「minichlink の framing」、debug §3 の target_id scheme 1「WCH の DM の DMI 0x7F」 | 規範の文にベンダーやツールの名前がある（spec-writing-rules） | 規範の文は方式の定義だけにして、名前の由来は「（参考）」の注に移す。registry の識別子 `wch_dmi_7f` はそのままでよい | 文言。対応済み（78137fb）: 名前は「（参考）」の注へ。gdb は「デバッガ」に | 対応済み（78137fb、debug 冒頭と console §3.1 / §3.2 の（Reference）） |
-| △2 | debug §1 / §3 / §4.2 / §4.5 / §4.6 の「[リンクの計測] §3」6 か所、§4.2 の「target によっては…」、capture §3.7 の「44642/1 など（設計 §7.4）」 | 規範の文の中に、記録への理由のリンクと実例の話がある | 「（理由: …）」の形にまとめて、規範の文から切り離す | 文言 | 未対応（debug §1 / §3 / §4.2 / §4.5 / §4.6 に link-measurements への行内のリンクが残る） |
+| △2 | debug §1 / §3 / §4.2 / §4.5 / §4.6 の「[リンクの計測] §3」6 か所、§4.2 の「target によっては…」、capture §3.7 の「44642/1 など（設計 §7.4）」 | 規範の文の中に、記録への理由のリンクと実例の話がある | 「（理由: …）」の形にまとめて、規範の文から切り離す | 文言 | 対応済み（5d02a6f、debug §1 / §3 / §4.2 / §4.5 / §4.6 を「(reasons: …)」に、§4.2 の「target によっては」を（参考）に。似た所: core §3.4 と capture §3.7 の例も） |
 | △3 | registry `[limits]` の dm_wait_ms と dmi_busy_retries のコメント「(oep-if-debug §1)」、logic の `[interface.tlv.configure]` のコメント（応答の tag 0x55、0x57〜0x59 が挙がっている） | 節の番号と tag の誤り | §4 にする。configure の tag は 0x47 だけを挙げる | 文言。対応済み（78137fb） | 対応済み（78137fb、registry のコメント） |
-| △4 | debug §1「§8.1 のとおり」 | どの文書の §8.1 か書いていない（debug に §8 は無い） | 「core §8.1」 | 文言 | 未対応（debug §1 にまだ「as in §8.1」） |
-| △5 | fixture §3 configure の address | 予約のアドレス（0x00〜0x07、0x78〜0x7F。general call、10 bit の前置き）を受けてよいかが無い | 「予約のアドレスは rejected unsupported（宣言で許す probe だけ受ける）」など | 規則（小さい） | 未対応 |
-| △6 | spi arm の count > length、uart の TX の無い plan での write、console open の mechanism 0xFF | 断り方が書かれていない | malformed / unavailable 6 / malformed と書く | 文言に近い | 未対応 |
-| △7 | common §1.3 marks | マークのリングがあふれたとき、host がどう知るかが書かれていない（serial が連続しているので、飛びで分かる） | 「serial の飛びが、押し出されたマークの数」と 1 文足す | 文言 | 未対応 |
-| △8 | debug §2 の状態機械（lease 切れでは hart に触らない） | host が死ぬと target は止まったままになる（モーターを動かしている target などで危ない）。gdb の detach に慣れた利用者は、走り出すと思いやすい | 規則はそのままで、「安全の注意: lease 切れでは target は止まったまま。host は end の前に resume する」を規範の注に | 文言 | 未対応 |
-| △9 | capture §1.2 | 符号付きの ADC（2 の補数で値を出す差動の ADC）を表す方法が書かれていない | 「符号付きの値は、probe が 2^(b−1) を足して符号なしにし、zero をそれに合わせる」と 1 文 | 文言 | 未対応 |
-| △10 | debug §3 の scan_kind（rvswd / swio に 2 = arm-adi） | 2 線や 1 線で arm-adi の connection ができるのか、できるなら swd §5 の非対称（slot、console が乗らない）が効くのかが分からない | rvswd / swio の kind を 1 に限るか、arm-adi になる場合の扱いを書く | 文言か規則 | 未対応 |
+| △4 | debug §1「§8.1 のとおり」 | どの文書の §8.1 か書いていない（debug に §8 は無い） | 「core §8.1」 | 文言 | 対応済み（5d02a6f、debug §1 と §3 reset の「§8.1」を「core §8.1」に） |
+| △5 | fixture §3 configure の address | 予約のアドレス（0x00〜0x07、0x78〜0x7F。general call、10 bit の前置き）を受けてよいかが無い | 「予約のアドレスは rejected unsupported（宣言で許す probe だけ受ける）」など | 規則（小さい） | 未対応（規則と判断: peers に先に送る。予約のアドレスの断り方） |
+| △6 | spi arm の count > length、uart の TX の無い plan での write、console open の mechanism 0xFF | 断り方が書かれていない | malformed / unavailable 6 / malformed と書く | 文言に近い | 未対応（規則と判断: peers に先に送る。書かれていない場合の断り方を決める） |
+| △7 | common §1.3 marks | マークのリングがあふれたとき、host がどう知るかが書かれていない（serial が連続しているので、飛びで分かる） | 「serial の飛びが、押し出されたマークの数」と 1 文足す | 文言 | 対応済み（c6cc1f8、common §1.3 marks） |
+| △8 | debug §2 の状態機械（lease 切れでは hart に触らない） | host が死ぬと target は止まったままになる（モーターを動かしている target などで危ない）。gdb の detach に慣れた利用者は、走り出すと思いやすい | 規則はそのままで、「安全の注意: lease 切れでは target は止まったまま。host は end の前に resume する」を規範の注に | 文言 | 対応済み（5d02a6f、debug §2 の状態機械の後の（参考、安全）） |
+| △9 | capture §1.2 | 符号付きの ADC（2 の補数で値を出す差動の ADC）を表す方法が書かれていない | 「符号付きの値は、probe が 2^(b−1) を足して符号なしにし、zero をそれに合わせる」と 1 文 | 文言 | 未対応（規則と判断: peers に先に送る。符号付きの値の表し方を決める） |
+| △10 | debug §3 の scan_kind（rvswd / swio に 2 = arm-adi） | 2 線や 1 線で arm-adi の connection ができるのか、できるなら swd §5 の非対称（slot、console が乗らない）が効くのかが分からない | rvswd / swio の kind を 1 に限るか、arm-adi になる場合の扱いを書く | 文言か規則 | 未対応（規則と判断: peers に先に送る。rvswd / swio の kind を限るか、arm-adi の扱いを決める） |
 | △11 | debug §1「速さを確かめ終えるまで書き込まない」と、scan の dmactive の書き込み、swd の固定の速さ | 順番が読み取りにくい | 「scan も attach も、読みで速さを確かめた後にだけ dmactive を書く。swd は速さを確かめられないので、min(max_speed, max_clock_hz) から始める（例外）」 | 文言 | 対応済み（78403b2、debug §1「Writes before the speed is verified」に順を書いた） |
-| △12 | core §8（相互参照） | probe-config を持たない probe の、起動時のピンの状態が core に無い | core §8 に「起動時はすべての channel を空きの状態にする」 | 規則（小さい） | 未対応 |
-| △13 | debug §4.5 | read_block は hart が止まっていないと status state。system bus を持つ DM では走ったままでも読める | v1 はそのままでよい。後から features のビットで「走っていても読む」を足せることを、伸ばす道に書く | 文言 | 未対応 |
+| △12 | core §8（相互参照） | probe-config を持たない probe の、起動時のピンの状態が core に無い | core §8 に「起動時はすべての channel を空きの状態にする」 | 規則（小さい） | 未対応（規則と判断: peers に先に送る。probe-config を持たない probe の起動時の状態は、core §8 にも probe-config にも今は無い。足すと新しい義務になる） |
+| △13 | debug §4.5 | read_block は hart が止まっていないと status state。system bus を持つ DM では走ったままでも読める | v1 はそのままでよい。後から features のビットで「走っていても読む」を足せることを、伸ばす道に書く | 文言 | 対応済み（c6cc1f8、debug §4.5 前提の（参考）） |
 
 ---
 
@@ -1085,7 +1069,7 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 
 #### PC-9 △ state のページング（文言）
 
-状態: 未対応（probe-config §3.3 はまだ「受け取った数を first に足す」で、2 つの first とページの間の storage_* を書いていない）
+状態: 未対応（一部だけ: 2 つの first は c6cc1f8 で「first_slot に n_slots、first_bind に n_binds」に。ページの間で storage_* が変わったときの扱いは規則と判断: peers に先に送る）
 
 - **場所**: §3.3「more = 1 なら続きがあり、host は first に受け取った数を足してもう一度聞く」。
 - **問題**: first は 2 つある（first_slot と first_bind）。storage_state / storage_hash がページの間で変わったときの扱いも無い。
@@ -1094,7 +1078,7 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 
 #### PC-10 △ boot_reset の保持の時間を変えられない（文書）
 
-状態: 未対応（ガイドに hold_ms を伸ばす道を書いていない）
+状態: 未対応（ガイドは別の作業の担当。ガイドに入れる文の案を渡した）
 
 - **問題**: hold_ms は registry の 20 ms に固定。NRST に大きな容量や監視 IC を持つ基板では足りないことがある。
 - **直し方**: 今は変えなくてよい（boot_reset の後ろは足し場所）。ガイドに「長い保持が要るなら、boot_reset の後ろに hold_ms を足すのが道（そのときは任意のフィールド、revision は変えない）」と書いておく。
@@ -1102,7 +1086,7 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 
 #### PC-11 ○ 設定が線を駆動することの安全の注意がまとまっていない（文書）
 
-状態: 未対応（probe-config に（参考）安全の小節が無い。O-12 と一緒に）
+状態: 対応済み（5d02a6f、probe-config §5 安全（参考）: 設定は host 無しで線を駆動する、設定の前はリセットの状態で外付けの pull が要る、disable は保護でない、認証が無い）
 
 - **問題**: 保存した設定は起動のたびに、host の居ないところで出力を駆動する（mode 3 / 4 の idle、at boot の attach、boot_reset のリセット）。注意は host ガイド §8 と §9.2 に散っていて、仕様の側には無い。たとえば、(1) リセットから firmware が idle を掛けるまで、DFU の間、firmware が壊れたときは、ピンは SoC のリセットの状態にある。電源のスイッチの線には、切れる側に固定する外付けの pull が要る。(2) disable は、ロックを取った host が unset すれば外れる。保護ではなく利用者の宣言である。(3) 設定は、ロックを取ったどの host からでも変えられる（認証が無い）。
 - **直し方**: probe-config の末尾に「（参考）安全」の小節を置くか、O-12 の安全の節に probe-config の項を作る。規範の文は増やさない。
@@ -1163,7 +1147,7 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 
 #### G-7 △ 節の番号が不揃い（文書）
 
-状態: 未対応（節番号は不揃いのまま）
+状態: 未対応（ガイドは別の作業の担当。振り直しの注意を渡した）
 
 1、1.5、1.6、1.7、2、2.1、2.5、3、… の並びを整える。外から節番号で参照されているので、変えるなら一度にまとめて変える。
 
@@ -1350,7 +1334,7 @@ peers に相談するもの（規則）: ★1〜★5、★6 の background、★
 
 #### R-2 △ 良い所を spec 側から使う（文書）
 
-状態: 未対応（spec の README は fake を案内する（6bcf7e3）が、oep-probe-arduino の getting-started / writing-a-probe へのリンクが無い）
+状態: 対応済み（5d02a6f、README（en / ja）の参照の実装から oep-probe-arduino の getting-started と writing-a-probe へ。ガイドからのリンクはガイドの担当に渡した）
 
 oep-probe-arduino の `docs/guide/getting-started.md` と `writing-a-probe.md`、client の fake は、初めての人に要る道そのもの。oep-spec の README とガイドからリンクする（G-1、O-8）。
 
