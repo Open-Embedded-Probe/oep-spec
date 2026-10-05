@@ -13,9 +13,6 @@ The host side is the [host development guide](host-development-guide.md).
   [getting started](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/getting-started.md),
   [writing a probe](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.md) and the example
   `examples/01.Basics/MinimalProbe` (oep-probe-arduino).
-- Chip-specific stories and dated measurements that used to be here are in the record
-  [implementation notes](implementation-notes.ja.md) (Japanese), section P plus the number of the section here. The sections were
-  renumbered on 2026-10-06; the old and new numbers are listed at the top of that record.
 - Names in backquotes such as `probe_frame_gap_ms` are keys of `registry/oep-v1.toml`, which holds every number.
 
 ## 1. Opening and closing do not reset or change state
@@ -33,7 +30,6 @@ The host side is the [host development guide](host-development-guide.md).
   peripheral's driver left it. Until your firmware runs, the pins are in the MCU's reset state, which no firmware can change; tell users
   that a line whose wrong level is harmful needs an external pull (probe settings §5).
 - A probe that unavoidably resets when a transport is opened declares `resets_on_open` in fn 0's describe (core §7.5).
-- Example: [implementation notes](implementation-notes.ja.md) §P1.
 
 ## 2. Receive and send buffers
 
@@ -50,7 +46,6 @@ The host side is the [host development guide](host-development-guide.md).
   is a multiple of wMaxPacketSize with a zero-length transfer (core §3.1), and a request that ends exactly on a packet boundary may otherwise
   wait for the next OUT. Skip a zero-length completion.
 - Measure the link with fn 0's link_source / link_sink (core §12), and measure again after changing the receive or send path.
-- Examples and measurements: [implementation notes](implementation-notes.ja.md) §P2.
 
 ## 3. Nothing else on an OEP port; never block on a port nobody reads
 
@@ -58,7 +53,6 @@ The host side is the [host development guide](host-development-guide.md).
   that port.
 - **Do not let a write to a port nobody reads stop the main loop.** A blocking write to an unopened USB serial port can wait for its timeout
   on every call and delay every answer and notification. Make such writes non-blocking or do not write.
-- Examples: [implementation notes](implementation-notes.ja.md) §P3.
 
 ## 4. CRC and resend on unreliable paths
 
@@ -68,7 +62,6 @@ The host side is the [host development guide](host-development-guide.md).
   does not take "an answer arrived" as proof of correctness.
 - The target side is the same: a one-bit parity on a debug wire passes half of the broken answers. Check memory reads and flash results with
   a CRC or a read-back at a higher level.
-- Examples: [implementation notes](implementation-notes.ja.md) §P4.
 
 ## 5. The boot speed of a UART bridge
 
@@ -77,8 +70,6 @@ The host side is the [host development guide](host-development-guide.md).
 - A faster link during a session is port_speed (core §3.5, optional): implement its three states, its return conditions and the describe tag
   0x4E. The speed it returns to is always the boot speed.
 - On USB CDC and built-in USB serial the line coding is only a number and does not change the speed; ignore it (core §3.4).
-- The history (the boot speed was once the only speed; measurements of higher speeds): [implementation notes](implementation-notes.ja.md) §P5,
-  [UART speed](uart-speed-negotiation.ja.md).
 
 ## 6. Sharing a serial port
 
@@ -98,8 +89,8 @@ How to meet the rules of core §3.4:
 
 Opening and closing a port must not reboot the probe (§1). Turn off every reboot trigger the USB stack has: DTR / RTS sequences, the 1200 bps
 "touch", vendor reset requests. Where the trigger is outside the firmware (an auto-reset circuit behind a USB-UART converter), the host opens
-the port with DTR and RTS asserted (host guide §1), and the probe declares `resets_on_open` if it still resets. Per-stack examples:
-[implementation notes](implementation-notes.ja.md) §P7.
+the port with DTR and RTS asserted (host guide §1), and the probe declares `resets_on_open` if it still resets. For example: an ESP32 USB-Serial/JTAG port resets the chip on a DTR / RTS
+sequence unless its chip-reset-disable bit is set; TinyUSB's CDC in arduino-esp32 (`USBCDC`) stops rebooting with `enableReboot(false)`.
 
 ## 8. Recommended USB shape (VID:PID, iProduct, serial number and interfaces)
 
@@ -122,7 +113,7 @@ For probes with native USB:
     settings' get and state);
   - CDC is the serial port IDEs and terminals see. It also accepts OEP (core §3.4) but mainly carries the console.
 - List every transport you expose in fn 0's describe (transport tags), and return the same unit_id on all of them.
-- The reference probe's current descriptors: [implementation notes](implementation-notes.ja.md) §P8, [USB identification](usb-identity.md).
+- The reference probe's current USB shape: [USB identification](usb-identity.md).
 
 ## 9. What the probe does for lock takeover
 
@@ -216,8 +207,7 @@ For a probe that lists `oep.probe.config` ([probe settings](oep-if-probe-config.
 
 ## 12. Parts that handle the target
 
-General rules from the reference probe; the target-specific observations behind them are in [implementation notes](implementation-notes.ja.md)
-§P12 and [target-scan-notes](target-scan-notes.ja.md).
+General rules from the reference probe.
 
 - **Run until halt**: before running code the host gave, set the debug control bits that make ebreak enter debug mode in every privilege
   mode, and run in the most privileged mode, so that the final ebreak halts instead of jumping to the trap vector. The host masks interrupts

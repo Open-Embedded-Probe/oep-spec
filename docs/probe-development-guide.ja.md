@@ -12,7 +12,6 @@
   [getting started](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/getting-started.ja.md)、
   [writing a probe](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.ja.md)、例の
   `examples/01.Basics/MinimalProbe`（oep-probe-arduino）。
-- 以前ここにあったチップ固有の話と日付つきの実測は、記録の [実装の記録](implementation-notes.ja.md) の、P とここの節番号の節に移した。
   節の番号は 2026-10-06 に付け直した。古い番号と新しい番号の対応はその記録の冒頭。
 - `probe_frame_gap_ms` のような逆引用符の名前は、すべての数を持つ `registry/oep-v1.toml` のキー。
 
@@ -30,7 +29,6 @@
   firmware が動くまで、ピンは MCU のリセットの状態で、どの firmware も変えられない。誤った水準が害になる線には外付けのプルが要る
   と利用者に伝える（probe の設定 §5）。
 - 開くとどうしてもリセットされる probe は、fn 0 の describe で `resets_on_open` を宣言する（core §7.5）。
-- 例: [実装の記録](implementation-notes.ja.md) §P1。
 
 ## 2. 送受信のバッファ
 
@@ -46,7 +44,6 @@
   長さ 0 の転送を続ける（core §3.1）ので、ちょうど packet の境で終わる要求が次の OUT まで待たされることがある。長さ 0 の完了は
   読み飛ばす。
 - 線の速さは fn 0 の link_source / link_sink（core §12）で測る。受信・送信の経路を変えたら測り直す。
-- 例と実測: [実装の記録](implementation-notes.ja.md) §P2。
 
 ## 3. OEP の口にほかのものを出さない・誰も読まない口で止まらない
 
@@ -54,7 +51,6 @@
   止める。
 - **誰も読んでいない口への書き込みで main loop を止めない。** 開かれていない USB シリアルの口へのブロックする書き込みは、呼ぶたびに
   タイムアウトまで待ち、すべての応答と通知を遅らせうる。ブロックしない書き込みにするか、書かない。
-- 例: [実装の記録](implementation-notes.ja.md) §P3。
 
 ## 4. 信頼性のない経路には CRC と再送
 
@@ -64,7 +60,6 @@
   host は「応答が来た」ことを正しさの根拠にしない。
 - target の側も同じ: debug の線の 1 bit の parity は、壊れた応答の半分を通す。メモリの読み出しや flash の結果は、上位の CRC か
   読み戻しで確かめる。
-- 例: [実装の記録](implementation-notes.ja.md) §P4。
 
 ## 5. UART bridge の起動時の速さ
 
@@ -73,8 +68,6 @@
 - セッションの間だけ速くするのは port_speed（core §3.5、任意）: 3 つの状態、戻る条件、describe の tag 0x4E を実装する。戻り先は
   いつも起動時の速さ。
 - USB CDC と内蔵の USB シリアルでは、線の設定は数字が渡るだけで速さに関係しない。無視する（core §3.4）。
-- 経緯（起動時の速さが唯一の速さだったころ、速い速さの実測）: [実装の記録](implementation-notes.ja.md) §P5、
-  [UART の速さ](uart-speed-negotiation.ja.md)。
 
 ## 6. シリアルの口の共用の作り
 
@@ -94,8 +87,8 @@ core §3.4 の規則を守るための作り:
 
 口を開閉しても probe が再起動しないようにする（§1）。USB スタックの再起動のきっかけ（DTR / RTS の並び、1200 bps の「touch」、vendor の
 リセットの要求）をすべて切る。きっかけが firmware の外にあるとき（USB-UART の変換チップの先の自動リセットの回路）は、host が DTR と
-RTS を立てて開き（host ガイド §1）、それでもリセットするなら probe は `resets_on_open` を宣言する。スタックごとの例:
-[実装の記録](implementation-notes.ja.md) §P7。
+RTS を立てて開き（host ガイド §1）、それでもリセットするなら probe は `resets_on_open` を宣言する。例: ESP32 の USB-Serial/JTAG の口は、chip-reset-disable のビットを
+立てないと DTR / RTS の並びでチップをリセットする。arduino-esp32 の TinyUSB の CDC（`USBCDC`）は `enableReboot(false)` で再起動しなくなる。
 
 ## 8. 推奨の USB の作り（VID:PID、iProduct、serial number、interface）
 
@@ -116,7 +109,7 @@ RTS を立てて開き（host ガイド §1）、それでもリセットする�
   - HID は、他の道具が vendor や CDC を握っていても読め、ドライバも要らず、ロック不要の発見（describe、設定の get と state）に向く;
   - CDC は IDE や端末から見えるシリアルの口。OEP も受けるが（core §3.4）、主にはコンソールを流す。
 - 出している経路をすべて fn 0 の describe（transport の tag）に並べ、どの経路でも同じ unit_id を返す。
-- 参照の probe の今の記述子: [実装の記録](implementation-notes.ja.md) §P8、[USB の識別](usb-identity.ja.md)。
+- 参照の probe の今の USB の形: [USB の識別](usb-identity.ja.md)。
 
 ## 9. ロックの奪い方に probe が答えること
 
@@ -206,8 +199,7 @@ revision は数字に任意の `.数字` の組。revision が分からなけれ
 
 ## 12. target を扱う部品
 
-参照の probe から取った一般の決まり。その元になった target 固有の観察は [実装の記録](implementation-notes.ja.md) §P12 と
-[対象ごとのスキャンの記録](target-scan-notes.ja.md)。
+参照の probe から取った一般の決まり。
 
 - **止まるまで走らせる**: host が渡したコードを走らせる前に、どの特権のモードでも ebreak が debug モードに入るようにする debug の制御の
   bit を立て、いちばん強い特権のモードで走らせる。最後の ebreak が trap のベクタに飛ばずに止まるようにするため。割り込みは host が
