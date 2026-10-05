@@ -4,13 +4,12 @@
 
 Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). This document defines the framing of mechanism 2 (dmseq) of `oep.target.console` ([console](oep-if-console.md) §3).
 This English version is authoritative; the Japanese version is its translation.
-The reasons, the history and the measurements are in [dmseq notes](target-console-dmseq-notes.ja.md) (Japanese, record).
 
 ## Purpose
 
 dmseq gives each direction a 1-bit sequence number and a CRC-8.
 With them, the host can tell a frame it reads again (a **duplicate**) from a new frame with the same contents, so that nothing is delivered twice and nothing is dropped.
-The CRC is required.
+The CRC is required: without it, a word another debugger or an attach leaves in DATA0 can look like a valid answer.
 
 Name: the framing name is **dmseq** (`registry/oep-v1.toml`: `[interface.enum.mechanism]` of `oep.target.console`, `dmseq = 2`).
 

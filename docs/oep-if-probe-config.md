@@ -2,8 +2,7 @@
 
 [日本語](oep-if-probe-config.ja.md)
 
-Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md). The only definition of the numbers is `registry/oep-v1.toml`. The history and
-experiments are in [serial ports and persistence](probe-cdc-and-persistence.ja.md) (Japanese).
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md). The only definition of the numbers is `registry/oep-v1.toml`.
 
 | Name | revision | Role |
 |---|---:|---|

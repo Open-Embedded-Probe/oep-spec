@@ -2,8 +2,7 @@
 
 [English](oep-if-probe-config.md)
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。経緯と
-実験は [シリアルの口と永続化](probe-cdc-and-persistence.ja.md)。
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。
 
 | 名前 | revision | 役割 |
 |---|---:|---|

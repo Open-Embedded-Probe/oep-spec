@@ -3,8 +3,7 @@
 [日本語](oep-if-capture.ja.md)
 
 Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md).
-The only definition of the numbers is `registry/oep-v1.toml`. The design as a logic analyser, the line between basic and extension, and the measurements behind them are in
-[capture (design and measurements)](logic-capture.ja.md) (Japanese).
+The only definition of the numbers is `registry/oep-v1.toml`. The line between the basic set and separate definitions is §3.6.
 
 | Name | revision | Role |
 |---|---:|---|
@@ -14,7 +13,7 @@ The only definition of the numbers is `registry/oep-v1.toml`. The design as a lo
 
 logic and analog have **the same operation numbers and forms**; they differ only in the contents of configure (§3.3), the layout of the data (§1), and the
 calibration that only analog has (§3.8). Simultaneous start of several tracks and time alignment do not widen these 2, but are a separate interface that bundles tracks
-(capture-group, §4). External clock, multi-stage triggers, etc. are separate definitions ([design](logic-capture.ja.md) (Japanese) §0.1).
+(capture-group, §4). External clock, multi-stage triggers, etc. are separate definitions (§3.6).
 
 **Time**: the time of every track is expressed with the probe's single clock (ns since boot, u64, does not wrap). Even across different interfaces it is the same
 clock, so the host can line tracks up by subtracting times. Times are returned as **an estimate and an uncertainty**. The probe returns values with the corrections it knows
@@ -28,7 +27,9 @@ so the host attaches the generation to read and release, and the probe refuses i
 status, the segment information, and the TLV of streaming data.
 
 Capture does not use the form of positioned streams ([common parts](oep-if-common.md) §1) (it has no from and no marks, and has segments and generations).
-The modes (one-shot, repeat, streaming) are in §2.1 (reasons: [design](logic-capture.ja.md) (Japanese) §2.4; how the rate is decided: §2.10 of the same).
+The modes (one-shot, repeat, streaming) are in §2.1. All three are kept because they serve different ends: one-shot captures faster than the link can carry,
+repeat captures without gaps and lets the host read at its own pace, and streaming captures without gaps faster than repeat can carry, at the cost of link bandwidth
+and probe time that the host cannot schedule. The probe sets the rate; its declaration is a guide and the answer to configure is authoritative (§3.5).
 
 ## 1. Form of the data
 
@@ -66,8 +67,7 @@ Examples:
 | A probe with 1 sample per byte, **3 lines** | 8 | [0, 1, 2] | 1 sample per byte, bits 3 to 7 undefined |
 | A probe that packs in units of 16 bits, 9 lines | 16 | [0 … 8] | 1 sample in 2 bytes (little endian), bits 9 to 15 undefined |
 
-A way of capturing that does not fit these rules (a peripheral that left-aligns samples into a 32-bit word) is repacked by the probe, or uses the format of a separate definition
-(which chip falls into which is in [design](logic-capture.ja.md) (Japanese) §3.0).
+A way of capturing that does not fit these rules (a peripheral that left-aligns samples into a 32-bit word) is repacked by the probe, or uses the format of a separate definition.
 
 ### 1.2 Analog
 
@@ -100,8 +100,6 @@ Examples:
 | A 12-bit ADC that sends 2-byte records as is | 16 | 0 | 12 | The upper 4 bits (channel number) are undefined |
 | A 12-bit ADC that sends the 16 bits of the FIFO as is | 16 | 0 | 12 | |
 | An ADC reduced to 8 bits | 8 | 0 | 8 | |
-
-Which chip falls into which is in [design](logic-capture.ja.md) (Japanese) §3.0.
 
 **Sharing pins** (core §8.1): a logic capture only listens, so it may share pins with other functions. An analog input,
 depending on the chip, switches the pad to the analog function and cuts off the digital input and output of that pin.
@@ -201,7 +199,8 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
   If it is a position not yet captured, it returns up to where there is data (empty if there is nothing. max = 0 is also an empty success).
 - release is for repeat only (in one-shot and streaming it does nothing and succeeds). It releases **up to and including** serial (inclusive). When this frees space in state 5,
   the probe resumes acquisition automatically (state 3) and sets flags bit0 on the first segment after resuming. stopped reason 2 is not sent (reserved).
-- max of read is u32 (to read large amounts at once, [design](logic-capture.ja.md) (Japanese) §7.2). The amount actually returned is decided by the probe's frame and `max_read` (declared).
+- max of read is u32 (so that one request can read a large amount: with several requests in flight and answers of 16 KiB or more, reading by requests
+  comes close to the throughput of a continuous stream). The amount actually returned is decided by the probe's frame and `max_read` (declared).
 - more of segments means there are segments not yet returned. If from_serial is beyond serial_done, an empty success.
 
 **State transitions** (row = the current state, column = the trigger. "—" does nothing and succeeds. The force column applies to a probe that declares force):
@@ -240,7 +239,7 @@ refused with rejected unsupported (0x0B, the tag in the payload); if it is not c
 | 0x47 | frontend | role(u8), frontend(u8: the number of the frontend of describe). One per channel; it repeats (core §2.3). Two for the same role are rejected malformed | Analog | Always |
 
 - **Querying is a separate operation (0x09)**. If it were a flag in the TLVs of configure, querying without the lock would not be possible, since the probe decides whether the lock is required
-  by the operation number ([design](logic-capture.ja.md) (Japanese) §7.8). A query does not break the current settings or the captured data.
+  by the operation number. A query does not break the current settings or the captured data.
 - type of trigger: 0 immediate (when omitted), 1 level (value 0 / 1), 2 edge (value 0 rising / 1 falling / 2 both),
   3 crossing a threshold upward, 4 crossing it downward (value is the ADC value after extraction with o / b). 1 to 2 are for logic, 3 to 4 for analog.
   A type not in the declaration is rejected unsupported.
@@ -306,11 +305,13 @@ segments.
 
 - **The declaration is a guide; the answer to configure is authoritative.** Combinations not shown in the declaration are checked with query.
 
-### 3.6 What was moved to separate definitions
+### 3.6 What is left to separate definitions
 
-As in the table of [design](logic-capture.ja.md) (Japanese) §0.1. The following TLVs that the previous version of this document had in configure were removed from the basic set: track (several tracks.
-Now capture-group, §4), external clock, the stages and conditions of multi-stage triggers, trigger output. The same for roles 0xC0 onwards (external clock, qualifiers, trigger input and output). When a separate definition
-is written, the numbers are assigned there.
+The basic set is what every host can implement in full, following whatever the probe chooses within it without branching. What changes the time axis or the
+meaning of the data, or has a meaning for one implementation only, is left to a separate definition (an interface with another name, or a features bit with its
+own document); a host that does not know it ignores it, and the basic behaviour does not change. Outside the basic set: several tracks started together (the
+separate interface capture-group, §4), external clock, the stages and conditions of multi-stage triggers, trigger output, and roles 0xC0 onwards (external clock,
+qualifiers, trigger input and output). When a separate definition is written, the numbers are assigned there.
 
 - For mode, trigger type and layout format, 0x40 onwards are each left to separate definitions.
 - For TLVs of configure and describe, 0x60 to 0x7F are left to separate definitions.
@@ -338,7 +339,7 @@ Repeat (a long time without breaks, at the host's pace)
 Streaming (1 analog channel, 44.1 kHz)
   plan_apply(analog: role0 = GPIO16)
   configure(mode=3, rate=44100, frontend(role 0, number 2))
-    → actual_rate 44642/1 etc. (it does not come out as requested; reasons: [design](logic-capture.ja.md) (Japanese) §7.4), layout s=16 o=0 b=12
+    → actual_rate 44642/1 etc. (it does not come out as requested: the converter's clock divides to a nearby rate), layout s=16 o=0 b=12
   subscribe(analog, min_bytes=1024, max_delay_ms=20) → start → data arrives
 ```
 
@@ -349,7 +350,7 @@ The host chooses the conversion. Curve correction can trim the top and bottom of
 
 | tag | Name | Value |
 |---|---:|---|
-| 0x01 | factory | frontend(u8), scheme_len(u8), scheme(text), raw_len(u16), raw. The calibration values written to the chip at the factory, as read. scheme is the name of the format, in reverse DNS (the namespace of the format's owner. `a-z 0-9 - .`, 1 to 64 byte). The interpretation of raw follows the definition of the scheme (examples in [design](logic-capture.ja.md) (Japanese) §3.0). One per frontend (0xFF for one that does not depend on the frontend) |
+| 0x01 | factory | frontend(u8), scheme_len(u8), scheme(text), raw_len(u16), raw. The calibration values written to the chip at the factory, as read. scheme is the name of the format, in reverse DNS (the namespace of the format's owner. `a-z 0-9 - .`, 1 to 64 byte). The interpretation of raw follows the definition of the scheme. One per frontend (0xFF for one that does not depend on the frontend) |
 | 0x02 | vrefint | raw(u32), ns(u64), nominal_mv(u32). The raw value of the internal reference voltage (Vrefint etc.) measured with the same ADC right after the last start (including the start of capture-group), its time, and the nominal value of that reference voltage (mV. Used to back-calculate the supply voltage). Used, with an ADC whose reference is the supply, to back-calculate the actual supply voltage. A probe that cannot measure it does not return it |
 
 - The chip's model number and revision are in chip of the core's describe (core §7.5), the firmware version likewise in firmware.

@@ -3,8 +3,7 @@
 [English](oep-if-console.md)
 
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
-ストリーム、§2 debug の connection）。番号の唯一の定義は `registry/oep-v1.toml`。考え方と理由は
-[コンソールのストリーム](console-stream.ja.md)。
+ストリーム、§2 debug の connection）。番号の唯一の定義は `registry/oep-v1.toml`。
 
 | 名前 | revision | 役割 |
 |---|---:|---|

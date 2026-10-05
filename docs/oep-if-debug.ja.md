@@ -3,8 +3,7 @@
 [English](oep-if-debug.md)
 
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§2 debug の
-connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`。名前の置き方の理由は
-[能力の名前の階層](capability-name-hierarchy.ja.md)。
+connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`。
 
 | 名前 | revision | 役割 |
 |---|---:|---|
@@ -229,7 +228,7 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
   アクセスのたびに走る）。
 - **reset をかけながらの attach**: TLV 0x05 reset（critical: `channel(u16)、hold_ms(u16)`）を付けると、probe はリセットの線（channel）を
   hold_ms 保ってから離す。method 1 なら離しながら halt を打ち続け、できるだけ早く止める（flags bit3、dpc TLV）。**最初の命令の前で
-  止まる保証は無い**（reset の線の解放から halt が効くまでに走った分がある。理由: [リンクの計測](link-measurements.ja.md) §3）。reset の直後の位置で
+  止まる保証は無い**（reset の線の解放から halt が効くまでに走った分がある）。reset の直後の位置で
   止める保証が要るときは、riscv-dm の reset mode 2（ndmreset を haltreq を保ったまま解く）を使う。method 0 なら走ったまま attach する。任意の機能で、role_channels の role 3（reset）で宣言する。持たない probe は reset の TLV を rejected unsupported で断る（受け取ったままの tag、0x85、core §2.3）。既存の connection に reset TLV を付けた
   attach は、その target を reset してから同じ connection を返す（mark reset detail 3）。hold_ms は
   core の max_op_ms の対象。
@@ -261,7 +260,8 @@ TLV:
 （スロットの錠の mask / value の長さの確かめに使う）。
 
 - **線の設定は target の性質で、host が持つ**: 線の速さの上限（max_speed）と休ませ方（idle_clock）は、target（チップ）が
-  求めるものである（理由: [リンクの計測](link-measurements.ja.md) §3）。probe はそれを既定値として持たない。host が attach ごとに渡し、host 無しで attach する
+  求めるものである（target は、クロックの休む向きが違うと debug の論理を reset することがあり、reset の直後の遅いクロックで走る間は
+  ある速さを超えると失敗することがある）。probe はそれを既定値として持たない。host が attach ごとに渡し、host 無しで attach する
   スロットは、スロットの項目に同じ値を持つ（[probe の設定](oep-if-probe-config.ja.md) §1.1）。scan でも同じ TLV を受ける（そういう
   target を scan で壊さず見つけるため）。
 - 既存の connection への attach で idle_clock が今と違えば、probe はその connection の休ませ方を替えて返す。替えられない probe は、
@@ -338,8 +338,7 @@ TLV:
 | 0 | 840 から 1060 ns | 240 から 270 ns |
 
 - 勧める low は、1 が 262 ns、0 が 862 ns。
-- （参考）low の範囲は、1 つの target の系列で動くと測ったもので、target そのものの限界はわかっていない。ベンチで掃引して測る予定で、
-  [target ごとの scan と attach の記録](target-scan-notes.ja.md) §3.1 に記録する。
+- （参考）low の範囲は、1 つの target の系列で動くと測ったもので、target そのものの限界はわかっていない。
 
 **target が送るビットの区切り**（読み出しの区切り）: probe は線を 240 から 270 ns low に駆動し、駆動をやめる。target は、線を low に保って 0 を、
 上がるにまかせて 1 を送る。probe は、自分が作った立ち下がりから 520 から 600 ns 後に線を読む（high = 1、low = 0）。その後、線がまた high に読めるまで
@@ -377,7 +376,7 @@ host が raw の DMI（dmi の op）で何をしても、host が途中で死ん
 
 | op | probe が触るもの | 応答の前に |
 |---|---|---|
-| halt | haltreq | allhalted を見る。**止まっている間、haltreq を立てたままにしてよい**（保つか下ろすかは probe が決め、host から見える動作は同じ。保つ理由: [リンクの計測](link-measurements.ja.md) §3）。resume / step / reset / detach と connection を閉じるときに下ろす。halt が時間切れになったら応答の前に下ろす（§4.2） |
+| halt | haltreq | allhalted を見る。**止まっている間、haltreq を立てたままにしてよい**（保つか下ろすかは probe が決め、host から見える動作は同じ。保つと、hart の状態が変わると debug の link が落ちる target を助ける。そういう target では halt 直後の読みが前の値になりうる）。resume / step / reset / detach と connection を閉じるときに下ろす。halt が時間切れになったら応答の前に下ろす（§4.2） |
 | resume | haltreq = 0、resumereq = 1 を 1 回 | 何も覚えず、何も戻さない |
 | step | dcsr.step、DATA0 / DATA1（dcsr の読み書き）、haltreq | dcsr.step を下ろし、DATA1、DATA0 を戻し、haltreq を下ろす。hart をもう一度止められなければ、応答が step_left を示す（§4.2） |
 | reset | haltreq、ndmreset、havereset の確認応答 | havereset を確認応答。mode 0 / 1 は haltreq を下ろす。mode 2 は止めたままで、halt と同じく haltreq を保ってよい。mode 1 の内部の halt は step と同じく戻す |
@@ -435,7 +434,7 @@ malformed。dmi の max_reads / max_us = 0 は 1 回読む。run の timeout_ms 
     ことがある）。その扱い（dpc を読んで、動いていなければもう一度 resume する、など）は target を知っている host が行う。
 - **DATA0 / DATA1 は target のもの**: hart が止まっている間に probe が abstract command（read_block など）で DATA0 / DATA1 を
   使うと、target がそこに出していた語（dmseq などのコンソールのフレームや答え）が消え、resume の後、target がその方式の規則でフレームを
-  出し直すまでコンソールが止まる（理由: [リンクの計測](link-measurements.ja.md) §3）。だから、DATA0 / DATA1 を使う op はそれを**自分の応答の前に**戻す（§4 の
+  出し直すまでコンソールが止まる。だから、DATA0 / DATA1 を使う op はそれを**自分の応答の前に**戻す（§4 の
   表）。probe は op をまたいで何も覚えない。
 - **step** は dcsr.step を立てて resume を 1 回だけ出し、戻ったら dcsr.step を下ろす。dpc が動かなくても失敗にしない（status ok、moved = 0。自分自身へ
   跳ぶ命令は正しく進んでも dpc が同じなので、host が命令を読んで判断する）。prv は変えない。
@@ -498,13 +497,12 @@ TLV 0x01 method（u8）: 0 probe の既定、revision 1 では ndmreset。1 ndmr
 - **副作用**: probe は GPR、program buffer、DATA のレジスタ、sysbus を使ってよい。ただし **応答を返す前に、使った GPR、DATA1、
   DATA0、abstractauto を、使う前の値に戻す**（§4 の表）。host が何も保存しなくても、halt → read_block → resume で target の状態は
   変わらない。戻さないと、target は止まった場所によってはレジスタを壊されて走り続ける。resume の時に戻す方式は、間に host の raw DMI が
-  入ると戻し損ねる（理由: [リンクの計測](link-measurements.ja.md) §3）。program buffer と SBCS / SBADDRESS は戻さない（host が使うなら設定し直す）。
+  入ると戻し損ねる。program buffer と SBCS / SBADDRESS は戻さない（host が使うなら設定し直す）。
 - run（§4.4）は host の指定したレジスタで host のローダーを走らせるもので、その間に変わった GPR、dcsr は戻さない（host の責任）。
 
 ### 4.6 RISC-V の connection の扱い
 
-- attach は保留中の havereset を先に確認応答する（確認応答するまで DMSTATUS の halt / running を固定する DM がある。
-  理由: [リンクの計測](link-measurements.ja.md) §3）。
+- attach は保留中の havereset を先に確認応答する（確認応答するまで DMSTATUS の halt / running を固定する DM がある）。
 - target の reset（reset の op、attach の reset TLV）の後、probe は havereset を確認応答して、同じ connection を保つ。
 - **havereset を見たら**（要求の中でも、コンソールの読みの中でも）確認応答し、コンソールの dmseq の状態を未同期に戻し、その connection
   のストリームに mark restart（detail 1）を付ける。

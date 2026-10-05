@@ -3,8 +3,7 @@
 [日本語](oep-if-debug.ja.md)
 
 Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§2 debug
-connections, §3 status). The only definition of the numbers is `registry/oep-v1.toml`. The reasons for the placement of names are in
-[hierarchy of capability names](capability-name-hierarchy.ja.md) (Japanese).
+connections, §3 status). The only definition of the numbers is `registry/oep-v1.toml`.
 
 | Name | revision | Role |
 |---|---:|---|
@@ -230,7 +229,7 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
   on each access).
 - **attach while applying reset**: with the TLV 0x05 reset (critical: `channel(u16), hold_ms(u16)`), the probe holds the reset wire (channel) for
   hold_ms and then releases it. With method 1 it keeps issuing halt while releasing, to halt as early as possible (flags bit3, dpc TLV). **There is no guarantee of halting before the first
-  instruction** (some execution happens between the release of the reset wire and the halt taking effect; reasons: [link measurements](link-measurements.ja.md) (Japanese) §3). When a guarantee of halting at the position right after
+  instruction** (some execution happens between the release of the reset wire and the halt taking effect). When a guarantee of halting at the position right after
   reset is needed, use reset mode 2 of riscv-dm (release ndmreset while holding haltreq). With method 0 it attaches with the target running. An optional function, declared by role 3 (reset) of role_channels; a probe without it rejects a reset TLV unsupported (the tag as received, 0x85, core §2.3). An attach with the reset TLV to an existing connection
   resets that target and then returns the same connection (mark reset detail 3). hold_ms is
   subject to the core's max_op_ms.
@@ -262,7 +261,8 @@ The schemes of target_id these wires use (`target_id_scheme`, one space for the 
 (used to verify the length of the mask / value of a slot's lock).
 
 - **The wire settings are properties of the target, and the host holds them**: the upper limit of the wire speed (max_speed) and the way of resting (idle_clock) are what the target (chip)
-  requires (reasons: [link measurements](link-measurements.ja.md) (Japanese) §3). The probe does not hold them as defaults. The host passes them at every attach, and a slot that attaches without a host
+  requires (a target may reset its debug logic when the clock rests at the wrong level, and may fail above some speed while it runs on its slow
+  clock right after reset). The probe does not hold them as defaults. The host passes them at every attach, and a slot that attaches without a host
   holds the same values in the slot's item ([probe settings](oep-if-probe-config.md) §1.1). scan accepts the same TLVs (to find such
   targets with scan without breaking them).
 - If an attach to an existing connection carries an idle_clock different from the current one, the probe changes the resting of that connection and returns it. A probe that cannot change it
@@ -339,8 +339,7 @@ pull-up on the line. Between frames the line rests high, either driven high by t
 | 0 | 840 to 1060 ns | 240 to 270 ns |
 
 - The recommended lows are 262 ns for a 1 and 862 ns for a 0.
-- (Informative) The low ranges were measured to work on one target family; the target's own limits are not known. A sweep on the bench is planned, to be recorded in
-  [target scan notes](target-scan-notes.ja.md) (Japanese) §3.1.
+- (Informative) The low ranges were measured to work on one target family; the target's own limits are not known.
 
 **Bit cells the target sends** (read cells): the probe drives the line low for 240 to 270 ns, then stops driving it. The target sends 0 by holding the line low,
 and 1 by leaving it to rise. The probe samples the line 520 to 600 ns after the falling edge it made (high = 1, low = 0). It then waits until the line reads high
@@ -378,7 +377,7 @@ Whatever the host does with raw DMI (the dmi op), and even if the host dies midw
 
 | op | What the probe touches | Before the answer |
 |---|---|---|
-| halt | haltreq | Checks allhalted. **haltreq may be left set while halted** (whether to keep or clear it is decided by the probe; the behaviour visible to the host is the same. Reasons for keeping it: [link measurements](link-measurements.ja.md) (Japanese) §3). Cleared on resume / step / reset / detach and when the connection closes. When halt times out, it is cleared before the answer (§4.2) |
+| halt | haltreq | Checks allhalted. **haltreq may be left set while halted** (whether to keep or clear it is decided by the probe; the behaviour visible to the host is the same. Keeping it helps a target whose debug link drops when the hart's state changes; on such a target a read right after halt can return the previous value). Cleared on resume / step / reset / detach and when the connection closes. When halt times out, it is cleared before the answer (§4.2) |
 | resume | haltreq = 0, resumereq = 1 once | Remembers nothing, restores nothing |
 | step | dcsr.step, DATA0 / DATA1 (reading and writing dcsr), haltreq | Clears dcsr.step, restores DATA1, DATA0, clears haltreq. If the hart cannot be halted again, the answer says step_left (§4.2) |
 | reset | haltreq, ndmreset, acknowledging havereset | Acknowledges havereset. mode 0 / 1 clear haltreq. mode 2 stays halted and may keep haltreq like halt. The internal halt of mode 1 is restored like step |
@@ -436,7 +435,7 @@ it is returned twice as is. write_block / read_block on a hart that is not halte
     resumereq). Handling that (reading dpc and resuming again if it is not moving, etc.) is done by the host that knows the target.
 - **DATA0 / DATA1 belong to the target**: if the probe uses DATA0 / DATA1 with an abstract command (read_block etc.) while the hart is halted,
   the word the target had placed there (a console frame or answer of dmseq etc.) is lost, and after resume the console stalls until the target posts its frame
-  again under its mechanism's rules (reasons: [link measurements](link-measurements.ja.md) (Japanese) §3). Therefore an op that uses DATA0 / DATA1 restores them **before its own answer** (the table of
+  again under its mechanism's rules. Therefore an op that uses DATA0 / DATA1 restores them **before its own answer** (the table of
   §4). The probe remembers nothing across ops.
 - **step** sets dcsr.step, issues resume exactly once, and clears dcsr.step when it returns. It is not a failure if dpc does not move (status ok, moved = 0. An instruction that jumps to
   itself leaves dpc the same even when it executed correctly, so the host reads the instruction and decides). prv is not changed.
@@ -499,13 +498,12 @@ dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rej
 - **Side effects**: the probe may use GPRs, the program buffer, the DATA registers, and sysbus. However, **before returning the answer, it restores the GPRs, DATA1,
   DATA0 and abstractauto it used to their values before use** (the table of §4). Even if the host saves nothing, halt → read_block → resume leaves the target's state
   unchanged. Without restoring, depending on where it stopped, the target would keep running with corrupted registers. Restoring at resume time fails when the host's raw DMI
-  comes in between (reasons: [link measurements](link-measurements.ja.md) (Japanese) §3). The program buffer and SBCS / SBADDRESS are not restored (the host sets them again if it uses them).
+  comes in between. The program buffer and SBCS / SBADDRESS are not restored (the host sets them again if it uses them).
 - run (§4.4) runs the host's loader with the registers the host specified, and the GPRs and dcsr changed during it are not restored (the host's responsibility).
 
 ### 4.6 Handling of RISC-V connections
 
-- attach first acknowledges a pending havereset (some DMs freeze the halt / running of DMSTATUS until acknowledged;
-  reasons: [link measurements](link-measurements.ja.md) (Japanese) §3).
+- attach first acknowledges a pending havereset (some DMs freeze the halt / running of DMSTATUS until acknowledged).
 - After a target reset (the reset op, the reset TLV of attach), the probe acknowledges havereset and keeps the same connection.
 - **On seeing havereset** (whether inside a request or inside a console read), acknowledge it, return the dmseq state of the console to unsynchronised, and attach a mark restart (detail 1)
   to the streams of that connection.

@@ -3,8 +3,7 @@
 [English](oep-if-capture.md)
 
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)。
-番号の唯一の定義は `registry/oep-v1.toml`。ロジアナとしての設計、基本と拡張の線引き、根拠の実測は
-[キャプチャ（設計と実測）](logic-capture.ja.md)。
+番号の唯一の定義は `registry/oep-v1.toml`。基本と別の定義の線引きは §3.6。
 
 | 名前 | revision | 役割 |
 |---|---:|---|
@@ -14,7 +13,7 @@
 
 logic と analog は**操作の番号と形が同じ**で、違うのは configure の中身（§3.3）、データの layout（§1）、アナログだけの
 calibration（§3.8）だけ。複数トラックの同時開始と時刻合わせは、この 2 つを広げず、トラックを束ねる別のインターフェース
-（capture-group、§4）にする。外部クロック、多段トリガなどは別の定義（[設計](logic-capture.ja.md) §0.1）。
+（capture-group、§4）にする。外部クロック、多段トリガなどは別の定義（§3.6）。
 
 **時刻**: どのトラックの時刻も、probe の 1 本の時計（起動からの ns、u64 で一周しない）で表す。インターフェースが違っても同じ
 時計なので、host は時刻の引き算でトラックを並べられる。時刻は**推定値と不確かさ**で返す。probe は知っている補正（ドライバが最初の
@@ -28,7 +27,9 @@ calibration（§3.8）だけ。複数トラックの同時開始と時刻合わ�
 status、区画の情報、ストリーミングのデータの TLV で分かる。
 
 キャプチャは位置つきのストリームの形（[共通部品](oep-if-common.ja.md) §1）を使わない（from とマークが無く、区画と世代を持つ）。
-モード（ワンショット、リピート、ストリーミング）は §2.1（理由: [設計](logic-capture.ja.md) §2.4。レートの決め方: 同 §2.10）。
+モード（ワンショット、リピート、ストリーミング）は §2.1。3 つを持つのは目的が違うから: ワンショットは線が運べるより速く取れ、
+リピートは隙間なく取って host が自分のペースで読め、ストリーミングはリピートで運べる速さを超えて隙間なく取れるが、host が時期を決められない線の帯域と
+probe の時間を使う。レートは probe が刻む。宣言は目安で、configure の応答が正（§3.5）。
 
 ## 1. データの形
 
@@ -66,8 +67,7 @@ configure の応答で probe が返す値:
 | 1 バイト 1 サンプルの probe、**3 本** | 8 | [0, 1, 2] | 1 バイト 1 サンプル、ビット 3〜7 未定義 |
 | 16 ビット単位で詰める probe、9 本 | 16 | [0 … 8] | 2 バイトで 1 サンプル（little endian）、ビット 9〜15 未定義 |
 
-この規則に入らない取り方（32 ビットの語にサンプルを左詰めするペリフェラル）は、probe が詰め直すか、別の定義の形式を使う
-（どのチップがどれに当たるかは [設計](logic-capture.ja.md) §3.0）。
+この規則に入らない取り方（32 ビットの語にサンプルを左詰めするペリフェラル）は、probe が詰め直すか、別の定義の形式を使う。
 
 ### 1.2 アナログ
 
@@ -100,8 +100,6 @@ configure の応答で probe が返す値:
 | 2 バイトのレコードをそのまま送る 12 ビット ADC | 16 | 0 | 12 | 上位 4 ビット（チャネル番号）は未定義 |
 | FIFO の 16 ビットをそのまま送る 12 ビット ADC | 16 | 0 | 12 | |
 | 8 ビットに縮めた ADC | 8 | 0 | 8 | |
-
-どのチップがどれに当たるかは [設計](logic-capture.ja.md) §3.0。
 
 **ピンの共有**（core §8.1）: ロジックのキャプチャは聞くだけなので、ほかの機能のピンと共有してよい。アナログの入力は
 チップによっては pad をアナログの機能に切り替え、そのピンのデジタルの入出力を切る。
@@ -201,7 +199,8 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
   まだ取れていない位置なら、あるところまで返す（何もなければ空。max = 0 も空の成功）。
 - release はリピートだけ（ワンショットとストリーミングでは何もせず成功）。serial **以下**（inclusive）を解放する。state 5 で空きが
   できれば probe は自動で取得を再開し（state 3）、再開した最初の区画に flags bit0 を立てる。stopped reason 2 は送らない（予約）。
-- read の max は u32（1 回で大きく読むため、[設計](logic-capture.ja.md) §7.2）。実際に返す量は、probe の frame と `max_read`（宣言）で決まる。
+- read の max は u32（1 回の要求で大きく読めるように: 同時に複数の要求を出し、応答が 16 KiB 以上なら、要求で読む速さは
+  連続のストリームに近づく）。実際に返す量は、probe の frame と `max_read`（宣言）で決まる。
 - segments の more は、まだ返していない区画があること。from_serial が serial_done より先なら空の成功。
 
 **状態の遷移**（行 = 今の state、列 = 契機。「—」は何もせず成功。force の列は force を宣言する probe に当てはまる）:
@@ -240,7 +239,7 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 | 0x47 | frontend | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。繰り返す（core §2.3）。同じ role に 2 つあれば rejected malformed | アナログ | 常に |
 
 - **問い合わせは別の操作（0x09）**。configure の TLV のフラグにすると、probe はロックの要否を操作の番号で決めるので、
-  ロックなしの問い合わせができない（[設計](logic-capture.ja.md) §7.8）。問い合わせは今の設定と取ったデータを壊さない。
+  ロックなしの問い合わせができない。問い合わせは今の設定と取ったデータを壊さない。
 - trigger の type: 0 即時（省略時）、1 レベル（value 0 / 1）、2 エッジ（value 0 立ち上がり / 1 立ち下がり / 2 両方）、
   3 しきい値を上向きに横切る、4 下向きに横切る（value は o / b で切り出した後の ADC の値）。1〜2 はロジック、3〜4 はアナログ。
   宣言に無い type は rejected unsupported。
@@ -306,11 +305,12 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 
 - **宣言は目安、configure の応答が正。** 宣言に出ていない組み合わせは query で確かめる。
 
-### 3.6 別の定義に回したもの
+### 3.6 別の定義に残すもの
 
-[設計](logic-capture.ja.md) §0.1 の表のとおり。この文書の前の版で configure に入れていた次の TLV は、基本から外した: トラック（複数トラック。
-今は capture-group、§4）、外部クロック、多段トリガの段と条件、トリガ出力。役割の 0xC0〜（外部クロック、修飾、トリガ入出力）も同じ。別の定義を
-書くときに、そちらで番号を振る。
+基本は、どの host も全部実装でき、その中で probe が選んだものに分岐なしでついていける量にする。時間軸やデータの意味を変えるもの、
+1 つの実装でしか意味がないものは、別の定義（別の名前のインターフェース、または独立した features のビットと文書）に残す。知らない host は
+それを無視でき、基本の動作は変わらない。基本の外: 複数トラックの同時開始（別のインターフェースの capture-group、§4）、外部クロック、
+多段トリガの段と条件、トリガ出力、役割の 0xC0〜（外部クロック、修飾、トリガ入出力）。別の定義を書くときに、そちらで番号を振る。
 
 - モード、トリガの type、layout の形式は、それぞれ 0x40 以降を別の定義に残す。
 - configure と describe の TLV は 0x60〜0x7F を別の定義に残す。
@@ -338,7 +338,7 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 ストリーミング（アナログ 1 チャネル、44.1 kHz）
   plan_apply(analog: role0 = GPIO16)
   configure(mode=3, rate=44100, frontend(role 0, 番号 2))
-    → actual_rate 44642/1 など（要求どおりにはならない。理由: [設計](logic-capture.ja.md) §7.4）、layout s=16 o=0 b=12
+    → actual_rate 44642/1 など（要求どおりにはならない: 変換器のクロックの分周で近いレートになる）、layout s=16 o=0 b=12
   subscribe(analog, min_bytes=1024, max_delay_ms=20) → start → データが届く
 ```
 
@@ -349,7 +349,7 @@ ADC の値を電圧に換算するための、probe が持っている情報を*
 
 | tag | 名前 | 値 |
 |---|---:|---|
-| 0x01 | factory | frontend(u8)、scheme_len(u8)、scheme(text)、raw_len(u16)、raw。出荷時にチップに書かれた較正の値を、読んだまま。scheme は形式の名前で、逆 DNS（形式の持ち主の名前空間。`a-z 0-9 - .`、1〜64 byte）。raw の解釈は scheme の定義に従う（例は [設計](logic-capture.ja.md) §3.0）。frontend ごとに 1 つ（frontend に依らないものは 0xFF） |
+| 0x01 | factory | frontend(u8)、scheme_len(u8)、scheme(text)、raw_len(u16)、raw。出荷時にチップに書かれた較正の値を、読んだまま。scheme は形式の名前で、逆 DNS（形式の持ち主の名前空間。`a-z 0-9 - .`、1〜64 byte）。raw の解釈は scheme の定義に従う。frontend ごとに 1 つ（frontend に依らないものは 0xFF） |
 | 0x02 | vrefint | raw(u32)、ns(u64)、nominal_mv(u32)。内部の基準電圧（Vrefint など）を、最後の start（capture-group の start を含む）の直後に同じ ADC で測った生の値、その時刻、その基準電圧の公称値（mV。電源電圧の逆算に使う）。基準電圧が電源の ADC で、実際の電源電圧を逆算するのに使う。測れない probe は返さない |
 
 - チップの型番とリビジョンは core の describe の chip（core §7.5）、firmware の版は同じく firmware。

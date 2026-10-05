@@ -3,8 +3,7 @@
 [日本語](oep-if-console.ja.md)
 
 Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§1 positioned
-streams, §2 debug connections). The only definition of the numbers is `registry/oep-v1.toml`. The thinking and the reasons are in
-[console streams](console-stream.ja.md) (Japanese).
+streams, §2 debug connections). The only definition of the numbers is `registry/oep-v1.toml`.
 
 | Name | revision | Role |
 |---|---:|---|

@@ -4,13 +4,12 @@
 
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。この文書は `oep.target.console` の mechanism 2（dmseq、[コンソール](oep-if-console.ja.md) §3）の framing を規定する。
 この文書の原文は英語版で、日本語版はその訳である。
-理由、経緯、実測は [dmseq の記録](target-console-dmseq-notes.ja.md)（記録）にある。
 
 ## 目的
 
 dmseq は両方向に 1 bit の通し番号と CRC-8 を持たせる。
 これにより host は、もう一度読んだフレーム（**重複**）と、同じ内容の新しいフレームを区別でき、二重に渡すことも欠落もしない。
-CRC は必須である。
+CRC は必須である: CRC が無いと、別の debugger や attach が DATA0 に残した語が、有効な答えに見えうる。
 
 名前: framing 名は **dmseq**（`registry/oep-v1.toml`: `oep.target.console` の `[interface.enum.mechanism]`、`dmseq = 2`）。
 
