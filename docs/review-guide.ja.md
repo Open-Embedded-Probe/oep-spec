@@ -23,14 +23,14 @@ flash の書き方やチップ固有の手順は host にある。
 - **v1 の凍結の候補**です。規範は `docs/oep-core.ja.md`、`docs/oep-if-*.ja.md`（6 つ）、`docs/target-console-dmseq.ja.md`、番号は `registry/oep-v1.toml`。
   規範の中に未決の数（「決める」の印）は残っていません。凍結で何を止め、何を止めないかは [版と安定性](versioning.ja.md)（決めた記録は [凍結の範囲](v1-freeze-decisions.ja.md) §0）。変更の一覧は [CHANGELOG](../CHANGELOG.md)。
 - 凍結までは破壊的な変更を revision を上げずに入れます（利用者はまだいない）。凍結後は revision を上げます。
-- **リリース**: oep-spec は GitHub の main に push 済み（タグは無い。commit で指す）。参照の実装は oep-probe-arduino **0.0.27**（Arduino ライブラリ
-  `OpenEmbeddedProbe`、GitHub release に profile ごとの firmware）、oep-client-python **0.0.27**（PyPI `oep-client-python`）。oep-client-js は
+- **リリース**: oep-spec は GitHub の main に push 済み（タグは無い。commit で指す）。参照の実装は oep-probe-arduino **0.0.28**（Arduino ライブラリ
+  `OpenEmbeddedProbe`、GitHub release に profile ごとの firmware）、oep-client-python **0.0.28**（PyPI `oep-client-python`）。oep-client-js は
   未公開（npm に出していない。fake に対する試験だけ）。firmware と client は同じ minor 版で組にします。
 - **実機の試験**（[release-testing](release-testing.ja.md)、oep-client-python `tests/hw/`）が覆うもの: 焼く、confirm / list / describe、`oep.probe.config` の
   set / get / save / 再起動 / unset（disable を含む）、線（scan、attach、halt → dmi → read_block → resume の往復。target をつないだボードだけ）、
   gpio、fixture uart、port_speed（UART bridge のボードだけ）、lease の期限切れ / expired / force。結果は `tests/hw/results/` の JSON。
   **覆わないもの**: console（dmseq）、キャプチャ（logic / analog / capture-group）、i2c-target / spi-target、通知、HID の経路、複数の経路の
-  同時使用、TCP。これらは fake に対する試験（`uv run pytest`、247 件）と手動の確認だけです。
+  同時使用、TCP。これらは fake に対する試験（`uv run pytest`）と手動の確認だけです。
 - 決め方は「先に実験・試作をして、その結果で仕様を固める」。実験の番号や日付は**記録の文書**に残し、規範の文には置きません
   （規範はチップ名・ボード名・日付を持たず、数は目安ではなく値）。
 - **規範は英語の文**です。日本語の文書（`.ja.md`）は訳で、両者が食い違えば英語の文が正しい。規範の文書とガイドにはすべて英語版があります。記録の多くは日本語だけです。
@@ -42,13 +42,13 @@ flash の書き方やチップ固有の手順は host にある。
 |---:|---|---|
 | 1 | `docs/project-concept.ja.md` | 目的と範囲（上流の合意）。短い |
 | 2 | `docs/versioning.ja.md`、`docs/v1-freeze-decisions.ja.md` §0.3 | **凍結の範囲**: 止めるもの、自由なもの、伸ばす道、revision を上げる意味。意図して固定するものと理由（§0.3） |
-| 3 | `docs/oep-core.ja.md` | **本体（規範）**。§0 層と線引きの規則、§2 共通の規則（TLV、知らない値、番号の空間、revision）、§3 経路とフレーム、§4 メッセージと reject reason（§4.3 に**断り方の順**）、§5 立て直しと送り直し、§6 セッション、§7 発見（confirm / list / describe）、§8 plan、§9 資源の寿命、§10 長い操作（予約）、§11 通知、§12 core の op、§13 インターフェースの書き方。**§3.5（シリアルの口の速さ）は握手だけ**: 候補の選び方、確かめ、使用中の判定は `host-development-guide` §7 の参考の手順 |
+| 3 | `docs/oep-core.ja.md` | **本体（規範）**。§0 層と線引きの規則、§2 共通の規則（TLV、知らない値、番号の空間、revision）、§3 経路とフレーム、§4 メッセージと reject reason（§4.3 に**断り方の順**）、§5 立て直しと送り直し、§6 セッション、§7 発見（confirm / list / describe）、§8 plan、§9 資源の寿命、§10 長い操作（予約）、§11 通知、§12 core の op、§13 インターフェースの書き方。**§3.5（シリアルの口の速さ）は握手だけ**: 候補の選び方、確かめ、使用中の判定は `host-development-guide` §17 の参考の手順 |
 | 4 | `docs/oep-if-common.ja.md` | 標準インターフェースの共通部品（位置つきのストリーム、debug の connection、線と target の status） |
 | 5 | `docs/oep-if-debug.ja.md`、`docs/oep-if-console.ja.md`、`docs/oep-if-fixture.ja.md`、`docs/oep-if-capture.ja.md`、`docs/oep-if-probe-config.ja.md` | 標準インターフェース（規範）: 線と RISC-V DM / ARM ADI、target のコンソール、GPIO / UART / I2C・SPI の target、ロジック / アナログのキャプチャと組、probe の設定（スロット、bind、disable） |
 | 6 | `docs/target-console-dmseq.ja.md` | コンソールの framing（dmseq）: デバッグモジュールのデータレジスタで、通番と CRC つきで双方向に運ぶ（target と host の規範） |
 | 7 | `registry/oep-v1.toml` | 番号と数の唯一の定義。`timing` / `limits` は規範の文の数（凍結の対象） |
 | 8 | `docs/v1-zero-base-proposal.ja.md` §1、§4、`docs/v1-zero-base-review-2026-10-02.ja.md` | 判定に使った **8 つの原則**、意図して伸ばさない所、2 回目の点検（★ 直した、☆ 固定のまま） |
-| 9 | `docs/getting-started.ja.md`、`docs/host-development-guide.ja.md`、`docs/probe-development-guide.ja.md`、`docs/security.ja.md`、`docs/glossary.ja.md` | 実務（規範ではない）: いちばん小さい probe と host とバイト列。フレームの送り方、立て直し、断りごとの動き、通知、probe の設定、USB-UART の扱い、**host ガイド §17 シリアルの口の速さの選び方**（17.1 釣り合い、17.2 最小の形、17.3 用途別に確かめを足す形、17.4 記録、17.5 実測）。識別子と宣言（probe ガイド §10）。安全とセキュリティを 1 か所に。用語 |
+| 9 | `docs/getting-started.ja.md`、`docs/conformance.ja.md`、`docs/host-development-guide.ja.md`、`docs/probe-development-guide.ja.md`、`docs/security.ja.md`、`docs/glossary.ja.md` | 実務（規範ではない）: いちばん小さい probe と host とバイト列。probe と host の適合の点検表。フレームの送り方、立て直し、断りごとの動き、通知、probe の設定、USB-UART の扱い、**host ガイド §17 シリアルの口の速さの選び方**（17.1 釣り合い、17.2 最小の形、17.3 用途別に確かめを足す形、17.4 記録、17.5 実測）。識別子と宣言（probe ガイド §10）。安全とセキュリティを 1 か所に。用語 |
 | 10 | `docs/link-measurements.ja.md`、`docs/uart-speed-negotiation.ja.md`、`docs/logic-capture.ja.md` | **記録**（規範ではない）: USB とシリアルの経路の実測、UART の速さの実験と経緯、キャプチャの設計と実測。参考の数字の出どころ |
 | 11 | `docs/release-testing.ja.md` | リリース前の実機の試験: 誰が持つか、何を確かめるか |
 | 12 | `docs/session-and-exclusivity.ja.md`、`docs/capability-*.ja.md`（3 つ）、`docs/console-stream.ja.md`、`docs/target-connection-use-cases.ja.md`、`docs/probe-cdc-and-persistence.ja.md` | 決めた理由（セッションとロック、名前で探す方式、describe の語彙、ストリーム、target の発見、シリアルの口の共用と設定の保存） |
@@ -79,7 +79,7 @@ flash の書き方やチップ固有の手順は host にある。
 |---|---|
 | **規範** | `oep-core`、`oep-if-*`（6 つ）、`target-console-dmseq` |
 | **ガイド**（規範ではない） | `review-guide`、`getting-started`、`conformance`、`project-concept`、`host-development-guide`、`probe-development-guide`、`security`、`glossary`、`versioning`、`release-testing`、`usb-identity`。根の `CHANGELOG.md` |
-| **記録**: 凍結の範囲と決定 | `v1-freeze-decisions`（§0 範囲、§A / §B の 13 項目）、`v1-zero-base-proposal`、`v1-zero-base-review-2026-10-02`、`v1-zero-base-review-3-2026-10-02`、`v1-freeze-review-2026-10-01`（対応済み） |
+| **記録**: 凍結の範囲と決定 | `v1-freeze-decisions`（§0 範囲、§A / §B の 13 項目）、`v1-zero-base-proposal`、`v1-zero-base-review-2026-10-02`、`v1-zero-base-review-3-2026-10-02`、`v1-freeze-review-2026-10-01`（対応済み）、`v1-rule-change-proposal-2026-10-02`、`v1-rule-change-proposal-2026-10-06`（peer と合意して入れた規則の変更） |
 | **記録**: プロジェクトの作業の基準 | `development-guidelines` |
 | **記録**: 実測（追記は自由） | `link-measurements`、`target-scan-notes`（target ごとの scan と attach）、`implementation-notes`（ガイドから移したチップ固有の話と実測）、`uart-speed-negotiation`、`logic-capture`（§7 以降）、`probe-cdc-and-persistence` §7、`target-console-dmseq-notes` |
 | **記録**: v1 の理由 | `session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-connection-use-cases`、`probe-cdc-and-persistence` |
@@ -108,7 +108,7 @@ flash の書き方やチップ固有の手順は host にある。
 | `README.ja.md` | OEP とは何か、状態、文書の地図、始め方、貢献、license |
 | `CONTRIBUTING.ja.md` | 変更の手順 |
 
-## 6. oep-probe-arduino（probe の実装、Arduino ライブラリ、0.0.27）
+## 6. oep-probe-arduino（probe の実装、Arduino ライブラリ、0.0.28）
 
 `README.ja.md` に構成と使い方、`CHANGELOG.md` に版ごとの変更がある。各ファイルの冒頭のコメントに、対応する仕様の節が書いてある。
 
@@ -128,7 +128,7 @@ flash の書き方やチップ固有の手順は host にある。
 | `examples/Firmware/OepProbe/` | チップごとに 1 本の firmware（profile ごと）。ピンはすべて host が選び、治具は設定で表す。release の image はこれ |
 | `examples/01.Basics/`〜`06.Settings/`、`examples/Tools/` | 学ぶための example（Minimal / Fixture / CustomInterface / MultipleTransports / Rvswd・Swio・Swd / LogicCapture / ProbeConfig）と立ち上げの道具 |
 
-## 7. oep-client-python（host の実装、Python、0.0.27）
+## 7. oep-client-python（host の実装、Python、0.0.28）
 
 | PATH | 中身 |
 |---|---|
@@ -141,7 +141,7 @@ flash の書き方やチップ固有の手順は host にある。
 | `src/oep_client/linktest.py`、`speed_record.py` | 線の試験（link_source / link_sink の matrix）と速さの記録（host ガイド §17.4 の形） |
 | `src/oep_client/ch32_flash.py`、`rp2350.py`、`uiapduino.py` | target の知識（host が持つ分担の実例） |
 | `src/oep_client/fake.py`、`fake_capture.py`、`endpoint.py`、`fake_serial.py`、`fake_serve.py` | ハードウェアなしの偽の probe（動く spec。`python -m oep_client.fake_serve` で pty / TCP に出す） |
-| `tests/test_*.py` | ハードウェアなしの試験（`uv run pytest`、247 件） |
+| `tests/test_*.py` | ハードウェアなしの試験（`uv run pytest`） |
 | `tests/hw/` | 実機の試験（§2）。`README.ja.md` に各試験が確かめることと、ボードごとの焼き方 |
 
 ## 8. 周辺のリポジトリ（参考）

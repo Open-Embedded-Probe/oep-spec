@@ -15,7 +15,7 @@ in without raising the revision; what the freeze stops and what stays free is in
 [versioning](docs/versioning.md), and the changes are in [CHANGELOG](CHANGELOG.md).
 
 **Language**: the English text is normative. The Japanese documents (`.ja.md`) are translations; where the two differ,
-the English text is right. Every guide except release testing has an English version; many records exist only in Japanese.
+the English text is right. Every normative document and every guide has an English version; many records exist only in Japanese.
 
 ## Map of the documents
 
