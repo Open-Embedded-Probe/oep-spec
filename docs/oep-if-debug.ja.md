@@ -494,6 +494,7 @@ TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target �
 - **読みの意味**: read_block は target のバスを通して読む。probe の側に写しを持たない（直前の write_block、dmi、run で target が
   書いたものを反映する）。保証するのは probe の側だけで、target 自身の cache や prefetch の像は範囲の外（host のチップの知識の側）。
 - **前提**: hart が止まっていること（止まっていなければ status state）。番地は、止まっている hart が M モードで使う番地。
+  （参考）hart が走ったままの読み出し（system bus を持つ debug module ならできる）は、後から features のビットと任意の TLV で、revision を変えずに足せる（core §2.7）。
 - **副作用**: probe は GPR、program buffer、DATA のレジスタ、sysbus を使ってよい。ただし **応答を返す前に、使った GPR、DATA1、
   DATA0、abstractauto を、使う前の値に戻す**（§4 の表）。host が何も保存しなくても、halt → read_block → resume で target の状態は
   変わらない。戻さないと、target は止まった場所によってはレジスタを壊されて走り続ける。resume の時に戻す方式は、間に host の raw DMI が

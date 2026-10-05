@@ -296,7 +296,7 @@ bind_state: port(u8)、mode(u8)、selected(u8: 今選ばれている並びの番
   （読めなければ 0）。unreadable_reason: 0 なし、1 形が読めない（壊れた、別の版の形）、2 指す interface が無い・revision が違う・bind の port がシリアルの口でない、
   3 適用が断られた（資源がぶつかる）。
 - 登録したスロットを slot の昇順に first_slot 番目から、bind を port の昇順に first_bind 番目から、1 フレームに入る分だけ返す。
-  more = 1 なら続きがあり、host は first に受け取った数を足してもう一度聞く。
+  more = 1 なら続きがあり、host は first_slot に n_slots を、first_bind に n_binds を足してもう一度聞く。
 
 ## 4. describe
 

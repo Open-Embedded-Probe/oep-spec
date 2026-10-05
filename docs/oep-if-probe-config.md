@@ -296,7 +296,7 @@ bind_state: port(u8), mode(u8), selected(u8: the number in the sequence currentl
   (0 if unreadable). unreadable_reason: 0 none, 1 the form cannot be read (corrupted, the form of a different version), 2 an interface pointed to does not exist / the revision differs / a bind's port is not a serial port,
   3 applying was refused (resources conflict).
 - Returns the registered slots in ascending order of slot from the first_slot-th, and the binds in ascending order of port from the first_bind-th, as many as fit in 1 frame.
-  If more = 1 there is a continuation, and the host adds the received counts to first and asks again.
+  If more = 1 there is a continuation, and the host adds n_slots to first_slot and n_binds to first_bind and asks again.
 
 ## 4. describe
 

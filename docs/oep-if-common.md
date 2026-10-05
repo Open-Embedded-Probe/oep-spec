@@ -69,7 +69,8 @@ mark : serial(u32), position(u64), kind(u8), time_ns(u64), detail(u8)          2
 - `serial` is the serial number of marks per stream (u32, wraps. core §2.6). Even if several marks are attached at the same position, they can be read by serial
   without loss or duplication.
 - `time_ns` is the probe's clock (ns since boot, u64, core §2.6a). There is no per-byte time.
-- Marks are accumulated in a small ring separate from the body. On overflow the oldest are discarded.
+- Marks are accumulated in a small ring separate from the body. On overflow the oldest are discarded. The host sees the discarded marks as a jump in serial:
+  the jump is the number of marks pushed out.
 
 ```text
 marks  request: [stream(u16)], from_serial(u32)

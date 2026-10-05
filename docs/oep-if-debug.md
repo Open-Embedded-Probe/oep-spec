@@ -495,6 +495,7 @@ dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rej
 - **Meaning of a read**: read_block reads through the target's bus. The probe keeps no copy on its side (it reflects what the target wrote in the preceding write_block, dmi, run).
   Only the probe's side is guaranteed; the image of the target's own cache or prefetch is out of scope (the side of the host's chip knowledge).
 - **Prerequisite**: the hart is halted (if not halted, status state). The address is the one the halted hart uses in M mode.
+  (Informative) Reading while the hart runs (a debug module with system bus access can) may be added later with a features bit and an optional TLV, without changing the revision (core §2.7).
 - **Side effects**: the probe may use GPRs, the program buffer, the DATA registers, and sysbus. However, **before returning the answer, it restores the GPRs, DATA1,
   DATA0 and abstractauto it used to their values before use** (the table of §4). Even if the host saves nothing, halt → read_block → resume leaves the target's state
   unchanged. Without restoring, depending on where it stopped, the target would keep running with corrupted registers. Restoring at resume time fails when the host's raw DMI
