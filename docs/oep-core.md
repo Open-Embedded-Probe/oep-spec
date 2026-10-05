@@ -238,11 +238,10 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
   sent from another transport. A misjudgement caused by the host sending 0x81 from 2 transports is the host's responsibility; the probe does not check.
 - When the same probe has several transports, the host tries vendor bulk, HID, then serial ports in that order (serial ports are also used to carry raw bytes,
   §3.4). The list of the probe's transports is known from the transport of the describe of fn 0 (§7.5).
-- **How to tell a USB OEP probe apart**: among devices it does not know, a host identifies an OEP probe automatically only when the device has **the project's USB
-  VID:PID**. The project's VID:PID is listed in the registry's `usb` when it is obtained. Until it is listed, the registry has no
-  VID:PID, and no device is identified automatically by this rule (the temporary clues until then are in [host development guide](host-development-guide.md)
-  §4; they are not normative). The device string iProduct is free text for display, and the host does not use it for identification. Interface strings are also for
-  display and are not used for identification.
+- **How to tell a USB OEP probe apart**: among devices it does not know, a host identifies an OEP probe automatically only when the device enumerates with **the project's USB
+  VID:PID, `1209:4F45`** (VID 0x1209, PID 0x4F45; the registry's `usb`: `project_vid` / `project_pid`). No other value identifies an OEP probe automatically;
+  otherwise the user names the probe or chooses the port (the next two items). The device string iProduct is free text for
+  display, and the host does not use it for identification. Interface strings are also for display and are not used for identification.
 - **A named probe**: when the user names a probe by its unit_id (the address `oep://<unit_id>[/<slot name>]`, §7.6), the host may open the USB device whose serial number
   equals that unit_id without identifying it. After opening, the host follows the probing rule below, and uses the device as that probe only when the unit_id of the describe of fn 0
   sent after confirm equals the named value. Otherwise the host closes the device and sends nothing else. These comparisons (a unit_id with a serial number, and unit_ids with each other)
@@ -250,8 +249,8 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
   never makes two different values equal).
 - **Other devices and serial ports**: of the USB devices and serial ports that fit neither of the 2 cases above, the host opens only those it has its own way of handling, or those the user
   has chosen explicitly.
-- **The probing rule**: on a device or port the host opens without having identified it (a named device, a port the user chose, a device the host handles on its own, a device found by
-  a temporary clue), the first thing the host sends is a confirm (§7.1) only (including the single resend of §5.2, registry `resend_max`). When the wait for the confirm
+- **The probing rule**: on a device or port the host opens without having identified it (a named device, a port the user chose, a device the host handles on its own),
+  the first thing the host sends is a confirm (§7.1) only (including the single resend of §5.2, registry `resend_max`). When the wait for the confirm
   (§4.4; confirm has no time set by its arguments, so 1000 ms (`host_wait_add_ms`) plus the transfer time) has passed without a valid confirm answer (when resent, when the wait for the resent
   confirm has passed without one), the host closes the device or port and sends nothing else. On a UART bridge port (transport
   kind 1), however, the host may repeat the confirm for the time of host obligation 7 in §3.5 instead of the single resend (to wait out a rate a previous host raised;
@@ -659,7 +658,7 @@ appears in the answer.
 | 0x47 | resets_on_open | u8. Whether the probe resets when the transport is opened |
 | 0x48 | — | Reserved |
 | 0x49 | transport | index(u8), kind(u8), interface(u8): for USB CDC (kind 2), the bInterfaceNumber of the CDC communication interface (the first interface of the function); for built-in USB serial (kind 3), the same number as the hardware presents it, or 0xFF if the probe cannot know it; for vendor bulk and HID, the number of that interface; 0xFF for a UART bridge (kind 1) and for TCP. One per transport of the probe. **Mandatory** |
-| 0x4A | discoverable | u8. 1 = the probe also enumerates with the project's USB VID:PID (§3.3) (even if the current transport is not one). Until the project's VID:PID is listed in the registry, every probe sends 0 |
+| 0x4A | discoverable | u8. 1 = the probe also enumerates with the project's USB VID:PID (§3.3) (even if the current transport is not one). A probe that does not enumerate with it sends 0 |
 | 0x4B | plan_roles | u32. The number of role_assignments the plan can hold at once (the total over all fns. Includes the settings plan). A probe with a limit always emits it (§8) |
 | 0x4C | chip | text. The part number and revision of the probe's MCU: `<part> v<revision>`. part is 1 to 24 of `a-z 0-9`. revision is digits with optional `.digits` groups. When the revision is unknown, the part alone (e.g. `abc123 v1.0`, `abc123`). So that captured data records which chip captured it (optional) |
 | 0x4D | max_op_ms | u32. The longest time the probe spends on one request. **Mandatory.** 1 to 600000 (`max_op_ms_max`, 10 minutes). Ops that could exceed it (run, the sum of the waits of dmi, the start of capture, save, the hold_ms of the reset of attach) are rejected unsupported if the sum of their arguments exceeds it. The lease is not counted during execution (§6.1). Reading the other transports and the consoles of connections continues. The value is decided by the probe. The host waits as §4.4 says |

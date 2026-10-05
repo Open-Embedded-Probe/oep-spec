@@ -239,10 +239,9 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - host は、同じ probe に複数の経路があれば vendor bulk、HID、シリアルの口の順に試す（シリアルの口は生のバイトの転送にも
   使われる、§3.4）。probe の経路の一覧は fn 0 の describe の transport（§7.5）で分かる。
 - **USB の OEP の probe の見分け方**: host が知らない device の中から OEP の probe を自動で見分けるのは、**プロジェクトの USB の
-  VID:PID を持つ device** だけである。プロジェクトの VID:PID は、取得したときに registry の `usb` に載せる。載るまでは registry に
-  VID:PID は無く、この規則で自動で見分けられる device は無い（それまでの暫定の手がかりは [host 開発ガイド](host-development-guide.ja.md)
-  §4。規範ではない）。device の文字列 iProduct は表示のための自由な文字列で、host は見分けに使わない。interface の文字列も表示の
-  ためのもので、見分けには使わない。
+  VID:PID `1209:4F45` で列挙する device** だけである（VID 0x1209、PID 0x4F45。registry の `usb` の `project_vid` / `project_pid`）。ほかの値で
+  OEP の probe を自動で見分けることはない。それ以外は、利用者が probe を名指すか口を選ぶ（次の 2 つの項目）。device の
+  文字列 iProduct は表示のための自由な文字列で、host は見分けに使わない。interface の文字列も表示のためのもので、見分けには使わない。
 - **名指した probe**: 利用者が probe を unit_id で名指したとき（アドレス `oep://<unit_id>[/<slot name>]`、§7.6）、host は、serial number
   がその unit_id と同じ USB の device を、見分けずに開いてよい。開いた後は下の探りの規則に従い、confirm の後に送る fn 0 の describe の
   unit_id が名指した値と同じときだけ、その device をその probe として使う。違えば host はその device を閉じ、ほかに何も送らない。ここでの比べ方（unit_id と
@@ -250,8 +249,8 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   は §7.5 の文字だけなので、区別しなくても別の値が同じにはならない）。
 - **ほかの device とシリアルの口**: 上の 2 つに当たらない USB の device とシリアルの口は、host が自分で扱い方を持つものか、利用者が
   明示して選んだものだけを開く。
-- **探りの規則**: host が見分けずに開く device と口（名指した device、利用者の選んだ口、host が自分で扱う device、暫定の手がかりで
-  見つけた device）では、host が最初に送るのは confirm（§7.1）だけである（§5.2 の 1 回の送り直し、registry の `resend_max` を含む）。confirm の待ち時間
+- **探りの規則**: host が見分けずに開く device と口（名指した device、利用者の選んだ口、host が自分で扱う device）では、
+  host が最初に送るのは confirm（§7.1）だけである（§5.2 の 1 回の送り直し、registry の `resend_max` を含む）。confirm の待ち時間
   （§4.4。confirm には引数で決まる時間が無いので 1000 ms（`host_wait_add_ms`）と転送の時間）が過ぎても正しい confirm の応答が来なければ（送り直したときは、送り直した
   confirm の待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。ただし UART bridge（transport の
   kind 1）の口では、送り直しの代わりに §3.5 の host の義務 7 の間 confirm を繰り返してよい（前の host が上げた速さの残りを待つため。
@@ -659,7 +658,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x47 | resets_on_open | u8。経路を開くと probe がリセットするか |
 | 0x48 | — | 予約 |
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8): USB CDC（kind 2）は CDC の通信の interface の bInterfaceNumber（その機能の最初の interface）。内蔵の USB シリアル（kind 3）は、ハードウェアが見せるその同じ番号、probe が知れなければ 0xFF。vendor bulk と HID はその interface の番号。UART bridge（kind 1）と TCP は 0xFF。probe の経路ごとに 1 つ。**必須** |
-| 0x4A | discoverable | u8。1 = probe はプロジェクトの USB の VID:PID（§3.3）でも列挙している（今の経路がそうでなくても）。プロジェクトの VID:PID が registry に載るまでは、どの probe も 0 |
+| 0x4A | discoverable | u8。1 = probe はプロジェクトの USB の VID:PID（§3.3）でも列挙している（今の経路がそうでなくても）。それで列挙しない probe は 0 |
 | 0x4B | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
 | 0x4C | chip | text。probe の MCU の型番とリビジョン: `<part> v<revision>`。part は `a-z 0-9` の 1〜24 文字。revision は数字で、`.数字` の組が続いてよい。リビジョンが分からなければ part だけ（例 `abc123 v1.0`、`abc123`）。取ったデータに、どのチップで取ったかを残すため（任意） |
 | 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。1〜600000（`max_op_ms_max`、10 分）。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host は §4.4 のとおり待つ |
