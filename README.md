@@ -45,7 +45,7 @@ Every document in `docs/` states its status in its first lines: **normative**, *
 - [Glossary](docs/glossary.md): every defined term with its section, and the English / Japanese pairs.
 - [Versioning](docs/versioning.md): what is stable, what a revision bump means, how releases are tagged; [CHANGELOG](CHANGELOG.md).
 - [Project purpose and scope](docs/project-concept.md), [USB identification](docs/usb-identity.md),
-  [release testing](docs/release-testing.ja.md) (Japanese only).
+  [release testing](docs/release-testing.md) (the project's own process).
 
 **Records** (not normative): reasons for decisions, measurements, reviews, and the history before v1. They are listed in
 [the review guide](docs/review-guide.md) §5.1; most are Japanese only. The experiments are in `experiments/`, and the

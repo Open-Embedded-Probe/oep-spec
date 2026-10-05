@@ -39,7 +39,7 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
 - [安全とセキュリティ](docs/security.ja.md): 仕様の安全とセキュリティの考え方を 1 か所に。
 - [用語集](docs/glossary.ja.md): 定めた用語とその節、英語と日本語の対応。
 - [版と安定性](docs/versioning.ja.md): 何が変わらないか、revision を上げる意味、リリースのタグ。[CHANGELOG](CHANGELOG.md)。
-- [プロジェクトの目的と範囲](docs/project-concept.ja.md)、[USB の識別](docs/usb-identity.ja.md)、[リリースの試験](docs/release-testing.ja.md)。
+- [プロジェクトの目的と範囲](docs/project-concept.ja.md)、[USB の識別](docs/usb-identity.ja.md)、[リリースの試験](docs/release-testing.ja.md)（プロジェクト自身の手順）。
 
 **記録**（規範ではない）: 決めた理由、実測、レビュー、v1 より前の経緯。一覧は[レビューの手引き](docs/review-guide.ja.md) §5.1
 にある。多くは日本語だけである。実験は `experiments/` に、その試験の環境は `tests/`（[tests/README.ja.md](tests/README.ja.md)）にある。
