@@ -194,6 +194,68 @@ def test_refusals_answer_their_requests():
             assert payload == b""
 
 
+def test_discovery_exchanges():
+    """list (core §7.2), describe (core §7.3, §7.5) and the header refusals (core §4.3 order 1) of the smallest probe."""
+    core = REG["interface"][0]
+    ops = {o["name"]: o["code"] for o in core["op"]}
+    v = load("discovery.json")
+    lst, desc, past = v["exchanges"]
+    for ex in v["exchanges"]:
+        req, ans = bytes.fromhex(ex["request_hex"]), bytes.fromhex(ex["answer_hex"])
+        assert req[0] == 0x01 and struct.unpack_from("<H", req, 1)[0] == ex["request"]["corr"]   # no lock needed (core §12)
+        assert struct.unpack_from("<BHBB", ans) == (0x02, ex["answer"]["corr"], 0x01, 0)
+        for key in ("request", "answer"):
+            if f"{key}_serial_frame_hex" in ex:
+                assert unframe_serial(bytes.fromhex(ex[f"{key}_serial_frame_hex"])) == bytes.fromhex(ex[f"{key}_hex"])
+
+    req, ans = bytes.fromhex(lst["request_hex"]), bytes.fromhex(lst["answer_hex"])
+    assert struct.unpack_from("<HB", req, 3) == (0, ops["list"])
+    flags, first, plen = struct.unpack_from("<BHB", req, 6)
+    assert (flags, first, plen) == (0, 0, 0) and len(req) == 10
+    total, count = struct.unpack_from("<HB", ans, 5)
+    i, entries = 8, []
+    for _ in range(count):
+        n = ans[i]
+        fn, inst, rev, eflags, nlen = struct.unpack_from("<HHBBB", ans, i + 1)
+        entries.append({"fn": fn, "instance": inst, "revision": rev, "flags": eflags,
+                        "name": ans[i + 8:i + 8 + nlen].decode()})
+        assert n == 7 + nlen
+        i += 1 + n
+    assert i == len(ans) and total == len(entries) and entries == lst["answer"]["entries"]
+    assert entries[0] == {"fn": 0, "instance": 0, "revision": core["revision"], "flags": 0, "name": "oep.core"}
+
+    req, ans = bytes.fromhex(desc["request_hex"]), bytes.fromhex(desc["answer_hex"])
+    assert struct.unpack_from("<HB", req, 3) == (0, ops["describe"]) and struct.unpack_from("<HH", req, 6) == (0, 0)
+    assert len(req) == 10                                                                      # no TLV (core §7.3)
+    assert ans[5] == desc["answer"]["more"] == 0
+    t = core["tlv"]["describe"]
+    got = tlvs(ans[6:])
+    assert [tag for tag, _ in got] == [t["unit_id"], t["transport"], t["max_op_ms"]]          # the mandatory three (core §1.2)
+    uid = got[0][1].decode()
+    assert uid == desc["answer"]["unit_id"] and 1 <= len(uid) <= 32 and set(uid) <= set("abcdefghijklmnopqrstuvwxyz0123456789-")
+    tr = desc["answer"]["transports"][0]
+    assert got[1][1] == bytes([tr["index"], tr["kind"], tr["interface"]])
+    assert tr["kind"] == core["enum"]["transport_kind"]["uart_bridge"]
+    assert struct.unpack("<I", got[2][1])[0] == desc["answer"]["max_op_ms"]
+    assert t["unit_id"] != 0x3F and t["transport"] != 0x3F
+
+    req, ans = bytes.fromhex(past["request_hex"]), bytes.fromhex(past["answer_hex"])
+    assert struct.unpack_from("<HH", req, 6) == (0, past["request"]["first"]) and past["request"]["first"] >= len(got)
+    assert ans[5:] == b"\x00"                                                                 # more 0, no TLVs (core §7.3)
+
+    reasons = REG["reject_reasons"]
+    defined = {o["code"] for o in core["op"]}
+    for c in v["refusals"]:
+        req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
+        corr, fn, op = struct.unpack_from("<HHB", req, 1)
+        assert (corr, fn, op) == (c["request"]["corr"], c["request"]["fn"], c["request"]["op"]) and req[0] == 0x01
+        assert ans == struct.pack("<BHBB", 0x02, corr, 0x00, reasons[c["answer"]])           # no payload (core §4.3)
+        if c["answer"] == "unknown_function":
+            assert fn not in [e["fn"] for e in entries]
+        else:
+            assert fn == 0 and op not in defined
+
+
 def test_the_tool_still_gives_these_files():
     spec = importlib.util.spec_from_file_location("oepvectors1", ROOT / "tools" / "oepvectors1.py")
     tool = importlib.util.module_from_spec(spec)

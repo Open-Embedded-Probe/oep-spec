@@ -28,7 +28,7 @@ describe を読むいちばん小さい host を、線の上のすべてのバ�
 ## 2. 例
 
 probe 1 台、経路 1 つ: UART bridge（transport の kind 1、index 0）を起動時の速さ `uart_bridge_boot_baud`、115200 8N1 で（core §3.4）。
-probe の値（`tests/vectors/confirm.json` のものに describe を足した）:
+probe の値（`tests/vectors/confirm.json` と `discovery.json` のもの）:
 
 | 値 | 例 | どこ |
 |---|---|---|
@@ -38,16 +38,17 @@ probe の値（`tests/vectors/confirm.json` のものに describe を足した�
 | transport | index 0、kind 1（UART bridge）、interface 0xFF（USB でない） | describe 0x49、confirm の TLV 0x01 |
 | max_op_ms | 1000 | describe 0x4D |
 
-host は要求に corr 1、2、3 を付ける（core §4.1）。
+host は要求に corr 1、2、3 と順に番号を付ける（core §4.1）。
 
 ## 3. バイト列
 
-confirm の要求と応答は `tests/vectors/confirm.json`（フレームは `cobs.json`）とまったく同じ。ほかのメッセージは `tools/oepvectors1.py`
-の関数で計算し、別に書いた COBS と CRC-16（`binascii.crc_hqx`）で確かめた。`tests/vectors/` には入っていない。空白は読むためだけ。
+ここのメッセージはすべてテストベクタで、名前を各節に書く: confirm は `tests/vectors/confirm.json`（フレームは `cobs.json`）、list、
+describe と断りは `tests/vectors/discovery.json`。`tools/oepvectors1.py` が本文から計算し、`tests/vectors/test_vectors.py` が別に書いた
+COBS と CRC-16（`binascii.crc_hqx`）で確かめる。空白は読むためだけ。
 
 ### 3.1 confirm（core §7.1）
 
-要求: `"OEP?" min_rev max_rev` = revision 1〜1。
+ベクタ: `confirm.json` の "revision 1 asked and answered"。要求: `"OEP?" min_rev max_rev` = revision 1〜1。
 
 ```text
 message      01 0100 0000 01 | 4f 45 50 3f 01 01
@@ -66,7 +67,7 @@ serial frame 00 03 02 01 02 01 06 4f 45 50 21 01 01 02 04 02 10 01 08 04 78 56 3
 ```
 
 範囲の中に扱える revision が無いとき（ここでは host が 2〜3 を求める）、probe は unsupported で断り、payload は tag 0x00 と、続く
-TLV 0x01 supported =（min 1、max 1）（`confirm.json` の 2 つ目）:
+TLV 0x01 supported =（min 1、max 1）（`confirm.json` の "no revision in the range: unsupported with the supported range"）:
 
 ```text
 request      01 0200 0000 01 | 4f 45 50 3f 02 03
@@ -76,7 +77,8 @@ answer       02 0200 00 0b | 00 | 01 02 01 01
 
 ### 3.2 list（core §7.2）
 
-要求: `flags(u8) first(u16) prefix_len(u8) prefix` = 最初からすべての名前。
+ベクタ: `discovery.json` の "list everything from the first"。要求: `flags(u8) first(u16) prefix_len(u8) prefix` = 最初から
+すべての名前。
 
 ```text
 message      01 0200 0000 02 | 00 | 0000 | 00
@@ -94,7 +96,8 @@ serial frame 00 03 02 02 02 01 02 01 03 01 0f 01 01 01 02 01 0c 08 6f 65 70 2e 6
 
 ### 3.3 describe（core §7.3、§7.5）
 
-要求: `fn(u16) first(u16)` = fn 0 の最初の TLV から。describe の要求には TLV を付けない。
+ベクタ: `discovery.json` の "describe fn 0 from the first"。要求: `fn(u16) first(u16)` = fn 0 の最初の TLV から。describe の
+要求には TLV を付けない。
 
 ```text
 message      01 0300 0000 03 | 0000 | 0000
@@ -109,14 +112,22 @@ message      02 0300 01 00 | 00 | 42 08 61 31 62 32 63 33 64 34 | 49 03 00 01 ff
 serial frame 00 03 02 03 02 01 01 0d 42 08 61 31 62 32 63 33 64 34 49 03 07 01 ff 4d 04 e8 03 01 03 a8 68 00
 ```
 
+`first` が TLV の数（ここでは 3）以上の describe には、more 0 で TLV 無しで答える（core §7.3。`discovery.json` の
+"describe fn 0 from beyond the last: more 0 and no TLVs"）:
+
+```text
+request      01 0400 0000 03 | 0000 | 0300
+answer       02 0400 01 00 | 00
+```
+
 ### 3.4 ほかはすべて断る
 
 いちばん小さい probe は、ほかの要求を core §4.3 の順で最初に当たる理由で断る: 持たない fn は unknown_function、fn 0 に無い op は
-unknown_operation。ここでは断りの応答に payload は無い。
+unknown_operation。ここでは断りの応答に payload は無い（`discovery.json` の "refusals"）。
 
 ```text
 request fn 7 op 1      01 0500 0700 01            answer 02 0500 00 01    rejected unknown_function
-request fn 0 op 0x50   01 0400 0000 50            answer 02 0400 00 02    rejected unknown_operation
+request fn 0 op 0x50   01 0600 0000 50            answer 02 0600 00 02    rejected unknown_operation
 ```
 
 ほかの断りの正確なバイト列は `tests/vectors/refusals.json`。

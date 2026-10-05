@@ -1,0 +1,99 @@
+{
+  "about": "list, describe and the header refusals of the smallest probe (docs/getting-started.md §2, §3): only fn 0 (oep.core, instance 0, revision 1), one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", max_op_ms 1000. The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. Those values are an example probe's.",
+  "exchanges": [
+    {
+      "name": "list everything from the first",
+      "spec": "core §7.2",
+      "request": {
+        "corr": 2,
+        "flags": 0,
+        "first": 0,
+        "prefix": ""
+      },
+      "request_hex": "01020000000200000000",
+      "request_serial_frame_hex": "000301020101020201010103980c00",
+      "answer": {
+        "corr": 2,
+        "total": 1,
+        "entries": [
+          {
+            "fn": 0,
+            "instance": 0,
+            "revision": 1,
+            "flags": 0,
+            "name": "oep.core"
+          }
+        ]
+      },
+      "answer_hex": "02020001000100010f000000000100086f65702e636f7265",
+      "answer_serial_frame_hex": "000302020201020103010f01010102010c086f65702e636f726516e300"
+    },
+    {
+      "name": "describe fn 0 from the first",
+      "spec": "core §7.3, §7.5",
+      "request": {
+        "corr": 3,
+        "fn": 0,
+        "first": 0
+      },
+      "request_hex": "01030000000300000000",
+      "request_serial_frame_hex": "000301030101020301010103ea4d00",
+      "answer": {
+        "corr": 3,
+        "more": 0,
+        "unit_id": "a1b2c3d4",
+        "transports": [
+          {
+            "index": 0,
+            "kind": 1,
+            "interface": 255
+          }
+        ],
+        "max_op_ms": 1000
+      },
+      "answer_hex": "0203000100004208613162326333643449030001ff4d04e8030000",
+      "answer_serial_frame_hex": "000302030201010d4208613162326333643449030701ff4d04e8030103a86800"
+    },
+    {
+      "name": "describe fn 0 from beyond the last: more 0 and no TLVs",
+      "spec": "core §7.3 end of paging",
+      "request": {
+        "corr": 4,
+        "fn": 0,
+        "first": 3
+      },
+      "request_hex": "01040000000300000300",
+      "answer": {
+        "corr": 4,
+        "more": 0
+      },
+      "answer_hex": "020400010000"
+    }
+  ],
+  "refusals": [
+    {
+      "name": "a fn the probe does not have",
+      "spec": "core §4.3 order 1",
+      "request": {
+        "corr": 5,
+        "fn": 7,
+        "op": 1
+      },
+      "request_hex": "010500070001",
+      "answer": "unknown_function",
+      "answer_hex": "0205000001"
+    },
+    {
+      "name": "an op fn 0 does not define",
+      "spec": "core §1.2, §4.3 order 1",
+      "request": {
+        "corr": 6,
+        "fn": 0,
+        "op": 80
+      },
+      "request_hex": "010600000050",
+      "answer": "unknown_operation",
+      "answer_hex": "0206000002"
+    }
+  ]
+}

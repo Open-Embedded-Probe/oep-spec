@@ -28,7 +28,7 @@ JS), and [`tests/vectors/`](../tests/vectors/) (bytes to test against).
 ## 2. The example
 
 One probe, one transport: a UART bridge (transport kind 1, index 0) at the boot speed `uart_bridge_boot_baud`, 115200 8N1 (core §3.4). The
-probe's values (from `tests/vectors/confirm.json`, plus a describe):
+probe's values (from `tests/vectors/confirm.json` and `discovery.json`):
 
 | Value | Example | Where |
 |---|---|---|
@@ -38,17 +38,17 @@ probe's values (from `tests/vectors/confirm.json`, plus a describe):
 | transport | index 0, kind 1 (UART bridge), interface 0xFF (not USB) | describe 0x49, confirm TLV 0x01 |
 | max_op_ms | 1000 | describe 0x4D |
 
-The host numbers its requests with corr 1, 2, 3 (core §4.1).
+The host numbers its requests with corr 1, 2, 3 and onwards (core §4.1).
 
 ## 3. The bytes
 
-The confirm request and answer are exactly those of `tests/vectors/confirm.json` (and `cobs.json` for the frame). The other messages were
-computed with the helpers of `tools/oepvectors1.py` and checked with an independent COBS and CRC-16 (`binascii.crc_hqx`); they are not in
-`tests/vectors/`. Spaces are added for reading only.
+Every message here is a test vector, named in each section: confirm in `tests/vectors/confirm.json` (and `cobs.json` for the frame), list,
+describe and the refusals in `tests/vectors/discovery.json`. `tools/oepvectors1.py` computes them from the text, and `tests/vectors/test_vectors.py`
+checks them with an independent COBS and CRC-16 (`binascii.crc_hqx`). Spaces are added for reading only.
 
 ### 3.1 confirm (core §7.1)
 
-Request: `"OEP?" min_rev max_rev` = revisions 1 to 1.
+Vector: `confirm.json`, "revision 1 asked and answered". Request: `"OEP?" min_rev max_rev` = revisions 1 to 1.
 
 ```text
 message      01 0100 0000 01 | 4f 45 50 3f 01 01
@@ -67,7 +67,7 @@ serial frame 00 03 02 01 02 01 06 4f 45 50 21 01 01 02 04 02 10 01 08 04 78 56 3
 ```
 
 When the probe handles no revision in the range (here the host asks 2 to 3), it refuses with unsupported, payload tag 0x00, then TLV 0x01
-supported = (min 1, max 1) (`confirm.json`, second exchange):
+supported = (min 1, max 1) (`confirm.json`, "no revision in the range: unsupported with the supported range"):
 
 ```text
 request      01 0200 0000 01 | 4f 45 50 3f 02 03
@@ -77,7 +77,8 @@ answer       02 0200 00 0b | 00 | 01 02 01 01
 
 ### 3.2 list (core §7.2)
 
-Request: `flags(u8) first(u16) prefix_len(u8) prefix` = all names from the first.
+Vector: `discovery.json`, "list everything from the first". Request: `flags(u8) first(u16) prefix_len(u8) prefix` = all names from the
+first.
 
 ```text
 message      01 0200 0000 02 | 00 | 0000 | 00
@@ -95,7 +96,8 @@ serial frame 00 03 02 02 02 01 02 01 03 01 0f 01 01 01 02 01 0c 08 6f 65 70 2e 6
 
 ### 3.3 describe (core §7.3, §7.5)
 
-Request: `fn(u16) first(u16)` = fn 0 from its first TLV. A describe request carries no TLV.
+Vector: `discovery.json`, "describe fn 0 from the first". Request: `fn(u16) first(u16)` = fn 0 from its first TLV. A describe request
+carries no TLV.
 
 ```text
 message      01 0300 0000 03 | 0000 | 0000
@@ -111,14 +113,22 @@ message      02 0300 01 00 | 00 | 42 08 61 31 62 32 63 33 64 34 | 49 03 00 01 ff
 serial frame 00 03 02 03 02 01 01 0d 42 08 61 31 62 32 63 33 64 34 49 03 07 01 ff 4d 04 e8 03 01 03 a8 68 00
 ```
 
+A describe whose `first` is at or beyond the count of TLVs (here 3) is answered with more 0 and no TLVs (core §7.3; `discovery.json`,
+"describe fn 0 from beyond the last: more 0 and no TLVs"):
+
+```text
+request      01 0400 0000 03 | 0000 | 0300
+answer       02 0400 01 00 | 00
+```
+
 ### 3.4 Everything else: refuse
 
 The smallest probe refuses every other request by the first reason that applies in the order of core §4.3: a fn it does not have is
-unknown_function, an op fn 0 does not have is unknown_operation. Rejected answers have no payload here.
+unknown_function, an op fn 0 does not have is unknown_operation. Rejected answers have no payload here (`discovery.json`, "refusals").
 
 ```text
 request fn 7 op 1      01 0500 0700 01            answer 02 0500 00 01    rejected unknown_function
-request fn 0 op 0x50   01 0400 0000 50            answer 02 0400 00 02    rejected unknown_operation
+request fn 0 op 0x50   01 0600 0000 50            answer 02 0600 00 02    rejected unknown_operation
 ```
 
 More refusals, with exact bytes, are in `tests/vectors/refusals.json`.
