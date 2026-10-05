@@ -26,14 +26,14 @@ how to write flash and chip-specific procedures are in the host.
 - **Releases**: oep-spec is pushed to main on GitHub (there are no tags. It is pointed to by commit). The reference implementations are oep-probe-arduino **0.0.27** (Arduino library
   `OpenEmbeddedProbe`, firmware per profile in the GitHub release) and oep-client-python **0.0.27** (PyPI `oep-client-python`). oep-client-js is
   unpublished (not on npm. Only tests against the fake). Firmware and client are paired by the same minor version.
-- What **the tests on real hardware** ([release-testing](release-testing.ja.md) (Japanese), oep-client-python `tests/hw/`) cover: flashing, confirm / list / describe, `oep.probe.config`
+- What **the tests on real hardware** ([release-testing](release-testing.md), oep-client-python `tests/hw/`) cover: flashing, confirm / list / describe, `oep.probe.config`
   set / get / save / reboot / unset (including disable), wires (scan, attach, the round trip halt → dmi → read_block → resume. Only boards with a target connected),
   gpio, fixture uart, port_speed (only UART bridge boards), lease expiry / expired / force. The results are JSON in `tests/hw/results/`.
   **Not covered**: console (dmseq), capture (logic / analog / capture-group), i2c-target / spi-target, notifications, the HID path, simultaneous use of several
   paths, TCP. For these there are only the tests against the fake (`uv run pytest`, 247 cases) and manual checks.
 - The way of deciding is "experiment and prototype first, then fix the specification with the results". Experiment numbers and dates are kept in **record documents**, and are not placed in the normative text
   (the normative text has no chip names, board names or dates, and its numbers are values, not guides).
-- **The English text is normative.** The Japanese documents (`.ja.md`) are translations; where the two differ, the English text is right. Every normative document and every guide except release-testing has an English version; most records are Japanese only.
+- **The English text is normative.** The Japanese documents (`.ja.md`) are translations; where the two differ, the English text is right. Every normative document and every guide has an English version; most records are Japanese only.
 - **Changes**: this repository is the source of truth. How rule changes, wording changes, new `oep.` names and registry values, and errata are made is in [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## 3. The shortest reading order (review of the v1 freeze)
@@ -50,7 +50,7 @@ how to write flash and chip-specific procedures are in the host.
 | 8 | `docs/v1-zero-base-proposal.ja.md` §1, §4, `docs/v1-zero-base-review-2026-10-02.ja.md` | The **8 principles** used for judgement, the places intentionally not extended, the second check (★ fixed, ☆ kept fixed) |
 | 9 | `docs/getting-started.md`, `docs/host-development-guide.md`, `docs/probe-development-guide.md`, `docs/security.md`, `docs/glossary.md` | Practice (not normative): the smallest probe and host with bytes; how to send frames, recovery, refusals, notifications, probe settings, handling of USB-UART, **host guide §17 how to choose the serial port speed** (17.1 balance, 17.2 the minimal form, 17.3 the form that adds checks per use, 17.4 records, 17.5 measurements); identifiers and declarations (probe guide §10); security and safety in one place; terms |
 | 10 | `docs/link-measurements.ja.md`, `docs/uart-speed-negotiation.ja.md`, `docs/logic-capture.ja.md` | **Records** (not normative): measurements of USB and serial paths, the experiments and history of UART speed, the design and measurements of capture. Where the reference numbers come from |
-| 11 | `docs/release-testing.ja.md` | Tests on real hardware before a release: who owns them, what they check |
+| 11 | `docs/release-testing.md` | Tests on real hardware before a release: who owns them, what they check |
 | 12 | `docs/session-and-exclusivity.ja.md`, `docs/capability-*.ja.md` (3 of them), `docs/console-stream.ja.md`, `docs/target-connection-use-cases.ja.md`, `docs/probe-cdc-and-persistence.ja.md` | Reasons for decisions (sessions and the lock, finding by name, the vocabulary of describe, streams, target discovery, sharing serial ports and saving settings) |
 | — | `docs/usb-identity.md` | USB identification (the reasons behind core §3.3) |
 | 13 | `docs/v1-open-proposals.ja.md`, `docs/v1-freeze-review-2026-10-01.ja.md`, `docs/review-response-2026-09-26.ja.md`, `docs/review-answer-*.ja.md` | Proposals and the history of decisions, the full review before the freeze (59 items, addressed), the response table to the previous third-party review |
@@ -78,8 +78,9 @@ how to write flash and chip-specific procedures are in the host.
 | State | PATH (`docs/`) |
 |---|---|
 | **Normative** | `oep-core`, `oep-if-*` (6 of them), `target-console-dmseq` |
-| **Guide** (not normative) | `review-guide`, `getting-started`, `conformance`, `project-concept`, `host-development-guide`, `probe-development-guide`, `security`, `glossary`, `versioning`, `release-testing`, `usb-identity`, `development-guidelines`; `CHANGELOG.md` at the root |
+| **Guide** (not normative) | `review-guide`, `getting-started`, `conformance`, `project-concept`, `host-development-guide`, `probe-development-guide`, `security`, `glossary`, `versioning`, `release-testing`, `usb-identity`; `CHANGELOG.md` at the root |
 | **Record**: scope of the freeze and decisions | `v1-freeze-decisions` (§0 scope, the 13 items of §A / §B), `v1-zero-base-proposal`, `v1-zero-base-review-2026-10-02`, `v1-zero-base-review-3-2026-10-02`, `v1-freeze-review-2026-10-01` (addressed) |
+| **Record**: the project's working criteria | `development-guidelines` |
 | **Record**: measurements (appending is free) | `link-measurements`, `target-scan-notes` (scan and attach per target), `implementation-notes` (chip-specific stories and measurements moved out of the guides), `uart-speed-negotiation`, `logic-capture` (§7 onwards), `probe-cdc-and-persistence` §7, `target-console-dmseq-notes` |
 | **Record**: reasons for v1 | `session-and-exclusivity`, `capability-*` (3 of them), `console-stream`, `target-connection-use-cases`, `probe-cdc-and-persistence` |
 | **Record**: proposals and history, responses to reviews | `v1-open-proposals`, `review-response-2026-09-26`, `review-answer-*` (3 of them), `hardware-source-review-2026-09-26`, `v1-operation-test-audit-2026-09-26`, `v1-open-issues-research-2026-09-26`, `v1-core-wire-delta` |

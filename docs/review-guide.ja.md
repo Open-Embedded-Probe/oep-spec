@@ -33,7 +33,7 @@ flash の書き方やチップ固有の手順は host にある。
   同時使用、TCP。これらは fake に対する試験（`uv run pytest`、247 件）と手動の確認だけです。
 - 決め方は「先に実験・試作をして、その結果で仕様を固める」。実験の番号や日付は**記録の文書**に残し、規範の文には置きません
   （規範はチップ名・ボード名・日付を持たず、数は目安ではなく値）。
-- **規範は英語の文**です。日本語の文書（`.ja.md`）は訳で、両者が食い違えば英語の文が正しい。規範の文書と、release-testing を除くガイドにはすべて英語版があります。記録の多くは日本語だけです。
+- **規範は英語の文**です。日本語の文書（`.ja.md`）は訳で、両者が食い違えば英語の文が正しい。規範の文書とガイドにはすべて英語版があります。記録の多くは日本語だけです。
 - **変更**: このリポジトリが唯一の正です。規則の変更、文言の変更、新しい `oep.` の名前と registry の値、errata の入れ方は [CONTRIBUTING](../CONTRIBUTING.ja.md) にあります。
 
 ## 3. 最短の読む順番（v1 の凍結のレビュー）
@@ -78,8 +78,9 @@ flash の書き方やチップ固有の手順は host にある。
 | 状態 | PATH（`docs/`） |
 |---|---|
 | **規範** | `oep-core`、`oep-if-*`（6 つ）、`target-console-dmseq` |
-| **ガイド**（規範ではない） | `review-guide`、`getting-started`、`conformance`、`project-concept`、`host-development-guide`、`probe-development-guide`、`security`、`glossary`、`versioning`、`release-testing`、`usb-identity`、`development-guidelines`。根の `CHANGELOG.md` |
+| **ガイド**（規範ではない） | `review-guide`、`getting-started`、`conformance`、`project-concept`、`host-development-guide`、`probe-development-guide`、`security`、`glossary`、`versioning`、`release-testing`、`usb-identity`。根の `CHANGELOG.md` |
 | **記録**: 凍結の範囲と決定 | `v1-freeze-decisions`（§0 範囲、§A / §B の 13 項目）、`v1-zero-base-proposal`、`v1-zero-base-review-2026-10-02`、`v1-zero-base-review-3-2026-10-02`、`v1-freeze-review-2026-10-01`（対応済み） |
+| **記録**: プロジェクトの作業の基準 | `development-guidelines` |
 | **記録**: 実測（追記は自由） | `link-measurements`、`target-scan-notes`（target ごとの scan と attach）、`implementation-notes`（ガイドから移したチップ固有の話と実測）、`uart-speed-negotiation`、`logic-capture`（§7 以降）、`probe-cdc-and-persistence` §7、`target-console-dmseq-notes` |
 | **記録**: v1 の理由 | `session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-connection-use-cases`、`probe-cdc-and-persistence` |
 | **記録**: 案と経緯、レビューの対応 | `v1-open-proposals`、`review-response-2026-09-26`、`review-answer-*`（3 つ）、`hardware-source-review-2026-09-26`、`v1-operation-test-audit-2026-09-26`、`v1-open-issues-research-2026-09-26`、`v1-core-wire-delta` |
