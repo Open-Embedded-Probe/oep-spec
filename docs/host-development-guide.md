@@ -49,24 +49,22 @@ On a UART bridge, and on any serial port you cannot tell from one, every answer 
 first confirm answer on the port you do not know max_frame yet: use `min_max_frame` (64) in the formula, and after it the max_frame of
 the latest confirm answer on that port (core §4.4).
 
-## 4. Finding a USB probe, and the interim clues
+## 4. Finding a USB probe
 
-- By the normative rule (core §3.3) a host identifies an OEP probe automatically only by the project's USB VID:PID, which is
-  listed in the registry when it is obtained. None is listed now, so the normative rule alone identifies no device. A probe
-  named by its unit_id (the device whose USB serial number equals the unit_id) and a port the user chose can always be opened
-  (core §3.3).
-- Until then, as **interim clues**, a host may take as candidates the USB devices that match any of:
-  - iProduct starts with `OEP`;
-  - an interface with class 0xFF / subclass 0x4F / protocol 0x45;
-  - a HID interface with usage page 0xFF4F.
-- Open the candidates one by one and check each with the probing rule of core §3.3: the first thing sent is a confirm only,
-  and if no valid confirm answer arrives within the wait, close the device and send nothing else. Only a candidate that gave a
-  valid answer is an OEP probe.
-- Names and vendor-class values can collide with other products by chance. These clues are therefore not part of the
-  specification, and they go away once the project's VID:PID exists. Even now, never decide that a device is a probe from a
-  clue alone: always confirm.
-- The reference firmware currently runs with a temporary USB ID (the board's default VID:PID), which may not be used for
-  distribution. Its iProduct starts with `OEP`, so the clues above find it today ([USB identification](usb-identity.md)).
+- A host identifies an OEP probe automatically only by the project's USB VID:PID, `1209:4F45` (VID 0x1209, PID 0x4F45; the
+  registry's `usb`: `project_vid` / `project_pid`; core §3.3). To list the probes, list the USB devices with this VID:PID. The
+  USB serial number of each is its unit_id, which tells them apart without opening them.
+- Nothing else identifies a probe: not iProduct, not the interface class / subclass / protocol, not the HID usage page. These
+  can match other products by chance. iProduct is a name for people; nothing identifies a probe by it. The interface values
+  only choose the ports inside a device already known to be a probe (core §3.3).
+- Any other device or port is opened only when the user names the probe by its unit_id (the device whose USB serial number
+  equals it) or chooses the port (core §3.3). Check it with the probing rule of core §3.3: the first thing sent is a confirm
+  only, and if no valid confirm answer arrives within the wait, close it and send nothing else.
+- Some probes cannot carry the project's VID:PID: a probe behind a USB-UART bridge (the bridge enumerates with its own VID:PID
+  and serial number) and a probe on a built-in USB serial whose descriptors the hardware fixes. A host cannot find these by
+  itself: the user chooses the port. After the confirm, the describe of fn 0 gives the probe's unit_id; remember the probe by it
+  (core §7.6), not by the port name. Its discoverable (core §7.5) tells whether the same probe also enumerates with the project's
+  VID:PID on another transport.
 
 ## 5. session_id and discovery
 
@@ -79,8 +77,8 @@ the latest confirm answer on that port (core §4.4).
   subscriptions again (do not continue silently). If `no_session` comes back, look at confirm's boot_id to tell a reboot from
   another host, and check the attach state and the target's identity again. In the same way, an open with your last session_id
   answered resumed = 0 means the probe no longer knows that session: list again before you use a remembered fn mapping (core §6.5).
-- **Discovery procedure**: list the USB devices; open those with the project's VID:PID (none until it is in the registry), those
-  whose serial number equals a named unit_id, and those that match an interim clue of §4 (core §3.3). The serial number is the
+- **Discovery procedure**: list the USB devices; open those with the project's VID:PID (§4) and those whose serial number equals a
+  named unit_id (core §3.3). The serial number is the
   unit_id. Choose the ports inside the device by the interface descriptors (vendor bulk: class 0xFF / subclass 0x4F / protocol 0x45;
   HID: usage page 0xFF4F, usage 0x45; every CDC: a serial port). After opening, send a confirm first and nothing else (close if
   there is no answer), take boot_id and the limits, and check that describe's unit_id equals the serial number. A monitor without

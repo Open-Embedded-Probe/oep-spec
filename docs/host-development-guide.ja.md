@@ -45,21 +45,21 @@ UART bridge と、それと見分けられないシリアルの口では、ど�
 応答の前は、max_frame をまだ知らない: 式には `min_max_frame`（64）を使い、その後はその口でのいちばん新しい confirm の応答の
 max_frame を使う（core §4.4）。
 
-## 4. USB の probe の見つけ方と暫定の手がかり
+## 4. USB の probe の見つけ方
 
-- 規範（core §3.3）では、host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID を持つ device だけである。その
-  VID:PID は取得したときに registry に載る。今は載っていないので、規範だけでは自動で見つかる device は無い。名指した probe
-  （unit_id = serial number の device）と、利用者が選んだ口は、いつでも開ける（core §3.3）。
-- それまでの**暫定の手がかり**として、host は次のどれかに当たる USB の device を候補にしてよい:
-  - iProduct が `OEP` で始まる。
-  - class 0xFF / subclass 0x4F / protocol 0x45 の interface を持つ。
-  - usage page 0xFF4F の HID の interface を持つ。
-- 候補は 1 つずつ開き、core §3.3 の探りの規則で確かめる: 最初に送るのは confirm だけで、正しい confirm の応答が待ち時間のうちに
-  来なければ、閉じてほかに何も送らない。正しい応答が来た候補だけを OEP の probe として扱う。
-- 名前や vendor class の値は、ほかの製品と偶然重なりうる。このためこれらの手がかりは仕様の一部ではなく、プロジェクトの VID:PID が
-  できたら無くなる。それまでも、手がかりだけで probe と決めない（必ず confirm で確かめる）。
-- 参照の firmware は今、仮の USB の ID（ボードの既定の VID:PID）で動いていて、配布には使えない。iProduct は `OEP` で始まるので、
-  今は上の手がかりで見つかる（[USB の識別](usb-identity.ja.md)）。
+- host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID `1209:4F45`（VID 0x1209、PID 0x4F45。registry の
+  `usb` の `project_vid` / `project_pid`。core §3.3）だけである。probe の一覧を作るときは、この VID:PID の USB の device を並べる。
+  それぞれの USB の serial number が unit_id で、開かずに区別できる。
+- ほかのもので probe と見分けない: iProduct も、interface の class / subclass / protocol も、HID の usage page も使わない。これらは
+  ほかの製品と偶然重なりうる。iProduct は人のための名前で、何もそれで probe を見分けない。interface の値は、probe と分かった
+  device の中で口を選ぶためだけに使う（core §3.3）。
+- ほかの device と口は、利用者が probe を unit_id で名指したとき（USB の serial number がそれと同じ device）か、口を選んだときだけ
+  開く（core §3.3）。開いたら core §3.3 の探りの規則で確かめる: 最初に送るのは confirm だけで、正しい confirm の応答が待ち時間の
+  うちに来なければ、閉じてほかに何も送らない。
+- プロジェクトの VID:PID を持てない probe がある: USB-UART の bridge の向こうの probe（bridge は自分の VID:PID と serial number で
+  列挙する）と、ハードウェアが記述子を決める内蔵の USB シリアルの probe。host はこれらを自分では見つけられない: 利用者が口を
+  選ぶ。confirm の後、fn 0 の describe がその probe の unit_id を返す。probe は口の名前ではなくこれで覚える（core §7.6）。その
+  discoverable（core §7.5）で、同じ probe がほかの経路でプロジェクトの VID:PID でも列挙しているかが分かる。
 
 ## 5. session_id と発見
 
@@ -71,8 +71,8 @@ max_frame を使う（core §4.4）。
   外れている: open からやり直し、plan、attach、購読を張り直す（黙って続けない）。`no_session` が返ったら、confirm の boot_id を
   見て再起動か他の host かを区別し、attach の状態と target の識別を確かめ直す。同じように、最後の session_id での open に
   resumed = 0 が返ったら、probe はそのセッションをもう知らない: 覚えた fn の対応を使う前に list し直す（core §6.5）。
-- **発見の手順**: USB の device を列挙し、プロジェクトの VID:PID を持つもの（registry に載るまでは無い）、名指した unit_id と serial
-  number が同じもの、§4 の暫定の手がかりに当たるものを開く（core §3.3）。serial number が unit_id。device の中の口は interface の
+- **発見の手順**: USB の device を列挙し、プロジェクトの VID:PID を持つもの（§4）と、名指した unit_id と serial
+  number が同じものを開く（core §3.3）。serial number が unit_id。device の中の口は interface の
   記述子で選ぶ（vendor bulk: class 0xFF / subclass 0x4F / protocol 0x45、HID: usage page 0xFF4F / usage 0x45、CDC はすべてシリアルの口）。
   開いたら最初に confirm だけを送り（応答が無ければ閉じる）、boot_id と上限を取り、describe の unit_id が serial と同じことを確かめる。
   ロック無しの監視は confirm の boot_id で再起動を知る。
