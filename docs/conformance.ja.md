@@ -58,7 +58,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - describe: ページ送り、宣言だけで boot_id が同じ間は変わらない、要求に TLV を置かない（§7.3）。
 - fn 0 の describe の必須の tag: unit_id、transport（transport ごとに一つ、interface の欄は §7.5 のとおり）、max_op_ms（1〜
   `max_op_ms_max`）（§1.2、§7.5）。plan に上限があれば plan_roles（§7.5）。
-  discoverable は §7.5 のとおりに送る。unit_id の一意性と不変性、transport の index の不変性（§7.5）。
+  discoverable は、probe がプロジェクトの USB の VID:PID で列挙するときだけ 1、ほかは 0（§7.5）。unit_id の一意性と不変性、transport の index の不変性（§7.5）。
 - plan: fn ごとに不可分、その断り方、設定の plan、解放したピンは idle の状態へ、起動したら最初の答えの前に reserved でないすべての channel を idle の状態へ、plan を取ってもピンは変わらない（§8、§8.1）。
 - 通知: subscribe / unsubscribe、seq、fn 0 の heartbeat、答えを先に送ることと溜める量の上限（§11.2〜§11.4）。
 
@@ -72,7 +72,7 @@ probe は、自分が出す transport とインターフェースについてこ
 
 - **フレーム**: 1 フレームを 1 回の write で送り、途中で 100 ms 以上止まらない（§3.2）。COBS の受け方（§3.1）。confirm の答えの前は
   64 バイトを超えて送らず、後は max_frame を超えて送らず、65535 バイトまで受けられる（§3.3）。vendor bulk の長さ 0 の転送（§3.1）。
-- **見つけ方**: USB の自動識別は registry に載った後の project の VID:PID だけ、名指しの probe は unit_id で、それ以外は
+- **見つけ方**: USB の自動識別は project の VID:PID `1209:4F45` だけ、名指しの probe は unit_id で、それ以外は
   利用者が選ぶ（§3.3）。試し方の規則: confirm だけを送り、正しい答えがなければ閉じる（§3.3）。OEP の probe と分かった機器の中の口の選び方（§3.3）。
   transport を試す順（§3.3）。排他で開く（§3.3）。DTR / RTS を立てる（§3.4）。
 - **confirm と revision**: 扱える範囲を送り、その後は使っている revision を `min_rev = max_rev` で送る（§7.1）。revision を知らない

@@ -50,7 +50,7 @@ capture = [capture](oep-if-capture.md); settings = [probe settings](oep-if-probe
 | flow | 流し方 | A direction and a concurrency, for the host's checks of a speed | core §3.5 |
 | probing rule | 探りの規則 | On an unidentified device or port the host sends only confirm, and closes it without a valid answer | core §3.3 |
 | named probe | 名指した probe | A probe the user names by its unit_id | core §3.3 |
-| project's VID:PID | プロジェクトの VID:PID | The only USB ID by which a host identifies a probe automatically; listed in the registry once obtained | core §3.3 |
+| project's VID:PID | プロジェクトの VID:PID | `1209:4F45` (registry `usb`): the only USB ID by which a host identifies a probe automatically | core §3.3 |
 | discoverable | discoverable | fn 0 describe tag: the probe also enumerates with the project's VID:PID | core §7.5 |
 
 ## Messages

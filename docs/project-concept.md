@@ -83,7 +83,7 @@ Modifying, forking, or porting the OEP source code or specification does not by 
 
 On the other hand, a change that does not meet the mandatory OEP requirements, such as making an OEP function depend on undeclared external communication or giving a standard function a different meaning, is treated as a separate protocol derived from OEP. Such an implementation must not claim conformance or compatibility with OEP, and must not use a protocol name or protocol identity that could be mistaken for the OEP protocol. Using an explicit external binding does not by itself make a derivative incompatible.
 
-If a USB VID:PID or another common identity is assigned to the OEP project, incompatible derivatives cannot use it. They use their own identity and must be mechanically distinguishable from OEP implementations.
+Incompatible derivatives cannot use the OEP project's USB VID:PID or another common identity assigned to it. They use their own identity and must be mechanically distinguishable from OEP implementations.
 
 One physical device can carry an OEP endpoint, external bindings, and other functions independent of OEP. An external binding may share one USB VID:PID with the OEP endpoint as part of a registered or permitted profile. Another protocol independent of OEP must be distinguishable so that a host does not mistake it for the OEP endpoint, an OEP function, or its external binding.
 
@@ -143,4 +143,4 @@ This document leaves the following to the specification. The v1 specification ([
 - versioning, extension, compatibility, and lifecycle rules; and
 - USB identification.
 
-The definition and verification of conformance, the use of a project USB VID:PID, and governance are not settled by the specification yet; the change process is in [CONTRIBUTING](../CONTRIBUTING.md).
+The definition and verification of conformance, and governance, are not settled by the specification yet (the use of the project's USB VID:PID is set by oep-probe-arduino's PID-USE.md); the change process is in [CONTRIBUTING](../CONTRIBUTING.md).

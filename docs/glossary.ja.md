@@ -49,7 +49,7 @@ capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定]
 | 流し方 | flow | 向きと同時数。host が速さを確かめるときに使う | core §3.5 |
 | 探りの規則 | probing rule | 見分けていない device や口には confirm だけを送り、正しい応答が無ければ閉じる | core §3.3 |
 | 名指した probe | named probe | 利用者が unit_id で名指した probe | core §3.3 |
-| プロジェクトの VID:PID | project's VID:PID | host が probe を自動で見分ける唯一の USB の ID。取得したら registry に載る | core §3.3 |
+| プロジェクトの VID:PID | project's VID:PID | `1209:4F45`（registry の `usb`）: host が probe を自動で見分ける唯一の USB の ID | core §3.3 |
 | discoverable | discoverable | fn 0 の describe の tag: プロジェクトの VID:PID でも列挙している | core §7.5 |
 
 ## メッセージ

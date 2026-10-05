@@ -83,7 +83,7 @@ OEPのsource codeまたは仕様を変更、forkまたは移植すること自�
 
 一方、OEP機能を未宣言の外部通信へ依存させる、標準機能へ異なる意味を与える等、OEPの必須要求を満たさない変更は、OEPから派生した別protocolとして扱う。その実装はOEPへの適合または互換性を主張してはならず、OEP protocolと誤認されるprotocol名またはprotocol identityを使用してはならない。明示的なexternal bindingを使用することだけでは、非互換な派生にならない。
 
-OEP projectへUSB VID:PIDその他の共通identityが割り当てられた場合、非互換な派生はそれを使用できない。独自のidentityを使用し、OEP実装と機械的に区別できなければならない。
+OEP projectのUSB VID:PIDその他の共通identityを、非互換な派生は使用できない。独自のidentityを使用し、OEP実装と機械的に区別できなければならない。
 
 同じ物理deviceへOEP endpoint、external bindingおよびOEPから独立した別機能を併設できる。external bindingは、登録済みまたは許容されたprofileの一部として、OEP endpointと一つのUSB VID:PIDを共有し得る。OEPから独立した別protocolは、hostがOEP endpoint、OEP機能またはそのexternal bindingと誤認しないよう区別できなければならない。
 
@@ -144,4 +144,4 @@ Projectの中心的な成功条件は、次の状態を実証できることで�
 - versioning、拡張、互換性およびlifecycleの規則
 - USBの識別
 
-適合性の定義と検証方法、projectのUSB VID:PIDの利用、governanceは、まだ仕様で決まっていない。変更の手順は[CONTRIBUTING](../CONTRIBUTING.ja.md)にある。
+適合性の定義と検証方法、governanceは、まだ仕様で決まっていない（projectのUSB VID:PIDの利用はoep-probe-arduinoのPID-USE.mdが定める）。変更の手順は[CONTRIBUTING](../CONTRIBUTING.ja.md)にある。

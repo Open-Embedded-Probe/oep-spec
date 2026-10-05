@@ -68,9 +68,10 @@ Reference implementations:
 - [oep-client-python](https://github.com/Open-Embedded-Probe/oep-client-python): the Python host
   (`pip install oep-client-python`), the `oep` command and a fake probe.
 
-USB identification: a host identifies an OEP probe automatically only by the project's own USB VID:PID, once it is listed
-in the registry (none is listed now). A probe named by its unit_id is found by its USB serial number and checked with
-confirm and describe; otherwise the user chooses the port (core §3.3).
+USB identification: a host identifies an OEP probe automatically only by the project's own USB VID:PID, `1209:4F45`
+(the registry's `usb`). A probe named by its unit_id is found by its USB serial number and checked with confirm and
+describe; otherwise the user chooses the port (core §3.3). Who may use the VID:PID:
+[PID-USE.md](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/PID-USE.md).
 
 ## Contributing
 

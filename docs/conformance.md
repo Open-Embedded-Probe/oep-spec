@@ -58,7 +58,7 @@ A probe conforms when it does everything in this list for the transports and int
 - describe: paging, declarations only and unchanged while the boot_id is the same, no TLV in the request (§7.3).
 - Required describe tags of fn 0: unit_id, transport (one per transport, its interface field as §7.5 says) and max_op_ms (1 to
   `max_op_ms_max`) (§1.2, §7.5); plan_roles when the plan has a limit (§7.5);
-  discoverable sent as §7.5 says. unit_id uniqueness and invariance, transport index invariance (§7.5).
+  discoverable 1 only when the probe enumerates with the project's USB VID:PID, otherwise 0 (§7.5). unit_id uniqueness and invariance, transport index invariance (§7.5).
 - plan: atomic per fn, its refusals, settings plans, released pins to the idle state, every channel not reserved in its idle state from boot before the first answer, taking a plan changes no pin (§8, §8.1).
 - Notifications: subscribe / unsubscribe, seq, heartbeat on fn 0, answers first and the pending limit (§11.2 to §11.4).
 
@@ -72,7 +72,7 @@ A probe conforms when it does everything in this list for the transports and int
 
 - **Frames**: one frame in one write, no pause of 100 ms or more inside it (§3.2); the COBS receiving rule (§3.1); nothing over 64 bytes
   before the confirm answer, nothing over max_frame after it, able to receive 65535 bytes (§3.3); the zero-length transfer on vendor bulk (§3.1).
-- **Discovery**: USB identification only by the project's VID:PID once listed in the registry, a named probe by its unit_id, otherwise
+- **Discovery**: USB identification only by the project's VID:PID `1209:4F45`, a named probe by its unit_id, otherwise
   the user's choice (§3.3); the probing rule: confirm only, then close if no valid answer (§3.3); port selection inside a known probe (§3.3);
   transport order (§3.3); exclusive open (§3.3); DTR / RTS asserted (§3.4).
 - **confirm and revision**: send the range it handles, then `min_rev = max_rev` the revision in use (§7.1); do not use an interface whose

@@ -61,9 +61,9 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
 - [oep-client-python](https://github.com/Open-Embedded-Probe/oep-client-python): Python の host
   （`pip install oep-client-python`）、`oep` の命令と偽の probe。
 
-USB の識別: host が OEP の probe を自動で見分けるのは、プロジェクトの USB の VID:PID が registry に載ったときの、その VID:PID
-だけである（今は載っていない）。unit_id で名指した probe は USB の serial number で見つけ、confirm と describe で確かめる。
-それ以外は利用者が口を選ぶ（core §3.3）。
+USB の識別: host が OEP の probe を自動で見分けるのは、プロジェクトの USB の VID:PID `1209:4F45`（registry の `usb`）だけである。
+unit_id で名指した probe は USB の serial number で見つけ、confirm と describe で確かめる。それ以外は利用者が口を選ぶ（core §3.3）。
+VID:PID を使ってよい範囲: [PID-USE.ja.md](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/PID-USE.ja.md)。
 
 ## 貢献
 
