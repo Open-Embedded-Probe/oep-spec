@@ -48,6 +48,9 @@ and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.m
   matches gives count 0 (§7.2); the transport's interface field is the CDC communication interface, 0xFF for a UART bridge and TCP (§7.5);
   every non-reserved channel in its idle state from boot before the first answer (§8). Registry: `limits.max_op_ms_max`, `mark_detail_reset`
   2 reserved, rvswd / swio `scan_kind` without arm_adi.
+- USB identification: the project's USB VID:PID is `1209:4F45` (registry `usb.project_vid` / `usb.project_pid`). A host identifies an OEP
+  probe automatically only by it; otherwise the user names the probe or chooses the port. Name-based discovery (iProduct) is gone.
+  discoverable is 1 only for a probe that enumerates with the project's VID:PID (core §3.3, §7.5) (671ce9c, 1fca3cb).
 
 ### Rule changes: standard interfaces
 
@@ -86,5 +89,8 @@ and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.m
   [implementation notes](docs/implementation-notes.ja.md) (4bf464d).
 - Host and probe guides, conformance and security follow the 2026-10-06 rule changes (5cae93f). development-guidelines is now a record (the
   project's working criteria); the review guide points to the English release-testing (21ac4d1).
+- Host guide §4, probe guide §8, usb-identity, conformance, glossary, README and project concept follow the project's USB VID:PID
+  `1209:4F45`; a probe behind a UART bridge or on a built-in USB serial with fixed descriptors is found by the port the user chooses
+  (f1627ad, 7ac55de, 42d69ea, 72aa324).
 - The v1 rule-change proposals (2026-10-02, 2026-10-06) and the third zero-base review with the status of every finding (41563f1, 0dd15c2,
   09622ef, d56a8e7, 536fc99, e0a0776, 1220792, 3ad540a).
