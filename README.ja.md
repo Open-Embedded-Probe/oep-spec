@@ -33,6 +33,7 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
 **ガイド**（規範ではない）:
 
 - [レビューの手引き](docs/review-guide.ja.md): どこに何があるか、最短の読む順番、すべての文書の状態。
+- [適合](docs/conformance.ja.md): probe と host が OEP v1 に適合するために何をするか、それをどう確かめるか、適合で何を名乗れるか。
 - [プロジェクトの目的と範囲](docs/project-concept.ja.md)。
 - host と probe の開発ガイド、リリースの試験、USB の識別（日本語だけ:
   [host](docs/host-development-guide.ja.md)、[probe](docs/probe-development-guide.ja.md)、
@@ -47,6 +48,7 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
 2. 数は `registry/oep-v1.toml` から取るか、`generated/oep-v1/` の生成物を写して使う。
 3. host は oep-client-python の偽の probe（`python -m oep_client.fake_serve`、pty か TCP）に当てて試し、probe は同じ package の
    `oep dump --port <port>`（すべてのインターフェースの list と describe）で見る。
+4. 実装を [適合](docs/conformance.ja.md) のチェックリストに照らして確かめる。
 
 参照の実装:
 

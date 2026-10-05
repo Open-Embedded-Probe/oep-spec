@@ -78,7 +78,7 @@ how to write flash and chip-specific procedures are in the host.
 | State | PATH (`docs/`) |
 |---|---|
 | **Normative** | `oep-core`, `oep-if-*` (6 of them), `target-console-dmseq` |
-| **Guide** (not normative) | `review-guide`, `project-concept`, `host-development-guide`, `probe-development-guide`, `release-testing`, `usb-identity`, `development-guidelines` |
+| **Guide** (not normative) | `review-guide`, `conformance`, `project-concept`, `host-development-guide`, `probe-development-guide`, `release-testing`, `usb-identity`, `development-guidelines` |
 | **Record**: scope of the freeze and decisions | `v1-freeze-decisions` (§0 scope, the 13 items of §A / §B), `v1-zero-base-proposal`, `v1-zero-base-review-2026-10-02`, `v1-zero-base-review-3-2026-10-02`, `v1-freeze-review-2026-10-01` (addressed) |
 | **Record**: measurements (appending is free) | `link-measurements`, `target-scan-notes` (scan and attach per target), `uart-speed-negotiation`, `logic-capture` (§7 onwards), `probe-cdc-and-persistence` §7, `target-console-dmseq-notes` |
 | **Record**: reasons for v1 | `session-and-exclusivity`, `capability-*` (3 of them), `console-stream`, `target-connection-use-cases`, `probe-cdc-and-persistence` |

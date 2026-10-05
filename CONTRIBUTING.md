@@ -6,7 +6,7 @@
 
 This repository is the source of truth for OEP. The specification is the normative text in `docs/` (`oep-core.md`,
 `oep-if-*.md`, `target-console-dmseq.md`) and the number registry `registry/oep-v1.toml`. Implementations follow it; they do
-not define it.
+not define it. What an implementation must do to conform, and how to check it, is listed in [conformance](docs/conformance.md).
 
 A change to the specification is made in one of two ways: the maintainers edit this repository directly, or anyone opens a
 pull request to it. Errors can be reported as an issue or fixed in a pull request.

@@ -7,7 +7,7 @@
 ## 仕様の置き場
 
 このリポジトリが OEP の唯一の正である。仕様は `docs/` の規範の文（`oep-core.md`、`oep-if-*.md`、`target-console-dmseq.md`）と、
-番号の registry `registry/oep-v1.toml` である。実装は仕様に従うもので、仕様を決めるものではない。
+番号の registry `registry/oep-v1.toml` である。実装は仕様に従うもので、仕様を決めるものではない。実装が適合するために何をするか、それをどう確かめるかは [適合](docs/conformance.ja.md) に並べてある。
 
 仕様を変えるやり方は 2 つ: maintainer がこのリポジトリを直接直すか、誰でもこのリポジトリに pull request を出す。誤りは issue で
 知らせるか、pull request で直してよい。

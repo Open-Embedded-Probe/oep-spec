@@ -37,6 +37,7 @@ Every document in `docs/` states its status in its first lines: **normative**, *
 **Guides** (not normative):
 
 - [Review guide](docs/review-guide.md): what is where, the shortest reading order, and the state of every document.
+- [Conformance](docs/conformance.md): what a probe and a host must do to conform to OEP v1, how to check it, and what conformance lets an implementation claim.
 - [Project purpose and scope](docs/project-concept.md).
 - Host and probe development guides, release testing, USB identification (Japanese only:
   [host](docs/host-development-guide.ja.md), [probe](docs/probe-development-guide.ja.md),
@@ -52,6 +53,7 @@ test environment for them in `tests/` ([tests/README.ja.md](tests/README.ja.md))
 2. Take the numbers from `registry/oep-v1.toml`, or copy the generated files in `generated/oep-v1/`.
 3. Try a host against the fake probe of oep-client-python (`python -m oep_client.fake_serve`, on a pty or TCP), and
    look at a probe with `oep dump --port <port>` from the same package (list and describe of every interface).
+4. Check the implementation against the checklists of [conformance](docs/conformance.md).
 
 Reference implementations:
 
