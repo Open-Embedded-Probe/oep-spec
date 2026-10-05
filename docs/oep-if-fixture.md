@@ -96,6 +96,7 @@ One stream per fn.
 - **The TX line is kept at the UART idle (high) while assigned by the plan (even before configure)**: taking the plan starts the use of TX (core §8) (so that the peer's receiver does not pick up noise). When the plan
   is released, the UART drive stops and it goes to the idle state of core §8. A fixture that does not want to leave the peer's input floating after release decides, in the idle of `oep.probe.config`,
   that the pin is a pull-up input, and saves it.
+- write on an fn whose plan has no TX is rejected unavailable (cause 6).
 - The formats that can be handled are declared with the formats of describe (tag 0x40, n(u8), n × u8. The values of the TLV 0x01 of configure). 8N1 (0) is mandatory.
 - A one-directional UART (RX only, TX only) assigns only one role in the plan. A probe with fixed pin combinations also writes the RX-only combination and
   the TX-only combination separately in channel_group (since channel_group is an exact match).
@@ -127,7 +128,7 @@ retrieves them with read_rx.
   tag 0x42 pullup_ohms (u32, approximate). A probe that does not declare it enables none. v1 has no request that switches them.
 - In state 0 the probe ACKs no address and leaves both lines released (it neither pulls them low nor enables pull-ups; until configure the channels keep their idle state, core §8).
 - configure recreates the target (the queued frames, the wait, the placements, rx_frames and errors are lost. The stretch value is kept). When this fn has no plan,
-  it is rejected unavailable (cause 6). If address exceeds 0x7F, rejected malformed. An undefined mode (0, 4 or more: a later revision may define it, core §2.5) and a mode that is in the definition but
+  it is rejected unavailable (cause 6). If address exceeds 0x7F, rejected malformed. An address in 0x00 to 0x07 or 0x78 to 0x7F (reserved by the I2C specification: general call, start byte, the 10-bit prefix and others) is rejected unsupported (payload `0x00`). An undefined mode (0, 4 or more: a later revision may define it, core §2.5) and a mode that is in the definition but
   not in the declaration are rejected unsupported (payload `0x00`).
 - arm_rx is for mode 1 only (otherwise rejected unavailable cause 6). length is 1 to the max_length of describe (0 is malformed, above max_length is
   unsupported). If already waiting, the current wait is dropped and it waits with the new length. The wait does not end when a frame is received: it keeps receiving with the same length until the next arm_rx, reset,
@@ -177,7 +178,7 @@ The probe becomes an SPI target, answers one transfer delimited by CS with the M
   (cause 6). mode exceeding 3, or bit_order exceeding 1, is rejected malformed. bit_order 1 without bit0 of features is rejected
   unsupported. **CS is active low** (active high comes later as a TLV).
 - arm waits for the next single transfer: length is the maximum bytes to receive (1 to max_length. 0 is malformed, excess is unsupported), tx is the bytes to put out on MISO in that
-  transfer (count ≤ length. The shortfall is 0). An arm while waiting is rejected unavailable (one at a time). **A transfer while not armed
+  transfer (count ≤ length, count > length is rejected malformed. The shortfall is 0). An arm while waiting is rejected unavailable (one at a time). **A transfer while not armed
   discards MOSI and counts transactions and errors.** **MISO is 0 outside tx (not armed, after tx is used up).** CS becoming active and returning to inactive with no
   SCK cycle at all (0 bits) is not a transfer: nothing is queued, neither transactions nor errors is counted, and the arm keeps waiting.
 - **From configure until the plan is released, the probe drives MISO only while CS is active.** While CS is inactive it does not drive MISO (an input with no pull),

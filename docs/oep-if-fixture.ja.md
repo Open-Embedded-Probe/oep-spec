@@ -96,6 +96,7 @@
 - **TX の線は、plan で割り当てている間（configure の前も）UART の休止（high）に保つ**: plan を取ることが TX を使い始めることである（core §8）（相手の受信が雑音を拾わないため）。plan を
   解いたら UART の駆動をやめ、core §8 の空きの状態にする。解いた後も相手の入力を浮かせたくない治具は、`oep.probe.config` の idle で
   そのピンをプルアップの入力に決めて保存する。
+- plan に TX の無い fn への write は rejected unavailable（cause 6）。
 - 扱える format は describe の formats（tag 0x40、n(u8)、n × u8。configure の TLV 0x01 の値）で宣言する。8N1（0）は必須。
 - 片方向だけの UART（RX だけ、TX だけ）は、plan で片方の role だけを割り当てる。ピンの組が決まっている probe は、RX だけの組と
   TX だけの組も channel_group に別々に書く（channel_group は完全一致なので）。
@@ -127,7 +128,7 @@ read_rx で取り出す。
   tag 0x42 pullup_ohms（u32、おおよその値）でそれを宣言する。宣言しない probe はプルアップを入れない。v1 にはそれを切り替える要求は無い。
 - state 0 では probe はどのアドレスにも ACK せず、両方の線を離しておく（low に引かず、プルアップも入れない。configure までは channel は core §8 の空きの状態のまま）。
 - configure は target を作り直す（積んだフレーム、待ち、置き場、rx_frames と errors は消える。stretch の値は保つ）。この fn の plan が
-  無いときは rejected unavailable（cause 6）。address が 0x7F を超えるなら rejected malformed。未定義の mode（0、4 以上。後の revision が定めうる、core §2.5）と、定義にあるが
+  無いときは rejected unavailable（cause 6）。address が 0x7F を超えるなら rejected malformed。0x00〜0x07 と 0x78〜0x7F のアドレス（I2C の仕様が予約するもの: general call、start byte、10 bit の前置きなど）は rejected unsupported（payload `0x00`）。未定義の mode（0、4 以上。後の revision が定めうる、core §2.5）と、定義にあるが
   宣言に無い mode は rejected unsupported（payload `0x00`）。
 - arm_rx は mode 1 だけ（ほかは rejected unavailable cause 6）。length は 1〜describe の max_length（0 は malformed、max_length 超は
   unsupported）。すでに待っていれば、今の待ちを捨てて新しい length で待つ。待ちはフレームを受けても終わらず、次の arm_rx、reset、
@@ -177,7 +178,7 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   （cause 6）。mode が 3 を超える、bit_order が 1 を超える は rejected malformed。features の bit0 が無いのに bit_order 1 は rejected
   unsupported。**CS は low で有効**（high で有効は後から TLV で）。
 - arm は次の 1 回の転送を待つ: length は受ける最大 byte（1〜max_length。0 は malformed、超過は unsupported）、tx はその転送で MISO に
-  出すバイト（count ≤ length。足りない分は 0）。待っている間の arm は rejected unavailable（1 回に 1 つ）。**arm していない間の転送は
+  出すバイト（count ≤ length。count > length は rejected malformed。足りない分は 0）。待っている間の arm は rejected unavailable（1 回に 1 つ）。**arm していない間の転送は
   MOSI を捨て、transactions と errors を数える**。**MISO は tx の外（未 arm、tx を使い切った後）では 0**。CS が有効になってから SCK が
   1 回も来ずに無効に戻ったもの（0 ビット）は転送とみなさない: 何も積まず、transactions も errors も数えず、arm は待ち続ける。
 - **configure から plan を解くまで、probe は CS が有効な間だけ MISO を駆動する。** CS が無効な間は MISO を駆動しない（プルの無い入力）。

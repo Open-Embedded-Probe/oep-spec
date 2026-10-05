@@ -84,7 +84,7 @@ Values the probe returns in the answer to configure:
 Rules:
 
 1. A slot is a little endian integer of `s/8` bytes. Bits `o` to `o+b−1` of the slot's value are the result of the conversion (unsigned). The other
-   bits are undefined (the host ignores them).
+   bits are undefined (the host ignores them). A converter whose result is signed (two's complement in b bits) is sent as offset binary: the probe inverts bit b−1 of each value (adding 2^(b−1) modulo 2^b), and the zero it returns includes that offset (the value for 0 V).
 2. Sample i is from slot `i·C` to `i·C + C − 1`. The m-th slot is channel `order[m]`.
 3. The length of the segment is `N·C·s/8` bytes.
 4. Voltage of channel k = (value − `zero[k]`) × `scale_nv[k]`. `zero` and `scale_nv` (nV / 1 value) are returned per channel in the answer to configure (linear. Curve calibration is

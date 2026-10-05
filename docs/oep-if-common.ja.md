@@ -54,7 +54,7 @@ mark : serial(u32)、position(u64)、kind(u8)、time_ns(u64)、detail(u8)       
 
 | kind | 名前 | 付ける契機 | detail |
 |---:|---|---|---|
-| 0x01 | reset | probe の指示で target をリセットした | 方法（`mark_detail_reset`: 1 ndmreset、2 NRST、3 attach の reset TLV（NRST）。probe が選んだときは実際に使った方法） |
+| 0x01 | reset | probe の指示で target をリセットした | 方法（`mark_detail_reset`: 1 ndmreset（reset の op）、3 attach の reset TLV。2 は予約） |
 | 0x02 | restart | target の再起動を検出した | 検出元（`mark_detail_restart`: 1 havereset、2 コンソールの再同期） |
 | 0x03 | attach | attach した（同じ場所の再 open を含む） | — |
 | 0x04 | detach | detach した | — |

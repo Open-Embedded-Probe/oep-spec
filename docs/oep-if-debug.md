@@ -220,8 +220,8 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
 | 0x04 | — | Reserved (formerly attach_under_reset. Became the reset TLV of attach) | |
 | 0x05 | connections | first(u8) | §2.1 (no lock) |
 
-- A swio combination has swclk = 0xFFFF (a single wire. swclk ≠ 0xFFFF is a combination the declaration does not allow, rejected unsupported as §1 says, in scan and attach alike). The kind of scan is `scan_kind`: 1 = riscv-dm,
-  2 = arm-adi. `id` is the raw identifier determined by the kind of wire (DMSTATUS for riscv-dm, DPIDR for arm-adi).
+- A swio combination has swclk = 0xFFFF (a single wire. swclk ≠ 0xFFFF is a combination the declaration does not allow, rejected unsupported as §1 says, in scan and attach alike). The kind of a scan entry on rvswd and swio is 1 (riscv-dm),
+  and id is DMSTATUS. Their connections are used by `oep.target.riscv-dm` and `oep.target.console`.
 - **The flags of attach** (common to the 3 wires, the registry's `attach_flags`): bit0 a pending havereset was acknowledged (riscv), bit1 existing connection,
   bit2 woken from dormant (swd), bit3 the hart is halted (the answer's TLV 0x11 dpc is valid).
 - **Wake / configuration sequence** (§1 item 1): rvswd: the wake pattern (§3.1), then DMI 0x7E and DMI 0x7D each written 0x5AA50400, the pair twice.
@@ -232,7 +232,7 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
   hold_ms and then releases it. With method 1 it keeps issuing halt while releasing, to halt as early as possible (flags bit3, dpc TLV). **There is no guarantee of halting before the first
   instruction** (some execution happens between the release of the reset wire and the halt taking effect; reasons: [link measurements](link-measurements.ja.md) (Japanese) §3). When a guarantee of halting at the position right after
   reset is needed, use reset mode 2 of riscv-dm (release ndmreset while holding haltreq). With method 0 it attaches with the target running. An optional function, declared by role 3 (reset) of role_channels; a probe without it rejects a reset TLV unsupported (the tag as received, 0x85, core §2.3). An attach with the reset TLV to an existing connection
-  resets that target and then returns the same connection (treated the same as the NRST of the reset op: mark reset detail 3). hold_ms is
+  resets that target and then returns the same connection (mark reset detail 3). hold_ms is
   subject to the core's max_op_ms.
 - **There is no default reset wire**: which wire is used for reset is specified explicitly by the host every time with channel (a reset on the wrong wire could damage the target or the
   fixture). The channels the probe may use for reset are declared with role 3 (reset) of the role_channels of describe. An undeclared
@@ -469,8 +469,8 @@ Answer:
 - The other bits of flags are 0. After the reset, havereset is acknowledged and haltreq is cleared (mode 2 stays halted).
 - A mode of 3 or more is rejected unsupported (payload `0x00`. A later revision may define it, core §2.5).
 
-TLV 0x01 method (u8): 0 the probe chooses, 1 ndmreset. 2 is reserved (there is no common procedure for a target's system reset, so the host builds it with
-dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rejected unsupported when sent critical, otherwise ignored).
+TLV 0x01 method (u8): 0 the probe's default, which in revision 1 is ndmreset; 1 ndmreset. 2 is reserved (there is no common procedure for a target's system reset, so the host builds it with
+dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rejected unsupported when sent critical, otherwise ignored). **The reset op never drives a reset line**: a reset line moves only through the reset TLV of attach (§3) or through the host's own use of a fixture interface.
 
 ### 4.4 run
 

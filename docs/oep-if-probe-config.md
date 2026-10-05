@@ -297,6 +297,7 @@ bind_state: port(u8), mode(u8), selected(u8: the number in the sequence currentl
   3 applying was refused (resources conflict).
 - Returns the registered slots in ascending order of slot from the first_slot-th, and the binds in ascending order of port from the first_bind-th, as many as fit in 1 frame.
   If more = 1 there is a continuation, and the host adds n_slots to first_slot and n_binds to first_bind and asks again.
+- Each page carries storage_state, storage_hash and unreadable_reason as they are when that page is answered; they may differ between pages, and the host uses those of the last page. The slots and binds may also change between pages (a set or save by the lock holder, an automatic attach); a host that needs the set of slots and binds to stay the same across its pages pages while it holds the lock (the slots' states may still change).
 
 ## 4. describe
 

@@ -54,7 +54,7 @@ mark : serial(u32), position(u64), kind(u8), time_ns(u64), detail(u8)          2
 
 | kind | Name | When attached | detail |
 |---:|---|---|---|
-| 0x01 | reset | The target was reset at the probe's instruction | Method (`mark_detail_reset`: 1 ndmreset, 2 NRST, 3 the reset TLV of attach (NRST). When the probe chose, the method actually used) |
+| 0x01 | reset | The target was reset at the probe's instruction | Method (`mark_detail_reset`: 1 ndmreset (the reset op), 3 the reset TLV of attach. 2 is reserved) |
 | 0x02 | restart | A restart of the target was detected | Source of detection (`mark_detail_restart`: 1 havereset, 2 resynchronisation of the console) |
 | 0x03 | attach | Attached (including a re-open at the same place) | — |
 | 0x04 | detach | Detached | — |

@@ -219,8 +219,8 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 | 0x04 | — | 予約（旧 attach_under_reset。attach の reset TLV になった） | |
 | 0x05 | connections | first(u8) | §2.1（ロック不要） |
 
-- swio の組は swclk = 0xFFFF（1 本の線。swclk ≠ 0xFFFF は宣言が許さない組で、scan でも attach でも §1 のとおり rejected unsupported）。scan の kind は `scan_kind`: 1 = riscv-dm、
-  2 = arm-adi。`id` は線の種類が決める生の識別子（riscv-dm は DMSTATUS、arm-adi は DPIDR）。
+- swio の組は swclk = 0xFFFF（1 本の線。swclk ≠ 0xFFFF は宣言が許さない組で、scan でも attach でも §1 のとおり rejected unsupported）。rvswd と swio の scan の entry の kind は 1（riscv-dm）、
+  id は DMSTATUS。その connection を使うのは `oep.target.riscv-dm` と `oep.target.console`。
 - **attach の flags**（3 線共通、registry の `attach_flags`）: bit0 保留中の havereset を確認応答した（riscv）、bit1 既存の connection、
   bit2 dormant から起こした（swd）、bit3 hart が止まっている（応答の TLV 0x11 dpc が有効）。
 - **wake / 設定の手順**（§1 の 1）: rvswd: wake のパターン（§3.1）、続けて DMI 0x7E と DMI 0x7D にそれぞれ 0x5AA50400 を書く。その組を 2 回。
@@ -231,7 +231,7 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
   hold_ms 保ってから離す。method 1 なら離しながら halt を打ち続け、できるだけ早く止める（flags bit3、dpc TLV）。**最初の命令の前で
   止まる保証は無い**（reset の線の解放から halt が効くまでに走った分がある。理由: [リンクの計測](link-measurements.ja.md) §3）。reset の直後の位置で
   止める保証が要るときは、riscv-dm の reset mode 2（ndmreset を haltreq を保ったまま解く）を使う。method 0 なら走ったまま attach する。任意の機能で、role_channels の role 3（reset）で宣言する。持たない probe は reset の TLV を rejected unsupported で断る（受け取ったままの tag、0x85、core §2.3）。既存の connection に reset TLV を付けた
-  attach は、その target を reset してから同じ connection を返す（reset の op の NRST と同じ扱い: mark reset detail 3）。hold_ms は
+  attach は、その target を reset してから同じ connection を返す（mark reset detail 3）。hold_ms は
   core の max_op_ms の対象。
 - **reset の線に既定は無い**: どの線を reset に使うかは host が毎回 channel で明示する（線を取り違えた reset は target や治具を
   壊しうる）。probe が reset に使ってよい channel は describe の role_channels の role 3（reset）で宣言する。宣言していない
@@ -468,8 +468,8 @@ malformed。dmi の max_reads / max_us = 0 は 1 回読む。run の timeout_ms 
 - flags のほかの bit は 0。reset の後は havereset を確認応答し、haltreq を下ろす（mode 2 は止めたまま）。
 - 3 以上の mode は rejected unsupported（payload `0x00`。後の revision が定めうる、core §2.5）。
 
-TLV 0x01 method（u8）: 0 probe が選ぶ、1 ndmreset。2 は予約（target のシステムリセットには共通の手順が無いので、host が dmi で
-組む）。2 以上の method は、この probe が扱えない値である（core §2.3: critical で送られたら rejected unsupported、そうでなければ無視する）。
+TLV 0x01 method（u8）: 0 probe の既定、revision 1 では ndmreset。1 ndmreset。2 は予約（target のシステムリセットには共通の手順が無いので、host が dmi で
+組む）。2 以上の method は、この probe が扱えない値である（core §2.3: critical で送られたら rejected unsupported、そうでなければ無視する）。**reset の op はリセットの線を動かさない**: リセットの線が動くのは、attach の reset TLV（§3）か、host が自分で治具のインターフェースを使うときだけ。
 
 ### 4.4 run
 
