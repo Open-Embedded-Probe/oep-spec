@@ -7,7 +7,8 @@ Changes to the OEP specification: the normative text (`docs/oep-core.md`, `docs/
 ## Unreleased
 
 v1 candidate. Changes since the last pushed state (ad9f8be). Most rule changes come from the
-[v1 rule-change proposal](docs/v1-rule-change-proposal-2026-10-02.md) (topics 1 to 12), reviewed by the implementers (ch32rv, WireSkein, bench),
+[v1 rule-change proposal](docs/v1-rule-change-proposal-2026-10-02.md) (topics 1 to 12) and the
+[2026-10-06 rule-change proposal](docs/v1-rule-change-proposal-2026-10-06.md), reviewed by the implementers (ch32rv, WireSkein, bench),
 and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.md).
 
 ### Rule changes: core and registry
@@ -36,6 +37,17 @@ and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.m
   defined values (3c6691a).
 - Registry names for the numbers that only the text had (`port_speed_switch_wait_ms`, `resend_max`, `host_serial_inflight_max_bytes`,
   `cobs_frame_max_bytes` and others), with informative notes (C-26 forged lock-free answers, C-46 owner, C-37, C-42, C-43) (5d02a6f, c6cc1f8).
+- From the 2026-10-06 proposal (b4b08f1): the probe discards messages that are not requests and requests shorter than their header, the host
+  discards request roles and treats short answers, events and data as broken (§2.4); values of one wrapping space held at once span less than a
+  quarter of the width, resource numbers compared only for equality (§2.6); the clock never decreases or wraps while the boot_id is the same
+  (§2.6a); an fn named inside the payload is checked at the end of order 5 (§4.3); `min_max_frame` as max_frame in the transfer time before the
+  first confirm answer (§4.4); max_op_ms is 1 to `max_op_ms_max` (600000 ms) and a host does not use a probe outside it (§4.4, §7.5); a resend
+  that also gets no answer fails the transport, which the host recovers with confirm on every frame kind or reopens (§5.2); boot_id sources in
+  order of preference, and resumed = 0 for the host's last session_id means list again (§6.5); confirm bounds max_frame ≥ 64, window ≥
+  max_frame, max_inflight ≥ 1, a host does not use a transport outside them (§7.1); list fixed while the boot_id is the same, first beyond the
+  matches gives count 0 (§7.2); the transport's interface field is the CDC communication interface, 0xFF for a UART bridge and TCP (§7.5);
+  every non-reserved channel in its idle state from boot before the first answer (§8). Registry: `limits.max_op_ms_max`, `mark_detail_reset`
+  2 reserved, rvswd / swio `scan_kind` without arm_adi.
 
 ### Rule changes: standard interfaces
 
@@ -54,6 +66,10 @@ and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.m
 - probe-config: line search also finds firmware labels; standard line names in the registry and `x-` for private ones; idle pulls a channel
   lacks; the channel of label / idle / disable; label text 1 to 32 bytes; get's answer; canonical form details; transport indexes invariant and
   bind checked at boot (20967d7); boot_reset is a boolean (73a0c37); §5 Safety, informative (5d02a6f).
+- From the 2026-10-06 proposal (40291a4): riscv-dm reset method 0 is ndmreset in revision 1 and the reset op never drives a reset line, mark
+  reset detail 2 reserved; i2c-target refuses the reserved addresses 0x00-0x07 / 0x78-0x7F unsupported; spi-target arm count > length is
+  malformed, fixture uart write without TX is unavailable cause 6; a signed converter result is sent as offset binary; rvswd / swio scan
+  entries are kind 1 (riscv-dm); probe-config state pages carry storage_* as they are when answered, the host uses the last page.
 
 ### Tools and test vectors
 
@@ -68,5 +84,7 @@ and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.m
   [security and safety](docs/security.md), [glossary](docs/glossary.md) (f951bd8), [versioning](docs/versioning.md) and this changelog.
 - Host and probe development guides in English, renumbered and completed; chip-specific stories moved to the record
   [implementation notes](docs/implementation-notes.ja.md) (4bf464d).
-- The v1 rule-change proposal and the third zero-base review with the status of every finding (41563f1, 0dd15c2, 09622ef, d56a8e7, 536fc99,
-  e0a0776, 1220792).
+- Host and probe guides, conformance and security follow the 2026-10-06 rule changes (5cae93f). development-guidelines is now a record (the
+  project's working criteria); the review guide points to the English release-testing (21ac4d1).
+- The v1 rule-change proposals (2026-10-02, 2026-10-06) and the third zero-base review with the status of every finding (41563f1, 0dd15c2,
+  09622ef, d56a8e7, 536fc99, e0a0776, 1220792, 3ad540a).

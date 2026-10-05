@@ -2,7 +2,7 @@
 
 [日本語](v1-rule-change-proposal-2026-10-06.ja.md)
 
-Status: **proposal to the peers (not normative)**. This English version is authoritative; the Japanese version is its translation.
+Status: **agreed by the peers and applied (not normative)**: every item is in the normative text (b4b08f1, 40291a4), with the guides (5cae93f). This English version is authoritative; the Japanese version is its translation.
 Readers: ch32rv (Rust host and broker), WireSkein (capture recorder), bench (HIL jigs).
 Base: oep-spec 2e70f40 (required and optional ops). Source: [the third zero-base review](v1-zero-base-review-3-2026-10-02.ja.md) (Japanese): every finding still open there that changes a rule (規則), plus the part of C-21 that the required-ops change (2e70f40) did not cover, plus N-1, found while writing the guides (4bf464d, f951bd8).
 
@@ -20,28 +20,32 @@ The premise is the review's: people we have never met build probes and hosts fro
 
 **Breaking** = an implementation that follows today's text or today's reference code must change its behaviour on the wire.
 
+## Answers
+
+ch32rv agreed to every item, WireSkein had no objection, and the bench raised none (2026-10-06). ch32rv's notes: C-20 and C-47 are small changes on its side (it adds the checks); its host already conforms to C-36, C-38, C-41 and N-1; for C-19 it will clear its name → fn cache when an open with its last session_id is answered resumed = 0. Every item was applied as written, apart from one consequential fix: debug §3's attach reset TLV no longer calls itself "the NRST of the reset op" (○2).
+
 ## Index
 
-| id | area | sev | one line | breaking | recommendation |
+| id | area | sev | one line | breaking | status |
 |---|---|:---:|---|---|---|
-| C-19 | core §6.5 | ○ | boot_id: say where the value comes from when a probe has no random source | probe (one fallback path) | adopt |
-| C-20 | core §7.1 | ○ | confirm: max_inflight ≥ 1, window ≥ max_frame, and what a host does with values outside | no (hosts add a check) | adopt |
-| ○2 | debug §4.3, common §1.3 | ○ | reset method 0 is ndmreset in revision 1; the reset op never drives a reset line | no | adopt |
-| C-31 | core §2.6a | ○ | The clock never goes back while the boot_id is the same | probe (one platform branch) | adopt |
-| C-21 (rest) | core §4.3 | ○ | Where an fn named inside the payload is checked: at the end of order 5 | probe, fake (order only) | adopt |
-| C-36 | core §2.4, §4.1, §4.2 | △ | A message shorter than its header, and a role sent in the wrong direction, are discarded | hosts (short answer = broken answer) | adopt |
-| C-38 | core §5.2 | △ | When the resend also gets no answer, the host treats the transport as failed and recovers | Python, JS (COBS links) | adopt |
-| C-39 (rest) | core §7.2 | △ | list does not change while the boot_id is the same; first beyond the matches gives count 0 | no | adopt |
-| C-40 | core §2.6 | △ | "well below half" becomes a number: a quarter of the width; resource numbers leave §2.6 | no | adopt |
-| C-41 | core §7.5 | △ | The interface of a transport: the CDC communication interface; 0xFF for a UART bridge | probe (examples that send 0xFF on CDC) | adopt |
-| C-47 | core §4.4, §7.5 | △ | max_op_ms has a ceiling (600000 ms), so no host waits for days | no (hosts add a check) | adopt |
-| N-1 | core §4.4 | ○ | The transfer time before the first confirm answer uses min_max_frame (64) | no | adopt |
-| △5 | fixture §3 | △ | i2c-target refuses the reserved addresses (unsupported) | probe, fake | adopt |
-| △6 | fixture §2, §4 | △ | spi arm count > length is malformed; uart write without TX is unavailable cause 6 | fake (uart write) | adopt (console part dropped) |
-| △9 | capture §1.2 | △ | A converter with a signed result is sent as offset binary | no | adopt |
-| △10 | debug §3, registry | △ | rvswd / swio scan entries are kind 1 only | no | adopt |
-| △12 | core §8 | △ | From boot, every channel is in its idle state before the first answer | probe (one firmware) | adopt |
-| PC-9 (rest) | probe-config §3.3 | △ | storage_* are per page; the host uses the last page; consistency needs the lock | no | adopt |
+| C-19 | core §6.5 | ○ | boot_id: say where the value comes from when a probe has no random source | probe (one fallback path) | agreed; applied b4b08f1; guides 5cae93f |
+| C-20 | core §7.1 | ○ | confirm: max_inflight ≥ 1, window ≥ max_frame, and what a host does with values outside | no (hosts add a check) | agreed; applied b4b08f1; guides 5cae93f |
+| ○2 | debug §4.3, common §1.3 | ○ | reset method 0 is ndmreset in revision 1; the reset op never drives a reset line | no | agreed; applied 40291a4, b4b08f1 (registry); guides 5cae93f |
+| C-31 | core §2.6a | ○ | The clock never goes back while the boot_id is the same | probe (one platform branch) | agreed; applied b4b08f1; guides 5cae93f |
+| C-21 (rest) | core §4.3 | ○ | Where an fn named inside the payload is checked: at the end of order 5 | probe, fake (order only) | agreed; applied b4b08f1; guides 5cae93f |
+| C-36 | core §2.4, §4.1, §4.2 | △ | A message shorter than its header, and a role sent in the wrong direction, are discarded | hosts (short answer = broken answer) | agreed; applied b4b08f1; guides 5cae93f |
+| C-38 | core §5.2 | △ | When the resend also gets no answer, the host treats the transport as failed and recovers | Python, JS (COBS links) | agreed; applied b4b08f1; guides 5cae93f |
+| C-39 (rest) | core §7.2 | △ | list does not change while the boot_id is the same; first beyond the matches gives count 0 | no | agreed; applied b4b08f1; guides 5cae93f |
+| C-40 | core §2.6 | △ | "well below half" becomes a number: a quarter of the width; resource numbers leave §2.6 | no | agreed; applied b4b08f1; guides 5cae93f |
+| C-41 | core §7.5 | △ | The interface of a transport: the CDC communication interface; 0xFF for a UART bridge | probe (examples that send 0xFF on CDC) | agreed; applied b4b08f1; guides 5cae93f |
+| C-47 | core §4.4, §7.5 | △ | max_op_ms has a ceiling (600000 ms), so no host waits for days | no (hosts add a check) | agreed; applied b4b08f1; guides 5cae93f |
+| N-1 | core §4.4 | ○ | The transfer time before the first confirm answer uses min_max_frame (64) | no | agreed; applied b4b08f1; guides 5cae93f |
+| △5 | fixture §3 | △ | i2c-target refuses the reserved addresses (unsupported) | probe, fake | agreed; applied 40291a4; guides 5cae93f |
+| △6 | fixture §2, §4 | △ | spi arm count > length is malformed; uart write without TX is unavailable cause 6 | fake (uart write) | agreed (console part dropped); applied 40291a4 |
+| △9 | capture §1.2 | △ | A converter with a signed result is sent as offset binary | no | agreed; applied 40291a4 |
+| △10 | debug §3, registry | △ | rvswd / swio scan entries are kind 1 only | no | agreed; applied 40291a4, b4b08f1 (registry) |
+| △12 | core §8 | △ | From boot, every channel is in its idle state before the first answer | probe (one firmware) | agreed; applied b4b08f1; guides 5cae93f |
+| PC-9 (rest) | probe-config §3.3 | △ | storage_* are per page; the host uses the last page; consistency needs the lock | no | agreed; applied 40291a4 |
 
 Dropped: none of the listed items. Inside △6, the console part (open with mechanism 0xFF) is dropped: console §1 already rejects an unknown mechanism unsupported, and both implementations do so.
 

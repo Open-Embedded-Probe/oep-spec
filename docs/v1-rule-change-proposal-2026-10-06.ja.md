@@ -2,7 +2,7 @@
 
 [English](v1-rule-change-proposal-2026-10-06.md)
 
-状態: **peers への提案（規範ではない）**。この文書は英語版が正で、日本語版はその訳。
+状態: **peers が合意し、適用済み（規範ではない）**: すべての項目が規範の文に入った（b4b08f1、40291a4）。ガイドは 5cae93f。この文書は英語版が正で、日本語版はその訳。
 読む人: ch32rv（Rust の host と broker）、WireSkein（キャプチャの記録）、bench（HIL の治具）。
 元: oep-spec 2e70f40（必須と任意の op）。出典: [3 回目のゼロベース点検](v1-zero-base-review-3-2026-10-02.ja.md)。そこでまだ残っている、規則が変わる指摘（規則）すべてと、必須の op の変更（2e70f40）が扱わなかった C-21 の残りと、ガイドを書くときに見つかった N-1（4bf464d、f951bd8）。
 
@@ -20,28 +20,32 @@
 
 **壊す** = 今の本文か今の参照のコードに従う実装が、線の上の動きを変えなければならない。
 
+## 答え
+
+ch32rv はすべての項目に賛成し、WireSkein は異議なし、bench も何も挙げなかった（2026-10-06）。ch32rv の注: C-20 と C-47 は自分の側では小さな変更（確かめを足す）。その host は C-36、C-38、C-41、N-1 にすでに従う。C-19 では、最後の session_id での open に resumed = 0 が返ったら、名前 → fn のキャッシュを消す。どの項目も書いたとおりに適用した。ほかに 1 つ、それに伴う直しがある: debug §3 の attach の reset TLV は、もう自分を「reset の op の NRST」と呼ばない（○2）。
+
 ## 索引
 
-| id | 場所 | 重さ | 一言 | 壊す | 勧め |
+| id | 場所 | 重さ | 一言 | 壊す | 状態 |
 |---|---|:---:|---|---|---|
-| C-19 | core §6.5 | ○ | boot_id: 乱数源の無い probe が値をどこから取るかを書く | probe（1 つの代わりの道） | 採る |
-| C-20 | core §7.1 | ○ | confirm: max_inflight ≥ 1、window ≥ max_frame と、外れた値を host がどう扱うか | いいえ（host が確かめを足す） | 採る |
-| ○2 | debug §4.3、common §1.3 | ○ | reset の method 0 は revision 1 では ndmreset。reset の op はリセットの線を動かさない | いいえ | 採る |
-| C-31 | core §2.6a | ○ | 時計は同じ boot_id の間戻らない | probe（1 つのプラットフォームの枝） | 採る |
-| C-21（残り） | core §4.3 | ○ | payload の中で指す fn をどこで見るか: 順 5 の終わり | probe、fake（順だけ） | 採る |
-| C-36 | core §2.4、§4.1、§4.2 | △ | 見出しより短い message と、向きの違う role は捨てる | host（短い応答 = 壊れた応答） | 採る |
-| C-38 | core §5.2 | △ | 送り直しにも答えが無いとき、host はその経路が失敗したとして立て直す | Python、JS（COBS のリンク） | 採る |
-| C-39（残り） | core §7.2 | △ | list は同じ boot_id の間変わらない。一致の数を超える first は count 0 | いいえ | 採る |
-| C-40 | core §2.6 | △ | 「半分より十分小さく」を数にする: 幅の 4 分の 1。資源の番号は §2.6 から外す | いいえ | 採る |
-| C-41 | core §7.5 | △ | transport の interface: CDC は通信の interface。UART bridge は 0xFF | probe（CDC で 0xFF を送る例） | 採る |
-| C-47 | core §4.4、§7.5 | △ | max_op_ms に上限（600000 ms）。host が何日も待たない | いいえ（host が確かめを足す） | 採る |
-| N-1 | core §4.4 | ○ | 最初の confirm の応答の前の転送時間は min_max_frame（64）を使う | いいえ | 採る |
-| △5 | fixture §3 | △ | i2c-target は予約のアドレスを断る（unsupported） | probe、fake | 採る |
-| △6 | fixture §2、§4 | △ | spi の arm の count > length は malformed。TX の無い uart の write は unavailable cause 6 | fake（uart の write） | 採る（console の部分は取り下げ） |
-| △9 | capture §1.2 | △ | 符号付きの結果を出す変換器は offset binary で送る | いいえ | 採る |
-| △10 | debug §3、registry | △ | rvswd / swio の scan の entry は kind 1 だけ | いいえ | 採る |
-| △12 | core §8 | △ | 起動から、最初の応答の前に、すべての channel を空きの状態にする | probe（1 つの firmware） | 採る |
-| PC-9（残り） | probe-config §3.3 | △ | storage_* はページごと。host は最後のページを使う。揃いにはロックが要る | いいえ | 採る |
+| C-19 | core §6.5 | ○ | boot_id: 乱数源の無い probe が値をどこから取るかを書く | probe（1 つの代わりの道） | 合意。適用 b4b08f1。ガイド 5cae93f |
+| C-20 | core §7.1 | ○ | confirm: max_inflight ≥ 1、window ≥ max_frame と、外れた値を host がどう扱うか | いいえ（host が確かめを足す） | 合意。適用 b4b08f1。ガイド 5cae93f |
+| ○2 | debug §4.3、common §1.3 | ○ | reset の method 0 は revision 1 では ndmreset。reset の op はリセットの線を動かさない | いいえ | 合意。適用 40291a4、b4b08f1（registry）。ガイド 5cae93f |
+| C-31 | core §2.6a | ○ | 時計は同じ boot_id の間戻らない | probe（1 つのプラットフォームの枝） | 合意。適用 b4b08f1。ガイド 5cae93f |
+| C-21（残り） | core §4.3 | ○ | payload の中で指す fn をどこで見るか: 順 5 の終わり | probe、fake（順だけ） | 合意。適用 b4b08f1。ガイド 5cae93f |
+| C-36 | core §2.4、§4.1、§4.2 | △ | 見出しより短い message と、向きの違う role は捨てる | host（短い応答 = 壊れた応答） | 合意。適用 b4b08f1。ガイド 5cae93f |
+| C-38 | core §5.2 | △ | 送り直しにも答えが無いとき、host はその経路が失敗したとして立て直す | Python、JS（COBS のリンク） | 合意。適用 b4b08f1。ガイド 5cae93f |
+| C-39（残り） | core §7.2 | △ | list は同じ boot_id の間変わらない。一致の数を超える first は count 0 | いいえ | 合意。適用 b4b08f1。ガイド 5cae93f |
+| C-40 | core §2.6 | △ | 「半分より十分小さく」を数にする: 幅の 4 分の 1。資源の番号は §2.6 から外す | いいえ | 合意。適用 b4b08f1。ガイド 5cae93f |
+| C-41 | core §7.5 | △ | transport の interface: CDC は通信の interface。UART bridge は 0xFF | probe（CDC で 0xFF を送る例） | 合意。適用 b4b08f1。ガイド 5cae93f |
+| C-47 | core §4.4、§7.5 | △ | max_op_ms に上限（600000 ms）。host が何日も待たない | いいえ（host が確かめを足す） | 合意。適用 b4b08f1。ガイド 5cae93f |
+| N-1 | core §4.4 | ○ | 最初の confirm の応答の前の転送時間は min_max_frame（64）を使う | いいえ | 合意。適用 b4b08f1。ガイド 5cae93f |
+| △5 | fixture §3 | △ | i2c-target は予約のアドレスを断る（unsupported） | probe、fake | 合意。適用 40291a4。ガイド 5cae93f |
+| △6 | fixture §2、§4 | △ | spi の arm の count > length は malformed。TX の無い uart の write は unavailable cause 6 | fake（uart の write） | 合意（console の部分は取り下げ）。適用 40291a4 |
+| △9 | capture §1.2 | △ | 符号付きの結果を出す変換器は offset binary で送る | いいえ | 合意。適用 40291a4 |
+| △10 | debug §3、registry | △ | rvswd / swio の scan の entry は kind 1 だけ | いいえ | 合意。適用 40291a4、b4b08f1（registry） |
+| △12 | core §8 | △ | 起動から、最初の応答の前に、すべての channel を空きの状態にする | probe（1 つの firmware） | 合意。適用 b4b08f1。ガイド 5cae93f |
+| PC-9（残り） | probe-config §3.3 | △ | storage_* はページごと。host は最後のページを使う。揃いにはロックが要る | いいえ | 合意。適用 40291a4 |
 
 取り下げ: 上の項目には無い。△6 のうち console の部分（mechanism 0xFF の open）は取り下げる: console §1 がすでに知らない mechanism を unsupported で断り、両方の実装がそうしている。
 
