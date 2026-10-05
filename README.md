@@ -48,7 +48,7 @@ Every document in `docs/` states its status in its first lines: **normative**, *
   [release testing](docs/release-testing.md) (the project's own process).
 
 **Records** (not normative): reasons for decisions, measurements, reviews, and the history before v1. They are listed in
-[the review guide](docs/review-guide.md) §5.1; most are Japanese only. The experiments are in `experiments/`, and the
+[the review guide](docs/review-guide.md) §5.1; most are Japanese only. The normative text and the guides are complete without them. The experiments are in `experiments/`, and the
 test environment for them in `tests/` ([tests/README.ja.md](tests/README.ja.md)).
 
 ## How to start

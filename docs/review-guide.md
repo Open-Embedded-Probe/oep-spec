@@ -21,7 +21,7 @@ how to write flash and chip-specific procedures are in the host.
 ## 2. Current state
 
 - It is **a candidate for the v1 freeze**. The normative text is `docs/oep-core.md`, `docs/oep-if-*.md` (6 of them), `docs/target-console-dmseq.md`, and the numbers are `registry/oep-v1.toml`.
-  No undecided numbers (the "to be decided" mark) remain in the normative text. What the freeze stops and what it does not is in [versioning](versioning.md) (the record of the decision: [the scope of the freeze](v1-freeze-decisions.md) §0); the changes are in [CHANGELOG](../CHANGELOG.md).
+  No undecided numbers (the "to be decided" mark) remain in the normative text. What the freeze stops and what it does not is in [versioning](versioning.md); the changes are in [CHANGELOG](../CHANGELOG.md).
 - Until the freeze, breaking changes go in without raising the revision (there are no users yet). After the freeze, the revision is raised.
 - **Releases**: oep-spec is pushed to main on GitHub (there are no tags. It is pointed to by commit). The reference implementations are oep-probe-arduino **0.0.28** (Arduino library
   `OpenEmbeddedProbe`, firmware per profile in the GitHub release) and oep-client-python **0.0.28** (PyPI `oep-client-python`). oep-client-js is
@@ -32,7 +32,8 @@ how to write flash and chip-specific procedures are in the host.
   **Not covered**: console (dmseq), capture (logic / analog / capture-group), i2c-target / spi-target, notifications, the HID path, simultaneous use of several
   paths, TCP. For these there are only the tests against the fake (`uv run pytest`) and manual checks.
 - The way of deciding is "experiment and prototype first, then fix the specification with the results". Experiment numbers and dates are kept in **record documents**, and are not placed in the normative text
-  (the normative text has no chip names, board names or dates, and its numbers are values, not guides).
+  (the normative text has no chip names, board names or dates, and its numbers are values, not guides). The normative text and the guides are complete
+  without the records: a reason or a measurement a reader needs is written in them, and they do not link to the records.
 - **The English text is normative.** The Japanese documents (`.ja.md`) are translations; where the two differ, the English text is right. Every normative document and every guide has an English version; most records are Japanese only.
 - **Changes**: this repository is the source of truth. How rule changes, wording changes, new `oep.` names and registry values, and errata are made is in [CONTRIBUTING](../CONTRIBUTING.md).
 
@@ -41,21 +42,18 @@ how to write flash and chip-specific procedures are in the host.
 | Order | PATH (oep-spec) | What it tells you |
 |---:|---|---|
 | 1 | `docs/project-concept.md` | Purpose and scope (the upstream agreement). Short |
-| 2 | `docs/versioning.md`, `docs/v1-freeze-decisions.md` §0.3 | **The scope of the freeze**: what is stopped, what is free, the paths for extension, what a revision bump means; what is fixed on purpose and the reasons (§0.3) |
+| 2 | `docs/versioning.md` | **The scope of the freeze**: what is stopped, what is free, the paths for extension, what a revision bump means; what is fixed on purpose and the reasons (§3.1) |
 | 3 | `docs/oep-core.md` | **The core (normative)**. §0 layers and the rules for drawing lines, §2 common rules (TLV, unknown values, number spaces, revision), §3 transports and frames, §4 messages and reject reasons (**the order of refusals** in §4.3), §5 recovery and resend, §6 sessions, §7 discovery (confirm / list / describe), §8 plan, §9 lifetime of resources, §10 long operations (reserved), §11 notifications, §12 core ops, §13 how to write an interface. **§3.5 (serial port speed) is the handshake only**: how to choose candidates, checking, and judging during use are the reference procedure of `host-development-guide` §17 |
 | 4 | `docs/oep-if-common.md` | The common parts of the standard interfaces (positioned streams, debug connections, the status of wire and target operations) |
 | 5 | `docs/oep-if-debug.md`, `docs/oep-if-console.md`, `docs/oep-if-fixture.md`, `docs/oep-if-capture.md`, `docs/oep-if-probe-config.md` | The standard interfaces (normative): wires and RISC-V DM / ARM ADI, the target console, GPIO / UART / I2C·SPI targets, logic / analog capture and groups, probe settings (slots, bind, disable) |
 | 6 | `docs/target-console-dmseq.md` | The console framing (dmseq): carried in both directions through the data registers of the debug module, with sequence numbers and CRC (normative for target and host) |
 | 7 | `registry/oep-v1.toml` | The only definition of numbers and values. `timing` / `limits` are the numbers of the normative text (subject to the freeze) |
-| 8 | `docs/v1-zero-base-proposal.ja.md` §1, §4, `docs/v1-zero-base-review-2026-10-02.ja.md` | The **8 principles** used for judgement, the places intentionally not extended, the second check (★ fixed, ☆ kept fixed) |
-| 9 | `docs/getting-started.md`, `docs/conformance.md`, `docs/host-development-guide.md`, `docs/probe-development-guide.md`, `docs/security.md`, `docs/glossary.md` | Practice (not normative): the smallest probe and host with bytes; the conformance checklists for a probe and a host; how to send frames, recovery, refusals, notifications, probe settings, handling of USB-UART, **host guide §17 how to choose the serial port speed** (17.1 balance, 17.2 the minimal form, 17.3 the form that adds checks per use, 17.4 records, 17.5 measurements); identifiers and declarations (probe guide §10); security and safety in one place; terms |
-| 10 | `docs/link-measurements.ja.md`, `docs/uart-speed-negotiation.ja.md`, `docs/logic-capture.ja.md` | **Records** (not normative): measurements of USB and serial paths, the experiments and history of UART speed, the design and measurements of capture. Where the reference numbers come from |
-| 11 | `docs/release-testing.md` | Tests on real hardware before a release: who owns them, what they check |
-| 12 | `docs/session-and-exclusivity.ja.md`, `docs/capability-*.ja.md` (3 of them), `docs/console-stream.ja.md`, `docs/target-connection-use-cases.ja.md`, `docs/probe-cdc-and-persistence.ja.md` | Reasons for decisions (sessions and the lock, finding by name, the vocabulary of describe, streams, target discovery, sharing serial ports and saving settings) |
+| 8 | `docs/getting-started.md`, `docs/conformance.md`, `docs/host-development-guide.md`, `docs/probe-development-guide.md`, `docs/security.md`, `docs/glossary.md` | Practice (not normative): the smallest probe and host with bytes; the conformance checklists for a probe and a host; how to send frames, recovery, refusals, notifications, probe settings, handling of USB-UART, **host guide §17 how to choose the serial port speed** (17.1 balance, 17.2 the minimal form, 17.3 the form that adds checks per use, 17.4 records, 17.5 measurements); identifiers and declarations (probe guide §10); security and safety in one place; terms |
+| 9 | `docs/release-testing.md` | Tests on real hardware before a release: who owns them, what they check |
 | — | `docs/usb-identity.md` | USB identification (the reasons behind core §3.3) |
-| 13 | `docs/v1-open-proposals.ja.md`, `docs/v1-freeze-review-2026-10-01.ja.md`, `docs/review-response-2026-09-26.ja.md`, `docs/review-answer-*.ja.md` | Proposals and the history of decisions, the full review before the freeze (59 items, addressed), the response table to the previous third-party review |
-| — | `docs/hardware-source-review-2026-09-26.ja.md`, `docs/v1-operation-test-audit-2026-09-26.ja.md`, `docs/v1-open-issues-research-2026-09-26.ja.md` | The second review of the 2026-09-26 version, and preliminary research on open issues (IP, recovery). There is no per-item response table (items overlapping the review before the freeze were handled there. IP and recovery are outside v1) |
-| — | `docs/v1-core-wire-delta.ja.md` | The delta from v0 before the split (history) |
+
+The records (Japanese, history: reasons as they were decided, measurements, reviews, proposals) are listed in one place, §5.1. Reviewing the
+specification does not need them.
 
 ## 4. Viewpoints we would like the review to take
 
@@ -63,17 +61,21 @@ how to write flash and chip-specific procedures are in the host.
    cannot be decided without reading the guides or records, and where it escapes with "guide" or "etc.". If a number disagrees between the normative text and the registry, the registry is wrong.
 2. **Is the reason for a refusal determined uniquely?** When "the order of refusals" of core §4.3 (header → resend → session → window → malformed → unsupported →
    unavailable → no_connection) is applied to the ops of each interface, does any place remain where two reasons can be produced for the same situation?
-3. **Do the reasons for what is fixed on purpose hold?** The table of [the scope of the freeze](v1-freeze-decisions.md) §0.3 (frame headers, u8 op / tag, no len in sequences in requests,
+3. **Do the reasons for what is fixed on purpose hold?** The table of [versioning](versioning.md) §3.1 (frame headers, u8 op / tag, no len in sequences in requests,
    not adding the host's limit to confirm, the probe not declaring speed candidates, etc.). If there is a use that breaks a reason, that is a candidate to fix before the freeze.
-4. **Is there anything contrary to the 8 principles?** [Zero-base re-examination](v1-zero-base-proposal.ja.md) (Japanese) §1: a container knows its own length, there is one way to extend, requests fit the probe and
+4. **Is there anything contrary to the 8 principles?** The principles used for judgement before the freeze: a container knows its own length, there is one way to extend, requests fit the probe and
    answers fit the host, values of hardware properties are u32, declaration and state are not mixed, invariants over mechanisms, one identifier and one clock each, one order of refusals.
-5. **Places where the source of the reference numbers is narrow.** The numbers of `host-development-guide` §17 (5 %, 10 %, 16 frames, 3 seconds, 60 frames) and the conclusions of `link-measurements`
-   come, for UART bridges, from measurements of **2 kinds of conversion chips (CH340, and a CH552 that claims FTDI compatibility)**, and for USB, from 2 families of MCUs. Measurements with other bridges
-   (genuine FTDI, CP210x, CDC MCUs) and on native OSes are welcome. The normative text does not depend on these numbers (handshake only), so they do not hold up the freeze.
+5. **Places where the source of the reference numbers is narrow.** The numbers of `host-development-guide` §17 (5 %, 10 %, 16 frames, 3 seconds, 60 frames)
+   come from measurements of **2 kinds of conversion chips (CH340, and a CH552 that claims FTDI compatibility)** (summarised in host guide §17.5), and the host's
+   serial receive limit of core §3.4 (6 KiB) from USB measurements on 2 families of MCUs. Measurements with other bridges (genuine FTDI, CP210x, CDC MCUs) and
+   on native OSes are welcome. The numbers of §17 are not normative (core §3.5 is the handshake only), so they do not hold up the freeze.
 
 ## 5. oep-spec (specification, number tables, experiments)
 
 ### 5.1 State of the documents
+
+This is the one place that lists the records. Records are history (reasons as they were decided, measurements, reviews, proposals) and most
+are Japanese only; the normative text and the guides do not depend on them.
 
 | State | PATH (`docs/`) |
 |---|---|

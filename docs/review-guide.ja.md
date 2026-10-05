@@ -21,7 +21,7 @@ flash の書き方やチップ固有の手順は host にある。
 ## 2. 今の状態
 
 - **v1 の凍結の候補**です。規範は `docs/oep-core.ja.md`、`docs/oep-if-*.ja.md`（6 つ）、`docs/target-console-dmseq.ja.md`、番号は `registry/oep-v1.toml`。
-  規範の中に未決の数（「決める」の印）は残っていません。凍結で何を止め、何を止めないかは [版と安定性](versioning.ja.md)（決めた記録は [凍結の範囲](v1-freeze-decisions.ja.md) §0）。変更の一覧は [CHANGELOG](../CHANGELOG.md)。
+  規範の中に未決の数（「決める」の印）は残っていません。凍結で何を止め、何を止めないかは [版と安定性](versioning.ja.md)。変更の一覧は [CHANGELOG](../CHANGELOG.md)。
 - 凍結までは破壊的な変更を revision を上げずに入れます（利用者はまだいない）。凍結後は revision を上げます。
 - **リリース**: oep-spec は GitHub の main に push 済み（タグは無い。commit で指す）。参照の実装は oep-probe-arduino **0.0.28**（Arduino ライブラリ
   `OpenEmbeddedProbe`、GitHub release に profile ごとの firmware）、oep-client-python **0.0.28**（PyPI `oep-client-python`）。oep-client-js は
@@ -32,7 +32,8 @@ flash の書き方やチップ固有の手順は host にある。
   **覆わないもの**: console（dmseq）、キャプチャ（logic / analog / capture-group）、i2c-target / spi-target、通知、HID の経路、複数の経路の
   同時使用、TCP。これらは fake に対する試験（`uv run pytest`）と手動の確認だけです。
 - 決め方は「先に実験・試作をして、その結果で仕様を固める」。実験の番号や日付は**記録の文書**に残し、規範の文には置きません
-  （規範はチップ名・ボード名・日付を持たず、数は目安ではなく値）。
+  （規範はチップ名・ボード名・日付を持たず、数は目安ではなく値）。規範とガイドは記録が無くても完結する: 読む人が必要とする理由や実測は
+  その中に書き、記録へはリンクしない。
 - **規範は英語の文**です。日本語の文書（`.ja.md`）は訳で、両者が食い違えば英語の文が正しい。規範の文書とガイドにはすべて英語版があります。記録の多くは日本語だけです。
 - **変更**: このリポジトリが唯一の正です。規則の変更、文言の変更、新しい `oep.` の名前と registry の値、errata の入れ方は [CONTRIBUTING](../CONTRIBUTING.ja.md) にあります。
 
@@ -41,21 +42,17 @@ flash の書き方やチップ固有の手順は host にある。
 | 順 | PATH（oep-spec） | 何が分かるか |
 |---:|---|---|
 | 1 | `docs/project-concept.ja.md` | 目的と範囲（上流の合意）。短い |
-| 2 | `docs/versioning.ja.md`、`docs/v1-freeze-decisions.ja.md` §0.3 | **凍結の範囲**: 止めるもの、自由なもの、伸ばす道、revision を上げる意味。意図して固定するものと理由（§0.3） |
+| 2 | `docs/versioning.ja.md` | **凍結の範囲**: 止めるもの、自由なもの、伸ばす道、revision を上げる意味。意図して固定するものと理由（§3.1） |
 | 3 | `docs/oep-core.ja.md` | **本体（規範）**。§0 層と線引きの規則、§2 共通の規則（TLV、知らない値、番号の空間、revision）、§3 経路とフレーム、§4 メッセージと reject reason（§4.3 に**断り方の順**）、§5 立て直しと送り直し、§6 セッション、§7 発見（confirm / list / describe）、§8 plan、§9 資源の寿命、§10 長い操作（予約）、§11 通知、§12 core の op、§13 インターフェースの書き方。**§3.5（シリアルの口の速さ）は握手だけ**: 候補の選び方、確かめ、使用中の判定は `host-development-guide` §17 の参考の手順 |
 | 4 | `docs/oep-if-common.ja.md` | 標準インターフェースの共通部品（位置つきのストリーム、debug の connection、線と target の status） |
 | 5 | `docs/oep-if-debug.ja.md`、`docs/oep-if-console.ja.md`、`docs/oep-if-fixture.ja.md`、`docs/oep-if-capture.ja.md`、`docs/oep-if-probe-config.ja.md` | 標準インターフェース（規範）: 線と RISC-V DM / ARM ADI、target のコンソール、GPIO / UART / I2C・SPI の target、ロジック / アナログのキャプチャと組、probe の設定（スロット、bind、disable） |
 | 6 | `docs/target-console-dmseq.ja.md` | コンソールの framing（dmseq）: デバッグモジュールのデータレジスタで、通番と CRC つきで双方向に運ぶ（target と host の規範） |
 | 7 | `registry/oep-v1.toml` | 番号と数の唯一の定義。`timing` / `limits` は規範の文の数（凍結の対象） |
-| 8 | `docs/v1-zero-base-proposal.ja.md` §1、§4、`docs/v1-zero-base-review-2026-10-02.ja.md` | 判定に使った **8 つの原則**、意図して伸ばさない所、2 回目の点検（★ 直した、☆ 固定のまま） |
-| 9 | `docs/getting-started.ja.md`、`docs/conformance.ja.md`、`docs/host-development-guide.ja.md`、`docs/probe-development-guide.ja.md`、`docs/security.ja.md`、`docs/glossary.ja.md` | 実務（規範ではない）: いちばん小さい probe と host とバイト列。probe と host の適合の点検表。フレームの送り方、立て直し、断りごとの動き、通知、probe の設定、USB-UART の扱い、**host ガイド §17 シリアルの口の速さの選び方**（17.1 釣り合い、17.2 最小の形、17.3 用途別に確かめを足す形、17.4 記録、17.5 実測）。識別子と宣言（probe ガイド §10）。安全とセキュリティを 1 か所に。用語 |
-| 10 | `docs/link-measurements.ja.md`、`docs/uart-speed-negotiation.ja.md`、`docs/logic-capture.ja.md` | **記録**（規範ではない）: USB とシリアルの経路の実測、UART の速さの実験と経緯、キャプチャの設計と実測。参考の数字の出どころ |
-| 11 | `docs/release-testing.ja.md` | リリース前の実機の試験: 誰が持つか、何を確かめるか |
-| 12 | `docs/session-and-exclusivity.ja.md`、`docs/capability-*.ja.md`（3 つ）、`docs/console-stream.ja.md`、`docs/target-connection-use-cases.ja.md`、`docs/probe-cdc-and-persistence.ja.md` | 決めた理由（セッションとロック、名前で探す方式、describe の語彙、ストリーム、target の発見、シリアルの口の共用と設定の保存） |
+| 8 | `docs/getting-started.ja.md`、`docs/conformance.ja.md`、`docs/host-development-guide.ja.md`、`docs/probe-development-guide.ja.md`、`docs/security.ja.md`、`docs/glossary.ja.md` | 実務（規範ではない）: いちばん小さい probe と host とバイト列。probe と host の適合の点検表。フレームの送り方、立て直し、断りごとの動き、通知、probe の設定、USB-UART の扱い、**host ガイド §17 シリアルの口の速さの選び方**（17.1 釣り合い、17.2 最小の形、17.3 用途別に確かめを足す形、17.4 記録、17.5 実測）。識別子と宣言（probe ガイド §10）。安全とセキュリティを 1 か所に。用語 |
+| 9 | `docs/release-testing.ja.md` | リリース前の実機の試験: 誰が持つか、何を確かめるか |
 | — | `docs/usb-identity.ja.md` | USB の識別（core §3.3 の理由） |
-| 13 | `docs/v1-open-proposals.ja.md`、`docs/v1-freeze-review-2026-10-01.ja.md`、`docs/review-response-2026-09-26.ja.md`、`docs/review-answer-*.ja.md` | 案と決めた経緯、凍結前の全面見直し（59 項目、対応済み）、前回の第三者レビューへの対応表 |
-| — | `docs/hardware-source-review-2026-09-26.ja.md`、`docs/v1-operation-test-audit-2026-09-26.ja.md`、`docs/v1-open-issues-research-2026-09-26.ja.md` | 2026-09-26 版への 2 回目のレビューと、未決事項（IP、復旧）の事前調査。項目ごとの対応表は無い（凍結前の見直しと重なるものはそちらで扱った。IP と復旧は v1 の外） |
-| — | `docs/v1-core-wire-delta.ja.md` | 分ける前の v0 からの差分（経緯） |
+
+記録（日本語、経緯: 決めたときの理由、実測、レビュー、案）は 1 か所、§5.1 に並べる。仕様のレビューには要らない。
 
 ## 4. レビューで見てほしい観点
 
@@ -63,17 +60,20 @@ flash の書き方やチップ固有の手順は host にある。
    決まらない所、「目安」や「など」で逃げている所を指摘してほしい。数が規範の文と registry で食い違っていれば registry が誤り。
 2. **断りの理由は 1 つに決まるか。** core §4.3 の「断り方の順」（見出し → 送り直し → セッション → window → malformed → unsupported →
    unavailable → no_connection）を、各インターフェースの op に当てたとき、同じ状況に 2 つの理由が作れる所が残っていないか。
-3. **意図して固定した所の理由は成り立つか。** [凍結の範囲](v1-freeze-decisions.ja.md) §0.3 の表（フレームの見出し、u8 の op / tag、要求の並びに len 無し、
+3. **意図して固定した所の理由は成り立つか。** [版と安定性](versioning.ja.md) §3.1 の表（フレームの見出し、u8 の op / tag、要求の並びに len 無し、
    confirm に host の上限を足さない、probe は速さの候補を宣言しない、など）。理由が崩れる使い方があれば、それが凍結前に直す候補。
-4. **8 つの原則に反する所は無いか。** [ゼロベース再検討](v1-zero-base-proposal.ja.md) §1: 容器は自分の長さを知る、伸ばし方は 1 つ、要求は probe に
+4. **8 つの原則に反する所は無いか。** 凍結の前の判定に使った原則: 容器は自分の長さを知る、伸ばし方は 1 つ、要求は probe に
    応答は host に合わせる、ハードウェアの性質の値は u32、宣言と状態を混ぜない、仕組みより不変条件、識別子と時計は 1 つずつ、断り方の順は 1 つ。
-5. **参考の数字の出どころが狭い所。** `host-development-guide` §17 の数字（5 %、10 %、16 フレーム、3 秒、60 フレーム）と `link-measurements` の結論は、
-   UART bridge としては **2 種類の変換チップ（CH340 と、FTDI 互換を名乗る CH552）**、USB としては 2 系統の MCU の実測から来ている。ほかのブリッジ
-   （FTDI 純正、CP210x、CDC の MCU）や native の OS での計測を歓迎する。規範はこれらの数字に依らない（握手だけ）ので、凍結は止めない。
+5. **参考の数字の出どころが狭い所。** `host-development-guide` §17 の数字（5 %、10 %、16 フレーム、3 秒、60 フレーム）は
+   **2 種類の変換チップ（CH340 と、FTDI 互換を名乗る CH552）** の実測から来ている（要約は host ガイド §17.5）。core §3.4 の host のシリアルの受けの上限（6 KiB）は、
+   USB での 2 系統の MCU の実測から来ている。ほかのブリッジ（FTDI 純正、CP210x、CDC の MCU）や native の OS での計測を歓迎する。§17 の数字は規範ではない
+   （core §3.5 は握手だけ）ので、凍結は止めない。
 
 ## 5. oep-spec（仕様、番号の表、実験）
 
 ### 5.1 文書の状態
+
+記録を並べるのはここだけ。記録は経緯（決めたときの理由、実測、レビュー、案）で、多くは日本語だけ。規範とガイドは記録に依らない。
 
 | 状態 | PATH（`docs/`） |
 |---|---|

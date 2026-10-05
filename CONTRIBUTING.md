@@ -23,8 +23,9 @@ they differ, the English wins and the Japanese is corrected.
   reviewed by implementers before it is merged. Implementations are changed after the specification.
 
 Normative text must be implementable from the text alone: numbers are values, not guidelines, and every branch of a
-procedure is written. Chip, board and product names, measurements, dates and anecdotes go to record documents, which the
-normative text may link to.
+procedure is written. Chip, board and product names, measurements, dates and anecdotes go to record documents. The normative
+text and the guides are complete without the records: what a reader needs (a fact, a number, a brief reason) is written in the text
+itself, and neither links to a record. Guides may name a chip as an example. Records are listed only in the review guide §5.1 and the README.
 
 ## Adding an `oep.` name or a registry value
 
