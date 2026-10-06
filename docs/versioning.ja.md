@@ -45,10 +45,10 @@ OEP v1 は凍結の候補。凍結までは、壊す変更も **どの revision 
 
 | 固定するもの | 理由 | もし要るなら |
 |---|---|---|
-| フレームの見出し（要求 6 / 10 byte、応答 5 byte、通知 5 / 6 byte） | 替えるのは本体の revision。confirm で revision を交渉するので将来の道は閉じない | プロトコルの revision |
+| フレームの見出し（要求 10 byte、応答 5 byte、通知 5 / 6 byte） | 替えるのは本体の revision。confirm で revision を交渉するので将来の道は閉じない | プロトコルの revision |
 | COBS + CRC-16 / `length(u16)` / HID report の詰め方 | 経路の種類ごとに決まる | 新しい transport kind が自分の方式を定める |
 | op（u8）、TLV の tag（u8、bit 7 critical）、reject reason（u8）、出来事の kind（u8） | 足りなくなったらインターフェースを分ける。空間を広げるより名前で分ける方が host に優しい | 別の名前のインターフェース（別の fn） |
-| 要求の並びの要素に len を置かない | host は revision と describe で probe を知ってから送る（要求は probe に合わせる）。足すものは TLV | 要求の TLV |
+| 並びの要素に len を置かず、固定の形を末尾で延ばさない | どの読み手にも規則は一つ: 要素の形は revision で決まる。足すものは TLV で、要素についての情報は、その要素の番号を持つ応答の TLV に入れる | TLV、revision |
 | 応答の固定部 | 固定部を変えるのは revision と新しい fn。足すものは TLV（伸ばし方は 1 つ） | TLV、revision |
 | link_source / link_sink の意味 | 線の試験のためにある。意味を足す理由が無い | — |
 | confirm の前の 64 byte | 交渉の前の約束。小さいほど安全 | — |
@@ -64,17 +64,16 @@ OEP v1 は凍結の候補。凍結までは、壊す変更も **どの revision 
 
 ## 4. revision を変えずに足せるもの
 
-次のものを足しても、どの revision も変わらない。それを知らない host や probe は動き続ける（core §2.3、§2.7）:
+凍結の後の OEP の伸び方はこれだけである（core §2.3）。これらを足しても、どの revision も変わらない。それを知らない host や probe は動き続ける（core §2.7）:
 
 | 道 | 決まり |
 |---|---|
 | 任意の要求 / 応答 / 出来事の TLV | op の文脈の新しい tag。host は知らない非 critical の tag を読み飛ばし、probe は知らない critical の tag を unsupported で断る（core §2.2、§2.3） |
-| 後ろに足す | 応答の TLV の値、出来事の payload、応答の並びの要素、probe が持つ項目（probe.config）の後ろ。読む側は知らない後ろを飛ばす（core §2.3）。要求の TLV の値は延ばさず、新しいフィールドは新しい tag にする |
 | 任意の op と出来事 | インターフェースの op 0x01〜0xEF、出来事の kind 0x01〜0x7F。あるかどうかは describe で宣言する（core §2.5、§2.7） |
 | 新しい enum の値と予約の bit | 要求では: 定義が使っていなかった値は、それを知らない probe が unsupported で断る（core §2.5、§4.3 の順 6）。応答、出来事、データでは: どのフィールドのあるなし、長さ、位置もその値に依らず、core §2.4 の知らない値の扱いが安全で、意味がその値に依るフィールドはどれも、その値を知らない読み手が無視するか生のまま見せるときだけ足せる（core §2.5）。そうでなければ新しい TLV、revision、インターフェース |
 | インターフェースの断りの理由と status の値 | 0x40〜0x7F（core §2.5、common §3） |
-| describe の tag | 共通 0x01〜0x3E、インターフェース 0x40〜0x7F。describe の値そのものは閉じている（core §2.3、§7.4） |
-| probe.config の項目と線の名前 | 新しい項目の tag、項目の後ろ。標準の線の名前は registry に（probe の設定 §1、§1.3） |
+| describe の tag | 共通 0x01〜0x3E、インターフェース 0x40〜0x7F。どの固定の形とも同じく、describe の値は延ばさない（core §2.3、§7.4） |
+| probe.config の項目と線の名前 | 新しい項目の tag（項目の形は固定）。標準の線の名前は registry に（probe の設定 §1、§1.3） |
 | 新しいインターフェース | `oep.` の名前はこのリポジトリを通して。逆 DNS の名前は誰でも登録なしに（core §13） |
 | 新しい経路 | フレームの方式と一緒に新しい transport の kind を（core §3.1） |
 

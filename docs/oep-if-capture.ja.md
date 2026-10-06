@@ -185,7 +185,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | 0x04 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
 | 0x05 | status | — | state(u8)、serial_done(u32)、write_pos(u64)、flags(u8)、generation(u32)、[TLV error] | 不要 |
 | 0x06 | read | generation(u32)、position(u64)、max(u32) | position(u64)、flags(u8: bit0 more、bit1 gap)、len(u32)、data、[TLV] | 不要 |
-| 0x07 | segments | from_serial(u32) | more(u8)、count(u8)、count × (len(u8)、区画の情報（§2）)、[TLV] | 不要 |
+| 0x07 | segments | from_serial(u32) | more(u8)、count(u8)、count × 区画の情報（§2）、[TLV] | 不要 |
 | 0x08 | release | generation(u32)、serial(u32) | —（serial 以下の区画を使い回してよい） | 必要 |
 | 0x09 | query | 設定の TLV（configure と同じ） | 実際の値の TLV（設定はしない） | 不要 |
 | 0x0A | calibration | — | 較正の情報の TLV（§3.8）。アナログだけ（ロジックは unknown_operation） | 不要 |

@@ -47,10 +47,10 @@ These are fixed on purpose and not extended. If a use breaks a reason, that is a
 
 | What is fixed | Reason | If it is needed |
 |---|---|---|
-| Frame headers (request 6 / 10 bytes, answer 5 bytes, notification 5 / 6 bytes) | Changing them is a core revision. confirm negotiates the revision, so the future path is not closed | Protocol revision |
+| Frame headers (request 10 bytes, answer 5 bytes, notification 5 / 6 bytes) | Changing them is a core revision. confirm negotiates the revision, so the future path is not closed | Protocol revision |
 | COBS + CRC-16 / `length(u16)` / the packing of the HID report | Each is decided per kind of transport | A new transport kind defines its own scheme |
 | op (u8), TLV tag (u8, bit 7 critical), reject reason (u8), event kind (u8) | If they run short, split the interface: splitting by name is kinder to the host than widening the space | An interface with another name (another fn) |
-| No len on the elements of sequences in requests | The host sends after knowing the probe from the revision and describe (requests fit the probe). Additions are TLVs | Request TLVs |
+| No len on the elements of sequences, and no fixed form extended at its end | One rule for every reader: an element's form is fixed by the revision. Additions are TLVs, and information about an element goes in an answer TLV that carries the element's index | TLVs, revision |
 | The fixed part of answers | Changing a fixed part is a revision and a new fn. Additions are TLVs (one way to extend) | TLV, revision |
 | The meaning of link_source / link_sink | They exist to test the link; there is no reason to add meaning | — |
 | The 64 bytes before confirm | A promise before negotiation: the smaller, the safer | — |
@@ -66,17 +66,16 @@ These are fixed on purpose and not extended. If a use breaks a reason, that is a
 
 ## 4. What can be added without a revision
 
-These additions keep every revision; a host or probe that does not know them keeps working (core §2.3, §2.7):
+These are the only ways OEP grows after the freeze (core §2.3). They keep every revision; a host or probe that does not know them keeps working (core §2.7):
 
 | Path | Rule |
 |---|---|
 | Optional request / answer / event TLVs | New tags in the op's context. A host skips unknown non-critical tags; a probe refuses an unknown critical one with unsupported (core §2.2, §2.3) |
-| Appending at the end | The tail of answer TLV values, event payloads, elements of answer sequences, and items the probe keeps (probe.config). Readers skip the unknown tail (core §2.3). Request TLV values are not extended: a new field gets a new tag |
 | Optional ops and events | Interface ops 0x01 to 0xEF, event kinds 0x01 to 0x7F; their presence is declared in describe (core §2.5, §2.7) |
 | New enum values and reserved bits | In a request: a value the definition left unused is refused unsupported by a probe that does not know it (core §2.5, §4.3 order 6). In an answer, an event or data: only when no field's presence, length or position depends on the value, the fallback of core §2.4 is safe, and every field whose meaning depends on it is ignored or shown raw by a reader that does not know it (core §2.5); otherwise a new TLV, revision or interface |
 | Interface reject reasons and status values | 0x40 to 0x7F (core §2.5, common §3) |
-| describe tags | Common 0x01 to 0x3E, interface 0x40 to 0x7F; describe values themselves are closed (core §2.3, §7.4) |
-| probe.config items and line names | New item tags, the tail of items; standard line names in the registry (probe settings §1, §1.3) |
+| describe tags | Common 0x01 to 0x3E, interface 0x40 to 0x7F; like every fixed form, a describe value is never extended (core §2.3, §7.4) |
+| probe.config items and line names | New item tags (an item's form is fixed); standard line names in the registry (probe settings §1, §1.3) |
 | New interfaces | `oep.` names through this repository; anyone's reverse-DNS names without registration (core §13) |
 | New transports | A new transport kind with its frame scheme (core §3.1) |
 

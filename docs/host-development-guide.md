@@ -101,7 +101,7 @@ the latest confirm answer on that port (core §4.4).
   (core §7.5).
 - When you have a choice, use vendor bulk, then HID, then a serial port (core §3.3): serial ports also carry raw bytes, and their
   receive capacity is limited (core §3.4).
-- Send all role 0x81 requests of one session on one transport (core §3.3). Lock-free requests may go on another (for example a
+- Send all requests that carry your session's id on one transport (core §3.3). Lock-free requests may go on another (for example a
   HID port that reads describe and state while a debugger holds the vendor bulk port).
 - Each transport has its own max_frame, window, max_inflight and protocol revision (core §4.4, §7.1): confirm on each transport you
   use.
@@ -136,7 +136,7 @@ per client connection).
 - **Do not accept an answer whose corr does not match; discard input and resynchronise** (core §5.1). On some USB paths the
   leftover of a cancelled transfer can arrive as the next answer (seen through a USB-over-IP layer).
   Vendor bulk, HID and TCP frames have no CRC, so the corr check is the defence there.
-- **Advance corr by 1 per request** (role 0x01 requests count too; after 65535 comes 1; 0 is not used; core §4.1). The same corr
+- **Advance corr by 1 per request** (requests with session_id 0 count too; after 65535 comes 1; 0 is not used; core §4.1). The same corr
   is used again only for a resend.
 - When an answer was broken or did not arrive, **resend once with the same corr** (`resend_max` = 1; state-changing requests too, core §5.2). The
   probe returns the remembered answer, so nothing runs twice.
@@ -166,7 +166,7 @@ gives the first reason that applies in the order of core §4.3, so the reason sa
 | window_exceeded (0x06) | window / max_inflight exceeded | Your pipelining exceeded the probe's limits of this transport. Wait for answers and send it again with a new corr (core §5.2: a corrected request uses a new corr) |
 | no_session (0x07) | The lock is free but this session_id is not the last one | Another session came between, or the probe rebooted. Start over from open; confirm's boot_id tells a reboot |
 | locked (0x08) | Another session holds the lock | The payload gives the remaining ms and maybe the owner text. Wait, report "in use" with the owner, or take it with force only when the user asks (§6) |
-| session_required (0x09) | A state-changing request without session_id | A bug: send it with role 0x81 and your session_id |
+| session_required (0x09) | A request of an op that requires the lock carried session_id 0 | A bug: send it with your session_id |
 | no_connection (0x0A) | The resource number is unknown | The connection / stream was closed or the probe rebooted. Discard the number and create the resource again (attach, open). Check long-held numbers with the listing ops (core §9) |
 | unsupported (0x0B) | In the definition, but this probe cannot handle it | The payload's tag says what: 0x00 = a value in the fixed part, otherwise the critical TLV's tag as received; channel / index TLVs may say which element. Look at describe and choose something the probe declares; do not resend unchanged. For confirm, TLV 0x01 gives the revisions the probe supports (core §7.1) |
 | result_lost (0x0C) | The answer to a resend is not remembered | You cannot tell whether it ran: read the state again (core §5.2) |
@@ -186,8 +186,8 @@ gives the first reason that applies in the order of core §4.3, so the reason sa
 - **Interface revisions**: list gives (name, instance, revision) per fn. Do not use an interface whose revision you do not know (core §2.7).
   A probe may expose an older revision as a separate fn; choose the one you know. Instances are numbered per (name, revision) (core §7.2).
 - **Reading answers**: after the fixed part comes a sequence of TLVs. Skip tags you do not know. For a tag that does not repeat, use the first
-  one. A TLV value, an event payload or a sequence element longer than you know: read the part you know and skip the rest; shorter than you
-  know: broken (core §2.3). describe values are closed: they are never longer than their definition (new information comes under new tags).
+  one. Sequences are `count × element` with no length on the elements: read each element field by field as its definition gives it. Fixed forms are
+  never extended at their end; a TLV value whose length is not its definition's is broken (core §2.3). New information comes under new tags.
   A TLV with bit 7 set in an answer is an unknown tag.
 - **Sending requests**: set the critical bit on a TLV when the request means nothing without it, and always on TLVs an interface says are sent
   critical (pins, speed limits, safety items; core §2.3). Do not extend a request TLV's value at the end (core §2.3). Never repeat a tag that
@@ -258,7 +258,7 @@ The settings are a sequence of items, each with a key; set replaces items per ke
 1. **Look**: list must contain `oep.probe.config` (a probe without it handles no settings). describe gives items (the tags it handles),
    storage (max_bytes; 0 = it cannot save), slots_max and bind_modes.
 2. **Compute the hash of the settings you want**: sort the items by tag, then by key compared as numbers field by field (plan: fn, role,
-   channel), clear the critical bit, encode each as a TLV in the unique form of core §2.2, join them, and take the CRC-32 of core §5.2
+   channel), clear the critical bit, encode each as a TLV (core §2.2), join them, and take the CRC-32 of core §5.2
    (probe settings §2). Check your code against `tests/vectors/probe_config_hash.json`. No items gives hash 0.
 3. **Compare with get** (lock-free). Every page of get carries the same hash. **If it equals yours, do nothing.** If the hash changes
    between pages, read again from the beginning.

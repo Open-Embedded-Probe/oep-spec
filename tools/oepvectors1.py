@@ -33,7 +33,6 @@ def op(iface: str, name: str) -> int:
 
 
 ROLE_REQUEST, ROLE_ANSWER = REG["roles"]["request"], REG["roles"]["result"]
-ROLE_SESSION = REG["constants"]["role_session_flag"]
 REJECTED, COMPLETED = REG["resolutions"]["rejected"], REG["resolutions"]["completed"]
 REASON = REG["reject_reasons"]
 CRITICAL = REG["constants"]["tag_critical"]
@@ -102,15 +101,13 @@ def length_frame(message: bytes) -> bytes:
 # ---- messages (core §2.2, §4.1, §4.2) ---------------------------------------------------------------------
 
 def tlv(tag: int, value: bytes) -> bytes:
-    if len(value) <= 254:
-        return bytes([tag, len(value)]) + value
-    return bytes([tag, 0xFF]) + struct.pack("<H", len(value)) + value
+    """tag(u8) len(u16) value: the one TLV form (core §2.2)."""
+    return bytes([tag]) + struct.pack("<H", len(value)) + value
 
 
-def request(corr: int, fn: int, op_code: int, payload: bytes, session: int | None = None) -> bytes:
-    if session is None:
-        return struct.pack("<BHHB", ROLE_REQUEST, corr, fn, op_code) + payload
-    return struct.pack("<BHHBI", ROLE_REQUEST | ROLE_SESSION, corr, fn, op_code, session) + payload
+def request(corr: int, fn: int, op_code: int, payload: bytes, session: int = 0) -> bytes:
+    """The one request header (core §4.1): session_id always present, 0 = no session."""
+    return struct.pack("<BHHBI", ROLE_REQUEST, corr, fn, op_code, session) + payload
 
 
 def answer(corr: int, resolution: int, detail: int, payload: bytes = b"") -> bytes:
@@ -175,11 +172,11 @@ def cobs() -> dict:
 def headers() -> dict:
     c = op("oep.core", "describe")
     return {
-        "about": "Message headers (core §4.1, §4.2). All numbers little endian.",
+        "about": "Message headers (core §4.1, §4.2) and the TLV form (core §2.2). All numbers little endian.",
         "requests": [
-            {"name": "request without session_id", "role": ROLE_REQUEST, "corr": 0x1234, "fn": 0x0000, "op": c,
-             "session_id": None, "payload_hex": "00000000", "message_hex": hx(request(0x1234, 0, c, bytes(4)))},
-            {"name": "request with session_id", "role": ROLE_REQUEST | ROLE_SESSION, "corr": 0x0102, "fn": 0x0203,
+            {"name": "request without a session: session_id 0", "role": ROLE_REQUEST, "corr": 0x1234, "fn": 0x0000, "op": c,
+             "session_id": 0, "payload_hex": "00000000", "message_hex": hx(request(0x1234, 0, c, bytes(4)))},
+            {"name": "request of a session", "role": ROLE_REQUEST, "corr": 0x0102, "fn": 0x0203,
              "op": 0x01, "session_id": 0x11223344, "payload_hex": "",
              "message_hex": hx(request(0x0102, 0x0203, 0x01, b"", 0x11223344))},
         ],
@@ -190,12 +187,14 @@ def headers() -> dict:
              "detail": REASON["malformed"], "payload_hex": "", "message_hex": hx(answer(0xFFFF, REJECTED, REASON["malformed"]))},
         ],
         "tlvs": [
-            {"name": "short form", "tag": 0x10, "value_hex": "0102", "tlv_hex": hx(tlv(0x10, b"\x01\x02"))},
-            {"name": "short form, critical", "tag": 0x10 | CRITICAL, "value_hex": "0102", "tlv_hex": hx(tlv(0x90, b"\x01\x02"))},
-            {"name": "254 bytes: still the short form", "tag": 0x41, "value_len": 254, "value_byte": 0xAA,
-             "tlv_hex": hx(tlv(0x41, b"\xaa" * 254))},
-            {"name": "255 bytes: the long form", "tag": 0x41, "value_len": 255, "value_byte": 0xAA,
+            {"name": "two bytes", "tag": 0x10, "value_hex": "0102", "tlv_hex": hx(tlv(0x10, b"\x01\x02"))},
+            {"name": "two bytes, critical", "tag": 0x10 | CRITICAL, "value_hex": "0102", "tlv_hex": hx(tlv(0x90, b"\x01\x02"))},
+            {"name": "an empty value", "tag": 0x01, "value_hex": "", "tlv_hex": hx(tlv(0x01, b""))},
+            {"name": "max_speed 1 MHz, critical", "tag": 0x01 | CRITICAL, "value_hex": hx(struct.pack("<I", 1_000_000)),
+             "tlv_hex": hx(tlv(0x81, struct.pack("<I", 1_000_000)))},
+            {"name": "255 bytes: the same form", "tag": 0x41, "value_len": 255, "value_byte": 0xAA,
              "tlv_hex": hx(tlv(0x41, b"\xaa" * 255))},
+            {"name": "the smallest ignored", "tag": IGNORED, "value_hex": "00", "tlv_hex": hx(tlv(IGNORED, b"\x00"))},
         ],
     }
 
@@ -227,22 +226,34 @@ def confirm() -> dict:
 
 
 def probe_config_hash() -> dict:
-    """probe-config §2 hash (PC-7): canonical form = items sorted by tag, then key compared as numbers field by
-    field, the critical bit cleared, each as the unique TLV encoding; hash = CRC-32 of it."""
-    item = IFACE["oep.probe.config"]["tlv"]["item"]
-    plan, label, idle = item["plan"], item["label"], item["idle"]
+    """probe-config §2 hash: canonical form = items sorted by tag, then key compared as numbers field by field, the
+    critical bit cleared, each as a TLV (core §2.2); hash = CRC-32 of it. Every item has its one fixed form (probe-config §1)."""
+    pc = IFACE["oep.probe.config"]
+    item = pc["tlv"]["item"]
+    plan, label, idle, slot = item["plan"], item["label"], item["idle"], item["slot"]
+    kind = IFACE["oep.fixture.gpio"]["enum"]["drive_kind"]
+    mode = pc["enum"]["idle_mode"]
+    at_boot = pc["enum"]["slot_attach"]["at_boot"]
+    dmseq = IFACE["oep.target.console"]["enum"]["mechanism"]["dmseq"]
+    name = b"dut"
+    slot0 = (struct.pack("<BHHHBBIIBB", 0, 4, 0x0001, 0x0002, at_boot, 1, 500, 1_000_000, 0, dmseq)
+             + bytes([len(name)]) + name + bytes([0]))   # slot 0 on wire fn 4, boot_reset 1, no lock (lock_len 0)
     sent = [   # (tag as sent, value): the order and critical bits the host happened to use
         (label | CRITICAL, struct.pack("<H", 0x0102) + b"nrst"),
         (plan | CRITICAL, struct.pack("<HBH", 0x0100, 1, 2)),
-        (idle, struct.pack("<HB", 0x0004, 4) + struct.pack("<BH", 0, 1)),
+        (idle, struct.pack("<HBBH", 0x0004, mode["output_high"], kind["level"], 1)),
         (plan, struct.pack("<HBH", 0x0003, 2, 5)),
+        (slot | CRITICAL, slot0),
         (label, struct.pack("<H", 0x0020) + b"x-boot0"),
+        (idle, struct.pack("<HBBH", 0x0005, mode["pull_up"], kind["default"], 0)),
         (plan | CRITICAL, struct.pack("<HBH", 0x0003, 1, 7)),
     ]
 
     def key(tag: int, value: bytes) -> tuple:
         if tag == plan:
             return (tag,) + struct.unpack_from("<HBH", value)
+        if tag == slot:
+            return (tag, value[0])
         return (tag, struct.unpack_from("<H", value)[0])
 
     items = sorted(((t & 0x7F, v) for t, v in sent), key=lambda p: key(*p))
@@ -250,9 +261,10 @@ def probe_config_hash() -> dict:
     return {
         "about": "The hash of probe.config (oep-if-probe-config §2): items as the host sent them, the canonical form and its CRC-32. "
                  "Keys compare as numbers (channel 0x0020 before 0x0102, although their little-endian bytes compare the other way), "
-                 "multi-field keys field by field (plan: fn, role, channel), critical bits cleared.",
+                 "multi-field keys field by field (plan: fn, role, channel), critical bits cleared. Each item has its one fixed form: "
+                 "an idle is 6 bytes (an input idle carries drive_kind 2 = default and drive_value 0), a slot carries boot_reset after attach.",
         "cases": [
-            {"name": "plan, label and idle items", "items_sent": [{"tag": t, "value_hex": hx(v)} for t, v in sent],
+            {"name": "plan, label, idle and slot items", "items_sent": [{"tag": t, "value_hex": hx(v)} for t, v in sent],
              "canonical_order": [{"tag": t, "value_hex": hx(v)} for t, v in items],
              "canonical_hex": hx(canonical), "hash": crc32_ieee(canonical)},
             {"name": "no items", "items_sent": [], "canonical_order": [], "canonical_hex": "", "hash": crc32_ieee(b"")},
@@ -296,8 +308,8 @@ def refusals() -> dict:
         request(0x0015, 4, rv_attach, bytes([0]) + ms + tlv(0x3E | CRITICAL, b""), s), "unsupported", bytes([0x3E | CRITICAL]))
     add("the same non-repeating TLV twice", "core §2.3", {"4": "oep.wire.rvswd"},
         request(0x0016, 4, rv_attach, bytes([0]) + ms + ms, s), "malformed")
-    add("a TLV in the long form whose value fits the short form", "core §2.2", {"4": "oep.wire.rvswd"},
-        request(0x0017, 4, rv_attach, bytes([0, max_speed | CRITICAL, 0xFF, 4, 0]) + struct.pack("<I", 1_000_000), s), "malformed")
+    add("a TLV whose length runs past the end of the request", "core §2.2, §4.3 order 5", {"4": "oep.wire.rvswd"},
+        request(0x0017, 4, rv_attach, bytes([0, max_speed | CRITICAL]) + struct.pack("<H", 8) + struct.pack("<I", 1_000_000), s), "malformed")
     add("read from 4", "core §4.3 order 6; common §1.2", {"5": "oep.fixture.uart"},
         request(0x0018, 5, uart_read, bytes([4]) + struct.pack("<QH", 0, 64)), "unsupported", b"\x00")
     add("riscv-dm reset mode 3", "core §4.3 order 6; debug §4.3", {"6": "oep.target.riscv-dm"},
@@ -309,7 +321,8 @@ def refusals() -> dict:
         tlv(IGNORED, bytes([0x3E])), completed=True)
     return {
         "about": "Refusals (core §4.3) and the ignored list (core §2.3). `fns` says which interface each fn number is in the example "
-                 "(the numbers come from list in a real session). Requests with role 0x81 come from session 0x11223344, which holds the lock. "
+                 "(the numbers come from list in a real session). Requests with session_id 0x11223344 come from the session that holds the lock; "
+                 "the lock-free read and confirm carry session_id 0. "
                  "The ignored-TLV case assumes channel 3 is in fn 2's plan; the other refusals come before any state check (core §4.3 orders 5 and 6).",
         "cases": cases,
     }
@@ -327,7 +340,7 @@ def discovery() -> dict:
     name = b"oep.core"
     entry = struct.pack("<HHBBB", 0, 0, core["revision"], 0, len(name)) + name
     list_req = request(2, 0, list_op, struct.pack("<BHB", 0, 0, 0))
-    list_ans = answer(2, COMPLETED, 0, struct.pack("<HB", 1, 1) + bytes([len(entry)]) + entry)
+    list_ans = answer(2, COMPLETED, 0, struct.pack("<HB", 1, 1) + entry)          # count x entry, no element len (core §2.3, §7.2)
 
     decl_tlvs = [tlv(d["unit_id"], unit_id.encode()), tlv(d["transport"], bytes([t_index, t_kind, t_interface])),
                  tlv(d["discoverable"], bytes([discoverable])), tlv(d["max_op_ms"], struct.pack("<I", max_op_ms))]

@@ -56,7 +56,7 @@ capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定]
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
-| role | role (of a frame) | 先頭の 1 byte: 要求 0x01 / 0x81、応答 0x02、出来事 0x05、データ 0x06 | core §2.5、§4.1 |
+| role | role (of a frame) | 先頭の 1 byte: 要求 0x01、応答 0x02、出来事 0x05、データ 0x06 | core §2.5、§4.1 |
 | 要求 | request | host からのメッセージ | core §4.1 |
 | 応答 | answer | 要求に対する probe の 1 つの返事 | core §4.2 |
 | 出来事 | event | kind と固定部分を持つ通知 | core §11.2 |
@@ -71,13 +71,13 @@ capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定]
 | 断り方の順 | order of refusal | probe が要求を確かめる決まった順。最初に当たった理由で断る | core §4.3 |
 | cause、holder_fn、holder_kind | cause, holder_fn, holder_kind | unavailable の断りの TLV: 理由と、資源を持っているもの | core §4.3 |
 | status | status | 線と target の操作の結果: ok、wait、line、fault、timeout、state | common §3 |
-| TLV | TLV | `tag len value`。255 byte 以上は長い形 | core §2.2 |
+| TLV | TLV | `tag(u8) len(u16) value`。どの長さでも形は一つ | core §2.2 |
 | tag の文脈 | tag context | tag の空間: (fn, op) ごと | core §2.2 |
 | critical | critical | 要求の TLV の tag の bit 7: それが効かなければ要求に意味が無い | core §2.2、§2.3 |
 | ignored | ignored | 応答の TLV 0x7F。probe が無視した非 critical の要求の TLV を並べる | core §2.3 |
 | 固定部分 | fixed part | (name, revision) が形を決める payload の部分 | core §2.3、§2.7 |
-| 末尾、後ろ | tail | 固定部分の後ろ（TLV）や、知っている長さの後ろ（読む側が飛ばす） | core §2.3 |
-| 並び、要素 | sequence, element | 数の付いた並び。応答では要素ごとに長さを前に置く | core §2.3 |
+| 末尾、後ろ | tail | 要求、応答、出来事、データの固定部分の後ろに続く TLV | core §2.3 |
+| 並び、要素 | sequence, element | 数の付いた並び、`count × element`。要素は固定の形で、自分の長さを持たない | core §2.3 |
 | bitmap | bitmap | bit i は byte ⌊i/8⌋ の bit (i mod 8) | core §2.1 |
 | 真偽値、文字列 | boolean, text | u8 の 0 / 1。終端なしの UTF-8。要求では確かめる | core §2.1 |
 | 知らない値 | unknown value | 読む側が知らない値の扱い | core §2.4 |

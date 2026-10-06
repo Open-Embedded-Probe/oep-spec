@@ -8,9 +8,9 @@
         "min_rev": 1,
         "max_rev": 1
       },
-      "request_hex": "0101000000014f45503f0101",
-      "request_serial_frame_hex": "0003010101010a014f45503f010137c500",
-      "request_length_frame_hex": "0c000101000000014f45503f0101",
+      "request_hex": "010100000001000000004f45503f0101",
+      "request_serial_frame_hex": "0003010101010201010101094f45503f0101089600",
+      "request_length_frame_hex": "1000010100000001000000004f45503f0101",
       "answer": {
         "corr": 1,
         "revision": 1,
@@ -21,8 +21,8 @@
         "boot_id": 305419896,
         "transport": 0
       },
-      "answer_hex": "02010001004f45502101000004001000000478563412010100",
-      "answer_serial_frame_hex": "000302010201064f455021010102040210010804785634120101030dc700"
+      "answer_hex": "02010001004f4550210100000400100000047856341201010000",
+      "answer_serial_frame_hex": "000302010201064f4550210101020402100108047856341201010103aba400"
     },
     {
       "name": "no revision in the range: unsupported with the supported range",
@@ -31,7 +31,7 @@
         "min_rev": 2,
         "max_rev": 3
       },
-      "request_hex": "0102000000014f45503f0203",
+      "request_hex": "010200000001000000004f45503f0203",
       "answer": {
         "corr": 2,
         "reason": "unsupported",
@@ -41,7 +41,7 @@
           1
         ]
       },
-      "answer_hex": "020200000b0001020101"
+      "answer_hex": "020200000b000102000101"
     }
   ]
 }

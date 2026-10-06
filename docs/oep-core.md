@@ -90,24 +90,29 @@ A **bitmap** is a byte sequence in which bit i is bit (i mod 8) of byte ⌊i/8�
 ### 2.2 TLV
 
 ```text
-tag(u8) | len(u8)        | value(len byte)          len 0 to 254 (short form)
-tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
+tag(u8) | len(u16) | value(len byte)
 ```
 
-- **The encoding is unique**: the short form if the value is 254 bytes or less, the long form if 255 bytes or more. Any other form (254 or less in the long form, etc.) is malformed.
-  The reader decides by whether the first byte of `len` is 0xFF. The `len(u8)` of an element of a sequence (§2.3) has no such escape (an element is at most 255 bytes).
+- **One form for every TLV**, whatever the length of its value (0 to 65535 bytes). A TLV whose len runs past the end of the message that holds it is
+  malformed in a request (§4.3 order 5), and makes an answer, an event or data broken.
 - **The tag number is the low 7 bits (0x01 to 0x7E).** Bit 7 is the critical mark. It is used only in requests and is not part of the number: 0x10 and 0x90 are the same TLV, sent without and with the mark. In answers, events and data bit 7 is 0, and a reader that meets a TLV with bit 7 set there skips it as an unknown tag. Tag 0x00 is reserved (not used in TLVs; the marker in the payload of rejected unsupported, §4.3), 0x7F is reserved for ignored in answers, and 0xFF is invalid.
 - ignored lists tag numbers (bit 7 cleared). The payload of rejected unsupported carries the tag byte as received (bit 7 included).
 - The tag space is **per (fn, op) context** (the same value in a different context is a different thing).
 - Repeating the same tag represents a sequence, for a tag whose definition says it repeats (§2.3).
 
-### 2.3 Fixed part and tail
+### 2.3 Fixed forms and TLVs
 
-- **A container knows its own length**: for a frame, a TLV, an element of a sequence, or a byte sequence (data), the reader can tell where it ends without the request or outside knowledge.
-  Variable parts (sequences, byte sequences, strings) are preceded by a count or a length. A form ending in a variable part without a length is limited to link_source / link_sink
-  of fn 0 (the link test).
+- **A container knows its own length**: for a frame, a TLV, a sequence, or a byte sequence (data), the reader can tell where it ends without the request or outside knowledge.
+  Variable parts (sequences, byte sequences, strings) are preceded by a count or a length.
+- **Every fixed form is fixed by (name, revision)** (§2.7): the fixed part of a request, an answer, an event or a data payload, the value of a TLV, an element of a
+  sequence, and an item of probe.config. A fixed form is never extended at its end. Its variable parts (a name, the value of a lock, a list inside an element)
+  are preceded by their count or length, so a fixed form also knows its own length.
+- **Sequences**: `count, count × element`, in requests and answers alike. No element carries a length of its own; the form of the element is fixed by the
+  revision, and the reader reads it field by field.
 - **Answers**: after the fixed part of each op's answer (and any sequences preceded by a count or length) comes a sequence of TLVs. Everything added later is added here as TLVs.
-  The host skips tags it does not know. An answer shorter than the fixed part is treated as a broken answer. **The form of the fixed part of an answer is decided by the op's definition
+  The host skips tags it does not know. An answer shorter than the fixed part is treated as a broken answer. A TLV of an answer, an event or data whose value
+  does not have the length its definition gives (for a value with variable parts, the length its counts and lengths give) is broken: the host does not use it.
+  **The form of the fixed part of an answer is decided by the op's definition
   per (op, resolution, outcome)** (success and failure may have different forms. Common parts of the interfaces, §3).
 - **Events and data** (§11.2) are the same as answers: after the fixed part comes a sequence of TLVs.
 - **Requests**: the only thing that can be appended to a request is a sequence of TLVs. The host **sets the critical bit** when the request is meaningless unless that item
@@ -118,7 +123,7 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
   TLV it refuses with rejected unsupported (the tag as received in the payload). It ignores unknown non-critical TLVs and appends ignored
   (tag 0x7F, below) to the answer. It does so on every completed answer, also when the op's status is a failure.
 - ignored lists the numbers (bit 7 cleared) of the ignored TLVs **in the order they appear in the request**, one entry per ignored TLV, at most 16 entries (`ignored_max_entries`). When more than 16 TLVs were ignored, the probe lists the first 15 and puts **0x00** as the 16th entry ("more were ignored"; 0x00 is never a tag, §2.2). A host that sees 0x00 treats every TLV of its request that is not listed as possibly ignored.
-- The probe never leaves ignored out of an answer that needs it. When it decides how much variable data (data, sequences) goes into an answer, it keeps room for ignored (at most 18 bytes). If even the fixed part leaves less room, it lists as many entries as fit, with 0x00 as the last. `0x7F 0x01 0x00` (3 bytes) always fits.
+- The probe never leaves ignored out of an answer that needs it. When it decides how much variable data (data, sequences) goes into an answer, it keeps room for ignored (at most 19 bytes). If even the fixed part leaves less room, it lists as many entries as fit, with 0x00 as the last. `0x7F 0x01 0x00 0x00` (4 bytes) always fits.
 - A tag whose definition does not say it repeats appears at most once in a request. Two or more are rejected malformed, critical or not. In an answer, the host uses the first.
 - If the value of a TLV this probe implements is shorter than its definition, or holds a value its definition excludes, the request is rejected malformed, critical or not. Only a value inside the definition that this probe cannot handle is unsupported (critical) or ignored (not critical). A TLV the probe does not implement is unknown to it, whatever its length.
 - **The value of a request TLV is not extended at the end.** A new field goes under a new tag. A probe that meets a request TLV it implements whose value is longer than it knows rejects it unsupported (that tag as received) when critical, and otherwise ignores the whole TLV and lists it in ignored.
@@ -127,25 +132,24 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
 - No field that may be omitted is placed in the fixed part (a value that should be omittable becomes a TLV).
 - Arguments the host adds for safety (a speed limit, etc.) are critical.
 
-**How fixed forms are extended** (after the freeze this is the only way):
-- When **the value of a TLV in an answer, an event or data, or an element of a sequence**, has a fixed form, **the reader skips whatever lies beyond the length it knows** (shorter than the known length is a broken value).
-  **The writer appends only at the end.** The position and meaning of earlier fields do not change. If the form contains a variable part (with a length), what lies beyond "the end of the last
-  known field" is skipped.
-- A variable part inside a fixed form (a name, the value of a lock, etc.) is **preceded by a length**. A variable part without a length can only be at the very end of the form, and nothing
-  can be added after it, so it is not used.
-- **Elements of a sequence in an answer are preceded by the element's length (u8)**: `count(u8), count × (len(u8), element)`. The reader skips the unknown tail of each element.
-  Sequences in requests (sent by the host) carry no length (anything to add becomes a TLV). However, values the probe remembers and returns on read-back (the items of probe.config,
-  the sequence of streams of a bind) take the same form as the sequences of answers.
-- A field appended after a value is treated as an optional item. The revision of §2.7 does not change.
-- The items the probe keeps and returns (probe.config) keep the "append at the end" rule. A field appended to such an item must be one that is safe for an older probe to skip.
-- **The values of describe TLVs** (bitmaps, strings, sequences of pairs) stay closed as an exception to this rule. Information added to describe is added under a new tag.
+**How OEP grows** (after the freeze these are the only paths):
+
+1. **a new TLV**: in a request, an answer, an event, data or describe, or a new item tag of probe.config;
+2. **a new optional op** (declared as §1.2 says) or **a new event kind**;
+3. **a new value in a reserved space**: a value of a request that an older probe refuses unsupported (§4.3 order 6), or a value of an answer under the
+   conditions of §2.5;
+4. **a new interface name** for a new meaning, and **a new revision** for a changed fixed form (§2.7).
+
+Information that would extend an element of a sequence goes into an answer TLV that repeats and carries the element's index (as the drive TLV of gpio set carries
+the index of its element).
+
 - **Width of values**: values determined by the nature of the hardware (counts, speeds, thresholds, capacities, times) are u32 or wider. u8 / u16 are used only where the limit is set by
   the protocol itself (a count within one frame, fn, resource numbers, numbers within an interface). A set of bits is u32 or `base + bitmap`.
 
 ### 2.4 Unknown values
 
 - Frames with an unknown role are discarded.
-- The probe discards, without answering, a message whose role is not a request role (0x01, 0x81), and a request shorter than its header (6 bytes, or 10 with session_id). The host discards a message whose role is a request role.
+- The probe discards, without answering, a message whose role is not the request role (0x01), and a request shorter than its header (10 bytes). The host discards a message whose role is the request role.
 - The host treats an answer shorter than 5 bytes, and an event or data frame shorter than its header, as a broken frame (§5.1, §5.2).
 - An unknown resolution, and an unknown outcome of completed, are treated as failure.
 - Unknown values of an interface's status or reason are treated as failure.
@@ -157,7 +161,7 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
 
 | Space | Range |
 |---|---|
-| role | 0x01 request, 0x02 answer, 0x05 event, 0x06 data. 0x03 / 0x04 are reserved, 0x07 to 0x7F are reserved. Bit 7 has meaning only for requests (session_id present, §4.1). In frames from probe to host bit 7 is 0 |
+| role | 0x01 request, 0x02 answer, 0x05 event, 0x06 data. 0x00, 0x03, 0x04 and 0x07 to 0xFF are reserved |
 | op of core (fn 0) | 0x01 to 0x0F discovery and plan, 0x10 to 0x1F session, 0x20 to 0x2F reserved (long operations, §10), 0x30 to 0x3F notification, 0x40 to 0x4F link test, 0x50 to 0xEF reserved, 0xF0 to 0xFF experimental (shipping probes do not use them) |
 | op of an interface | 0x01 to 0xEF are decided by the interface's definition. 0xF0 to 0xFF are experimental |
 | reject reason | 0x01 to 0x3F core (common to all interfaces), 0x40 to 0x7F interface, 0x80 to 0xFF reserved |
@@ -193,11 +197,10 @@ The probe has one clock: **ns since boot (u64)**. The clock does not decrease an
 
 ### 2.7 Names and revisions
 
-- The form and meaning of the **fixed part** of an interface's payload is **determined by (name, revision)** (the revision of list, u8).
-- **The revision is raised only when the meaning or length of the fixed part changes.** The host does not use an interface whose revision it does not know.
-- Adding optional request TLVs, response TLVs, optional ops or optional events without changing the fixed part does not change the revision. A host that does not know them
-  does not use them. The presence of optional ops is declared as §1.2 says, and the presence of optional functions (modes, formats, etc.) by describe (features etc.). **The "append at the end" of §2.3 does not change the revision either**
-  (the value of a TLV, the payload of an event, the tail of an element of an answer's sequence).
+- The form and meaning of every **fixed form** of an interface (§2.3: fixed parts, TLV values, elements of sequences, items) is **determined by (name, revision)** (the revision of list, u8).
+- **The revision is raised only when the meaning or length of a fixed form changes.** The host does not use an interface whose revision it does not know.
+- Adding optional request TLVs, response TLVs, optional ops or optional events without changing a fixed form does not change the revision. A host that does not know them
+  does not use them. The presence of optional ops is declared as §1.2 says, and the presence of optional functions (modes, formats, etc.) by describe (features etc.).
 - A probe that introduces a revision changing the fixed part preferably also exposes the old revision at the same time as a separate fn.
 - The name changes only when the meaning of the interface changes.
 - When the form of the core changes, the protocol revision (confirm) is raised. The form in this document is revision 1.
@@ -247,7 +250,7 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
   When one probe is used by several hosts, a broker bundles them into one session (the next bullets say what the probe rules require of it).
 - **An endpoint that answers OEP requests itself is a probe**, whatever carries it and whatever is behind it (for example a program that serves OEP on TCP and drives another debugger). Every probe rule applies to it. A broker that only relays requests to an OEP probe is a host towards that probe.
 - **A relaying broker that answers the session ops itself** (confirm, open, end, keepalive, lock_state) and relays every other request to one OEP probe has no describe of its own: fn 0's describe it relays is the probe's. In the transport TLV of its confirm it reports index 0xFF ("not in describe"). Towards the probe it is a host. Every rule on those session ops applies to its answers.
-- **TCP transports**: a probe that listens on TCP lists each listening socket as one transport in the describe of fn 0 (kind 6, interface 0xFF). Every connection accepted on that socket reports that index in the transport TLV of confirm. The rules that §3.3, §4.4, §7.1 and §11.4 apply per transport (the 0x81 requests of a session on one transport, max_frame / window / max_inflight, the revision in use, where notifications go) apply to each accepted connection separately.
+- **TCP transports**: a probe that listens on TCP lists each listening socket as one transport in the describe of fn 0 (kind 6, interface 0xFF). Every connection accepted on that socket reports that index in the transport TLV of confirm. The rules that §3.3, §4.4, §7.1 and §11.4 apply per transport (the requests of a session on one transport, max_frame / window / max_inflight, the revision in use, where notifications go) apply to each accepted connection separately.
   Which TCP port a probe listens on, and how a host finds a probe on TCP, are outside this specification.
 
 ### 3.2 Sending frames
@@ -259,8 +262,8 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 
 - A probe may accept OEP control over several transports. **Several transports share one session and one lock.** Requests arriving from any transport are treated as the same,
   and the answer goes back on the transport the request came from. Notifications go to the transport the subscribe came from (§11.4).
-- **The role 0x81 requests of one session are sent on one transport** (so that the ordering decision of §5.2 is not misled by transport delays). Read-only 0x01 may be
-  sent from another transport. A misjudgement caused by the host sending 0x81 from 2 transports is the host's responsibility; the probe does not check.
+- **The requests that carry one session's id are sent on one transport** (so that the ordering decision of §5.2 is not misled by transport delays). Requests with
+  session_id 0 may be sent from another transport. A misjudgement caused by the host sending one session's requests from 2 transports is the host's responsibility; the probe does not check.
 - When the same probe has several transports, the host tries vendor bulk, HID, then serial ports in that order (serial ports are also used to carry raw bytes,
   §3.4). The list of the probe's transports is known from the transport of the describe of fn 0 (§7.5).
 - **How to tell a USB OEP probe apart**: among devices it does not know, a host identifies an OEP probe automatically only when the device enumerates with **the project's USB
@@ -318,7 +321,7 @@ A serial port carries OEP frames and raw bytes (the target's console, etc.) on t
   suits text; a binary stream that contains 0x00 is delayed by up to 200 ms at each 0x00.
 - **How the probe sends**: answers and notifications are `0x00 <COBS> 0x00`. Transmission on one port is done by one writer, and raw bytes are not interleaved
   in the middle of a frame (a frame may go out before raw bytes, and the order among raw bytes is kept).
-- **Ports where raw transfer stops**: on a port where even one request of the session that holds the lock (the open that took the lock, and the role 0x81 requests with that session_id)
+- **Ports where raw transfer stops**: on a port where even one request of the session that holds the lock (a request with that session_id, the open that took the lock included)
   has arrived, until that session ends (end, lease expiry, taken by force), the probe sends no raw bytes and discards raw bytes arriving from the
   port. Ports where only lock-free requests arrived, and ports while a session is running on another transport, are not stopped. Where raw transfer resumes from after the session
   ends is decided by the settings that define the flow bound to the port.
@@ -404,13 +407,16 @@ port_speed  request: port(u8), baud(u32), step(u8: 0 try, 1 commit, 2 revert), v
 ### 4.1 Requests
 
 ```text
-role=0x01 | corr(u16) | fn(u16) | op(u8) | payload                      header 6 byte (no session_id)
-role=0x81 | corr(u16) | fn(u16) | op(u8) | session_id(u32) | payload    header 10 byte (with session_id)
+role=0x01 | corr(u16) | fn(u16) | op(u8) | session_id(u32) | payload    header 10 byte
 ```
 
-- `corr`: a number assigned by the host. **The host advances it by 1 per request** (role 0x01 requests count too. After 65535 comes 1. 0 is not used).
+- `corr`: a number assigned by the host. **The host advances it by 1 per request** (requests with session_id 0 count too. After 65535 comes 1. 0 is not used).
   Using the same number again happens only for the resend of §5.2. The probe uses this ordering to tell a resend from an old request it does not remember.
-- Requests that change state are sent with role 0x81 (§6.3). Requests usable without the lock may be sent with 0x01 (sending them with 0x81 extends the lease).
+- `session_id`: the session the request belongs to, or **0 = no session**. Every request carries it.
+  - A request of an op that requires the lock (§6.3) carries the id of the session that holds the lock. With 0 it is rejected session_required (§4.3 order 1).
+  - A request of a lock-free op may carry 0: it is then processed without the session checks (§5.2, §6.2) and does not touch the lease. With a non-zero id it goes
+    through them like a request that requires the lock, and restarts the lease (§6.1).
+  - open carries the id of the session it opens (§6.4); 0 is rejected malformed.
 
 ### 4.2 Answers
 
@@ -440,7 +446,7 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           header 5
 | 0x06 | window_exceeded | window / max_inflight exceeded | — |
 | 0x07 | no_session | The lock is free, but this session_id is not the last ID. The host starts over from open | — |
 | 0x08 | locked | Another session holds the lock | Remaining time in ms (u32), [TLV owner (§6.4)] |
-| 0x09 | session_required | A state-changing request has no session_id | — |
+| 0x09 | session_required | A request of an op that requires the lock carries session_id 0 | — |
 | 0x0A | no_connection | The probe does not know the resource of the request (connection, stream, etc.; anything designated by number). The host recreates it. Every interface uses this for an unknown number | — |
 | 0x0B | unsupported | It is in the definition, but this probe cannot handle it (a critical TLV, a value in the fixed part, an optional function of an op this probe offers) | `tag(u8)`, [TLV]. tag is the value as received for a critical TLV, 0x00 for a value in the fixed part. To indicate which element, TLVs follow (same tag space as unavailable: channel, index) |
 | 0x0C | result_lost | The result of a resent request is not remembered (§5.2) | — |
@@ -484,7 +490,7 @@ the interface's index, etc.), except that there 0x01 is supported, the refusal o
 - The host observes both limits. The probe may refuse a request that exceeds them with rejected window_exceeded, but a request lost beyond the buffer gets
   no answer either. Observing them is the host's responsibility.
 - The probe processes requests in the order received and returns answers in the order received.
-- max_frame, window and max_inflight of confirm are the limits **of the transport the confirm came on**. Each transport is counted separately, and requests outstanding on one transport do not use the receive room of another. The table of §5.2 stays one per probe (the 0x81 requests of a session are sent on one transport, §3.3).
+- max_frame, window and max_inflight of confirm are the limits **of the transport the confirm came on**. Each transport is counted separately, and requests outstanding on one transport do not use the receive room of another. The table of §5.2 stays one per probe (the requests of a session are sent on one transport, §3.3).
 - **The host's wait time**: the absence of an answer is decided only by timeout (§3.1). For each request the host waits **at least**: the time set by the request's arguments (the timeout_ms of run,
   the hold_ms of reset, the sum of the waits of dmi, save, etc.; for attach, `attach_budget_ms` plus the hold_ms of its reset TLV; for scan, `scan_budget_ms` + `attach_budget_ms` ([wire and debug](oep-if-debug.md) §1); 0 if none; at most max_op_ms, §7.5) + 1000 ms (`host_wait_add_ms`) + the transfer time. The wait starts when the request has been written, or, while earlier requests on the same transport are outstanding, when the answer to the request before it arrives (the probe answers in order).
   The transfer time is 0 except on a UART bridge. On a UART bridge it is (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud seconds, where L is the length on the wire of the request's frame and baud is the port's current speed. Until the host has received a confirm answer on that transport, it uses `min_max_frame` (64) as max_frame; after that, the max_frame of the latest confirm answer there. A host that cannot tell whether a serial port is a UART bridge (for example before it has read the transport kinds in the describe of fn 0, §7.5) counts this transfer time on that serial port, with baud the speed it has set on the port. Waiting longer than this floor is always allowed. A host that reads a max_op_ms of 0 or above `max_op_ms_max` treats the probe as not conforming and does not use it. When the wait has passed, it proceeds to the resend of §5.2.
@@ -509,12 +515,13 @@ Before the confirm of a resync, and before the first confirm after opening a len
   (§3.4; raw transfer is stopped), a broken frame that arrives may be treated as belonging to the awaited answer, and the host may resend without waiting out the wait time. When unsubscribe
   and end were sent during recovery, the session has ended, so the original request is not resent.
 - When the wait for the resend also passes without an answer, the host treats the transport as failed: the outcome of that request is unknown, and the requests outstanding on that transport fail with it. Before it sends anything else there, the host recovers with the confirm of §5.1 (on every kind of frame, COBS included: quiet input, then a confirm whose answer carries its own corr) or closes and reopens the transport. A changed boot_id in that confirm means a reboot (§6.5). After recovering, the host reads the state before it repeats a state-changing request.
-- The probe remembers, for the requests of the last session (role 0x81), at least the most recent max_inflight entries of (corr, fn, op, CRC-32 of the request payload,
+- The probe remembers, for the requests that carried the last session's id, at least the most recent max_inflight entries of (corr, fn, op, CRC-32 of the request payload,
   answer), and the newest corr of that session. **The identity of a request is determined by corr alone** (the ordering of §4.1). The CRC is only for
   detecting a numbering mistake by the host.
 - The probe stores the answer of every request of the last session that passes order 2 of §4.3, rejected answers included, and advances the newest corr with it. A host that corrects a rejected request sends it with a new corr.
 - §5.2 binds every probe (every endpoint that answers OEP requests itself, §3.1) on every transport, TCP included. TCP does not lose frames, but a host still resends after its wait (§4.4) when an answer is late, so the probe keeps the table to avoid executing a request twice. The table is one per probe, shared by all its transports and TCP connections, as the session is. A broker that only relays to an OEP probe keeps no table of its own; when it renumbers corr, it relays a client's resend with the same corr it used the first time. For that it keeps, per accepted client connection, the map from the client's corr to the corr it used upstream for at least the client's last max_inflight requests, and drops the map when that connection closes.
-- A request carrying the session_id of the last session is checked as follows **before the decision of §6.2** (the same even if the lock is free):
+- A request carrying the session_id of the last session is checked as follows **before the decision of §6.2** (the same even if the lock is free). open is not looked
+  up in the table (a resent open is decided by §6.2):
   - If the table has the same corr and fn, op and CRC are the same, **the remembered answer is returned without executing**. Neither the lock state nor the lease changes (a resent
     end does not re-establish the lock).
   - If the table has the same corr and any of them differs, rejected corr_reused.
@@ -525,7 +532,7 @@ Before the confirm of a resync, and before the first confirm after opening a len
   result_lost without executing.
 - **The remembered table and the newest corr are discarded at every open (including resume)** (not at end). Exactly-once is not promised when the session
   changes.
-- Read-only requests (role 0x01) are not deduplicated.
+- Requests with session_id 0 are not deduplicated.
 - CRC-32 is IEEE (reflected, polynomial 0xEDB88320, initial value and final XOR 0xFFFFFFFF. "123456789" → 0xCBF43926).
 
 ## 6. Sessions and exclusivity
@@ -558,13 +565,13 @@ The decision of the table of §5.2 (resend) comes before this table.
 
 ### 6.3 Requests that require the lock
 
-Every request that changes state requires the lock (role 0x81). What can be used without the lock is limited to read-only requests that do not change state
+Every request that changes state requires the lock (it carries the session's id, §4.1). What can be used without the lock is limited to read-only requests that do not change state
 (confirm, list, describe, lock_state, link_source / link_sink, the read-only ops defined by interfaces). An op that an interface
 declares lock-free must not change state.
 
 ### 6.4 open, end, keepalive, force
 
-- **open** (session_id, lease_ms, force): takes the lock. open is sent with role 0x01; an open with role 0x81 is rejected malformed. The answer is lease_ms (the value decided by the probe), boot_id, resumed (0 new session,
+- **open** (lease_ms, force; the session_id is the header's, §4.1): takes the lock. The answer is lease_ms (the value decided by the probe), boot_id, resumed (0 new session,
   1 re-established with the same session_id with the resources kept, 2 same session_id but after the resources were removed. The registry's `resumed`). **The table of §5.2 is discarded at
   every successful open** (not at an open that gets rejected locked. Not at end, expiry or force).
 - **lease_ms**: 0 means "the probe's default". The probe accepts requests of 1000 to 60000 ms as they are, and rounds values outside the range into it (the default is
@@ -613,7 +620,7 @@ rejected unsupported (below). flags is reserved (0). max_frame is 64 or more (§
 
 ```text
 request: flags(u8: bit0 exact), first(u16), prefix_len(u8), prefix
-answer:  total(u16), count(u8), count × (len(u8), entry)
+answer:  total(u16), count(u8), count × entry
 entry:   fn(u16), instance(u16), revision(u8), flags(u8), name_len(u8), name
 ```
 
@@ -843,18 +850,18 @@ event   role=0x05 | fn(u16) | seq(u16) | kind(u8) | fixed part | [TLV]          
 | 0x03 | describe | §7.3 | §7.3 | Not required | yes |
 | 0x04 | plan_apply | Sequence of role_assignment TLVs | — | Required | if plan roles (§1.2) |
 | 0x05 | plan_release | n(u8), n × fn(u16) | — | Required | if plan roles (§1.2) |
-| 0x10 | open | session_id(u32), lease_ms(u32), force(u8), [TLV owner] | lease_ms(u32), boot_id(u32), resumed(u8: 0 / 1 / 2, §6.4) | open takes the lock (role 0x01) | yes |
+| 0x10 | open | lease_ms(u32), force(u8), [TLV owner] (the session_id is the header's) | lease_ms(u32), boot_id(u32), resumed(u8: 0 / 1 / 2, §6.4) | open takes the lock | yes |
 | 0x11 | end | — | — | Required | yes |
 | 0x12 | keepalive | — | — | Required | yes |
 | 0x13 | lock_state | — | locked(u8), remaining_ms(u32), [TLV owner] | Not required | yes |
 | 0x14 | port_speed | §3.5 (optional, declared by describe tag 0x4E) | baud(u32) | Required | optional |
 | 0x30 | subscribe | §11.3 | — | Required | yes |
 | 0x32 | unsubscribe | §11.3 | — | Required | yes |
-| 0x40 | link_source | length(u32) | length bytes (up to what fits in one frame. Byte k is k & 0xFF) | Not required | yes |
-| 0x41 | link_sink | Arbitrary bytes (a sequence without a count) | Received length (u32) | Not required | yes |
+| 0x40 | link_source | length(u32), [TLV] | len(u16), data, [TLV]: len is the smaller of length and what fits in one frame; byte k of data is k & 0xFF | Not required | yes |
+| 0x41 | link_sink | count(u16), data (count bytes, any values), [TLV] | — | Not required | yes |
 
-link_source / link_sink are for measuring the speed of the wire and do not change state. Only these two have a form ending in a sequence without a length
-(the exception of §2.3. No TLVs follow).
+link_source / link_sink are for measuring the speed of the wire and do not change state. A link_sink whose count is larger than the bytes that follow is rejected
+malformed.
 
 ## 13. Rules for extension (how to write an interface)
 
@@ -875,7 +882,7 @@ Standard interfaces and independent interfaces are both defined by the following
    - how a reader treats unknown enum values and unknown flags of its answers (§2.4, §2.5);
    - a table of refusals in the order of §4.3;
    - the external specifications it relies on, with their versions and the subset used (a References section).
-3. **Rules of form**: as in §2.3 (fixed part + TLVs, a count before a variable sequence, no omittable fields, safety arguments critical).
+3. **Rules of form**: as in §2.3 (fixed forms, TLVs as the only additions, a count before a variable sequence and no length on its elements, no omittable fields, safety arguments critical).
 4. **Failure**: what was not accepted is rejected; what was accepted and failed is completed failed / partial (§4.2).
 5. **Lock-free ops do not change state** (§6.3).
 6. **Versions**: §2.7.

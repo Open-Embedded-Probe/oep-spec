@@ -62,14 +62,11 @@ def unframe_serial(frame: bytes) -> bytes:
 
 
 def tlvs(data: bytes) -> list[tuple[int, bytes]]:
+    """tag(u8) len(u16) value, the one TLV form (core §2.2)."""
     out, i = [], 0
     while i < len(data):
-        tag, n = data[i], data[i + 1]
-        i += 2
-        if n == 0xFF:
-            n = struct.unpack_from("<H", data, i)[0]
-            i += 2
-            assert n >= 255, "long form used for a short value"
+        tag, n = data[i], struct.unpack_from("<H", data, i + 1)[0]
+        i += 3
         out.append((tag, data[i:i + n]))
         assert len(data[i:i + n]) == n
         i += n
@@ -116,12 +113,10 @@ def test_headers_parse_to_their_fields():
     v = load("headers.json")
     for r in v["requests"]:
         msg = bytes.fromhex(r["message_hex"])
-        role, corr, fn, op = struct.unpack_from("<BHHB", msg)
-        assert (role, corr, fn, op) == (r["role"], r["corr"], r["fn"], r["op"])
-        if role & 0x80:
-            assert struct.unpack_from("<I", msg, 6)[0] == r["session_id"] and msg[10:].hex() == r["payload_hex"]
-        else:
-            assert r["session_id"] is None and msg[6:].hex() == r["payload_hex"]
+        role, corr, fn, op, session = struct.unpack_from("<BHHBI", msg)                        # one 10-byte header (core §4.1)
+        assert (role, corr, fn, op, session) == (r["role"], r["corr"], r["fn"], r["op"], r["session_id"]) and role == 0x01
+        assert msg[10:].hex() == r["payload_hex"]
+    assert {r["session_id"] == 0 for r in v["requests"]} == {True, False}
     for a in v["answers"]:
         msg = bytes.fromhex(a["message_hex"])
         assert struct.unpack_from("<BHBB", msg) == (a["role"], a["corr"], a["resolution"], a["detail"])
@@ -130,15 +125,15 @@ def test_headers_parse_to_their_fields():
         ((tag, value),) = tlvs(bytes.fromhex(t["tlv_hex"]))
         assert tag == t["tag"]
         assert value == (bytes.fromhex(t["value_hex"]) if "value_hex" in t else bytes([t["value_byte"]]) * t["value_len"])
-        assert (bytes.fromhex(t["tlv_hex"])[1] == 0xFF) == (len(value) >= 255)                 # the unique encoding
+        assert len(bytes.fromhex(t["tlv_hex"])) == 3 + len(value)                              # one form, whatever the length
 
 
 def test_confirm_exchanges():
     confirm_op = next(o["code"] for o in REG["interface"][0]["op"] if o["name"] == "confirm")
     ok, refused = load("confirm.json")["exchanges"]
     req = bytes.fromhex(ok["request_hex"])
-    assert struct.unpack_from("<BHHB", req) == (0x01, ok["request"]["corr"], 0, confirm_op)
-    assert req[6:] == b"OEP?" + bytes([ok["request"]["min_rev"], ok["request"]["max_rev"]])
+    assert struct.unpack_from("<BHHBI", req) == (0x01, ok["request"]["corr"], 0, confirm_op, 0)
+    assert req[10:] == b"OEP?" + bytes([ok["request"]["min_rev"], ok["request"]["max_rev"]])
     assert unframe_serial(bytes.fromhex(ok["request_serial_frame_hex"])) == req
     lf = bytes.fromhex(ok["request_length_frame_hex"])
     assert struct.unpack_from("<H", lf)[0] == len(req) and lf[2:] == req
@@ -161,8 +156,17 @@ def test_probe_config_canonical_form_and_hash():
 
         def key(item):
             tag, v = item
-            fields = struct.unpack_from("<HBH", v) if tag == 0x01 else struct.unpack_from("<H", v)
-            return (tag,) + fields
+            if tag == 0x01:
+                return (tag,) + struct.unpack_from("<HBH", v)                                 # plan: fn, role, channel
+            if tag == 0x04:
+                return (tag, v[0])                                                             # slot: slot(u8)
+            return (tag,) + struct.unpack_from("<H", v)                                        # label, idle: channel
+
+        for tag, v in sent:
+            if tag & 0x7F == 0x03:
+                assert len(v) == 6                                                             # idle: one fixed form (probe settings §1)
+                if v[2] <= 2:
+                    assert v[3:] == b"\x02\x00\x00"                                           # an input idle carries kind 2 (default), value 0
 
         order = sorted(((t & 0x7F, v) for t, v in sent), key=key)
         assert [(i["tag"], i["value_hex"]) for i in case["canonical_order"]] == [(t, v.hex()) for t, v in order]
@@ -187,8 +191,7 @@ def test_refusals_answer_their_requests():
             marker = payload[0]
             assert marker == 0x00 or marker & 0x80, "the tag as received of a critical TLV, or 0x00"
             if marker:
-                body = req[10:] if req[0] & 0x80 else req[6:]
-                assert bytes([marker]) in body
+                assert bytes([marker]) in req[10:]
             tlvs(payload[1:])
         else:
             assert payload == b""
@@ -203,6 +206,7 @@ def test_discovery_exchanges():
     for ex in v["exchanges"]:
         req, ans = bytes.fromhex(ex["request_hex"]), bytes.fromhex(ex["answer_hex"])
         assert req[0] == 0x01 and struct.unpack_from("<H", req, 1)[0] == ex["request"]["corr"]   # no lock needed (core §12)
+        assert struct.unpack_from("<I", req, 6)[0] == 0                                          # session_id 0: no session (core §4.1)
         assert struct.unpack_from("<BHBB", ans) == (0x02, ex["answer"]["corr"], 0x01, 0)
         for key in ("request", "answer"):
             if f"{key}_serial_frame_hex" in ex:
@@ -210,23 +214,21 @@ def test_discovery_exchanges():
 
     req, ans = bytes.fromhex(lst["request_hex"]), bytes.fromhex(lst["answer_hex"])
     assert struct.unpack_from("<HB", req, 3) == (0, ops["list"])
-    flags, first, plen = struct.unpack_from("<BHB", req, 6)
-    assert (flags, first, plen) == (0, 0, 0) and len(req) == 10
+    flags, first, plen = struct.unpack_from("<BHB", req, 10)
+    assert (flags, first, plen) == (0, 0, 0) and len(req) == 14
     total, count = struct.unpack_from("<HB", ans, 5)
     i, entries = 8, []
-    for _ in range(count):
-        n = ans[i]
-        fn, inst, rev, eflags, nlen = struct.unpack_from("<HHBBB", ans, i + 1)
+    for _ in range(count):                                                                     # count x entry, no element len
+        fn, inst, rev, eflags, nlen = struct.unpack_from("<HHBBB", ans, i)
         entries.append({"fn": fn, "instance": inst, "revision": rev, "flags": eflags,
-                        "name": ans[i + 8:i + 8 + nlen].decode()})
-        assert n == 7 + nlen
-        i += 1 + n
+                        "name": ans[i + 7:i + 7 + nlen].decode()})
+        i += 7 + nlen
     assert i == len(ans) and total == len(entries) and entries == lst["answer"]["entries"]
     assert entries[0] == {"fn": 0, "instance": 0, "revision": core["revision"], "flags": 0, "name": "oep.core"}
 
     req, ans = bytes.fromhex(desc["request_hex"]), bytes.fromhex(desc["answer_hex"])
-    assert struct.unpack_from("<HB", req, 3) == (0, ops["describe"]) and struct.unpack_from("<HH", req, 6) == (0, 0)
-    assert len(req) == 10                                                                      # no TLV (core §7.3)
+    assert struct.unpack_from("<HB", req, 3) == (0, ops["describe"]) and struct.unpack_from("<HH", req, 10) == (0, 0)
+    assert len(req) == 14                                                                      # no TLV (core §7.3)
     assert ans[5] == desc["answer"]["more"] == 0
     t = core["tlv"]["describe"]
     got = tlvs(ans[6:])
@@ -241,7 +243,7 @@ def test_discovery_exchanges():
     assert t["unit_id"] != 0x3F and t["transport"] != 0x3F
 
     req, ans = bytes.fromhex(past["request_hex"]), bytes.fromhex(past["answer_hex"])
-    assert struct.unpack_from("<HH", req, 6) == (0, past["request"]["first"]) and past["request"]["first"] >= len(got)
+    assert struct.unpack_from("<HH", req, 10) == (0, past["request"]["first"]) and past["request"]["first"] >= len(got)
     assert ans[5:] == b"\x00"                                                                 # more 0, no TLVs (core §7.3)
 
     reasons = REG["reject_reasons"]
@@ -280,7 +282,7 @@ def test_example_probe_answers_carry_what_the_core_requires():
             confirms += 1
             got = dict(tlvs(ans[5 + 4 + 13:]))
             assert len(got.get(t_confirm, b"")) == 1, ex["name"]                              # core §7.1 "always attaches"
-        elif fn == 0 and op == describe_op and struct.unpack_from("<H", req, 8)[0] == 0:
+        elif fn == 0 and op == describe_op and struct.unpack_from("<H", req, 12)[0] == 0:
             describes += 1
             got = tlvs(ans[6:])
             tags = [tag for tag, _ in got]

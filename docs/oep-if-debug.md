@@ -198,7 +198,7 @@ In addition to [common parts](oep-if-common.md) §2:
 
 ```text
 request: first(u8)
-answer:  more(u8), count(u8), count × (len(u8), entry), [TLV]  (core §2.3)
+answer:  more(u8), count(u8), count × entry, [TLV]  (core §2.3)
 entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot(u8), tid_scheme(u8), tid_len(u8), tid
 ```
 
@@ -213,7 +213,7 @@ entry:   connection(u16), swdio(u16), swclk(u16), speed_hz(u32), users(u8), slot
 
 | op | Name | Request | Answer |
 |---:|---|---|---|
-| 0x01 | scan | count(u8), count × (swdio(u16), swclk(u16)), [TLV] | tried(u8), count(u8), count × (len(u8), kind(u8), swdio(u16), swclk(u16), id(u32)), [TLV] |
+| 0x01 | scan | count(u8), count × (swdio(u16), swclk(u16)), [TLV] | tried(u8), count(u8), count × (kind(u8), swdio(u16), swclk(u16), id(u32)), [TLV] |
 | 0x02 | attach | method(u8: 0 do not halt / 1 halt. Others are rejected unsupported, payload `0x00`), [TLV] | connection(u16), id(u32), flags(u8), speed_hz(u32), [TLV] |
 | 0x03 | detach | connection(u16), [TLV] | — |
 | 0x04 | — | Reserved (formerly attach_under_reset. Became the reset TLV of attach) | |
@@ -514,7 +514,7 @@ dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rej
 
 | op | Name | Request | Answer |
 |---:|---|---|---|
-| 0x01 | scan | count(u8), count × (swdio(u16), swclk(u16)), [TLV] | tried(u8), count(u8), count × (len(u8), kind(u8), swdio(u16), swclk(u16), id(u32)), [TLV] |
+| 0x01 | scan | count(u8), count × (swdio(u16), swclk(u16)), [TLV] | tried(u8), count(u8), count × (kind(u8), swdio(u16), swclk(u16), id(u32)), [TLV] |
 | 0x02 | attach | method(u8: 0 only. Others are rejected unsupported, payload `0x00`), [TLV] | connection(u16), id(u32), flags(u8), speed_hz(u32), [TLV] |
 | 0x03 | detach | connection(u16), [TLV] | — |
 | 0x04 | — | Reserved | |

@@ -67,8 +67,8 @@ def check(reg: dict) -> list[str]:
             codes[c] = op["name"]
             if not 0x01 <= c <= 0xEF:
                 errors.append(f"{n}: op {op['name']} = {c:#x} outside 0x01-0xEF (0xF0-0xFF are experimental)")
-            if set(op) - {"code", "name", "lock", "closed_tail", "fields"}:
-                errors.append(f"{n}: op {op['name']} has unknown keys {sorted(set(op) - {'code', 'name', 'lock', 'closed_tail', 'fields'})}")
+            if set(op) - {"code", "name", "lock", "fields"}:
+                errors.append(f"{n}: op {op['name']} has unknown keys {sorted(set(op) - {'code', 'name', 'lock', 'fields'})}")
         if n == "oep.core":
             ranges = [(0x01, 0x0F), (0x10, 0x1F), (0x20, 0x2F), (0x30, 0x3F), (0x40, 0x4F)]
             for c, opname in codes.items():
@@ -253,7 +253,6 @@ def py(reg: dict, digest: str) -> str:
         var = ident(iface["name"].removeprefix("oep.")).upper()
         ops = ", ".join(f'"{o["name"]}": 0x{o["code"]:02X}' for o in iface["op"])
         free = ", ".join(f'0x{o["code"]:02X}' for o in iface["op"] if not o.get("lock"))
-        closed = ", ".join(f'0x{o["code"]:02X}' for o in iface["op"] if o.get("closed_tail"))
         tlv = ", ".join(f'"{c}": {{' + ", ".join(f'"{k}": 0x{v:02X}' for k, v in t.items()) + "}"
                         for c, t in iface.get("tlv", {}).items())
         ev = ", ".join(f'"{k}": 0x{v:02X}' for k, v in iface.get("event", {}).items())
@@ -262,14 +261,14 @@ def py(reg: dict, digest: str) -> str:
         own = ", ".join(f'"{k}": 0x{v:02X}' for g in ("status", "reject_reasons") for k, v in iface.get(g, {}).items())
         lines = ", ".join(f"{k!r}: {v!r}" for k, v in iface.get("line_names", {}).items())
         L += [f'{var} = _NS(name="{iface["name"]}", revision={iface["revision"]}, op={{{ops}}}, lock_free={{{free}}},',
-              f"    closed_tail={{{closed}}}, tlv={{{tlv}}}, event={{{ev}}}, enum={{{en}}}, own={{{own}}},",
+              f"    tlv={{{tlv}}}, event={{{ev}}}, enum={{{en}}}, own={{{own}}},",
               f"    line_names={{{lines}}})",
               f'INTERFACES["{iface["name"]}"] = {var}']
     return "\n".join(L) + "\n"
 
 
 def js(reg: dict, digest: str) -> str:
-    """The same shape as py(): objects keyed by the registry's snake_case names; lock_free / closed_tail are Sets."""
+    """The same shape as py(): objects keyed by the registry's snake_case names; lock_free is a Set."""
     def obj(d: dict) -> str:
         return "{" + ", ".join(f"{k}: 0x{v:02X}" if re.fullmatch(r"[A-Za-z_]\w*", k) else f'"{k}": 0x{v:02X}'
                                for k, v in d.items()) + "}"
@@ -287,7 +286,6 @@ def js(reg: dict, digest: str) -> str:
     for iface in reg["interface"]:
         var = ident(iface["name"].removeprefix("oep.")).upper()
         free = ", ".join(f"0x{o['code']:02X}" for o in iface["op"] if not o.get("lock"))
-        closed = ", ".join(f"0x{o['code']:02X}" for o in iface["op"] if o.get("closed_tail"))
         tlv = "{" + ", ".join(f"{c}: {obj(t)}" for c, t in iface.get("tlv", {}).items()) + "}"
         en = "{" + ", ".join(f"{e}: {obj(v)}" for e, v in iface.get("enum", {}).items()) + "}"
         own = {k: v for g in ("status", "reject_reasons") for k, v in iface.get(g, {}).items()}
@@ -295,7 +293,7 @@ def js(reg: dict, digest: str) -> str:
         L += [f"export const {var} = {{",
               f"  name: '{iface['name']}', revision: {iface['revision']},",
               f"  op: {obj(ops)},",
-              f"  lock_free: new Set([{free}]), closed_tail: new Set([{closed}]),",
+              f"  lock_free: new Set([{free}]),",
               f"  tlv: {tlv},",
               f"  event: {obj(iface.get('event', {}))}, enum: {en}, own: {obj(own)},",
               "  line_names: Object.freeze({" + ", ".join(f"{k}: {json.dumps(v)}" for k, v in iface.get("line_names", {}).items()) + "}),",

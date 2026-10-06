@@ -19,12 +19,12 @@ A stream is opened over a debug connection by specifying a mechanism. There is o
 |---:|---|---|---|---|
 | 0x01 | open | connection(u16), mechanism(u8), [TLV] | stream(u16), flags(u8: bit0 existing stream), [TLV] | Required |
 | 0x02 | read | stream(u16), from(u8), arg(u64), max(u16), [TLV] | start(u64), flags(u8), len(u16), data, [TLV] | Not required |
-| 0x03 | marks | stream(u16), from_serial(u32) | more(u8), count(u8), count × (len(u8), mark), [TLV] | Not required |
+| 0x03 | marks | stream(u16), from_serial(u32) | more(u8), count(u8), count × mark, [TLV] | Not required |
 | 0x04 | clear | stream(u16) | — | Required |
 | 0x05 | mark | stream(u16), value(u8) | — | Required |
 | 0x06 | write | stream(u16), count(u16), data | accepted(u16), [TLV] | Required |
 | 0x07 | close | stream(u16) | — | Required |
-| 0x08 | streams | first(u8) | more(u8), count(u8), count × (len(u8), stream(u16), connection(u16), mechanism(u8), users(u8), state(u8)), [TLV] | Not required |
+| 0x08 | streams | first(u8) | more(u8), count(u8), count × (stream(u16), connection(u16), mechanism(u8), users(u8), state(u8)), [TLV] | Not required |
 
 Every op of this table is required (core §1.2). The mechanisms are declared by mechanisms of describe.
 

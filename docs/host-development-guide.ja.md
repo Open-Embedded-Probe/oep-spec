@@ -92,7 +92,7 @@ max_frame を使う（core §4.4）。
   （core §7.5）。
 - 選べるなら vendor bulk、HID、シリアルの口の順に使う（core §3.3）。シリアルの口は生のバイトも運び、受けの量にも限りがある
   （core §3.4）。
-- 1 つのセッションの role 0x81 の要求は、すべて 1 つの経路で送る（core §3.3）。ロック不要の要求は別の経路で送ってよい（たとえば、
+- 自分のセッションの id を持つ要求は、すべて 1 つの経路で送る（core §3.3）。ロック不要の要求は別の経路で送ってよい（たとえば、
   デバッガが vendor bulk を持つ間に、HID で describe と state を読む）。
 - max_frame、window、max_inflight とプロトコルの revision は経路ごと（core §4.4、§7.1）: 使う経路ごとに confirm する。
 
@@ -123,7 +123,7 @@ op に自分で答え、ほかを中継するブローカーは、core §3.1 と
 - **corr が合わない応答は受け取らず、入力を読み捨てて同期し直す**（core §5.1）。USB の経路によっては、取り消した転送の残りが次の
   応答として届くことがある（USB-over-IP の層を通したときに見た）。vendor bulk / HID / TCP のフレームには CRC が無いので、
   corr の照合がこの防御になる。
-- **corr は要求ごとに 1 ずつ進める**（role 0x01 の要求も数える。65535 の次は 1、0 は使わない。core §4.1）。同じ corr を使うのは
+- **corr は要求ごとに 1 ずつ進める**（session_id 0 の要求も数える。65535 の次は 1、0 は使わない。core §4.1）。同じ corr を使うのは
   送り直しのときだけ。
 - 応答が壊れたか来なかったら、**同じ corr で 1 回だけ送り直す**（`resend_max` = 1。状態を変える要求も。core §5.2）。probe は覚えた応答を返すので、
   二重に実行されない。
@@ -150,7 +150,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 | window_exceeded（0x06） | window / max_inflight を超えた | この経路の probe の上限を超えて先送りした。応答を待ち、新しい corr で送り直す（core §5.2: 直した要求は新しい corr で送る） |
 | no_session（0x07） | ロックは空きだが、この session_id は最後のものではない | 別のセッションが間に入ったか、probe が再起動した。open からやり直す。再起動は confirm の boot_id で分かる |
 | locked（0x08） | 別のセッションがロックを持っている | payload に残りの ms と、あれば持ち主の文字列。待つか、持ち主を添えて「使用中」とするか、利用者が頼んだときだけ force で奪う（§6） |
-| session_required（0x09） | 状態を変える要求に session_id が無い | 誤り: role 0x81 と自分の session_id で送る |
+| session_required（0x09） | ロックの要る op の要求が session_id 0 だった | 誤り: 自分の session_id で送る |
 | no_connection（0x0A） | その資源の番号を知らない | 接続やストリームが閉じたか、probe が再起動した。番号を捨て、資源を作り直す（attach、open）。長く持つ番号は一覧の op で確かめる（core §9） |
 | unsupported（0x0B） | 定義にはあるが、この probe は扱えない | payload の tag が何かを示す: 0x00 = 固定部分の値、それ以外は受け取ったままの critical な TLV の tag。channel / index の TLV がどの要素かを示すことがある。describe を見て probe が宣言するものを選ぶ。そのまま送り直さない。confirm では TLV 0x01 が probe の扱える revision を示す（core §7.1） |
 | result_lost（0x0C） | 送り直しの応答を覚えていない | 実行されたかは分からない: 状態を読み直す（core §5.2） |
@@ -169,9 +169,9 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 - **インターフェースの revision**: list は fn ごとに (name, instance, revision) を返す。知らない revision のインターフェースは使わない
   （core §2.7）。probe は古い revision を別の fn で出してよいので、知っているほうを選ぶ。instance は (name, revision) ごとに数える
   （core §7.2）。
-- **応答の読み方**: 固定部分の後ろは TLV の並び。知らない tag は読み飛ばす。繰り返さない tag は最初のものを使う。TLV の値、出来事の
-  payload、並びの要素が知っているより長ければ、知っている分を読んで残りを飛ばす。短ければ壊れている（core §2.3）。describe の値は
-  閉じていて、定義より長くならない（新しい情報は新しい tag で来る）。応答の中で bit 7 の立った TLV は知らない tag として扱う。
+- **応答の読み方**: 固定部分の後ろは TLV の並び。知らない tag は読み飛ばす。繰り返さない tag は最初のものを使う。並びは要素に長さの
+  無い `count × element` なので、要素は定義のとおりにフィールドごとに読む。固定の形は末尾を延ばされない。長さが定義と違う TLV の値は
+  壊れている（core §2.3）。新しい情報は新しい tag で来る。応答の中で bit 7 の立った TLV は知らない tag として扱う。
 - **要求の送り方**: その TLV が効かなければ意味の無い要求では critical の bit を立てる。インターフェースが critical で送ると定める TLV
   （pins、速さの上限、安全の項目）には必ず立てる（core §2.3）。要求の TLV の値を後ろに延ばさない（core §2.3）。繰り返さない tag を
   繰り返さない。
@@ -235,7 +235,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 1. **見る**: list に `oep.probe.config` があること（無い probe は設定を扱わない）。describe で items（扱う tag）、storage（max_bytes。
    0 は保存できない）、slots_max、bind_modes を見る。
 2. **欲しい設定の hash を計算する**: 項目を tag の順に、同じ tag の中はキーを数として最初のフィールドから順に比べて並べ（plan は fn、
-   role、channel）、critical の bit を落とし、core §2.2 の一意の形の TLV にしてつなげ、core §5.2 の CRC-32 を取る（probe の設定 §2）。
+   role、channel）、critical の bit を落とし、それぞれを TLV にして（core §2.2）つなげ、core §5.2 の CRC-32 を取る（probe の設定 §2）。
    自分のコードを `tests/vectors/probe_config_hash.json` で確かめる。項目が無ければ hash は 0。
 3. **get と比べる**（ロック不要）。get のどのページも同じ hash を返す。**自分の hash と同じなら何もしない。** ページの途中で hash が
    変わったら、最初から読み直す。

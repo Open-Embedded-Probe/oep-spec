@@ -74,7 +74,7 @@ mark : serial(u32)、position(u64)、kind(u8)、time_ns(u64)、detail(u8)       
 
 ```text
 marks  要求: [stream(u16)]、from_serial(u32)
-       応答: more(u8)、count(u8)、count × (len(u8)、mark)（core §2.3）
+       応答: more(u8)、count(u8)、count × mark、[TLV]（core §2.3）
 ```
 
 marks はロックなしで使える。

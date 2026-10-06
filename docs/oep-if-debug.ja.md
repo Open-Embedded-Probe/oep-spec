@@ -197,7 +197,7 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
 
 ```text
 要求: first(u8)
-応答: more(u8)、count(u8)、count × (len(u8)、entry)、[TLV]（core §2.3）
+応答: more(u8)、count(u8)、count × entry、[TLV]（core §2.3）
 entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、slot(u8)、tid_scheme(u8)、tid_len(u8)、tid
 ```
 
@@ -212,7 +212,7 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (len(u8)、kind(u8)、swdio(u16)、swclk(u16)、id(u32))、[TLV] |
+| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、id(u32))、[TLV] |
 | 0x02 | attach | method(u8: 0 止めない / 1 止める。ほかは rejected unsupported、payload `0x00`)、[TLV] | connection(u16)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] |
 | 0x03 | detach | connection(u16)、[TLV] | — |
 | 0x04 | — | 予約（旧 attach_under_reset。attach の reset TLV になった） | |
@@ -513,7 +513,7 @@ TLV 0x01 method（u8）: 0 probe の既定、revision 1 では ndmreset。1 ndmr
 
 | op | 名前 | 要求 | 応答 |
 |---:|---|---|---|
-| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (len(u8)、kind(u8)、swdio(u16)、swclk(u16)、id(u32))、[TLV] |
+| 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、id(u32))、[TLV] |
 | 0x02 | attach | method(u8: 0 だけ。ほかは rejected unsupported、payload `0x00`)、[TLV] | connection(u16)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] |
 | 0x03 | detach | connection(u16)、[TLV] | — |
 | 0x04 | — | 予約 | |

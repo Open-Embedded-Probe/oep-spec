@@ -1,8 +1,8 @@
 {
-  "about": "The hash of probe.config (oep-if-probe-config §2): items as the host sent them, the canonical form and its CRC-32. Keys compare as numbers (channel 0x0020 before 0x0102, although their little-endian bytes compare the other way), multi-field keys field by field (plan: fn, role, channel), critical bits cleared.",
+  "about": "The hash of probe.config (oep-if-probe-config §2): items as the host sent them, the canonical form and its CRC-32. Keys compare as numbers (channel 0x0020 before 0x0102, although their little-endian bytes compare the other way), multi-field keys field by field (plan: fn, role, channel), critical bits cleared. Each item has its one fixed form: an idle is 6 bytes (an input idle carries drive_kind 2 = default and drive_value 0), a slot carries boot_reset after attach.",
   "cases": [
     {
-      "name": "plan, label and idle items",
+      "name": "plan, label, idle and slot items",
       "items_sent": [
         {
           "tag": 130,
@@ -21,8 +21,16 @@
           "value_hex": "0300020500"
         },
         {
+          "tag": 132,
+          "value_hex": "000400010002000101f401000040420f0000020364757400"
+        },
+        {
           "tag": 2,
           "value_hex": "2000782d626f6f7430"
+        },
+        {
+          "tag": 3,
+          "value_hex": "050001020000"
         },
         {
           "tag": 129,
@@ -53,10 +61,18 @@
         {
           "tag": 3,
           "value_hex": "040004000100"
+        },
+        {
+          "tag": 3,
+          "value_hex": "050001020000"
+        },
+        {
+          "tag": 4,
+          "value_hex": "000400010002000101f401000040420f0000020364757400"
         }
       ],
-      "canonical_hex": "01050300010700010503000205000105000101020002092000782d626f6f7430020602016e7273740306040004000100",
-      "hash": 2022326344
+      "canonical_hex": "0105000300010700010500030002050001050000010102000209002000782d626f6f743002060002016e727374030600040004000100030600050001020000041800000400010002000101f401000040420f0000020364757400",
+      "hash": 211647027
     },
     {
       "name": "no items",

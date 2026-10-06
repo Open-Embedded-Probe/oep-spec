@@ -19,12 +19,12 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 |---:|---|---|---|---|
 | 0x01 | open | connection(u16)、mechanism(u8)、[TLV] | stream(u16)、flags(u8: bit0 既存のストリーム)、[TLV] | 必要 |
 | 0x02 | read | stream(u16)、from(u8)、arg(u64)、max(u16)、[TLV] | start(u64)、flags(u8)、len(u16)、data、[TLV] | 不要 |
-| 0x03 | marks | stream(u16)、from_serial(u32) | more(u8)、count(u8)、count × (len(u8)、mark)、[TLV] | 不要 |
+| 0x03 | marks | stream(u16)、from_serial(u32) | more(u8)、count(u8)、count × mark、[TLV] | 不要 |
 | 0x04 | clear | stream(u16) | — | 必要 |
 | 0x05 | mark | stream(u16)、value(u8) | — | 必要 |
 | 0x06 | write | stream(u16)、count(u16)、data | accepted(u16)、[TLV] | 必要 |
 | 0x07 | close | stream(u16) | — | 必要 |
-| 0x08 | streams | first(u8) | more(u8)、count(u8)、count × (len(u8)、stream(u16)、connection(u16)、mechanism(u8)、users(u8)、state(u8))、[TLV] | 不要 |
+| 0x08 | streams | first(u8) | more(u8)、count(u8)、count × (stream(u16)、connection(u16)、mechanism(u8)、users(u8)、state(u8))、[TLV] | 不要 |
 
 この表の op はすべて必須（core §1.2）。方式は describe の mechanisms で宣言する。
 

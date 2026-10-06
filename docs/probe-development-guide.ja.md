@@ -180,7 +180,7 @@ revision は数字に任意の `.数字` の組。revision が分からなけれ
 
 `oep.probe.config` を list に出す probe のために（[probe の設定](oep-if-probe-config.ja.md)）:
 
-- **項目は host が送ったまま持つ**（critical の bit は落とし、知らない後ろのフィールドは残す）。hash は正規形で計算する（probe の設定
+- **項目は tag ごとの一つの形で持つ**（critical の bit は落とす）。hash は正規形で計算する（probe の設定
   §2）。自分の hash を `tests/vectors/probe_config_hash.json` で確かめる。
 - **save は丸ごと置き換え、途中で電源が落ちても前の保存か新しい保存のどちらかが読める**（probe の設定 §2）。作り方の例:
   - 2 つの写し（A / B）。それぞれに通し番号と CRC を付ける: 新しい写しを古いほうに書き、確かめ、起動時は正しい写しのうち通し番号の
@@ -195,7 +195,7 @@ revision は数字に任意の `.数字` の組。revision が分からなけれ
 - **安全**: 保存した設定は、起動のたびに host なしで線を駆動する。掛かる前のピンは MCU のリセットの状態にある（probe の設定 §5）。
   レベルを誤ると害のある線には、それだけで安全な level を保つ外付けの pull が要ることを利用者に伝える。
 - **boot_reset の保持の時間**は `slot_retry_reset_hold_ms`（20 ms）に決まっている。もっと長い保持の要るボードのために後から足すなら、
-  slot の項目の boot_reset の後ろに hold_ms のフィールドを置く: 任意の後ろのフィールド（core §2.3）で、revision は変わらない。
+  slot をキーにした新しい項目の tag にする（core §2.3: 新しい項目の tag は OEP の伸び方の一つ）。revision は変わらない。
 
 ## 12. target を扱う部品
 

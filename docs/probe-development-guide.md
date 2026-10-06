@@ -186,7 +186,7 @@ often enough (from the main loop) not to miss a wrap.
 
 For a probe that lists `oep.probe.config` ([probe settings](oep-if-probe-config.md)):
 
-- **Keep the items as the host sent them** (critical bit cleared, unknown trailing fields kept) and compute the hash over the canonical form
+- **Keep the items in their one form per tag** (critical bit cleared) and compute the hash over the canonical form
   (probe settings §2). Check your hash against `tests/vectors/probe_config_hash.json`.
 - **A save replaces the whole, and a power loss in the middle leaves either the previous save or the new one readable** (probe settings §2).
   Two ways to get that:
@@ -202,7 +202,7 @@ For a probe that lists `oep.probe.config` ([probe settings](oep-if-probe-config.
 - **Safety**: saved settings drive lines at every boot without a host, and before they are applied the pins are in the MCU's reset state
   (probe settings §5). Tell users that a line whose wrong level is harmful needs an external pull of its own.
 - **boot_reset's hold time** is fixed at `slot_retry_reset_hold_ms` (20 ms). If a board needs a longer reset hold, the way to add it later is a
-  hold_ms field after boot_reset in the slot item: an optional trailing field (core §2.3), with no revision change.
+  new item tag keyed by the slot (core §2.3: a new item tag is one of the ways OEP grows), with no revision change.
 
 ## 12. Parts that handle the target
 

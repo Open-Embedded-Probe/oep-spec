@@ -51,11 +51,12 @@
 - **強さが効くのは mode 3 / 4 だけ**。ほかの mode と、線（`oep.wire.*`）、`oep.fixture.uart`、`oep.fixture.i2c-target`、
   `oep.fixture.spi-target` が駆動するピンの強さは probe が決め、host は指定できない。
 - **強さの指定**: kind(u8)、value(u16)。kind 0 = 段の番号（value が段の番号）。kind 1 = mA の上限（目安の mA が value 以下の段の
-  うち、いちばん強い段。value がどの段の mA より小さければ段 0）。kind 2 以上は未定義。`oep.probe.config` の idle の項目も同じ形を使う。
+  うち、いちばん強い段。value がどの段の mA より小さければ段 0）。kind 2 = drive_levels の既定の段（value は 0。ほかの value は
+  malformed）。kind 3 以上は未定義。`oep.probe.config` の idle の項目も同じ形を使う。
 - **set の TLV 0x01 drive**（非 critical。host は critical の bit を付けずに送る）: index(u8: 要求の並びの位置)、kind(u8)、value(u16)。
   1 つの TLV が並びの要素 1 つに効き、繰り返して複数の要素に付ける（要素ごとに強さが違ってよいため。電源の線と信号の線を 1 要求で
   動かせる）。index が n 以上、同じ index が 2 回、指す要素の mode が 3 / 4 でない のどれかなら、要求全体を
-  rejected malformed。未定義の kind（2 以上。後の revision が定めうる、core §2.5）と、段の数以上の kind 0 の value は、この probe が扱えない値であり、その TLV を無視する。drive_levels を宣言しない probe は、drive の TLV を
+  rejected malformed。0 以外の value を持つ kind 2 も同じ。未定義の kind（3 以上。後の revision が定めうる、core §2.5）と、段の数以上の kind 0 の value は、この probe が扱えない値であり、その TLV を無視する。drive_levels を宣言しない probe は、drive の TLV を
   形を確かめずにすべて無視する（drive の TLV で rejected malformed にしない）。無視した drive は応答の ignored（core §2.3）に載せる。
   ignored は tag だけを並べるので、どの要素の drive を無視したかは示さない。host は効いた段を read の応答の TLV drive で知る。
   critical の bit を付けた drive の TLV は core §2.3 に従う: 無視するはずの場合は、無視せずに要求を rejected unsupported で断る。
@@ -74,7 +75,7 @@
 |---:|---|---|---|---|
 | 0x01 | configure | baud(u32)、[TLV] | baud(u32、実際の値)、[TLV] | 必要 |
 | 0x02 | read | from(u8)、arg(u64)、max(u16)、[TLV] | start(u64)、flags(u8)、len(u16)、data、[TLV] | 不要 |
-| 0x03 | marks | from_serial(u32) | more(u8)、count(u8)、count × (len(u8)、mark)、[TLV] | 不要 |
+| 0x03 | marks | from_serial(u32) | more(u8)、count(u8)、count × mark、[TLV] | 不要 |
 | 0x04 | clear | — | — | 必要 |
 | 0x05 | mark | value(u8) | — | 必要 |
 | 0x06 | write | count(u16)、data | accepted(u16)、[TLV] | 必要 |

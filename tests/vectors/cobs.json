@@ -48,9 +48,9 @@
     {
       "name": "confirm request on a serial port",
       "spec": "core §3.1",
-      "message_hex": "0101000000014f45503f0101",
-      "crc16": 50487,
-      "frame_hex": "0003010101010a014f45503f010137c500"
+      "message_hex": "010100000001000000004f45503f0101",
+      "crc16": 38408,
+      "frame_hex": "0003010101010201010101094f45503f0101089600"
     }
   ]
 }

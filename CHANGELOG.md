@@ -32,6 +32,22 @@ Text only, no wire change:
 - Versioning §6 is decided: `v0.x` tags until the formal release `v1.0.0`; before the freeze an implementation names the specification tag it
   implements (every normative status line says so); no edition field.
 
+**Breaking** (wire changes; no revision is raised before the freeze):
+
+- One request header: `role 0x01, corr(u16), fn(u16), op(u8), session_id(u32)`, 10 bytes, session_id always present and 0 = no session. Role
+  0x81 is gone; a lock-required op with session_id 0 is session_required; a lock-free op with 0 skips the session checks; open carries its id
+  in the header and its payload is `lease_ms(u32), force(u8), [TLV owner]`; corr stays u16 (core §2.4, §2.5, §3.3, §3.4, §4.1, §5.2, §6, §12).
+  Registry: `role_session_flag` removed.
+- One TLV header: `tag(u8), len(u16), value` for every length; the short / long forms and the unique-encoding rule are gone; ignored needs at most
+  19 bytes, `7F 01 00 00` at least (core §2.2, §2.3). Registry: `tlv_len_long` removed.
+- Fixed forms are fixed by (name, revision) and never extended at their end; OEP grows only by a new TLV, a new optional op or event, a new value
+  in a reserved space, or a new interface or revision (core §2.3, §2.7, §13; versioning §3.1, §4). Sequences are `count × element` with no
+  element length: list, connections, scan, marks, streams, segments, probe.config state (slot_state, bind_state) and the bind item. The trailing
+  optional fields are folded in: the idle item is 6 bytes (drive_kind 2 = the default level, the only drive an input idle carries), the slot
+  item has boot_reset after attach, slot_state has reset_at_ns before tid; the probe no longer keeps unknown trailing bytes of items. The link
+  test is counted: link_source answers `len(u16), data, [TLV]`, link_sink sends `count(u16), data, [TLV]` and gets an empty answer.
+  Registry: `closed_tail` removed (schema and fn 0), `drive_kind.default = 2`.
+
 ### Rule changes: core and registry
 
 - TLV tags: the tag number is the low 7 bits and bit 7 is the critical mark (role_assignment is 0x10, sent as 0x90); values a later revision may

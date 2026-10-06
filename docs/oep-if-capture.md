@@ -186,7 +186,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | 0x04 | force | — | — (if waiting for the trigger, start right now) | Required |
 | 0x05 | status | — | state(u8), serial_done(u32), write_pos(u64), flags(u8), generation(u32), [TLV error] | Not required |
 | 0x06 | read | generation(u32), position(u64), max(u32) | position(u64), flags(u8: bit0 more, bit1 gap), len(u32), data, [TLV] | Not required |
-| 0x07 | segments | from_serial(u32) | more(u8), count(u8), count × (len(u8), segment information (§2)), [TLV] | Not required |
+| 0x07 | segments | from_serial(u32) | more(u8), count(u8), count × segment information (§2), [TLV] | Not required |
 | 0x08 | release | generation(u32), serial(u32) | — (segments up to serial may be reused) | Required |
 | 0x09 | query | TLVs of the settings (the same as configure) | TLVs of the actual values (sets nothing) | Not required |
 | 0x0A | calibration | — | TLVs of the calibration information (§3.8). Analog only (logic: unknown_operation) | Not required |

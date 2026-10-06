@@ -51,11 +51,12 @@ All of them handle only the channels assigned by the plan (core §8). Every op i
 - **The strength applies to mode 3 / 4 only**. The strength of other modes, and of the pins driven by wires (`oep.wire.*`), `oep.fixture.uart`, `oep.fixture.i2c-target`
   and `oep.fixture.spi-target`, is decided by the probe, and the host cannot specify it.
 - **Specifying a strength**: kind(u8), value(u16). kind 0 = a level number (value is the level number). kind 1 = an mA ceiling (among the levels whose approximate mA is
-  value or less, the strongest. If value is smaller than the mA of every level, level 0). kind 2 or more is undefined. The idle item of `oep.probe.config` uses the same form.
+  value or less, the strongest. If value is smaller than the mA of every level, level 0). kind 2 = the default level of drive_levels (value is 0; another value is
+  malformed). kind 3 or more is undefined. The idle item of `oep.probe.config` uses the same form.
 - **set's TLV 0x01 drive** (non-critical. The host sends it without the critical bit): index(u8: the position in the request's sequence), kind(u8), value(u16).
   One TLV applies to one element of the sequence, and it is repeated to attach to several elements (because the strength may differ per element. A power line and a signal line
   can be moved in one request). If index is n or more, the same index appears twice, or the mode of the element it points to is not 3 / 4, the whole request is
-  rejected malformed. An undefined kind (2 or more, which a later revision may define, core §2.5) and a value of kind 0 that is the number of levels or more are values this probe cannot handle: that TLV is ignored. A probe that does not declare drive_levels ignores
+  rejected malformed, and so is kind 2 with a value other than 0. An undefined kind (3 or more, which a later revision may define, core §2.5) and a value of kind 0 that is the number of levels or more are values this probe cannot handle: that TLV is ignored. A probe that does not declare drive_levels ignores
   all drive TLVs without checking their form (a drive TLV does not make the request rejected malformed). An ignored drive is listed in ignored of the answer (core §2.3).
   ignored lists tags only, so it does not show which element's drive was ignored. The host learns the effective level from read's answer TLV drive.
   A drive TLV sent with the critical bit follows core §2.3: where it would be ignored, the request is rejected unsupported instead of ignoring it.
@@ -74,7 +75,7 @@ One stream per fn.
 |---:|---|---|---|---|
 | 0x01 | configure | baud(u32), [TLV] | baud(u32, the actual value), [TLV] | Required |
 | 0x02 | read | from(u8), arg(u64), max(u16), [TLV] | start(u64), flags(u8), len(u16), data, [TLV] | Not required |
-| 0x03 | marks | from_serial(u32) | more(u8), count(u8), count × (len(u8), mark), [TLV] | Not required |
+| 0x03 | marks | from_serial(u32) | more(u8), count(u8), count × mark, [TLV] | Not required |
 | 0x04 | clear | — | — | Required |
 | 0x05 | mark | value(u8) | — | Required |
 | 0x06 | write | count(u16), data | accepted(u16), [TLV] | Required |

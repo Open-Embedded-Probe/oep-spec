@@ -22,18 +22,18 @@ A probe conforms when it does everything in this list for the transports and int
 - USB: the serial number equals unit_id where the probe chooses it (§3.3); vendor bulk and HID in the shape of §3.3, at most one of each.
 - An endpoint that answers OEP requests itself is a probe, whatever is behind it; a relaying broker follows §3.1 and §5.2.
 
-**Messages, refusals and tails**
+**Messages, refusals and TLVs**
 
 - Headers of requests and answers (§4.1, §4.2); one answer per request on the transport it came from, in order (§4.2, §4.4).
 - rejected only for what was not accepted; completed failed / partial for what was accepted and failed (§4.2).
 - The order of refusal, first reason that applies (§4.3), with the payloads of §4.3 (unavailable TLVs, unsupported tag); an fn named inside
   the payload checked at the end of order 5 (§4.3).
-- Messages whose role is not a request role, and requests shorter than their header, discarded without an answer (§2.4).
+- Messages whose role is not the request role, and requests shorter than the 10-byte header, discarded without an answer (§2.4); session_id 0 on an op that requires the lock: session_required (§4.1).
 - An op the interface does not define, or an optional op the probe does not declare: unknown_operation; an optional function of an op the probe offers: unsupported (§1.2). Every op of an interface's table is required unless its document marks it optional.
 - Request TLVs: critical bit, unknown critical TLV unsupported, unknown non-critical TLV ignored, a TLV longer than known, a short TLV,
   a repeated non-repeating TLV, tags 0x7F / 0xFF (§2.2, §2.3).
 - ignored (tag 0x7F) on every completed answer that needs it, in request order, at most 16 entries with 0x00 as the 16th, room always kept (§2.3).
-- Unique TLV encoding (§2.2); booleans and text in requests checked (§2.1); experimental values not used when shipping (§2.5).
+- The one TLV form `tag len(u16) value` (§2.2); sequences as `count × element` with no element length, and every fixed form as its definition gives it, never extended at its end (§2.3); booleans and text in requests checked (§2.1); experimental values not used when shipping (§2.5).
 - window / max_inflight per transport (§4.4).
 - Wrapping values: the values of one space held at once span less than a quarter of the width (§2.6).
 
@@ -87,8 +87,8 @@ A probe conforms when it does everything in this list for the transports and int
   request (§5.2).
 - **Sessions**: a random non-zero session_id (§6.1); the answer's lease_ms is authoritative, and keepalive extends it (§6.4); react to no_session / expired /
   locked (§4.3, §6.2); a changed boot_id invalidates its state, and an open with its last session_id answered resumed = 0 means
-  list again (§6.5); the 0x81 requests of one session on one transport (§3.3).
-- **Reading answers**: discard messages with a request role; an answer shorter than 5 bytes, or an event or data frame shorter than its
+  list again (§6.5); the requests of one session on one transport (§3.3); session_id 0 on lock-free requests that need no session (§4.1).
+- **Reading answers**: discard messages with the request role; an answer shorter than 5 bytes, or an event or data frame shorter than its
   header, is a broken frame (§2.4); skip unknown TLVs and tags, use the first of a repeated tag, read a non-zero boolean as true (§2.1, §2.3); unknown
   values per §2.4; read ignored and its 0x00 entry (§2.3); dispatch by role and corr (§11.1); the critical bit where the request is
   meaningless without the TLV (§2.3).

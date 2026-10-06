@@ -1,5 +1,5 @@
 {
-  "about": "Refusals (core §4.3) and the ignored list (core §2.3). `fns` says which interface each fn number is in the example (the numbers come from list in a real session). Requests with role 0x81 come from session 0x11223344, which holds the lock. The ignored-TLV case assumes channel 3 is in fn 2's plan; the other refusals come before any state check (core §4.3 orders 5 and 6).",
+  "about": "Refusals (core §4.3) and the ignored list (core §2.3). `fns` says which interface each fn number is in the example (the numbers come from list in a real session). Requests with session_id 0x11223344 come from the session that holds the lock; the lock-free read and confirm carry session_id 0. The ignored-TLV case assumes channel 3 is in fn 2's plan; the other refusals come before any state check (core §4.3 orders 5 and 6).",
   "cases": [
     {
       "name": "gpio mode 8 (a value a later revision may define)",
@@ -7,9 +7,9 @@
       "fns": {
         "2": "oep.fixture.gpio"
       },
-      "request_hex": "8110000200014433221101030008",
+      "request_hex": "0110000200014433221101030008",
       "answer": "unsupported",
-      "answer_hex": "021000000b0002020300400100"
+      "answer_hex": "021000000b00020200030040010000"
     },
     {
       "name": "i2c-target address above 0x7F (excluded by the definition)",
@@ -17,7 +17,7 @@
       "fns": {
         "3": "oep.fixture.i2c-target"
       },
-      "request_hex": "811100030001443322118001",
+      "request_hex": "011100030001443322118001",
       "answer": "malformed",
       "answer_hex": "0211000003"
     },
@@ -27,7 +27,7 @@
       "fns": {
         "3": "oep.fixture.i2c-target"
       },
-      "request_hex": "811200030001443322115004",
+      "request_hex": "011200030001443322115004",
       "answer": "unsupported",
       "answer_hex": "021200000b00"
     },
@@ -37,7 +37,7 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "8113000400024433221102810440420f00",
+      "request_hex": "011300040002443322110281040040420f00",
       "answer": "unsupported",
       "answer_hex": "021300000b00"
     },
@@ -47,7 +47,7 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "8114000400024433221100",
+      "request_hex": "0114000400024433221100",
       "answer": "malformed",
       "answer_hex": "0214000003"
     },
@@ -57,7 +57,7 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "8115000400024433221100810440420f00be00",
+      "request_hex": "011500040002443322110081040040420f00be0000",
       "answer": "unsupported",
       "answer_hex": "021500000bbe"
     },
@@ -67,17 +67,17 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "8116000400024433221100810440420f00810440420f00",
+      "request_hex": "011600040002443322110081040040420f0081040040420f00",
       "answer": "malformed",
       "answer_hex": "0216000003"
     },
     {
-      "name": "a TLV in the long form whose value fits the short form",
-      "spec": "core §2.2",
+      "name": "a TLV whose length runs past the end of the request",
+      "spec": "core §2.2, §4.3 order 5",
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "811700040002443322110081ff040040420f00",
+      "request_hex": "011700040002443322110081080040420f00",
       "answer": "malformed",
       "answer_hex": "0217000003"
     },
@@ -87,7 +87,7 @@
       "fns": {
         "5": "oep.fixture.uart"
       },
-      "request_hex": "0118000500020400000000000000004000",
+      "request_hex": "011800050002000000000400000000000000004000",
       "answer": "unsupported",
       "answer_hex": "021800000b00"
     },
@@ -97,7 +97,7 @@
       "fns": {
         "6": "oep.target.riscv-dm"
       },
-      "request_hex": "81190006000444332211000003",
+      "request_hex": "01190006000444332211000003",
       "answer": "unsupported",
       "answer_hex": "021900000b00"
     },
@@ -105,7 +105,7 @@
       "name": "confirm min_rev > max_rev",
       "spec": "core §7.1",
       "fns": {},
-      "request_hex": "011a000000014f45503f0201",
+      "request_hex": "011a00000001000000004f45503f0201",
       "answer": "malformed",
       "answer_hex": "021a000003"
     },
@@ -115,9 +115,9 @@
       "fns": {
         "2": "oep.fixture.gpio"
       },
-      "request_hex": "811b0002000144332211010300003e0101",
+      "request_hex": "011b0002000144332211010300003e010001",
       "answer": "completed success",
-      "answer_hex": "021b0001007f013e"
+      "answer_hex": "021b0001007f01003e"
     }
   ]
 }

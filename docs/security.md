@@ -23,21 +23,21 @@ text is authoritative; the Japanese version is its translation.
 The probe:
 
 - checks every request's length and encoding before it acts, and refuses with malformed (core §4.3 order 5): counts that do not match, TLV encoding
-  errors, the long form used for a short value (core §2.2), tags 0x7F / 0xFF (core §2.3), booleans other than 0 / 1, text that is not valid UTF-8 or
+  errors, a TLV whose len runs past the end (core §2.2), tags 0x7F / 0xFF (core §2.3), booleans other than 0 / 1, text that is not valid UTF-8 or
   holds control characters (core §2.1);
 - refuses before executing: a request is checked in the order of core §4.3, and nothing runs until every check has passed (for plan_apply and
   probe settings set, nothing changes unless all of it is accepted: core §8, probe settings §2);
 - discards a frame whose length exceeds max_frame, and the input up to the next pause; on TCP it closes the connection (core §3.1);
 - restarts its reader after a pause of `probe_frame_gap_ms` inside a frame on every transport except TCP (core §3.2);
 - discards a HID report whose count is larger than the report can carry, and the stream's input up to the next pause, and ignores the padding of reports (core §3.1);
-- discards, without answering, a message whose role is not a request role and a request shorter than its header (core §2.4).
+- discards, without answering, a message whose role is not the request role and a request shorter than its 10-byte header (core §2.4).
 
 The host:
 
 - decodes candidates and discards those that do not decode, whose CRC does not match, whose role is unknown or whose corr it is not waiting for
   (core §3.1, §11.1);
-- discards a message whose role is a request role, and treats an answer shorter than 5 bytes, an event or data frame shorter than its header
-  (core §2.4) and an answer shorter than its fixed part as broken; it skips unknown tags and tails, and treats unknown status and reason values as failures
+- discards a message whose role is the request role, and treats an answer shorter than 5 bytes, an event or data frame shorter than its header
+  (core §2.4) and an answer shorter than its fixed part as broken; it skips unknown tags, treats a TLV value whose length is not its definition's as broken, and treats unknown status and reason values as failures
   (core §2.3, §2.4);
 - after a resend that also got no answer, treats the transport as failed and recovers with a confirm (or reopens it) before it sends anything
   else there (core §5.2);

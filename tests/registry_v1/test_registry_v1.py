@@ -22,10 +22,18 @@ def test_generated_files_match_the_registry():
     assert (gen.OUT / "oep_v1_registry.js").read_text() == gen.js(reg, digest)
 
 
-def test_only_link_source_keeps_a_closed_tail():
+def test_no_op_has_an_open_ended_form():
+    """Every form is counted (core §2.3): the op key closed_tail is gone and the generator refuses it."""
     reg, _ = gen.load()
-    closed = [(i["name"], o["name"]) for i in reg["interface"] for o in i["op"] if o.get("closed_tail")]
-    assert closed == [("oep.core", "link_source")]
+    assert not [o for i in reg["interface"] for o in i["op"] if "closed_tail" in o]
+    reg["interface"][0]["op"][0]["closed_tail"] = True
+    assert any("unknown keys" in e for e in gen.check(reg))
+
+
+def test_one_request_header_and_one_tlv_header():
+    """No role bit for a session id and no long TLV form remain in the registry (core §2.2, §4.1)."""
+    reg, _ = gen.load()
+    assert "role_session_flag" not in reg["constants"] and "tlv_len_long" not in reg["constants"]
 
 
 def test_common_tables_are_generated():

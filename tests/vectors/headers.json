@@ -1,25 +1,25 @@
 {
-  "about": "Message headers (core §4.1, §4.2). All numbers little endian.",
+  "about": "Message headers (core §4.1, §4.2) and the TLV form (core §2.2). All numbers little endian.",
   "requests": [
     {
-      "name": "request without session_id",
+      "name": "request without a session: session_id 0",
       "role": 1,
       "corr": 4660,
       "fn": 0,
       "op": 3,
-      "session_id": null,
+      "session_id": 0,
       "payload_hex": "00000000",
-      "message_hex": "01341200000300000000"
+      "message_hex": "0134120000030000000000000000"
     },
     {
-      "name": "request with session_id",
-      "role": 129,
+      "name": "request of a session",
+      "role": 1,
       "corr": 258,
       "fn": 515,
       "op": 1,
       "session_id": 287454020,
       "payload_hex": "",
-      "message_hex": "81020103020144332211"
+      "message_hex": "01020103020144332211"
     }
   ],
   "answers": [
@@ -44,30 +44,41 @@
   ],
   "tlvs": [
     {
-      "name": "short form",
+      "name": "two bytes",
       "tag": 16,
       "value_hex": "0102",
-      "tlv_hex": "10020102"
+      "tlv_hex": "1002000102"
     },
     {
-      "name": "short form, critical",
+      "name": "two bytes, critical",
       "tag": 144,
       "value_hex": "0102",
-      "tlv_hex": "90020102"
+      "tlv_hex": "9002000102"
     },
     {
-      "name": "254 bytes: still the short form",
-      "tag": 65,
-      "value_len": 254,
-      "value_byte": 170,
-      "tlv_hex": "41feaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      "name": "an empty value",
+      "tag": 1,
+      "value_hex": "",
+      "tlv_hex": "010000"
     },
     {
-      "name": "255 bytes: the long form",
+      "name": "max_speed 1 MHz, critical",
+      "tag": 129,
+      "value_hex": "40420f00",
+      "tlv_hex": "81040040420f00"
+    },
+    {
+      "name": "255 bytes: the same form",
       "tag": 65,
       "value_len": 255,
       "value_byte": 170,
-      "tlv_hex": "41ffff00aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      "tlv_hex": "41ff00aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "name": "the smallest ignored",
+      "tag": 127,
+      "value_hex": "00",
+      "tlv_hex": "7f010000"
     }
   ]
 }

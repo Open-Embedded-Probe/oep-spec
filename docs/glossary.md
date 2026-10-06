@@ -57,7 +57,7 @@ capture = [capture](oep-if-capture.md); settings = [probe settings](oep-if-probe
 
 | Term | 日本語 | Meaning | Defined in |
 |---|---|---|---|
-| role (of a frame) | role | The first byte: request 0x01 / 0x81, answer 0x02, event 0x05, data 0x06 | core §2.5, §4.1 |
+| role (of a frame) | role | The first byte: request 0x01, answer 0x02, event 0x05, data 0x06 | core §2.5, §4.1 |
 | request | 要求 | A message from the host | core §4.1 |
 | answer | 応答 | The probe's one reply to a request | core §4.2 |
 | event | 出来事 | A notification with a kind and a fixed part | core §11.2 |
@@ -72,13 +72,13 @@ capture = [capture](oep-if-capture.md); settings = [probe settings](oep-if-probe
 | order of refusal | 断り方の順 | The fixed order in which a probe checks a request and refuses with the first reason that applies | core §4.3 |
 | cause, holder_fn, holder_kind | cause、holder_fn、holder_kind | TLVs of an unavailable refusal: why, and what holds the resource | core §4.3 |
 | status | status | The result of a wire or target operation: ok, wait, line, fault, timeout, state | common §3 |
-| TLV | TLV | `tag len value`, with a long form for 255 bytes and more | core §2.2 |
+| TLV | TLV | `tag(u8) len(u16) value`, one form for every length | core §2.2 |
 | tag context | tag の文脈 | The space of tags: per (fn, op) | core §2.2 |
 | critical | critical | Bit 7 of a request TLV's tag: the request means nothing unless it takes effect | core §2.2, §2.3 |
 | ignored | ignored | Answer TLV 0x7F listing the non-critical request TLVs the probe ignored | core §2.3 |
 | fixed part | 固定部分 | The part of a payload whose form (name, revision) determines | core §2.3, §2.7 |
-| tail | 末尾、後ろ | What follows the fixed part (TLVs) or a known length (skipped by the reader) | core §2.3 |
-| sequence, element | 並び、要素 | A counted list; in answers each element is preceded by its length | core §2.3 |
+| tail | 末尾、後ろ | The TLVs that follow the fixed part of a request, an answer, an event or data | core §2.3 |
+| sequence, element | 並び、要素 | A counted list, `count × element`; an element has a fixed form and no length of its own | core §2.3 |
 | bitmap | bitmap | Bit i is bit (i mod 8) of byte ⌊i/8⌋ | core §2.1 |
 | boolean, text | 真偽値、文字列 | u8 0 / 1; UTF-8 without terminator, checked in requests | core §2.1 |
 | unknown value | 知らない値 | How a reader treats values it does not know | core §2.4 |
