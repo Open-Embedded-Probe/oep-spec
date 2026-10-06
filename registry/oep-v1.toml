@@ -1,5 +1,5 @@
 # OEP v1 registry: every number on the wire, in one place (v1, before the freeze: values may still change until then).
-# The spec text is docs/oep-core.ja.md and docs/oep-transports.ja.md (the core) and interfaces/*.ja.md (the standard interfaces). tools/oepgen1.py generates
+# The spec text is docs/oep-core.ja.md and docs/oep-transports.ja.md (the core) and interfaces/*.ja.md (the interfaces whose names begin with oep.). tools/oepgen1.py generates
 # the C++ header, the C header and the Python and JS modules from this file; `oepgen1.py --check` fails when the committed outputs drift.
 # Numbers only: payload layouts stay in the spec tables. TLV tags live in the context of one (interface, op) or one
 # declaration; the same value in another context is another tag (core §2.2).

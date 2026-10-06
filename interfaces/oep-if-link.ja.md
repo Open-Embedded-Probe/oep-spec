@@ -1,4 +1,4 @@
-# OEP 標準インターフェース: リンク v1
+# OEP インターフェース: リンク v1
 
 [English](oep-if-link.md)
 
@@ -8,7 +8,7 @@
 |---|---:|---|---|
 | `oep.probe.link` | 1 | 経路を試し（線の試験）、セッションの間だけ UART bridge の口の速さを上げる（port_speed） | どの系統にも使う |
 
-- `oep.probe.link` は任意の標準インターフェースである。port_speed を持つ probe はこれを list に出す。線の試験だけのために出してもよい。probe が
+- `oep.probe.link` は任意のインターフェースである。port_speed を持つ probe はこれを list に出す。線の試験だけのために出してもよい。probe が
   list に出す `oep.probe.link` は高々 1 つ。
 - その op は、port_speed が変える口の速さのほか、probe の状態を変えない。
 

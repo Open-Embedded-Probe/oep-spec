@@ -1,4 +1,4 @@
-# OEP 標準インターフェース: 再起動 v1
+# OEP インターフェース: 再起動 v1
 
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作る。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。本体は [OEP core](../docs/oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。
 
@@ -7,7 +7,7 @@
 | `oep.probe.restart` | 1 | probe 自身を起動し直す | どの系統にも使う |
 
 - host が、probe を抜き差しせずに、おかしな状態になった probe を立て直すためのもの。
-- `oep.probe.restart` は任意の標準インターフェースである。probe が list に出す `oep.probe.restart` は高々 1 つ。
+- `oep.probe.restart` は任意のインターフェースである。probe が list に出す `oep.probe.restart` は高々 1 つ。
 
 ## 1. 操作
 

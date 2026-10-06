@@ -6,7 +6,7 @@
 
 ## 仕様の置き場
 
-このリポジトリが OEP の唯一の正である。仕様は規範の文（`docs/` の `oep-core.ja.md`、`oep-transports.ja.md` と、`interfaces/` の標準インターフェースの `oep-if-*.ja.md`、`target-console-dmseq.ja.md`。凍結までは日本語が作業の文）と、
+このリポジトリが OEP の唯一の正である。仕様は規範の文（`docs/` の `oep-core.ja.md`、`oep-transports.ja.md` と、`interfaces/` の、名前が `oep.` で始まるインターフェースの `oep-if-*.ja.md`、`target-console-dmseq.ja.md`。凍結までは日本語が作業の文）と、
 番号の registry `registry/oep-v1.toml` である。実装は仕様に従うもので、仕様を決めるものではない。実装が適合するために何をするか、それをどう確かめるかは [適合](docs/conformance.ja.md) に並べてある。
 
 仕様を変えるやり方は 2 つ: maintainer がこのリポジトリを直接直すか、誰でもこのリポジトリに pull request を出す。誤りは issue で
@@ -40,7 +40,7 @@ merge されるまでは、自分の逆 DNS の名前か、出荷する probe �
 
 ## 第三者のインターフェース
 
-標準ではないインターフェースは逆 DNS の名前（例 `io.github.<owner>.<name>`、core §13）を使う。登録も、ここへの pull request も
+project のものでないインターフェースは逆 DNS の名前（例 `io.github.<owner>.<name>`、core §13）を使う。プロトコルの上では、`oep.` の名前のインターフェースと同じに扱われる。登録も、ここへの pull request も
 要らない。op、tag、値は、そのインターフェース自身の定義が割り当てる。
 
 ## 凍結の後の errata

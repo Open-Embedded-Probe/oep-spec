@@ -50,6 +50,13 @@ external re-review of the same day (its §3.2 and §3.3). Japanese only while Ja
   lowest declared op) and the last byte is non-zero, so one op set has one encoding; a host that gets an ops breaking this does not use that
   fn (fn 0: the probe) (core §7.4). New vectors ops_encoding.json (shortest, longest, wrong lengths, the 0xFF bound, non-canonical) with
   an independent decoder in the tests; every ops in the vectors is canonical.
+- Wording (user decision): there is no "standard interface" category. The core has two layers, the core and interfaces, and treats every
+  interface the same (core §0 rule 4). An interface name is a reverse-DNS name; the project's own interfaces are the one exception and
+  use the reserved short prefix `oep.` instead, which is the only special thing about them; anyone extending OEP uses a reverse-DNS name;
+  only the name's owner extends an interface (core §13 rules 1, 7, 9). The project's upkeep of the `oep.` interfaces (registry entries,
+  vectors, the fake probe) is stated once, where the registry is described (core, top), as project process. The Japanese text says
+  インターフェース, or 名前が `oep.` で始まるインターフェース where it must; the glossary defines oep インターフェース as that shorthand. Document
+  titles read 「OEP インターフェース: …」.
 
 ### Simplification after the external review (2026-10-06)
 

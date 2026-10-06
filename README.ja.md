@@ -18,13 +18,13 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
 
 ## 文書の地図
 
-`docs/` には本体（core と経路）とガイドと記録、`interfaces/` には標準インターフェースの文書がある。どの文書も、冒頭の行に状態を書いている: **規範**、**ガイド**、**記録**。
+`docs/` には本体（core と経路）とガイドと記録、`interfaces/` には名前が `oep.` で始まるインターフェースの文書がある。どの文書も、冒頭の行に状態を書いている: **規範**、**ガイド**、**記録**。
 
 **規範**（仕様）:
 
 - [OEP core](docs/oep-core.ja.md): 層、メッセージ、セッション、発見、channel と資源の寿命、通知、インターフェースの書き方。本体は名前を持たず、fn 0 で話す。
 - [OEP の経路](docs/oep-transports.ja.md): フレーム、送り方、複数の経路、USB の見分け方、シリアルの口の共用、区切りの立て直し（本体の層）。
-- [標準インターフェース](interfaces/README.ja.md)（`interfaces/`）: 共通部品、線とデバッグ、コンソール（framing の dmseq）、fixture、キャプチャ、
+- [インターフェース](interfaces/README.ja.md)（`interfaces/`、名前が `oep.` で始まるもの）: 共通部品、線とデバッグ、コンソール（framing の dmseq）、fixture、キャプチャ、
   probe の設定、plan、再起動、リンク。一覧はその README にある。
 - [registry/oep-v1.toml](registry/oep-v1.toml): v1 の wire 上のすべての数の唯一の定義。`tools/oepgen1.py` がそこから
   `generated/oep-v1/`（C++、C、Python、JS）を作る。`python3 tools/oepgen1.py --check` で同期を確かめる。
@@ -47,8 +47,8 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
 
 ## 始め方
 
-1. [はじめに](docs/getting-started.ja.md) のいちばん小さい probe か host を作り、[OEP core](docs/oep-core.ja.md) と要る標準
-   インターフェースを読む。
+1. [はじめに](docs/getting-started.ja.md) のいちばん小さい probe か host を作り、[OEP core](docs/oep-core.ja.md) と要る
+   インターフェースの文書を読む。
 2. 数は `registry/oep-v1.toml` から取るか、`generated/oep-v1/` の生成物を写して使う。
 3. host は oep-client-python の偽の probe（`python -m oep_client.fake_serve`、pty か TCP）に当てて試し、probe は同じ package の
    `oep dump --port <port>`（すべてのインターフェースの list と describe）で見る。

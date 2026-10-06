@@ -1,4 +1,4 @@
-# OEP 標準インターフェース: 線とデバッグ v1
+# OEP インターフェース: 線とデバッグ v1
 
 [English](oep-if-debug.md)
 

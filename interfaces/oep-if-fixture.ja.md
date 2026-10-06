@@ -1,4 +1,4 @@
-# OEP 標準インターフェース: fixture v1
+# OEP インターフェース: fixture v1
 
 [English](oep-if-fixture.md)
 

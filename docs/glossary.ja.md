@@ -20,8 +20,8 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | ブローカー | broker | 複数の道具を 1 つのセッションに束ねる host の側のソフトウェア。probe に対しては host | transports §1 |
 | 中継のブローカー | relaying broker | セッションの op に自分で答え、ほかを 1 つの probe に中継するブローカー | transports §1、core §5.2 |
 | core（本体） | core | どの probe と host も実装するもの。名前を持たず fn 0 で話し、list に載らない。版はプロトコルの revision | core §0 |
-| 標準インターフェース | standard interface | `oep.` の名前で、番号がプロジェクトの registry にあるインターフェース | core §0、§13 |
-| 独立したインターフェース、拡張 | independent interface, extension | 逆 DNS の名前で、自分の文書が定めるインターフェース | core §0、§13 |
+| oep インターフェース | oep interface | 名前が `oep.` で始まるインターフェースの略。project 自身のもので、逆 DNS の名前の代わりに短い `oep.` の名前を持つ。ほかのどのインターフェースとも同じに扱う | core §13 |
+| 独自のインターフェース | third-party interface | 逆 DNS の名前で、それを定めた者の文書が定めるインターフェース。OEP を伸ばす者は誰でもこれを使う。ほかのどのインターフェースとも同じに扱う | core §13 |
 | 規範の語 | normative words | RFC 2119 / 8174 の MUST / MUST NOT / SHOULD / MAY。日本語は する / しない / できれば / してよい | core §1.1 |
 | 適合 | conformance | probe と host が実装しなければならないもの | core §1.2、[適合](conformance.ja.md) |
 

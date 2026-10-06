@@ -29,7 +29,7 @@ OEP v1 は凍結の候補。凍結までは、壊す変更も **どの revision 
 
 - フレームの形: COBS + CRC-16、`length(u16)`、HID の report、見出しの順と長さ、confirm の前の 64 byte（core §3）;
 - メッセージの形: 要求 / 応答 / 出来事 / データの固定部分、TLV の形と critical の規則、断りの理由、outcome、断り方の順（core §2、§4）;
-- 標準インターフェースの payload: op の表、固定部分、TLV の tag、出来事、status、資源の寿命（`oep-if-*.md`）;
+- 名前が `oep.` で始まるインターフェースの payload: op の表、固定部分、TLV の tag、出来事、status、資源の寿命（`interfaces/oep-if-*.ja.md`）;
 - **`registry/oep-v1.toml` のすべての数**: op、tag、reason、status、enum、`timing`、`limits`、`usb`、インターフェースの名前と revision。
   `[reference]` の表（参照の firmware の値）は凍結の外;
 - core、`oep-if-*` の文書、dmseq の規範の文。

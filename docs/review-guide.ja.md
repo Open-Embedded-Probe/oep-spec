@@ -44,8 +44,8 @@ flash の書き方やチップ固有の手順は host にある。
 | 1 | `docs/project-concept.ja.md` | 目的と範囲（上流の合意）。短い |
 | 2 | `docs/versioning.ja.md` | **凍結の範囲**: 止めるもの、自由なもの、伸ばす道、revision を上げる意味。意図して固定するものと理由（§3.1） |
 | 3 | `docs/oep-core.ja.md` | **本体（規範）**。§0 層と線引きの規則、§2 共通の規則（TLV、知らない値、番号の空間、revision）、§3 経路（`oep-transports` を指す）、§4 メッセージと reject reason（§4.3 に**断り方の順**）、§5 立て直しと送り直し、§6 セッション、§7 発見（confirm / list / describe）、§8 channel の空きの状態と資源の取り合い、§9 資源の寿命、§10 長い操作（予約）、§11 通知、§12 本体（fn 0）の op、§13 インターフェースの書き方。本体は名前を持たず、list に載らない。`docs/oep-transports.ja.md` は本体の層の経路とフレーム（フレーム、送り方、複数の経路、USB の見分け方と探りの規則、シリアルの口の共用、区切りの立て直し、待ちの転送の時間）。**port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3）は握手だけ**: 候補の選び方、確かめ、使用中の判定は `host-development-guide` §17 の参考の手順 |
-| 4 | `interfaces/README.ja.md`、`interfaces/oep-if-common.ja.md` | 標準インターフェースの一覧と、その共通部品（位置つきのストリーム、debug の connection、線と target の status） |
-| 5 | `interfaces/oep-if-debug.ja.md`、`interfaces/oep-if-console.ja.md`、`interfaces/oep-if-fixture.ja.md`、`interfaces/oep-if-capture.ja.md`、`interfaces/oep-if-probe-config.ja.md`、`interfaces/oep-if-plan.ja.md`、`interfaces/oep-if-restart.ja.md`、`interfaces/oep-if-link.ja.md` | 標準インターフェース（規範）: 線と RISC-V DM / ARM ADI、target のコンソール、GPIO / UART / I2C・SPI の target、ロジック / アナログのキャプチャと組、probe の設定（スロット、bind、disable）、plan、probe の再起動、線の試験と port_speed |
+| 4 | `interfaces/README.ja.md`、`interfaces/oep-if-common.ja.md` | 名前が `oep.` で始まるインターフェースの一覧と、その共通部品（位置つきのストリーム、debug の connection、線と target の status） |
+| 5 | `interfaces/oep-if-debug.ja.md`、`interfaces/oep-if-console.ja.md`、`interfaces/oep-if-fixture.ja.md`、`interfaces/oep-if-capture.ja.md`、`interfaces/oep-if-probe-config.ja.md`、`interfaces/oep-if-plan.ja.md`、`interfaces/oep-if-restart.ja.md`、`interfaces/oep-if-link.ja.md` | 名前が `oep.` で始まるインターフェース（規範）: 線と RISC-V DM / ARM ADI、target のコンソール、GPIO / UART / I2C・SPI の target、ロジック / アナログのキャプチャと組、probe の設定（スロット、bind、disable）、plan、probe の再起動、線の試験と port_speed |
 | 6 | `interfaces/target-console-dmseq.ja.md` | コンソールの framing（dmseq）: デバッグモジュールのデータレジスタで、通番と CRC つきで双方向に運ぶ（target と host の規範） |
 | 7 | `registry/oep-v1.toml` | 番号と数の唯一の定義。`timing` / `limits` は規範の文の数（凍結の対象） |
 | 8 | `docs/getting-started.ja.md`、`docs/conformance.ja.md`、`docs/host-development-guide.ja.md`、`docs/probe-development-guide.ja.md`、`docs/security.ja.md`、`docs/glossary.ja.md` | 実務（規範ではない）: いちばん小さい probe と host とバイト列。probe と host の適合の点検表。フレームの送り方、立て直し、断りごとの動き、通知、probe の設定、USB-UART の扱い、**host ガイド §17 シリアルの口の速さの選び方**（17.1 釣り合い、17.2 最小の形、17.3 用途別に確かめを足す形、17.4 記録、17.5 実測）。識別子と宣言（probe ガイド §10）。安全とセキュリティを 1 か所に。用語 |
@@ -75,7 +75,7 @@ flash の書き方やチップ固有の手順は host にある。
 
 記録を並べるのはここだけ。記録は経緯（決めたときの理由、実測、レビュー、案）で、多くは日本語だけ。規範とガイドは記録に依らない。
 
-| 状態 | PATH（`docs/`。標準インターフェースは `interfaces/`） |
+| 状態 | PATH（`docs/`。名前が `oep.` で始まるインターフェースの文書は `interfaces/`） |
 |---|---|
 | **規範** | `oep-core`、`oep-transports`。`interfaces/` の `oep-if-*`（9 つ）、`target-console-dmseq` |
 | **ガイド**（規範ではない） | `interfaces/README`、`review-guide`、`getting-started`、`conformance`、`project-concept`、`host-development-guide`、`probe-development-guide`、`security`、`glossary`、`versioning`、`release-testing`、`usb-identity`。根の `CHANGELOG.md` |

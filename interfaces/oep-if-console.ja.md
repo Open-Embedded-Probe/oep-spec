@@ -1,4 +1,4 @@
-# OEP 標準インターフェース: コンソール v1
+# OEP インターフェース: コンソール v1
 
 [English](oep-if-console.md)
 

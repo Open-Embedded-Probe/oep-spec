@@ -1,4 +1,4 @@
-# OEP 標準インターフェース: probe の設定 v1
+# OEP インターフェース: probe の設定 v1
 
 [English](oep-if-probe-config.md)
 

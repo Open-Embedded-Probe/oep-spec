@@ -1,4 +1,4 @@
-# OEP 標準インターフェース: キャプチャ v1
+# OEP インターフェース: キャプチャ v1
 
 [English](oep-if-capture.md)
 

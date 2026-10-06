@@ -498,7 +498,7 @@ def sessions() -> dict:
 
 
 def ops() -> dict:
-    """Per-op byte vectors: a request, the probe state it assumes, and the answer, for ops of the standard interfaces. Each answer's
+    """Per-op byte vectors: a request, the probe state it assumes, and the answer, for ops of the interfaces. Each answer's
     fixed part is the one the interface document gives; sequences are count x element with no element length (core §2.3)."""
     S = 0x11223344
     cases = []
