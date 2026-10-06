@@ -189,8 +189,10 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | 0x08 | release | generation(u32)、serial(u32) | —（serial 以下の区画を使い回してよい） | 必要 |
 | 0x09 | query | 設定の TLV（configure と同じ） | 実際の値の TLV（設定はしない） | 不要 |
 | 0x0A | calibration | — | 較正の情報の TLV（§3.8）。アナログだけ（ロジックは unknown_operation） | 不要 |
+| 0x30 | subscribe | core §11.3 | — | 必要 |
+| 0x32 | unsubscribe | core §11.3 | — | 必要 |
 
-- query（0x09）と force（0x04）は任意で、describe の ops で宣言する（core §1.2、§7.4）。それを持たない probe は、その op に unknown_operation で答える（core §1.2）。この表のほかの op は必ず持つ。calibration はアナログでは必ず持ち、ロジックの op ではない。
+- query（0x09）、force（0x04）、subscribe（0x30）と unsubscribe（0x32）は任意で、describe の ops で宣言する（core §1.2、§7.4）。subscribe と unsubscribe は両方とも持つか、両方とも持たない（core §11.3）。それを持たない probe は、その op に unknown_operation で答える（core §1.2）。この表のほかの op は必ず持つ。calibration はアナログでは必ず持ち、ロジックの op ではない。
 - state: 0 未設定、1 設定済み、2 トリガ待ち、3 取得中、4 完了（ワンショット）、5 止まっている（リピートで空き区画なし）、
   6 エラー。
 - `serial_done` は終わった区画の数、`write_pos` は取り終えたバイト位置（position の空間。**捨てた分を含む**: 次に書くバイトの位置）。
@@ -276,8 +278,8 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 
 ### 3.4 通知（core §11）
 
-ロックの持ち主が subscribe すると、そのインターフェースから次が届く。購読しなければ、status と segments のポーリングで
-同じことが分かる。
+ロックの持ち主がその fn に subscribe すると、そのインターフェースから次が届く（subscribe と unsubscribe を ops に立てる fn だけ）。
+購読しなければ、status と segments のポーリングで同じことが分かる。
 
 | 送るもの | いつ | 中身 |
 |---|---|---|
@@ -286,16 +288,16 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 | 出来事 kind 0x03 triggered | トリガが立った | serial(u32)、trigger_index(u32)、trigger_ns(u64: probe の時計でトリガが立った時刻の推定値)、[TLV] |
 | データ（role 0x06） | ストリーミングの間だけ | core §11.2 の形（position、len、data、TLV）。read と同じ位置の空間。**TLV 0x01 generation(u32) を必ず付ける**（start の応答の後に前の世代の送り残しが届きうるため） |
 
-- ストリーミングは subscribe が前提（データは probe が送る。features bit2 を立てる）。まとめて送る条件（min_bytes、max_delay_ms）は
-  subscribe で指定する。
+- ストリーミングは subscribe が前提（データは probe が送る。ストリーミングの mode を宣言する fn は subscribe と unsubscribe を ops に立てる）。
+  データをまとめて送る条件（min_bytes、max_delay_ms）は subscribe で指定する。出来事はまとめず、先に送る応答を送り終えたらすぐ送る（core §11.3）。
 - ワンショットとリピートでは、データは host が read で読む。通知は完了を待つためのもの。
 
 ### 3.5 describe で宣言するもの
 
 | tag | 名前 | 値 |
 |---|---|---|
-| 0x09 | ops | 持つ op（core §7.4）: query と force は持つときだけ立てる |
-| 0x06 | features | 共通のビット。bit0 と bit1 は予約（0）、bit2 通知（無ければ、この fn への subscribe は rejected unsupported、core §11.3） |
+| 0x09 | ops | 持つ op（core §7.4）: query、force、subscribe と unsubscribe は持つときだけ立てる |
+| 0x06 | features | 共通のビット。revision 1 はビットを定めない（bit0〜bit2 は予約、0） |
 | 0x40 | mode | mode(u8)、background(u8: 1 = このモードで取っている間も probe は要求に答え続け、start の blocking_ms は 0。0 = 取っている間は答えず、start の blocking_ms がその長さを示す、§3.2。ほかの値は予約)、max_samples(u32、1 区画)、max_segments(u32)（モードごとに 1 つ。**最大**の置き場で答える。describe は宣言だけなので、その時点の空きでは答えない） |
 | 0x41 | rate_range | min_hz(u32)、max_hz(u32)、exact(u8: 1 = 範囲内の任意の値を指定できる) |
 | 0x42 | rate_list | n(u8)、n × rate_hz(u32)。代表的なレート。UI の一覧の候補。1 つの TLV に入らなければ繰り返してよい（和集合） |
@@ -376,8 +378,10 @@ ADC の値を電圧に換算するための、probe が持っている情報を*
 | 0x03 | stop | — | — | 必要 |
 | 0x04 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
 | 0x05 | status | — | state(u8)、start_ns(u64)、trigger_ns(u64)、trigger_fn(u16)、[TLV] | 不要 |
+| 0x30 | subscribe | core §11.3 | — | 必要 |
+| 0x32 | unsubscribe | core §11.3 | — | 必要 |
 
-- force は任意で、describe の ops で宣言する（§4.3、core §1.2）。それを持たない probe は force に unknown_operation で答える。ほかの op は必ず持つ。
+- force、subscribe と unsubscribe は任意で、describe の ops で宣言する（§4.3、core §1.2）。それを持たない probe は、その op に unknown_operation で答える。subscribe と unsubscribe は両方とも持つか、両方とも持たない（core §11.3）。ほかの op は必ず持つ。
 
 bind の TLV:
 
@@ -413,7 +417,7 @@ bind の TLV:
 
 ### 4.2 通知
 
-組の fn を subscribe すると、組の出来事が届く（各トラックの出来事は、そのトラックを subscribe したときに届く）。
+組の fn に subscribe すると、組の出来事が届く（各トラックの出来事は、そのトラックの fn に subscribe したときに届く）。
 
 | 送るもの | いつ | 中身 |
 |---|---|---|
@@ -426,8 +430,8 @@ kind の番号はトラック（§3.4）と揃える（triggered 3、stopped 2�
 
 | tag | 名前 | 値 |
 |---|---|---|
-| 0x09 | ops | 持つ op（core §7.4）: force は持つときだけ立てる |
-| 0x06 | features | bit2 通知（bit0 と bit1 は予約、0） |
+| 0x09 | ops | 持つ op（core §7.4）: force、subscribe と unsubscribe は持つときだけ立てる |
+| 0x06 | features | revision 1 はビットを定めない（bit0〜bit2 は予約、0） |
 | 0x40 | tracks | n(u8)、n × fn(u16)。束ねられるトラック |
 | 0x41 | max_tracks | u8。1 つの組に入れられるトラックの数 |
 | 0x42 | budget | max_sps(u32、チャネル数 × レートの合計の上限、sample/s)、n(u8)、n × fn(u16)。挙げた fn を一緒に束ねたときに分け合う上限（繰り返してよい。例: 1 つの ADC を 2 つのトラックで使う、DMA を分け合う） |

@@ -226,19 +226,23 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 
 - 購読にはロックが要り、購読はロックと一緒に終わる（end、期限切れ、force。core §11.3）。監視だけの host は、代わりに bind した
   シリアルの口の生のバイトを読むか（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.2）、ロック不要の read の op で読みに行く。
-- 同じ fn を購読し直すと購読は丸ごと置き換わり、seq は購読のたびに 0 から数える。何も出さない fn の購読は rejected unsupported
-  （core §11.3）。
+- 購読は、通知を送り出すインターフェースの fn に、その fn 自身の op で送る: subscribe は op 0x30、unsubscribe は op 0x32（どのインターフェースでも
+  同じ番号。要求は相手の fn を持たない）。その fn の describe の ops にこの 2 つが立っていなければ、その fn は通知を送らない（送っても
+  unknown_operation）。同じ fn を購読し直すと購読は丸ごと置き換わり、seq は購読のたびに 0 から数える（core §11.3）。
 - **role で振り分ける**（core §11.1）: corr で照らすのは応答（0x02）だけ。出来事（0x05）とデータ（0x06）は byte 1〜2 が fn。通知が
   来続けても、応答を待つ処理と入力を読む処理が期限までに終わるようにする。
 - **seq** は fn ごとのフレームの通し番号（u16、一周する）。飛びは、probe の中か途中で通知が失われたこと。データではストリームの
   `position` も失われた分を示す: フレームの position が前のフレームの終わりと合わなければ、その間のバイトは失われた（core §11.2、
   [共通部品](../interfaces/oep-if-common.ja.md) §1.5）。
-- **min_bytes / max_delay_ms の選び方**: probe は min_bytes がたまるか、最初のバイトから max_delay_ms が過ぎたら送る（0 はその条件を
-  使わない。両方 0 ならすぐ送る）。まとめを大きくするとフレームが減り、遅れを短くすると待ちが減る。シリアルの口では min_bytes を
+- **min_bytes / max_delay_ms の選び方**: データについて、probe は min_bytes がたまるか、最初のバイトから max_delay_ms が過ぎたら送る（0 はその条件を
+  使わない。両方 0 ならすぐ送る）。出来事はまとめられず、先の応答の後すぐ届く（core §11.3）。まとめを大きくするとフレームが減り、遅れを短くすると待ちが減る。シリアルの口では min_bytes を
   `host_serial_min_bytes_max`（2 KiB）以下に、待っている応答の量の合計を `host_serial_inflight_max_bytes`（6 KiB）以下に保つ。OS のドライバが一度に来た量を黙って落とすことがあるため
   （transports §4）。
-- **ハートビート**: fn 0 を購読すると、max_delay_ms ごと（0 なら `heartbeat_default_ms`。`heartbeat_min_ms` より短い周期は probe がそれに丸めてよい）に
-  ハートビートの出来事（kind 0x01: boot_id、uptime_ns）が来る。boot_id が変われば再起動。
+- **probe の時刻と再起動**: probe の今の時刻は confirm の応答の uptime_ns で読む（core §7.1。confirm はセッションの途中でもいつ送ってよく、
+  セッションとロックに触れない）。probe は応答を作る直前に時計を読むので、confirm を送ってから応答を受けるまでの中ほどの host の時刻と
+  突き合わせると、不確かさは往復の半分に収まる。キャプチャの前と後に読むと、二つの時計のずれの進み方も分かる。中継のブローカーが自分で
+  答える confirm の uptime_ns は推定で、中継の転送の時間の分だけ不確かになる（transports §1）。probe が生きているかは応答の待ち時間で、再起動は
+  confirm と open の boot_id で分かる（core §6.5）。
 - 通知は購読を受けた経路に送られる。同じ session_id の open を別の経路で送ると、そちらに移る（core §6.2）。
 - キャプチャの流し続けには独自の規則がある: 送る余地が無いと probe は新しいデータを捨て、stop の前に取った分は送り続け、stop の後で
   受けた位置の終わりが status の write_pos と等しくなれば host はすべてを持っている（[キャプチャ](../interfaces/oep-if-capture.ja.md) §2.1）。受けている

@@ -57,6 +57,8 @@ tag_ignored = 0x7F              # in every context: a response TLV listing the n
 tag_invalid = 0xFF
 tag_reserved_zero = 0x00        # never a TLV tag; the rejected unsupported payload's "fixed-part value" marker (core §4.3)
 min_max_frame = 64              # every probe takes messages this long; a host sends no longer message before confirm answers (transports §3)
+op_subscribe = 0x30             # reserved in every interface's op space: subscribe of the interface that sends notifications (core §11.3)
+op_unsubscribe = 0x32           # reserved in every interface's op space: unsubscribe (core §11.3)
 
 [roles]
 request = 0x01
@@ -104,8 +106,6 @@ probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restar
 host_resync_wait_ms = 250       # host: before a resync's confirm, and the first confirm on a length-prefixed port, this long since its last write (transports §5)
 uart_bridge_boot_baud = 115200  # a UART bridge's boot speed, 8N1 without flow control (transports §4)
 host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
-heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
-heartbeat_min_ms = 100          # probe: may round a shorter heartbeat period up to this (core §11.3)
 port_speed_idle_max_ms = 3000   # a raised port_speed goes back after this long without a good frame, whatever idle_ms said (oep-if-link §3)
 host_wait_add_ms = 1000         # host: waits at least the request's argument time (at most max_op_ms) plus this plus the transfer time (core §4.4)
 notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §11.4)
@@ -227,11 +227,10 @@ op = [
   { code = 0x11, name = "end", lock = true },
   { code = 0x12, name = "keepalive", lock = true },
   { code = 0x13, name = "lock_state", lock = false },
-  { code = 0x30, name = "subscribe", lock = true },
-  { code = 0x32, name = "unsubscribe", lock = true },
 ]
 [core.tlv.confirm_answer]
 transport = 0x01                # u8: the index of the transport this confirm came on (0xFF: a relaying broker); always sent (core §7.1)
+uptime_ns = 0x02                # u64: the probe's clock (core §2.6a), read just before the answer is built; always sent (core §7.1)
 [core.tlv.open]
 owner = 0x01                    # text (1-32 bytes): who holds the lock, for display (core §6.4)
 [core.tlv.lock_state_answer]
@@ -284,10 +283,8 @@ usb_serial_jtag = 3             # built-in USB serial: the MCU hardware's USB se
 vendor_bulk = 4
 hid = 5
 tcp = 6
-[core.event]
-heartbeat = 0x01                # boot_id(u32), uptime_ns(u64)
 [core.reserved]
-op = [[0x20, 0x2F]]             # the long operations (core §10)
+op = [[0x20, 0x2F], [0x30, 0xEF]]   # 0x20-0x2F the long operations (core §10); the rest reserved (core §2.5); fn 0 sends no notifications
 "tlv.describe" = [[0x48, 0x48], [0x4E, 0x4E], [0x3F, 0x3F]]
 
 [[interface]]
@@ -706,6 +703,8 @@ op = [
   { code = 0x07, name = "segments", lock = false },
   { code = 0x08, name = "release", lock = true },
   { code = 0x09, name = "query", lock = false },
+  { code = 0x30, name = "subscribe", lock = true },      # optional (ops); core §11.3
+  { code = 0x32, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
 [interface.tlv.configure]       # also the request of query (the analog-only tag 0x47 frontend is not used here)
 mode = 0x40                     # always critical (oep-if-capture §3.3)
@@ -739,10 +738,9 @@ segment_ring = 0x48
 segment = 0x01                  # the segment record (oep-if-capture §2)
 stopped = 0x02                  # reason(u8) error(u8)
 triggered = 0x03                # serial(u32) trigger_index(u32) trigger_ns(u64)
-[interface.enum.features]       # bits 0x01 / 0x02 reserved (query and force are declared by ops)
-notify = 0x04
+[interface.enum.features]       # none in revision 1; 0x01 / 0x02 / 0x04 reserved (query, force, subscribe and unsubscribe are declared by ops)
 [interface.reserved]
-features = [[0x01, 0x02]]
+features = [[0x01, 0x04]]
 [interface.enum.mode]
 one_shot = 1
 repeat = 2
@@ -800,6 +798,8 @@ op = [
   { code = 0x08, name = "release", lock = true },
   { code = 0x09, name = "query", lock = false },
   { code = 0x0A, name = "calibration", lock = false },
+  { code = 0x30, name = "subscribe", lock = true },      # optional (ops); core §11.3
+  { code = 0x32, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
 [interface.tlv.configure]       # also the request of query
 mode = 0x40                     # always critical (oep-if-capture §3.3)
@@ -843,10 +843,9 @@ frontend_shared = 0x49          # u8 1 = every channel takes the same frontend
 segment = 0x01
 stopped = 0x02                  # reason(u8) error(u8)
 triggered = 0x03
-[interface.enum.features]       # bits 0x01 / 0x02 reserved (query and force are declared by ops)
-notify = 0x04
+[interface.enum.features]       # none in revision 1; 0x01 / 0x02 / 0x04 reserved (query, force, subscribe and unsubscribe are declared by ops)
 [interface.reserved]
-features = [[0x01, 0x02]]
+features = [[0x01, 0x04]]
 [interface.enum.mode]
 one_shot = 1
 repeat = 2
@@ -906,6 +905,8 @@ op = [
   { code = 0x03, name = "stop", lock = true },
   { code = 0x04, name = "force", lock = true },
   { code = 0x05, name = "status", lock = false },
+  { code = 0x30, name = "subscribe", lock = true },      # optional (ops); core §11.3
+  { code = 0x32, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
 [interface.tlv.bind]
 trigger_track = 0x01            # always critical, fn(u16): the track whose configure trigger starts the group (absent: immediate)
@@ -919,10 +920,9 @@ start_skew = 0x43               # repeats, one per track: fn(u16) typical_ns(u32
 [interface.event]               # numbered as the tracks' events
 stopped = 0x02                  # reason(u8) error(u8): as the track's stopped
 triggered = 0x03                # trigger_fn(u16, 0 on force) trigger_ns(u64)
-[interface.enum.features]       # bits 0x01 / 0x02 reserved (force is declared by ops)
-notify = 0x04
+[interface.enum.features]       # none in revision 1; 0x01 / 0x02 / 0x04 reserved (force, subscribe and unsubscribe are declared by ops)
 [interface.reserved]
-features = [[0x01, 0x02]]
+features = [[0x01, 0x04]]
 [interface.enum.state]          # as the tracks'
 unconfigured = 0
 configured = 1

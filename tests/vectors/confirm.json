@@ -1,5 +1,5 @@
 {
-  "about": "confirm (core §7.1). The answer's values (max_frame 1024, window 4096, max_inflight 4, boot_id 0x12345678, transport index 0) are an example probe's.",
+  "about": "confirm (core §7.1). The answer's values (max_frame 1024, window 4096, max_inflight 4, boot_id 0x12345678, transport index 0, uptime_ns 1.5 s) are an example probe's.",
   "exchanges": [
     {
       "name": "revision 1 asked and answered",
@@ -19,10 +19,11 @@
         "window": 4096,
         "max_inflight": 4,
         "boot_id": 305419896,
-        "transport": 0
+        "transport": 0,
+        "uptime_ns": 1500000000
       },
-      "answer_hex": "02010001004f4550210100000400100000047856341201010000",
-      "answer_serial_frame_hex": "000302010201064f4550210101020402100108047856341201010103aba400"
+      "answer_hex": "02010001004f4550210100000400100000047856341201010000020800002f685900000000",
+      "answer_serial_frame_hex": "000302010201064f4550210101020402100108047856341201010103020801042f685901010103d9b500"
     },
     {
       "name": "no revision in the range: unsupported with the supported range",

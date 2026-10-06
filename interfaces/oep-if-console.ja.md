@@ -42,7 +42,7 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
   1 フレームに入る分を返し、more = 1 なら続きがある（connections と同じ形）。users は bit0 host の
   セッション、bit1 スロット（bind）。ロック無しの host（監視）が番号を得るための op。
 - 閉じたストリームへの close は何もせず成功。
-- revision 1 は通知を送らない（subscribe は rejected unsupported）。後から足すときは、データの payload を core §11.2 の形にする。
+- revision 1 は通知を送らない（subscribe と unsubscribe を持たず、ops に立てない。core §11.3）。後から足すときは、データの payload を core §11.2 の形にする。
 
 ## 2. ストリームの規則
 

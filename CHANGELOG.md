@@ -35,6 +35,17 @@ external re-review of the same day (its §3.2 and §3.3). Japanese only while Ja
   not in the name; every interface document's header table has the family column. Registry: `[core]` replaces the `oep.core` interface
   (generated: namespace `core`, no name; Python `CORE`, not in `INTERFACES`), `target` on the wire and target interfaces. Vectors:
   discovery.json's list is empty; ops.json's restart cases are on fn 11 (`oep.probe.restart`) and new plan cases on fn 10.
+- **Breaking**: notifications. subscribe and unsubscribe are ops of the interface that sends notifications, at 0x30 / 0x32 reserved in
+  every interface's op space (registry `op_subscribe` / `op_unsubscribe`); the request carries no target fn (subscribe: min_bytes(u16)
+  max_delay_ms(u32) [TLV]; unsubscribe: [TLV]); an interface that sends none does not have them (unknown_operation). fn 0 has no
+  subscribe / unsubscribe and sends no notifications: the heartbeat (fn 0 event 0x01, `heartbeat_default_ms`, `heartbeat_min_ms`) is gone.
+  min_bytes and max_delay_ms apply to data only; an event goes as soon as the answers ahead of it are sent (re-review §3.1, §3.3; core
+  §1.2, §2.5, §11, §12). Logic, analog and capture-group get subscribe / unsubscribe (optional, in ops; streaming needs them) and lose
+  features bit2 (notify); console and the fixtures say they have neither.
+- **Breaking**: confirm's answer carries TLV 0x02 uptime_ns (u64, always): the probe's clock read just before the answer is built.
+  confirm may be sent at any time, mid-session too, and touches no session, lock, lease, table or subscription; the answer still fits in
+  64 bytes with the room for ignored (core §2.6a, §7.1). A relaying broker that answers confirm itself may give its last upstream
+  confirm's value plus the time since; for the probe's own time the host talks to the probe or the broker relays confirm (transports §1).
 
 ### Simplification after the external review (2026-10-06)
 

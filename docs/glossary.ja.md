@@ -112,7 +112,8 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
-| confirm | confirm | 最初の要求: `OEP?` / `OEP!`、revision、上限、boot_id | core §7.1 |
+| confirm | confirm | 最初の要求: `OEP?` / `OEP!`、revision、上限、boot_id、uptime_ns。いつ送ってもよい | core §7.1 |
+| uptime_ns | uptime_ns | confirm の応答の probe の今の時刻（起動からの ns）。応答を作る直前に読む | core §2.6a、§7.1 |
 | list | list | 名前ごとのインターフェースと、その fn、instance、revision | core §7.2 |
 | describe | describe | インターフェースの、または（fn 0 で）probe 全体の宣言 | core §7.3 |
 | 宣言 | declaration | describe が返すもの。boot_id が同じ間変わらない | core §7.3 |
@@ -150,9 +151,8 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
 | 通知 | notification | probe が要求なしに送る出来事とデータ | core §11 |
-| 購読 | subscribe, subscription | 1 つの fn の通知を求めること。ロックと一緒に終わる | core §11.3 |
+| 購読 | subscribe, subscription | 1 つの fn の通知を求めること。送り出すインターフェース自身の op（0x30 subscribe、0x32 unsubscribe）。ロックと一緒に終わる | core §11.3 |
 | seq | seq | fn ごとの通知のフレームの u16 の通し番号 | core §11.2 |
-| ハートビート | heartbeat | fn 0 の出来事 kind 0x01（boot_id と uptime） | core §11.2、§11.3 |
 | 位置つきのストリーム | positioned stream | 起動の間戻らない u64 の位置で番号を振ったバイト | common §1 |
 | 位置 | position | ストリームのバイトの通し番号 | common §1.1 |
 | gap | gap | read の flag: 求めた位置が押し出されていた | common §1.2 |

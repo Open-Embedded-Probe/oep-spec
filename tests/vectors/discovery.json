@@ -1,5 +1,5 @@
 {
-  "about": "list, describe and the header refusals of the example probe (docs/getting-started.md §2, §3, with its §6 steps 1 and 4 done): no interface (list is empty: fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, open, end, keepalive, lock_state, subscribe, unsubscribe) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. Those values are an example probe's.",
+  "about": "list, describe and the header refusals of the example probe (docs/getting-started.ja.md §2, §3, with its §6 step 1 done): no interface (list is empty: fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, open, end, keepalive, lock_state) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. Those values are an example probe's.",
   "exchanges": [
     {
       "name": "list everything from the first",
@@ -40,9 +40,7 @@
           16,
           17,
           18,
-          19,
-          48,
-          50
+          19
         ],
         "unit_id": "a1b2c3d4",
         "transports": [
@@ -55,8 +53,8 @@
         "discoverable": 0,
         "max_op_ms": 1000
       },
-      "answer_hex": "020300010000090800010780070000800242080061316232633364344903000001ff4a0100004d0400e8030000",
-      "answer_serial_frame_hex": "0003020302010103090805010780070105800242080b61316232633364344903010501ff4a0101034d0403e8030103c3c200"
+      "answer_hex": "0203000100000904000107800742080061316232633364344903000001ff4a0100004d0400e8030000",
+      "answer_serial_frame_hex": "00030203020101030904070107800742080b61316232633364344903010501ff4a0101034d0403e8030103171f00"
     },
     {
       "name": "describe fn 0 from beyond the last: more 0 and no TLVs",

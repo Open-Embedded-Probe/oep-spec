@@ -101,7 +101,7 @@
 - 扱える format は describe の formats（tag 0x40、n(u8)、n × u8。configure の TLV 0x01 の値）で宣言する。8N1（0）は必須。
 - 片方向だけの UART（RX だけ、TX だけ）は、plan で片方の role だけを割り当てる。ピンの組が決まっている probe は、RX だけの組と
   TX だけの組も channel_group に別々に書く（channel_group は完全一致なので）。
-- revision 1 は通知を送らない（subscribe は rejected unsupported）。後から足すときは、データの payload を core §11.2 の形にする。
+- revision 1 は通知を送らない（subscribe と unsubscribe を持たず、ops に立てない。core §11.3）。後から足すときは、データの payload を core §11.2 の形にする。
 
 ## 3. `oep.fixture.i2c-target`
 
@@ -158,7 +158,7 @@ read_rx で取り出す。
   bit1 予約（0）、bit2 内部プルアップ。mode 1 と 2 は必須）、queue_depth（tag 0x40、u8: 積めるフレームの数。mode 3 では未読の置き場の数の上限）、
   max_stretch_us（tag 0x41、u32: stretch が受ける最大の µs。1 以上。stretch を持つ probe は必ず載せる）、
   pullup_ohms（tag 0x42、u32: 内部プルアップのおおよその抵抗値。features の bit2 を宣言する probe は必ず載せる）。
-- 通知は送らない（subscribe は rejected unsupported）。
+- 通知は送らない（subscribe と unsubscribe を持たず、ops に立てない。core §11.3）。
 
 ## 4. `oep.fixture.spi-target`
 
@@ -205,7 +205,7 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   同じ時間のうちに MISO は駆動されなくなる。CS が有効になったらすぐ最初のビットで MISO を駆動する probe は、この tag を付けないか 0 を宣言する。CS が有効に
   なったのを見てからソフトウェアで MISO を駆動し始める probe は、これを宣言する。host はこの値を利用者に見せる。CS が有効になってから cs_setup_ns より
   早く SCK を始める master は、最初のビットに頼れない。
-- 通知は送らない（subscribe は rejected unsupported）。
+- 通知は送らない（subscribe と unsubscribe を持たず、ops に立てない。core §11.3）。
 
 ## 5. 参照する仕様
 

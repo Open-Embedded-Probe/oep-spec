@@ -75,10 +75,20 @@ def check(reg: dict) -> list[str]:
             if set(op) - {"code", "name", "lock", "fields"}:
                 errors.append(f"{n}: op {op['name']} has unknown keys {sorted(set(op) - {'code', 'name', 'lock', 'fields'})}")
         if iface is reg["core"]:
-            ranges = [(0x01, 0x0F), (0x10, 0x1F), (0x20, 0x2F), (0x30, 0x3F)]
+            ranges = [(0x01, 0x0F), (0x10, 0x1F)]
             for c, opname in codes.items():
                 if not any(a <= c <= b for a, b in ranges):
                     errors.append(f"core: op {opname} = {c:#x} outside the core ranges")
+        else:
+            # core §11.3: 0x30 subscribe and 0x32 unsubscribe are reserved in every interface's op space; both or neither
+            sub, unsub = reg["constants"]["op_subscribe"], reg["constants"]["op_unsubscribe"]
+            for c, want in ((sub, "subscribe"), (unsub, "unsubscribe")):
+                if c in codes and codes[c] != want:
+                    errors.append(f"{n}: op {codes[c]} = {c:#x} uses the number reserved for {want} (core §11.3)")
+                if want in codes.values() and codes.get(c) != want:
+                    errors.append(f"{n}: op {want} must be {c:#x} (core §11.3)")
+            if (codes.get(sub) == "subscribe") != (codes.get(unsub) == "unsubscribe"):
+                errors.append(f"{n}: subscribe and unsubscribe go together (core §11.3)")
         for context, tags in iface.get("tlv", {}).items():
             seen = {}
             for tag_name, tag in tags.items():

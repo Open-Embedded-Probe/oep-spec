@@ -48,7 +48,7 @@ probe は、自分が出す transport とインターフェースについてこ
 
 **fn 0（本体。名前を持たず、list に載らない）**
 
-- 必須の op: core §12 で「yes」の行（confirm、list、describe、open、end、keepalive、lock_state、subscribe、unsubscribe）。
+- 必須の op: core §12 の行（confirm、list、describe、open、end、keepalive、lock_state）。
 - confirm: revision の選び方、transport TLV、扱える範囲つきの断り。max_frame は 64 以上、window は max_frame 以上、
   max_inflight は 1 以上（§7.1）。
 - list: fn 0 を載せない、ラベル境界での一致、instance の番号、boot_id が同じ間は答えが変わらない、first が一致の数以上なら total と count 0
@@ -58,11 +58,12 @@ probe は、自分が出す transport とインターフェースについてこ
   `max_op_ms_max`）（§1.2、§7.5）。
   discoverable は、probe がプロジェクトの USB の VID:PID で列挙するときだけ 1、ほかは 0（§7.5）。unit_id の一意性と不変性、transport の index の不変性（§7.5）。
 - channel: 解放したピンは空きの状態へ、起動したら最初の答えの前に reserved でないすべての channel を空きの状態へ、ピンを取ってもピンは変わらない、資源の取り合いは何も変えずに断る（§8、§8.1）。
-- 通知: subscribe / unsubscribe、seq、fn 0 の heartbeat、答えを先に送ることと溜める量の上限（§11.2〜§11.4）。
+- confirm の答えに uptime_ns（答えを作る直前の時計）。confirm はセッションの途中でも答え、セッションとロックに触れない（§7.1）。
+- 通知（送り出すインターフェースがあれば）: その fn の subscribe（0x30）/ unsubscribe（0x32）を ops に立てる、送り出さない fn は持たない、seq、データだけをまとめ出来事は先の答えの後すぐ送る、答えを先に送ることと溜める量の上限（§11.2〜§11.4）。
 **時間の上限**（値は `registry/oep-v1.toml`）
 
 - `probe_frame_gap_ms`（transports §2）。宣言した max_op_ms より長い要求はなく、超えうる op は断る（§7.5）。lease の範囲
-  （§6.4）。heartbeat の周期（§11.3）。port_speed の verify_ms / idle_ms と戻る条件（[リンク](../interfaces/oep-if-link.ja.md) §3）。各 wire の attach と scan の予算
+  （§6.4）。port_speed の verify_ms / idle_ms と戻る条件（[リンク](../interfaces/oep-if-link.ja.md) §3）。各 wire の attach と scan の予算
   （[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。restart の答えから再起動を始めるまでの `restart_after_answer_ms` と、同じ transport で confirm にまた答えるまでの、宣言した restart_max_ms（[再起動](../interfaces/oep-if-restart.ja.md) §1、§2）。
 
 ## 2. host のチェックリスト
@@ -111,8 +112,8 @@ probe は、自分が出す transport とインターフェースについてこ
 | `oep.fixture.uart`（§2） | §2 の op。describe の formats に 8N1 | ほかの format |
 | `oep.fixture.i2c-target`（§3） | stretch を除く §3 の op。mode 1 と 2 | stretch（ops、max_stretch_us とともに）。mode 3（features bit0）。プルアップ（features bit2、pullup_ohms とともに） |
 | `oep.fixture.spi-target`（§4） | §4 の op。MISO をソフトウェアで駆動するなら cs_setup_ns | LSB first（features bit0） |
-| `oep.fixture.logic`、`oep.fixture.analog`（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1〜§3） | query と force を除く §3.2 の op。§3.5 の describe。calibration はアナログだけ | query、force（ops）。通知（features bit2） |
-| `oep.fixture.capture-group`（§4） | force を除く §4.1 の op。§4.3 の describe | force（ops）。通知（features bit2） |
+| `oep.fixture.logic`、`oep.fixture.analog`（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1〜§3） | query と force を除く §3.2 の op。§3.5 の describe。calibration はアナログだけ | query、force（ops）。通知: subscribe / unsubscribe（ops） |
+| `oep.fixture.capture-group`（§4） | force を除く §4.1 の op。§4.3 の describe | force（ops）。通知: subscribe / unsubscribe（ops） |
 | `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)） | plan の役割を持つインターフェースがあれば list に出す。plan_apply（fn ごとに不可分）、plan_release、§2.5 の断り方、設定の plan。上限があれば describe の plan_roles | — |
 | `oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)） | restart。describe の restart_max_ms（`restart_after_answer_ms` 以上）。ロックの要る op として断る。答えは completed success で、それを先に送る。答えの後はどの transport の要求も処理せず、connection を閉じて reserved でない channel を空きの状態にし、答えが transport を出てから `restart_after_answer_ms` のうちに再起動する。再起動の後は電源を入れたときと同じ（新しい boot_id、保存した設定だけが残る）。答えが transport を出てから restart_max_ms のうちに、同じ transport で confirm にまた答える | — |
 | `oep.probe.link`（[リンク](../interfaces/oep-if-link.ja.md)） | source、sink | port_speed（ops）: その状態と戻る条件（§3） |

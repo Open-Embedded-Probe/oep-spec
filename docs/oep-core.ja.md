@@ -66,12 +66,14 @@ OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、
 probe が実装しなければならない（MUST）もの:
 - §3 の経路の少なくとも 1 つと、そのフレーム;
 - §4〜§6;
-- fn 0 の confirm、list、describe、open、end、keepalive、lock_state、subscribe と unsubscribe;
+- fn 0 の confirm、list、describe、open、end、keepalive、lock_state;
 - fn 0 の describe の unit_id、transport、max_op_ms、discoverable（§7.5。プロジェクトの USB の VID:PID で列挙しない probe は 0）;
 - fn 0 と、list に載せるすべての fn の describe の、共通の tag ops（§7.4）;
 - §8 の channel の空きの状態。
 
-任意: fn 0 のハートビート以外の通知、すべてのインターフェース。あるインターフェースを出す probe がほかのどのインターフェースも出さなければならないかは、そのインターフェースの文書が定める（§0 の 5）。
+- 通知を送り出すインターフェースを持つなら、§11.3 と §11.4。
+
+任意: すべてのインターフェース。あるインターフェースを出す probe がほかのどのインターフェースも出さなければならないかは、そのインターフェースの文書が定める（§0 の 5）。
 
 **必ず持つ op と任意の op。** インターフェースの op の表（fn 0 は §12、ほかはそのインターフェースの文書の op の表）の op は、そのインターフェースを list に載せる probe が必ず持つ。文書が任意と書いた op は除く。**すべての fn は、持つ op を 1 か所で宣言する: describe の共通の tag ops（0x09、§7.4）。** 必須の op はすべてそこに立てる。任意の op は、probe がそれを持つときに限り立てる。実験用の op（0xF0〜0xFF、§2.5）は決して立てない。
 
@@ -164,11 +166,11 @@ tag(u8) | len(u16) | value(len byte)
 | 空間 | 範囲 |
 |---|---|
 | role | 0x01 要求、0x02 応答、0x05 出来事、0x06 データ。0x00、0x03、0x04 と 0x07〜0xFF は予約 |
-| 本体（fn 0）の op | 0x01〜0x0F 発見、0x10〜0x1F セッション、0x20〜0x2F 予約（長い操作、§10）、0x30〜0x3F 通知、0x40〜0xEF 予約、0xF0〜0xFF 実験用（出荷する probe は使わない） |
-| インターフェースの op | 0x01〜0xEF はインターフェースの定義が決める。0xF0〜0xFF は実験用 |
+| 本体（fn 0）の op | 0x01〜0x0F 発見、0x10〜0x1F セッション、0x20〜0x2F 予約（長い操作、§10）、0x30〜0xEF 予約、0xF0〜0xFF 実験用（出荷する probe は使わない） |
+| インターフェースの op | 0x01〜0xEF はインターフェースの定義が決める。ただし 0x30 は subscribe、0x32 は unsubscribe に、すべてのインターフェースで予約する（§11.3）。0xF0〜0xFF は実験用 |
 | reject reason | 0x01〜0x3F 本体（全インターフェース共通）、0x40〜0x7F インターフェース、0x80〜0xFF 予約 |
 | outcome | 0 success、1 failed、2 partial。ほかは予約 |
-| 出来事の kind | fn ごとの空間。0x01〜0x7F はインターフェースが決める（fn 0 は本体）、0x80〜0xFF は予約 |
+| 出来事の kind | fn ごとの空間。0x01〜0x7F はインターフェースが決める、0x80〜0xFF は予約（fn 0 は通知を送らない、§11.2） |
 | TLV の tag | (fn, op) の文脈ごと。番号は下位 7 bit で、bit 7 は critical の印（§2.2）。0x00、0x7F、0xFF は全文脈で予約 |
 | describe の tag | 0x01〜0x3E 本体の共通タグ（§7.4）、0x3F 予約（応答のメタ情報）、0x40〜0x7F インターフェース |
 | 資源の番号 | u16、probe で 1 つの空間（§9） |
@@ -194,7 +196,7 @@ seq（u16）と、インターフェースが定める通し番号や時刻の�
 
 ### 2.6a 時計
 
-probe の時計は 1 つ: **起動からの ns（u64）**。時計は、同じ boot_id の間、減らず、一周しない。ハードウェアの数え器が 64 bit より狭い probe は、ソフトウェアで広げ（一周の数を数える）、一周を見逃さないだけの頻度で読む。時刻を返す所（マーク、区画、ハートビート、状態の「最後に試した時刻」）はすべてこの値で、
+probe の時計は 1 つ: **起動からの ns（u64）**。時計は、同じ boot_id の間、減らず、一周しない。ハードウェアの数え器が 64 bit より狭い probe は、ソフトウェアで広げ（一周の数を数える）、一周を見逃さないだけの頻度で読む。時刻を返す所（confirm の uptime_ns、マーク、区画、状態の「最後に試した時刻」）はすべてこの値で、
 「まだ無い」は全ビット 1。継続時間（timeout_ms、hold_ms、wait_us、elapsed_us など）はそれぞれの単位のままでよい。
 
 ### 2.7 名前と revision
@@ -408,10 +410,14 @@ open の応答も boot_id を持つ: 知っていた boot_id と比べる host �
 ```
 
 - TLV 0x01 transport（u8）: この confirm が来た経路の index（§7.5）。probe は必ず付ける。同じ接続で返す fn 0 の describe の entry を指す（中継のブローカーからは 0xFF、[経路](oep-transports.ja.md) §1）。シリアルの口や UART bridge の経路を指すインターフェースの値が、TCP の index を取ることはない。
+- TLV 0x02 uptime_ns（u64）: probe の今の時刻（§2.6a の時計）。probe は必ず付け、応答を作る直前に時計を読む（host が、応答の往復の
+  半分の不確かさで、probe の時計と自分の時計を突き合わせるため）。マークや区画の時刻（probe の時計）を host の時刻に写すのに使う。
+- **confirm はいつ送ってもよい**: セッションの途中でも、ロックを持っていても持っていなくても。confirm はロックの要らない読むだけの要求で
+  （§6.3）、セッション、ロック、lease、§5.2 の表、購読に影響しない。ある経路での confirm は、その経路の revision を決め直す（下）。
 
 host は扱えるプロトコルの revision の範囲を送り、probe はその中で扱える最大の revision を返す。範囲に扱えるものが無ければ
-rejected unsupported（下）。flags は予約（0）。max_frame は 64 以上（[経路](oep-transports.ja.md) §3）、window は max_frame 以上、max_inflight は 1 以上。この範囲を外れた confirm の応答を受けた host は、その経路を使えないものとして扱う: そこにはもう何も送らず、値を知らせる。host は flags のビットを無視する（予約、§2.4）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も 64 byte に収まる
-（[経路](oep-transports.ja.md) §3）。
+rejected unsupported（下）。flags は予約（0）。max_frame は 64 以上（[経路](oep-transports.ja.md) §3）、window は max_frame 以上、max_inflight は 1 以上。この範囲を外れた confirm の応答を受けた host は、その経路を使えないものとして扱う: そこにはもう何も送らず、値を知らせる。host は flags のビットを無視する（予約、§2.4）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も、ignored を付けても 64 byte に収まる
+（[経路](oep-transports.ja.md) §3。応答は見出し 5、固定部分 17、transport 4、uptime_ns 11、ignored の場所 19 で 56 byte）。
 
 - confirm の要求とその応答の固定部分、magic の `OEP?` / `OEP!`、confirm の前の規則（64 byte、[経路](oep-transports.ja.md) §1 のフレーム、[経路](oep-transports.ja.md) §3）は、どのプロトコルの revision でも同じ。
 - probe が選んだ revision は、**その confirm が来た経路**の、両方向のすべての message に、その経路の次の confirm まで掛かる。経路ごとに違う revision で動いてよい。TCP では、経路は受けた接続ごとである（[経路](oep-transports.ja.md) §1）。
@@ -578,7 +584,9 @@ v1 は長い操作を持たない。すべての op は 1 つの応答で完了�
 
 ## 11. 通知
 
-probe から送る通知の仕組み。probe の対応は任意で、host は購読しなければ何も受け取らない。
+probe から送る通知の仕組み。通知を送り出すかはインターフェースが決める: 送り出すインターフェースは、その fn の ops に subscribe と
+unsubscribe（§11.3）を立てる。何が届くか（出来事の kind、データの意味）はそのインターフェースの文書が決める。host は購読しなければ
+何も受け取らない。§11.1 はすべての host に、§11.3 と §11.4 は通知を送り出すインターフェースを持つ probe に掛かる。
 
 ### 11.1 host の義務（全 host）
 
@@ -599,25 +607,32 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 
 - `seq` は fn ごとのフレームの通し番号（u16、一周する。データと出来事で共通）。subscribe のたびに 0 から数える。抜けがあれば
   フレームが失われた。probe は、生まれた出来事すべてに番号を振り、probe の中で捨てたものも番号を消費する。
-- fn 0 の出来事は probe 全体のもの。kind 0x01 = ハートビート（固定部分: boot_id(u32)、uptime_ns(u64)、§2.6a）。
+- fn 0 は通知を送らない。
 
 ### 11.3 購読
 
-| op | 名前 | 要求 | 応答 |
-|---:|---|---|---|
-| 0x30 | subscribe | fn(u16)、min_bytes(u16)、max_delay_ms(u32)、[TLV] | — |
-| 0x32 | unsubscribe | fn(u16) | — |
+subscribe と unsubscribe は、通知を送り出すインターフェース自身の op である。**op の番号はどのインターフェースでも同じで、すべての
+インターフェースの op の空間で予約する**: 0x30 subscribe、0x32 unsubscribe。インターフェースはこの 2 つの番号をほかの op に使わない。
+要求は購読する相手の fn を持たない（その fn 自身への要求で、見出しの fn が相手である）。
 
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x30 | subscribe | min_bytes(u16)、max_delay_ms(u32)、[TLV] | — | 必要 |
+| 0x32 | unsubscribe | [TLV] | — | 必要 |
+
+- 通知を送り出すインターフェースは、subscribe と unsubscribe を両方とも持ち、ops に立てる（必須か任意かはそのインターフェースの文書が
+  決める）。送り出さない fn は両方とも持たない: その fn への subscribe と unsubscribe は rejected unknown_operation（§1.2、§4.3 順 1）。
+  （参考）中継のブローカーは、どの fn への要求でも、この番号で購読を見分けて断れる。
 - **購読はロックの持ち主だけができ、ロックと一緒に終わる**（end、期限切れ、force で奪われたとき）。読むだけの監視は、シリアルの
   口の生のバイト（[経路](oep-transports.ja.md) §4）で行う。ロックを持たない購読は予約（後から subscribe の TLV で
   足す。今の購読の意味は変えない）。
-- fn 0 の subscribe / unsubscribe はどの probe も実装する。送り出さない fn への subscribe は rejected unsupported（§4.3 の順 6）。
-  購読の無い fn の unsubscribe は何もせず成功。
+- 購読の無い fn の unsubscribe は何もせず成功。
 - 同じ fn をもう一度 subscribe したら、前の購読を原子的に置き換える（送る条件、送り先の経路、seq を 0 から）。1 つの fn の購読は
   1 つだけ。
-- **まとめて送る条件**: min_bytes バイトたまるか、最初のバイトから max_delay_ms 経ったら送る。0 はその条件を使わない。両方 0 なら
-  あるだけすぐ送る。
-- fn 0 を購読するとハートビートが来る。周期は max_delay_ms（0 なら 1000 ms、`heartbeat_default_ms`）。probe は 100 ms より短いハートビートの周期を 100 ms（`heartbeat_min_ms`）に切り上げてよい。
+- **まとめて送る条件はデータ（role 0x06）だけに掛かる**: min_bytes バイトたまるか、最初のバイトから max_delay_ms 経ったら送る。0 は
+  その条件を使わない。両方 0 ならあるだけすぐ送る。
+- **出来事（role 0x05）はまとめない**: 生まれた出来事は、その前に送る応答（§11.4 の 1）を送り終えたらすぐ送る。min_bytes と max_delay_ms は
+  出来事に掛からず、出来事の byte は min_bytes に数えない。
 - 流れの量の予算（クレジット）は持たない。host や線が遅れた分は probe の中で押し出され、インターフェースの payload
   （ストリームの位置など）か seq の抜けで分かる。
 
@@ -639,8 +654,6 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 | 0x11 | end | — | — | 必要 | 必須 |
 | 0x12 | keepalive | — | — | 必要 | 必須 |
 | 0x13 | lock_state | — | locked(u8)、remaining_ms(u32)、[TLV owner] | 不要 | 必須 |
-| 0x30 | subscribe | §11.3 | — | 必要 | 必須 |
-| 0x32 | unsubscribe | §11.3 | — | 必要 | 必須 |
 
 
 ## 13. 拡張の規則（インターフェースの書き方）
@@ -660,7 +673,8 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
    - describe のインターフェース固有のタグ（0x40〜0x7F）と、ピンの role の番号。
    - どの target の系統のためのものか（規則 8。どの系統にも使うものはそう書く）。
    - インターフェースが作る資源とその寿命（§9 の上で）。
-   - 出来事の kind（0x01〜0x7F）とその payload、通知のデータの payload の形。
+   - 通知を送り出すか。送り出すなら subscribe / unsubscribe（§11.3）が必須か任意か、出来事の kind（0x01〜0x7F）とその payload、
+     通知のデータの payload の形。
    - 読む側が、応答の enum の知らない値と知らない flags をどう扱うか（§2.4、§2.5）。
    - §4.3 の順の断り方の表。
    - 頼る外部の仕様と、その版と、使う部分（「参照する仕様」の節）。

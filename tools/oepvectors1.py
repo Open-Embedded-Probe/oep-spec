@@ -213,20 +213,22 @@ def headers() -> dict:
 def confirm() -> dict:
     confirm_op = op("core", "confirm")
     t_transport = CORE["tlv"]["confirm_answer"]["transport"]
+    t_uptime = CORE["tlv"]["confirm_answer"]["uptime_ns"]
+    uptime = 1_500_000_000                                                         # 1.5 s since boot (core §2.6a)
     t_supported = CORE["tlv"]["unsupported_payload"]["supported"]
     req = request(1, 0, confirm_op, b"OEP?" + bytes([1, 1]))
     fixed = b"OEP!" + struct.pack("<BBHIBI", 1, 0, 1024, 4096, 4, 0x12345678)
-    ans = answer(1, COMPLETED, 0, fixed + tlv(t_transport, b"\x00"))
+    ans = answer(1, COMPLETED, 0, fixed + tlv(t_transport, b"\x00") + tlv(t_uptime, struct.pack("<Q", uptime)))
     req_hi = request(2, 0, confirm_op, b"OEP?" + bytes([2, 3]))
     ans_hi = answer(2, REJECTED, REASON["unsupported"], b"\x00" + tlv(t_supported, bytes([1, 1])))
     return {
-        "about": "confirm (core §7.1). The answer's values (max_frame 1024, window 4096, max_inflight 4, boot_id 0x12345678, transport index 0) are an example probe's.",
+        "about": "confirm (core §7.1). The answer's values (max_frame 1024, window 4096, max_inflight 4, boot_id 0x12345678, transport index 0, uptime_ns 1.5 s) are an example probe's.",
         "exchanges": [
             {"name": "revision 1 asked and answered", "request": {"corr": 1, "min_rev": 1, "max_rev": 1},
              "request_hex": hx(req), "request_serial_frame_hex": hx(serial_frame(req)),
              "request_length_frame_hex": hx(length_frame(req)),
              "answer": {"corr": 1, "revision": 1, "flags": 0, "max_frame": 1024, "window": 4096, "max_inflight": 4,
-                        "boot_id": 0x12345678, "transport": 0},
+                        "boot_id": 0x12345678, "transport": 0, "uptime_ns": uptime},
              "answer_hex": hx(ans), "answer_serial_frame_hex": hx(serial_frame(ans))},
             {"name": "no revision in the range: unsupported with the supported range",
              "request": {"corr": 2, "min_rev": 2, "max_rev": 3}, "request_hex": hx(req_hi),
@@ -340,7 +342,7 @@ def refusals() -> dict:
 
 
 def discovery() -> dict:
-    """The example probe of docs/getting-started.md §2, §3 (with fn 0's required ops, core §1.2): list (core §7.2), describe of fn 0 (core §7.3, §7.5) and the
+    """The example probe of docs/getting-started.ja.md §2, §3 (with fn 0's required ops, core §1.2): list (core §7.2), describe of fn 0 (core §7.3, §7.5) and the
     header refusals of core §4.3 order 1, continuing confirm.json's first exchange (corr 1)."""
     core = CORE
     list_op, describe_op = op("core", "list"), op("core", "describe")
@@ -352,7 +354,7 @@ def discovery() -> dict:
     list_ans = answer(2, COMPLETED, 0, struct.pack("<HB", 0, 0))                  # no interface; fn 0 is never listed (core §7.2)
 
     # core §1.2: fn 0's required ops, all set in ops
-    offered = [op("core", n) for n in ("confirm", "list", "describe", "open", "end", "keepalive", "lock_state", "subscribe", "unsubscribe")]
+    offered = [op("core", n) for n in ("confirm", "list", "describe", "open", "end", "keepalive", "lock_state")]
     decl_tlvs = [tlv(REG["describe_common"]["ops"], ops_value(offered)), tlv(d["unit_id"], unit_id.encode()), tlv(d["transport"], bytes([t_index, t_kind, t_interface])),
                  tlv(d["discoverable"], bytes([discoverable])), tlv(d["max_op_ms"], struct.pack("<I", max_op_ms))]
     decl, n_decl = b"".join(decl_tlvs), len(decl_tlvs)
@@ -364,8 +366,8 @@ def discovery() -> dict:
     no_fn = request(5, 7, 0x01, b"")
     no_op = request(6, 0, 0x50, b"")
     return {
-        "about": "list, describe and the header refusals of the example probe (docs/getting-started.md §2, §3, with its §6 steps 1 and 4 done): no interface (list is empty: "
-                 "fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, open, end, keepalive, lock_state, subscribe, unsubscribe) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
+        "about": "list, describe and the header refusals of the example probe (docs/getting-started.ja.md §2, §3, with its §6 step 1 done): no interface (list is empty: "
+                 "fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, open, end, keepalive, lock_state) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
                  "The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. "
                  "Those values are an example probe's.",
         "exchanges": [
@@ -607,6 +609,21 @@ def ops() -> dict:
         request(0x72, 8, op("oep.probe.config", "set"), tlv(idle_tag | CRITICAL, struct.pack("<HBBH", 4, 0, 0, 1)), S), rej(0x72, "malformed"))
     add("probe.config set: an idle value of 3 bytes", "probe settings §1, core §2.3", pc, "session S",
         request(0x73, 8, op("oep.probe.config", "set"), tlv(idle_tag | CRITICAL, struct.pack("<HB", 4, 0)), S), rej(0x73, "malformed"))
+
+    # subscribe / unsubscribe (core §11.3): ops of the interface that sends notifications, 0x30 / 0x32 in every op space, no target fn
+    sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]
+    lgs = {"9": "oep.fixture.logic"}
+    add("logic subscribe: min_bytes 1024, max_delay_ms 20", "core §11.3; capture §3.4", lgs,
+        "session S holds the lock; subscribe and unsubscribe set in fn 9's ops",
+        request(0x82, 9, sub, struct.pack("<HI", 1024, 20), S), ok(0x82))
+    add("logic unsubscribe", "core §11.3", lgs, "session S; fn 9 subscribed",
+        request(0x83, 9, unsub, b"", S), ok(0x83))
+    add("logic unsubscribe without a subscription: success, nothing done", "core §11.3", lgs, "session S; fn 9 not subscribed",
+        request(0x84, 9, unsub, b"", S), ok(0x84))
+    add("logic subscribe without a session: session_required", "core §4.1, §4.3 order 1, §11.3", lgs, "subscribe set in fn 9's ops",
+        request(0x85, 9, sub, struct.pack("<HI", 0, 0)), rej(0x85, "session_required"))
+    add("gpio subscribe: gpio sends no notifications (not in its ops)", "core §1.2, §11.3; fixture §1", {"2": "oep.fixture.gpio"},
+        "session S", request(0x86, 2, sub, struct.pack("<HI", 0, 0), S), rej(0x86, "unknown_operation"))
 
     # oep.fixture.logic (capture §2, §3.2)
     lg = {"9": "oep.fixture.logic"}

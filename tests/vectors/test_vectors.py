@@ -75,7 +75,7 @@ def tlvs(data: bytes) -> list[tuple[int, bytes]]:
 
 
 # core §1.2 (and the 必須 column of core §12): fn 0's ops every probe offers; plan_apply / plan_release only with a plan role
-REQUIRED_FN0_OPS = ("confirm", "list", "describe", "open", "end", "keepalive", "lock_state", "subscribe", "unsubscribe")
+REQUIRED_FN0_OPS = ("confirm", "list", "describe", "open", "end", "keepalive", "lock_state")
 
 
 def ops_set(value: bytes) -> set[int]:
@@ -161,7 +161,8 @@ def test_confirm_exchanges():
     a = ok["answer"]
     assert ans[5:9] == b"OEP!"
     assert struct.unpack_from("<BBHIBI", ans, 9) == (a["revision"], a["flags"], a["max_frame"], a["window"], a["max_inflight"], a["boot_id"])
-    assert tlvs(ans[9 + 13:]) == [(0x01, bytes([a["transport"]]))]
+    assert tlvs(ans[9 + 13:]) == [(0x01, bytes([a["transport"]])), (0x02, struct.pack("<Q", a["uptime_ns"]))]   # transport, uptime_ns (core §7.1)
+    assert len(ans) + 19 <= REG["constants"]["min_max_frame"]                                 # fits with the room for ignored (core §7.1)
     assert len(req) <= REG["constants"]["min_max_frame"] and len(ans) <= REG["constants"]["min_max_frame"]   # core §7.1
     ans = bytes.fromhex(refused["answer_hex"])
     assert struct.unpack_from("<BHBB", ans) == (0x02, 2, 0x00, REG["reject_reasons"]["unsupported"])
@@ -304,6 +305,7 @@ def test_example_probe_answers_carry_what_the_core_requires():
             confirms += 1
             got = dict(tlvs(ans[5 + 4 + 13:]))
             assert len(got.get(t_confirm, b"")) == 1, ex["name"]                              # core §7.1 "always attaches"
+            assert len(got.get(core["tlv"]["confirm_answer"]["uptime_ns"], b"")) == 8, ex["name"]   # core §7.1 uptime_ns, always
         elif fn == 0 and op == describe_op and struct.unpack_from("<H", req, 12)[0] == 0:
             describes += 1
             got = tlvs(ans[6:])
@@ -408,6 +410,18 @@ def test_per_op_vectors_decode_exactly():
                 ((tag, value),) = tlvs(req[10:])
                 assert tag == ra | 0x80 and len(value) == 5                                        # critical, fn role channel (oep-if-plan §2.1)
     assert pay("plan_apply: gpio role 1 on channel 3") == b"" and pay("plan_release: fn 2") == b""
+    sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]
+    assert (sub, unsub) == (0x30, 0x32)
+    logic = {o["name"]: o["code"] for o in iface["oep.fixture.logic"]["op"]}
+    assert logic["subscribe"] == sub and logic["unsubscribe"] == unsub                           # the reserved numbers (core §11.3)
+    assert "subscribe" not in {o["name"] for o in CORE["op"]}                                   # fn 0 sends no notifications
+    for c in v:
+        if "subscribe" in c["name"]:
+            req = bytes.fromhex(c["request_hex"])
+            fn, opc = struct.unpack_from("<HB", req, 3)
+            assert fn != 0 and opc in (sub, unsub), c["name"]
+            assert len(req) == (10 + 6 if opc == sub else 10), c["name"]                            # no target fn in the request
+    assert pay("logic subscribe: min_bytes 1024, max_delay_ms 20") == b""
     p = pay("rvswd connections: one connection with a target_id")
     assert p[0] == 0 and 1 + _fixed_sequence(p[1:], lambda b, i: 18 + b[i + 17]) == len(p)        # entry 18 bytes + tid
     p = pay("rvswd scan: one combination listed and found")

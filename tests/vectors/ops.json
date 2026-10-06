@@ -398,6 +398,56 @@
       "answer_hex": "0273000003"
     },
     {
+      "name": "logic subscribe: min_bytes 1024, max_delay_ms 20",
+      "spec": "core §11.3; capture §3.4",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "session S holds the lock; subscribe and unsubscribe set in fn 9's ops",
+      "request_hex": "01820009003044332211000414000000",
+      "answer_hex": "0282000100"
+    },
+    {
+      "name": "logic unsubscribe",
+      "spec": "core §11.3",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "session S; fn 9 subscribed",
+      "request_hex": "01830009003244332211",
+      "answer_hex": "0283000100"
+    },
+    {
+      "name": "logic unsubscribe without a subscription: success, nothing done",
+      "spec": "core §11.3",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "session S; fn 9 not subscribed",
+      "request_hex": "01840009003244332211",
+      "answer_hex": "0284000100"
+    },
+    {
+      "name": "logic subscribe without a session: session_required",
+      "spec": "core §4.1, §4.3 order 1, §11.3",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "subscribe set in fn 9's ops",
+      "request_hex": "01850009003000000000000000000000",
+      "answer_hex": "0285000009"
+    },
+    {
+      "name": "gpio subscribe: gpio sends no notifications (not in its ops)",
+      "spec": "core §1.2, §11.3; fixture §1",
+      "fns": {
+        "2": "oep.fixture.gpio"
+      },
+      "state": "session S",
+      "request_hex": "01860002003044332211000000000000",
+      "answer_hex": "0286000002"
+    },
+    {
       "name": "logic segments: one segment",
       "spec": "capture §2.2, §3.2",
       "fns": {

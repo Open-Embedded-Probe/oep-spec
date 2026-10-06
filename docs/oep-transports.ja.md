@@ -48,7 +48,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **TCP は、信頼できるローカルの接続か、認証したトンネルの内側でだけ使う。** OEP は認証を持たない（core §6.4 の force を含む）。
   1 つの probe を複数の host で使うときは、ブローカーが 1 つのセッションに束ねる（probe の規則がブローカーに何を求めるかは次の項目）。
 - **OEP の要求に自分で答える端点は probe である**。何が運び、後ろに何があるかによらない（たとえば TCP で OEP を出し、別のデバッガを動かすプログラム）。probe の規則はすべてそれに掛かる。要求を OEP の probe に中継するだけのブローカーは、その probe に対しては host である。
-- **セッションの op に自分で答える中継のブローカー**（confirm、open、end、keepalive、lock_state）で、ほかの要求をすべて 1 つの OEP の probe に中継するものは、自分の describe を持たない: それが中継する fn 0 の describe は probe のもの。confirm の transport TLV では index 0xFF（「describe に無い」）を返す。probe に対しては host である。それらのセッションの op の規則はすべて、その応答に掛かる。
+- **セッションの op に自分で答える中継のブローカー**（confirm、open、end、keepalive、lock_state）で、ほかの要求をすべて 1 つの OEP の probe に中継するものは、自分の describe を持たない: それが中継する fn 0 の describe は probe のもの。confirm の transport TLV では index 0xFF（「describe に無い」）を返す。confirm の uptime_ns（core §7.1）には、probe から最後に受けた confirm の応答の uptime_ns に、それを受けてから自分が答えを作るまでの経過を足した値を返してよい（中継の転送の時間の分だけ不確かになる）。それより正確な時刻が要るときは、host が probe と直接話すか、ブローカーが confirm を probe に中継する（そのときの uptime_ns は probe のもの）。probe に対しては host である。それらのセッションの op の規則はすべて、その応答に掛かる。
 - **中継のブローカーの probe への経路が無くなったとき**（USB で device が bus から外れた、TCP の接続が閉じた、ブローカーが probe への経路を閉じた）: ブローカーは終わる: client の接続をすべて閉じる。client は、経路が閉じたときと同じに、新しく開くのと同じやり方でやり直す。
 - **TCP の経路**: TCP で待ち受ける probe は、待ち受けの socket 1 つを fn 0 の describe の経路 1 つとして並べる（kind 6、interface 0xFF）。その socket で受けた接続はどれも、confirm の transport TLV でその index を返す。§3、core §4.4、core §7.1、core §11.4 が経路ごとに掛ける規則（セッションの要求は 1 つの経路で、max_frame / window / max_inflight、使っている revision、通知の送り先）は、受けた接続ごとに別々に掛かる。
   probe が待ち受ける TCP の port と、host が TCP の probe を見つける方法は、この仕様の外である。

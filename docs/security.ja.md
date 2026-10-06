@@ -48,8 +48,8 @@ host は:
   result_lost で答える（core §5.2）。
 - **ignored の並び**は多くて `ignored_max_entries` 個で、probe はいつもその余地を残す（core §2.3）。
 - **通知**: 経路の送信のバッファで待つのは多くて max_frame × `notify_pending_max_frames` byte。残りは probe の中で捨てられ、seq の
-  飛びに見える。probe は応答を先に送り、通知の書き込みでブロックしない（core §11.4）。ハートビートの周期は `heartbeat_min_ms` に
-  丸めてよい（core §11.3）。
+  飛びに見える。probe は応答を先に送り、通知の書き込みでブロックしない（core §11.4）。通知を送るのは、ロックの持ち主が購読した fn だけ
+  （core §11.3）。
 - **シリアルの口での host の受けの量**: host は待つ応答の量を `host_serial_inflight_max_bytes` 以下に、subscribe の min_bytes を
   `host_serial_min_bytes_max` 以下に保つ。OS のドライバが一度に来た量を黙って落とすことがあるため（transports §4）。
 - **時間**: どの要求も宣言した max_op_ms より長くかからず、引数がそれを超えうる op は unsupported で断る（core §7.5）。attach と scan
