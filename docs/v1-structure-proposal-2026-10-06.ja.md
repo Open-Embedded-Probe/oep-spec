@@ -19,6 +19,7 @@ Status: **applied**（非規範の記録）。方向は利用者が決め（下�
 3. **名前は `oep.<層>.<名前>`。拡張の区分は作らない。** 汎用か 1 系統専用かは名前に入れない（SWD もはじめは 1 社のものだった。広まり方は時間で変わり、線引きはぶれる）。どの系統向けかは registry と各文書の冒頭に書く。第三者のインターフェースは今と同じ逆 DNS。
 4. **購読は、送り出すインターフェース自身の op にする。heartbeat は無くす**（再レビュー §3.1 の矛盾はこれで消える）。core は通知のフレームの形と購読の規則と、subscribe / unsubscribe の共通の op 番号を持つ。送り出すインターフェースだけがその op を ops に立てる。何が届くか（出来事の kind、データの意味）はインターフェースが決める。
 5. **probe の今の時刻は必須の応答で読む。** heartbeat が運んでいた uptime_ns を、必須の応答（confirm の応答の TLV が案）に足す。マークや区画の時刻（probe の時計）を host の時刻と突き合わせるのに要る。probe が生きているかは応答の待ち時間で、再起動は boot_id で分かるので、heartbeat が無くても困らない。WireSkein の条件: (a) confirm はセッションの途中でもいつ送ってもよく、セッションとロックに影響しないと明記する（キャプチャの前後で読んで時計のずれを測るため）。(b) probe は uptime_ns を答えを作る直前に取る（突き合わせの不確かさを往復の半分に抑えるため）。
+   **この 5 は後で置き換えた（0304f37）**: 時刻は confirm の TLV ではなく、fn 0 の必須の op `clock`（0x04、ロック不要、session_id 0 で送れ、セッション、ロック、lease に触れない。応答は boot_id と uptime_ns）で読む。理由: 自分で confirm に答える中継のブローカーの推定（§6 の ch32rv の条件、§7 の利用者の選択）は、ブローカーと probe の時計のずれを経過の分だけ含み、host にはブローカーとのずれを測らせ、見えない再起動の後は古い。ブローカーが上流に取りに行くと、待ちが短く決まった confirm がほかの client の長い op の後ろに並ぶ。clock はセッションの op ではないので、ブローカーはほかの要求と同じく中継し（ふつうの待ち）、値はどのブローカーを通しても probe 自身の時計の、往復の間に読んだものになる。(b) は clock に移り、(a) の「confirm はいつでも」の一文は消した（session_id 0 のロック不要の op としてはもともと §4.1、§6.3 で言えている）。
 6. **文書は同じリポジトリの中で分ける**: `docs/` に core と経路、`interfaces/` に標準インターフェース。リリースは 1 つの tag。
 
 ## 2. 名前の一覧
@@ -47,7 +48,7 @@ Status: **applied**（非規範の記録）。方向は利用者が決め（下�
 - **channel**: probe のピンの番号の空間と、その宣言（channels、reserved、label、profile）。wire の attach のように plan を使わずにピンを選ぶインターフェースも使うので、plan の有無に関係なく core に置く。describe の共通の tag（ops、role_channels、channel_group、clock など）も core。
 - 資源の寿命と取り合いの一般の規則（§8.1、§9）、起動時のピンの空きの状態。
 - **通知**: フレームの形（role 0x05 / 0x06、seq）、host の振り分けの義務、送り出す probe の義務、購読の規則（ロックと一緒に終わる、1 つの fn に 1 つ、送り直しは置き換え、seq は 0 から、まとめる条件はデータだけ）、どのインターフェースでも使う subscribe / unsubscribe の op 番号（今の 0x30 / 0x32 をインターフェースの op の空間で予約する案）。購読の op の要求は相手の fn を持たない（その fn 自身への要求なので）。
-- **probe の今の時刻**（uptime_ns）: 必須の応答に置く（§1 の 5）。
+- **probe の今の時刻**（uptime_ns）: 必須の応答に置く（§1 の 5）。後に fn 0 の op `clock` に置き換えた（0304f37）。
 - 拡張の規則（インターフェースの書き方）。
 
 ### 3.2 出るもの
@@ -85,12 +86,13 @@ Status: **applied**（非規範の記録）。方向は利用者が決め（下�
 
 ## 7. 適用（2026-10-06）
 
-利用者の選択: 自分で confirm に答える中継のブローカーは推定の uptime_ns を返してよく、正確な時刻が要る host は probe と直接話すか、ブローカーが confirm を中継する。op の番号は `oep.probe.plan` の plan_apply 0x01、plan_release 0x02、`oep.probe.restart` の restart 0x01。`oep.probe.link` は op を変えない。
+利用者の選択: 自分で confirm に答える中継のブローカーは推定の uptime_ns を返してよく、正確な時刻が要る host は probe と直接話すか、ブローカーが confirm を中継する。（この選択は 0304f37 で置き換えた。§1 の 5 を見よ）op の番号は `oep.probe.plan` の plan_apply 0x01、plan_release 0x02、`oep.probe.restart` の restart 0x01。`oep.probe.link` は op を変えない。
 
 | commit | 中身 |
 |---|---|
 | f249685 | §1 の 6: 名前が `oep.` で始まるインターフェースの文書を `interfaces/` に移し、索引（README）を置く。core §14 を消す。リンクを直す |
 | 2e5dc4c | §1 の 1〜3、§3: core は名前を持たない。`oep.probe.plan`、`oep.probe.restart` を新しく作り、`oep.link` を `oep.probe.link` にする。経路のブローカーの restart の特則を消す。リンクの host の義務 6 を一般に書く。core の文からインターフェースの名前を消す。§13 の規則 8 と registry の `target` |
-| 0bce222 | §1 の 4、5、§4 の §3.3: 購読は送り出すインターフェースの op（0x30 / 0x32 をすべての op の空間で予約）、heartbeat を無くす、まとめる条件はデータだけ。confirm の uptime_ns、confirm はいつでも、ブローカーの推定 |
+| 0bce222 | §1 の 4、5、§4 の §3.3: 購読は送り出すインターフェースの op（0x30 / 0x32 をすべての op の空間で予約）、heartbeat を無くす、まとめる条件はデータだけ。confirm の uptime_ns、confirm はいつでも、ブローカーの推定（時刻の部分は 0304f37 で置き換えた） |
 | c475dad | §4 の §3.2: ops の符号と、その境のベクタ |
 | f48ebe0、18ad0d0 | 利用者の追加の決定: 「標準インターフェース」という区分を無くす。名前は逆 DNS で、project 自身のものだけが短い `oep.` を使う |
+| 0304f37 | §1 の 5 を置き換える（peers の指摘、ch32rv と WireSkein が同意し、利用者の「異論がなければ進める」で決定）: 時刻は fn 0 の必須の op `clock`（0x04）。confirm の uptime_ns、「confirm はいつでも」の一文、ブローカーの推定の一文は消す。中継のブローカーが自分で答えるのはセッションの op だけで、clock は中継する |
