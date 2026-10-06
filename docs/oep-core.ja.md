@@ -67,13 +67,14 @@ probe が実装しなければならない（MUST）もの:
 - §3 の経路の少なくとも 1 つと、そのフレーム;
 - §4〜§6;
 - fn 0 の confirm、list、describe、open、end、keepalive、lock_state、subscribe と unsubscribe、link_source と link_sink;
-- fn 0 の describe の unit_id、transport、max_op_ms、discoverable（§7.5。プロジェクトの USB の VID:PID で列挙しない probe は 0）。
+- fn 0 の describe の unit_id、transport、max_op_ms、discoverable（§7.5。プロジェクトの USB の VID:PID で列挙しない probe は 0）;
+- list に載せるすべての fn（fn 0 を含む）の describe の、共通の tag ops（§7.4）。
 
-plan_apply と plan_release は、どれかのインターフェースが plan の role（インターフェースの文書が plan を通して割り当てる role、§8。wire の attach が引数で選ぶピンの role は plan の role ではない）を持つときに要る。plan の role を持つインターフェースが 1 つも無い probe は、それらに unknown_operation で答える。任意: port_speed（§3.5）、fn 0 のハートビート以外の通知、すべてのインターフェース。
+plan_apply と plan_release は、どれかのインターフェースが plan の role（インターフェースの文書が plan を通して割り当てる role、§8。wire の attach が引数で選ぶピンの role は plan の role ではない）を持つときに要る。plan の role を持つインターフェースが 1 つも無い probe は、それらを持たない。任意: port_speed（§3.5）、fn 0 のハートビート以外の通知、すべてのインターフェース。
 
-**必ず持つ op と任意の op。** インターフェースの op の表（fn 0 は §12、ほかはそのインターフェースの文書の op の表）の op は、そのインターフェースを list に載せる probe が必ず持つ。文書が任意と書いた op は除く。op を任意と書く文書は、何がそれを宣言するかを書く: features のビット（§7.4）、describe のほかの tag、またはそれを使うインターフェースが list にあること。probe は、その宣言をしたときに限り、その任意の op を持つ。
+**必ず持つ op と任意の op。** インターフェースの op の表（fn 0 は §12、ほかはそのインターフェースの文書の op の表）の op は、そのインターフェースを list に載せる probe が必ず持つ。文書が任意と書いた op は除く。**すべての fn は、持つ op を 1 か所で宣言する: describe の共通の tag ops（0x09、§7.4）。** 必須の op はすべてそこに立てる。任意の op は、probe がそれを持つときに限り立てる。実験用の op（0xF0〜0xFF、§2.5）は決して立てない。
 
-probe は、インターフェースが定義しない op の要求と、持たない任意の op の要求に rejected unknown_operation で答える（§4.3 順 1）。持つ op に、宣言しない任意の機能（mode、format、値、critical の TLV、ピンの組み合わせ）を求める要求には rejected unsupported で答える（§4.3 順 6）。
+probe は、その fn の ops が立てない op（インターフェースが定義しない op、または持たない任意の op）の要求に rejected unknown_operation で答える（§4.3 順 1）。持つ op に、宣言しない任意の機能（mode、format、値、critical の TLV、ピンの組み合わせ）を求める要求には rejected unsupported で答える（§4.3 順 6）。
 
 host がしなければならない（MUST）こと: 知らない TLV と tag を読み飛ばす（§2.3、§2.4）。§3.2 と §3.3 の探りの規則に従う。§4.4 のとおり待つ。§5.2 のとおり送り直す。§11.1 のとおりフレームを振り分ける。
 
@@ -135,7 +136,7 @@ tag(u8) | len(u16) | value(len byte)
 **OEP の伸び方**（凍結後はこれらだけで伸ばす）:
 
 1. **新しい TLV**: 要求、応答、出来事、データ、describe の中に。または probe.config の新しい項目の tag。
-2. **新しい任意の op**（§1.2 のとおりに宣言する）か**新しい出来事の kind**。
+2. **新しい任意の op**（ops で宣言する、§1.2）か**新しい出来事の kind**。
 3. **予約の空間の新しい値**: 古い probe が unsupported で断る要求の値（§4.3 順 6）、または §2.5 の条件のもとでの
    応答の値。
 4. 新しい意味には**新しいインターフェースの名前**、変わった固定の形には**新しい revision**（§2.7）。
@@ -200,7 +201,7 @@ probe の時計は 1 つ: **起動からの ns（u64）**。時計は、同じ b
 - インターフェースのどの**固定の形**（§2.3: 固定部分、TLV の値、並びの要素、項目）も、形と意味は **(名前, revision) で決まる**（list の revision、u8）。
 - **revision を上げるのは、固定の形の意味か長さを変えるときだけ**。host は知らない revision のインターフェースを使わない。
 - 固定の形を変えずに、任意の request TLV、response TLV、任意の op、任意の event を足すときは、revision を変えない。知らない
-  host はそれらを使わない。任意の op の有無は §1.2 のとおりに、任意の機能（モード、format など）の有無は describe（features など）で宣言する。
+  host はそれらを使わない。任意の op の有無は ops（§1.2、§7.4）で、op でない任意の機能（モード、format など）の有無は describe（features など）で宣言する。
 - 固定部分を変える revision を入れる probe は、できれば古い revision も別の fn として同時に出す。
 - 名前を変えるのは、インターフェースの意味が変わるときだけ。
 - 本体の形を変えるときは、プロトコルの revision（confirm）を上げる。この文書の形は revision 1。
@@ -355,7 +356,7 @@ host が決める（参考の手順: [host 開発ガイド](host-development-gui
 
 **probe**
 
-- ON の probe だけが fn 0 の describe に port_speed（§7.5）を宣言し、op port_speed（fn 0、0x14、ロックが要る）を受ける。OFF は
+- ON の probe だけが fn 0 の describe の ops に op port_speed（fn 0、0x14、ロックが要る）を立て（§1.2）、それを受ける。OFF は
   unknown_operation。対象は transport kind 1（UART bridge）の口だけ。
 
 ```text
@@ -457,7 +458,7 @@ rejected の detail は reason で、そのほかの情報は payload に置く�
 
 **断り方の順**（probe は次の順に見て、最初に当たった理由で断る。同じ状況に 2 つの理由を作らない）:
 
-1. 見出し: unknown_function → unknown_operation（インターフェースが定義しない op、またはこの probe が持たない任意の op、§1.2）→ session_required。
+1. 見出し: unknown_function → unknown_operation（その fn の ops が立てない op: インターフェースが定義しない op、またはこの probe が持たない任意の op、§1.2）→ session_required。
 2. 送り直し（§5.2 の表）: corr_reused / result_lost / 覚えた応答。
 3. セッション（§6.2）: no_session / expired / locked。
 4. window_exceeded。
@@ -663,11 +664,15 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x02 | max_clock_hz | u32 |
 | 0x03 | max_length | u16。1 回に扱える最大の長さ。その op の要求と応答が max_frame に収まる値で宣言する（単位はインターフェースの文書が決める）。超えた要求は rejected unsupported |
 | 0x05 | min_clock_hz | u32 |
-| 0x06 | features | u32。任意機能のビット（意味はインターフェースが決める） |
+| 0x06 | features | u32。op でない任意機能のビット: モード、format、通知など（意味はインターフェースが決める）。任意の op は ops で宣言し、決して features では宣言しない |
 | 0x07 | implementation | u8。0 未指定、1 ソフトウェア、2 専用ペリフェラル、3 ペリフェラル + DMA / PIO（表示と診断のため） |
 | 0x08 | channel_group | group(u8)、n(u8)、n × (role(u8)、channel(u16))。この group を使うなら、各 role はここの channel に固定される。group が 1 つ以上ある機能では、plan はどれか 1 つの group に完全に一致しなければならない |
+| 0x09 | ops | base(u8)、bitmap。bit i が立っていれば op base + i を持つ（§1.2）。fn 0 を含むすべての fn の describe が付ける |
 
-0x04 は予約。role の番号はインターフェースが定める。これらの値は閉じた形で、足す情報は新しい tag にする（§2.3）。
+0x04 は予約。role の番号はインターフェースが定める。これらの値は固定の形で、足す情報は新しい tag にする（§2.3）。
+
+- **ops** の例: op 0x01〜0x08 をすべて持つ riscv-dm の fn は `09 02 00 01 FF` を送る。dmi、halt、resume だけ（0x01〜0x03）を持つものは `09 02 00 01 07` を送る。
+  host は op があるかを知るのに、features ではなく bitmap を読む。
 
 - どのピンにも割り当てられる機能は role_channels に候補を並べ、ピンの組が決まっている機能は channel_group を組の数だけ書く。
   両方を書いた場合、plan は channel_group のどれかに一致し、かつ role_channels の候補にも入っていなければならない。
@@ -694,7 +699,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x4B | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
 | 0x4C | chip | text。probe の MCU の型番とリビジョン: `<part> v<revision>`。part は `a-z 0-9` の 1〜24 文字。revision は数字で、`.数字` の組が続いてよい。リビジョンが分からなければ part だけ（例 `abc123 v1.0`、`abc123`）。取ったデータに、どのチップで取ったかを残すため（任意） |
 | 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。1〜600000（`max_op_ms_max`、10 分）。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host は §4.4 のとおり待つ |
-| 0x4E | port_speed | u8。1 = この probe は op port_speed（§3.5）を受ける（firmware が機能を ON にしたときだけ出す） |
+| 0x4E | — | 予約 |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 内蔵の USB シリアル（MCU のハードウェアが持つ USB のシリアルの口で、serial number を含む USB の記述子を probe が選べないもの）、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
   1〜3 がシリアルの口（§3.4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
@@ -854,7 +859,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 | 0x11 | end | — | — | 必要 | 必須 |
 | 0x12 | keepalive | — | — | 必要 | 必須 |
 | 0x13 | lock_state | — | locked(u8)、remaining_ms(u32)、[TLV owner] | 不要 | 必須 |
-| 0x14 | port_speed | §3.5（任意。describe の tag 0x4E で宣言する） | baud(u32) | 必要 | 任意 |
+| 0x14 | port_speed | §3.5 | baud(u32) | 必要 | 任意（ops） |
 | 0x30 | subscribe | §11.3 | — | 必要 | 必須 |
 | 0x32 | unsubscribe | §11.3 | — | 必要 | 必須 |
 | 0x40 | link_source | length(u32)、[TLV] | len(u16)、data、[TLV]: len は length と 1 フレームに入る分の小さいほう。data の k バイト目は k & 0xFF | 不要 | 必須 |
@@ -872,7 +877,7 @@ malformed。
    名前の label はそれぞれ `a-z 0-9 -` の 1 文字以上で、`-` で始まらず `-` で終わらない。名前は label を 2 つ以上持つ。
 2. **定義が決めるもの**: インターフェースの文書はどれも、次のチェックリストを埋める。
    - 名前と revision。
-   - op の表: 番号、要求、応答、ロックの要否、どの op が必須でどれが任意か、任意の op それぞれを何が宣言するか（§1.2）。
+   - op の表: 番号、要求、応答、ロックの要否、どの op が必須でどれが任意か（任意の op は ops で宣言する、§1.2）。
    - 各 op の要求と応答の TLV（その op の文脈の tag の空間）。
    - 各 op の completed success、completed failed、completed partial の payload（§4.2）。
    - インターフェース自身の status の値（0x40〜0x7F）と reject reason（0x40〜0x7F）。

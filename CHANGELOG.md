@@ -47,6 +47,13 @@ Text only, no wire change:
   item has boot_reset after attach, slot_state has reset_at_ns before tid; the probe no longer keeps unknown trailing bytes of items. The link
   test is counted: link_source answers `len(u16), data, [TLV]`, link_sink sends `count(u16), data, [TLV]` and gets an empty answer.
   Registry: `closed_tail` removed (schema and fn 0), `drive_kind.default = 2`.
+- One declaration of optional ops: the common describe tag `ops` (0x09, `base(u8), bitmap`) in the describe of every fn, fn 0 included; every
+  required op is set, an op not set is answered unknown_operation, experimental ops are never set (core §1.2, §4.3, §7.4). features keeps only
+  optional functions that are not ops. riscv-dm declares reset, read_block / write_block, run and step by ops and has no features; i2c-target's
+  stretch, logic / analog's query and force, capture-group's force and probe.config's save / erase are declared by ops (the storage tag is
+  present exactly when save is offered, max_bytes 1 or more); port_speed by op 0x14 in fn 0's ops. Registry: `describe_common.ops = 0x09`;
+  riscv-dm features removed; i2c-target features bit 0x02, logic / analog / capture-group features bits 0x01 and 0x02 reserved; fn 0 describe
+  `port_speed` (0x4E) reserved. `discovery.json`: the example probe's describe of fn 0 carries ops (confirm, list, describe).
 
 ### Rule changes: core and registry
 

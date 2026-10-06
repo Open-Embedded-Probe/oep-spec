@@ -67,13 +67,14 @@ A probe MUST implement:
 - at least one transport of §3, with its frame;
 - §4 to §6;
 - fn 0 confirm, list, describe, open, end, keepalive, lock_state, subscribe and unsubscribe, link_source and link_sink;
-- in describe of fn 0, unit_id, transport, max_op_ms and discoverable (§7.5; 0 for a probe that does not enumerate with the project's USB VID:PID).
+- in describe of fn 0, unit_id, transport, max_op_ms and discoverable (§7.5; 0 for a probe that does not enumerate with the project's USB VID:PID);
+- in the describe of every fn it lists, fn 0 included, the common tag ops (§7.4).
 
-plan_apply and plan_release are required when any of its interfaces has plan roles (roles that the interface's document assigns through the plan, §8; the pin roles that a wire's attach selects by argument are not plan roles). A probe none of whose interfaces has plan roles answers them with unknown_operation. Optional: port_speed (§3.5), notifications other than fn 0's heartbeat, and every interface.
+plan_apply and plan_release are required when any of its interfaces has plan roles (roles that the interface's document assigns through the plan, §8; the pin roles that a wire's attach selects by argument are not plan roles). A probe none of whose interfaces has plan roles does not offer them. Optional: port_speed (§3.5), notifications other than fn 0's heartbeat, and every interface.
 
-**Required and optional ops.** Every op in an interface's op table (§12 for fn 0, the op table of the interface's document otherwise) is required of a probe that lists that interface, unless the document marks the op optional. A document that marks an op optional names what declares it: a bit of features (§7.4), another tag of describe, or the presence in list of the interfaces that use it. A probe offers an optional op exactly when it makes that declaration.
+**Required and optional ops.** Every op in an interface's op table (§12 for fn 0, the op table of the interface's document otherwise) is required of a probe that lists that interface, unless the document marks the op optional. **Every fn declares the ops it offers in one place: the common describe tag ops (0x09, §7.4).** Every required op is set in it; an optional op is set exactly when the probe offers it; an experimental op (0xF0 to 0xFF, §2.5) is never set.
 
-A probe answers a request for an op the interface does not define, and for an optional op it does not offer, with rejected unknown_operation (§4.3 order 1). It answers a request that asks an op it offers for an optional function it does not declare (a mode, a format, a value, a critical TLV, a pin combination) with rejected unsupported (§4.3 order 6).
+A probe answers a request for an op that its fn's ops does not set (an op the interface does not define, or an optional op it does not offer) with rejected unknown_operation (§4.3 order 1). It answers a request that asks an op it offers for an optional function it does not declare (a mode, a format, a value, a critical TLV, a pin combination) with rejected unsupported (§4.3 order 6).
 
 A host MUST: skip unknown TLVs and tags (§2.3, §2.4); follow §3.2 and the probing rule of §3.3; wait as §4.4 says; resend as §5.2 says; dispatch frames as §11.1 says.
 
@@ -135,7 +136,7 @@ tag(u8) | len(u16) | value(len byte)
 **How OEP grows** (after the freeze these are the only paths):
 
 1. **a new TLV**: in a request, an answer, an event, data or describe, or a new item tag of probe.config;
-2. **a new optional op** (declared as §1.2 says) or **a new event kind**;
+2. **a new optional op** (declared by ops, §1.2) or **a new event kind**;
 3. **a new value in a reserved space**: a value of a request that an older probe refuses unsupported (§4.3 order 6), or a value of an answer under the
    conditions of §2.5;
 4. **a new interface name** for a new meaning, and **a new revision** for a changed fixed form (§2.7).
@@ -200,7 +201,7 @@ The probe has one clock: **ns since boot (u64)**. The clock does not decrease an
 - The form and meaning of every **fixed form** of an interface (§2.3: fixed parts, TLV values, elements of sequences, items) is **determined by (name, revision)** (the revision of list, u8).
 - **The revision is raised only when the meaning or length of a fixed form changes.** The host does not use an interface whose revision it does not know.
 - Adding optional request TLVs, response TLVs, optional ops or optional events without changing a fixed form does not change the revision. A host that does not know them
-  does not use them. The presence of optional ops is declared as §1.2 says, and the presence of optional functions (modes, formats, etc.) by describe (features etc.).
+  does not use them. The presence of optional ops is declared by ops (§1.2, §7.4), and the presence of optional functions that are not ops (modes, formats, etc.) by describe (features etc.).
 - A probe that introduces a revision changing the fixed part preferably also exposes the old revision at the same time as a separate fn.
 - The name changes only when the meaning of the interface changes.
 - When the form of the core changes, the protocol revision (confirm) is raised. The form in this document is revision 1.
@@ -355,7 +356,7 @@ are decided by the host (reference procedure: [host development guide](host-deve
 
 **Probe**
 
-- Only a probe with it ON declares port_speed (§7.5) in the describe of fn 0 and accepts op port_speed (fn 0, 0x14, lock required). OFF is
+- Only a probe with it ON sets op port_speed (fn 0, 0x14, lock required) in the ops of fn 0's describe (§1.2) and accepts it. OFF is
   unknown_operation. Only ports of transport kind 1 (UART bridge) are eligible.
 
 ```text
@@ -457,7 +458,7 @@ The detail of rejected is the reason, and other information goes in the payload.
 
 **Order of refusal** (the probe checks in the following order and refuses with the first reason that applies. No two reasons are created for the same situation):
 
-1. Header: unknown_function → unknown_operation (an op the interface does not define, or an optional op this probe does not offer, §1.2) → session_required.
+1. Header: unknown_function → unknown_operation (an op the fn's ops does not set: one the interface does not define, or an optional op this probe does not offer, §1.2) → session_required.
 2. Resend (the table of §5.2): corr_reused / result_lost / the remembered answer.
 3. Session (§6.2): no_session / expired / locked.
 4. window_exceeded.
@@ -663,11 +664,15 @@ appears in the answer.
 | 0x02 | max_clock_hz | u32 |
 | 0x03 | max_length | u16. The maximum length handled in one go. Declared as a value such that the op's request and answer fit within max_frame (the unit is decided by the interface's document). A request exceeding it is rejected unsupported |
 | 0x05 | min_clock_hz | u32 |
-| 0x06 | features | u32. Bits of optional functions (the meaning is decided by the interface) |
+| 0x06 | features | u32. Bits of optional functions that are not ops: modes, formats, notifications and the like (the meaning is decided by the interface). Optional ops are declared by ops, never by features |
 | 0x07 | implementation | u8. 0 unspecified, 1 software, 2 dedicated peripheral, 3 peripheral + DMA / PIO (for display and diagnostics) |
 | 0x08 | channel_group | group(u8), n(u8), n × (role(u8), channel(u16)). If this group is used, each role is fixed to the channels given here. For a function with one or more groups, the plan must match one group completely |
+| 0x09 | ops | base(u8), bitmap. Bit i set: op base + i is offered (§1.2). Every fn's describe carries it, fn 0 included |
 
-0x04 is reserved. The role numbers are defined by the interface. These values are closed forms; information to add goes under a new tag (§2.3).
+0x04 is reserved. The role numbers are defined by the interface. These values are fixed forms; information to add goes under a new tag (§2.3).
+
+- **ops** examples: a riscv-dm fn that offers all of ops 0x01 to 0x08 sends `09 02 00 01 FF`; one with dmi, halt and resume only (0x01 to 0x03) sends `09 02 00 01 07`.
+  The host reads the bitmap, not features, to know whether an op exists.
 
 - A function that can be assigned to any pin lists its candidates in role_channels; a function whose pin combination is fixed writes channel_group once per combination.
   When both are written, the plan must match one of the channel_groups and also be within the candidates of role_channels.
@@ -694,7 +699,7 @@ appears in the answer.
 | 0x4B | plan_roles | u32. The number of role_assignments the plan can hold at once (the total over all fns. Includes the settings plan). A probe with a limit always emits it (§8) |
 | 0x4C | chip | text. The part number and revision of the probe's MCU: `<part> v<revision>`. part is 1 to 24 of `a-z 0-9`. revision is digits with optional `.digits` groups. When the revision is unknown, the part alone (e.g. `abc123 v1.0`, `abc123`). So that captured data records which chip captured it (optional) |
 | 0x4D | max_op_ms | u32. The longest time the probe spends on one request. **Mandatory.** 1 to 600000 (`max_op_ms_max`, 10 minutes). Ops that could exceed it (run, the sum of the waits of dmi, the start of capture, save, the hold_ms of the reset of attach) are rejected unsupported if the sum of their arguments exceeds it. The lease is not counted during execution (§6.1). Reading the other transports and the consoles of connections continues. The value is decided by the probe. The host waits as §4.4 says |
-| 0x4E | port_speed | u8. 1 = this probe accepts op port_speed (§3.5) (emitted only when the firmware has the function ON) |
+| 0x4E | — | Reserved |
 
 - The kind of transport: 1 UART bridge, 2 USB CDC, 3 built-in USB serial (a USB serial port implemented by the MCU's hardware, whose USB descriptors, the serial number included, the probe cannot choose), 4 vendor bulk, 5 HID, 6 TCP (the registry's `transport_kind`).
   1 to 3 are serial ports (§3.4). index is the number designating a transport within the probe (from 0); when the probe's settings designate a serial port they also use this
@@ -854,7 +859,7 @@ event   role=0x05 | fn(u16) | seq(u16) | kind(u8) | fixed part | [TLV]          
 | 0x11 | end | — | — | Required | yes |
 | 0x12 | keepalive | — | — | Required | yes |
 | 0x13 | lock_state | — | locked(u8), remaining_ms(u32), [TLV owner] | Not required | yes |
-| 0x14 | port_speed | §3.5 (optional, declared by describe tag 0x4E) | baud(u32) | Required | optional |
+| 0x14 | port_speed | §3.5 | baud(u32) | Required | optional (ops) |
 | 0x30 | subscribe | §11.3 | — | Required | yes |
 | 0x32 | unsubscribe | §11.3 | — | Required | yes |
 | 0x40 | link_source | length(u32), [TLV] | len(u16), data, [TLV]: len is the smaller of length and what fits in one frame; byte k of data is k & 0xFF | Not required | yes |
@@ -872,7 +877,7 @@ Standard interfaces and independent interfaces are both defined by the following
    Each label of a name is 1 or more of `a-z 0-9 -`, and does not start or end with `-`. A name has at least two labels.
 2. **What the definition decides**: every interface document fills in this checklist.
    - the name and the revision;
-   - the table of ops: number, request, answer, whether the lock is required, and which ops are required and which optional, with what declares each optional op (§1.2);
+   - the table of ops: number, request, answer, whether the lock is required, and which ops are required and which optional (an optional op is declared by ops, §1.2);
    - the request and answer TLVs of each op (the tag space of that op's context);
    - the payloads of completed success, completed failed and completed partial of each op (§4.2);
    - the interface's own status values (0x40 to 0x7F) and reject reasons (0x40 to 0x7F);

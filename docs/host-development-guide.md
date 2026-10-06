@@ -159,7 +159,7 @@ gives the first reason that applies in the order of core §4.3, so the reason sa
 | reason | Meaning (core §4.3) | What the host does |
 |---|---|---|
 | unknown_function (0x01) | No such fn (also an fn named inside the payload) | Your fn map is stale or wrong: list again (fn numbers hold only while the boot_id is the same, core §7.2). Do not use the interface |
-| unknown_operation (0x02) | The fn has no such op | An optional op the probe does not implement (core §1.2). Look at describe (features) before using optional ops |
+| unknown_operation (0x02) | The fn has no such op | An optional op the probe does not implement (core §1.2). Look at describe's ops (0x09) before using optional ops; if you check ops and do not send, report the same failure as this answer, so that callers see one error either way |
 | malformed (0x03) | The request's form is wrong | A bug in your encoder or a value excluded for every revision. Do not resend it unchanged; fix the request. Log the request bytes |
 | unavailable (0x04) | Cannot be done in the current state or with the current resources | Read the TLVs: cause (1 pin in use, 2 count limit, 3 not enough storage, 4 bound into a group, 5 held by the settings, 6 wrong state), channel, holder_fn, holder_kind (1 plan, 2 wire connection, 3 slot, 4 bind, 5 settings plan, 6 settings disable, 7 settings idle). Show them to the user; release your own resources or change the order. Cause 5 means the probe's settings hold it: change the settings, not the request. Unknown cause / holder_kind values are shown as unknown (core §2.4) |
 | busy (0x05) | Reserved (core §10) | Treat as a failure |

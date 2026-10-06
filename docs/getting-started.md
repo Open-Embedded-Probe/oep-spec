@@ -105,20 +105,21 @@ message      01 0300 0000 03 00000000 | 0000 | 0000
 serial frame 00 03 01 03 01 01 02 03 01 01 01 01 01 01 01 03 ea 30 00
 ```
 
-Answer: `more(u8)`, then the declaration TLVs. The four that every probe sends in fn 0: unit_id, transport (one per transport) and
-max_op_ms (core §1.2), and discoverable (core §7.5; 0 here, since a UART bridge does not enumerate with the project's USB VID:PID).
+Answer: `more(u8)`, then the declaration TLVs. The five that every probe sends in fn 0: ops (the ops this fn offers as base 0x01 and a bitmap,
+core §7.4: here only confirm, list and describe, the ops this probe answers; set a bit for each op you add, §6), unit_id, transport (one per transport) and max_op_ms (core §1.2), and discoverable (core §7.5; 0 here, since a UART bridge does
+not enumerate with the project's USB VID:PID).
 
 ```text
-message      02 0300 01 00 | 00 | 42 0800 61 31 62 32 63 33 64 34 | 49 0300 00 01 ff | 4a 0100 00 | 4d 0400 e8 03 00 00
-               completed success | more 0 | unit_id "a1b2c3d4" | transport: index 0, kind 1, interface 0xFF | discoverable 0 | max_op_ms 1000
-serial frame 00 03 02 03 02 01 01 03 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4a 01 01 03 4d 04 03 e8 03 01 03 14 e8 00
+message      02 0300 01 00 | 00 | 09 0200 01 07 | 42 0800 61 31 62 32 63 33 64 34 | 49 0300 00 01 ff | 4a 0100 00 | 4d 0400 e8 03 00 00
+               completed success | more 0 | ops 01 02 03 | unit_id "a1b2c3d4" | transport: index 0, kind 1, interface 0xFF | discoverable 0 | max_op_ms 1000
+serial frame 00 03 02 03 02 01 01 03 09 02 05 01 07 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4a 01 01 03 4d 04 03 e8 03 01 03 e3 24 00
 ```
 
-A describe whose `first` is at or beyond the count of TLVs (here 4) is answered with more 0 and no TLVs (core §7.3; `discovery.json`,
+A describe whose `first` is at or beyond the count of TLVs (here 5) is answered with more 0 and no TLVs (core §7.3; `discovery.json`,
 "describe fn 0 from beyond the last: more 0 and no TLVs"):
 
 ```text
-request      01 0400 0000 03 00000000 | 0000 | 0400
+request      01 0400 0000 03 00000000 | 0000 | 0500
 answer       02 0400 01 00 | 00
 ```
 
@@ -147,7 +148,7 @@ What the probe does, in order (the references are the rules):
    the transport TLV on every confirm answer. flags is 0.
 4. **list**: match names by label boundaries (`oep` matches `oep.core`; an empty prefix matches everything), start from `first`, put as many
    entries as fit in one frame; total is the count of all matches. A request with flags bits 1 to 7 set is unsupported (core §7.2).
-5. **describe**: for fn 0 return the TLVs (at least unit_id, transport, discoverable and max_op_ms, §3.3) from `first`; more = 1 when some
+5. **describe**: for fn 0 return the TLVs (at least ops, unit_id, transport, discoverable and max_op_ms, §3.3) from `first`; more = 1 when some
    did not fit; when `first` is at or beyond the count, return more 0 and no TLVs. A TLV in the request is malformed. The values do not change while the boot_id is the same (core §7.3).
 6. **Answer** with the same corr, on the transport the request came from, in the order the requests arrived, one answer per request (core §4.2,
    §4.4). Frame it as `0x00 COBS 0x00` on a serial port.

@@ -151,12 +151,12 @@ retrieves them with read_rx.
   not yet read (mode 3. Otherwise 0), errors is the cumulative count of overflows and of the write errors above (length errors, writes while not armed and in mode 3) (u32).
 - reset returns to the state right after configure (clears the queue, the wait and the cumulative counts. Keeps mode and address). In state 0 it is rejected unavailable (cause 6).
 - stretch is the time SCL is held low for each received data byte, after its 8th bit, with the ACK driven, before the ACK clock (µs, 0 = none).
-  On a read, it is held the same time after the address matched. It is not held on a write's address byte. Only for probes that declare bit1 of features
-  (otherwise unknown_operation, core §1.2). If stretch_us exceeds the max_stretch_us of describe, rejected unsupported. It is accepted in any state
+  On a read, it is held the same time after the address matched. It is not held on a write's address byte. stretch is optional, declared by ops of describe
+  (core §1.2); a probe that does not offer it answers unknown_operation. If stretch_us exceeds the max_stretch_us of describe, rejected unsupported. It is accepted in any state
   (state 0 too), and the value takes effect from the next received byte. configure and reset do not change the value.
-- describe: role_channels, max_length (the maximum bytes of one frame), max_clock_hz (the verified upper limit of SCL), features (bit0 mode 3,
-  bit1 stretch, bit2 internal pull-ups. modes 1 and 2 are mandatory), queue_depth (tag 0x40, u8: the number of frames that can be queued. In mode 3 also the upper limit of unread placements),
-  max_stretch_us (tag 0x41, u32: the largest µs stretch accepts. 1 or more. A probe that declares bit1 of features always includes it),
+- describe: ops, role_channels, max_length (the maximum bytes of one frame), max_clock_hz (the verified upper limit of SCL), features (bit0 mode 3,
+  bit1 reserved (0), bit2 internal pull-ups. modes 1 and 2 are mandatory), queue_depth (tag 0x40, u8: the number of frames that can be queued. In mode 3 also the upper limit of unread placements),
+  max_stretch_us (tag 0x41, u32: the largest µs stretch accepts. 1 or more. A probe that offers stretch always includes it),
   pullup_ohms (tag 0x42, u32: the approximate resistance of the internal pull-ups. A probe that declares bit2 of features always includes it).
 - No notifications are sent (subscribe is rejected unsupported).
 

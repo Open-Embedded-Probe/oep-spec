@@ -121,7 +121,8 @@ capture = [capture](oep-if-capture.md); settings = [probe settings](oep-if-probe
 | name, label (of a name) | 名前、ラベル | `a-z 0-9 - .`, at least two labels separated by `.` | core §7.2, §13 |
 | instance, `name#instance` | instance | The number of an interface among those with the same (name, revision) | core §7.2 |
 | role_channels, channel_group | role_channels、channel_group | Which channels a role may use; fixed combinations | core §7.4 |
-| features | features | u32 bits of optional functions of an interface | core §7.4 |
+| features | features | u32 bits of optional functions of an interface that are not ops (modes, formats, notifications) | core §7.4 |
+| ops | ops | The common describe tag 0x09 (base + bitmap) by which every fn declares the ops it offers | core §1.2, §7.4 |
 | unit_id | unit_id | The unit's identifier, 1 to 32 of `a-z 0-9 -`, equal to the USB serial number | core §7.5 |
 | `x-` unit_id | `x-` の unit_id | A unit_id that is not unique; not used for grouping or naming | core §7.5 |
 | model, chip, firmware | model、chip、firmware | The kind of probe, its MCU, its firmware text | core §7.5 |

@@ -208,7 +208,8 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
   （core の max_op_ms の対象）。**保存は丸ごと置き換え**で、途中で電源が落ちても前の保存か新しい保存のどちらかが読める。describe の
   `max_bytes` は正規形の byte 数で、その長さ以下の設定は必ず保存できる（識別子の表の分は probe が差し引いて宣言する）。超えれば
   rejected unavailable（cause 3）。erase は保存を消す（今の設定は変えない。消した後は状態 0、hash 0）。save と erase は
-  任意で、describe の storage が max_bytes を 0 より大きく宣言するときに持つ。保存の無い probe はそれらに unknown_operation で答える（core §1.2）。get、set、unset、state は必須。
+  任意で組で持ち、describe の ops で宣言する（core §1.2）。保存の無い probe はそれらに unknown_operation で答える。describe の storage の tag は
+  save を持つときに限り載る。get、set、unset、state は必須。
 - **保存は、項目が指す interface を (name、instance、revision) で持つ**（fn の番号は起動ごとに変わりうるため）。指す fn は、plan の
   fn、slot の wire_fn、bind の kind 2 の id、uart の fn。起動時に、その組を今の list で探して fn を読み替えてから適用する（set と get の形は
   fn のまま）。指す interface が無いか、revision が違えば、**保存全体を適用しない**（一部だけ入れると治具が半端に動く。storage の
@@ -301,7 +302,7 @@ describe は宣言だけ（core §7.3）。状態は state（§3.3）。
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x40 | storage | max_bytes(u32、正規形の byte 数。0 = 保存なし。そのとき save と erase は持たない、§2) |
+| 0x40 | storage | max_bytes(u32、正規形の byte 数、1 以上)。save と erase を持つときに限り載る（ops、§2） |
 | 0x41 | items | 扱う項目の tag の並び（u8） |
 | 0x42 | slots_max | u8。登録できるスロットの数（0 はスロットを扱わない） |
 | 0x43 | bind_modes | u32 のビット: bit0 last-reset、bit1 manual、bit2 mixed。bind を扱う probe は bit0 と bit1 を必ず立てる |

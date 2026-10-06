@@ -29,7 +29,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - 断りの順序。最初に当てはまる理由で断る（§4.3）。payload は §4.3 のとおり（unavailable の TLV、unsupported の tag）。payload の中で
   指す fn は順 5 の終わりで確かめる（§4.3）。
 - role が要求の role でないメッセージと、10 バイトのヘッダより短い要求は、答えずに捨てる（§2.4）。ロックが要る op で session_id 0: session_required（§4.1）。
-- インターフェースが定義しない op と、probe が宣言しない任意の op は unknown_operation、probe が持つ op の任意の機能は unsupported（§1.2）。インターフェースの表の op は、文書が任意と書かない限り必須。
+- すべての fn の describe は ops（0x09）を載せる: 必須の op はすべて立て、任意の op は持つときに限り立て、実験用の op は立てない（§1.2、§7.4）。ops に立っていない op は unknown_operation、probe が持つ op の任意の機能は unsupported（§1.2）。インターフェースの表の op は、文書が任意と書かない限り必須。
 - 要求の TLV: critical の印、知らない critical TLV は unsupported、知らない非 critical TLV は ignored、知っているより長い TLV、短い TLV、
   繰り返さない TLV の繰り返し、tag 0x7F / 0xFF（§2.2、§2.3）。
 - ignored（tag 0x7F）を、それが要る completed の答えすべてに、要求の順で、最大 16 項目、16 番目は 0x00、置き場を必ず残して（§2.3）。
@@ -49,8 +49,8 @@ probe は、自分が出す transport とインターフェースについてこ
 **fn 0（`oep.core`）**
 
 - 必須の op: core §12 で「yes」の行（confirm、list、describe、open、end、keepalive、lock_state、subscribe、unsubscribe、
-  link_source、link_sink）。plan_apply / plan_release はどれかのインターフェースが plan の役割を持つとき。持たなければ unknown_operation（§1.2）。
-  port_speed は任意。あるときは §3.5 のすべて（状態、戻る条件）と describe の tag 0x4E。
+  link_source、link_sink）。plan_apply / plan_release はどれかのインターフェースが plan の役割を持つとき。そうでなければ持たない（§1.2）。
+  port_speed は任意。持つ（ops に立てる）ときは §3.5 のすべて（状態、戻る条件）。
 - confirm: revision の選び方、transport TLV、扱える範囲つきの断り。max_frame は 64 以上、window は max_frame 以上、
   max_inflight は 1 以上（§7.1）。
 - list: ラベル境界での一致、instance の番号、boot_id が同じ間は答えが変わらない、first が一致の数以上なら total と count 0
@@ -106,16 +106,16 @@ probe は、自分が出す transport とインターフェースについてこ
 |---|---|---|
 | 位置つきのストリーム（[共通部品](oep-if-common.ja.md) §1） | それを使う各インターフェースで §1 の read、marks、clear、mark、write。§3 の status の値 | — |
 | `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（[線とデバッグ](oep-if-debug.ja.md) §0〜§3、§5） | scan（ピンのない wire では count = 0 がその 1 つの組を試す。skip の後に何も残らない count = 0 の並びは tried 0 の success で答える）、attach（max_speed は必須）、detach、connections。§1 の attach の規範と予算。§2 の寿命と線の状態 | attach の reset TLV（role_channels の role 3） |
-| `oep.target.riscv-dm`（§4） | dmi、halt、resume | reset、read_block / write_block、run、step: features の bit 0〜3。read_block / write_block があれば max_length |
+| `oep.target.riscv-dm`（§4） | dmi、halt、resume | reset、read_block / write_block、run、step: ops。read_block / write_block があれば max_length |
 | `oep.target.arm-adi`（§6） | transfer、read_block、write_block。max_length は必ず出す | — |
 | `oep.target.console`（[コンソール](oep-if-console.ja.md)） | §1 の op。describe の mechanisms は必ず出す。方式 2 の枠は [dmseq](target-console-dmseq.ja.md) のとおり | どの方式か（describe の mechanisms） |
 | `oep.fixture.gpio`（[fixture](oep-if-fixture.ja.md) §1） | set、read。describe の modes に mode 0 | 出力の強さ（§1.1） |
 | `oep.fixture.uart`（§2） | §2 の op。describe の formats に 8N1 | ほかの format |
-| `oep.fixture.i2c-target`（§3） | stretch を除く §3 の op。mode 1 と 2 | stretch（features bit1、max_stretch_us とともに）。mode 3（bit0）。プルアップ（bit2、pullup_ohms とともに） |
+| `oep.fixture.i2c-target`（§3） | stretch を除く §3 の op。mode 1 と 2 | stretch（ops、max_stretch_us とともに）。mode 3（features bit0）。プルアップ（features bit2、pullup_ohms とともに） |
 | `oep.fixture.spi-target`（§4） | §4 の op。MISO をソフトウェアで駆動するなら cs_setup_ns | LSB first（features bit0） |
-| `oep.fixture.logic`、`oep.fixture.analog`（[キャプチャ](oep-if-capture.ja.md) §1〜§3） | query と force を除く §3.2 の op。§3.5 の describe。calibration はアナログだけ | query（features bit0）、force（bit1）、通知（bit2） |
-| `oep.fixture.capture-group`（§4） | force を除く §4.1 の op。§4.3 の describe | force（bit1）、通知（bit2） |
-| `oep.probe.config`（[probe の設定](oep-if-probe-config.ja.md)） | 設定を扱う probe だけが list に出す。get、set、unset、state。hash。§2 の断り方。§4 の describe | save / erase（storage の max_bytes が 0 より大きい。無ければ unknown_operation）。slot。bind（あれば bind_modes の bit 0 と 1） |
+| `oep.fixture.logic`、`oep.fixture.analog`（[キャプチャ](oep-if-capture.ja.md) §1〜§3） | query と force を除く §3.2 の op。§3.5 の describe。calibration はアナログだけ | query、force（ops）。通知（features bit2） |
+| `oep.fixture.capture-group`（§4） | force を除く §4.1 の op。§4.3 の describe | force（ops）。通知（features bit2） |
+| `oep.probe.config`（[probe の設定](oep-if-probe-config.ja.md)） | 設定を扱う probe だけが list に出す。get、set、unset、state。hash。§2 の断り方。§4 の describe | save / erase（ops、storage の tag とともに。無ければ unknown_operation）。slot。bind（あれば bind_modes の bit 0 と 1） |
 
 ## 4. 確かめ方
 

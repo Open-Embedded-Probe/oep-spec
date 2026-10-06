@@ -73,6 +73,19 @@ def tlvs(data: bytes) -> list[tuple[int, bytes]]:
     return out
 
 
+def ops_set(value: bytes) -> set[int]:
+    """The ops a describe common tag ops declares (core §7.4): base(u8), bitmap."""
+    base = value[0]
+    return {base + i for i in range(8 * (len(value) - 1)) if value[1 + i // 8] >> (i % 8) & 1}
+
+
+def test_ops_examples_of_the_text():
+    """core §7.4: riscv-dm with every op is 09 02 00 01 FF; with dmi, halt and resume only, 09 02 00 01 07."""
+    ((tag, v),) = tlvs(bytes.fromhex("09020001ff"))
+    assert tag == REG["describe_common"]["ops"] and ops_set(v) == set(range(1, 9))
+    assert ops_set(tlvs(bytes.fromhex("0902000107"))[0][1]) == {1, 2, 3}
+
+
 def test_crc_check_values_match_the_text():
     cases = {c["name"]: c for c in load("checks.json")["cases"]}
     digits = b"123456789"
@@ -232,7 +245,11 @@ def test_discovery_exchanges():
     assert ans[5] == desc["answer"]["more"] == 0
     t = core["tlv"]["describe"]
     got = tlvs(ans[6:])
-    assert [tag for tag, _ in got] == [t["unit_id"], t["transport"], t["discoverable"], t["max_op_ms"]]
+    ops_tag = REG["describe_common"]["ops"]
+    assert [tag for tag, _ in got] == [ops_tag, t["unit_id"], t["transport"], t["discoverable"], t["max_op_ms"]]
+    offered = ops_set(got[0][1])
+    assert sorted(offered) == desc["answer"]["ops"] and offered == {ops["confirm"], ops["list"], ops["describe"]}
+    got = got[1:]
     uid = got[0][1].decode()
     assert uid == desc["answer"]["unit_id"] and 1 <= len(uid) <= 32 and set(uid) <= set("abcdefghijklmnopqrstuvwxyz0123456789-")
     tr = desc["answer"]["transports"][0]
@@ -243,7 +260,7 @@ def test_discovery_exchanges():
     assert t["unit_id"] != 0x3F and t["transport"] != 0x3F
 
     req, ans = bytes.fromhex(past["request_hex"]), bytes.fromhex(past["answer_hex"])
-    assert struct.unpack_from("<HH", req, 10) == (0, past["request"]["first"]) and past["request"]["first"] >= len(got)
+    assert struct.unpack_from("<HH", req, 10) == (0, past["request"]["first"]) and past["request"]["first"] >= len(got) + 1
     assert ans[5:] == b"\x00"                                                                 # more 0, no TLVs (core §7.3)
 
     reasons = REG["reject_reasons"]
@@ -256,7 +273,7 @@ def test_discovery_exchanges():
         if c["answer"] == "unknown_function":
             assert fn not in [e["fn"] for e in entries]
         else:
-            assert fn == 0 and op not in defined
+            assert fn == 0 and op not in defined and op not in offered                         # not set in ops (core §1.2)
 
 
 def test_example_probe_answers_carry_what_the_core_requires():
@@ -288,6 +305,7 @@ def test_example_probe_answers_carry_what_the_core_requires():
             tags = [tag for tag, _ in got]
             for name in ("unit_id", "transport", "max_op_ms", "discoverable"):
                 assert t[name] in tags, (ex["name"], name)
+            assert tags.count(REG["describe_common"]["ops"]) == 1, ex["name"]                  # every fn's describe (core §1.2)
             assert tags.count(t["discoverable"]) == 1 and tags.count(t["max_op_ms"]) == 1
             kinds = [v[1] for tag, v in got if tag == t["transport"]]
             if all(k == uart_bridge for k in kinds):                                       # no USB port of its own

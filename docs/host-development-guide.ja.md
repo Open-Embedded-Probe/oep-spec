@@ -143,7 +143,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 | reason | 意味（core §4.3） | host がすること |
 |---|---|---|
 | unknown_function（0x01） | その fn が無い（payload の中で指した fn も） | 手元の fn の対応表が古いか誤り。list し直す（fn の番号は boot_id が同じ間だけ有効、core §7.2）。そのインターフェースは使わない |
-| unknown_operation（0x02） | その fn にその op が無い | probe が実装していない任意の op（core §1.2）。任意の op は describe（features）を見てから使う |
+| unknown_operation（0x02） | その fn にその op が無い | probe が実装していない任意の op（core §1.2）。任意の op は describe の ops（0x09）を見てから使う。ops を確かめて送らないときは、この応答と同じ失敗を報告し、呼び出し側がどちらでも 1 つのエラーを見るようにする |
 | malformed（0x03） | 要求の形が誤り | 自分の符号化の誤りか、どの revision でも除かれる値。そのまま送り直さず、要求を直す。要求のバイト列をログに残す |
 | unavailable（0x04） | 今の状態か今の資源ではできない | TLV を読む: cause（1 ピンが使用中、2 数の上限、3 保存の容量が足りない、4 グループに束ねられている、5 設定が持っている、6 状態が違う）、channel、holder_fn、holder_kind（1 plan、2 wire の接続、3 スロット、4 bind、5 設定の plan、6 設定の disable、7 設定の idle）。利用者に見せ、自分の資源を解くか順を変える。cause 5 は probe の設定が持っているので、要求ではなく設定を変える。知らない cause / holder_kind は不明として見せる（core §2.4） |
 | busy（0x05） | 予約（core §10） | 失敗として扱う |

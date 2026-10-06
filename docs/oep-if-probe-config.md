@@ -208,7 +208,8 @@ Among the texts of labels (the settings' label items, §1, and the firmware's la
   (subject to the core's max_op_ms). **A save replaces the whole**, and even if power is lost partway, either the previous save or the new save can be read. `max_bytes` of
   describe is the number of bytes of the canonical form, and settings up to that length can always be saved (the probe subtracts the part for the table of identifiers when declaring it). If exceeded,
   rejected unavailable (cause 3). erase deletes the save (it does not change the current settings. After deletion, state 0, hash 0). save and erase are
-  optional, offered when the storage of describe declares max_bytes above 0; a probe without saving answers them with unknown_operation (core §1.2). get, set, unset and state are required.
+  optional and offered together, declared by ops of describe (core §1.2); a probe without saving answers them with unknown_operation. The storage tag of describe is
+  present exactly when save is offered. get, set, unset and state are required.
 - **A save holds the interfaces the items point to by (name, instance, revision)** (because fn numbers can change at every boot). The fns pointed to are fn of plan,
   wire_fn of slot, id of kind 2 of bind, and fn of uart. At boot, the probe looks up that combination in the current list, rewrites the fn, and then applies it (the forms of set and get stay
   with fn). If an interface pointed to does not exist, or the revision differs, **the whole save is not applied** (putting in only part would make the fixture behave half-way. The storage
@@ -301,7 +302,7 @@ describe is only a declaration (core §7.3). The state is in state (§3.3).
 
 | tag | Name | Value |
 |---:|---|---|
-| 0x40 | storage | max_bytes(u32, the number of bytes of the canonical form. 0 = no saving; save and erase are then not offered, §2) |
+| 0x40 | storage | max_bytes(u32, the number of bytes of the canonical form, 1 or more). Present exactly when save and erase are offered (ops, §2) |
 | 0x41 | items | A sequence of the tags of the items handled (u8) |
 | 0x42 | slots_max | u8. The number of slots that can be registered (0 does not handle slots) |
 | 0x43 | bind_modes | Bits of a u32: bit0 last-reset, bit1 manual, bit2 mixed. A probe that handles bind always sets bit0 and bit1 |

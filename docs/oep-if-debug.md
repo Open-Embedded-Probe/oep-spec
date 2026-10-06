@@ -363,8 +363,8 @@ the rise through the pull-up).
 
 Requests start with connection(u16).
 
-- **The mandatory ops are dmi, halt, resume.** reset, read_block / write_block, run, step are optional and declared with the features of describe
-  (bit0 read_block / write_block, bit1 run, bit2 reset, bit3 step). A probe answers an undeclared one with unknown_operation (core §1.2). The host can build the same thing with dmi even without the
+- **The mandatory ops are dmi, halt, resume.** reset, read_block, write_block, run and step are optional and declared by ops of describe
+  (core §1.2, §7.4); read_block and write_block are offered together. riscv-dm declares no features. A probe answers an op it does not offer with unknown_operation (core §1.2). The host can build the same thing with dmi even without the
   optional ops.
 - **Scope of the ops other than dmi (the high-level ops)**: they handle hart 0 of RV32 only (addresses, register values, pc are u32). Inside a high-level op the probe
   sets the hartsel of DMCONTROL to 0 and **returns with it set to 0** (a hartsel selected by the host with dmi lasts only within that dmi request). Other harts and RV64 are
@@ -547,7 +547,7 @@ dmi). A method of 2 or more is a value this probe cannot handle (core §2.3: rej
 
 ## 6. `oep.target.arm-adi`
 
-Requests start with connection(u16). All three ops are required. arm-adi has no optional op and declares no features.
+Requests start with connection(u16). All three ops are required (all set in ops). arm-adi has no optional op and declares no features.
 
 | op | Name | Request (after connection) | Answer |
 |---:|---|---|---|

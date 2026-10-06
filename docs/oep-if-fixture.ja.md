@@ -151,12 +151,12 @@ read_rx で取り出す。
   未読の置き場の数（mode 3。ほかは 0）、errors はあふれと、上の書き込みの誤り（長さの誤り、未 arm と mode 3 の書き込み）の累計（u32）。
 - reset は configure 直後と同じ状態に戻す（列、待ち、累計を消す。mode と address は保つ）。state 0 では rejected unavailable（cause 6）。
 - stretch は、受けたデータの byte ごとに、8 bit 目の後、ACK を出した状態で ACK の clock の前に SCL を low に保つ時間（µs、0 = しない）。
-  read では、アドレスが一致した後に同じだけ保つ。write のアドレスの byte では保たない。features の bit1 を宣言する probe
-  だけ（ほかは unknown_operation、core §1.2）。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け
+  read では、アドレスが一致した後に同じだけ保つ。write のアドレスの byte では保たない。stretch は任意で、describe の ops で宣言する
+  （core §1.2）。持たない probe は unknown_operation で答える。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け
   （state 0 でも）、値は次に受ける byte から効く。configure と reset は値を変えない。
-- describe: role_channels、max_length（1 フレームの最大 byte）、max_clock_hz（確かめた SCL の上限）、features（bit0 mode 3、
-  bit1 stretch、bit2 内部プルアップ。mode 1 と 2 は必須）、queue_depth（tag 0x40、u8: 積めるフレームの数。mode 3 では未読の置き場の数の上限）、
-  max_stretch_us（tag 0x41、u32: stretch が受ける最大の µs。1 以上。features の bit1 を宣言する probe は必ず載せる）、
+- describe: ops、role_channels、max_length（1 フレームの最大 byte）、max_clock_hz（確かめた SCL の上限）、features（bit0 mode 3、
+  bit1 予約（0）、bit2 内部プルアップ。mode 1 と 2 は必須）、queue_depth（tag 0x40、u8: 積めるフレームの数。mode 3 では未読の置き場の数の上限）、
+  max_stretch_us（tag 0x41、u32: stretch が受ける最大の µs。1 以上。stretch を持つ probe は必ず載せる）、
   pullup_ohms（tag 0x42、u32: 内部プルアップのおおよその抵抗値。features の bit2 を宣言する probe は必ず載せる）。
 - 通知は送らない（subscribe は rejected unsupported）。
 

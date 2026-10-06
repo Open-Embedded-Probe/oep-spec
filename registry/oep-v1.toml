@@ -118,6 +118,7 @@ min_clock_hz = 0x05
 features = 0x06
 implementation = 0x07
 channel_group = 0x08            # repeats, one per combination: group(u8) n(u8) n x (role(u8) channel(u16))
+ops = 0x09                      # base(u8) bitmap: bit i = op base + i is offered; every fn's describe carries it, fn 0 included (core §1.2, §7.4)
 
 [usb]                           # USB identification and the shape of a probe's interfaces (core §3.3)
 project_vid = 0x1209            # the project's USB VID:PID: the only automatic identification of an OEP probe (core §3.3)
@@ -224,7 +225,7 @@ op = [
   { code = 0x11, name = "end", lock = true },
   { code = 0x12, name = "keepalive", lock = true },
   { code = 0x13, name = "lock_state", lock = false },
-  { code = 0x14, name = "port_speed", lock = true },   # optional: a UART bridge's speed raised for the session (core §3.5)
+  { code = 0x14, name = "port_speed", lock = true },   # optional (ops): a UART bridge's speed raised for the session (core §3.5)
   { code = 0x30, name = "subscribe", lock = true },
   { code = 0x32, name = "unsubscribe", lock = true },
   { code = 0x40, name = "link_source", lock = false },
@@ -265,7 +266,6 @@ discoverable = 0x4A             # u8: 1 = the probe also enumerates with the pro
 plan_roles = 0x4B               # u32: the most role assignments the plan holds at once, every fn together (core §8)
 chip = 0x4C                     # text: the probe MCU's part and revision (optional)
 max_op_ms = 0x4D                # u32: the longest one request may take; required (core §7.5)
-port_speed = 0x4E               # u8 1: the probe takes op port_speed (core §3.5)
 [interface.enum.unavailable_cause]
 pin_in_use = 1
 limit = 2
@@ -300,7 +300,7 @@ swept = 2                       # the same session id after its lease expired: r
 heartbeat = 0x01                # boot_id(u32), uptime_ns(u64)
 [interface.reserved]
 op = [[0x20, 0x2F]]             # the long operations (core §10)
-"tlv.describe" = [[0x48, 0x48], [0x3F, 0x3F]]
+"tlv.describe" = [[0x48, 0x48], [0x4E, 0x4E], [0x3F, 0x3F]]
 
 [[interface]]
 name = "oep.wire.rvswd"
@@ -459,7 +459,7 @@ op = [
   { code = 0x07, name = "run", lock = true },
   { code = 0x08, name = "step", lock = true },
 ]
-[interface.tlv.describe]        # plus the common tags (features 0x06, enum features)
+[interface.tlv.describe]        # the common tags only (ops 0x09: reset, read_block / write_block, run, step are optional; no features)
 [interface.tlv.reset]
 method = 0x01
 [interface.tlv.step_answer]
@@ -468,11 +468,6 @@ step_left = 0x01                # length 0: step could not halt the hart again; 
 address_hi = 0x01               # reserved: critical u32, the upper address bits (RV64); not in v1
 [interface.tlv.write_block]
 address_hi = 0x01               # reserved
-[interface.enum.features]       # describe features bits
-block = 0x01
-run = 0x02
-reset = 0x04
-step = 0x08
 [interface.enum.run_stopped]    # run answer's stopped byte (oep-if-debug §4.4)
 timeout_halted = 0              # the limit passed; the probe halted the hart (dpc and values valid)
 stopped = 1
@@ -624,7 +619,7 @@ op = [
 ]
 [interface.tlv.describe]
 queue_depth = 0x40              # u8: frames the queue holds; in mode 3 also the most unread preload_tx slots
-max_stretch_us = 0x41           # u32: the largest stretch_us the stretch op accepts (required with features bit1; oep-if-fixture §3)
+max_stretch_us = 0x41           # u32: the largest stretch_us the stretch op accepts (required when ops offers stretch; oep-if-fixture §3)
 pullup_ohms = 0x42              # u32, approximate: the internal pull-ups the probe enables on SDA / SCL while configured; required with features bit2 (oep-if-fixture §3)
 [interface.tlv.read_rx_answer]
 ns = 0x01                       # u64: when the frame was received (probe clock; optional)
@@ -638,10 +633,11 @@ preloaded_tx = 3
 [interface.enum.state]
 unconfigured = 0
 running = 1
-[interface.enum.features]
+[interface.enum.features]       # bit 0x02 reserved (stretch is declared by ops)
 preloaded_tx = 0x01
-stretch = 0x02
-internal_pullups = 0x04         # the probe enables pull-ups of its own on SDA / SCL while configured (oep-if-fixture §3)
+internal_pullups = 0x04
+[interface.reserved]
+features = [[0x02, 0x02]]         # the probe enables pull-ups of its own on SDA / SCL while configured (oep-if-fixture §3)
 
 [[interface]]
 name = "oep.fixture.spi-target"
@@ -702,7 +698,7 @@ rate_accuracy = 0x5A            # how(u8, enum rate_accuracy_how) ppm(u32, 0 unk
 error = 0x01                    # u8, enum error: why state is 6
 [interface.tlv.data]            # the data frame's TLV tail (core §11.2)
 generation = 0x01               # u32, required in streaming mode
-[interface.tlv.describe]        # plus the common tags (features 0x06, enum features)
+[interface.tlv.describe]        # plus the common tags (ops 0x09, features 0x06, enum features)
 mode = 0x40                     # repeats, one per mode: mode(u8) background(u8) max_samples(u32) max_segments(u32): the maximum (not the current free space)
 rate_range = 0x41
 rate_list = 0x42                # repeats (union): n(u8) n x rate_hz(u32)
@@ -715,10 +711,10 @@ segment_ring = 0x48
 segment = 0x01                  # the segment record (oep-if-capture §2)
 stopped = 0x02                  # reason(u8) error(u8)
 triggered = 0x03                # serial(u32) trigger_index(u32) trigger_ns(u64)
-[interface.enum.features]
-query = 0x01
-force = 0x02
+[interface.enum.features]       # bits 0x01 / 0x02 reserved (query and force are declared by ops)
 notify = 0x04
+[interface.reserved]
+features = [[0x01, 0x02]]
 [interface.enum.mode]
 one_shot = 1
 repeat = 2
@@ -804,7 +800,7 @@ generation = 0x01               # u32, required in streaming mode
 [interface.tlv.calibration_answer]   # oep-if-capture §3.8: raw, never applied by the probe
 factory = 0x01                  # repeats, one per frontend: frontend(u8, 0xFF any) scheme_len(u8) scheme(text) raw_len(u16) raw
 vrefint = 0x02                  # raw(u32) ns(u64) nominal_mv(u32): the internal reference measured at the last start
-[interface.tlv.describe]        # plus the common tags (features 0x06, enum features)
+[interface.tlv.describe]        # plus the common tags (ops 0x09, features 0x06, enum features)
 mode = 0x40                     # repeats, one per mode: the maximum (not the current free space)
 rate_range = 0x41
 rate_list = 0x42                # repeats (union): n(u8) n x rate_hz(u32)
@@ -819,10 +815,10 @@ frontend_shared = 0x49          # u8 1 = every channel takes the same frontend
 segment = 0x01
 stopped = 0x02                  # reason(u8) error(u8)
 triggered = 0x03
-[interface.enum.features]
-query = 0x01
-force = 0x02
+[interface.enum.features]       # bits 0x01 / 0x02 reserved (query and force are declared by ops)
 notify = 0x04
+[interface.reserved]
+features = [[0x01, 0x02]]
 [interface.enum.mode]
 one_shot = 1
 repeat = 2
@@ -887,7 +883,7 @@ op = [
 trigger_track = 0x01            # always critical, fn(u16): the track whose configure trigger starts the group (absent: immediate)
 [interface.tlv.start_answer]
 generations = 0x01              # n x (fn(u16) generation(u32)): each track's new generation
-[interface.tlv.describe]        # plus features 0x06 (enum features)
+[interface.tlv.describe]        # plus ops 0x09 and features 0x06 (enum features)
 tracks = 0x40                   # n(u8) n x fn(u16): the tracks it can bind
 max_tracks = 0x41               # u8
 budget = 0x42                   # repeats: max_sps(u32, channels x rate summed, sample/s) n(u8) n x fn(u16): shared when bound together
@@ -895,9 +891,10 @@ start_skew = 0x43               # repeats, one per track: fn(u16) typical_ns(u32
 [interface.event]               # numbered as the tracks' events
 stopped = 0x02                  # reason(u8) error(u8): as the track's stopped
 triggered = 0x03                # trigger_fn(u16, 0 on force) trigger_ns(u64)
-[interface.enum.features]
-force = 0x02
+[interface.enum.features]       # bits 0x01 / 0x02 reserved (force is declared by ops)
 notify = 0x04
+[interface.reserved]
+features = [[0x01, 0x02]]
 [interface.enum.state]          # as the tracks'
 unconfigured = 0
 configured = 1
@@ -932,7 +929,7 @@ bind = 0x05                     # what a serial port carries (oep-if-probe-confi
 uart = 0x06                     # fn(u16) baud(u32) format(u8): a fixture UART's settings, applied when its plan is set
 disable = 0x07                  # channel(u16): a channel the probe never uses or touches (not on this board)
 [interface.tlv.describe]        # declarations only; the state is op 0x06 (oep-if-probe-config §3.3)
-storage = 0x40                  # max_bytes(u32): canonical bytes it can save (0 = no storage)
+storage = 0x40                  # max_bytes(u32, 1 or more): canonical bytes it can save; present exactly when ops offers save and erase
 items = 0x41                    # u8 list: the item tags this probe takes
 slots_max = 0x42                # u8
 bind_modes = 0x43               # u32 bits of bind_mode; last_reset and manual always

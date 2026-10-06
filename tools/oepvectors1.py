@@ -114,6 +114,15 @@ def answer(corr: int, resolution: int, detail: int, payload: bytes = b"") -> byt
     return struct.pack("<BHBB", ROLE_ANSWER, corr, resolution, detail) + payload
 
 
+def ops_value(codes: list[int]) -> bytes:
+    """The value of the common describe tag ops (core §7.4): base(u8), bitmap; bit i = op base + i."""
+    base = min(codes)
+    bits = bytearray((max(codes) - base) // 8 + 1)
+    for c in codes:
+        bits[(c - base) // 8] |= 1 << ((c - base) % 8)
+    return bytes([base]) + bytes(bits)
+
+
 def hx(b: bytes) -> str:
     return b.hex()
 
@@ -342,7 +351,8 @@ def discovery() -> dict:
     list_req = request(2, 0, list_op, struct.pack("<BHB", 0, 0, 0))
     list_ans = answer(2, COMPLETED, 0, struct.pack("<HB", 1, 1) + entry)          # count x entry, no element len (core §2.3, §7.2)
 
-    decl_tlvs = [tlv(d["unit_id"], unit_id.encode()), tlv(d["transport"], bytes([t_index, t_kind, t_interface])),
+    offered = [op("oep.core", n) for n in ("confirm", "list", "describe")]      # the ops this probe answers (getting-started §3.4)
+    decl_tlvs = [tlv(REG["describe_common"]["ops"], ops_value(offered)), tlv(d["unit_id"], unit_id.encode()), tlv(d["transport"], bytes([t_index, t_kind, t_interface])),
                  tlv(d["discoverable"], bytes([discoverable])), tlv(d["max_op_ms"], struct.pack("<I", max_op_ms))]
     decl, n_decl = b"".join(decl_tlvs), len(decl_tlvs)
     desc_req = request(3, 0, describe_op, struct.pack("<HH", 0, 0))
@@ -354,7 +364,7 @@ def discovery() -> dict:
     no_op = request(6, 0, 0x50, b"")
     return {
         "about": "list, describe and the header refusals of the smallest probe (docs/getting-started.md §2, §3): only fn 0 (oep.core, "
-                 "instance 0, revision 1), one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
+                 "instance 0, revision 1) whose ops are confirm, list and describe (describe common tag ops), one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
                  "The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. "
                  "Those values are an example probe's.",
         "exchanges": [
@@ -367,7 +377,7 @@ def discovery() -> dict:
             {"name": "describe fn 0 from the first", "spec": "core §7.3, §7.5",
              "request": {"corr": 3, "fn": 0, "first": 0},
              "request_hex": hx(desc_req), "request_serial_frame_hex": hx(serial_frame(desc_req)),
-             "answer": {"corr": 3, "more": 0, "unit_id": unit_id,
+             "answer": {"corr": 3, "more": 0, "ops": offered, "unit_id": unit_id,
                         "transports": [{"index": t_index, "kind": t_kind, "interface": t_interface}],
                         "discoverable": discoverable, "max_op_ms": max_op_ms},
              "answer_hex": hx(desc_ans), "answer_serial_frame_hex": hx(serial_frame(desc_ans))},

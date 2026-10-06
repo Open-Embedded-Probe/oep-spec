@@ -67,8 +67,8 @@ The host side is the [host development guide](host-development-guide.md).
 
 - A UART bridge probe always boots at `uart_bridge_boot_baud` (115200 bps) 8N1 without flow control (core §3.4). Do not make the boot speed a
   setting: a forgotten setting locks users out, and automatic speed detection is unsafe on a port where raw bytes and OEP mix.
-- A faster link during a session is port_speed (core §3.5, optional): implement its three states, its return conditions and the describe tag
-  0x4E. The speed it returns to is always the boot speed.
+- A faster link during a session is port_speed (core §3.5, optional): implement its three states, its return conditions, and set op 0x14 in
+  the ops of fn 0's describe. The speed it returns to is always the boot speed.
 - On USB CDC and built-in USB serial the line coding is only a number and does not change the speed; ignore it (core §3.4).
 
 ## 6. Sharing a serial port

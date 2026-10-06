@@ -362,8 +362,8 @@ low の駆動をやめた後と、0 を読んだ後に、probe は 1 回 30 ns �
 
 要求の先頭は connection(u16)。
 
-- **必須の op は dmi、halt、resume**。reset、read_block / write_block、run、step は任意で、describe の features で宣言する
-  （bit0 read_block / write_block、bit1 run、bit2 reset、bit3 step）。probe は宣言していない op に unknown_operation で答える（core §1.2）。host は、任意の op が
+- **必須の op は dmi、halt、resume**。reset、read_block、write_block、run、step は任意で、describe の ops で宣言する
+  （core §1.2、§7.4）。read_block と write_block は組で持つ。riscv-dm は features を宣言しない。probe は持たない op に unknown_operation で答える（core §1.2）。host は、任意の op が
   無くても dmi で同じことを組める。
 - **dmi 以外の op（高水準の op）の範囲**: RV32 の hart 0 だけを扱う（番地、レジスタの値、pc は u32）。probe は高水準の op の中で
   DMCONTROL の hartsel を 0 にし、**0 にして返す**（host が dmi で選んだ hartsel は、その dmi の要求の中だけ）。ほかの hart と RV64 は、
@@ -546,7 +546,7 @@ TLV 0x01 method（u8）: 0 probe の既定、revision 1 では ndmreset。1 ndmr
 
 ## 6. `oep.target.arm-adi`
 
-要求の先頭は connection(u16)。3 つの op はすべて必須。arm-adi は任意の op を持たず、features を宣言しない。
+要求の先頭は connection(u16)。3 つの op はすべて必須（ops にすべて立てる）。arm-adi は任意の op を持たず、features を宣言しない。
 
 | op | 名前 | 要求（connection の後ろ） | 応答 |
 |---:|---|---|---|
