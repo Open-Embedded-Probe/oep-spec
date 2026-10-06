@@ -69,14 +69,13 @@ the latest confirm answer on that port (core §4.4).
 ## 5. session_id and discovery
 
 - Choose a new unpredictable 32-bit random session_id for every open; never 0, a counter or a fixed value (core §6.1).
-- **A one-shot CLI keeps its session_id per probe, keyed by unit_id** (core §7.6). On USB ports the probe exposes itself, the
-  serial number is the unit_id, so it is known without opening the port. On ports where the serial number cannot be chosen
-  (built-in USB serial, USB-UART converters), read it from describe.
-  The next command uses the same ID; if it passes, nobody touched the probe since the previous command. If rejected
-  `expired` comes back, the lease ran out and the resources were removed: start over from open and set up the plan, attach and
-  subscriptions again (do not continue silently). If `no_session` comes back, look at confirm's boot_id to tell a reboot from
-  another host, and check the attach state and the target's identity again. In the same way, an open with your last session_id
-  answered resumed = 0 means the probe no longer knows that session: list again before you use a remembered fn mapping (core §6.5).
+- **A one-shot CLI opens a new session for every command.** There is no resume: when a session ends (end, lease expiry, force), the
+  probe releases everything it created (core §6.4, §9). What one command needs from the previous one it finds on the probe through the
+  explicit paths: an attach to the same pins returns a connection that a slot keeps (flags bit1), and a console open at the same place and
+  mechanism returns the stream with its position and marks, even after it closed, so the first lines after a reset are kept ([console](oep-if-console.md) §2).
+  Pins that must stay driven between commands (a power switch) are a settings plan or an output idle, and a connection that must stay up
+  between commands is a slot ([probe settings](oep-if-probe-config.md)). Remember the boot_id per probe, keyed by unit_id (core §7.6): when
+  open's answer carries another boot_id, the probe rebooted, so list again before you use a remembered fn mapping (core §6.5).
 - **Discovery procedure**: list the USB devices; open those with the project's VID:PID (§4) and those whose serial number equals a
   named unit_id (core §3.3). The serial number is the
   unit_id. Choose the ports inside the device by the interface descriptors (vendor bulk: class 0xFF / subclass 0x4F / protocol 0x45;
@@ -164,14 +163,14 @@ gives the first reason that applies in the order of core §4.3, so the reason sa
 | unavailable (0x04) | Cannot be done in the current state or with the current resources | Read the TLVs: cause (1 pin in use, 2 count limit, 3 not enough storage, 4 bound into a group, 5 held by the settings, 6 wrong state), channel, holder_fn, holder_kind (1 plan, 2 wire connection, 3 slot, 4 bind, 5 settings plan, 6 settings disable, 7 settings idle). Show them to the user; release your own resources or change the order. Cause 5 means the probe's settings hold it: change the settings, not the request. Unknown cause / holder_kind values are shown as unknown (core §2.4) |
 | busy (0x05) | Reserved (core §10) | Treat as a failure |
 | window_exceeded (0x06) | window / max_inflight exceeded | Your pipelining exceeded the probe's limits of this transport. Wait for answers and send it again with a new corr (core §5.2: a corrected request uses a new corr) |
-| no_session (0x07) | The lock is free but this session_id is not the last one | Another session came between, or the probe rebooted. Start over from open; confirm's boot_id tells a reboot |
+| no_session (0x07) | No session holds the lock: yours ended (end, lease expiry, force) or the probe rebooted | Everything your session created was released (core §9). Open a new session and set up the plan, attach and subscriptions again; do not continue silently (§5). open's boot_id tells a reboot |
 | locked (0x08) | Another session holds the lock | The payload gives the remaining ms and maybe the owner text. Wait, report "in use" with the owner, or take it with force only when the user asks (§6) |
 | session_required (0x09) | A request of an op that requires the lock carried session_id 0 | A bug: send it with your session_id |
 | no_connection (0x0A) | The resource number is unknown | The connection / stream was closed or the probe rebooted. Discard the number and create the resource again (attach, open). Check long-held numbers with the listing ops (core §9) |
 | unsupported (0x0B) | In the definition, but this probe cannot handle it | The payload's tag says what: 0x00 = a value in the fixed part, otherwise the critical TLV's tag as received; channel / index TLVs may say which element. Look at describe and choose something the probe declares; do not resend unchanged. For confirm, TLV 0x01 gives the revisions the probe supports (core §7.1) |
 | result_lost (0x0C) | The answer to a resend is not remembered | You cannot tell whether it ran: read the state again (core §5.2) |
 | corr_reused (0x0D) | Same corr, different request | A numbering bug in the host (core §4.1) |
-| expired (0x0E) | Your lock ended by lease expiry; the resources were removed | Open again (resumed = 2), then set up the plan, attach and subscriptions again. Do not continue silently (§5) |
+| 0x0E | Reserved | Treat as a failure |
 
 - **completed failed / partial**: the payload is the op's (for wires and targets, `status` and `done`, [common parts](oep-if-common.md) §3).
   status line usually means: lower the speed and attach again; wait: continue later from `done`; fault: read and clear the cause; timeout:
@@ -240,7 +239,7 @@ gives the first reason that applies in the order of core §4.3, so the reason sa
 - A released pin goes to the idle state: the idle of the probe's settings, or Hi-Z (core §8). For a pin where the peer's input would
   float because of the fixture's wiring (a TX connected to the DUT's RX), set an input-with-pull-up idle in `oep.probe.config` and save
   it (§15).
-- The plan is a session resource: it stays on an explicit end and is removed on lease expiry and force (core §9). A plan from the
+- The plan is a session resource: it is released when the session's lock ends, by end, lease expiry or force (core §9). A plan from the
   settings stays.
 
 ## 14. Consoles

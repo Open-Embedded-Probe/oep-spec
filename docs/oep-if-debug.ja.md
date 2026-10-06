@@ -182,15 +182,14 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
 |---|---|---|---|
 | detach | その host のセッションの分を外す。ほかに使うものが無ければ閉じる | 触らない | connection が閉じれば閉じる（mark closed 4） |
 | detach(force) | 閉じる（線が落ちたときと同じ扱い。at boot のスロットは retry） | 触らない | 閉じる（mark detach、closed 4） |
-| end | 何も変えない（資源は次のセッションに移る、core §9） | 触らない | 変えない |
-| lease 切れ / force で奪われる | セッションの分を外す。スロットが使っていれば残る | **触らない**（止まっていれば止まったまま。host は attach(method 0) + resume で戻す） | セッションの分を外す（mark closed 2） |
+| end / lease 切れ / force で奪われる | セッションの分を外す（core §9）。ほかに使うものが無ければ閉じる。スロットが使っていれば残る | **触らない**（止まっていれば止まったまま。host は attach(method 0) + resume で戻す） | セッションの分を外す（mark closed 2。閉じたストリームは読めるまま残る、[コンソール](oep-if-console.ja.md) §2） |
 | 線が切れた | 閉じる | — | 閉じる（mark link-lost、closed 4） |
 | target の自己リセット（havereset） | 保つ（確認応答、§4.6） | target の状態 | 保つ（mark restart 1） |
-| 2 つめのセッションの attach | 同じ connection に加わる（flags bit1） | method のとおり | 同じ (connection, mechanism) なら同じストリーム |
+| スロットが connection を保っている間の、後のセッションの attach | 同じ connection に加わる（flags bit1） | method のとおり | 同じ (connection, mechanism) なら同じストリーム |
 | probe の再起動 | 無くなる | DM は dmactive を残す | 無くなる |
 - probe 自身の自動の attach（`oep.probe.config` のスロット）も使っているものの 1 つで、host の attach はその connection に加わる
   （flags bit1）。
-- （参考、安全）lease の期限切れと force は hart に触らない: hart を止めたまま host が死ぬと、target は止まったままになる（デバッガの
+- （参考、安全）セッションの終わり（end、lease の期限切れ、force）は hart に触らない: hart を止めたまま host が死ぬと、target は止まったままになる（デバッガの
   detach と違い、走り出さない）。target が何を制御していてもそうである。host が去った後に target を走らせたい host は、end の前に resume する。
 
 ### 2.1 connections（接続の一覧）

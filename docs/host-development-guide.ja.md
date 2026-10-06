@@ -64,13 +64,13 @@ max_frame を使う（core §4.4）。
 ## 5. session_id と発見
 
 - open のたびに新しい、予測できない 32 bit の乱数の session_id を選ぶ。0、連番、固定値にしない（core §6.1）。
-- **one-shot CLI は session_id を probe ごとに、unit_id をキーにして保存する**（core §7.6）。probe が自分で出す USB の口では
-  serial number が unit_id なので、口を開かずに分かる。serial を選べない口（内蔵の USB シリアル、USB-UART の変換チップ）では
-  describe で読む。
-  次のコマンドで同じ ID を使い、通れば前のコマンドのあと誰も触っていない。rejected `expired` が返ったら、lease が切れて資源が
-  外れている: open からやり直し、plan、attach、購読を張り直す（黙って続けない）。`no_session` が返ったら、confirm の boot_id を
-  見て再起動か他の host かを区別し、attach の状態と target の識別を確かめ直す。同じように、最後の session_id での open に
-  resumed = 0 が返ったら、probe はそのセッションをもう知らない: 覚えた fn の対応を使う前に list し直す（core §6.5）。
+- **one-shot CLI はコマンドごとに新しいセッションを開く。** 再開は無い: セッションが終わると（end、lease の期限切れ、force）、
+  probe はそれが作ったものをすべて解放する（core §6.4、§9）。前のコマンドから要るものは、明示の経路で probe の上に見つける:
+  同じピンへの attach はスロットが保つ接続を返し（flags bit1）、同じ場所で同じ mechanism のコンソールの open は、閉じた後でも
+  位置とマークを保ったストリームを返すので、リセット直後の最初の行が残る（[コンソール](oep-if-console.ja.md) §2）。
+  コマンドの間も駆動し続けるピン（電源のスイッチ）は設定の plan か出力の idle にし、コマンドの間も張っておく接続はスロットにする
+  （[probe の設定](oep-if-probe-config.ja.md)）。boot_id を probe ごとに、unit_id をキーにして覚える（core §7.6）: open の応答の
+  boot_id が違えば probe は再起動したので、覚えた fn の対応を使う前に list し直す（core §6.5）。
 - **発見の手順**: USB の device を列挙し、プロジェクトの VID:PID を持つもの（§4）と、名指した unit_id と serial
   number が同じものを開く（core §3.3）。serial number が unit_id。device の中の口は interface の
   記述子で選ぶ（vendor bulk: class 0xFF / subclass 0x4F / protocol 0x45、HID: usage page 0xFF4F / usage 0x45、CDC はすべてシリアルの口）。
@@ -148,14 +148,14 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 | unavailable（0x04） | 今の状態か今の資源ではできない | TLV を読む: cause（1 ピンが使用中、2 数の上限、3 保存の容量が足りない、4 グループに束ねられている、5 設定が持っている、6 状態が違う）、channel、holder_fn、holder_kind（1 plan、2 wire の接続、3 スロット、4 bind、5 設定の plan、6 設定の disable、7 設定の idle）。利用者に見せ、自分の資源を解くか順を変える。cause 5 は probe の設定が持っているので、要求ではなく設定を変える。知らない cause / holder_kind は不明として見せる（core §2.4） |
 | busy（0x05） | 予約（core §10） | 失敗として扱う |
 | window_exceeded（0x06） | window / max_inflight を超えた | この経路の probe の上限を超えて先送りした。応答を待ち、新しい corr で送り直す（core §5.2: 直した要求は新しい corr で送る） |
-| no_session（0x07） | ロックは空きだが、この session_id は最後のものではない | 別のセッションが間に入ったか、probe が再起動した。open からやり直す。再起動は confirm の boot_id で分かる |
+| no_session（0x07） | どのセッションもロックを持っていない: 自分のセッションが終わった（end、lease の期限切れ、force）か、probe が再起動した | セッションが作ったものはすべて解放された（core §9）。新しいセッションを開き、plan、attach、購読を張り直す。黙って続けない（§5）。再起動は open の boot_id で分かる |
 | locked（0x08） | 別のセッションがロックを持っている | payload に残りの ms と、あれば持ち主の文字列。待つか、持ち主を添えて「使用中」とするか、利用者が頼んだときだけ force で奪う（§6） |
 | session_required（0x09） | ロックの要る op の要求が session_id 0 だった | 誤り: 自分の session_id で送る |
 | no_connection（0x0A） | その資源の番号を知らない | 接続やストリームが閉じたか、probe が再起動した。番号を捨て、資源を作り直す（attach、open）。長く持つ番号は一覧の op で確かめる（core §9） |
 | unsupported（0x0B） | 定義にはあるが、この probe は扱えない | payload の tag が何かを示す: 0x00 = 固定部分の値、それ以外は受け取ったままの critical な TLV の tag。channel / index の TLV がどの要素かを示すことがある。describe を見て probe が宣言するものを選ぶ。そのまま送り直さない。confirm では TLV 0x01 が probe の扱える revision を示す（core §7.1） |
 | result_lost（0x0C） | 送り直しの応答を覚えていない | 実行されたかは分からない: 状態を読み直す（core §5.2） |
 | corr_reused（0x0D） | 同じ corr で別の要求 | host の番号付けの誤り（core §4.1） |
-| expired（0x0E） | 自分のロックが lease の期限切れで終わり、資源が外された | open し直し（resumed = 2）、plan、attach、購読を張り直す。黙って続けない（§5） |
+| 0x0E | 予約 | 失敗として扱う |
 
 - **completed failed / partial**: payload は op が決める（wire と target では `status` と `done`、[共通部品](oep-if-common.ja.md) §3）。
   status の line はふつう、速さを下げて attach し直す。wait は後で `done` から続ける。fault は原因を読んで消す。timeout は上限を見直す。
@@ -218,7 +218,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 - ほかの fn や connection が持つピンを取ろうとすると rejected unavailable で、何も変わらない（core §8.1）。
 - 解いたピンは空きの状態になる: probe の設定の idle か、Hi-Z（core §8）。治具の配線で相手の入力が浮くピン（DUT の RX につながる
   TX など）は、`oep.probe.config` の idle で pull-up の入力にして保存する（§15）。
-- plan はセッションの資源で、明示の end では残り、lease の期限切れと force で外れる（core §9）。設定から入れた plan は残る。
+- plan はセッションの資源で、セッションのロックが終わるとき、end、lease の期限切れ、force のどれでも解放される（core §9）。設定から入れた plan は残る。
 
 ## 14. コンソール
 

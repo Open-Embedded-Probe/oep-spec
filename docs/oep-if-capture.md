@@ -219,7 +219,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | 5 stopped | unavailable 6 | unavailable 6 | → 1 | — | if space is freed → 3 (flags bit0) | |
 | 6 error | → 1 | → 2 / 3 (generation +1) | → 1 | — | — | |
 
-When the plan is released by plan_release, lease expiry, or force, it returns to state 0 and the data and segments disappear (read is empty). A start in mode 3 (streaming)
+When the plan is released by plan_release or by the end of the session (end, lease expiry, force, core §9), it returns to state 0 and the data and segments disappear (read is empty). A start in mode 3 (streaming)
 is rejected unavailable (cause 6) if there is no subscription for that fn. If the subscription disappears while capturing, it keeps capturing and discards what cannot be sent (position jumps).
 A configuration where blocking_ms of the answer to configure exceeds the core's max_op_ms is rejected unsupported at configure.
 
@@ -393,8 +393,8 @@ TLVs of bind:
   unavailable (cause 6 / 2). Which track the refusal is about is returned with the TLV fn (0x05, core §4.3. The same for the payload of unsupported) of the payload.
   It refuses without changing anything. While bound, configure, start, stop and force of each track are rejected unavailable
   (cause 4, holder_fn = the group's fn. Use the group's ops. To configure again, first unbind with n = 0). plan_release / plan_apply of the plan of a bound track
-  are also rejected unavailable (cause 4). **bind is a session resource** (core §9: it remains on end, and is released on lease expiry and
-  force).
+  are also rejected unavailable (cause 4). **bind is a session resource** (core §9: it is released when the session's lock ends: end, lease
+  expiry, force).
 - With no track bound: start is rejected unavailable cause 6; stop, and force when offered, do nothing and succeed; state is 0.
 - **start** checks the prerequisites of every track before starting any (in streaming, a track without a subscription makes start rejected unavailable cause 6
   with TLV fn (0x05) = that track), then starts the bound tracks as simultaneously as possible, and returns the group's start time start_ns (the probe's clock) and

@@ -192,7 +192,7 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 **probe**（[適合](conformance.ja.md) §1）:
 
 1. セッション: open、end、keepalive、lock_state と、lease、core §6.2 の判断の表。session_id の確かめ（session_required、no_session、
-   locked、expired）。
+   locked）。end、lease の期限切れ、force のどれでも、セッションが作ったものを解放する（core §9）。
 2. core §5.2 の送り直しの表（少なくとも max_inflight 個、断りの応答も含め、成功した open のたびに捨てる）。
 3. core §4.3 の断り方の順のすべてと、core §2.3 の TLV の規則（critical、ignored、繰り返し、短い TLV と長すぎる TLV）。
 4. subscribe / unsubscribe と fn 0 のハートビート（core §11）、link_source / link_sink（core §12）。

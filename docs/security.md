@@ -68,12 +68,13 @@ The host:
 
 - There is **one lock** per probe; only the session that holds it changes state (core §6.1, §6.3). Lock-free requests are read-only (core §6.3,
   §13 rule 5).
-- The lease frees a lock its holder stopped renewing; on expiry the session's resources are removed (core §6.1, §9). The lease is not counted
+- The lease frees a lock its holder stopped renewing; on expiry, as on end, the session's resources are released (core §6.1, §9). The lease is not counted
   while a request runs, which max_op_ms bounds (core §6.1, §7.5).
 - A host refused with locked learns the remaining time, and the owner text if any (core §4.3, §6.4). lock_state gives the same without a session.
-- The session_id is an unpredictable random value chosen by the host, and the probe never returns it, so another host cannot resume someone else's
+- The session_id is an unpredictable random value chosen by the host, and the probe never returns it, so another host cannot act as someone else's
   session without force (core §6.1, §6.4).
-- force takes the lock and removes the previous session's resources as on expiry (core §6.4, §9). How a host decides to use it: host guide §6
+- force takes the lock and releases the previous session's resources as at its end (core §6.4, §9). Nothing a session created is handed to
+  the next session, so a crashed host's plans and connections do not become another host's (core §9). How a host decides to use it: host guide §6
   (only when the user asks, except for a probe whose only transport is one exclusively opened serial port).
 
 ## 5. Lock-free answers that a target's output could fake

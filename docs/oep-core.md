@@ -368,7 +368,7 @@ port_speed  request: port(u8), baud(u32), step(u8: 0 try, 1 commit, 2 revert), v
 - Refusals: port is not the port this request came from → rejected unavailable (cause 6). If the nearest speed the UART can produce differs from the request by more than 2 %, rejected unsupported. The answer's baud is the speed actually applied.
   verify_ms 0 in step 0 (try) is rejected malformed. In step 1 (commit) and step 2 (revert) verify_ms has no meaning and any value is accepted.
   A step of 3 or more is rejected unsupported (payload tag 0x00, §2.5).
-  Refusals when the lock is missing or different follow the order of §4.3 (session_required, no_session, expired, locked).
+  Refusals when the lock is missing or different follow the order of §4.3 (session_required, no_session, locked).
 - The state is one of 3 per port: **boot / trying / committed**.
   - **Try** (step 0, accepted in the boot state): after finishing sending the answer at the current speed, switch to the baud of the answer and become **trying**. verify_ms starts
     with the value of this request.
@@ -445,14 +445,14 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           header 5
 | 0x04 | unavailable | Cannot be accepted in the current state or with the current resources | Sequence of TLVs (optional, below) |
 | 0x05 | busy | Reserved (long operations, §10) | — |
 | 0x06 | window_exceeded | window / max_inflight exceeded | — |
-| 0x07 | no_session | The lock is free, but this session_id is not the last ID. The host starts over from open | — |
+| 0x07 | no_session | The request carries a session_id, but no session holds the lock (the session ended, or never existed). The host opens a session again | — |
 | 0x08 | locked | Another session holds the lock | Remaining time in ms (u32), [TLV owner (§6.4)] |
 | 0x09 | session_required | A request of an op that requires the lock carries session_id 0 | — |
 | 0x0A | no_connection | The probe does not know the resource of the request (connection, stream, etc.; anything designated by number). The host recreates it. Every interface uses this for an unknown number | — |
 | 0x0B | unsupported | It is in the definition, but this probe cannot handle it (a critical TLV, a value in the fixed part, an optional function of an op this probe offers) | `tag(u8)`, [TLV]. tag is the value as received for a critical TLV, 0x00 for a value in the fixed part. To indicate which element, TLVs follow (same tag space as unavailable: channel, index) |
 | 0x0C | result_lost | The result of a resent request is not remembered (§5.2) | — |
 | 0x0D | corr_reused | A request arrived with the same corr but a different fn, op or contents (§5.2) | — |
-| 0x0E | expired | The lock of this session_id ended by lease expiry and the resources were removed (§9). The host starts over from open (the side taken by force gets locked while the taker holds it, and no_session afterwards: the probe remembers only the last session_id) | — |
+| 0x0E | — | Reserved | — |
 
 The detail of rejected is the reason, and other information goes in the payload.
 
@@ -460,7 +460,7 @@ The detail of rejected is the reason, and other information goes in the payload.
 
 1. Header: unknown_function → unknown_operation (an op the fn's ops does not set: one the interface does not define, or an optional op this probe does not offer, §1.2) → session_required.
 2. Resend (the table of §5.2): corr_reused / result_lost / the remembered answer.
-3. Session (§6.2): no_session / expired / locked.
+3. Session (§6.2): no_session / locked.
 4. window_exceeded.
 5. **Format** → malformed: the length, a count that does not match the contents, a TLV encoding error, a contradiction between fields, and a value the field's definition excludes for every revision (the 7-bit `address > 0x7F`, a boolean other than 0 / 1, a value the definition calls invalid, a value whose length is unknown so that the rest of the request cannot be read, such as an unknown dmi step kind). Then, when the format is correct: an fn designated inside the payload (describe, subscribe, unsubscribe, plan_apply, the items of probe.config) that does not exist → unknown_function.
 6. **Not handled by this probe** → unsupported: a value the definition leaves unused (an unused value of an enum, a reserved bit of a request's flags), a value in the definition that this probe does not declare (mode, format, rate, trigger type), an unknown critical TLV, a pin combination the declaration does not allow. The payload's tag is 0x00 for a value in the fixed part, and the TLV's tag as received for a value inside a critical TLV (a non-critical TLV with such a value is ignored, §2.3).
@@ -531,8 +531,8 @@ Before the confirm of a resync, and before the first confirm after opening a len
   - Otherwise it proceeds to §6.2 as a new request.
 - A limit may be placed on the size of remembered answers. If a request whose answer was not remembered because of the limit is resent, rejected
   result_lost without executing.
-- **The remembered table and the newest corr are discarded at every open (including resume)** (not at end). Exactly-once is not promised when the session
-  changes.
+- **The remembered table and the newest corr are discarded at every successful open** (not at end, lease expiry or force: a resent end is still
+  answered from the table). Exactly-once is not promised when the session changes.
 - Requests with session_id 0 are not deduplicated.
 - CRC-32 is IEEE (reflected, polynomial 0xEDB88320, initial value and final XOR 0xFFFFFFFF. "123456789" → 0xCBF43926).
 
@@ -548,21 +548,18 @@ Before the confirm of a resync, and before the first confirm after opening a len
 
 ### 6.2 The decision when a request is received
 
-The probe remembers whether the lock is held, the last session_id, and **how** the lock of that ID ended (released by end / removed by expiry or force).
-The decision of the table of §5.2 (resend) comes before this table.
+The probe remembers whether the lock is held, the session_id that holds it or held it last (S below; the table of §5.2 is keyed by it), and the owner while
+the lock is held. The decision of the table of §5.2 (resend) comes before this table. A request of a lock-free op with session_id 0 does not come here (§4.1).
 
-| Lock | session_id of the request | Result |
+| Lock | Request | Result |
 |---|---|---|
-| Free (released by end) | Same as the last session_id, other than open | Re-establish the lock and process (resume. The lease is the value of the previous open, the resources remain, §9) |
-| Free (released by end) | open with the same session_id as the last | Re-establish the lock, resumed = 1 |
-| Free (removed by expiry) | Same as the last session_id, other than open | **rejected expired** (the resources were removed. The host starts over from open) |
-| Free (removed by expiry) | open with the same session_id as the last | Establish the lock, resumed = 2 (a resume after the resources were removed) |
-| Free | A different ID, other than open | rejected no_session |
-| Free | open with a different ID (with or without force) | Establish the lock, update the last session_id and owner, resumed = 0 |
-| Held by self | Same, other than open | Process |
-| Held by self | Same open (with or without force) | Recreate the lease, resumed = 1. Subscriptions remain, and the destination of notifications changes to the transport of this open |
-| Held by another | Different, other than open(force) | rejected locked with the remaining time (and owner) |
-| Held by another | open(force) | Take it over (§6.4): remove the previous session's resources (§9), resumed = 0 |
+| Free | open (session_id ≠ 0, with or without force) | Establish the lock: S becomes this id, the lease starts from lease_ms, owner as the open says |
+| Free | Any other request with session_id ≠ 0 | rejected no_session |
+| Held by S | open with session_id S (with or without force) | A resent open: restart the lease with this open's lease_ms; nothing is released; subscriptions remain, and the destination of notifications changes to the transport of this open |
+| Held by S | open with another id, without force | rejected locked with the remaining time (and owner) |
+| Held by S | open with another id, with force | Take it over (§6.4): release S's resources (§9), then establish the lock for the new id |
+| Held by S | Any other request with session_id S | Process |
+| Held by S | Any other request with another id | rejected locked with the remaining time (and owner) |
 
 ### 6.3 Requests that require the lock
 
@@ -572,21 +569,21 @@ declares lock-free must not change state.
 
 ### 6.4 open, end, keepalive, force
 
-- **open** (lease_ms, force; the session_id is the header's, §4.1): takes the lock. The answer is lease_ms (the value decided by the probe), boot_id, resumed (0 new session,
-  1 re-established with the same session_id with the resources kept, 2 same session_id but after the resources were removed. The registry's `resumed`). **The table of §5.2 is discarded at
+- **open** (lease_ms, force; the session_id is the header's, §4.1): takes the lock. The answer is lease_ms (the value decided by the probe) and boot_id. **There is
+  no resume**: a session that has ended is not continued by any request; the host opens a new session. **The table of §5.2 is discarded at
   every successful open** (not at an open that gets rejected locked. Not at end, expiry or force).
 - **lease_ms**: 0 means "the probe's default". The probe accepts requests of 1000 to 60000 ms as they are, and rounds values outside the range into it (the default is
   decided by the probe). The lease_ms of the answer is within lease_min_ms to lease_max_ms (1000 to 60000). The host takes the lease_ms of the answer as authoritative.
-- **end**: releases the lock. The session's resources remain (§9).
+- **end**: releases the lock and everything the session created (§9), as lease expiry and force do.
 - **keepalive**: only extends the lease.
-- **lock_state**: whether the lock is held and the remaining time. locked means "the lock is held by whatever session" (lock_state can be sent without holding a
+- **lock_state**: whether the lock is held and the remaining time (0 when the lock is free). locked means "the lock is held by whatever session" (lock_state can be sent without holding a
   session, so the probe does not know who asked. Whether it holds it, the host knows from its own state).
 - **owner**: with the TLV 0x01 owner of open (text, 1 to 32 bytes, non-critical), the host may attach an owner name (e.g. "flash-tool pid 1234").
-  The probe remembers owner together with the last session_id (replaced by an open with a different session_id; on a resume with the same session_id, replaced if
-  owner is present, otherwise kept), and while the lock is held, appends TLV 0x01 owner after the answer of lock_state and the payload of rejected locked
-  (not appended if there is no owner). **The session_id is not returned** (returning it would let another host resume with that ID and take over without force). owner is for display only, and
+  The probe takes owner from the open that establishes the lock, keeps it while the lock is held (an open with the holder's id does not change it), and forgets it when
+  the lock ends. While the lock is held, it appends TLV 0x01 owner after the answer of lock_state and the payload of rejected locked
+  (not appended if there is no owner). **The session_id is not returned** (returning it would let another host send requests as that session without force). owner is for display only, and
   the probe does not interpret it. (Informative) Any host can read owner with lock_state, so a host puts nothing secret in it.
-- **force**: takes the lock even if another session holds it. The probe performs the same cleanup as for expiry on the previous session (§9) before
+- **force**: takes the lock even if another session holds it. The probe releases the previous session's resources as at its end (§9) before
   handing over the lock. force is not authentication; it only prevents mix-ups.
 
 ### 6.5 boot_id
@@ -595,7 +592,7 @@ boot_id is a value that changes at every boot of the probe, carried in the answe
 the host considers the session's resources (plan, interface resources), the remembered fn mapping, the resource numbers and the stream positions all invalid.
 A host that does not hold the lock (monitoring, discovery) learns of a reboot through confirm.
 
-The host also learns of a reboot from open: an open with the session_id it used last, answered resumed = 0, means the probe no longer knows that session (a reboot, or another host's session in between). The host then lists again before it uses a remembered fn mapping (§7.2).
+The answer of open also carries boot_id: a host that compares it with the boot_id it knew learns of a reboot when it opens, and then lists again before it uses a remembered fn mapping (§7.2).
 
 ## 7. Discovery
 
@@ -764,19 +761,24 @@ The plan is held **per fn**.
 
 ## 9. Lifetime of resources (general rules)
 
-**Resources created by a session remain on an explicit end and are handed to the next session; they are removed on lease expiry and when taken by force.**
+**Everything a session creates is released when its lock ends, whatever ends it** (end, lease expiry, taken by force). Nothing is handed to the next
+session. What stays across sessions is what the probe's settings define (the plans, idle states, slots and binds of `oep.probe.config`), which any host can read.
 
-| Event | Resources created by the session | Subscriptions (§11) | The table of §5.2 | The next request with the same ID |
+| Event | Resources created by the session | Subscriptions (§11) | The table of §5.2 | A later request with the same ID |
 |---|---|---|---|---|
-| end | Remain. At the next successful open they move atomically to that session's resources | End | Remains | Resume and process (§6.2) |
-| Lease expiry | Removed | End | Remains | rejected expired; open gives resumed = 2 |
-| Taken by force | Removed (same as expiry) | End | Discarded (the taking open discards it) | locked while the taker holds it, no_session afterwards (the last ID is the taker's) |
+| end | Released | End | Remains (a resent end is answered from it) | no_session while the lock is free, locked while another session holds it |
+| Lease expiry | Released | End | Remains | The same as after end |
+| Taken by force | Released | End | Discarded (the taking open discards it) | locked while the taker holds it, no_session afterwards |
 | open with the same ID (while held) | Remain | Remain (the destination becomes that transport) | Discarded | — |
 | Probe reboot | Gone (the boot_id changes) | Gone | Gone | no_session |
 
-- Resources left after end become, at the next successful open (whether with a different session_id or a resume with the same session_id), that session's,
-  and are removed at that session's lease expiry or by force. A host that does not want to hand them over removes them itself before end (detach, close,
-  plan_release, etc.).
+- A resource shared by the session and something else (a connection a slot also uses, a stream a bind also sends) loses only the session's share, and closes
+  when no user remains, as the interface's document says.
+- What an interface keeps readable after its resource has closed is not a session resource: a closed console stream stays readable until the same mechanism is
+  next opened at the same place ([console](oep-if-console.md) §2).
+- A host that runs one command per process reaches what is still on the probe through the explicit paths: an attach to a live combination returns that
+  connection (a slot keeps a connection across sessions), and a console open at the same place and mechanism returns the stream, open or closed, with its
+  position and marks.
 - Resources of the core: **plan** (removing it releases the pins just like plan_release. If the target's wire was being held by the plan, the target's state may change), notification subscriptions
   (§11. Subscriptions also end on end), the table of §5.2.
 - The lifetime of resources created by interfaces (debug connections, streams, etc.) is defined by the interface's document, on top of this rule
@@ -855,7 +857,7 @@ event   role=0x05 | fn(u16) | seq(u16) | kind(u8) | fixed part | [TLV]          
 | 0x03 | describe | §7.3 | §7.3 | Not required | yes |
 | 0x04 | plan_apply | Sequence of role_assignment TLVs | — | Required | if plan roles (§1.2) |
 | 0x05 | plan_release | n(u8), n × fn(u16) | — | Required | if plan roles (§1.2) |
-| 0x10 | open | lease_ms(u32), force(u8), [TLV owner] (the session_id is the header's) | lease_ms(u32), boot_id(u32), resumed(u8: 0 / 1 / 2, §6.4) | open takes the lock | yes |
+| 0x10 | open | lease_ms(u32), force(u8), [TLV owner] (the session_id is the header's) | lease_ms(u32), boot_id(u32), [TLV] | open takes the lock | yes |
 | 0x11 | end | — | — | Required | yes |
 | 0x12 | keepalive | — | — | Required | yes |
 | 0x13 | lock_state | — | locked(u8), remaining_ms(u32), [TLV owner] | Not required | yes |

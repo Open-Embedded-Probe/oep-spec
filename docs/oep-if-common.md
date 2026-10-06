@@ -62,7 +62,7 @@ mark : serial(u32), position(u64), kind(u8), time_ns(u64), detail(u8)          2
 | 0x06 | clear | The host erased | — |
 | 0x07 | host | A marker placed by the host | The host's value |
 | 0x08 | link-lost | The wire was lost (decided inside a console read) | — |
-| 0x09 | closed | The stream closed | Reason (`mark_detail_closed`: 1 every user left, 2 lease expiry / force, 3 replacement or deletion of the slot, 4 the connection closed) |
+| 0x09 | closed | The stream closed | Reason (`mark_detail_closed`: 1 every user left, 2 the session ended (end, lease expiry, force), 3 replacement or deletion of the slot, 4 the connection closed) |
 
 - The kind space: 0x01 to 0x3F standard, 0x40 to 0x7F interface-specific. The detail values are in the registry (`common.enum.mark_detail_*`). 0x40 onwards is
   interface-specific.
@@ -107,8 +107,8 @@ Used by: `oep.wire.rvswd`, `oep.wire.swio`, `oep.wire.swd` (create them), `oep.t
 - A connection is open while it has at least one **user**. Its users are:
   - the session of a host that attached (one per session)
   - a slot (`oep.probe.config` §1.1. The probe's automatic attach, and a console opened by a bind)
-- The session's share follows the lifetime of core §9: it remains on an explicit end (the attach of the next session simply joins it), and leaves on lease expiry and
-  when taken by force.
+- The session's share follows the lifetime of core §9: it leaves when the session's lock ends (end, lease expiry, taken by force). A later session's attach
+  joins the connection only while another user (a slot) keeps it open.
 - It closes only when no user remains, on a forced detach, or when the wire is truly lost (as decided by the interface's document).
 - Resources riding on a connection (console streams, etc.) close when the connection closes (what is kept is decided by that
   interface).

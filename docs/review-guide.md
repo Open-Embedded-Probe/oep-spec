@@ -28,7 +28,7 @@ how to write flash and chip-specific procedures are in the host.
   unpublished (not on npm. Only tests against the fake). Firmware and client are released together with the same version number (0.0.x).
 - What **the tests on real hardware** ([release-testing](release-testing.md), oep-client-python `tests/hw/`) cover: flashing, confirm / list / describe, `oep.probe.config`
   set / get / save / reboot / unset (including disable), wires (scan, attach, the round trip halt → dmi → read_block → resume. Only boards with a target connected),
-  gpio, fixture uart, port_speed (only UART bridge boards), lease expiry / expired / force. The results are JSON in `tests/hw/results/`.
+  gpio, fixture uart, port_speed (only UART bridge boards), end / lease expiry / force releasing the session's resources. The results are JSON in `tests/hw/results/`.
   **Not covered**: console (dmseq), capture (logic / analog / capture-group), i2c-target / spi-target, notifications, the HID path, simultaneous use of several
   paths, TCP. For these there are only the tests against the fake (`uv run pytest`) and manual checks.
 - The way of deciding is "experiment and prototype first, then fix the specification with the results". Experiment numbers and dates are kept in **record documents**, and are not placed in the normative text

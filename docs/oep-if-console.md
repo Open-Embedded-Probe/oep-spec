@@ -50,8 +50,14 @@ Every op of this table is required (core §1.2). The mechanisms are declared by 
 - **Each mechanism defines**: the kinds of connection it opens on, the target resources it uses, how many live streams one connection can have together with
   other mechanisms, when the probe pauses reading, and how often it checks the target's state (mechanisms 0 to 2: §3).
 - **The lifetime of a stream is counted the same way as a connection** ([common parts](oep-if-common.md) §2): its users are the session that opened it and
-  the slot that opened it by bind. close, lease expiry and force remove only one's own share, and it closes when every user has left (mark closed, detail 1 / 2).
+  the slot that opened it by bind. close, and the end of the session's lock (end, lease expiry, force), remove only one's own share, and it closes when every
+  user has left (mark closed, detail 1 after a close, 2 when the session ended). When a session ends, the probe removes its shares of streams before its shares
+  of connections, so a stream whose last user was that session closes with detail 2 even when its connection closes too.
   When a user left through the replacement or deletion of a slot item, detail 3; when the connection closed, 4.
+- **Console streams are the probe's, per place and mechanism, not the session's** (core §9). The end of a session removes its share, but a closed stream stays
+  readable until the same mechanism is next opened at the same place, and that open returns the old number with its position and marks (below). So a host
+  that runs one command per process keeps the first lines: one command opens the console, resets the target and ends; the stream closes but keeps what it
+  read; the next command's open at the same place and mechanism returns it, and reads from the reset mark.
 - While a stream is open, the probe drains and accumulates the target's output regardless of sessions (with dmseq, unless it keeps reading, the target
   blocks on transmission).
 - When the connection on which a stream was opened is lost, it is closed with a mark link-lost (when wire loss was decided inside a console read) or closed (4).

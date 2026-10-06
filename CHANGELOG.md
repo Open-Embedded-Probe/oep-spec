@@ -54,6 +54,15 @@ Text only, no wire change:
   present exactly when save is offered, max_bytes 1 or more); port_speed by op 0x14 in fn 0's ops. Registry: `describe_common.ops = 0x09`;
   riscv-dm features removed; i2c-target features bit 0x02, logic / analog / capture-group features bits 0x01 and 0x02 reserved; fn 0 describe
   `port_speed` (0x4E) reserved. `discovery.json`: the example probe's describe of fn 0 carries ops (confirm, list, describe).
+- Sessions (user decision D1): end, lease expiry and force all release everything the session created (plans, its shares of connections and
+  streams, subscriptions); nothing is handed to the next session and there is no resume. open's answer is `lease_ms(u32), boot_id(u32), [TLV]`;
+  a request with a session_id while the lock is free is no_session; the decision table of core §6.2 has seven rows; the resend table stays keyed
+  by the last session's id until the next successful open, so a resent end is still answered; owner is kept while the lock is held; lock_state
+  answers remaining 0 when free; a reboot is seen by open's boot_id (core §4.3, §5.2, §6, §9). Console streams stay the probe's per place and
+  mechanism: a closed stream stays readable until the same mechanism is next opened at the same place, which returns its old number with its
+  position and marks, so a one-command-per-process host keeps the first lines after a reset (console §2). Common §2, debug §2 (one row for end,
+  lease expiry and force), capture (plan release and capture-group bind at the end of the session), probe settings. Registry: reject reason
+  `expired` (0x0E) reserved, enum `resumed` removed, `mark_detail_closed` 2 is `session_ended`.
 
 ### Rule changes: core and registry
 

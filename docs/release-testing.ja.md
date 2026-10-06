@@ -55,7 +55,7 @@ picotool / uf2、oep_client）でできる。firmware のリポジトリは Ardu
    回し、結果を記録する。**起動時の速さで同じ matrix（同じ n）を先に測って基準とし**、候補の壊れ・失われの割合を基準と比べる（CH340 は
    115200 でも 1〜3 % 落とすので、絶対数では判定できない）。基準の取り方と閾値は
    [host 開発ガイド](host-development-guide.ja.md) §17.3.2（参考の手順。core §3.5 は握手だけを決める）。
-7. セッション: lease の期限切れ、expired、force の往復。
+7. セッション: end、lease の期限切れ、force のそれぞれがセッションの作ったものを解放する（後の要求は no_session か locked になる）。force の往復。
 8. シリアルの口（CDC、USB-Serial/JTAG、UART bridge）の host の受けの上限: 未解決の応答の見込み量（同時数 × フレーム長）を client の上限
    （6 KiB、core §3.4 の注）まで上げた `linktest` in で 1 つも失われないこと（Linux の cdc_acm の 8 KiB を踏んでいないことの確かめ）。
 9. read_block を describe の max_length ちょうどの count で 1 回（応答が max_frame に収まり、malformed にならないこと。線のある

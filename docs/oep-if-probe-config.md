@@ -10,7 +10,7 @@ Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a nu
 
 - **There are no default values.** Every item is set by the host, and the probe behaves as set. For items that are not set it does nothing.
 - A probe that does not handle settings does not put this interface in list.
-- The plan, the slot connections and the binds put in from the settings are not session resources (core §9). They are not removed even on lease expiry.
+- The plan, the slot connections and the binds put in from the settings are not session resources (core §9). They are not removed when a session ends.
 - **There are no boot types (modes).** Settings are made with the same operations over any path, and what is set takes effect immediately. No reboot is needed for settings.
 
 ## 1. Items

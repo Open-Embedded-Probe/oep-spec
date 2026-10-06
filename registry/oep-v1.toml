@@ -78,14 +78,14 @@ malformed = 0x03
 unavailable = 0x04
 busy = 0x05                     # reserved with the long operations (core §10)
 window_exceeded = 0x06
-no_session = 0x07
+no_session = 0x07               # a request with a session_id while no session holds the lock: open a new session (core §6.2, §9)
 locked = 0x08
 session_required = 0x09
 no_connection = 0x0A
 unsupported = 0x0B
 result_lost = 0x0C              # a resend whose answer is not kept (it fell out of the table, or was too large): read the state again (core §5.2)
 corr_reused = 0x0D              # a request sent again with the same corr but another fn, op or payload
-expired = 0x0E                  # this session's lock ended by lease expiry and its resources were swept: open again (core §6.2); the side forced out sees locked, then no_session (core §9)
+# 0x0E reserved (core §4.3)
 
 [status]                        # wire and target operations (oep-if-common §3); 0x06-0x3F reserved, 0x40-0x7F per interface
 ok = 0
@@ -205,7 +205,7 @@ parity = 3
 target_timeout = 4              # dmseq: the target gave up waiting for the probe
 [common.enum.mark_detail_closed]
 all_released = 1
-expired = 2                     # lease expiry or force removed the last user
+session_ended = 2               # the session's lock ended (end, lease expiry, force) and its share was the last user
 slot_changed = 3
 connection_closed = 4
 
@@ -292,10 +292,6 @@ tcp = 6
 try = 0
 commit = 1
 revert = 2
-[interface.enum.resumed]        # open's answer (core §6.4)
-new = 0
-resumed = 1                     # the same session id, resources kept
-swept = 2                       # the same session id after its lease expired: resources were removed (core §6.4)
 [interface.event]
 heartbeat = 0x01                # boot_id(u32), uptime_ns(u64)
 [interface.reserved]

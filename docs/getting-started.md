@@ -192,7 +192,7 @@ A probe that answers only confirm, list and describe is not yet an OEP probe. In
 **Probe** ([conformance](conformance.md) §1):
 
 1. The sessions: open, end, keepalive, lock_state, with the lease and the decision table of core §6.2; the session_id checks (session_required,
-   no_session, locked, expired).
+   no_session, locked); end, lease expiry and force all release what the session created (core §9).
 2. The resend table of core §5.2 (at least max_inflight entries, rejected answers included, discarded at every successful open).
 3. The whole refusal order of core §4.3 and the TLV rules of core §2.3 (critical, ignored, repeated, short and over-long TLVs).
 4. subscribe / unsubscribe with the fn 0 heartbeat (core §11), link_source / link_sink (core §12).

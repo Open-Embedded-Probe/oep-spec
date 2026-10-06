@@ -183,15 +183,14 @@ In addition to [common parts](oep-if-common.md) §2:
 |---|---|---|---|
 | detach | Remove the share of that host's session. Close if no other user remains | Not touched | Close if the connection closes (mark closed 4) |
 | detach(force) | Close (treated the same as when the wire was lost. An at boot slot retries) | Not touched | Close (mark detach, closed 4) |
-| end | Nothing changes (the resources move to the next session, core §9) | Not touched | Unchanged |
-| Lease expiry / taken by force | Remove the session's share. Remains if a slot is using it | **Not touched** (if halted it stays halted. The host restores it with attach(method 0) + resume) | Remove the session's share (mark closed 2) |
+| end / lease expiry / taken by force | Remove the session's share (core §9). Close if no other user remains; remains if a slot is using it | **Not touched** (if halted it stays halted. The host restores it with attach(method 0) + resume) | Remove the session's share (mark closed 2; a closed stream stays readable, [console](oep-if-console.md) §2) |
 | Wire lost | Close | — | Close (mark link-lost, closed 4) |
 | Self-reset of the target (havereset) | Keep (acknowledge, §4.6) | The target's state | Keep (mark restart 1) |
-| attach of a second session | Joins the same connection (flags bit1) | As method says | The same stream if the same (connection, mechanism) |
+| attach of a later session while a slot keeps the connection | Joins the same connection (flags bit1) | As method says | The same stream if the same (connection, mechanism) |
 | Probe reboot | Gone | The DM keeps dmactive | Gone |
 - The probe's own automatic attach (a slot of `oep.probe.config`) is also one of the users, and a host's attach joins that connection
   (flags bit1).
-- (Informative, safety) Lease expiry and force do not touch the hart: when a host dies with the hart halted, the target stays halted (unlike a debugger's
+- (Informative, safety) The end of a session (end, lease expiry, force) does not touch the hart: when a host dies with the hart halted, the target stays halted (unlike a debugger's
   detach, it does not start running), whatever the target was controlling. A host that wants the target to run after it leaves resumes it before end.
 
 ### 2.1 connections (list of connections)

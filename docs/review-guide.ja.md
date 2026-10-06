@@ -28,7 +28,7 @@ flash の書き方やチップ固有の手順は host にある。
   未公開（npm に出していない。fake に対する試験だけ）。firmware と client は同じ版の番号（0.0.x）でそろえて出します。
 - **実機の試験**（[release-testing](release-testing.ja.md)、oep-client-python `tests/hw/`）が覆うもの: 焼く、confirm / list / describe、`oep.probe.config` の
   set / get / save / 再起動 / unset（disable を含む）、線（scan、attach、halt → dmi → read_block → resume の往復。target をつないだボードだけ）、
-  gpio、fixture uart、port_speed（UART bridge のボードだけ）、lease の期限切れ / expired / force。結果は `tests/hw/results/` の JSON。
+  gpio、fixture uart、port_speed（UART bridge のボードだけ）、end / lease の期限切れ / force によるセッションの資源の解放。結果は `tests/hw/results/` の JSON。
   **覆わないもの**: console（dmseq）、キャプチャ（logic / analog / capture-group）、i2c-target / spi-target、通知、HID の経路、複数の経路の
   同時使用、TCP。これらは fake に対する試験（`uv run pytest`）と手動の確認だけです。
 - 決め方は「先に実験・試作をして、その結果で仕様を固める」。実験の番号や日付は**記録の文書**に残し、規範の文には置きません

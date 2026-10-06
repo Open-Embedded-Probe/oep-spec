@@ -368,7 +368,7 @@ port_speed  要求: port(u8)、baud(u32)、step(u8: 0 試す、1 決める、2 �
 - 断り: port がこの要求の来た口でない → rejected unavailable（cause 6）。UART が作れる最も近い速さが要求と 2 % より大きく違えば rejected unsupported。応答の baud は実際に掛けた速さ。
   step 0（試す）の verify_ms 0 は rejected malformed。step 1（決める）と step 2（戻す）では verify_ms に意味は無く、どの値も受ける。
   step が 3 以上なら rejected unsupported（payload の tag 0x00、§2.5）。
-  ロックが無い・違うときの断りは §4.3 の順（session_required、no_session、expired、locked）。
+  ロックが無い・違うときの断りは §4.3 の順（session_required、no_session、locked）。
 - 状態は口ごとに **起動時 / 試し / 決めた** の 3 つ。
   - **試す**（step 0、起動時の状態で受ける）: 応答を今の速さで送り終えてから、応答の baud に切り替えて**試し**になる。verify_ms を
     この要求の値で始める。
@@ -445,14 +445,14 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出�
 | 0x04 | unavailable | 今の状態・資源では受けられない | TLV の並び（任意、下） |
 | 0x05 | busy | 予約（長い操作、§10） | — |
 | 0x06 | window_exceeded | window / max_inflight を超えた | — |
-| 0x07 | no_session | ロックは空いているが、この session_id は最後の ID ではない。host は open からやり直す | — |
+| 0x07 | no_session | 要求は session_id を持つが、どのセッションもロックを持っていない（セッションが終わった、または初めから無い）。host はセッションを開き直す | — |
 | 0x08 | locked | 他のセッションがロックを持つ | 残り時間 ms（u32）、[TLV owner（§6.4）] |
 | 0x09 | session_required | ロックが要る op の要求が session_id 0 を持つ | — |
 | 0x0A | no_connection | 要求の資源（connection、stream など、番号で指すもの）を probe が知らない。host は作り直す。どのインターフェースでも、知らない番号にはこれを使う | — |
 | 0x0B | unsupported | 定義にはあるが、この probe が扱えない（critical の TLV、固定部分の値、この probe が持つ op の任意の機能） | `tag(u8)`、[TLV]。tag は critical の TLV なら受け取ったままの値、固定部分の値なら 0x00。どの要素かを示すときは後ろに TLV（unavailable と同じ tag の空間: channel、index） |
 | 0x0C | result_lost | 送り直された要求の結果を覚えていない（§5.2） | — |
 | 0x0D | corr_reused | 同じ corr で fn、op、中身のどれかが違う要求が来た（§5.2） | — |
-| 0x0E | expired | この session_id のロックは lease の期限切れで終わり、資源は外した（§9）。host は open からやり直す（force で奪われた側は、奪った側が持つ間は locked、その後は no_session になる: probe は最後の session_id しか覚えない） | — |
+| 0x0E | — | 予約 | — |
 
 rejected の detail は reason で、そのほかの情報は payload に置く。
 
@@ -460,7 +460,7 @@ rejected の detail は reason で、そのほかの情報は payload に置く�
 
 1. 見出し: unknown_function → unknown_operation（その fn の ops が立てない op: インターフェースが定義しない op、またはこの probe が持たない任意の op、§1.2）→ session_required。
 2. 送り直し（§5.2 の表）: corr_reused / result_lost / 覚えた応答。
-3. セッション（§6.2）: no_session / expired / locked。
+3. セッション（§6.2）: no_session / locked。
 4. window_exceeded。
 5. **書式** → malformed: 長さ、中身と合わない数、TLV の符号化の誤り、フィールドどうしの矛盾、そしてフィールドの定義がどの revision でも除く値（7 bit の `address > 0x7F`、0 / 1 以外の真偽値、定義が無効と言う値、長さが分からず要求の残りを読めなくなる値、たとえば知らない dmi の step の kind）。書式が正しければ続けて: payload の中で指す fn（describe、subscribe、unsubscribe、plan_apply、probe.config の項目）が無い → unknown_function。
 6. **この probe が扱わない** → unsupported: 定義が使わずに残した値（enum の使っていない値、要求の flags の予約のビット）、定義にあるがこの probe が宣言しない値（mode、format、rate、trigger の type）、知らない critical の TLV、宣言が許さないピンの組。payload の tag は、固定部分の値なら 0x00、critical の TLV の中の値ならその TLV の受け取ったままの tag（そうした値を持つ critical でない TLV は無視する、§2.3）。
@@ -531,8 +531,8 @@ unsubscribe と end を確かめずに送ってよい（二度実行しても害
   - それ以外は新しい要求として §6.2 へ進む。
 - 覚えておく応答の大きさには上限を置いてよい。上限を超えて覚えていない応答の要求を送り直されたら、実行せずに rejected
   result_lost。
-- **覚えた表と最も新しい corr は open（resume を含む）のたびに捨てる**（end では捨てない）。セッションが変わったときの
-  exactly-once は約束しない。
+- **覚えた表と最も新しい corr は成功した open のたびに捨てる**（end、lease の期限切れ、force では捨てない: 送り直された end には
+  表から答える）。セッションが変わったときの exactly-once は約束しない。
 - session_id 0 の要求は重複排除しない。
 - CRC-32 は IEEE（reflected、多項式 0xEDB88320、初期値と最終の XOR 0xFFFFFFFF。"123456789" → 0xCBF43926）。
 
@@ -548,21 +548,18 @@ unsubscribe と end を確かめずに送ってよい（二度実行しても害
 
 ### 6.2 要求を受けたときの判定
 
-probe は、ロックの有無、最後の session_id、その ID のロックが**どう終わったか**（end で離した / 期限切れか force で外した）を覚えている。
-§5.2 の表の判定（送り直し）はこの表より先。
+probe は、ロックの有無、ロックを持つ、または最後に持った session_id（以下 S。§5.2 の表はこれに結びつく）、ロックが持たれている間の
+owner を覚えている。§5.2 の表の判定（送り直し）はこの表より先。session_id 0 のロックなしの op の要求はここに来ない（§4.1）。
 
-| ロック | 要求の session_id | 結果 |
+| ロック | 要求 | 結果 |
 |---|---|---|
-| 空き（end で離した） | 最後の session_id と同じ、open 以外 | ロックを立て直して処理する（再開。lease は前の open の値、資源は残っている、§9） |
-| 空き（end で離した） | 最後の session_id と同じ open | ロックを立て直し、resumed = 1 |
-| 空き（期限切れで外した） | 最後の session_id と同じ、open 以外 | **rejected expired**（資源は外した。host は open からやり直す） |
-| 空き（期限切れで外した） | 最後の session_id と同じ open | ロックを立て、resumed = 2（資源を外した後の再開） |
-| 空き | 違う ID、open 以外 | rejected no_session |
-| 空き | 違う ID の open（force の有無を問わない） | ロックを立て、最後の session_id と owner を更新、resumed = 0 |
-| 自分が持つ | 同じ、open 以外 | 処理する |
-| 自分が持つ | 同じ open（force の有無を問わない） | lease を作り直し、resumed = 1。購読は残し、通知の送り先はこの open の経路に替える |
-| 他が持つ | 違う、open(force) 以外 | rejected locked と残り時間（と owner） |
-| 他が持つ | open(force) | 奪う（§6.4）: 前のセッションの資源を外し（§9）、resumed = 0 |
+| 空き | open（session_id ≠ 0、force の有無を問わない） | ロックを立てる: S をこの id にし、lease を lease_ms から始め、owner は open の示すとおり |
+| 空き | session_id ≠ 0 のほかの要求 | rejected no_session |
+| S が持つ | session_id S の open（force の有無を問わない） | 送り直された open: この open の lease_ms で lease を始め直す。何も解放しない。購読は残し、通知の送り先はこの open の経路に替える |
+| S が持つ | 別の id の open、force なし | rejected locked と残り時間（と owner） |
+| S が持つ | 別の id の open、force あり | 奪う（§6.4）: S の資源を解放し（§9）、それから新しい id のロックを立てる |
+| S が持つ | session_id S のほかの要求 | 処理する |
+| S が持つ | 別の id のほかの要求 | rejected locked と残り時間（と owner） |
 
 ### 6.3 ロックの要る要求
 
@@ -572,21 +569,21 @@ probe は、ロックの有無、最後の session_id、その ID のロック�
 
 ### 6.4 open、end、keepalive、force
 
-- **open**（lease_ms、force。session_id は見出しのもの、§4.1）: ロックを取る。応答は lease_ms（probe が決めた値）、boot_id、resumed（0 新しいセッション、
-  1 同じ session_id で資源を残したまま立て直した、2 同じ session_id だが資源は外した後。registry の `resumed`）。**成功した open のたびに
+- **open**（lease_ms、force。session_id は見出しのもの、§4.1）: ロックを取る。応答は lease_ms（probe が決めた値）と boot_id。**再開は
+  無い**: 終わったセッションは、どの要求でも続かない。host は新しいセッションを開く。**成功した open のたびに
   §5.2 の表を捨てる**（rejected locked の open では捨てない。end、期限切れ、force では捨てない）。
 - **lease_ms**: 0 は「probe の既定」。probe は 1000〜60000 ms の要求をそのまま受け、範囲の外は範囲の中に丸める（既定は
   probe が決める）。応答の lease_ms は lease_min_ms〜lease_max_ms（1000〜60000）の中にある。host は応答の lease_ms を正とする。
-- **end**: ロックを離す。セッションの資源は残す（§9）。
+- **end**: ロックと、セッションが作ったものすべてを解放する（§9）。lease の期限切れと force も同じ。
 - **keepalive**: lease を延ばすだけ。
-- **lock_state**: ロックの有無と残り時間。locked は「どのセッションであれロックが持たれている」（lock_state はセッションを
+- **lock_state**: ロックの有無と残り時間（ロックが空いていれば 0）。locked は「どのセッションであれロックが持たれている」（lock_state はセッションを
   持たずに送れるので、probe には誰が聞いたかは分からない。自分が持っているかは host が自分の状態で知る）。
 - **owner**: open の TLV 0x01 owner（text、1〜32 byte、非 critical）で、host は持ち主の名前（例 "flash-tool pid 1234"）を
-  付けてよい。probe は最後の session_id と一緒に owner を覚え（別の session_id の open で置き換わり、同じ session_id の再開では
-  owner が付いていれば置き換え、無ければ前のまま）、ロックが持たれている間、lock_state の応答と rejected locked の payload の後ろに
-  TLV 0x01 owner で付ける（owner が無ければ付けない）。**session_id は返さない**（返すと他の host がその ID で再開でき、force なしで奪える）。owner は表示のためだけのもので、
+  付けてよい。probe は owner をロックを立てる open から取り、ロックが持たれている間覚え（持つ側の id の open では変えない）、ロックが
+  終わると忘れる。ロックが持たれている間、lock_state の応答と rejected locked の payload の後ろに
+  TLV 0x01 owner で付ける（owner が無ければ付けない）。**session_id は返さない**（返すと他の host が force なしでそのセッションとして要求を送れる）。owner は表示のためだけのもので、
   probe は解釈しない。（参考）owner は lock_state でどの host からも読めるので、host は秘密を入れない。
-- **force**: 他のセッションがロックを持っていても奪う。probe は、前のセッションに対して期限切れと同じ後始末をしてから（§9）
+- **force**: 他のセッションがロックを持っていても奪う。probe は、前のセッションの資源をその終わりと同じく解放してから（§9）
   ロックを渡す。force は認証ではなく、取り違えを防ぐだけのものである。
 
 ### 6.5 boot_id
@@ -595,7 +592,7 @@ boot_id は probe の起動ごとに変わる値で、confirm（§7.1）と open
 とき、そのセッションの資源（plan、インターフェースの資源）と、覚えた fn の対応、資源の番号、ストリームの位置がすべて無効になったとみなす。
 ロックを持たない host（監視、発見）は confirm で再起動を知る。
 
-host は open からも再起動を知る: 最後に使った session_id での open に resumed = 0 が返れば、probe はそのセッションをもう知らない（再起動か、間に別の host のセッションがあった）。host は、覚えた fn の対応を使う前に list をやり直す（§7.2）。
+open の応答も boot_id を持つ: 知っていた boot_id と比べる host は、open のときに再起動を知り、覚えた fn の対応を使う前に list をやり直す（§7.2）。
 
 ## 7. 発見
 
@@ -764,19 +761,24 @@ plan は **fn ごと**に持つ。
 
 ## 9. 資源の寿命（一般の規則）
 
-**セッションが作った資源は、明示の end では残して次のセッションに渡し、lease の期限切れと force で奪われたときに外す。**
+**セッションが作ったものはすべて、そのロックが終わるときに解放する。何で終わっても同じ**（end、lease の期限切れ、force で奪われる）。次の
+セッションには何も渡さない。セッションをまたいで残るのは probe の設定が定めるもの（`oep.probe.config` の plan、idle の状態、slot、bind）で、どの host からも読める。
 
-| 出来事 | セッションが作った資源 | 購読（§11） | §5.2 の表 | 次の同じ ID の要求 |
+| 出来事 | セッションが作った資源 | 購読（§11） | §5.2 の表 | 後の同じ ID の要求 |
 |---|---|---|---|---|
-| end | 残る。次に成功した open で、そのセッションの資源に原子的に移る | 終わる | 残る | 再開して処理（§6.2） |
-| lease の期限切れ | 外す | 終わる | 残る | rejected expired、open で resumed = 2 |
-| force で奪われる | 外す（期限切れと同じ） | 終わる | 捨てる（奪った open が捨てる） | 奪った側が持つ間は locked、その後は no_session（最後の ID は奪った側） |
+| end | 解放する | 終わる | 残る（送り直された end にはここから答える） | ロックが空いている間は no_session、別のセッションが持つ間は locked |
+| lease の期限切れ | 解放する | 終わる | 残る | end の後と同じ |
+| force で奪われる | 解放する | 終わる | 捨てる（奪った open が捨てる） | 奪った側が持つ間は locked、その後は no_session |
 | 同じ ID の open（保持中） | 残る | 残る（送り先はその経路） | 捨てる | — |
 | probe の再起動 | 無くなる（boot_id が変わる） | 無くなる | 無くなる | no_session |
 
-- end の後に残った資源は、次に成功した open（別の session_id でも、同じ session_id の再開でも）でそのセッションのものになり、
-  そのセッションの lease の期限切れか force で外れる。引き継がせたくない host は、end の前に自分で外す（detach、close、
-  plan_release など）。
+- セッションとほかのものが共有する資源（slot も使う connection、bind も送るストリーム）では、セッションの持ち分だけが外れ、
+  使う者が残らなくなったときに、インターフェースの文書のとおり閉じる。
+- 資源が閉じた後もインターフェースが読めるまま残すものは、セッションの資源ではない: 閉じた console のストリームは、同じ場所で同じ仕組みが
+  次に開かれるまで読める（[コンソール](oep-if-console.ja.md) §2）。
+- 1 つのプロセスで 1 つのコマンドを走らせる host は、probe にまだ残っているものに明示の道で届く: 生きている組への attach はその
+  connection を返し（slot はセッションをまたいで connection を保つ）、同じ場所と仕組みでの console の open は、開いていても閉じていてもそのストリームを、
+  位置と mark ごと返す。
 - 本体の資源: **plan**（外すとピンは plan_release と同じく解放。target の線を plan で保っていた場合、target の状態が変わりうる）、通知の購読
   （§11。購読は end でも終わる）、§5.2 の表。
 - インターフェースが作る資源（debug の connection、ストリームなど）の寿命は、インターフェースの文書が、この規則の上で定める
@@ -855,7 +857,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 | 0x03 | describe | §7.3 | §7.3 | 不要 | 必須 |
 | 0x04 | plan_apply | role_assignment の TLV の並び | — | 必要 | plan の role があれば（§1.2） |
 | 0x05 | plan_release | n(u8)、n × fn(u16) | — | 必要 | plan の role があれば（§1.2） |
-| 0x10 | open | lease_ms(u32)、force(u8)、[TLV owner]（session_id は見出しのもの） | lease_ms(u32)、boot_id(u32)、resumed(u8: 0 / 1 / 2、§6.4) | open がロックを取る | 必須 |
+| 0x10 | open | lease_ms(u32)、force(u8)、[TLV owner]（session_id は見出しのもの） | lease_ms(u32)、boot_id(u32)、[TLV] | open がロックを取る | 必須 |
 | 0x11 | end | — | — | 必要 | 必須 |
 | 0x12 | keepalive | — | — | 必要 | 必須 |
 | 0x13 | lock_state | — | locked(u8)、remaining_ms(u32)、[TLV owner] | 不要 | 必須 |

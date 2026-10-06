@@ -68,7 +68,7 @@ capture = [capture](oep-if-capture.md); settings = [probe settings](oep-if-probe
 | resolution | resolution | completed (0x01) or rejected (0x00); 0x02 reserved | core §4.2 |
 | outcome | outcome | success 0, failed 1, partial 2 of a completed answer | core §4.2 |
 | rejected / refusal | 断り（rejected） | The request was not accepted | core §4.2 |
-| reject reason | 断りの理由 | The detail of rejected (unknown_function … expired) | core §4.3 |
+| reject reason | 断りの理由 | The detail of rejected (unknown_function … corr_reused) | core §4.3 |
 | order of refusal | 断り方の順 | The fixed order in which a probe checks a request and refuses with the first reason that applies | core §4.3 |
 | cause, holder_fn, holder_kind | cause、holder_fn、holder_kind | TLVs of an unavailable refusal: why, and what holds the resource | core §4.3 |
 | status | status | The result of a wire or target operation: ok, wait, line, fault, timeout, state | common §3 |
@@ -103,7 +103,6 @@ capture = [capture](oep-if-capture.md); settings = [probe settings](oep-if-probe
 | lease expiry | 期限切れ | The lease ran out; the session's resources are removed | core §6.1, §9 |
 | force | force | open that takes the lock from another session (not authentication) | core §6.4 |
 | owner | owner | Display text attached to open, returned by lock_state and locked | core §6.4 |
-| resumed | resumed | open's answer: 0 new, 1 resumed with resources, 2 resumed after removal | core §6.4 |
 | boot_id | boot_id | A value that changes at every boot | core §6.5 |
 | resource, resource number | 資源、資源の番号 | What a session creates (plan, connections, streams…); u16 numbers in one space per probe | core §9 |
 | lifetime | 寿命 | What happens to resources on end, expiry, force and reboot | core §9 |

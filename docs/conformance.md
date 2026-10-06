@@ -44,7 +44,7 @@ A probe conforms when it does everything in this list for the transports and int
 - The resend table: at least max_inflight entries, rejected answers stored, discarded at every successful open, one table per probe (§5.2).
 - Lock-free ops change no state (§6.3); boot_id changes at every boot, taken from the sources of §6.5 in their order (§6.5).
 - The clock: ns since boot, never decreasing or wrapping while the boot_id is the same (§2.6a).
-- Lifetime of the session's resources on end, expiry, force, re-open and reboot (§9); resource numbers (§9).
+- Everything a session created released when its lock ends, by end, expiry or force alike, and kept on a resent open (§9); no resume (§6.4); resource numbers (§9); closed console streams readable until the next open at the same place and mechanism ([console](oep-if-console.md) §2).
 
 **fn 0 (`oep.core`)**
 
@@ -85,8 +85,8 @@ A probe conforms when it does everything in this list for the transports and int
   length-prefixed frames and `host_resync_wait_ms` (§5.1); when the resend also gets no answer, the transport has failed: recover with the
   confirm of §5.1 on every frame kind, or reopen, before sending anything else there, and read the state before repeating a state-changing
   request (§5.2).
-- **Sessions**: a random non-zero session_id (§6.1); the answer's lease_ms is authoritative, and keepalive extends it (§6.4); react to no_session / expired /
-  locked (§4.3, §6.2); a changed boot_id invalidates its state, and an open with its last session_id answered resumed = 0 means
+- **Sessions**: a random non-zero session_id (§6.1); the answer's lease_ms is authoritative, and keepalive extends it (§6.4); react to no_session /
+  locked (§4.3, §6.2), opening a new session after no_session and setting up again; a changed boot_id (in confirm or open) invalidates its state and means
   list again (§6.5); the requests of one session on one transport (§3.3); session_id 0 on lock-free requests that need no session (§4.1).
 - **Reading answers**: discard messages with the request role; an answer shorter than 5 bytes, or an event or data frame shorter than its
   header, is a broken frame (§2.4); skip unknown TLVs and tags, use the first of a repeated tag, read a non-zero boolean as true (§2.1, §2.3); unknown

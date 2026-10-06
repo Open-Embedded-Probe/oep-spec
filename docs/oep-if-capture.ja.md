@@ -218,7 +218,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | 5 止まっている | unavailable 6 | unavailable 6 | → 1 | — | 空きができれば → 3（flags bit0） | |
 | 6 エラー | → 1 | → 2 / 3（世代 +1） | → 1 | — | — | |
 
-plan_release、lease の期限切れ、force で plan が解けたら state 0 に戻り、データも区画も消える（read は空）。mode 3（ストリーミング）の
+plan_release か、セッションの終わり（end、lease の期限切れ、force、core §9）で plan が解けたら state 0 に戻り、データも区画も消える（read は空）。mode 3（ストリーミング）の
 start は、その fn の購読が無ければ rejected unavailable（cause 6）。取得中に購読が消えたら取り続け、送れない分は捨てる（position が飛ぶ）。
 configure の応答の blocking_ms が core の max_op_ms を超える構成は、configure で rejected unsupported。
 
@@ -391,8 +391,8 @@ bind の TLV:
   unavailable（cause 6 / 2）。どのトラックについての断りかは payload の TLV fn（0x05、core §4.3。unsupported の payload も同じ）で返す。
   何も変えずに断る。束ねている間、各トラックの configure、start、stop、force は rejected unavailable
   （cause 4、holder_fn = 組の fn。組の op を使う。configure し直すときは、いったん n = 0 で解く）。束ねたトラックの plan の
-  plan_release / plan_apply も rejected unavailable（cause 4）。**bind はセッションの資源**（core §9: end で残り、lease の期限切れと
-  force で解ける）。
+  plan_release / plan_apply も rejected unavailable（cause 4）。**bind はセッションの資源**（core §9: セッションのロックが終わるとき（end、lease の
+  期限切れ、force）に解ける）。
 - トラックを束ねていないとき: start は rejected unavailable cause 6。stop と、持っていれば force は、何もせず成功。state は 0。
 - **start** は、どのトラックを始めるよりも前に全トラックの前提を確かめ（ストリーミングで購読の無いトラックがあれば、start は TLV fn（0x05）=
   そのトラックを付けて rejected unavailable cause 6）、それから束ねたトラックをできるだけ同時に始め、組の開始の時刻 start_ns（probe の時計）と、

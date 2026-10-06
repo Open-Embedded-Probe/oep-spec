@@ -67,7 +67,7 @@ capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定]
 | resolution | resolution | completed（0x01）か rejected（0x00）。0x02 は予約 | core §4.2 |
 | outcome | outcome | completed の success 0、failed 1、partial 2 | core §4.2 |
 | 断り（rejected） | rejected / refusal | 要求が受け付けられなかった | core §4.2 |
-| 断りの理由 | reject reason | rejected の detail（unknown_function … expired） | core §4.3 |
+| 断りの理由 | reject reason | rejected の detail（unknown_function … corr_reused） | core §4.3 |
 | 断り方の順 | order of refusal | probe が要求を確かめる決まった順。最初に当たった理由で断る | core §4.3 |
 | cause、holder_fn、holder_kind | cause, holder_fn, holder_kind | unavailable の断りの TLV: 理由と、資源を持っているもの | core §4.3 |
 | status | status | 線と target の操作の結果: ok、wait、line、fault、timeout、state | common §3 |
@@ -102,7 +102,6 @@ capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定]
 | 期限切れ | lease expiry | lease が尽きた。そのセッションの資源は外れる | core §6.1、§9 |
 | force | force | ほかのセッションからロックを奪う open（認証ではない） | core §6.4 |
 | owner | owner | open に付ける表示の文字列。lock_state と locked で返る | core §6.4 |
-| resumed | resumed | open の応答: 0 新しい、1 資源つきで再開、2 外れた後の再開 | core §6.4 |
 | boot_id | boot_id | 起動のたびに変わる値 | core §6.5 |
 | 資源、資源の番号 | resource, resource number | セッションが作るもの（plan、接続、ストリーム…）。番号は probe に 1 つの空間の u16 | core §9 |
 | 寿命 | lifetime | end、期限切れ、force、再起動で資源がどうなるか | core §9 |

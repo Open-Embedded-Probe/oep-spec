@@ -50,8 +50,14 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 - **各 mechanism が定めるもの**: open できる connection の種類、使う target の資源、1 つの connection にほかの mechanism と合わせて生きている
   ストリームをいくつ持てるか、probe が読みを止めるとき、target の状態を確かめる頻度（mechanism 0〜2 は §3）。
 - **ストリームの寿命は connection と同じ数え方**（[共通部品](oep-if-common.ja.md) §2）: 使っているものは、open したセッションと、
-  bind で開いたスロット。close と lease の期限切れ・force は自分の分を外すだけで、全員が外れたら閉じる（mark closed、detail 1 / 2）。
+  bind で開いたスロット。close と、セッションのロックの終わり（end、lease の期限切れ、force）は自分の分を外すだけで、全員が外れたら
+  閉じる（mark closed、close の後は detail 1、セッションが終わったときは 2）。セッションが終わるとき、probe はそのストリームの分を connection
+  の分より先に外す。そのため、最後に使っていたのがそのセッションだったストリームは、connection も閉じるときでも detail 2 で閉じる。
   スロットの項目の置き換え・削除で外れたときは detail 3、connection が閉じたときは 4。
+- **コンソールのストリームはセッションのものではなく、場所と mechanism ごとの probe のもの**（core §9）。セッションの終わりはその分を外すが、
+  閉じたストリームは、同じ場所で同じ mechanism が次に open されるまで読め、その open は古い番号を位置とマークごと返す（下）。そのため
+  1 コマンド 1 プロセスの host も最初の行を失わない: あるコマンドがコンソールを開き、target をリセットして終わる。ストリームは閉じるが、
+  読んだものは保つ。次のコマンドの同じ場所と mechanism での open がそれを返し、リセットのマークから読む。
 - probe は、ストリームを開いている間、セッションと関係なく target の出力を吸い出して貯める（dmseq は読み続けないと target が
   送信で詰まる）。
 - ストリームを開いた connection が失われたら、マーク link-lost（コンソールの読みの中で線切れを判定したとき）か closed（4）を付けて

@@ -62,7 +62,7 @@ mark : serial(u32)、position(u64)、kind(u8)、time_ns(u64)、detail(u8)       
 | 0x06 | clear | host が消去した | — |
 | 0x07 | host | host が付けた印 | host の値 |
 | 0x08 | link-lost | 線が落ちた（コンソールの読みの中で判定） | — |
-| 0x09 | closed | ストリームが閉じた | 理由（`mark_detail_closed`: 1 使っているものが全員外れた、2 lease 切れ / force、3 スロットの置き換え・削除、4 connection が閉じた） |
+| 0x09 | closed | ストリームが閉じた | 理由（`mark_detail_closed`: 1 使っているものが全員外れた、2 セッションが終わった（end、lease の期限切れ、force）、3 スロットの置き換え・削除、4 connection が閉じた） |
 
 - kind の空間: 0x01〜0x3F 標準、0x40〜0x7F インターフェース固有。detail の値は registry（`common.enum.mark_detail_*`）。0x40 以降は
   インターフェース固有。
@@ -107,8 +107,8 @@ marks はロックなしで使える。
 - connection は、**使っているもの**が 1 つでもある間は開いている。使っているもの:
   - attach した host のセッション（セッションごとに 1 つ）
   - スロット（`oep.probe.config` §1.1。probe の自動の attach と、bind が開いたコンソール）
-- セッションの分は core §9 の寿命に従う: 明示の end では残り（次のセッションの attach がそのまま加わる）、lease の期限切れと
-  force で奪われたときに外れる。
+- セッションの分は core §9 の寿命に従う: セッションのロックが終わるとき（end、lease の期限切れ、force で奪われる）に外れる。後のセッションの
+  attach がその connection に加わるのは、ほかに使うもの（スロット）が connection を開いたままにしている間だけ。
 - 閉じるのは、使っているものが無くなったとき、force の detach、線が本当に切れたとき（インターフェースの文書が決める）だけ。
 - connection に載っている資源（コンソールのストリームなど）は、connection が閉じたら閉じる（何を残すかはそのインター
   フェースが決める）。
