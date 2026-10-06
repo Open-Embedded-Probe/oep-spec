@@ -543,17 +543,18 @@ def ops() -> dict:
     con = {"7": "oep.target.console"}
     mark_kind = REG["common"]["enum"]["mark_kind"]
     mark = struct.pack("<IQBQB", 0, 0, mark_kind["attach"], 1_000_000, 0)
-    add("console marks: one attach mark", "common §1.3, console §1", con, "stream 1 with one mark (serial 0, position 0, attach at 1 ms)",
-        request(0x60, 7, op("oep.target.console", "marks"), struct.pack("<HI", 1, 0)), ok(0x60, bytes([0, 1]) + mark))
+    # connection 1 (the wire cases) and the stream share core §9's one number space: the stream opened on it is 2
+    add("console marks: one attach mark", "common §1.3, console §1", con, "stream 2 with one mark (serial 0, position 0, attach at 1 ms)",
+        request(0x60, 7, op("oep.target.console", "marks"), struct.pack("<HI", 2, 0)), ok(0x60, bytes([0, 1]) + mark))
     st = IFACE["oep.target.console"]["enum"]
-    sentry = struct.pack("<HHBBB", 1, 1, st["mechanism"]["dmseq"], st["stream_users"]["host_session"], st["stream_state"]["open"])
-    add("console streams: one open stream", "console §1", con, "stream 1 on connection 1, dmseq, opened by the session",
+    sentry = struct.pack("<HHBBB", 2, 1, st["mechanism"]["dmseq"], st["stream_users"]["host_session"], st["stream_state"]["open"])
+    add("console streams: one open stream", "console §1, core §9", con, "stream 2 on connection 1 (one number space: connection 1, then stream 2), dmseq, opened by the session",
         request(0x61, 7, op("oep.target.console", "streams"), bytes([0])), ok(0x61, bytes([0, 1]) + sentry))
-    add("console read: empty at the write position", "common §1.2", con, "stream 1, 5 bytes written (position 5)",
-        request(0x62, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 1, 0, 5, 64)),
+    add("console read: empty at the write position", "common §1.2", con, "stream 2, 5 bytes written (position 5)",
+        request(0x62, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 2, 0, 5, 64)),
         ok(0x62, struct.pack("<QBH", 5, 0, 0)))
     add("console read from 4", "common §1.2, core §4.3 order 6", con, "—",
-        request(0x63, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 1, 4, 0, 64)), rej(0x63, "unsupported", b"\x00"))
+        request(0x63, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 2, 4, 0, 64)), rej(0x63, "unsupported", b"\x00"))
 
     # oep.probe.config (probe settings §3.3)
     pc = {"8": "oep.probe.config"}

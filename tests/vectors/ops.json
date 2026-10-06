@@ -217,19 +217,19 @@
       "fns": {
         "7": "oep.target.console"
       },
-      "state": "stream 1 with one mark (serial 0, position 0, attach at 1 ms)",
-      "request_hex": "01600007000300000000010000000000",
+      "state": "stream 2 with one mark (serial 0, position 0, attach at 1 ms)",
+      "request_hex": "01600007000300000000020000000000",
       "answer_hex": "026000010000010000000000000000000000000340420f000000000000"
     },
     {
       "name": "console streams: one open stream",
-      "spec": "console §1",
+      "spec": "console §1, core §9",
       "fns": {
         "7": "oep.target.console"
       },
-      "state": "stream 1 on connection 1, dmseq, opened by the session",
+      "state": "stream 2 on connection 1 (one number space: connection 1, then stream 2), dmseq, opened by the session",
       "request_hex": "0161000700080000000000",
-      "answer_hex": "0261000100000101000100020100"
+      "answer_hex": "0261000100000102000100020100"
     },
     {
       "name": "console read: empty at the write position",
@@ -237,8 +237,8 @@
       "fns": {
         "7": "oep.target.console"
       },
-      "state": "stream 1, 5 bytes written (position 5)",
-      "request_hex": "0162000700020000000001000005000000000000004000",
+      "state": "stream 2, 5 bytes written (position 5)",
+      "request_hex": "0162000700020000000002000005000000000000004000",
       "answer_hex": "02620001000500000000000000000000"
     },
     {
@@ -248,7 +248,7 @@
         "7": "oep.target.console"
       },
       "state": "—",
-      "request_hex": "0163000700020000000001000400000000000000004000",
+      "request_hex": "0163000700020000000002000400000000000000004000",
       "answer_hex": "026300000b00"
     },
     {

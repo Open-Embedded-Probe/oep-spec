@@ -165,6 +165,8 @@ New documents (oep-transports) are Japanese only until then (core §0, README, C
 - `discovery.json`: the example probe's describe of fn 0 also carries discoverable 0 (core §7.5: it does not enumerate with the project's USB
   VID:PID), and the describe past the end asks from 4; a test checks that the example probe's confirm answers carry the transport TLV and its
   describe of fn 0 carries unit_id, transport, max_op_ms and discoverable; getting-started's bytes follow (en + ja).
+- `ops.json`: the console cases use stream 2, not 1: connection 1 already holds number 1 in core §9's one space, so no probe can have
+  stream 1 on connection 1.
 - oepgen1: `[interface.line_names]` in all outputs (031ad71); `--check` refuses unlisted table kinds (73a0c37); SPDX lines and a C header
   `oep_v1_registry_c.h` (5d02a6f).
 
