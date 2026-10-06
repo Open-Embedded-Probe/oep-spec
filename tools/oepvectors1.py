@@ -338,7 +338,7 @@ def refusals() -> dict:
 
 
 def discovery() -> dict:
-    """The smallest probe of docs/getting-started.md §2, §3: list (core §7.2), describe of fn 0 (core §7.3, §7.5) and the
+    """The example probe of docs/getting-started.md §2, §3 (with fn 0's required ops, core §1.2): list (core §7.2), describe of fn 0 (core §7.3, §7.5) and the
     header refusals of core §4.3 order 1, continuing confirm.json's first exchange (corr 1)."""
     core = IFACE["oep.core"]
     list_op, describe_op = op("oep.core", "list"), op("oep.core", "describe")
@@ -351,7 +351,8 @@ def discovery() -> dict:
     list_req = request(2, 0, list_op, struct.pack("<BHB", 0, 0, 0))
     list_ans = answer(2, COMPLETED, 0, struct.pack("<HB", 1, 1) + entry)          # count x entry, no element len (core §2.3, §7.2)
 
-    offered = [op("oep.core", n) for n in ("confirm", "list", "describe")]      # the ops this probe answers (getting-started §3.4)
+    # core §1.2: fn 0's required ops, all set in ops; this probe has no plan role, so no plan_apply / plan_release
+    offered = [op("oep.core", n) for n in ("confirm", "list", "describe", "open", "end", "keepalive", "lock_state", "subscribe", "unsubscribe")]
     decl_tlvs = [tlv(REG["describe_common"]["ops"], ops_value(offered)), tlv(d["unit_id"], unit_id.encode()), tlv(d["transport"], bytes([t_index, t_kind, t_interface])),
                  tlv(d["discoverable"], bytes([discoverable])), tlv(d["max_op_ms"], struct.pack("<I", max_op_ms))]
     decl, n_decl = b"".join(decl_tlvs), len(decl_tlvs)
@@ -363,8 +364,8 @@ def discovery() -> dict:
     no_fn = request(5, 7, 0x01, b"")
     no_op = request(6, 0, 0x50, b"")
     return {
-        "about": "list, describe and the header refusals of the smallest probe (docs/getting-started.md §2, §3): only fn 0 (oep.core, "
-                 "instance 0, revision 1) whose ops are confirm, list and describe (describe common tag ops), one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
+        "about": "list, describe and the header refusals of the example probe (docs/getting-started.md §2, §3, with its §6 steps 1 and 4 done): only fn 0 (oep.core, "
+                 "instance 0, revision 1) whose ops are fn 0's required ops of core §1.2 (confirm, list, describe, open, end, keepalive, lock_state, subscribe, unsubscribe; no plan role, so no plan_apply / plan_release) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
                  "The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. "
                  "Those values are an example probe's.",
         "exchanges": [

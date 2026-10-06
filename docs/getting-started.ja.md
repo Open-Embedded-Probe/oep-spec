@@ -105,13 +105,14 @@ serial frame 00 03 01 03 01 01 02 03 01 01 01 01 01 01 01 03 ea 30 00
 ```
 
 応答: `more(u8)`、続いて宣言の TLV。fn 0 でどの probe も出す 5 つ: ops（この fn が持つ op を base 0x01 と bitmap で示す、
-core §7.4。ここでは confirm、list、describe だけで、この probe が答える op。足す op ごとにビットを立てる、§6）、unit_id、transport（経路ごとに 1 つ）、max_op_ms（core §1.2）と discoverable（core §7.5。UART bridge は
+core §7.4。ここでは core §1.2 が fn 0 に求める 9 つ: confirm、list、describe、open、end、keepalive、lock_state、subscribe、unsubscribe。
+この probe は plan の role を持たないので plan_apply と plan_release は無い）、unit_id、transport（経路ごとに 1 つ）、max_op_ms（core §1.2）と discoverable（core §7.5。UART bridge は
 プロジェクトの USB の VID:PID で列挙しないので、ここでは 0）。
 
 ```text
-message      02 0300 01 00 | 00 | 09 0200 01 07 | 42 0800 61 31 62 32 63 33 64 34 | 49 0300 00 01 ff | 4a 0100 00 | 4d 0400 e8 03 00 00
-               completed success | more 0 | ops 01 02 03 | unit_id "a1b2c3d4" | transport: index 0、kind 1、interface 0xFF | discoverable 0 | max_op_ms 1000
-serial frame 00 03 02 03 02 01 01 03 09 02 05 01 07 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4a 01 01 03 4d 04 03 e8 03 01 03 e3 24 00
+message      02 0300 01 00 | 00 | 09 0800 01 07 80 07 00 00 80 02 | 42 0800 61 31 62 32 63 33 64 34 | 49 0300 00 01 ff | 4a 0100 00 | 4d 0400 e8 03 00 00
+               completed success | more 0 | ops 01-03 10-13 30 32 | unit_id "a1b2c3d4" | transport: index 0、kind 1、interface 0xFF | discoverable 0 | max_op_ms 1000
+serial frame 00 03 02 03 02 01 01 03 09 08 05 01 07 80 07 01 05 80 02 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4a 01 01 03 4d 04 03 e8 03 01 03 c3 c2 00
 ```
 
 `first` が TLV の数（ここでは 5）以上の describe には、more 0 で TLV 無しで答える（core §7.3。`discovery.json` の
@@ -149,6 +150,8 @@ probe がすることを順に（参照の先が規則）:
    項を入れる。total は合うものの総数。flags の bit 1〜7 が立った要求は unsupported（core §7.2）。
 5. **describe**: fn 0 なら `first` からの TLV（少なくとも ops、unit_id、transport、discoverable、max_op_ms。§3.3）を返す。入りきらなければ
    more = 1。`first` が数以上なら more 0 で TLV なし。要求に TLV があれば malformed。boot_id が同じ間、値は変わらない（core §7.3）。
+   ops には、答える op だけを立てる（core §1.2）。この段の probe は confirm、list、describe の 3 つ（`01 07`: base 0x01、bitmap 0x07）
+   で、§6 で op を足すごとにビットを立てる。§3.3 のバイト列は、§6 の 1 と 4 を終えて fn 0 の必須の op をすべて持つ probe のもの。
 6. **答える**: 同じ corr で、要求が来た経路に、来た順に、要求 1 つに応答 1 つ（core §4.2、§4.4）。シリアルの口では `0x00 COBS 0x00`。
 7. **boot_id**: 起動時に乱数から選ぶ（core §6.5）。**unit_id**: 小文字、変わらない、一意（probe ガイド §10）。
 

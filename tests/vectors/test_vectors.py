@@ -73,6 +73,10 @@ def tlvs(data: bytes) -> list[tuple[int, bytes]]:
     return out
 
 
+# core §1.2 (and the 必須 column of core §12): fn 0's ops every probe offers; plan_apply / plan_release only with a plan role
+REQUIRED_FN0_OPS = ("confirm", "list", "describe", "open", "end", "keepalive", "lock_state", "subscribe", "unsubscribe")
+
+
 def ops_set(value: bytes) -> set[int]:
     """The ops a describe common tag ops declares (core §7.4): base(u8), bitmap."""
     base = value[0]
@@ -211,7 +215,7 @@ def test_refusals_answer_their_requests():
 
 
 def test_discovery_exchanges():
-    """list (core §7.2), describe (core §7.3, §7.5) and the header refusals (core §4.3 order 1) of the smallest probe."""
+    """list (core §7.2), describe (core §7.3, §7.5) and the header refusals (core §4.3 order 1) of the example probe."""
     core = REG["interface"][0]
     ops = {o["name"]: o["code"] for o in core["op"]}
     v = load("discovery.json")
@@ -248,7 +252,7 @@ def test_discovery_exchanges():
     ops_tag = REG["describe_common"]["ops"]
     assert [tag for tag, _ in got] == [ops_tag, t["unit_id"], t["transport"], t["discoverable"], t["max_op_ms"]]
     offered = ops_set(got[0][1])
-    assert sorted(offered) == desc["answer"]["ops"] and offered == {ops["confirm"], ops["list"], ops["describe"]}
+    assert sorted(offered) == desc["answer"]["ops"] and offered == {ops[n] for n in REQUIRED_FN0_OPS}   # core §1.2, no plan role
     got = got[1:]
     uid = got[0][1].decode()
     assert uid == desc["answer"]["unit_id"] and 1 <= len(uid) <= 32 and set(uid) <= set("abcdefghijklmnopqrstuvwxyz0123456789-")
@@ -279,7 +283,7 @@ def test_discovery_exchanges():
 def test_example_probe_answers_carry_what_the_core_requires():
     """Every completed confirm answer of the example probe carries TLV 0x01 transport (core §7.1), and its describe of
     fn 0 carries unit_id, transport and max_op_ms (core §1.2) and discoverable (core §7.5: 0 for a probe that does not
-    enumerate with the project's USB VID:PID, as a UART bridge does not)."""
+    enumerate with the project's USB VID:PID, as a UART bridge does not), with every op core §1.2 requires of fn 0 set in ops."""
     core = REG["interface"][0]
     t_confirm = core["tlv"]["confirm_answer"]["transport"]
     t = core["tlv"]["describe"]
@@ -306,6 +310,9 @@ def test_example_probe_answers_carry_what_the_core_requires():
             for name in ("unit_id", "transport", "max_op_ms", "discoverable"):
                 assert t[name] in tags, (ex["name"], name)
             assert tags.count(REG["describe_common"]["ops"]) == 1, ex["name"]                  # every fn's describe (core §1.2)
+            declared = ops_set(dict(got)[REG["describe_common"]["ops"]])                           # base(u8), bitmap (core §7.4)
+            required = {o["code"] for o in core["op"] if o["name"] in REQUIRED_FN0_OPS}
+            assert required <= declared, (ex["name"], sorted(required - declared))            # core §1.2: every required op is set
             assert tags.count(t["discoverable"]) == 1 and tags.count(t["max_op_ms"]) == 1
             kinds = [v[1] for tag, v in got if tag == t["transport"]]
             if all(k == uart_bridge for k in kinds):                                       # no USB port of its own

@@ -167,6 +167,9 @@ New documents (oep-transports) are Japanese only until then (core §0, README, C
   describe of fn 0 carries unit_id, transport, max_op_ms and discoverable; getting-started's bytes follow (en + ja).
 - `ops.json`: the console cases use stream 2, not 1: connection 1 already holds number 1 in core §9's one space, so no probe can have
   stream 1 on connection 1.
+- `discovery.json`: the example probe sets every op core §1.2 requires of fn 0 in ops (confirm, list, describe, open, end, keepalive,
+  lock_state, subscribe, unsubscribe; no plan role), and the test checks ops against that list; getting-started §3.3 bytes follow and §4
+  says a probe that answers only confirm, list and describe sets only those (ja).
 - oepgen1: `[interface.line_names]` in all outputs (031ad71); `--check` refuses unlisted table kinds (73a0c37); SPDX lines and a C header
   `oep_v1_registry_c.h` (5d02a6f).
 
