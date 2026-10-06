@@ -426,7 +426,7 @@ def test_per_op_vectors_decode_exactly():
             assert fn == 10 and c["fns"]["10"] == "oep.probe.plan" and opc in plan_ops.values(), c["name"]
             if opc == plan_ops["plan_apply"]:
                 ((tag, value),) = tlvs(req[10:])
-                assert tag == ra | 0x80 and len(value) == 5                                        # critical, fn role channel (oep-if-plan §2.1)
+                assert tag & 0x7F == ra and len(value) == 5                                        # fn role channel (oep-if-plan §2.1)
     assert pay("plan_apply: gpio role 1 on channel 3") == b"" and pay("plan_release: fn 2") == b""
     sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]
     assert (sub, unsub) == (0x30, 0x32)

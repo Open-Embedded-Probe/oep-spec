@@ -39,7 +39,7 @@
         "2": "oep.fixture.gpio"
       },
       "state": "session S holds the lock; channel 3 free and in gpio's role_channels for role 1; plan_roles not exceeded",
-      "request_hex": "0114000a0001443322119005000200010300",
+      "request_hex": "0114000a0001443322111005000200010300",
       "answer_hex": "0214000100"
     },
     {
@@ -50,7 +50,7 @@
         "2": "oep.fixture.gpio"
       },
       "state": "session S",
-      "request_hex": "0115000a0001443322119005000000010300",
+      "request_hex": "0115000a0001443322111005000000010300",
       "answer_hex": "0215000003"
     },
     {
@@ -61,7 +61,7 @@
         "2": "oep.fixture.gpio"
       },
       "state": "session S; no fn 12",
-      "request_hex": "0116000a0001443322119005000c00010300",
+      "request_hex": "0116000a0001443322111005000c00010300",
       "answer_hex": "0216000001"
     },
     {
@@ -94,7 +94,7 @@
         "2": "oep.fixture.gpio"
       },
       "state": "—",
-      "request_hex": "0119000a0001000000009005000200010300",
+      "request_hex": "0119000a0001000000001005000200010300",
       "answer_hex": "0219000009"
     },
     {
@@ -154,7 +154,7 @@
         "1": "oep.probe.link"
       },
       "state": "ops of fn 1: source and sink only",
-      "request_hex": "012400010003443322110000100e0000d007b80b0000",
+      "request_hex": "0124000100034433221100100e0000d007",
       "answer_hex": "0224000002"
     },
     {

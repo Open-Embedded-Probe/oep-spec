@@ -100,11 +100,11 @@ state = 5
 [timing]                        # times and line values host and probe both implement (transports §2, §4, §5; core §11)
 probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restarts its reader (not on TCP; transports §2); a host waits longer than this before a resync's confirm (transports §5)
 uart_bridge_boot_baud = 115200  # a UART bridge's boot speed, 8N1 without flow control (transports §4)
-port_speed_idle_max_ms = 3000   # a raised port_speed goes back after this long without a good frame, whatever idle_ms said (oep-if-link §3)
+port_speed_idle_ms = 3000       # a committed port_speed goes back to the boot speed after this long without a good frame (oep-if-link §3)
 host_wait_add_ms = 1000         # host: waits at least the request's argument time (at most max_op_ms) plus this plus the transfer time (core §4.4)
 notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §11.4)
 slot_retry_reset_hold_ms = 20   # probe: hold_ms of the retry with reset of a boot_reset slot (oep-if-probe-config §3.1)
-port_speed_switch_wait_ms = 20  # host: after the answer to try, at least this long at the new speed before the confirm that verifies it (oep-if-link §3 host obligation 2)
+port_speed_switch_wait_ms = 20  # host: after the answer to try, at least this long before the next request at the new speed (oep-if-link §3 host 1)
 
 [describe_common]               # declaration tags every interface's describe may use (core §7.4); 0x04, 0x07 (was implementation) and 0x3F reserved
 role_channels = 0x01            # repeats: the same role may be written several times (union; core §7.4)
@@ -134,11 +134,10 @@ slot_name_max_bytes = 32
 label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
 interface_name_max_bytes = 64
 resend_max = 1                  # host: resends of one request with the same corr (core §5.2; the probing rule of transports §3)
-port_speed_broken_max = 3       # probe: broken candidates in a row with no valid frame, after commit, that return a raised port to the boot speed (oep-if-link §3 return condition 4)
+port_speed_tolerance_pct = 2    # port_speed: the nearest speed the UART can make may differ from the request by at most this percent (oep-if-link §3)
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused or not used (oep-if-fixture §2, oep-if-probe-config §1)
 uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)
 max_op_ms_max = 600000          # fn 0 describe max_op_ms is 1 to this (10 minutes) (core §7.5)
-restart_after_answer_ms = 100   # oep.probe.restart: the probe begins its restart at most this long after its answer has left the transport (oep-if-restart §2)
 
 [common.enum.target_id_scheme]  # one space for the whole probe; each wire states which it uses (oep-if-debug §1)
 dmi_7f = 1                      # the u32 at DMI address 0x7F of that debug module; 0 and all ones = none (not sent)
@@ -245,7 +244,7 @@ op = [
   { code = 0x02, name = "plan_release", lock = true },  # n(u8) n x fn(u16); n = 0: every fn
 ]
 [interface.tlv.plan_apply]
-role_assignment = 0x10          # repeats; always sent critical (0x90): fn(u16) role(u8) channel(u16); one assignment is identified by all three (oep-if-plan §2.1)
+role_assignment = 0x10          # repeats: fn(u16) role(u8) channel(u16); one assignment is identified by all three (oep-if-plan §2.1)
 [interface.tlv.describe]
 plan_roles = 0x40               # u32: the most role assignments the plan holds at once, every fn together, settings' plan included (oep-if-plan §1)
 
@@ -256,7 +255,7 @@ op = [
   { code = 0x01, name = "restart", lock = true },       # answers, then the probe restarts as from power-on (oep-if-restart §2)
 ]
 [interface.tlv.describe]
-restart_max_ms = 0x40           # u32, required: the longest from restart's answer until the probe answers confirm again on the same transport, at least restart_after_answer_ms (oep-if-restart §1)
+restart_max_ms = 0x40           # u32, required: the longest from restart's answer until the probe answers confirm again on the same transport (oep-if-restart §1)
 
 [[interface]]
 name = "oep.probe.link"                # optional: the link test and a UART bridge's speed for a session (oep-if-link)

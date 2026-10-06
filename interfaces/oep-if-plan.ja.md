@@ -32,7 +32,7 @@ plan は **fn ごと**に持つ。
 
 ### 2.1 plan_apply
 
-- 要求は role_assignment の TLV（0x10、critical の 0x90 で送る: fn(u16)、role(u8)、channel(u16)。繰り返す）の並び。1 つの割り当ての見分けは
+- 要求は role_assignment の TLV（0x10: fn(u16)、role(u8)、channel(u16)。繰り返す）の並び。1 つの割り当ての見分けは
   (fn, role, channel)（同じ role に複数の channel を持つ機能がある。gpio など）。
 - **要求に出てくる fn の割り当てだけを原子的に置き換え**、ほかの fn の plan はそのまま保つ。置き換える fn の今の割り当てを外したものとして、
   各インターフェースが副作用なしで確かめ（core §8.1 の取り合いの確かめを含む）、全部が受け入れたときだけ適用する。1 つでも断れば、
@@ -70,7 +70,7 @@ plan_apply（core §4.3 の順）:
 |---|---|
 | 形の誤り、同じ (fn, role, channel) が 2 回、fn 0 を挙げた | malformed |
 | fn が無い | unknown_function |
-| role がそのインターフェースに無い（plan の role でない）、channel が role_channels の候補に無い、channel_group のどれにも一致しない | unsupported（tag 0x90） |
+| role がそのインターフェースに無い（plan の role でない）、channel が role_channels の候補に無い、channel_group のどれにも一致しない | unsupported（受け取ったままの tag） |
 | plan_roles を超える、ピンや資源の取り合い（core §8.1）、設定の plan の fn、インターフェースが断る出力の idle | unavailable（cause 2 / 1 / 5） |
 
 plan_release: 形の誤り（n と後ろの fn の数が合わない）は malformed。

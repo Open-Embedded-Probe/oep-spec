@@ -476,7 +476,7 @@ def ops() -> dict:
 
     # oep.probe.plan (oep-if-plan): role_assignment fn(u16) role(u8) channel(u16), always sent critical
     pl = {"10": "oep.probe.plan", "2": "oep.fixture.gpio"}
-    ra = IFACE["oep.probe.plan"]["tlv"]["plan_apply"]["role_assignment"] | CRITICAL
+    ra = IFACE["oep.probe.plan"]["tlv"]["plan_apply"]["role_assignment"]
     apply_, release = op("oep.probe.plan", "plan_apply"), op("oep.probe.plan", "plan_release")
     add("plan_apply: gpio role 1 on channel 3", "oep-if-plan §2.1", pl,
         "session S holds the lock; channel 3 free and in gpio's role_channels for role 1; plan_roles not exceeded",
@@ -507,7 +507,7 @@ def ops() -> dict:
     add("link sink: count larger than the bytes that follow", "oep-if-link §2, core §4.3", link, "—",
         request(0x23, 1, op("oep.probe.link", "sink"), struct.pack("<H", 5) + b"\xaa\xbb\xcc"), rej(0x23, "malformed"))
     add("link port_speed not offered (not set in ops)", "oep-if-link §1, core §1.2", link, "ops of fn 1: source and sink only",
-        request(0x24, 1, op("oep.probe.link", "port_speed"), struct.pack("<BIBHI", 0, 921600, 0, 2000, 3000), S), rej(0x24, "unknown_operation"))
+        request(0x24, 1, op("oep.probe.link", "port_speed"), struct.pack("<IBH", 921600, 0, 2000), S), rej(0x24, "unknown_operation"))
 
     # oep.fixture.gpio (fixture §1)
     gpio = {"2": "oep.fixture.gpio"}

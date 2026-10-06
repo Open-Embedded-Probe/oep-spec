@@ -107,7 +107,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 
 - **UART bridge の回線**: データ 8 bit、パリティなし、ストップ 1 bit、フロー制御なし。起動時の速さは **115200 bps**（registry の `uart_bridge_boot_baud`）。port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3）が変えるのは速さだけ。
 - **上げた速さの後**: UART bridge の口を開く host は、port_speed を使うかどうかにかかわらず、起動時の速さで正しい confirm の応答が来なければ、
-  あきらめる前にそこで `port_speed_idle_max_ms` + `host_wait_add_ms` の間 confirm を繰り返す（前の host が上げた速さは
+  あきらめる前にそこで `port_speed_idle_ms` + `host_wait_add_ms` の間 confirm を繰り返す（前の host が上げた速さは
   それまでに起動時の速さに戻る、[リンク](../interfaces/oep-if-link.ja.md) §3）。
 - **USB のシリアルの口**（USB CDC、内蔵の USB シリアル）: probe は、host がどんな line coding を設定しても OEP を受けて送り、line coding を何にも掛けない。
 - **制御線**: probe は、OEP を受けるか送るかを DTR、RTS、回線の状態で決めない。host は口を開いている間 DTR と RTS を立てておく（UART bridge はそれを probe のリセットにつないでいることがある）。
