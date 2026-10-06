@@ -131,6 +131,8 @@ probe は、自分が出す transport とインターフェースについてこ
 | `discovery.json` | list（§7.2）、fn 0 の describe（§7.3、§7.5）、終わりを越えた describe、ヘッダの断り unknown_function / unknown_operation（§4.3 の順 1） |
 | `probe_config_hash.json` | probe.config の正規形と hash（[probe の設定](oep-if-probe-config.ja.md) §2） |
 | `refusals.json` | §4.3 の断り方と §2.3 の ignored の一覧について、要求とそのとおりの答え |
+| `sessions.json` | セッションの場面: 判定の表（§6.2）、送り直しの表（§5.2。送り直した end）、end での解放と no_session（§9）、force、session_id 0（§4.1）。決めた初めの状態から順に送る要求と答え |
+| `ops.json` | 標準インターフェースの op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.link`、gpio、rvswd、riscv-dm、console、probe.config、logic の一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
 
 実装は JSON を読み、自分の符号器、復号器、答えをバイト単位で比べる。ベクタが文書と registry に合っているかを確かめるには:
 
@@ -149,8 +151,8 @@ python -m oep_client.fake_serve --pty     # 最初の行が開く先。profile �
 **probe を見る。** 同じパッケージの `oep dump --port <port>` が、すべてのインターフェースの list と describe を見せる。そのクライアントの
 試験も、ベクタを自分のコードと偽の probe に対して確かめる。
 
-**まだ扱っていないもの。** probe のための自動の適合試験は無い。ベクタが扱うのは符号、一部の断り方、いちばん小さな probe の発見で、セッションの表、再送の表、
-ページ送り、plan、インターフェースの振る舞いは扱わない。時間（待ち、lease、max_op_ms、フレームの途切れ、port_speed の戻る条件、
+**まだ扱っていないもの。** probe のための自動の適合試験は無い。ベクタが扱うのは符号、一部の断り方、いちばん小さな probe の発見、セッションの場面、一部の op
+で、ページ送りの続き、plan と取り合い、インターフェースの多くの op と状態の移り変わりはまだ扱わない。時間（待ち、lease、max_op_ms、フレームの途切れ、port_speed の戻る条件、
 attach と scan の予算）は共有の道具では確かめていない。電気的な規則（idle の状態、wire が答えない間の線、cs_setup_ns）と実機での
 振る舞いは、実装者が自分で実機の試験をする必要がある。
 

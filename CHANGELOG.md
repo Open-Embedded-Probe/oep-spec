@@ -75,6 +75,10 @@ Text only, no wire change:
   cross-reference of the Japanese documents, the registry comments, the tools and the vectors follows ("core §3.4" is now "transports §4").
   No rule changes in the move.
 
+Vectors (proposal §6.1, Phase 2, started): `sessions.json` (the decision table, the resend of end, release at end, force, session_id 0)
+and `ops.json` (per-op request / state / answer bytes for oep.link, gpio, rvswd, riscv-dm, console, probe.config and logic), computed by
+`tools/oepvectors1.py` and checked by independent decoders in `tests/vectors/test_vectors.py`; conformance §4 lists them.
+
 **Working language until the freeze** (user decision, 2026-10-06): until the v1 freeze the Japanese documents (`.ja.md`) are the working
 text; the English documents are marked out of date and are regenerated from the Japanese at the freeze, when English becomes authoritative.
 New documents (oep-transports) are Japanese only until then (core §0, README, CONTRIBUTING). 凍結までは日本語の文書が作業の文で、英語は凍結のときに

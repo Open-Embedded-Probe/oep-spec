@@ -396,9 +396,201 @@ def discovery() -> dict:
     }
 
 
+
+def sessions() -> dict:
+    """Scenarios of the session decision table (core §6.2), the resend table (core §5.2) and the release at end (core §9), as
+    request / answer byte pairs from a stated initial state, for the example probe of confirm.json (boot_id 0x12345678)."""
+    open_op, end_op, keep_op, state_op = (op("oep.core", n) for n in ("open", "end", "keepalive", "lock_state"))
+    boot_id, lease = 0x12345678, 2000
+    S, T = 0x11223344, 0x55667788
+    owner_tag = IFACE["oep.core"]["tlv"]["lock_state_answer"]["owner"]
+
+    def opened(corr):
+        return answer(corr, COMPLETED, 0, struct.pack("<II", lease, boot_id))
+
+    def rej(corr, reason, payload=b""):
+        return answer(corr, REJECTED, REASON[reason], payload)
+
+    def ok(corr, payload=b""):
+        return answer(corr, COMPLETED, 0, payload)
+
+    def step(note, req, ans):
+        return {"note": note, "request_hex": hx(req), "answer_hex": hx(ans)}
+
+    scenarios = [
+        {"name": "end releases the session; its id is then no_session, and a resent end is answered from the table",
+         "spec": "core §5.2, §6.2, §6.4, §9", "initial": "lock free, no session has held it since boot",
+         "steps": [
+             step("open S, lease 2000 ms, no force", request(1, 0, open_op, struct.pack("<IB", lease, 0), S), opened(1)),
+             step("keepalive of S", request(2, 0, keep_op, b"", S), ok(2)),
+             step("end of S: the lock and everything S created are released", request(3, 0, end_op, b"", S), ok(3)),
+             step("the same end resent with the same corr: the remembered answer, nothing executed", request(3, 0, end_op, b"", S), ok(3)),
+             step("a new request with S: no session holds the lock", request(4, 0, keep_op, b"", S), rej(4, "no_session")),
+             step("lock_state with session_id 0: free", request(5, 0, state_op, b""), ok(5, struct.pack("<BI", 0, 0))),
+         ]},
+        {"name": "another session while the lock is held, then force",
+         "spec": "core §6.2, §6.4", "initial": "lock free",
+         "steps": [
+             step("open S with owner \"cli\"", request(1, 0, open_op, struct.pack("<IB", lease, 0) + tlv(0x01, b"cli"), S), opened(1)),
+             step("open T without force: locked, the remaining time (as if no time had passed) and the owner",
+                  request(2, 0, open_op, struct.pack("<IB", lease, 0), T), rej(2, "locked", struct.pack("<I", lease) + tlv(owner_tag, b"cli"))),
+             step("keepalive of T: locked", request(3, 0, keep_op, b"", T), rej(3, "locked", struct.pack("<I", lease) + tlv(owner_tag, b"cli"))),
+             step("open T with force: S's resources are released, T holds the lock", request(4, 0, open_op, struct.pack("<IB", lease, 1), T), opened(4)),
+             step("keepalive of S: locked (T holds it; T's open gave no owner)", request(5, 0, keep_op, b"", S), rej(5, "locked", struct.pack("<I", lease))),
+         ]},
+        {"name": "session_id 0 and a resent open", "spec": "core §4.1, §4.3 order 1, §6.1, §6.2", "initial": "lock free",
+         "steps": [
+             step("keepalive with session_id 0: an op that requires the lock", request(1, 0, keep_op, b""), rej(1, "session_required")),
+             step("open with session_id 0", request(2, 0, open_op, struct.pack("<IB", lease, 0)), rej(2, "malformed")),
+             step("open S", request(3, 0, open_op, struct.pack("<IB", lease, 0), S), opened(3)),
+             step("the same open resent (open is not looked up in the table): the lease restarts, nothing is released",
+                  request(3, 0, open_op, struct.pack("<IB", lease, 0), S), opened(3)),
+             step("lock_state with session_id 0: held, the remaining time as if no time had passed",
+                  request(4, 0, state_op, b""), ok(4, struct.pack("<BI", 1, lease))),
+         ]},
+    ]
+    return {
+        "about": "Session scenarios (core §5.2, §6, §9) of the example probe of confirm.json (boot_id 0x12345678). Each scenario starts from its "
+                 "initial state; the steps are sent in order on one transport, each answered before the next. Remaining times are shown as if no time "
+                 "had passed between the steps: a real probe answers the time actually left. S = 0x11223344, T = 0x55667788.",
+        "scenarios": scenarios,
+    }
+
+
+def ops() -> dict:
+    """Per-op byte vectors: a request, the probe state it assumes, and the answer, for ops of the standard interfaces. Each answer's
+    fixed part is the one the interface document gives; sequences are count x element with no element length (core §2.3)."""
+    S = 0x11223344
+    cases = []
+
+    def add(name, spec, fns, state, req, ans):
+        cases.append({"name": name, "spec": spec, "fns": fns, "state": state, "request_hex": hx(req), "answer_hex": hx(ans)})
+
+    ok = lambda corr, payload=b"": answer(corr, COMPLETED, 0, payload)
+    failed = lambda corr, payload=b"": answer(corr, COMPLETED, REG["outcomes"]["failed"], payload)
+    rej = lambda corr, reason, payload=b"": answer(corr, REJECTED, REASON[reason], payload)
+    unav = IFACE["oep.core"]["tlv"]["unavailable_payload"]
+    cause = IFACE["oep.core"]["enum"]["unavailable_cause"]
+
+    # oep.link (oep-if-link §1, §2)
+    link = {"1": "oep.link"}
+    add("link source: 8 bytes, byte k = k & 0xFF", "oep-if-link §2", link, "max_frame 1024",
+        request(0x20, 1, op("oep.link", "source"), struct.pack("<I", 8)), ok(0x20, struct.pack("<H", 8) + bytes(range(8))))
+    add("link source: length 0", "oep-if-link §2", link, "—",
+        request(0x21, 1, op("oep.link", "source"), struct.pack("<I", 0)), ok(0x21, struct.pack("<H", 0)))
+    add("link sink: 3 bytes, an empty answer", "oep-if-link §2", link, "—",
+        request(0x22, 1, op("oep.link", "sink"), struct.pack("<H", 3) + b"\xaa\xbb\xcc"), ok(0x22))
+    add("link sink: count larger than the bytes that follow", "oep-if-link §2, core §4.3 order 5", link, "—",
+        request(0x23, 1, op("oep.link", "sink"), struct.pack("<H", 5) + b"\xaa\xbb\xcc"), rej(0x23, "malformed"))
+    add("link port_speed not offered (not set in ops)", "oep-if-link §1, core §1.2", link, "ops of fn 1: source and sink only",
+        request(0x24, 1, op("oep.link", "port_speed"), struct.pack("<BIBHI", 0, 921600, 0, 2000, 3000), S), rej(0x24, "unknown_operation"))
+
+    # oep.fixture.gpio (fixture §1)
+    gpio = {"2": "oep.fixture.gpio"}
+    gset, gread = op("oep.fixture.gpio", "set"), op("oep.fixture.gpio", "read")
+    gidx = IFACE["oep.fixture.gpio"]["tlv"]["unavailable_payload"]["index"]
+    add("gpio set: channel 3 output high", "fixture §1", gpio, "session S holds the lock; channel 3 in fn 2's plan; modes 0 to 4 declared",
+        request(0x30, 2, gset, bytes([1]) + struct.pack("<HB", 3, 4), S), ok(0x30))
+    add("gpio read: channel 3 reads 1", "fixture §1", gpio, "as above, after the set; no drive_levels",
+        request(0x31, 2, gread, bytes([1]) + struct.pack("<H", 3)), ok(0x31, bytes([1, 1])))
+    add("gpio set: channel 9 not in the plan", "fixture §1, core §4.3 order 7", gpio, "channel 9 in no plan of fn 2",
+        request(0x32, 2, gset, bytes([2]) + struct.pack("<HBHB", 3, 4, 9, 0), S),
+        rej(0x32, "unavailable", tlv(unav["channel"], struct.pack("<H", 9)) + tlv(gidx, b"\x01")))
+    add("gpio set without a session: session_required", "core §4.1, §4.3 order 1", gpio, "—",
+        request(0x33, 2, gset, bytes([1]) + struct.pack("<HB", 3, 4)), rej(0x33, "session_required"))
+    add("gpio set: n = 2 with one element", "core §4.3 order 5", gpio, "—",
+        request(0x34, 2, gset, bytes([2]) + struct.pack("<HB", 3, 4), S), rej(0x34, "malformed"))
+
+    # oep.wire.rvswd (debug §1 to §3)
+    rv = {"4": "oep.wire.rvswd"}
+    users = IFACE["oep.wire.rvswd"]["enum"]["connection_users"]
+    scheme = REG["common"]["enum"]["target_id_scheme"]["wch_dmi_7f"]
+    entry = struct.pack("<HHHIBBBB", 1, 0x0001, 0x0002, 1_000_000, users["host_session"], 0xFF, scheme, 4) + struct.pack("<I", 0x00203500)
+    add("rvswd connections: one connection with a target_id", "debug §2.1", rv,
+        "connection 1 on channels 1 / 2 at 1 MHz, attached by the session, no slot, target_id scheme 1 = 0x00203500",
+        request(0x40, 4, op("oep.wire.rvswd", "connections"), bytes([0])), ok(0x40, bytes([0, 1]) + entry))
+    add("rvswd connections: first beyond the count", "core §7.3 end of paging, debug §2.1", rv, "as above",
+        request(0x41, 4, op("oep.wire.rvswd", "connections"), bytes([1])), ok(0x41, bytes([0, 0])))
+    kind = IFACE["oep.wire.rvswd"]["enum"]["scan_kind"]["riscv_dm"]
+    add("rvswd scan: one combination listed and found", "debug §1, §3", rv, "session S; channels 1 / 2 free and allowed; a DM answers DMSTATUS 0x00400382",
+        request(0x42, 4, op("oep.wire.rvswd", "scan"), bytes([1]) + struct.pack("<HH", 1, 2), S),
+        ok(0x42, bytes([1, 1]) + struct.pack("<BHHI", kind, 1, 2, 0x00400382)))
+    add("rvswd scan: count 0 with nothing left from skip", "debug §1", rv, "session S; the count = 0 sequence has 4 combinations",
+        request(0x43, 4, op("oep.wire.rvswd", "scan"), bytes([0]) + tlv(IFACE["oep.wire.rvswd"]["tlv"]["scan"]["skip"], struct.pack("<H", 4)), S),
+        ok(0x43, bytes([0, 0])))
+    add("rvswd scan: count > 0 with skip", "debug §1", rv, "—",
+        request(0x44, 4, op("oep.wire.rvswd", "scan"), bytes([1]) + struct.pack("<HH", 1, 2)
+                + tlv(IFACE["oep.wire.rvswd"]["tlv"]["scan"]["skip"], struct.pack("<H", 1)), S), rej(0x44, "malformed"))
+
+    # oep.target.riscv-dm (debug §4)
+    dm = {"6": "oep.target.riscv-dm"}
+    add("riscv-dm halt: halted", "debug §4.2", dm, "session S; connection 1 open; the hart halts",
+        request(0x50, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<H", 1), S), ok(0x50, bytes([REG["status"]["ok"]])))
+    add("riscv-dm halt on an unknown connection", "core §4.3 order 8", dm, "no connection 9",
+        request(0x51, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<H", 9), S), rej(0x51, "no_connection"))
+    add("riscv-dm run not offered", "debug §4, core §1.2", dm, "ops of fn 6: dmi, halt, resume (09 02 00 01 07)",
+        request(0x52, 6, op("oep.target.riscv-dm", "run"), struct.pack("<HIIBB", 1, 0x20000000, 100, 0, 0), S), rej(0x52, "unknown_operation"))
+    rd = op("oep.target.riscv-dm", "dmi")
+    add("riscv-dm dmi: one read of DMSTATUS", "debug §4.1", dm, "session S; connection 1; DMSTATUS reads 0x00400382",
+        request(0x53, 6, rd, struct.pack("<HH", 1, 1) + bytes([IFACE["oep.target.riscv-dm"]["enum"]["dmi_step"]["read"], 0x11]), S),
+        ok(0x53, struct.pack("<HBHI", 1, 0, 1, 0x00400382)))
+    add("riscv-dm dmi: n = 0", "debug §4", dm, "session S; connection 1",
+        request(0x54, 6, rd, struct.pack("<HH", 1, 0), S), ok(0x54, struct.pack("<HBH", 0, 0, 0)))
+    add("riscv-dm dmi: an unknown step kind", "debug §4.1, core §4.3 order 5", dm, "—",
+        request(0x55, 6, rd, struct.pack("<HH", 1, 1) + bytes([0x10, 0x11]), S), rej(0x55, "malformed"))
+
+    # oep.target.console (console §1, common §1)
+    con = {"7": "oep.target.console"}
+    mark_kind = REG["common"]["enum"]["mark_kind"]
+    mark = struct.pack("<IQBQB", 0, 0, mark_kind["attach"], 1_000_000, 0)
+    add("console marks: one attach mark", "common §1.3, console §1", con, "stream 1 with one mark (serial 0, position 0, attach at 1 ms)",
+        request(0x60, 7, op("oep.target.console", "marks"), struct.pack("<HI", 1, 0)), ok(0x60, bytes([0, 1]) + mark))
+    st = IFACE["oep.target.console"]["enum"]
+    sentry = struct.pack("<HHBBB", 1, 1, st["mechanism"]["dmseq"], st["stream_users"]["host_session"], st["stream_state"]["open"])
+    add("console streams: one open stream", "console §1", con, "stream 1 on connection 1, dmseq, opened by the session",
+        request(0x61, 7, op("oep.target.console", "streams"), bytes([0])), ok(0x61, bytes([0, 1]) + sentry))
+    add("console read: empty at the write position", "common §1.2", con, "stream 1, 5 bytes written (position 5)",
+        request(0x62, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 1, 0, 5, 64)),
+        ok(0x62, struct.pack("<QBH", 5, 0, 0)))
+    add("console read from 4", "common §1.2, core §4.3 order 6", con, "—",
+        request(0x63, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 1, 4, 0, 64)), rej(0x63, "unsupported", b"\x00"))
+
+    # oep.probe.config (probe settings §3.3)
+    pc = {"8": "oep.probe.config"}
+    pce = IFACE["oep.probe.config"]["enum"]
+    slot_state = (struct.pack("<BBHQQ", 0, pce["slot_state"]["connected"], 1, 1_000_000, 0xFFFFFFFFFFFFFFFF)
+                  + bytes([scheme, 4]) + struct.pack("<I", 0x00203500))
+    bind_state = bytes([0, pce["bind_mode"]["last_reset"], 0, pce["bind_flow"]["streaming"]])
+    add("probe.config state: one slot and one bind", "probe settings §3.3", pc,
+        "no save; slot 0 connected on connection 1 (last try at 1 ms, no retry with reset), target_id scheme 1; bind on port 0, last-reset, streaming",
+        request(0x70, 8, op("oep.probe.config", "state"), bytes([0, 0])),
+        ok(0x70, struct.pack("<BBIB", 0, pce["storage_state"]["none"], 0, 0) + bytes([1]) + slot_state + bytes([1]) + bind_state))
+    add("probe.config save not offered", "probe settings §2, core §1.2", pc, "ops without save and erase; no storage tag",
+        request(0x71, 8, op("oep.probe.config", "save"), b"", S), rej(0x71, "unknown_operation"))
+    idle_tag = IFACE["oep.probe.config"]["tlv"]["item"]["idle"]
+    add("probe.config set: an input idle with a drive other than kind 2 value 0", "probe settings §1", pc, "session S",
+        request(0x72, 8, op("oep.probe.config", "set"), tlv(idle_tag | CRITICAL, struct.pack("<HBBH", 4, 0, 0, 1)), S), rej(0x72, "malformed"))
+    add("probe.config set: an idle value of 3 bytes", "probe settings §1, core §2.3", pc, "session S",
+        request(0x73, 8, op("oep.probe.config", "set"), tlv(idle_tag | CRITICAL, struct.pack("<HB", 4, 0)), S), rej(0x73, "malformed"))
+
+    # oep.fixture.logic (capture §2, §3.2)
+    lg = {"9": "oep.fixture.logic"}
+    seg = struct.pack("<IQIQIIBI", 0, 0, 1000, 5_000_000, 50, 0xFFFFFFFF, 0, 1)
+    add("logic segments: one segment", "capture §2.2, §3.2", lg, "one-shot done, generation 1: 1000 samples from 5 ms, ±50 ns, no trigger",
+        request(0x80, 9, op("oep.fixture.logic", "segments"), struct.pack("<I", 0)), ok(0x80, bytes([0, 1]) + seg))
+    add("logic read: another generation", "capture §3.2", lg, "generation 1",
+        request(0x81, 9, op("oep.fixture.logic", "read"), struct.pack("<IQI", 2, 0, 64)),
+        rej(0x81, "unavailable", tlv(unav["cause"], bytes([cause["wrong_state"]]))))
+    return {
+        "about": "Per-op byte vectors. `fns` says which interface each fn number is in the example; `state` is the probe state the answer assumes. "
+                 "Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0. "
+                 "Answers carry no ignored TLV because no request TLV is ignored.",
+        "cases": cases,
+    }
+
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
          "probe_config_hash.json": probe_config_hash, "refusals.json": refusals,
-         "discovery.json": discovery}
+         "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops}
 
 
 def render(build) -> str:

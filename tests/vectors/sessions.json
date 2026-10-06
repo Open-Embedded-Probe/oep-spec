@@ -1,0 +1,106 @@
+{
+  "about": "Session scenarios (core §5.2, §6, §9) of the example probe of confirm.json (boot_id 0x12345678). Each scenario starts from its initial state; the steps are sent in order on one transport, each answered before the next. Remaining times are shown as if no time had passed between the steps: a real probe answers the time actually left. S = 0x11223344, T = 0x55667788.",
+  "scenarios": [
+    {
+      "name": "end releases the session; its id is then no_session, and a resent end is answered from the table",
+      "spec": "core §5.2, §6.2, §6.4, §9",
+      "initial": "lock free, no session has held it since boot",
+      "steps": [
+        {
+          "note": "open S, lease 2000 ms, no force",
+          "request_hex": "01010000001044332211d007000000",
+          "answer_hex": "0201000100d007000078563412"
+        },
+        {
+          "note": "keepalive of S",
+          "request_hex": "01020000001244332211",
+          "answer_hex": "0202000100"
+        },
+        {
+          "note": "end of S: the lock and everything S created are released",
+          "request_hex": "01030000001144332211",
+          "answer_hex": "0203000100"
+        },
+        {
+          "note": "the same end resent with the same corr: the remembered answer, nothing executed",
+          "request_hex": "01030000001144332211",
+          "answer_hex": "0203000100"
+        },
+        {
+          "note": "a new request with S: no session holds the lock",
+          "request_hex": "01040000001244332211",
+          "answer_hex": "0204000007"
+        },
+        {
+          "note": "lock_state with session_id 0: free",
+          "request_hex": "01050000001300000000",
+          "answer_hex": "02050001000000000000"
+        }
+      ]
+    },
+    {
+      "name": "another session while the lock is held, then force",
+      "spec": "core §6.2, §6.4",
+      "initial": "lock free",
+      "steps": [
+        {
+          "note": "open S with owner \"cli\"",
+          "request_hex": "01010000001044332211d007000000010300636c69",
+          "answer_hex": "0201000100d007000078563412"
+        },
+        {
+          "note": "open T without force: locked, the remaining time (as if no time had passed) and the owner",
+          "request_hex": "01020000001088776655d007000000",
+          "answer_hex": "0202000008d0070000010300636c69"
+        },
+        {
+          "note": "keepalive of T: locked",
+          "request_hex": "01030000001288776655",
+          "answer_hex": "0203000008d0070000010300636c69"
+        },
+        {
+          "note": "open T with force: S's resources are released, T holds the lock",
+          "request_hex": "01040000001088776655d007000001",
+          "answer_hex": "0204000100d007000078563412"
+        },
+        {
+          "note": "keepalive of S: locked (T holds it; T's open gave no owner)",
+          "request_hex": "01050000001244332211",
+          "answer_hex": "0205000008d0070000"
+        }
+      ]
+    },
+    {
+      "name": "session_id 0 and a resent open",
+      "spec": "core §4.1, §4.3 order 1, §6.1, §6.2",
+      "initial": "lock free",
+      "steps": [
+        {
+          "note": "keepalive with session_id 0: an op that requires the lock",
+          "request_hex": "01010000001200000000",
+          "answer_hex": "0201000009"
+        },
+        {
+          "note": "open with session_id 0",
+          "request_hex": "01020000001000000000d007000000",
+          "answer_hex": "0202000003"
+        },
+        {
+          "note": "open S",
+          "request_hex": "01030000001044332211d007000000",
+          "answer_hex": "0203000100d007000078563412"
+        },
+        {
+          "note": "the same open resent (open is not looked up in the table): the lease restarts, nothing is released",
+          "request_hex": "01030000001044332211d007000000",
+          "answer_hex": "0203000100d007000078563412"
+        },
+        {
+          "note": "lock_state with session_id 0: held, the remaining time as if no time had passed",
+          "request_hex": "01040000001300000000",
+          "answer_hex": "020400010001d0070000"
+        }
+      ]
+    }
+  ]
+}

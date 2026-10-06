@@ -1,0 +1,315 @@
+{
+  "about": "Per-op byte vectors. `fns` says which interface each fn number is in the example; `state` is the probe state the answer assumes. Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0. Answers carry no ignored TLV because no request TLV is ignored.",
+  "cases": [
+    {
+      "name": "link source: 8 bytes, byte k = k & 0xFF",
+      "spec": "oep-if-link §2",
+      "fns": {
+        "1": "oep.link"
+      },
+      "state": "max_frame 1024",
+      "request_hex": "0120000100010000000008000000",
+      "answer_hex": "022000010008000001020304050607"
+    },
+    {
+      "name": "link source: length 0",
+      "spec": "oep-if-link §2",
+      "fns": {
+        "1": "oep.link"
+      },
+      "state": "—",
+      "request_hex": "0121000100010000000000000000",
+      "answer_hex": "02210001000000"
+    },
+    {
+      "name": "link sink: 3 bytes, an empty answer",
+      "spec": "oep-if-link §2",
+      "fns": {
+        "1": "oep.link"
+      },
+      "state": "—",
+      "request_hex": "012200010002000000000300aabbcc",
+      "answer_hex": "0222000100"
+    },
+    {
+      "name": "link sink: count larger than the bytes that follow",
+      "spec": "oep-if-link §2, core §4.3 order 5",
+      "fns": {
+        "1": "oep.link"
+      },
+      "state": "—",
+      "request_hex": "012300010002000000000500aabbcc",
+      "answer_hex": "0223000003"
+    },
+    {
+      "name": "link port_speed not offered (not set in ops)",
+      "spec": "oep-if-link §1, core §1.2",
+      "fns": {
+        "1": "oep.link"
+      },
+      "state": "ops of fn 1: source and sink only",
+      "request_hex": "012400010003443322110000100e0000d007b80b0000",
+      "answer_hex": "0224000002"
+    },
+    {
+      "name": "gpio set: channel 3 output high",
+      "spec": "fixture §1",
+      "fns": {
+        "2": "oep.fixture.gpio"
+      },
+      "state": "session S holds the lock; channel 3 in fn 2's plan; modes 0 to 4 declared",
+      "request_hex": "0130000200014433221101030004",
+      "answer_hex": "0230000100"
+    },
+    {
+      "name": "gpio read: channel 3 reads 1",
+      "spec": "fixture §1",
+      "fns": {
+        "2": "oep.fixture.gpio"
+      },
+      "state": "as above, after the set; no drive_levels",
+      "request_hex": "01310002000200000000010300",
+      "answer_hex": "02310001000101"
+    },
+    {
+      "name": "gpio set: channel 9 not in the plan",
+      "spec": "fixture §1, core §4.3 order 7",
+      "fns": {
+        "2": "oep.fixture.gpio"
+      },
+      "state": "channel 9 in no plan of fn 2",
+      "request_hex": "0132000200014433221102030004090000",
+      "answer_hex": "0232000004020200090040010001"
+    },
+    {
+      "name": "gpio set without a session: session_required",
+      "spec": "core §4.1, §4.3 order 1",
+      "fns": {
+        "2": "oep.fixture.gpio"
+      },
+      "state": "—",
+      "request_hex": "0133000200010000000001030004",
+      "answer_hex": "0233000009"
+    },
+    {
+      "name": "gpio set: n = 2 with one element",
+      "spec": "core §4.3 order 5",
+      "fns": {
+        "2": "oep.fixture.gpio"
+      },
+      "state": "—",
+      "request_hex": "0134000200014433221102030004",
+      "answer_hex": "0234000003"
+    },
+    {
+      "name": "rvswd connections: one connection with a target_id",
+      "spec": "debug §2.1",
+      "fns": {
+        "4": "oep.wire.rvswd"
+      },
+      "state": "connection 1 on channels 1 / 2 at 1 MHz, attached by the session, no slot, target_id scheme 1 = 0x00203500",
+      "request_hex": "0140000400050000000000",
+      "answer_hex": "0240000100000101000100020040420f0001ff010400352000"
+    },
+    {
+      "name": "rvswd connections: first beyond the count",
+      "spec": "core §7.3 end of paging, debug §2.1",
+      "fns": {
+        "4": "oep.wire.rvswd"
+      },
+      "state": "as above",
+      "request_hex": "0141000400050000000001",
+      "answer_hex": "02410001000000"
+    },
+    {
+      "name": "rvswd scan: one combination listed and found",
+      "spec": "debug §1, §3",
+      "fns": {
+        "4": "oep.wire.rvswd"
+      },
+      "state": "session S; channels 1 / 2 free and allowed; a DM answers DMSTATUS 0x00400382",
+      "request_hex": "014200040001443322110101000200",
+      "answer_hex": "02420001000101010100020082034000"
+    },
+    {
+      "name": "rvswd scan: count 0 with nothing left from skip",
+      "spec": "debug §1",
+      "fns": {
+        "4": "oep.wire.rvswd"
+      },
+      "state": "session S; the count = 0 sequence has 4 combinations",
+      "request_hex": "01430004000144332211000202000400",
+      "answer_hex": "02430001000000"
+    },
+    {
+      "name": "rvswd scan: count > 0 with skip",
+      "spec": "debug §1",
+      "fns": {
+        "4": "oep.wire.rvswd"
+      },
+      "state": "—",
+      "request_hex": "0144000400014433221101010002000202000100",
+      "answer_hex": "0244000003"
+    },
+    {
+      "name": "riscv-dm halt: halted",
+      "spec": "debug §4.2",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "session S; connection 1 open; the hart halts",
+      "request_hex": "015000060002443322110100",
+      "answer_hex": "025000010000"
+    },
+    {
+      "name": "riscv-dm halt on an unknown connection",
+      "spec": "core §4.3 order 8",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "no connection 9",
+      "request_hex": "015100060002443322110900",
+      "answer_hex": "025100000a"
+    },
+    {
+      "name": "riscv-dm run not offered",
+      "spec": "debug §4, core §1.2",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "ops of fn 6: dmi, halt, resume (09 02 00 01 07)",
+      "request_hex": "01520006000744332211010000000020640000000000",
+      "answer_hex": "0252000002"
+    },
+    {
+      "name": "riscv-dm dmi: one read of DMSTATUS",
+      "spec": "debug §4.1",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "session S; connection 1; DMSTATUS reads 0x00400382",
+      "request_hex": "01530006000144332211010001000211",
+      "answer_hex": "0253000100010000010082034000"
+    },
+    {
+      "name": "riscv-dm dmi: n = 0",
+      "spec": "debug §4",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "session S; connection 1",
+      "request_hex": "0154000600014433221101000000",
+      "answer_hex": "02540001000000000000"
+    },
+    {
+      "name": "riscv-dm dmi: an unknown step kind",
+      "spec": "debug §4.1, core §4.3 order 5",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "—",
+      "request_hex": "01550006000144332211010001001011",
+      "answer_hex": "0255000003"
+    },
+    {
+      "name": "console marks: one attach mark",
+      "spec": "common §1.3, console §1",
+      "fns": {
+        "7": "oep.target.console"
+      },
+      "state": "stream 1 with one mark (serial 0, position 0, attach at 1 ms)",
+      "request_hex": "01600007000300000000010000000000",
+      "answer_hex": "026000010000010000000000000000000000000340420f000000000000"
+    },
+    {
+      "name": "console streams: one open stream",
+      "spec": "console §1",
+      "fns": {
+        "7": "oep.target.console"
+      },
+      "state": "stream 1 on connection 1, dmseq, opened by the session",
+      "request_hex": "0161000700080000000000",
+      "answer_hex": "0261000100000101000100020100"
+    },
+    {
+      "name": "console read: empty at the write position",
+      "spec": "common §1.2",
+      "fns": {
+        "7": "oep.target.console"
+      },
+      "state": "stream 1, 5 bytes written (position 5)",
+      "request_hex": "0162000700020000000001000005000000000000004000",
+      "answer_hex": "02620001000500000000000000000000"
+    },
+    {
+      "name": "console read from 4",
+      "spec": "common §1.2, core §4.3 order 6",
+      "fns": {
+        "7": "oep.target.console"
+      },
+      "state": "—",
+      "request_hex": "0163000700020000000001000400000000000000004000",
+      "answer_hex": "026300000b00"
+    },
+    {
+      "name": "probe.config state: one slot and one bind",
+      "spec": "probe settings §3.3",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "no save; slot 0 connected on connection 1 (last try at 1 ms, no retry with reset), target_id scheme 1; bind on port 0, last-reset, streaming",
+      "request_hex": "017000080006000000000000",
+      "answer_hex": "027000010000000000000000010000010040420f0000000000ffffffffffffffff0104003520000100000001"
+    },
+    {
+      "name": "probe.config save not offered",
+      "spec": "probe settings §2, core §1.2",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "ops without save and erase; no storage tag",
+      "request_hex": "01710008000344332211",
+      "answer_hex": "0271000002"
+    },
+    {
+      "name": "probe.config set: an input idle with a drive other than kind 2 value 0",
+      "spec": "probe settings §1",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "session S",
+      "request_hex": "01720008000244332211830600040000000100",
+      "answer_hex": "0272000003"
+    },
+    {
+      "name": "probe.config set: an idle value of 3 bytes",
+      "spec": "probe settings §1, core §2.3",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "session S",
+      "request_hex": "01730008000244332211830300040000",
+      "answer_hex": "0273000003"
+    },
+    {
+      "name": "logic segments: one segment",
+      "spec": "capture §2.2, §3.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "one-shot done, generation 1: 1000 samples from 5 ms, ±50 ns, no trigger",
+      "request_hex": "0180000900070000000000000000",
+      "answer_hex": "02800001000001000000000000000000000000e8030000404b4c000000000032000000ffffffff0001000000"
+    },
+    {
+      "name": "logic read: another generation",
+      "spec": "capture §3.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "generation 1",
+      "request_hex": "0181000900060000000002000000000000000000000040000000",
+      "answer_hex": "028100000401010006"
+    }
+  ]
+}

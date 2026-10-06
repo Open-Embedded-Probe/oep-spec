@@ -321,3 +321,82 @@ def test_the_tool_still_gives_these_files():
     spec.loader.exec_module(tool)
     for name, build in tool.FILES.items():
         assert (HERE / name).read_text(encoding="utf-8") == tool.render(build), name
+
+
+def test_session_scenarios_follow_the_decision_table():
+    """sessions.json (core §5.2, §6.2, §9): every step is one 10-byte-header request and its answer with the same corr; a resent request
+    gets the same answer bytes; after end, the ended id is no_session; force hands the lock over."""
+    reasons = {v: k for k, v in REG["reject_reasons"].items()}
+    ops = {o["name"]: o["code"] for o in REG["interface"][0]["op"]}
+    for sc in load("sessions.json")["scenarios"]:
+        seen = {}
+        ended = set()
+        for st in sc["steps"]:
+            req, ans = bytes.fromhex(st["request_hex"]), bytes.fromhex(st["answer_hex"])
+            role, corr, fn, op, session = struct.unpack_from("<BHHBI", req)
+            assert role == 0x01 and fn == 0 and ans[0] == 0x02 and ans[1:3] == req[1:3], st["note"]
+            if req in seen:                                                                   # a resend: the same answer
+                assert seen[req] == ans, st["note"]
+            seen[req] = ans
+            outcome = "completed" if ans[3] == 0x01 else reasons[ans[4]]
+            if op == ops["open"]:
+                assert len(req) >= 15                                                         # lease_ms(u32) force(u8) [TLV]
+                if session == 0:
+                    assert outcome == "malformed"
+                if outcome == "completed":
+                    assert len(ans) == 5 + 8                                                  # lease_ms(u32) boot_id(u32), no resumed
+                    ended.discard(session)
+            elif op == ops["end"] and outcome == "completed":
+                ended.add(session)
+            elif session in ended and op != ops["end"]:
+                assert outcome in ("no_session", "locked"), st["note"]                       # nothing is resumed (core §6.4)
+            if op == ops["keepalive"] and session == 0:
+                assert outcome == "session_required"
+            if outcome == "locked":
+                assert len(ans) >= 9                                                          # remaining_ms(u32), [TLV owner]
+                tlvs(ans[9:])
+
+
+def _fixed_sequence(payload: bytes, size_of) -> int:
+    """Walk count x element (core §2.3) and return the bytes used; size_of(payload, offset) is one element's size."""
+    count, i = payload[0], 1
+    for _ in range(count):
+        i += size_of(payload, i)
+    return i
+
+
+def test_per_op_vectors_decode_exactly():
+    """ops.json: every answer carries the request's corr, and the sequences of the answers are count x element with no element length,
+    each element as its document gives it, the payload used to its end (core §2.3)."""
+    v = load("ops.json")["cases"]
+    by = {c["name"]: c for c in v}
+    for c in v:
+        req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
+        assert len(req) >= 10 and req[0] == 0x01 and ans[0] == 0x02 and ans[1:3] == req[1:3], c["name"]
+        if ans[3] == 0x00:
+            assert ans[4] in REG["reject_reasons"].values(), c["name"]
+            if ans[4] == REG["reject_reasons"]["unavailable"]:
+                tlvs(ans[5:])
+
+    def pay(name):
+        return bytes.fromhex(by[name]["answer_hex"])[5:]
+
+    p = pay("rvswd connections: one connection with a target_id")
+    assert p[0] == 0 and 1 + _fixed_sequence(p[1:], lambda b, i: 18 + b[i + 17]) == len(p)        # entry 18 bytes + tid
+    p = pay("rvswd scan: one combination listed and found")
+    assert p[0] == 1 and 1 + _fixed_sequence(p[1:], lambda b, i: 9) == len(p)                       # kind swdio swclk id
+    assert pay("rvswd scan: count 0 with nothing left from skip") == b"\x00\x00"                  # tried 0, count 0 (debug §1)
+    p = pay("console marks: one attach mark")
+    assert 1 + _fixed_sequence(p[1:], lambda b, i: 22) == len(p)
+    p = pay("console streams: one open stream")
+    assert 1 + _fixed_sequence(p[1:], lambda b, i: 7) == len(p)
+    p = pay("logic segments: one segment")
+    assert 1 + _fixed_sequence(p[1:], lambda b, i: 37) == len(p)
+    p = pay("probe.config state: one slot and one bind")
+    i = 7                                                                                         # more state hash(u32) reason
+    i += _fixed_sequence(p[i:], lambda b, j: 22 + b[j + 21])                                      # slot_state: 22 bytes + tid
+    i += _fixed_sequence(p[i:], lambda b, j: 4)                                                   # bind_state
+    assert i == len(p)
+    p = pay("link source: 8 bytes, byte k = k & 0xFF")
+    n = struct.unpack_from("<H", p)[0]
+    assert p[2:2 + n] == bytes(k & 0xFF for k in range(n)) and len(p) == 2 + n
