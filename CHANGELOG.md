@@ -157,6 +157,8 @@ New documents (oep-transports) are Japanese only until then (core §0, README, C
   wait, after the release, for a silent debug module to answer again, at most `limits.reset_settle_ms` = 700 (capped by max_op_ms), not
   counted as wire retries or in the attach budget; still silent at the bound = status line, no redo, the connection is kept (debug §1, §2,
   §3, §4.3); core §4.4's wait floor counts reset_settle_ms as argument time for both. Conformance, glossary and both guides follow.
+- probe-config (ja): an item value longer than its definition follows core §2.3's longer request TLV: critical = rejected unsupported
+  with the item's tag, otherwise the item is not applied and is listed in ignored; added to the refusal table (probe-config §1, §2).
 
 ### Tools and test vectors
 

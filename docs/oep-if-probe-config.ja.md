@@ -31,6 +31,10 @@
 
 - どの項目もすぐ効く。扱う項目は describe の items で宣言し、宣言していない項目の set は rejected unsupported（payload の tag は受け取ったままの項目の tag、core §4.3）。tag 0x7E は応答の
   メタ情報のために予約。
+- **定義より長い項目の値**: 項目の値は後ろに伸ばさない（core §2.3: 新しいフィールドは新しい項目の tag に置く）。probe が扱う項目で、値が
+  定義の長さ（可変の部分を持つ項目は、その数と長さが決める長さ）より長いものは、core §2.3 の、知っている長さより長い要求の TLV と同じに扱う:
+  critical の bit が立っていれば要求全体を rejected unsupported（受け取ったままの項目の tag）。立っていなければ、その項目を適用せず
+  （そのキーは置き換えも作りもしない）、応答の ignored（core §2.3）に載せ、ほかの項目は適用する。定義より短い値は rejected malformed（core §2.3）。label の text は値の終わりまで続くので、この規則は掛からない（text の長さの規則のとおり）。
 - **plan**: その fn の plan_apply と同じ（core §8）。設定の plan は設定だけが変える: セッションの plan_release（n = 0 を含む）
   はそれを解かず、plan_apply がその fn を挙げたら rejected unavailable（core §8）。
 - **label**: 設定で付けた channel の名前。get で読む（core の describe の label（0x46）は firmware が持つ固定の名前で、設定では
@@ -228,8 +232,9 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 |---|---|
 | 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset が 2 以上（真偽値）と host のスロットの boot_reset 1、drive が kind 2 で value 0 でない mode 0〜2 の idle、0 以外の value の drive_kind 2、6 byte より短い idle の値、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
 | 指す fn が無い（plan、slot の wire_fn、bind の kind 2、uart） | unknown_function |
-| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か reserved にある label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、idle の未定義の drive_kind（3 以上）、2 以上の slot の attach、2 以上の slot の idle_clock、1 / 2 以外の bind のストリームの kind、その線が持たない lock_scheme（定義にあってもなくても） | unsupported |
+| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か reserved にある label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、idle の未定義の drive_kind（3 以上）、2 以上の slot の attach、2 以上の slot の idle_clock、1 / 2 以外の bind のストリームの kind、その線が持たない lock_scheme（定義にあってもなくても）、critical の bit が立った項目の、定義より長い値 | unsupported |
 | plan_roles 超え、ピンや資源の取り合い、at boot のスロットが max_connections を超える、保存先が足りない | unavailable（cause 2 / 1 / 2 / 3） |
+| critical の bit が立っていない項目の、定義より長い値 | 断らない: その項目を適用せず、ignored に載せる（§1） |
 
 ## 3. スロットの接続と状態
 
