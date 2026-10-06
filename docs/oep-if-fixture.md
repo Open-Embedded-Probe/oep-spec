@@ -2,7 +2,7 @@
 
 [日本語](oep-if-fixture.ja.md)
 
-Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§1 positioned
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). Before the freeze, revision 1 alone does not identify a form: an implementation names the specification tag it implements ([versioning](versioning.md) §6). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§1 positioned
 streams). The only definition of the numbers is `registry/oep-v1.toml`. Capture is [capture](oep-if-capture.md).
 
 | Name | revision | Role | plan roles |
@@ -171,6 +171,10 @@ The probe becomes an SPI target, answers one transfer delimited by CS with the M
 | 0x04 | status | — | state(u8), mode(u8), bit_order(u8), armed(u8), queued(u8), transactions(u32), errors(u32), [TLV] | Not required |
 | 0x05 | reset | — | — | Required |
 
+- **SPI mode** = CPOL × 2 + CPHA. CPOL is the level of SCK while CS is inactive (0 low, 1 high). With CPHA 0, each bit is sampled on the first SCK
+  edge of its clock period and changed on the second, so the first MISO bit is on the line before the first SCK edge (cs_setup_ns, below). With CPHA 1,
+  each bit is changed on the first edge of its clock period and sampled on the second. The first edge is the one that leaves the CPOL level. Bytes are
+  sent MSB first or LSB first as bit_order says, in both directions.
 - This fn's plan holds roles 1 to 4 exactly once each, on different channels (a plan_apply where a role is missing, where a role appears twice, or where two roles are on the same
   channel is rejected malformed). Releasing or replacing the plan stops the target and returns it to the state right after describe (state 0,
   mode and bit_order 0, the queue, the wait and the cumulative counts cleared).
@@ -201,3 +205,13 @@ The probe becomes an SPI target, answers one transfer delimited by CS with the M
   software after it sees CS become active declares it. A host shows the value to the user. A master that starts SCK sooner than cs_setup_ns after CS becomes
   active cannot rely on the first bit.
 - No notifications are sent (subscribe is rejected unsupported).
+
+## 5. References
+
+The OEP messages of this document are defined by the text alone. Driving the bus uses:
+
+| Interface | Specification | Subset used |
+|---|---|---|
+| `oep.fixture.i2c-target` | I2C-bus specification and user manual (NXP UM10204) | Addressing (7-bit addresses), ACK, clock stretching, the reserved addresses 0x00 to 0x07 and 0x78 to 0x7F |
+| `oep.fixture.spi-target` | None: SPI has no formal standard | The modes, CS and bit order are defined in §4 |
+| `oep.fixture.uart` | None | The line (start bit, data bits LSB first, parity, stop bits) as configure's format says (§2) |

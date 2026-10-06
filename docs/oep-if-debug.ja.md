@@ -2,7 +2,7 @@
 
 [English](oep-if-debug.md)
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§2 debug の
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§2 debug の
 connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`。
 
 | 名前 | revision | 役割 |
@@ -12,8 +12,6 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 | `oep.wire.swd` | 1 | ARM の SWD で ADI につなぐ |
 | `oep.target.riscv-dm` | 1 | RISC-V Debug Module の操作 |
 | `oep.target.arm-adi` | 1 | ARM ADI（DP / AP）の操作 |
-
-（参考）RVSWD と SWIO は、WCH の RISC-V の MCU が持つ 2 線と 1 線のデバッグの線である。target_id の scheme 1 の registry の名前 `wch_dmi_7f` も、WCH のデバッグモジュールから来ている。
 
 - `oep.wire.*` は connection を作り、`oep.target.*` は connection の上で target を操作する。target を扱うインターフェースは
   attach の前から list に出し、connection の無い要求は rejected no_connection。
@@ -90,7 +88,9 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
     （少なくとも 1 組は試す）。tried ≥ 1 なら、host は続きを送る。組を並べた要求で tried が並びの数より少なければ、host は残りの組でもう一度 scan を送る。
   - **count = 0 の続き**: count = 0 の要求は TLV skip（0x01、u16）で、count = 0 の並びの先頭から飛ばす数を渡せる（無ければ 0）。
     host は skip に今までの tried の和を渡して続け、**tried = 0 が返ったら終わり**。**並びに組が残っていれば、probe は少なくとも 1 組は
-    試す**（tried ≥ 1。tried = 0 は並びを使い切ったときだけ）。並びは要求のときの持たれ方で決まるので、
+    試す**（tried ≥ 1。tried = 0 は並びを使い切ったときだけ）。**count = 0 の並びに skip から先の組が無ければ**（並びが空か、skip が
+    並びの長さ以上）、応答は completed success で tried = 0、count = 0。少なくとも 1 組は試すという規則は、組が残っているときだけ
+    効く。並びは要求のときの持たれ方で決まるので、
     途中で plan などが変われば、組が抜けたり重なったりしうる（host は scan の間ほかを変えない）。count > 0 に skip を付けた
     要求は rejected malformed。
   - attach は pins（TLV 0x03、critical）で組を指定する。pins が無ければ、その線の生きている接続が 1 つ
@@ -566,3 +566,12 @@ TLV 0x01 method（u8）: 0 probe の既定、revision 1 では ndmreset。1 ndmr
   **done は probe が送った語の数**で、target が受けた保証ではない（posted write の FAULT は後の転送で見える）。TAR は進めたままにし、
   SELECT / CSW は変えない（§4 の不変条件の arm 版: probe は host が設定したものを変えない）。64 bit の AP の番地は riscv-dm と同じ
   TLV 0x01 `address_hi` で後から足す（予約）。
+
+## 7. 参照する仕様
+
+この文書の OEP のメッセージは、本文だけで定まる。RVSWD と SWIO のフレームは §3.1 と §3.2 が定める。target を動かすのに使うもの:
+
+| インターフェース | 仕様 | 使う部分 |
+|---|---|---|
+| `oep.wire.swd`、`oep.target.arm-adi` | Arm Debug Interface Architecture Specification, ADIv5.2 と ADIv6.0 | SWD のパケット、turnaround、line reset、JTAG から SWD への切り替え、dormant からの wake、TARGETSEL。DP と AP のレジスタ。MEM-AP の TAR、DRW、CSW |
+| `oep.wire.rvswd`、`oep.wire.swio`、`oep.target.riscv-dm` | RISC-V Debug Specification 0.13.2 と 1.0（DMSTATUS.version 2 と 3） | DMI のレジスタ（DMCONTROL、DMSTATUS、ABSTRACTCS、COMMAND、ABSTRACTAUTO、DATA0、DATA1、PROGBUF0、SBCS、SBADDRESS）、抽象コマンド、program buffer、dcsr、dpc、havereset |

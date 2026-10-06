@@ -16,7 +16,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - シリアルの口: 両側を 0x00 で囲んだ COBS + CRC-16 のフレーム（§3.1）、受け方と生バイトの規則（§3.4）、UART ブリッジの
   回線と起動時の速さ（§3.4）、DTR / RTS で何も決めない（§3.4）、セッションが口を持つ間の生転送の停止（§3.4）。
 - vendor bulk と TCP: `length(u16) message`（§3.1）、vendor bulk の長さ 0 の転送の規則（§3.1）、TCP では途切れで読み直さない（§3.2）。
-- HID: `count(u16)` と詰め物の report（§3.1）、出力 report を interrupt OUT と SET_REPORT の両方で受ける（§3.3）。
+- HID: `count(u16)` の report が運ぶ長さつきの流れ、report をまたぐフレーム、count 0 は飛ばす、詰め物は 0 で送り無視する、report ID は 1 つか無し、流れの上のフレームの途切れ、長すぎる count（§3.1）。出力 report を interrupt OUT と SET_REPORT の両方で受ける（§3.3）。
 - max_frame を超える長さ: 捨てて待つ。TCP では閉じる（§3.1）。`probe_frame_gap_ms` の途切れで読み直す。TCP を除く（§3.2）。
 - confirm の前でも 64 バイトまでのメッセージを受ける（§3.3）。max_frame を超えて送らない（§3.3）。
 - USB: probe が選べる口では シリアル番号 = unit_id（§3.3）。vendor bulk と HID は §3.3 の形で、それぞれ一つまで。
@@ -105,7 +105,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | インターフェース | 必須 | 任意（宣言するもの） |
 |---|---|---|
 | 位置つきのストリーム（[共通部品](oep-if-common.ja.md) §1） | それを使う各インターフェースで §1 の read、marks、clear、mark、write。§3 の status の値 | — |
-| `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（[線とデバッグ](oep-if-debug.ja.md) §0〜§3、§5） | scan（ピンのない wire では count = 0 がその 1 つの組を試す）、attach（max_speed は必須）、detach、connections。§1 の attach の規範と予算。§2 の寿命と線の状態 | attach の reset TLV（role_channels の role 3） |
+| `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（[線とデバッグ](oep-if-debug.ja.md) §0〜§3、§5） | scan（ピンのない wire では count = 0 がその 1 つの組を試す。skip の後に何も残らない count = 0 の並びは tried 0 の success で答える）、attach（max_speed は必須）、detach、connections。§1 の attach の規範と予算。§2 の寿命と線の状態 | attach の reset TLV（role_channels の role 3） |
 | `oep.target.riscv-dm`（§4） | dmi、halt、resume | reset、read_block / write_block、run、step: features の bit 0〜3。read_block / write_block があれば max_length |
 | `oep.target.arm-adi`（§6） | transfer、read_block、write_block。max_length は必ず出す | — |
 | `oep.target.console`（[コンソール](oep-if-console.ja.md)） | §1 の op。describe の mechanisms は必ず出す。方式 2 の枠は [dmseq](target-console-dmseq.ja.md) のとおり | どの方式か（describe の mechanisms） |

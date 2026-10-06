@@ -2,7 +2,7 @@
 
 [English](oep-if-console.md)
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
 ストリーム、§2 debug の connection）。番号の唯一の定義は `registry/oep-v1.toml`。
 
 | 名前 | revision | 役割 |
@@ -85,22 +85,49 @@ mechanism 0、1、2 は debug module の DATA0（DMI 0x04）と DATA1（0x05）�
 
 ### 3.1 SDI
 
-（参考）WCH の SDI printf の形である。
+mechanism 0 はこの郵便受けの並びだけで、connection の線には依らない。target から host へバイトを運ぶ。
 
-- target は DATA0 が 0 になるのを待ち、DATA1 = バイト 3〜6、DATA0 = 長さ（1〜7）| バイト 0〜2 << 8 を書く（little endian、
-  DATA0 を最後に書く）。
-- probe は DATA0 の下位 byte が 1〜7 なら、DATA1 も読んで、長さの分のバイトを受け取り、DATA0 に 0 を書く（受け取った印）。
-  下位 byte が 0 は何も無い。8 以上は枠ではない（読み捨てない）。
+- **郵便受けの中のバイト**: バイト 0 は DATA0 の bit 8〜15、バイト 1 は bit 16〜23、バイト 2 は bit 24〜31。バイト 3 は DATA1 の bit 0〜7、バイト 4
+  は bit 8〜15、バイト 5 は bit 16〜23、バイト 6 は bit 24〜31。DATA0 の下位 byte（bit 0〜7）は長さ L。
+- **target** は 1 回に n バイト（n = 1〜7）を送る: DATA0 を読んで 0 になるまで待ち、DATA1（バイト 3〜6）を書き、次に DATA0 = n | バイト 0〜2 << 8 を書く
+  （DATA0 を最後に）。位置が n 以上のバイトの値は何でもよい。target がどれだけ待つか、あきらめたバイトをどうするかは、target が
+  決める。
+- **probe** は DATA0 を読む。L が 1〜7 なら DATA1 も読み、バイト 0〜L − 1 をその順に受け取り、次に DATA0 に 0 を書く（受け取った印）。
+  L が 0 なら何も無い。L が 8 以上なら、その word は枠ではない: probe は受け取らず、DATA0 も書かない（読み捨てない）。
 - host → target の向きは無い（write は何も受け付けない: accepted 0、completed failed）。
 
 ### 3.2 DMDATA
 
-（参考）minichlink というツールが使う framing である。
+mechanism 1 はこの郵便受けの並びだけで、connection の線には依らない。両方向にバイトを運び、両側は DATA0 を交代で
+使う。
 
-- DATA0 の下位 byte が状態の byte。bit 7 = 1 は target の枠、下位 6 bit は長さ + 4。
-- target の枠（bit 7 = 1）で長さ + 4 が 5 以上なら、DATA1 も読んで長さ（1〜7）の分を受け取る（並びは SDI と同じ）。4 は target の
-  空の枠（「郵便受けは host の番」）。
-- probe は target の枠 1 つにちょうど 1 回答える: 送るバイトがあれば DATA0 = (n + 4) | バイト 0〜2 << 8（n は 1〜3、bit 7 = 0）、
-  無ければ DATA0 = 0。bit 7 が 0 の word（host の枠がまだ取られていない、または答えたばかり）には書かない。
-- 空の枠は、次の読みでもそのままのときだけ答える（target が空の枠を置いた直後に本当の枠を重ねることがあり、すぐ答えると
-  その枠を消す）。
+- **状態の byte** は DATA0 の下位 byte（bit 0〜7）。bit 7 は T: 1 = **target の枠**（target が書いた）、0 = probe が書いた、または開始時の
+  0。bit 0〜5 は L = バイトの数 + 4。bit 6 は 0 を書き、読む側は無視する。
+- **郵便受けの中のバイト**: SDI（§3.1）と同じ位置: バイト 0〜2 は DATA0 の bit 8〜31、バイト 3〜6 は DATA1。
+- **target** は DATA0 の bit 7 が 0 のときだけ DATA0 を書く。例外は 1 つ: 自分の空の枠（L = 4）を、バイトを運ぶ target の枠で置き換えて
+  よい。
+  - n バイト（n = 1〜7）を送るときは、DATA0 の bit 7 が 0 になるまで待ち、その word の答え（下）を受け取り、n が 4 以上なら DATA1（バイト 3〜6）を
+    書き、次に DATA0 = 0x80 | (n + 4) | バイト 0〜2 << 8 を書く（DATA0 を最後に）。位置が n 以上のバイトの値は何でもよい。
+  - 送らずに入力を求めるときは、DATA0 の bit 7 が 0 になるまで待ち、その word の答えを受け取り、次に DATA0 = 0x84 を書く（**空の枠**、
+    L = 4: 「郵便受けは probe の番」）。
+  - **答えの受け取り**: bit 7 = 0 で L が 5〜7 の word は、target へのバイトを L − 4 個運ぶ（バイト 0〜L − 5）。0 の word と、bit 7 = 0 のほかの
+    word は何も運ばない。
+  - target がどれだけ待つか、あきらめたバイトをどうするかは、target が決める。
+- **probe** は DATA0 を読む。
+  - bit 7 が 0 なら何もしない: その word は、target がまだ置き換えていない自分の答えか、0。probe は bit 7 = 0 の word の上に書かない。
+  - bit 7 が 1 で L が 5〜11 なら、n = L − 4 バイトを受け取る: バイト 0〜2（n の分まで）はその word から、n が 4 以上ならバイト 3〜n − 1
+    は DATA1 から（DATA1 は DATA0 の後に読む）。それから答える。
+  - bit 7 が 1 で L が 4 なら、枠は空。probe は、次の DATA0 の読みがその空の枠をもう一度返したときだけ、それに答える（target は
+    空の枠を、バイトを運ぶ枠で置き換えることがあり、すぐ答えるとその枠を消す）。
+  - bit 7 が 1 で L が 0〜3 か 12〜63 なら、その枠はバイトを運ばない。probe は空の枠として扱う。
+  - **答え**: target の枠 1 つにつき DATA0 をちょうど 1 回書く。write が送り枠にバイトを置いていれば（n = 1〜3）、DATA0 = (n + 4) | バイト 0〜
+    n − 1 << 8（bit 7 = 0。位置が n 以上のバイトは 0）で、そのバイトは送り枠から出る。そうでなければ DATA0 = 0。probe は DATA1 を書かない。
+- write が送り枠に置くのは 3 バイトまで（§2）。前に置いたバイトがまだ答えで出ていなければ、枠は空いていない（accepted 0）。
+
+## 4. 参照する仕様
+
+この文書の OEP のメッセージは、本文だけで定まる。target を動かすのに使うもの:
+
+| 仕様 | 使う部分 |
+|---|---|
+| RISC-V Debug Specification 0.13.2 と 1.0（DMSTATUS.version 2 と 3） | debug module の DATA0（DMI 0x04）、DATA1（DMI 0x05）、DMSTATUS（allhalted、allrunning、havereset）と、DATA0 と DATA1 も使う抽象コマンド |

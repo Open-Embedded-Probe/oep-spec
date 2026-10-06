@@ -2,7 +2,7 @@
 
 [English](oep-core.md)
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。この文書は OEP のプロトコル本体だけを定める。標準インターフェース
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。この文書は OEP のプロトコル本体だけを定める。標準インターフェース
 （線、デバッグ、コンソール、fixture、キャプチャ、probe の設定）はそれぞれの文書が定める（§14）。この文書はそれだけで完結する: 読む人が規則の
 理由を必要とする所では、理由を規則と一緒に書く。ガイド（§15）は実務を足すもので、規則は足さない。この文書と、規範ではない文書が食い違えば、この文書が正しい。
 
@@ -34,6 +34,9 @@ OEP は 3 つの層からなる。
 6. 版は層ごとに独立する（§2.7）。
 
 OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、USB の記述子の細部。
+
+**外部の仕様**: OEP のプロトコルは、これらの文書だけで定まる。target、バス、経路を動かすには、それぞれの文書が「参照する仕様」の節に並べる
+外部の仕様も要る（経路は §16）。
 
 **言語**: この仕様の規範は英語の文である。日本語の文書は訳で、両者が食い違えば英語の文が正しい。
 
@@ -148,6 +151,7 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
 - インターフェースの status や reason の知らない値は失敗として扱う。
 - 知らない出来事の kind は捨てる（seq は数える）。
 - host は応答の flags の予約のビットを無視する。応答の enum の知らない値で失敗を知らせないもの（cause、holder_kind、scan の entry の kind）は、知らない値として見せる。status と reason の知らない値は失敗のまま。
+- これらの扱いが安全なのは、応答に足す値に §2.5 の条件があるからである。
 
 ### 2.5 番号の空間
 
@@ -164,6 +168,14 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len が 255 以上（長い
 | 資源の番号 | u16、probe で 1 つの空間（§9） |
 
 定義が別に言わない限り、enum の使っていない値と要求の予約のビットは、どれも後から定義されうる（§2.7）。probe は §4.3 の順 6 でそれらを断る。
+
+**応答に足す値。** 応答、出来事、データが運ぶ enum の値やビットの集合のビットは、次の 3 つがすべて成り立つときだけ、revision を変えずに足してよい:
+
+1. どのフィールドの有無、長さ、位置も、その値によらない。
+2. §2.4 の扱いが安全である（知らない outcome、status、reason は失敗、ほかは「知らない値」、予約のビットは無視）。
+3. 意味がその値によるフィールドはどれも、その値を知らない読む側が無視するか、生のまま見せると定めてある。
+
+そうでなければ、足すものは新しい TLV、新しい revision、新しいインターフェースにする。revision 1 の応答の enum とビットの集合は、どれも 3 つの条件を満たす。
 
 **実験用の値**: 定義が別に言わないすべての u8 の enum で、0xF0〜0xFE は実験用である。何かを試す間は誰が使ってもよい。出荷する probe と公開した host は使わず、registry に載せることもない。（tag の番号には実験用の範囲は無い。独自の情報は独自のインターフェースに置く、§13 の規則 7。）
 
@@ -202,8 +214,21 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 |---|---|
 | シリアルの口（UART bridge、USB CDC、内蔵の USB シリアル） | COBS + CRC-16、0x00 で区切る（下） |
 | USB の vendor bulk、TCP | `length(u16) message`。CRC なし。length 0 は予約（keepalive。読み飛ばす）。vendor bulk では 1 回の転送に複数のフレームが入ってよく、フレームが転送をまたいでもよい |
-| USB の HID（vendor 定義の report） | 長さつきのフレームのバイト列を report に詰める。report = `count(u16)`、count バイト、0 埋め（report の大きさは HID の記述子のとおり）。記述子が report ID を宣言していれば、input も output も report の先頭に ID が付き、count はその後ろから数える |
+| USB の HID（vendor 定義の report） | vendor bulk の長さつきのバイト列を report で運ぶ: report = `count(u16)`、その列の count バイト、埋め（report の大きさは HID の記述子のとおり）。規則は下 |
 
+- **HID の report**: 向きごとに、report は 1 つのバイト列を運ぶ。
+  1. report の OEP のバイトは、count の後ろの count バイトである。向きごとに report の順につなげると、1 つの長さつきのバイト列になる。
+     vendor bulk と同じ列（`length(u16) message`）である。
+  2. フレームは report をまたいでよく、1 つの report があるフレームの終わりと次のフレームの始まりを持ってよい。送る側はフレームごとに新しい report から始めてよい。
+     受ける側はそれに頼らない。
+  3. count が 0 の report は空で、読み飛ばす。
+  4. 送る側は埋めを 0 にする。受ける側は、埋めをその値によらず無視する。
+  5. OEP の HID の interface は、report ID を宣言しないか、その input の report と output の report が使う report ID を 1 つ宣言する。宣言するときは、
+     両方向のすべての report がそれで始まり、count はその後ろから数える。受ける側は、別の ID で始まる report を捨てる。
+  6. §3.2 の途切れの規則はこの列に掛かる: フレームが途中で、report が 200 ms（`probe_frame_gap_ms`）来ないとき、probe は
+     途中のフレームを捨て、列の次のバイトを長さの始まりとして読む。host は §5.1 で立て直す。
+  7. count が report に入る量（report の長さ − 2、report ID があれば − 3）より大きい report は捨て、受ける側は列が壊れたとして
+     扱う: 200 ms 途切れるまで入力を捨てる。max_frame より大きい長さ（下）と同じ。
 - **COBS のフレーム**: message の後ろに CRC-16/CCITT-FALSE（多項式 0x1021、初期値 0xFFFF、反転なし、"123456789" → 0x29B1）を
   little endian で付け、COBS（254 byte のブロックに分ける標準の形）で符号にし、**前後を 0x00 で囲んで送る**（`0x00 <COBS> 0x00`）。
   probe も host も前の 0x00 を省かない。最後のブロックが 254 byte の data を持つ（code 0xFF）とき、符号にする側は後ろに空のブロックを付けず、解く側は
@@ -216,7 +241,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **USB の束ね方**（vendor bulk）: host は、書き込みの長さが wMaxPacketSize の倍数なら長さ 0 の転送を続ける。probe は、送り
   終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか最後の 1 byte を別の転送に分ける。
   続きがすぐ来るときは倍数のままでよい。
-- **max_frame より大きい長さ**: probe はそのフレームと、次に `probe_frame_gap_ms` 途切れるまでの入力を捨て、次のフレームを待つ。応答は送らない。TCP では代わりに接続を閉じる。count が report に入る量（report の長さ − 2、report ID があれば − 3）より大きい HID の report は、丸ごと捨てる。
+- **max_frame より大きい長さ**: probe はそのフレームと、次に `probe_frame_gap_ms` 途切れるまでの入力を捨て、次のフレームを待つ。応答は送らない。TCP では代わりに接続を閉じる。HID では、これは列から読んだ長さに掛かる（report の count は上の規則 7）。
 - どのフレームを使うかは経路の種類だけで決まる（VID:PID で選ばない）。
 - **TCP は、信頼できるローカルの接続か、認証したトンネルの内側でだけ使う。** OEP は認証を持たない（§6.4 の force を含む）。
   1 つの probe を複数の host で使うときは、ブローカーが 1 つのセッションに束ねる（probe の規則がブローカーに何を求めるかは次の項目）。
@@ -838,9 +863,18 @@ link_source / link_sink は線の速さを測るためのもので、状態を�
 1. **名前**: `oep.` は project が予約する。独自のインターフェースは逆 DNS（`io.github.<owner>.<name>` など）。名前は host が何に
    使うかで切る（probe のペリフェラルの名前にしない）。**1〜64 byte、使える文字は `a-z 0-9 - .`**（registry の `limits`）。
    名前の label はそれぞれ `a-z 0-9 -` の 1 文字以上で、`-` で始まらず `-` で終わらない。名前は label を 2 つ以上持つ。
-2. **定義が決めるもの**: revision、op の表（番号、要求、応答、ロックの要否、どの op が任意でそれぞれを何が宣言するか、§1.2）、各 op の TLV の tag（その op の文脈の空間）、
-   describe のインターフェース固有のタグ（0x40〜0x7F）、plan の role の番号、reject reason（0x40〜0x7F）、出来事の kind
-   （0x01〜0x7F）、通知のデータの payload の形、インターフェースが作る資源とその寿命（§9 の上で）。
+2. **定義が決めるもの**: インターフェースの文書はどれも、次のチェックリストを埋める。
+   - 名前と revision。
+   - op の表: 番号、要求、応答、ロックの要否、どの op が必須でどれが任意か、任意の op それぞれを何が宣言するか（§1.2）。
+   - 各 op の要求と応答の TLV（その op の文脈の tag の空間）。
+   - 各 op の completed success、completed failed、completed partial の payload（§4.2）。
+   - インターフェース自身の status の値（0x40〜0x7F）と reject reason（0x40〜0x7F）。
+   - describe のインターフェース固有のタグ（0x40〜0x7F）と、plan の role の番号。
+   - インターフェースが作る資源とその寿命（§9 の上で）。
+   - 出来事の kind（0x01〜0x7F）とその payload、通知のデータの payload の形。
+   - 読む側が、応答の enum の知らない値と知らない flags をどう扱うか（§2.4、§2.5）。
+   - §4.3 の順の断り方の表。
+   - 頼る外部の仕様と、その版と、使う部分（「参照する仕様」の節）。
 3. **形の規則**: §2.3 のとおり（固定部分 + TLV、可変の並びの前に数、省略できるフィールドを置かない、安全の引数は critical）。
 4. **失敗**: 受け付けなかったものは rejected、受け付けて失敗したものは completed failed / partial（§4.2）。
 5. **ロックなしの op は状態を変えない**（§6.3）。
@@ -873,3 +907,14 @@ link_source / link_sink は線の速さを測るためのもので、状態を�
 - [host 開発ガイド](host-development-guide.ja.md)、[probe 開発ガイド](probe-development-guide.ja.md): 実装の実務。
 - [適合](conformance.ja.md): probe と host のチェックリスト。
 - [安全とセキュリティ](security.ja.md)、[用語集](glossary.ja.md)、[版と安定性](versioning.ja.md)。
+
+## 16. 参照する仕様
+
+OEP のフレームと message は、この文だけで定まる。USB の経路を出す probe は、次にも従う:
+
+| 仕様 | 使う部分 |
+|---|---|
+| Universal Serial Bus Specification, Revision 2.0 | 列挙、device と interface の記述子、serial number の文字列、bulk 転送と長さ 0 のパケット（§3.1、§3.3） |
+| USB Class Definitions for Communications Devices 1.2 とその PSTN subclass（CDC ACM） | USB CDC のシリアルの口の CDC ACM の機能: その interface、line coding、制御線（§3.3、§3.4） |
+| Device Class Definition for HID 1.11 | vendor 定義の input と output の report、report ID、SET_REPORT（§3.1、§3.3） |
+| Microsoft OS 2.0 Descriptors Specification | vendor bulk の interface の compatible ID `WINUSB`（§3.3） |

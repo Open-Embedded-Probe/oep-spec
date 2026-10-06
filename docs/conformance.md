@@ -16,7 +16,7 @@ A probe conforms when it does everything in this list for the transports and int
 - Serial port: COBS + CRC-16 frames enclosed in 0x00 on both sides (§3.1), the receiving and raw-byte rules (§3.4), the UART bridge
   line and boot speed (§3.4), DTR / RTS not used to decide anything (§3.4), raw transfer stopped while a session holds the port (§3.4).
 - Vendor bulk and TCP: `length(u16) message` (§3.1), the zero-length-transfer rule on vendor bulk (§3.1), no restart on a pause on TCP (§3.2).
-- HID: reports of `count(u16)` and padding (§3.1), output reports on both interrupt OUT and SET_REPORT (§3.3).
+- HID: the length-prefixed stream carried in reports of `count(u16)`, frames spanning reports, count 0 skipped, padding sent as 0 and ignored, one report ID or none, the frame gap on the stream, an over-long count (§3.1); output reports on both interrupt OUT and SET_REPORT (§3.3).
 - A length over max_frame: discard and wait, or close on TCP (§3.1). A pause of `probe_frame_gap_ms` restarts the read except on TCP (§3.2).
 - Messages up to 64 bytes accepted before confirm (§3.3); nothing sent over max_frame (§3.3).
 - USB: the serial number equals unit_id where the probe chooses it (§3.3); vendor bulk and HID in the shape of §3.3, at most one of each.
@@ -106,7 +106,7 @@ A probe that lists an `oep.` name follows that interface's whole document. The s
 | Interface | Required | Optional, declared by |
 |---|---|---|
 | Positioned streams ([common parts](oep-if-common.md) §1) | read, marks, clear, mark, write as §1 for each interface that uses them; status values of §3 | — |
-| `oep.wire.rvswd`, `oep.wire.swio`, `oep.wire.swd` ([wire and debug](oep-if-debug.md) §0 to §3, §5) | scan (on a wire without pins, count = 0 tries its one combination), attach (max_speed mandatory), detach, connections; §1 attach rules and budgets; §2 lifetime and line states | the reset TLV of attach (role 3 of role_channels) |
+| `oep.wire.rvswd`, `oep.wire.swio`, `oep.wire.swd` ([wire and debug](oep-if-debug.md) §0 to §3, §5) | scan (on a wire without pins, count = 0 tries its one combination; a count = 0 sequence with nothing left from skip on answers success with tried 0), attach (max_speed mandatory), detach, connections; §1 attach rules and budgets; §2 lifetime and line states | the reset TLV of attach (role 3 of role_channels) |
 | `oep.target.riscv-dm` (§4) | dmi, halt, resume | reset, read_block / write_block, run, step: features bits 0 to 3; max_length with read_block / write_block |
 | `oep.target.arm-adi` (§6) | transfer, read_block, write_block; max_length always emitted | — |
 | `oep.target.console` ([console](oep-if-console.md)) | the ops of §1; describe mechanisms always emitted; mechanism 2 framed as [dmseq](target-console-dmseq.md) | which mechanisms (describe mechanisms) |

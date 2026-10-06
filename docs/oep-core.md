@@ -2,7 +2,7 @@
 
 [日本語](oep-core.ja.md)
 
-Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). This document defines only the protocol core of OEP. The standard interfaces
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). Before the freeze, revision 1 alone does not identify a form: an implementation names the specification tag it implements ([versioning](versioning.md) §6). This document defines only the protocol core of OEP. The standard interfaces
 (wire, debug, console, fixture, capture, probe settings) are defined by their own documents (§14). This document is complete in itself: where a reader needs the
 reason for a rule, it is given with the rule. The guides (§15) add practice, not rules. Where this document and a non-normative document disagree, this document is right.
 
@@ -34,6 +34,9 @@ OEP consists of 3 layers.
 6. Versions are independent per layer (§2.7).
 
 Outside OEP: updating the probe's own firmware (DFU, Mass Storage, etc.), the details of the USB descriptors.
+
+**External specifications**: the OEP protocol is defined by these documents alone. Driving a target, a bus or a transport also needs the external
+specifications that each document lists in its References section (§16 for the transports).
 
 **Language**: the English text of this specification is normative. The Japanese documents are translations; where the two differ, the English text is right.
 
@@ -148,6 +151,7 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
 - Unknown values of an interface's status or reason are treated as failure.
 - Events of an unknown kind are discarded (seq is still counted).
 - The host ignores reserved bits of an answer's flags. It shows unknown values of an answer's enum that do not report a failure (cause, holder_kind, the kind of a scan entry) as unknown. Unknown status and reason values remain failures.
+- These fallbacks are safe because of the conditions of §2.5 on the values added to an answer.
 
 ### 2.5 Number spaces
 
@@ -164,6 +168,14 @@ tag(u8) | 0xFF | len(u16) | value(len byte)          len 255 or more (long form)
 | resource number | u16, one space per probe (§9) |
 
 Unless its definition says otherwise, every unused value of an enum and every reserved bit of a request may be defined later (§2.7). A probe refuses them by order 6 of §4.3.
+
+**Values added to an answer.** A value of an enum, or a bit of a set of bits, that an answer, an event or data carries may be added without a revision only when all three hold:
+
+1. no field's presence, length or position depends on the value;
+2. the fallback of §2.4 is safe (failure for an unknown outcome, status or reason; "unknown" for the others; a reserved bit ignored);
+3. every field whose meaning depends on the value is defined as ignored, or shown raw, by a reader that does not know the value.
+
+Otherwise the addition is a new TLV, a new revision or a new interface. Every enum and set of bits of an answer in revision 1 meets the three conditions.
 
 **Experimental values**: in every u8 enum whose definition does not say otherwise, the values 0xF0 to 0xFE are experimental. Anyone may use them while trying something out. A shipping probe and a released host do not use them, and they are never registered. (Tag numbers have no experimental range. Independent information goes into an independent interface, §13 rule 7.)
 
@@ -202,8 +214,21 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 |---|---|
 | Serial port (UART bridge, USB CDC, built-in USB serial) | COBS + CRC-16, delimited by 0x00 (below) |
 | USB vendor bulk, TCP | `length(u16) message`. No CRC. Length 0 is reserved (keepalive; skipped). On vendor bulk, one transfer may contain several frames, and a frame may span transfers |
-| USB HID (vendor-defined report) | The bytes of length-prefixed frames are packed into reports. report = `count(u16)`, count bytes, zero padding (the report size is as in the HID descriptor). If the descriptor declares a report ID, both input and output reports start with the ID, and count is counted from after it |
+| USB HID (vendor-defined report) | The length-prefixed stream of vendor bulk, carried in reports: report = `count(u16)`, count bytes of the stream, padding (the report size is as in the HID descriptor). The rules are below |
 
+- **HID reports**: per direction, the reports carry one byte stream.
+  1. The OEP bytes of a report are the count bytes after count. Concatenated in report order, per direction, they form one length-prefixed byte stream,
+     the same stream as on vendor bulk (`length(u16) message`).
+  2. A frame may span reports, and a report may hold the end of one frame and the start of the next. A sender may start each frame in a new report; a
+     receiver does not rely on it.
+  3. A report with count 0 is empty and is skipped.
+  4. The sender sets the padding to 0. The receiver ignores the padding whatever its value.
+  5. The OEP HID interface declares either no report ID or one report ID, used by its input report and its output report. When it declares one, every
+     report in both directions starts with it, and count is counted from after it. A receiver discards a report that starts with another ID.
+  6. The gap rule of §3.2 applies to the stream: when a frame is incomplete and no report arrives for 200 ms (`probe_frame_gap_ms`), the probe discards
+     the incomplete frame and reads the next byte of the stream as the start of a length. The host recovers by §5.1.
+  7. A report whose count is larger than the report can carry (the report length − 2, or − 3 with a report ID) is discarded, and the receiver treats the
+     stream as broken: it discards input until a pause of 200 ms, as for a length larger than max_frame (below).
 - **COBS frame**: CRC-16/CCITT-FALSE (polynomial 0x1021, initial value 0xFFFF, no reflection, "123456789" → 0x29B1) is appended to the message in
   little endian, encoded with COBS (the standard form split into 254-byte blocks), and **sent enclosed in 0x00 on both sides** (`0x00 <COBS> 0x00`).
   Neither probe nor host omits the leading 0x00. When the last block carries 254 bytes of data (code 0xFF), the encoder does not append an empty block, and the decoder
@@ -216,7 +241,7 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 - **USB bundling** (vendor bulk): if the length of a write is a multiple of wMaxPacketSize, the host follows it with a zero-length transfer. When the probe has finished
   sending and nothing follows, if the last transfer is a multiple of wMaxPacketSize, it either sends a zero-length transfer or splits the last 1 byte into a separate transfer.
   If more follows immediately, it may stay a multiple.
-- **A length larger than max_frame**: the probe discards that frame and the input up to the next pause of `probe_frame_gap_ms`, then waits for the next frame. It sends no answer. On TCP it closes the connection instead. A HID report whose count is larger than the report can carry (the report length − 2, or − 3 with a report ID) is discarded whole.
+- **A length larger than max_frame**: the probe discards that frame and the input up to the next pause of `probe_frame_gap_ms`, then waits for the next frame. It sends no answer. On TCP it closes the connection instead. On HID this applies to the length read from the stream (rule 7 above for the count of a report).
 - Which frame is used is decided only by the kind of transport (not chosen by VID:PID).
 - **TCP is used only on a trusted local connection or inside an authenticated tunnel.** OEP has no authentication (including the force of §6.4).
   When one probe is used by several hosts, a broker bundles them into one session (the next bullets say what the probe rules require of it).
@@ -838,9 +863,18 @@ Standard interfaces and independent interfaces are both defined by the following
 1. **Name**: `oep.` is reserved by the project. Independent interfaces use reverse DNS (`io.github.<owner>.<name>`, etc.). Names are cut by what the host
    uses them for (not by the name of the probe's peripheral). **1 to 64 bytes; the usable characters are `a-z 0-9 - .`** (the registry's `limits`).
    Each label of a name is 1 or more of `a-z 0-9 -`, and does not start or end with `-`. A name has at least two labels.
-2. **What the definition decides**: the revision, the table of ops (number, request, answer, whether the lock is required, and which ops are optional and what declares each, §1.2), the TLV tags of each op (the space of that op's context),
-   the interface-specific describe tags (0x40 to 0x7F), the role numbers of the plan, reject reasons (0x40 to 0x7F), event kinds
-   (0x01 to 0x7F), the form of the payload of notification data, the resources the interface creates and their lifetime (on top of §9).
+2. **What the definition decides**: every interface document fills in this checklist.
+   - the name and the revision;
+   - the table of ops: number, request, answer, whether the lock is required, and which ops are required and which optional, with what declares each optional op (§1.2);
+   - the request and answer TLVs of each op (the tag space of that op's context);
+   - the payloads of completed success, completed failed and completed partial of each op (§4.2);
+   - the interface's own status values (0x40 to 0x7F) and reject reasons (0x40 to 0x7F);
+   - the interface-specific describe tags (0x40 to 0x7F) and the role numbers of the plan;
+   - the resources the interface creates and their lifetime (on top of §9);
+   - the event kinds (0x01 to 0x7F), their payloads, and the form of the payload of notification data;
+   - how a reader treats unknown enum values and unknown flags of its answers (§2.4, §2.5);
+   - a table of refusals in the order of §4.3;
+   - the external specifications it relies on, with their versions and the subset used (a References section).
 3. **Rules of form**: as in §2.3 (fixed part + TLVs, a count before a variable sequence, no omittable fields, safety arguments critical).
 4. **Failure**: what was not accepted is rejected; what was accepted and failed is completed failed / partial (§4.2).
 5. **Lock-free ops do not change state** (§6.3).
@@ -873,3 +907,14 @@ These add no rule.
 - [host development guide](host-development-guide.md), [probe development guide](probe-development-guide.md): implementation practice.
 - [conformance](conformance.md): the checklists for a probe and a host.
 - [security and safety](security.md), [glossary](glossary.md), [versioning](versioning.md).
+
+## 16. References
+
+The frames and messages of OEP are defined by this text alone. A probe that exposes a USB transport also follows:
+
+| Specification | Subset used |
+|---|---|
+| Universal Serial Bus Specification, Revision 2.0 | Enumeration, the device and interface descriptors, the serial number string, bulk transfers and zero-length packets (§3.1, §3.3) |
+| USB Class Definitions for Communications Devices 1.2 and its PSTN subclass (CDC ACM) | The CDC ACM function of a USB CDC serial port: its interfaces, line coding and control lines (§3.3, §3.4) |
+| Device Class Definition for HID 1.11 | The vendor-defined input and output reports, report IDs, SET_REPORT (§3.1, §3.3) |
+| Microsoft OS 2.0 Descriptors Specification | The compatible ID `WINUSB` of the vendor bulk interface (§3.3) |

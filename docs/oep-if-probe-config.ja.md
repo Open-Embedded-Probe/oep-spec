@@ -2,7 +2,7 @@
 
 [English](oep-if-probe-config.md)
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。本体は [OEP core](oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。
 
 | 名前 | revision | 役割 |
 |---|---:|---|
@@ -296,7 +296,7 @@ bind_state: port(u8)、mode(u8)、selected(u8: 今選ばれている並びの番
   3 適用が断られた（資源がぶつかる）。
 - 登録したスロットを slot の昇順に first_slot 番目から、bind を port の昇順に first_bind 番目から、1 フレームに入る分だけ返す。
   more = 1 なら続きがあり、host は first_slot に n_slots を、first_bind に n_binds を足してもう一度聞く。
-- 各ページは、storage_state、storage_hash、unreadable_reason を、そのページに答えたときの値で運ぶ。ページの間で違いうるし、host は最後のページのものを使う。slot と bind もページの間で変わりうる（ロックを持つ側の set や save、自動の attach）。ページをまたいで slot と bind の組が変わらないことが要る host は、ロックを持ってページを読む（slot の状態はそれでも変わりうる）。
+- 各ページは、storage_state、storage_hash、unreadable_reason を、そのページに答えたときの値で運ぶ。ページの間で違いうるし、host は最後のページのものを使う。slot と bind もページの間で変わりうる（ロックを持つ側の set や save、自動の attach）。ページをまたいで slot と bind の組が変わらないことが要る host は、ロックを持つ間にそのページをすべて読む（slot の状態はそれでも変わりうる: set、unset、save、erase ができるのはロックを持つ側だけで、自動の attach は状態を変えるが組は変えない）。
 
 ## 4. describe
 

@@ -29,7 +29,7 @@ The probe:
   probe settings set, nothing changes unless all of it is accepted: core §8, probe settings §2);
 - discards a frame whose length exceeds max_frame, and the input up to the next pause; on TCP it closes the connection (core §3.1);
 - restarts its reader after a pause of `probe_frame_gap_ms` inside a frame on every transport except TCP (core §3.2);
-- discards a HID report whose count is larger than the report can carry (core §3.1);
+- discards a HID report whose count is larger than the report can carry, and the stream's input up to the next pause, and ignores the padding of reports (core §3.1);
 - discards, without answering, a message whose role is not a request role and a request shorter than its header (core §2.4).
 
 The host:

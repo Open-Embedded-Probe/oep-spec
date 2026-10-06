@@ -11,6 +11,27 @@ v1 candidate. Changes since the last pushed state (ad9f8be). Most rule changes c
 [2026-10-06 rule-change proposal](docs/v1-rule-change-proposal-2026-10-06.md), reviewed by the implementers (ch32rv, WireSkein, bench),
 and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.md).
 
+### Simplification after the external review (2026-10-06)
+
+From the [v1 simplification proposal](docs/v1-simplification-proposal-2026-10-06.md) and the user's decisions D1 to D4, reviewed by the
+implementers (ch32rv, WireSkein, bench).
+
+Text only, no wire change:
+
+- Console: the SDI and DMDATA mechanisms are written in full as normative text (both sides of the mailbox, the byte positions, the empty slot,
+  the slots that carry no bytes); the origin notes are gone, here and in wire and debug (console §3.1, §3.2).
+- HID: the reports carry one length-prefixed byte stream per direction: frames span reports, count 0 is skipped, padding is sent 0 and ignored,
+  one report ID or none, the frame gap applies to the stream, an over-long count breaks the stream (core §3.1).
+- References: core §0 says what the text alone defines; the core (USB, CDC ACM, HID, Microsoft OS 2.0), wire and debug (ADIv5.2 / ADIv6.0,
+  RISC-V Debug 0.13.2 / 1.0), console and fixture (UM10204; SPI has no standard) list the external specifications and the subset they use;
+  spi-target defines its modes (mode = CPOL × 2 + CPHA).
+- Answer enums: a value is added to an answer's enum or set of bits without a revision only under three conditions (core §2.5, versioning §4).
+- Wire scan: a count = 0 sequence with no combination from skip on is answered completed success with tried 0 and count 0 (debug §1).
+- Probe settings §3.3: the paging sentence reads "reads all of its pages while it holds the lock".
+- Core §13 rule 2 is a checklist every interface document fills in.
+- Versioning §6 is decided: `v0.x` tags until the formal release `v1.0.0`; before the freeze an implementation names the specification tag it
+  implements (every normative status line says so); no edition field.
+
 ### Rule changes: core and registry
 
 - TLV tags: the tag number is the low 7 bits and bit 7 is the critical mark (role_assignment is 0x10, sent as 0x90); values a later revision may

@@ -2,7 +2,7 @@
 
 [日本語](oep-if-capture.ja.md)
 
-Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md).
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). Before the freeze, revision 1 alone does not identify a form: an implementation names the specification tag it implements ([versioning](versioning.md) §6). The core is [OEP core](oep-core.md).
 The only definition of the numbers is `registry/oep-v1.toml`. The line between the basic set and separate definitions is §3.6.
 
 | Name | revision | Role |

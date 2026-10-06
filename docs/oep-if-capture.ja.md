@@ -2,7 +2,7 @@
 
 [English](oep-if-capture.md)
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)。
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。本体は [OEP core](oep-core.ja.md)。
 番号の唯一の定義は `registry/oep-v1.toml`。基本と別の定義の線引きは §3.6。
 
 | 名前 | revision | 役割 |

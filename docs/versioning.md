@@ -4,8 +4,8 @@
 
 Status: **guide** (not normative). The promise of what stays stable, gathered from core §2.7 and the
 scope of the freeze agreed on 2026-10-02. The rules themselves are in [OEP core](oep-core.md) (§2.3, §2.5, §2.7, §7.1, §13) and at the top of
-core and `registry/oep-v1.toml`; where this page and they differ, they are right. The release tagging in §6 is a **proposal** that waits for the
-maintainers' decision. This English text is authoritative; the Japanese version is its translation.
+core and `registry/oep-v1.toml`; where this page and they differ, they are right. The release tagging in §6 is decided. This English text is
+authoritative; the Japanese version is its translation.
 
 ## 1. What carries a version
 
@@ -16,7 +16,7 @@ maintainers' decision. This English text is authoritative; the Japanese version 
 | **Interface name** | list | The meaning of the interface changes (a different name is a different interface) |
 | **Registry schema** | `[registry] schema` (1) | The layout of the registry file changes (not the wire) |
 | **REGISTRY_HASH** | the generated files | Any byte of the registry changes. It only tells whether generated code matches the registry; it says nothing about wire compatibility (core, top) |
-| **Specification release** | a git tag of this repository (§6, proposed) | Any change to the normative text or the registry |
+| **Specification release** | a git tag of this repository (§6) | Any change to the normative text or the registry |
 
 ## 2. Before the freeze (now)
 
@@ -73,7 +73,7 @@ These additions keep every revision; a host or probe that does not know them kee
 | Optional request / answer / event TLVs | New tags in the op's context. A host skips unknown non-critical tags; a probe refuses an unknown critical one with unsupported (core §2.2, §2.3) |
 | Appending at the end | The tail of answer TLV values, event payloads, elements of answer sequences, and items the probe keeps (probe.config). Readers skip the unknown tail (core §2.3). Request TLV values are not extended: a new field gets a new tag |
 | Optional ops and events | Interface ops 0x01 to 0xEF, event kinds 0x01 to 0x7F; their presence is declared in describe (core §2.5, §2.7) |
-| New enum values and reserved bits | A value the definition left unused is refused unsupported by a probe that does not know it (core §2.5, §4.3 order 6) |
+| New enum values and reserved bits | In a request: a value the definition left unused is refused unsupported by a probe that does not know it (core §2.5, §4.3 order 6). In an answer, an event or data: only when no field's presence, length or position depends on the value, the fallback of core §2.4 is safe, and every field whose meaning depends on it is ignored or shown raw by a reader that does not know it (core §2.5); otherwise a new TLV, revision or interface |
 | Interface reject reasons and status values | 0x40 to 0x7F (core §2.5, common §3) |
 | describe tags | Common 0x01 to 0x3E, interface 0x40 to 0x7F; describe values themselves are closed (core §2.3, §7.4) |
 | probe.config items and line names | New item tags, the tail of items; standard line names in the registry (probe settings §1, §1.3) |
@@ -90,22 +90,24 @@ A probe that raises an interface's revision preferably keeps exposing the old re
   (core §2.5).
 - A new table kind, or a new key of an interface or an op, is a registry change made by a pull request (CONTRIBUTING).
 
-## 6. Specification releases (proposal)
-
-To decide: the maintainers. Proposed:
+## 6. Specification releases
 
 - **Git tags `vMAJOR.MINOR.PATCH`** on this repository, pushed with the commit they name.
   - MAJOR is the protocol revision from the formal release on (`v1.y.z` for protocol revision 1); before it, MAJOR is 0.
   - MINOR grows with any addition of §4, a new interface or a new interface revision, and any registry addition.
   - PATCH grows with errata that change no behaviour: wording, translations, guides, records, tools.
 - **Before the formal release the tags are `v0.MINOR.PATCH`**, for review and for the freeze alike. The freeze is a `v0` tag that CHANGELOG names as
-  the freeze; it is not `v1`. **`v1.0.0` is the formal release** (decided by the user, 2026-10-06), and from it on MAJOR follows the protocol revision.
+  the freeze; it is not `v1`. **`v1.0.0` is the formal release**, and from it on MAJOR follows the protocol revision.
+- **Before the freeze, revision 1 alone does not identify a form**: breaking changes go in without raising a revision (§2), so two implementations
+  built from different commits can both say revision 1 and still not interoperate. An implementation therefore names the specification tag it implements.
 - A tag is made only on a commit where `python3 tools/oepgen1.py --check` and `python3 tools/oepvectors1.py --check` pass and
   `cd tests && uv run pytest registry_v1 vectors` is green.
 - **CHANGELOG.md** at the root lists the changes per release (date, tag, the commits), and an "Unreleased" section collects changes until the next
   tag. Every change to the normative text or the registry gets an entry; wording-only changes may be grouped.
-- Implementations state the tag they implement (for example in their README), together with the protocol and interface revisions they handle.
-- Whether the registry also carries a release string (for example `[registry] edition`) is a registry change and is left to the peers' review.
+- Implementations state the tag they implement (in their README), together with the protocol and interface revisions they handle. A probe may
+  also put the tag in the free text of fn 0's describe `firmware` (0x40), so that a host can show it when it diagnoses a mismatch.
+- **There is no edition field on the wire or in the registry.** After the freeze the revision is the only thing that identifies a form, so such a
+  field would mean nothing for the life of the protocol; before the freeze the free text of `firmware` already carries the tag for diagnosis.
 
 ## 7. Errata after the freeze
 

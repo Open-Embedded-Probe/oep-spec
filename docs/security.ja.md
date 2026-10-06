@@ -27,7 +27,7 @@ probe は:
   付けられなければ何も変えない: core §8、probe の設定 §2）;
 - max_frame を超える長さのフレームは、次の途切れまでの入力と一緒に捨てる。TCP では接続を閉じる（core §3.1）;
 - フレームの途中で `probe_frame_gap_ms` 途切れたら、TCP 以外のどの経路でも読み直す（core §3.2）;
-- report が運べるより大きい count の HID の report は捨てる（core §3.1）;
+- report が運べるより大きい count の HID の report は、次の途切れまでの流れの入力と一緒に捨て、report の詰め物は無視する（core §3.1）;
 - role が要求の role でないメッセージと、ヘッダより短い要求は、答えずに捨てる（core §2.4）。
 
 host は:

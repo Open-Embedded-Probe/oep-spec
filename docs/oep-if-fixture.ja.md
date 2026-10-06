@@ -2,7 +2,7 @@
 
 [English](oep-if-fixture.md)
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。本体は [OEP core](oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
 ストリーム）。番号の唯一の定義は `registry/oep-v1.toml`。キャプチャは [キャプチャ](oep-if-capture.ja.md)。
 
 | 名前 | revision | 役割 | plan の role |
@@ -171,6 +171,10 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
 | 0x04 | status | — | state(u8)、mode(u8)、bit_order(u8)、armed(u8)、queued(u8)、transactions(u32)、errors(u32)、[TLV] | 不要 |
 | 0x05 | reset | — | — | 必要 |
 
+- **SPI の mode** = CPOL × 2 + CPHA。CPOL は CS が無効な間の SCK の level（0 low、1 high）。CPHA 0 では、各ビットはそのクロック周期の最初の SCK の
+  エッジで取り込まれ、2 番目のエッジで変わるので、MISO の最初のビットは最初の SCK のエッジより前に線に出ている（cs_setup_ns、下）。CPHA 1 では、
+  各ビットはそのクロック周期の最初のエッジで変わり、2 番目のエッジで取り込まれる。最初のエッジは、CPOL の level から離れるエッジである。バイトは、
+  両方向とも、bit_order のとおり MSB を先か LSB を先に送る。
 - この fn の plan は role 1〜4 をちょうど 1 つずつ、別々の channel で持つ（role が欠ける、同じ role が 2 つある、2 つの role が同じ
   channel の plan_apply は rejected malformed）。plan を解く・置き換えると target は止まり、describe の直後と同じ状態に戻る（state 0、
   mode と bit_order は 0、列・待ち・累計を消す）。
@@ -201,3 +205,13 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   なったのを見てからソフトウェアで MISO を駆動し始める probe は、これを宣言する。host はこの値を利用者に見せる。CS が有効になってから cs_setup_ns より
   早く SCK を始める master は、最初のビットに頼れない。
 - 通知は送らない（subscribe は rejected unsupported）。
+
+## 5. 参照する仕様
+
+この文書の OEP のメッセージは、本文だけで定まる。バスを動かすのに使うもの:
+
+| インターフェース | 仕様 | 使う部分 |
+|---|---|---|
+| `oep.fixture.i2c-target` | I2C-bus specification and user manual (NXP UM10204) | アドレスの指定（7 bit のアドレス）、ACK、clock stretching、予約されたアドレス 0x00〜0x07 と 0x78〜0x7F |
+| `oep.fixture.spi-target` | 無し: SPI には正式な標準が無い | mode、CS、ビットの順は §4 が定める |
+| `oep.fixture.uart` | 無し | configure の format のとおりの線（スタートビット、LSB を先にしたデータビット、パリティ、ストップビット）（§2） |

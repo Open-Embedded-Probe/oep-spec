@@ -2,7 +2,7 @@
 
 [日本語](oep-if-console.ja.md)
 
-Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§1 positioned
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). Before the freeze, revision 1 alone does not identify a form: an implementation names the specification tag it implements ([versioning](versioning.md) §6). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§1 positioned
 streams, §2 debug connections). The only definition of the numbers is `registry/oep-v1.toml`.
 
 | Name | revision | Role |
@@ -85,22 +85,49 @@ of the mechanism.
 
 ### 3.1 SDI
 
-(Reference) This is the layout of WCH's SDI printf.
+Mechanism 0 is this mailbox layout only; it does not depend on the wire of the connection. It carries bytes from the target to the host.
 
-- The target waits for DATA0 to become 0, then writes DATA1 = bytes 3 to 6, DATA0 = length (1 to 7) | bytes 0 to 2 << 8 (little endian,
-  DATA0 written last).
-- If the low byte of DATA0 is 1 to 7, the probe also reads DATA1, receives that many bytes, and writes 0 to DATA0 (the mark of receipt).
-  A low byte of 0 means nothing. 8 or more is not a slot (not discarded).
+- **Bytes in the mailbox**: byte 0 is bits 8 to 15 of DATA0, byte 1 bits 16 to 23, byte 2 bits 24 to 31; byte 3 is bits 0 to 7 of DATA1, byte 4
+  bits 8 to 15, byte 5 bits 16 to 23, byte 6 bits 24 to 31. The low byte of DATA0 (bits 0 to 7) is the length L.
+- **The target** sends n bytes (n = 1 to 7) at a time: it waits until DATA0 reads 0, then writes DATA1 (bytes 3 to 6), then DATA0 = n | bytes 0 to 2 << 8
+  (DATA0 last). Byte positions at or beyond n carry any value. How long the target waits, and what it does with bytes it gave up on, is the target's
+  choice.
+- **The probe** reads DATA0. When L is 1 to 7, it also reads DATA1, receives bytes 0 to L − 1 in that order, and then writes 0 to DATA0 (the mark of receipt).
+  When L is 0 there is nothing. When L is 8 or more the word is not a slot: the probe neither receives it nor writes DATA0 (it is not discarded).
 - There is no host → target direction (write accepts nothing: accepted 0, completed failed).
 
 ### 3.2 DMDATA
 
-(Reference) This is the framing the minichlink tool uses.
+Mechanism 1 is this mailbox layout only; it does not depend on the wire of the connection. It carries bytes in both directions, and the two sides take turns
+on DATA0.
 
-- The low byte of DATA0 is the status byte. bit 7 = 1 is the target's slot, the low 6 bits are length + 4.
-- In a target's slot (bit 7 = 1), if length + 4 is 5 or more, the probe also reads DATA1 and receives length (1 to 7) bytes (the layout is the same as SDI). 4 is the target's
-  empty slot ("the mailbox is the host's turn").
-- The probe answers exactly once per target slot: if it has bytes to send, DATA0 = (n + 4) | bytes 0 to 2 << 8 (n is 1 to 3, bit 7 = 0);
-  otherwise DATA0 = 0. It does not write to a word with bit 7 = 0 (the host's slot has not yet been taken, or it has just answered).
-- An empty slot is answered only when it is still there on the next read (the target may place a real slot right after an empty one, and answering immediately
-  would erase that slot).
+- **The status byte** is the low byte of DATA0 (bits 0 to 7). Bit 7 is T: 1 = a **target slot** (the target wrote it), 0 = written by the probe, or 0 at
+  start. Bits 0 to 5 are L = the number of bytes + 4. Bit 6 is written 0 and ignored by the reader.
+- **Bytes in the mailbox**: the same positions as SDI (§3.1): bytes 0 to 2 in bits 8 to 31 of DATA0, bytes 3 to 6 in DATA1.
+- **The target** writes DATA0 only when bit 7 of DATA0 is 0, with one exception: it may replace its own empty slot (L = 4) with a target slot that carries
+  bytes.
+  - To send n bytes (n = 1 to 7) it waits until bit 7 of DATA0 is 0, takes the answer in that word (below), writes DATA1 (bytes 3 to 6) when n is 4 or
+    more, then writes DATA0 = 0x80 | (n + 4) | bytes 0 to 2 << 8 (DATA0 last). Byte positions at or beyond n carry any value.
+  - To ask for input without sending, it waits until bit 7 of DATA0 is 0, takes the answer in that word, then writes DATA0 = 0x84 (an **empty slot**,
+    L = 4: "the mailbox is the probe's turn").
+  - **Taking the answer**: a word with bit 7 = 0 whose L is 5 to 7 carries L − 4 bytes for the target, bytes 0 to L − 5. A word of 0, and any other word with
+    bit 7 = 0, carries none.
+  - How long the target waits, and what it does with bytes it gave up on, is the target's choice.
+- **The probe** reads DATA0.
+  - When bit 7 is 0 it does nothing: the word is its own answer that the target has not yet replaced, or 0. The probe never writes over a word with bit 7 = 0.
+  - When bit 7 is 1 and L is 5 to 11, it receives n = L − 4 bytes: bytes 0 to 2 (as many as n) from that word, and, when n is 4 or more, bytes 3 to n − 1
+    from DATA1, which it reads after DATA0. It then answers.
+  - When bit 7 is 1 and L is 4, the slot is empty. The probe answers it only when its next read of DATA0 returns that empty slot again (the target may
+    replace an empty slot with a slot that carries bytes, and answering at once would erase that slot).
+  - When bit 7 is 1 and L is 0 to 3 or 12 to 63, the slot carries no bytes; the probe treats it as an empty slot.
+  - **The answer**: exactly one write of DATA0 per target slot. When write has placed bytes in the send slot (n = 1 to 3), DATA0 = (n + 4) | bytes 0 to
+    n − 1 << 8 (bit 7 = 0; byte positions at or beyond n are 0), and those bytes leave the send slot. Otherwise DATA0 = 0. The probe does not write DATA1.
+- write places at most 3 bytes in the send slot (§2). When bytes placed earlier have not yet gone out in an answer, the slot is not free (accepted 0).
+
+## 4. References
+
+The OEP messages of this document are defined by the text alone. Driving the target uses:
+
+| Specification | Subset used |
+|---|---|
+| RISC-V Debug Specification 0.13.2 and 1.0 (DMSTATUS.version 2 and 3) | The debug module's DATA0 (DMI 0x04), DATA1 (DMI 0x05), DMSTATUS (allhalted, allrunning, havereset) and its abstract commands, which also use DATA0 and DATA1 |

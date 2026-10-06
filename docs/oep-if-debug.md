@@ -2,7 +2,7 @@
 
 [日本語](oep-if-debug.ja.md)
 
-Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§2 debug
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). Before the freeze, revision 1 alone does not identify a form: an implementation names the specification tag it implements ([versioning](versioning.md) §6). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§2 debug
 connections, §3 status). The only definition of the numbers is `registry/oep-v1.toml`.
 
 | Name | revision | Role |
@@ -12,8 +12,6 @@ connections, §3 status). The only definition of the numbers is `registry/oep-v1
 | `oep.wire.swd` | 1 | Connects to ADI over ARM's SWD |
 | `oep.target.riscv-dm` | 1 | Operations on a RISC-V Debug Module |
 | `oep.target.arm-adi` | 1 | Operations on ARM ADI (DP / AP) |
-
-(Reference) RVSWD and SWIO are the 2-wire and 1-wire debug wires of WCH's RISC-V MCUs; the registry name `wch_dmi_7f` of target_id scheme 1 also comes from WCH's debug module.
 
 - `oep.wire.*` creates connections, and `oep.target.*` operates on the target over a connection. The interfaces that handle targets
   appear in list before attach, and a request without a connection is rejected no_connection.
@@ -90,7 +88,9 @@ A new wire's document also defines:
     (at least one combination is tried). If tried ≥ 1, the host sends the continuation. If a request listing combinations returns tried smaller than the number listed, the host sends scan again with the remaining combinations.
   - **Continuing count = 0**: a count = 0 request can pass, in the TLV skip (0x01, u16), the number of combinations to skip from the start of the count = 0 sequence (0 if absent).
     The host continues by passing the sum of the tried values so far in skip, and **stops when tried = 0 is returned**. **If combinations remain in the sequence, the probe tries at least 1**
-    (tried ≥ 1. tried = 0 only when the sequence is used up). Since the sequence is determined by what is held at the time of the request,
+    (tried ≥ 1. tried = 0 only when the sequence is used up). **When the count = 0 sequence has no combination from skip on** (it is empty, or skip is at
+    or beyond its length), the answer is completed success with tried = 0 and count = 0; the rule that at least one combination is tried applies only when a
+    combination remains. Since the sequence is determined by what is held at the time of the request,
     if a plan or the like changes midway, combinations may be skipped or repeated (the host changes nothing else during a scan). A request with count > 0 and skip
     is rejected malformed.
   - attach specifies the combination with pins (TLV 0x03, critical). If pins is absent: if that wire has exactly one live connection, that combination
@@ -567,3 +567,12 @@ Requests start with connection(u16). All three ops are required. arm-adi has no 
   **done is the number of words the probe sent**, not a guarantee that the target accepted them (a FAULT of a posted write is seen in a later transfer). TAR is left advanced, and
   SELECT / CSW are not changed (the arm version of the invariant of §4: the probe does not change what the host set). 64-bit AP addresses are added later with the same
   TLV 0x01 `address_hi` as riscv-dm (reserved).
+
+## 7. References
+
+The OEP messages of this document are defined by the text alone; the frames of RVSWD and SWIO are defined in §3.1 and §3.2. Driving a target uses:
+
+| Interface | Specification | Subset used |
+|---|---|---|
+| `oep.wire.swd`, `oep.target.arm-adi` | Arm Debug Interface Architecture Specification, ADIv5.2 and ADIv6.0 | SWD packets, turnaround, line reset, the JTAG-to-SWD switch, the dormant wake, TARGETSEL; the DP and AP registers; MEM-AP TAR, DRW and CSW |
+| `oep.wire.rvswd`, `oep.wire.swio`, `oep.target.riscv-dm` | RISC-V Debug Specification 0.13.2 and 1.0 (DMSTATUS.version 2 and 3) | The DMI registers (DMCONTROL, DMSTATUS, ABSTRACTCS, COMMAND, ABSTRACTAUTO, DATA0, DATA1, PROGBUF0, SBCS, SBADDRESS), abstract commands, the program buffer, dcsr, dpc, havereset |
