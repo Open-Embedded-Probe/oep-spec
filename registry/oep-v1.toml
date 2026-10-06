@@ -143,9 +143,6 @@ restart_after_answer_ms = 100   # oep.probe.restart: the probe begins its restar
 [common.enum.target_id_scheme]  # one space for the whole probe; each wire states which it uses (oep-if-debug §1)
 dmi_7f = 1                      # the u32 at DMI address 0x7F of that debug module; 0 and all ones = none (not sent)
 targetsel = 2                   # swd: connections entries only, the u32 TARGETSEL (0 when none)
-[common.enum.target_id_len]     # bytes of each scheme's value (slot locks must match it; oep-if-probe-config §1.1)
-dmi_7f = 4
-targetsel = 4
 [common.enum.read_from]         # positioned streams (oep-if-common §1.2)
 position = 0
 oldest = 1
@@ -848,19 +845,19 @@ plan = 0x01                     # fn(u16) role(u8) channel(u16); key (fn, role, 
 label = 0x02                    # channel(u16) text
 idle = 0x03                     # channel(u16) mode(u8) drive(u8, gpio's drive_level): the state of a free pin (4 bytes)
 slot = 0x04                     # a place a target is wired to (oep-if-probe-config §1.1)
-bind = 0x05                     # what a serial port carries (oep-if-probe-config §1.2)
+bind = 0x05                     # port(u8) kind(u8) id(u16): the stream a serial port carries (oep-if-probe-config §1.2)
 uart = 0x06                     # fn(u16) baud(u32) format(u8): a fixture UART's settings, applied when its plan is set
 disable = 0x07                  # channel(u16): a channel the probe never uses or touches (not on this board)
 [interface.tlv.describe]        # declarations only; the state is op 0x06 (oep-if-probe-config §3.3)
 storage = 0x40                  # max_bytes(u32, 1 or more): canonical bytes it can save; present exactly when ops offers save and erase
 items = 0x41                    # u8 list: the item tags this probe takes
 slots_max = 0x42                # u8
-bind_modes = 0x43               # u32 bits of bind_mode; last_reset and manual always
 [interface.reserved]
-"tlv.describe" = [[0x44, 0x45]] # were slot_state / bind_state (moved to op state)
+"tlv.describe" = [[0x43, 0x45]] # were bind_modes, slot_state, bind_state
 "tlv.item" = [[0x7E, 0x7E]]
+slot_state = [[2, 3]]           # were lock_mismatch, no_target_id
 [interface.line_names]          # standard line names of label texts (oep-if-probe-config §1.3); private names start with x-
-nrst = "the target's reset line (the probe's retry with reset, and the host)"
+nrst = "the target's reset line (the host)"
 power_hi = "a line that powers the target when high (the host only)"
 power_lo = "a line that powers the target when low (the host only)"
 [interface.enum.idle_mode]
@@ -872,18 +869,9 @@ output_high = 4
 [interface.enum.slot_attach]
 host = 0
 at_boot = 1
-[interface.enum.slot_boot_reset]  # slot's boot_reset (after attach), a boolean: 2 or more is malformed, not unsupported (oep-if-probe-config §1.1 / §3.1, core §4.3)
-off = 0
-retry_with_reset = 1
 [interface.enum.slot_state]
 connected = 0
 absent = 1
-lock_mismatch = 2
-no_target_id = 3
-[interface.enum.bind_mode]
-last_reset = 0
-manual = 1
-mixed = 2
 [interface.enum.bind_stream]
 slot_console = 1
 fixture_uart = 2

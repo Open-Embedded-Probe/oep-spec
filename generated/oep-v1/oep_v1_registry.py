@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "8c271a02139fcf94"
+REGISTRY_HASH = "e98d428d914fe63a"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -22,7 +22,7 @@ DESCRIBE_COMMON = {"role_channels": 0x01, "max_clock_hz": 0x02, "max_length": 0x
 TIMING = {"probe_frame_gap_ms": 0xC8, "uart_bridge_boot_baud": 0x1C200, "port_speed_idle_max_ms": 0xBB8, "host_wait_add_ms": 0x3E8, "notify_pending_max_frames": 0x02, "slot_retry_reset_hold_ms": 0x14, "port_speed_switch_wait_ms": 0x14}
 USB = {"project_vid": 0x1209, "project_pid": 0x4F45, "vendor_bulk_class": 0xFF, "vendor_bulk_subclass": 0x4F, "vendor_bulk_protocol": 0x45, "hid_usage_page": 0xFF4F, "hid_usage": 0x45}
 LIMITS = {"lease_min_ms": 0x3E8, "lease_max_ms": 0xEA60, "owner_max_bytes": 0x20, "unit_id_max_bytes": 0x20, "slot_name_max_bytes": 0x20, "label_max_bytes": 0x20, "interface_name_max_bytes": 0x40, "resend_max": 0x01, "port_speed_broken_max": 0x03, "uart_baud_tolerance_pct": 0x05, "uart_default_baud": 0x1C200, "max_op_ms_max": 0x927C0, "restart_after_answer_ms": 0x64}
-COMMON = _NS(enum={"target_id_scheme": {"dmi_7f": 0x01, "targetsel": 0x02}, "target_id_len": {"dmi_7f": 0x04, "targetsel": 0x04}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "read_flags": {"more": 0x01, "gap": 0x02}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08, "closed": 0x09}, "mark_detail_reset": {"ndmreset": 0x01, "attach_reset": 0x03}, "mark_detail_restart": {"havereset": 0x01, "resync": 0x02}, "mark_detail_lost": {"overflow": 0x01, "framing": 0x02, "parity": 0x03, "target_timeout": 0x04}, "mark_detail_closed": {"all_released": 0x01, "session_ended": 0x02, "slot_changed": 0x03, "connection_closed": 0x04}})
+COMMON = _NS(enum={"target_id_scheme": {"dmi_7f": 0x01, "targetsel": 0x02}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "read_flags": {"more": 0x01, "gap": 0x02}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08, "closed": 0x09}, "mark_detail_reset": {"ndmreset": 0x01, "attach_reset": 0x03}, "mark_detail_restart": {"havereset": 0x01, "resync": 0x02}, "mark_detail_lost": {"overflow": 0x01, "framing": 0x02, "parity": 0x03, "target_timeout": 0x04}, "mark_detail_closed": {"all_released": 0x01, "session_ended": 0x02, "slot_changed": 0x03, "connection_closed": 0x04}})
 
 INTERFACES = {}
 CORE = _NS(op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "clock": 0x04, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13}, lock_free={0x01, 0x02, 0x03, 0x04, 0x10, 0x13},
@@ -93,6 +93,6 @@ FIXTURE_CAPTURE_GROUP = _NS(name="oep.fixture.capture-group", revision=1, target
     line_names={})
 INTERFACES["oep.fixture.capture-group"] = FIXTURE_CAPTURE_GROUP
 PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, target=None, op={"get": 0x01, "set": 0x02, "save": 0x03, "erase": 0x04, "unset": 0x05, "state": 0x06}, lock_free={0x01, 0x06},
-    tlv={"item": {"plan": 0x01, "label": 0x02, "idle": 0x03, "slot": 0x04, "bind": 0x05, "uart": 0x06, "disable": 0x07}, "describe": {"storage": 0x40, "items": 0x41, "slots_max": 0x42, "bind_modes": 0x43}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02, "output_low": 0x03, "output_high": 0x04}, "slot_attach": {"host": 0x00, "at_boot": 0x01}, "slot_boot_reset": {"off": 0x00, "retry_with_reset": 0x01}, "slot_state": {"connected": 0x00, "absent": 0x01, "lock_mismatch": 0x02, "no_target_id": 0x03}, "bind_mode": {"last_reset": 0x00, "manual": 0x01, "mixed": 0x02}, "bind_stream": {"slot_console": 0x01, "fixture_uart": 0x02}, "bind_flow": {"idle": 0x00, "streaming": 0x01, "held": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}, "storage_unreadable": {"form": 0x01, "interface": 0x02, "refused": 0x03}}, own={},
-    line_names={'nrst': "the target's reset line (the probe's retry with reset, and the host)", 'power_hi': 'a line that powers the target when high (the host only)', 'power_lo': 'a line that powers the target when low (the host only)'})
+    tlv={"item": {"plan": 0x01, "label": 0x02, "idle": 0x03, "slot": 0x04, "bind": 0x05, "uart": 0x06, "disable": 0x07}, "describe": {"storage": 0x40, "items": 0x41, "slots_max": 0x42}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02, "output_low": 0x03, "output_high": 0x04}, "slot_attach": {"host": 0x00, "at_boot": 0x01}, "slot_state": {"connected": 0x00, "absent": 0x01}, "bind_stream": {"slot_console": 0x01, "fixture_uart": 0x02}, "bind_flow": {"idle": 0x00, "streaming": 0x01, "held": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}, "storage_unreadable": {"form": 0x01, "interface": 0x02, "refused": 0x03}}, own={},
+    line_names={'nrst': "the target's reset line (the host)", 'power_hi': 'a line that powers the target when high (the host only)', 'power_lo': 'a line that powers the target when low (the host only)'})
 INTERFACES["oep.probe.config"] = PROBE_CONFIG

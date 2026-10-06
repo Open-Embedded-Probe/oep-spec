@@ -373,9 +373,9 @@
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "no save; slot 0 connected on connection 1 (last try at 1 ms, no retry with reset), target_id scheme 1; bind on port 0, last-reset, streaming",
+      "state": "no save; slot 0 connected on connection 1 (last try at 1 ms); bind on port 0, streaming",
       "request_hex": "017000080006000000000000",
-      "answer_hex": "027000010000000000000000010000010040420f0000000000ffffffffffffffff0104003520000100000001"
+      "answer_hex": "027000010000000000000000010000010040420f0000000000010001"
     },
     {
       "name": "probe.config save not offered",

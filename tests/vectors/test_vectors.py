@@ -453,8 +453,8 @@ def test_per_op_vectors_decode_exactly():
     assert 1 + _fixed_sequence(p[1:], lambda b, i: 37) == len(p)
     p = pay("probe.config state: one slot and one bind")
     i = 7                                                                                         # more state hash(u32) reason
-    i += _fixed_sequence(p[i:], lambda b, j: 22 + b[j + 21])                                      # slot_state: 22 bytes + tid
-    i += _fixed_sequence(p[i:], lambda b, j: 4)                                                   # bind_state
+    i += _fixed_sequence(p[i:], lambda b, j: 12)                                                  # slot_state: slot state connection last_try_at_ns
+    i += _fixed_sequence(p[i:], lambda b, j: 2)                                                   # bind_state: port flow
     assert i == len(p)
     p = pay("link source: 8 bytes, byte k = k & 0xFF")
     n = struct.unpack_from("<H", p)[0]

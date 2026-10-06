@@ -588,11 +588,10 @@ def ops() -> dict:
     # oep.probe.config (probe settings §3.3)
     pc = {"8": "oep.probe.config"}
     pce = IFACE["oep.probe.config"]["enum"]
-    slot_state = (struct.pack("<BBHQQ", 0, pce["slot_state"]["connected"], 1, 1_000_000, 0xFFFFFFFFFFFFFFFF)
-                  + bytes([scheme, 4]) + struct.pack("<I", 0x00203500))
-    bind_state = bytes([0, pce["bind_mode"]["last_reset"], 0, pce["bind_flow"]["streaming"]])
+    slot_state = struct.pack("<BBHQ", 0, pce["slot_state"]["connected"], 1, 1_000_000)
+    bind_state = bytes([0, pce["bind_flow"]["streaming"]])
     add("probe.config state: one slot and one bind", "probe settings §3.3", pc,
-        "no save; slot 0 connected on connection 1 (last try at 1 ms, no retry with reset), target_id scheme 1; bind on port 0, last-reset, streaming",
+        "no save; slot 0 connected on connection 1 (last try at 1 ms); bind on port 0, streaming",
         request(0x70, 8, op("oep.probe.config", "state"), bytes([0, 0])),
         ok(0x70, struct.pack("<BBIB", 0, pce["storage_state"]["none"], 0, 0) + bytes([1]) + slot_state + bytes([1]) + bind_state))
     add("probe.config save not offered", "probe settings §2, core §1.2", pc, "ops without save and erase; no storage tag",
