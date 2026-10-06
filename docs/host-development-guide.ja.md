@@ -226,6 +226,10 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 - モニターが一度閉じて戻るときは、前回読んだ位置から読む。
 - 応答の start が要求した位置より進んでいたら、その差が失われた量である。表示に残す。
 - 表示用の時刻は受け取った時刻を使う（probe は byte ごとの時刻を持たない）。
+- **入力を送る**: write は probe の送りの列（describe の send_queue、64 byte 以上）に入った分を accepted で返す（[コンソール](oep-if-console.ja.md) §2）。
+  1 行のコマンドは、send_queue 以下なら 1 回の write で送れる。accepted が count より少なければ、残りを少し待ってから送る（列は target が
+  受け取った分だけ空く。dmseq では target の 1 つのフレームへの答えにつき 2 byte、DMDATA では 1 つの枠への答えにつき 3 byte）。accepted は target が受け取ったことでは
+  ない: 届いたかはコンソールの出力（エコーなど）で見る。
 
 ## 15. probe の設定（`oep.probe.config`）の使い方
 
@@ -520,6 +524,10 @@ label を読み（firmware の固定のラベル、fn 0 の describe の tag 0x4
   role_channels の role 3（reset）で宣言していなければならない。
 - 使うのは host が選んだときだけ（書き込み、復旧、reset の直後で止める）。走っている target へのふつうの attach には付けない
   （target がリセットされる）。
+- 線を離した後に target が自分でもう一度再起動し、debug module がしばらく答えないことがある。probe はそれを `reset_settle_ms`（700 ms）
+  まで待ってから答えるので（[線とデバッグ](oep-if-debug.ja.md) §3。riscv-dm の reset の op も同じ、§4.3）、host はその attach の応答を
+  `attach_budget_ms` + hold_ms + 700 ms を引数の時間として待つ（core §4.4）。それでも status line で失敗したら、target はまだ起動の
+  途中かもしれない: 間を置いて attach し直す。
 - target のリセットの線が有効かどうかは、probe からは見えない（線を無効にできる target がある）。無効のとき、reset TLV は何もしない
   のと同じで、attach は走っている target に対して行われる。
 

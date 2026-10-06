@@ -100,7 +100,7 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
     断る）。attach は受け取ったままの pins の tag を payload に入れる。scan は tag 0x00 に続けて TLV 0x40 index（u8、要求の並びの中の位置）を入れる。
     持たれている channel（plan、接続、設定、disable）を含む組は rejected unavailable（cause 1 / 5、その channel 付き）。
 - **attach の予算**: 1 つの attach の応答に probe が掛ける時間は多くても 1000 ms（registry `limits.attach_budget_ms`）で、速さの探索とその再試行を含み、
-  reset TLV の hold_ms は含まない。その間にどの速さも使えなければ、応答は status line の completed failed。
+  reset TLV の hold_ms と、線を離した後に DM が答えるのを待つ時間（§3、多くても `limits.reset_settle_ms`）は含まない。その間にどの速さも使えなければ、応答は status line の completed failed。
 - **scan の予算**: probe は、scan の要求が届いてから 500 ms（`limits.scan_budget_ms`）より後に組を始めない（少なくとも 1 組は試す）。
   1 組の試しは attach の予算で抑える。したがって 1 つの scan の応答は多くても `scan_budget_ms` + `attach_budget_ms` かかる。
 - どちらの予算も max_op_ms で頭打ちにする。host の待ちは、これらを引数の時間として数える（core §4.4）。
@@ -157,7 +157,8 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
   §4.6 など、target を扱うインターフェースの節）。
 - **1 つの要求の中の再試行**: probe が 1 つの要求の中で線の再試行に使うのは多くても 200 ms（registry `limits.wire_retry_ms`）で、遅い速さでの
   再試行を含む。使い切ったら、その要求を status line で終える。それだけでは線切れと決めない。attach（と scan の 1 組）の速さの探索は、
-  代わりに §1 の attach の予算で抑える。再試行の間の遅い速さは一時的で、connection の speed_hz は変えない。
+  代わりに §1 の attach の予算で抑える。reset の後に DM が答えるのを待つ時間（§3 の reset TLV、§4.3。多くても `limits.reset_settle_ms`）は、
+  この 200 ms に数えない。再試行の間の遅い速さは一時的で、connection の speed_hz は変えない。
 - **線切れ**: 線が切れたとするのは、ある connection の操作が線からの応答無しで失敗し続けて（status line。要求の中でもコンソールの読みの中でも）
   **実時間で 1000 ms**（`limits.wire_lost_ms`）たち、その間にその connection で成功した操作が無いとき。probe が reset を出している時間、
   reset の線を保っている時間（plan、attach の reset TLV）と、それを解いてからの 1000 ms は数えない。probe が要求の中で線切れと決めたら、
@@ -231,6 +232,12 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
   止める保証が要るときは、riscv-dm の reset mode 2（ndmreset を haltreq を保ったまま解く）を使う。method 0 なら走ったまま attach する。任意の機能で、role_channels の role 3（reset）で宣言する。持たない probe は reset の TLV を rejected unsupported で断る（受け取ったままの tag、0x85、core §2.3）。既存の connection に reset TLV を付けた
   attach は、その target を reset してから同じ connection を返す（mark reset detail 3）。hold_ms は
   core の max_op_ms の対象。
+- **線を離した後の待ち**: リセットの線を離した後、target は自分でもう一度再起動することがあり（ブートローダを通る、など）、その間 debug module は
+  線に答えない。probe は、DMSTATUS の読みを wire の最も遅い速さで繰り返し、読みが線の応答を得る（status line にならない）まで待つ。読みの間に、
+  その wire の wake / 設定の手順（§1 の 1）を送り直してよい。待つのは線を離した時から多くても 700 ms（registry の `limits.reset_settle_ms`。
+  max_op_ms で頭打ち）で、§1 の attach の予算にも §2 の再試行にも数えない。DM が答えたら、その時から attach の予算で速さを探す（§1）。700 ms までに答えなければ、probe は status line の
+  completed failed で答える。既存の connection に付けた attach では、その connection を保つ（target は reset した。mark reset detail 3）。
+  host の待ちは、hold_ms とこの 700 ms を引数の時間として数える（core §4.4）。
 - **reset の線に既定は無い**: どの線を reset に使うかは host が毎回 channel で明示する（線を取り違えた reset は target や治具を
   壊しうる）。probe が reset に使ってよい channel は describe の role_channels の role 3（reset）で宣言する。宣言していない
   channel は、何も実行せずに rejected unsupported（受け取ったままの tag、0x85）。今ある plan や接続が持つ channel は、core §8.1 の取り合いとして rejected
@@ -462,7 +469,13 @@ malformed。dmi の max_reads / max_us = 0 は 1 回読む。run の timeout_ms 
 
 - outcome success の条件は、mode 0 と 2 では flags bit0、mode 1 では bit1。満たさなければ completed failed（形は同じ。status は
   止まらない / 走らない = timeout、DM が応えない = line、cmderr = fault）。ndmreset を解いてから hart が止まる / 走るのを待つ上限は
-  1 回の手順につき 100 ms、手順のやり直し（flags bit2）は 1 回まで。
+  1 回の手順につき 100 ms（DM が答えないときは、下の待ちの後、DM が答えた時から数える）、手順のやり直し（flags bit2）は 1 回まで。
+- **DM が答えない間の待ち**: ndmreset を解いた後、target は自分でもう一度再起動することがあり（ブートローダを通る、など）、その間 debug module は
+  線に答えない。probe は、DMSTATUS の読みが線の応答を得る（status line にならない）まで読み直して待つ。読みの間に、その wire の wake / 設定の
+  手順（§1 の 1、§3）を送り直してよい。1 つの reset の op の中でこの待ちに使う時間は、合わせて多くても 700 ms（registry の
+  `limits.reset_settle_ms`。max_op_ms で頭打ち）で、§2 の再試行に数えない。DM が答えるまで、op は答えない。上限までに DM が答えなければ、probe は手順を
+  やり直さず（flags bit2 を立てない）、status line の completed failed で答え、connection は保つ（§2 の線切れの判定は、reset を解いてからの
+  1000 ms を数えない）。host の待ちは、この 700 ms を引数の時間として数える（core §4.4）。
 - flags のほかの bit は 0。reset の後は havereset を確認応答し、haltreq を下ろす（mode 2 は止めたまま）。
 - 3 以上の mode は rejected unsupported（payload `0x00`。後の revision が定めうる、core §2.5）。
 

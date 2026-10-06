@@ -168,6 +168,7 @@ capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定]
 | scan、attach、detach | scan, attach, detach | target を探す、つなぐ、離れる | debug §1、§2 |
 | 席、max_connections | seat, max_connections | 線が一度に持てる接続の数 | debug §1 |
 | attach の予算、scan の予算 | attach budget, scan budget | `attach_budget_ms`、`scan_budget_ms` | debug §1 |
+| リセットの後の待ち | reset settle wait | リセットを解いた後、黙った debug module が答えるまでの待ち。多くても `reset_settle_ms`、線の再試行に数えない | debug §3、§4.3 |
 | 立ち上げ、search_retries | bring-up, search_retries | wake、速さを選んで確かめること。その追加の試しの数 | debug §1 |
 | スクラッチのレジスタ | scratch register | 書き込みの確かめに使い、後で元に戻すレジスタ | debug §1 |
 | target_id、scheme | target_id, scheme | probe が読んだ識別子と、その読み方 | debug §1 |
@@ -178,6 +179,7 @@ capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定]
 | idle_clock | idle_clock | 2 線のクロックの休み方（high か low） | debug §3 |
 | mechanism（方式） | mechanism | コンソールの運び方: SDI、DMDATA、dmseq | console §1、§3 |
 | dmseq | dmseq | DATA0 / DATA1 の上の、順番の bit と CRC-8 を持つコンソールの framing | dmseq |
+| 送りの列 | send queue | コンソールの write を受ける、ストリームごとの probe の列。大きさは describe の send_queue | console §2 |
 
 ## キャプチャ
 

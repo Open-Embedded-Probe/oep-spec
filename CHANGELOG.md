@@ -149,6 +149,14 @@ New documents (oep-transports) are Japanese only until then (core §0, README, C
 - Analog capture: a value of 0 or 2^b − 1 (the converter's minimum or maximum code) means the input was at or beyond that end of the
   frontend's range; the host shows it as clipped, not as a voltage, and the probe sends it unchanged (capture §1.2 rule 6; conformance host
   checklist).
+- Console write and reset settle (ja, the working text; agreed by ch32rv, backed by the bench's measurements, no objection from WireSkein):
+  a console write goes into a per-stream send queue whose size the probe declares in the new describe tag 0x41 send_queue (u16 bytes, at
+  least 64, `limits.console_send_queue_min_bytes`; required with mechanism 1 or 2); accepted = what fits in the free space, 0 only when the
+  queue is full; the probe feeds the target from the queue at the mechanism's pace (dmseq 2 bytes per answer, DMDATA 3); the "at most the
+  send slot, 0 while it is busy" rule is gone (console §1, §2, §3.2; common §1.4; dmseq host rule 5). riscv-dm reset and attach's reset TLV
+  wait, after the release, for a silent debug module to answer again, at most `limits.reset_settle_ms` = 700 (capped by max_op_ms), not
+  counted as wire retries or in the attach budget; still silent at the bound = status line, no redo, the connection is kept (debug §1, §2,
+  §3, §4.3); core §4.4's wait floor counts reset_settle_ms as argument time for both. Conformance, glossary and both guides follow.
 
 ### Tools and test vectors
 

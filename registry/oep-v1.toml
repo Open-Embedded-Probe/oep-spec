@@ -150,15 +150,17 @@ dm_wait_ms = 100                # riscv-dm: one wait for a DM state inside a hig
 dmi_busy_retries = 100          # riscv-dm: DMI busy is retried this many times, then status wait (oep-if-debug §4)
 reset_wait_ms = 100             # riscv-dm reset: wait for the hart after releasing ndmreset, per attempt (oep-if-debug §4.3)
 reset_retries = 1               # riscv-dm reset: the sequence is repeated at most this many times (flags bit2) (oep-if-debug §4.3)
+reset_settle_ms = 700           # riscv-dm reset and attach's reset TLV: the most one op waits, after the release, for a silent debug module to answer again; not wire retries, counted as argument time (oep-if-debug §3, §4.3, core §4.4)
 swd_wait_retries = 100          # arm-adi transfer: WAIT is retried this many times, then status wait (oep-if-debug §6)
 wire_retry_ms = 200             # wire: the most one request spends retrying the wire, slower speeds included; then status line (oep-if-debug §2)
 wire_lost_ms = 1000             # wire: failures with no answer from the wire for this long of real time, no success in between, = wire loss (oep-if-debug §2)
-attach_budget_ms = 1000         # wire: one attach answer at most, speed search and retries included, reset hold_ms excluded (oep-if-debug §1, core §4.4)
+attach_budget_ms = 1000         # wire: one attach answer at most, speed search and retries included, reset hold_ms and the reset settle wait excluded (oep-if-debug §1, core §4.4)
 scan_budget_ms = 500            # wire: no scan combination starts later than this after the request arrived (oep-if-debug §1, core §4.4)
 scan_tried_max = 255            # wire: combinations one scan request tries at most (tried is u8; oep-if-debug §1)
 block_frame_overhead_bytes = 24 # read_block / write_block: max_length is at most max_frame minus this (oep-if-debug §4.5, §6)
 tar_rewrite_bytes = 1024        # arm-adi read_block / write_block: the probe rewrites TAR at every boundary of this many bytes (oep-if-debug §6)
 console_dmstatus_poll_ms = 20   # console: while reading, the probe checks DMSTATUS at least this often (oep-if-console §3)
+console_send_queue_min_bytes = 64  # console: describe send_queue is at least this (oep-if-console §1, §2)
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused or not used (oep-if-fixture §2, oep-if-probe-config §1)
 uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)
 fixture_count_max = 255         # i2c-target / spi-target: u8 counts (pending, queued) stop at this (oep-if-fixture §3, §4)
@@ -528,6 +530,7 @@ op = [
 ]
 [interface.tlv.describe]
 mechanisms = 0x40               # u8 list: the mechanisms this probe opens (required; oep-if-console §1)
+send_queue = 0x41               # u16: bytes of each stream's send queue that write fills, at least console_send_queue_min_bytes; required when mechanisms has 1 or 2 (oep-if-console §1, §2)
 [interface.enum.mechanism]      # read_from / mark_kind / mark details: [common.enum.*]
 sdi = 0
 dmdata = 1

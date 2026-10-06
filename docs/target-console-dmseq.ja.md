@@ -95,7 +95,7 @@ OEP の probe については [線とデバッグ](oep-if-debug.ja.md) §4.6。
    たまたま同じ S を使った場合、その 1 フレームは落ちる。1 bit では区別できないので、target を reset した host は新しい session を始める。
 4. **受理**: S != `last_s` なら payload を渡し、`last_s` := S、`last_syn` := SYN。
 5. `pending` があり A == `h` なら届いている: `h` := not `h`、`pending` を空にする。
-   `pending` が空なら次の最大 2 byte を入れる。K = S、H = `h`、M = len(`pending`)、CRC で答える。
+   `pending` が空なら、送るものの次の最大 2 byte を入れる（OEP の probe では送りの列の先頭から、[コンソール](oep-if-console.ja.md) §2）。K = S、H = `h`、M = len(`pending`)、CRC で答える。
 
 ## target の規則（フレームを出している間に DATA0 を読んだとき）
 

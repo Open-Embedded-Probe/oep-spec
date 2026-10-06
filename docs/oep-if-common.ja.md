@@ -85,7 +85,7 @@ marks はロックなしで使える。
 |---|---|---|---|
 | clear | [stream(u16)] | — | 貯めたバイトを捨て、マーク clear を付ける |
 | mark | [stream(u16)]、value(u8) | — | マーク host（detail = value）を付ける |
-| write | [stream(u16)]、count(u16)、data | accepted(u16) | 相手への入力。`accepted` は方式（UART の送信、コンソールの mechanism）の送り枠に入れた分で、届いたことは意味しない。枠が空いていなければ accepted 0 = completed failed、0 < accepted < count = completed partial。count = 0 は malformed |
+| write | [stream(u16)]、count(u16)、data | accepted(u16) | 相手への入力。`accepted` は、data の先頭から probe の送りの列に入れたバイトの数（count と列の空きの小さい方）で、届いたことは意味しない。列が満ちていれば accepted 0 = completed failed、0 < accepted < count = completed partial。count = 0 は malformed。列の大きさと、列から相手へ渡す速さはインターフェースが決める（コンソールは [コンソール](oep-if-console.ja.md) §2、fixture UART は UART の送信） |
 
 どれもロックが要る。
 

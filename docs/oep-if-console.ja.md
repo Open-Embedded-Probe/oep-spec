@@ -33,6 +33,8 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
   正確に決める**（版を持たない）。方式を変えるときは新しい番号（3 以降、registry に足す）にし、古い番号の意味は変えない。知らない mechanism と、
   describe の mechanisms に無い mechanism は rejected unsupported（payload `0x00`、core §4.3）。
 - describe: tag 0x40 mechanisms（u8 の並び。その probe が開ける mechanism）。必ず出す。
+- describe: tag 0x41 send_queue（u16、byte）。ストリームごとの送りの列（§2）の大きさで、64 以上（registry の `console_send_queue_min_bytes`）。
+  mechanisms に 1 か 2（host → target を運ぶ mechanism）があれば必ず出す。どちらも無ければ出さない。
 - 知らない stream は rejected no_connection（core §4.3）。別の種類の資源の番号（connection の番号を stream に）は rejected unavailable
   cause 6。arm-adi（swd）の connection への open も rejected unavailable cause 6（[線とデバッグ](oep-if-debug.ja.md) §5）。
 - ストリームの番号（u16）は core §9 の規則で振る（probe で 1 つの空間、1 から進めて一周する。同じ場所の再 open は番号を消費しない、§2）。
@@ -65,9 +67,17 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
   同じピンの組）で同じ mechanism が次に open されるまで読める**（read / marks。write / mark / clear は rejected unavailable）。線が
   落ちる直前の出力を回収するため。別の場所の open では消えない。
 - ストリームが使う connection は、そのストリームを開いたセッション（または `oep.probe.config` のスロット）が使っているものとして数える。
-- write は、方式が 1 回に運べる分（送り枠、dmseq は 2 byte、DMDATA は 3 byte）だけを受け付ける。**accepted は送り枠に入れた分で、
-  target が受け取ったことは意味しない**。枠が空いていなければ accepted 0（completed failed）。残りは host が、読みの進みを見て送り直す
+- **送りの列**: probe は、host → target を運ぶ mechanism（1、2）のストリームごとに、describe の send_queue の大きさの送りの列を持つ。
+  write は data を先頭から、列の空きに入る分だけ列の終わりに入れる。**accepted は列に入れたバイトの数**（count と列の空きの小さい方）で、
+  target が受け取ったことは意味しない。accepted 0（completed failed）は、列が満ちているときだけ（mechanism 0 は §3.1）。
+  0 < accepted < count は completed partial。残り（data の accepted 番目から）は host が後で送る（列は probe が target に渡した分だけ空く）
   （[共通部品](oep-if-common.ja.md) §1.4）。
+- probe は列の先頭から、mechanism の運び方で target に渡す: dmseq は 1 つのフレームへの答えに 2 byte まで
+  （[dmseq](target-console-dmseq.ja.md) の host の規則 5）、DMDATA は 1 つの枠への答えに 3 byte まで（§3.2）。どちらも、列にある分が
+  それより少なければその全部を載せる。答えに載せたバイトは列から出る。列のバイトの順は write で受け取った順のままである。
+- 列は、ストリームが閉じたときに捨てる（閉じたストリームへの write は rejected unavailable）。clear は読みのバッファだけを捨て、列には触れない。
+- （参考）列を持つのは、1 回の write が 2〜3 byte しか受け付けないと、1 行のコマンドに 2〜3 byte ごとの要求が要るため。1 つの要求の往復が
+  長い経路（UART の変換器を通る口）ではコマンドが遅くなり、コマンドの前に用意したキャプチャの窓にもコマンドが間に合わない。
 
 ## 3. 方式（mechanism）
 
@@ -100,7 +110,7 @@ mechanism 0 はこの郵便受けの並びだけで、connection の線には依
   決める。
 - **probe** は DATA0 を読む。L が 1〜7 なら DATA1 も読み、バイト 0〜L − 1 をその順に受け取り、次に DATA0 に 0 を書く（受け取った印）。
   L が 0 なら何も無い。L が 8 以上なら、その word は枠ではない: probe は受け取らず、DATA0 も書かない（読み捨てない）。
-- host → target の向きは無い（write は何も受け付けない: accepted 0、completed failed）。
+- host → target の向きは無い（送りの列を持たず、write は何も受け付けない: accepted 0、completed failed）。
 
 ### 3.2 DMDATA
 
@@ -124,10 +134,10 @@ mechanism 1 はこの郵便受けの並びだけで、connection の線には依
     は DATA1 から（DATA1 は DATA0 の後に読む）。それから答える。
   - bit 7 が 1 で L が 4 なら、枠は空（バイトを運ばない）。probe はそれに答える。
   - bit 7 が 1 で L が 0〜3 か 12〜63 なら、その word は target の枠ではなく、バイトを運ばない（多くは probe やほかの debugger が
-    残した値。たとえば 0xffffffff）。probe は DATA0 に 0 を書いて消し、その上に入力を載せない（送り枠のバイトは出さない）。
-  - **答え**: target の枠 1 つにつき DATA0 をちょうど 1 回書く。write が送り枠にバイトを置いていれば（n = 1〜3）、DATA0 = (n + 4) | バイト 0〜
-    n − 1 << 8（bit 7 = 0。位置が n 以上のバイトは 0）で、そのバイトは送り枠から出る。そうでなければ DATA0 = 0。probe は DATA1 を書かない。
-- write が送り枠に置くのは 3 バイトまで（§2）。前に置いたバイトがまだ答えで出ていなければ、枠は空いていない（accepted 0）。
+    残した値。たとえば 0xffffffff）。probe は DATA0 に 0 を書いて消し、その上に入力を載せない（送りの列のバイトは出さない）。
+  - **答え**: target の枠 1 つにつき DATA0 をちょうど 1 回書く。送りの列（§2）にバイトがあれば、n = 列のバイトの数と 3 の小さい方として、
+    DATA0 = (n + 4) | バイト 0〜n − 1 << 8（バイト 0〜n − 1 は列の先頭の n バイト。bit 7 = 0。位置が n 以上のバイトは 0）で、その n バイトは
+    列から出る。列が空なら DATA0 = 0。probe は DATA1 を書かない。
 
 ## 4. 参照する仕様
 

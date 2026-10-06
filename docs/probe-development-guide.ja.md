@@ -221,6 +221,11 @@ revision は数字に任意の `.数字` の組。revision が分からなけれ
 - **resume と run は出し直さない**（[線とデバッグ](oep-if-debug.ja.md) §4.2、§4.4）。resume の要求が 2 回要る target や、すべて再開したと
   知らせない target は host が扱う: 汎用の名前のインターフェースに target 固有の知識を入れると core §13 の規則 8 に反する。
 - **ブロックのループを速くする変更は、線の上のタイミングを変えうる。** 残す前に複数の target で測る。
+- **コンソールの送りの列**（[コンソール](oep-if-console.ja.md) §2）: write は列の空きに入る分をすぐ受けて答え、target へは列から mechanism の
+  運び方で渡す（target の受け取りを待ってから答えない）。send_queue は 64 以上で、1 行のコマンドが 1 回の write に入る大きさを選ぶ
+  （max_frame から write の要求の見出しと固定部分を引いた分より大きくしても、1 回の write には入らない）。
+- **リセットを解いた後の待ち**（[線とデバッグ](oep-if-debug.ja.md) §3、§4.3）: ndmreset やリセットの線を解いた後に DM が答えない間は、
+  DMSTATUS を読み直して `reset_settle_ms`（700 ms）まで待つ。この間の失敗を、線の再試行の 200 ms にも線切れにも数えない。
 
 ## 13. 参照の firmware が宣言する値（規範が選び方を任せる所）
 
