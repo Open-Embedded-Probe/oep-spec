@@ -135,19 +135,6 @@ label_max_bytes = 32            # probe.config label text: valid UTF-8 without c
 interface_name_max_bytes = 64
 resend_max = 1                  # host: resends of one request with the same corr (core §5.2; the probing rule of transports §3)
 port_speed_broken_max = 3       # probe: broken candidates in a row with no valid frame, after commit, that return a raised port to the boot speed (oep-if-link §3 return condition 4)
-dm_wait_ms = 100                # riscv-dm: one wait for a DM state inside a high-level op (oep-if-debug §4)
-dmi_busy_retries = 100          # riscv-dm: DMI busy is retried this many times, then status wait (oep-if-debug §4)
-reset_wait_ms = 100             # riscv-dm reset: wait for the hart after releasing ndmreset, per attempt (oep-if-debug §4.3)
-reset_retries = 1               # riscv-dm reset: the sequence is repeated at most this many times (flags bit2) (oep-if-debug §4.3)
-reset_settle_ms = 700           # riscv-dm reset and attach's reset TLV: the most one op waits, after the release, for a silent debug module to answer again; not wire retries, counted as argument time (oep-if-debug §3, §4.3, core §4.4)
-swd_wait_retries = 100          # arm-adi transfer: WAIT is retried this many times, then status wait (oep-if-debug §6)
-wire_retry_ms = 200             # wire: the most one request spends retrying the wire, slower speeds included; then status line (oep-if-debug §2)
-wire_lost_ms = 1000             # wire: failures with no answer from the wire for this long of real time, no success in between, = wire loss (oep-if-debug §2)
-attach_budget_ms = 1000         # wire: one attach answer at most, speed search and retries included, reset hold_ms and the reset settle wait excluded (oep-if-debug §1, core §4.4)
-scan_budget_ms = 500            # wire: no scan combination starts later than this after the request arrived (oep-if-debug §1, core §4.4)
-scan_tried_max = 255            # wire: combinations one scan request tries at most (tried is u8; oep-if-debug §1)
-block_frame_overhead_bytes = 24 # read_block / write_block: max_length is at most max_frame minus this (oep-if-debug §4.5, §6)
-tar_rewrite_bytes = 1024        # arm-adi read_block / write_block: the probe rewrites TAR at every boundary of this many bytes (oep-if-debug §6)
 console_dmstatus_poll_ms = 20   # console: while reading, the probe checks DMSTATUS at least this often (oep-if-console §3)
 console_send_queue_min_bytes = 64  # console: describe send_queue is at least this (oep-if-console §1, §2)
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused or not used (oep-if-fixture §2, oep-if-probe-config §1)
@@ -157,10 +144,10 @@ max_op_ms_max = 600000          # fn 0 describe max_op_ms is 1 to this (10 minut
 restart_after_answer_ms = 100   # oep.probe.restart: the probe begins its restart at most this long after its answer has left the transport (oep-if-restart §2)
 
 [common.enum.target_id_scheme]  # one space for the whole probe; each wire states which it uses (oep-if-debug §1)
-wch_dmi_7f = 1                  # the u32 at DMI address 0x7F of that debug module; 0 and all ones = none (not sent)
-targetsel = 2                   # swd: connections entries only, the u32 TARGETSEL (0 when none); never a slot lock
+dmi_7f = 1                      # the u32 at DMI address 0x7F of that debug module; 0 and all ones = none (not sent)
+targetsel = 2                   # swd: connections entries only, the u32 TARGETSEL (0 when none)
 [common.enum.target_id_len]     # bytes of each scheme's value (slot locks must match it; oep-if-probe-config §1.1)
-wch_dmi_7f = 4
+dmi_7f = 4
 targetsel = 4
 [common.enum.read_from]         # positioned streams (oep-if-common §1.2)
 position = 0
@@ -301,14 +288,15 @@ op = [
   { code = 0x05, name = "connections", lock = false },  # first(u8) -> more, count x entry
 ]
 [interface.reserved]
-op = [[0x04, 0x04]]             # was attach_under_reset; now attach's reset TLV (oep-if-debug §3)
+op = [[0x04, 0x04]]             # was attach_under_reset
+features = [[0x01, 0x01]]       # was attach_writes_unbounded
 [interface.tlv.describe]
 max_connections = 0x40          # u8: live connections at once (absent = 1; oep-if-debug §1)
 [interface.enum.connection_users] # connections entry users bits (oep-if-debug §2.1)
 host_session = 0x01
 slot = 0x02
 [interface.tlv.scan]
-max_speed = 0x01                # u32 Hz (absent: the probe's slowest)
+max_speed = 0x01                # u32 Hz (absent: the wire's slowest speed)
 skip = 0x02                     # u16, count 0 only: pairs of the count-0 list to skip (oep-if-debug §1)
 idle_clock = 0x04               # u8: SWCLK while the line rests during the scan, 0 high / 1 low
 [interface.tlv.detach]
@@ -320,17 +308,15 @@ idle_clock = 0x04               # critical, u8: SWCLK while the line rests, 0 hi
 reset = 0x05                    # critical: channel(u16) hold_ms(u16) - hold the reset line, then attach (oep-if-debug §3)
 [interface.tlv.attach_answer]   # the attach result's tail
 target_id = 0x10                # scheme(u8) value: what the probe read of the target's identity (oep-if-debug §1)
-dpc = 0x11                      # u32 (8 bytes on RV64): the halted hart's dpc when flags halted is set
+dpc = 0x11                      # u32: the halted hart's dpc when flags halted is set
 search_retries = 0x12           # u16, optional: extra attempts the bring-up needed beyond each step's first try (saturates at 0xFFFF); only when a bring-up ran (oep-if-debug §1)
 [interface.enum.scan_kind]      # the kind byte of a scan entry; on rvswd only riscv-dm (oep-if-debug §3)
 riscv_dm = 1
 [interface.enum.attach_flags]   # the attach answer's flags, every wire
 havereset_acked = 0x01
 existing = 0x02
-dormant_woken = 0x04
-halted = 0x08
-[interface.enum.features]       # describe features bits (common tag 0x06)
-attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound and the §2 rule for lines while the wire does not answer
+halted = 0x08                   # 0x04 reserved (swd's dormant_woken)
+[interface.enum.features]       # describe features bits (common tag 0x06): none in revision 1
 [interface.enum.attach_method]
 run = 0
 halt = 1
@@ -353,7 +339,8 @@ op = [
   { code = 0x05, name = "connections", lock = false },
 ]
 [interface.reserved]
-op = [[0x04, 0x04]]
+op = [[0x04, 0x04]]             # was attach_under_reset
+features = [[0x01, 0x01]]       # was attach_writes_unbounded
 [interface.tlv.describe]
 max_connections = 0x40          # u8: live connections at once (absent = 1; oep-if-debug §1)
 [interface.enum.connection_users] # connections entry users bits (oep-if-debug §2.1)
@@ -377,10 +364,8 @@ riscv_dm = 1
 [interface.enum.attach_flags]
 havereset_acked = 0x01
 existing = 0x02
-dormant_woken = 0x04
-halted = 0x08
-[interface.enum.features]       # describe features bits (common tag 0x06)
-attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound and the §2 rule for lines while the wire does not answer
+halted = 0x08                   # 0x04 reserved (swd's dormant_woken)
+[interface.enum.features]       # describe features bits (common tag 0x06): none in revision 1
 [interface.enum.attach_method]
 run = 0
 halt = 1
@@ -399,7 +384,9 @@ op = [
   { code = 0x05, name = "connections", lock = false },
 ]
 [interface.reserved]
-op = [[0x04, 0x04]]
+op = [[0x04, 0x04]]             # was attach_under_reset
+features = [[0x01, 0x01]]       # was attach_writes_unbounded
+"tlv.attach_answer" = [[0x10, 0x11]]   # target_id and dpc are not sent on swd
 [interface.tlv.describe]
 max_connections = 0x40          # u8: live connections at once (absent = 1; oep-if-debug §1)
 [interface.enum.connection_users] # connections entry users bits (oep-if-debug §2.1); slot is always 0 in v1
@@ -417,19 +404,13 @@ targetsel = 0x02                # critical, u32 (multidrop only)
 pins = 0x03                     # critical: swdio(u16) swclk(u16) - the pair to attach on
 reset = 0x05                    # critical: channel(u16) hold_ms(u16); probes without it refuse unsupported
 [interface.tlv.attach_answer]
-target_id = 0x10                # not sent in v1 (no scheme for swd)
-dpc = 0x11                      # not sent in v1 (method 1 is unsupported)
 search_retries = 0x12           # u16, optional (oep-if-debug §1)
 [interface.enum.scan_kind]
-riscv_dm = 1
-arm_adi = 2
+arm_adi = 2                     # 1 reserved
 [interface.enum.attach_flags]
-havereset_acked = 0x01
-existing = 0x02
+existing = 0x02                 # 0x01 and 0x08 reserved (riscv only)
 dormant_woken = 0x04
-halted = 0x08
-[interface.enum.features]       # describe features bits (common tag 0x06)
-attach_writes_unbounded = 0x01  # attach goes through another debugger the probe does not control; outside the oep-if-debug §1 write bound and the §2 rule for lines while the wire does not answer
+[interface.enum.features]       # describe features bits (common tag 0x06): none in revision 1
 [interface.enum.attach_method]
 run = 0                         # halt (1) is rejected unsupported on swd
 [interface.enum.pin_role]       # the roles of the pins in describe's channel_group / role_channels
@@ -452,25 +433,22 @@ op = [
   { code = 0x08, name = "step", lock = true },
 ]
 [interface.tlv.describe]        # the common tags only (ops 0x09: reset, read_block / write_block, run, step are optional; no features)
-[interface.tlv.reset]
-method = 0x01
 [interface.tlv.step_answer]
 step_left = 0x01                # length 0: step could not halt the hart again; dcsr.step may still be set and the hart runs (oep-if-debug §4.2)
-[interface.tlv.read_block]
-address_hi = 0x01               # reserved: critical u32, the upper address bits (RV64); not in v1
-[interface.tlv.write_block]
-address_hi = 0x01               # reserved
 [interface.enum.run_stopped]    # run answer's stopped byte (oep-if-debug §4.4)
 timeout_halted = 0              # the limit passed; the probe halted the hart (dpc and values valid)
 stopped = 1
 not_halted = 2                  # the limit passed and the hart could not be halted (dpc invalid, nvals 0)
+not_run = 3                     # the preparation (registers, dcsr, pc) failed; the hart was not run and stays halted (dpc invalid, nvals 0)
 [interface.enum.reset_flags]    # reset answer's flags (oep-if-debug §4.3)
 reached = 0x01
 verified = 0x02
-retried = 0x04
-confirm_failed = 0x08
 [interface.reserved]
-dmi_step = [[0x10, 0x1F]]       # the same steps with a u32 address
+dmi_step = [[0x10, 0x1F]]       # kept for the same steps with a u32 address
+reset_flags = [[0x04, 0x04], [0x08, 0x08]]   # were retried, confirm_failed
+"tlv.reset" = [[0x01, 0x01]]    # was method
+"tlv.read_block" = [[0x01, 0x01]]   # kept for address_hi
+"tlv.write_block" = [[0x01, 0x01]]  # kept for address_hi
 [interface.enum.dmi_step]
 write = 0x01
 read = 0x02
@@ -481,10 +459,6 @@ poll_us = 0x05
 run = 0
 run_verified = 1
 halt_at_reset = 2
-[interface.enum.reset_method]
-probe_default = 0
-ndmreset = 1
-system_reset = 2                # reserved: no common procedure (oep-if-debug §4.3)
 
 [[interface]]
 name = "oep.target.arm-adi"
@@ -495,10 +469,9 @@ op = [
   { code = 0x02, name = "read_block", lock = true },
   { code = 0x03, name = "write_block", lock = true },
 ]
-[interface.tlv.read_block]
-address_hi = 0x01               # reserved: 64-bit AP addresses; not in v1
-[interface.tlv.write_block]
-address_hi = 0x01               # reserved
+[interface.reserved]
+"tlv.read_block" = [[0x01, 0x01]]   # kept for address_hi
+"tlv.write_block" = [[0x01, 0x01]]  # kept for address_hi
 [interface.enum.swd_ack]        # transfer answer's ack: line order, bit0 first (oep-if-debug §6)
 ok = 1
 wait = 2

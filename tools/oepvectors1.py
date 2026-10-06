@@ -528,7 +528,7 @@ def ops() -> dict:
     # oep.wire.rvswd (debug §1 to §3)
     rv = {"4": "oep.wire.rvswd"}
     users = IFACE["oep.wire.rvswd"]["enum"]["connection_users"]
-    scheme = REG["common"]["enum"]["target_id_scheme"]["wch_dmi_7f"]
+    scheme = REG["common"]["enum"]["target_id_scheme"]["dmi_7f"]
     entry = struct.pack("<HHHIBBBB", 1, 0x0001, 0x0002, 1_000_000, users["host_session"], 0xFF, scheme, 4) + struct.pack("<I", 0x00203500)
     add("rvswd connections: one connection with a target_id", "debug §2.1", rv,
         "connection 1 on channels 1 / 2 at 1 MHz, attached by the session, no slot, target_id scheme 1 = 0x00203500",
@@ -554,6 +554,11 @@ def ops() -> dict:
         request(0x51, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<H", 9), S), rej(0x51, "no_connection"))
     add("riscv-dm run not offered", "debug §4, core §1.2", dm, "ops of fn 6: dmi, halt, resume (09 02 00 01 07)",
         request(0x52, 6, op("oep.target.riscv-dm", "run"), struct.pack("<HIIBB", 1, 0x20000000, 100, 0, 0), S), rej(0x52, "unknown_operation"))
+    run_stopped = IFACE["oep.target.riscv-dm"]["enum"]["run_stopped"]
+    add("riscv-dm run: the preparation fails, the hart is not run", "debug §4.4", dm,
+        "session S; connection 1; run offered in ops; the hart is halted and writing a0 fails with no answer from the wire",
+        request(0x56, 6, op("oep.target.riscv-dm", "run"), struct.pack("<HIIB", 1, 0x20000000, 100, 1) + struct.pack("<HI", 0x100A, 7) + bytes([0]), S),
+        failed(0x56, struct.pack("<BBIIB", REG["status"]["line"], run_stopped["not_run"], 0, 0, 0)))
     rd = op("oep.target.riscv-dm", "dmi")
     add("riscv-dm dmi: one read of DMSTATUS", "debug §4.1", dm, "session S; connection 1; DMSTATUS reads 0x00400382",
         request(0x53, 6, rd, struct.pack("<HH", 1, 1) + bytes([IFACE["oep.target.riscv-dm"]["enum"]["dmi_step"]["read"], 0x11]), S),

@@ -288,6 +288,16 @@
       "answer_hex": "0252000002"
     },
     {
+      "name": "riscv-dm run: the preparation fails, the hart is not run",
+      "spec": "debug §4.4",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "session S; connection 1; run offered in ops; the hart is halted and writing a0 fails with no answer from the wire",
+      "request_hex": "0156000600074433221101000000002064000000010a100700000000",
+      "answer_hex": "02560001010203000000000000000000"
+    },
+    {
       "name": "riscv-dm dmi: one read of DMSTATUS",
       "spec": "debug §4.1",
       "fns": {

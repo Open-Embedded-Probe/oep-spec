@@ -26,21 +26,10 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 2. §1 と §2 に従う。swdio / swclk は「ピンの役 1 / 2 の channel」と読み替える;
 3. `oep.target.*` のインターフェースが使う [共通部品](oep-if-common.ja.md) §2 の connection を作る。
 
-組が 2 本のピンでない wire は、自分の文書で、pins の TLV、scan の entry、connections の entry を、2 つの u16 の欄の代わりに `n(u8)、n × (role(u8)、channel(u16))`
-で書き、ほかの欄とその順は保つ。
-
-**ピンの無い wire.** channel_group も role_channels も宣言しない wire（そのピンがこの probe の channel でない。たとえば別のデバッガを駆動する TCP の
-endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
-
-- attach は pins なしで送る。pins の TLV は、宣言が許さないほかの組と同じく rejected unsupported（受け取ったままの tag）（§1）;
-- scan の count = 0 はその 1 つの組を試し、組を並べた要求は rejected unsupported;
-- connections の entry と scan の entry は、各 channel に 0xFFFF を入れる（`n × (role, channel)` の形では n = 0）;
-- §1 のピンの規則（count = 0 が外すもの、持たれている channel）は当てはめる相手が無い。
-
 新しい wire の文書は、ほかに次を定める:
 
 - ピンの役と、速さの選び方;
-- wake / 設定の手順と、scratch のレジスタ（§1）;
+- wake / 設定の手順と、それが target をリセットしうるか（§2）、scratch のレジスタ（§1）;
 - やり取りと、やり取りの間の線の休み方（§2）;
 - 「見つかった」の基準と、scan_kind の値;
 - 使う target_id の scheme（§1 の 1 つの空間から）と、線切れの見え方;
@@ -57,10 +46,6 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
   それを空けるための書き込みと名指したものだけである。確かめる前に各 scratch のレジスタを読み、確かめた後にその値を書き戻す。書いたものが
   読み戻らない速さは使わない。
 - 速さを確かめる前に、これ以外のものを target に書かない（速さの合わない書き込みは、化けた値を target のレジスタに書きうる）。
-- **別のデバッガを通して attach する probe.** 上の制限は、自分で線を駆動する probe に掛かる。attach が、自分では制御できない別のデバッガを
-  通る probe（そのデバッガが書くものを見ることも抑えることもできない）は、その wire の describe の features（共通 tag 0x06、core §7.4）の
-  bit0 `attach_writes_unbounded` を立て、この制限の外になり、線が応えない間の線についての §2 の規則の外にもなる。host は、そういう wire での attach を、効き目の分からない reset と同じに扱う:
-  target のレジスタや走っているプログラムがそれを越えて残るとは期待しない。
 - **ピンの組**:
   - probe が使える組は describe の共通タグ（core §7.4）で宣言する。決まった組は channel_group、どのピンにも割り当てられる
     なら role_channels。役の番号は `pin_role`（1 = SWDIO、2 = SWCLK、3 = reset）。
@@ -81,27 +66,24 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
   - 線は、生きている接続が使っている組の channel を持つ（接続が無くなれば放す）。持っている間、その channel を plan や設定が
     取ろうとすれば rejected unavailable（core §8.1）。
   - scan の応答の `tried` は、要求の並び（count = 0 なら上の count = 0 の並び。channel_group の線では describe に出した順）の
-    先頭から試し終えた組の数。1 回に試すのは多くても 255 組（tried は u8。registry の `scan_tried_max`）。見つかった組で応答が 1 フレームに入らなくなりそう
-    なら、probe はそこで止める。**scan の予算（下）で次の組を始められないときも、probe はそこで止める**
+    先頭から試し終えた組の数（tried は u8 で、1 回に多くても 255 組）。見つかった組で応答が 1 フレームに入らなくなりそう
+    なら、probe はそこで止める。**次の組を試すと応答が max_op_ms（core §7.5）を越えそうなときも、probe はそこで止める**
     （少なくとも 1 組は試す）。tried ≥ 1 なら、host は続きを送る。組を並べた要求で tried が並びの数より少なければ、host は残りの組でもう一度 scan を送る。
   - **count = 0 の続き**: count = 0 の要求は TLV skip（0x01、u16）で、count = 0 の並びの先頭から飛ばす数を渡せる（無ければ 0）。
     host は skip に今までの tried の和を渡して続け、**tried = 0 が返ったら終わり**。**並びに組が残っていれば、probe は少なくとも 1 組は
     試す**（tried ≥ 1。tried = 0 は並びを使い切ったときだけ）。**count = 0 の並びに skip から先の組が無ければ**（並びが空か、skip が
     並びの長さ以上）、応答は completed success で tried = 0、count = 0。少なくとも 1 組は試すという規則は、組が残っているときだけ
     効く。並びは要求のときの持たれ方で決まるので、
-    途中で plan などが変われば、組が抜けたり重なったりしうる（host は scan の間ほかを変えない）。count > 0 に skip を付けた
-    要求は rejected malformed。
+    途中で plan などが変われば、組が抜けたり重なったりしうる（host は scan の間ほかを変えない）。count > 0 の要求では
+    probe は skip を見ない。
   - attach は pins（TLV 0x03、critical）で組を指定する。pins が無ければ、その線の生きている接続が 1 つ
     だけならその組（既存の接続に乗る。スロットが持っている接続でもよい）、生きている接続が無く許す組が 1 つだけならその組、
     それ以外（生きている接続が 2 つ以上、または接続が無く許す組が 2 つ以上）は rejected unavailable（host が選ぶ）。
   - **宣言（channel_group / role_channels）が許さない組は、何も実行せずに rejected unsupported**（scan は要求の中に 1 つでもあれば全体を
     断る）。attach は受け取ったままの pins の tag を payload に入れる。scan は tag 0x00 に続けて TLV 0x40 index（u8、要求の並びの中の位置）を入れる。
     持たれている channel（plan、接続、設定、disable）を含む組は rejected unavailable（cause 1 / 5、その channel 付き）。
-- **attach の予算**: 1 つの attach の応答に probe が掛ける時間は多くても 1000 ms（registry `limits.attach_budget_ms`）で、速さの探索とその再試行を含み、
-  reset TLV の hold_ms と、線を離した後に DM が答えるのを待つ時間（§3、多くても `limits.reset_settle_ms`）は含まない。その間にどの速さも使えなければ、応答は status line の completed failed。
-- **scan の予算**: probe は、scan の要求が届いてから 500 ms（`limits.scan_budget_ms`）より後に組を始めない（少なくとも 1 組は試す）。
-  1 組の試しは attach の予算で抑える。したがって 1 つの scan の応答は多くても `scan_budget_ms` + `attach_budget_ms` かかる。
-- どちらの予算も max_op_ms で頭打ちにする。host の待ちは、これらを引数の時間として数える（core §4.4）。
+- **時間**: attach と scan の応答は、max_op_ms（core §7.5）のうちに返す。速さの探索と再試行をいつ諦めるかは probe が決める。attach で
+  どの速さも使えなければ、応答は status line の completed failed。host の待ちは、attach と scan の引数の時間を max_op_ms として数える（core §4.4）。
 - **同時に持てる接続の数**: wire のインターフェースは describe の max_connections（tag 0x40、u8）で宣言する。宣言が無ければ 1。
   ロックは probe に 1 つのまま（接続ごとのロックは無い）。
 - **scan と生きている接続**: 生きている接続の組は、scan で線を初めからやり直さず、その接続で読んだ値（DMSTATUS など）で見つかった
@@ -128,31 +110,19 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
   同じである。そのセッションがすでにその connection の使っているものなら、その分はそのまま残る。
 - `speed_hz` は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。
 - max_speed（TLV 0x01、u32 Hz）: probe はこれを超える速さを選ばない。**attach では必須**（無ければ rejected malformed）、critical で
-  送る。probe の min_clock_hz より小さければ rejected unsupported（tag 0x01）。scan にも付けられる（無ければ probe の最も遅い速さで
-  試す）。pins と idle_clock は任意で、送るときは critical。
+  送る。probe の min_clock_hz より小さければ rejected unsupported（tag 0x01）。scan にも付けられる（下）。pins と idle_clock は任意で、送るときは critical。
 - **scan が書くもの**: 「速さを確かめる前の書き込み」の 1 と 2 だけで、「見つかった」の識別子を読むためである。scan は書き込みの道を
-  確かめず、scratch のレジスタに書かない。attach と同じく読むことで速さを選んでよい。dmactive は立てたまま残す（§4.6 と同じ。下ろすと DATA0 の
-  コンソールのフレームが消えうる）。「見つかった」は DMSTATUS.version が 2 以上で 15 でないこと（0 = DM が無い、1 = このインターフェースが
+  確かめず、scratch のレジスタに書かない。max_speed の無い scan は、その wire の最も遅い速さで試す。max_speed のある scan は、attach と同じく
+  max_speed 以下で読むことで速さを選んでよい。dmactive は立てたまま残す。「見つかった」は DMSTATUS.version が 2 以上で 15 でないこと（0 = DM が無い、1 = このインターフェースが
   扱わない版、15 = 適合しない DM）。swd は DPIDR が読めたこと。外れた組のピンは core §8 の
-  空きの状態に戻す。max_speed が無い scan は、probe が安全と考える遅い速さで試す（attach と同じ探索をしてよい。swd のように読んで
-  選べない線は probe の決めた遅い固定値）。
+  空きの状態に戻す。
 - **target の識別子**: attach の応答の後ろに、probe が読めた target の識別子を TLV 0x10 target_id（scheme(u8)、値）で付けてよい。
   scheme は識別子の取り方。target_id の scheme の番号は probe 全体で 1 つの空間である（registry `[common.enum.target_id_scheme]`:
   1 その debug module の DMI 0x7F の u32、2 swd の targetsel）。各 wire は、どの scheme を使うかを書く。probe は読めなかったとき（scheme が「無い」と定める値だったときを含む）
   は付けない。値の意味（どのビットが系統で、どれがリビジョンか）は host が知っている。probe は解釈しない。
-- **search_retries**: どの wire の attach の応答にも TLV 0x12 search_retries（u16、任意）を付けてよい。立ち上げとは、その wire の wake / 設定の手順、
-  速さを選ぶこと、それを確かめること（上）である。search_retries は、立ち上げの各段の最初の試しを超えて要った追加の試しの数で、
-  次のそれぞれを 1 と数える:
-  - やり直した、確かめの読み出し 1 つ、または書き込みとその読み返し 1 つ;
-  - やり直したパス（パスとは、probe がまとめて判断する、1 つの速さでの読み出しまたは書き込みの往復のひとまとまり）;
-  - 選んだ速さで書き込みの確かめが失敗した後の、遅い速さへの切り替え;
-  - 立ち上げ全体のやり直し;
-  - 手順に wake がある wire では、答えのあった wake より前の、答えの無かった wake。
-
-  速い速さで失敗して、速い速さの探索を終わらせた読み出しは数えない。0 は、どの段も最初の試しで通ったことを表す。値は
-  0xFFFF で止まる（65535 以上）。probe がこれを送るのは、この attach で立ち上げが行われたときだけである: 新しい connection、reset の TLV 付きの attach、
-  max_speed のために probe が速さを下げた既存の connection。立ち上げ無しに既存の connection に加わる attach では送らない。host はこれを記録して、
-  切れかけの線を見てよい。
+- **search_retries**: どの wire の attach の応答にも TLV 0x12 search_retries（u16、任意）を付けてよい: 立ち上げ（wake / 設定の手順、速さを選ぶこと、
+  それを確かめること）で、最初の試しを超えて要った試しの数（0xFFFF で止まる）。数え方は実装が決める。診断のための値で、host は記録して切れかけの線を
+  見るのに使ってよい。
 
 ## 2. connection の寿命（全 wire）
 
@@ -162,14 +132,16 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
   force（長さ 0、critical で送る）で、使っているものがあっても閉じる。
 - **target の reset では connection を閉じない**。probe は、reset の後も同じ connection で使えるように保つ（wire ごとの手順は
   §4.6 など、target を扱うインターフェースの節）。
-- **1 つの要求の中の再試行**: probe が 1 つの要求の中で線の再試行に使うのは多くても 200 ms（registry `limits.wire_retry_ms`）で、遅い速さでの
-  再試行を含む。使い切ったら、その要求を status line で終える。それだけでは線切れと決めない。attach（と scan の 1 組）の速さの探索は、
-  代わりに §1 の attach の予算で抑える。reset の後に DM が答えるのを待つ時間（§3 の reset TLV、§4.3。多くても `limits.reset_settle_ms`）は、
-  この 200 ms に数えない。再試行の間の遅い速さは一時的で、connection の speed_hz は変えない。
-- **線切れ**: 線が切れたとするのは、ある connection の操作が線からの応答無しで失敗し続けて（status line。要求の中でもコンソールの読みの中でも）
-  **実時間で 1000 ms**（`limits.wire_lost_ms`）たち、その間にその connection で成功した操作が無いとき。probe が reset を出している時間、
-  reset の線を保っている時間（plan、attach の reset TLV）と、それを解いてからの 1000 ms は数えない。probe が要求の中で線切れと決めたら、
-  その要求に status line で答えてから connection を閉じる。
+- **1 つの要求の中の再試行**: probe は 1 つの要求の中で線を再試行してよい（どれだけ続けるかは probe が決め、遅い速さでの再試行を含む）。
+  諦めたら、その要求を status line で終える。それだけでは線切れと決めない。再試行の間の遅い速さは一時的で、connection の speed_hz は変えない。
+- **書き込みを繰り返さない**: probe の線の再試行は、target に届いたかもしれない書き込みを繰り返さない（target が受けなかったと答えたもの、DMI の
+  busy と SWD の WAIT は繰り返してよい）。そういう失敗の要求は completed failed / partial で答え、done はそれより前に済んだ手順か語の数にする。
+  読み出しは繰り返すことがある。
+- **target の状態を変えない**: connection がある間、probe が自分の判断で行う線の再試行と同期の取り直しは、target の状態を変えない。wake / 設定の手順が
+  target をリセットしうる wire では、connection の上でそれを送るのは attach と、reset（attach の reset TLV、riscv-dm の reset の op）の中だけである。
+- **線切れ**: ある connection の操作が線からの応答無しで失敗し続け（status line。要求の中でもコンソールの読みの中でも）、その間にその connection で
+  成功した操作が無いとき、probe はその connection の線が切れたと決めてよい（いつ決めるかは probe が決める。reset の線を保っている間とそれを解いた直後は、
+  target が答えないことがある）。probe が要求の中で線切れと決めたら、その要求に status line で答えてから connection を閉じる。
 - **線切れの判定は、要求の中かコンソールの読みの中でだけ行う**（at boot のスロットの生存確認は
   [probe の設定](oep-if-probe-config.ja.md) §3.1）。status line だけでは connection が閉じたことにならない: host は connections で確かめる。
   コンソールの読みの中で判定したら、mark link-lost を付けて閉じる。
@@ -219,7 +191,6 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
 | 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、id(u32))、[TLV] |
 | 0x02 | attach | method(u8: 0 止めない / 1 止める。ほかは rejected unsupported、payload `0x00`)、[TLV] | connection(u16)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] |
 | 0x03 | detach | connection(u16)、[TLV] | — |
-| 0x04 | — | 予約（旧 attach_under_reset。attach の reset TLV になった） | |
 | 0x05 | connections | first(u8) | §2.1（ロック不要） |
 
 - swio の組は swclk = 0xFFFF（1 本の線。swclk ≠ 0xFFFF は宣言が許さない組で、scan でも attach でも §1 のとおり rejected unsupported）。rvswd と swio の scan の entry の kind は 1（riscv-dm）、
@@ -238,10 +209,8 @@ entry: connection(u16)、swdio(u16)、swclk(u16)、speed_hz(u32)、users(u8)、s
   core の max_op_ms の対象。
 - **線を離した後の待ち**: リセットの線を離した後、target は自分でもう一度再起動することがあり（ブートローダを通る、など）、その間 debug module は
   線に答えない。probe は、DMSTATUS の読みを wire の最も遅い速さで繰り返し、読みが線の応答を得る（status line にならない）まで待つ。読みの間に、
-  その wire の wake / 設定の手順（§1 の 1）を送り直してよい。待つのは線を離した時から多くても 700 ms（registry の `limits.reset_settle_ms`。
-  max_op_ms で頭打ち）で、§1 の attach の予算にも §2 の再試行にも数えない。DM が答えたら、その時から attach の予算で速さを探す（§1）。700 ms までに答えなければ、probe は status line の
+  その wire の wake / 設定の手順（§1 の 1）を送り直してよい。DM が答えたら速さを探す（§1）。max_op_ms のうちに答えなければ、probe は status line の
   completed failed で答える。既存の connection に付けた attach では、その connection を保つ（target は reset した。mark reset detail 3）。
-  host の待ちは、hold_ms とこの 700 ms を引数の時間として数える（core §4.4）。
 - **reset の線に既定は無い**: どの線を reset に使うかは host が毎回 channel で明示する（線を取り違えた reset は target や治具を
   壊しうる）。probe が reset に使ってよい channel は describe の role_channels の role 3（reset）で宣言する。宣言していない
   channel は、何も実行せずに rejected unsupported（受け取ったままの tag、0x85）。今ある plan や接続が持つ channel は、core §8.1 の取り合いとして rejected
@@ -253,7 +222,7 @@ TLV:
 
 | op | tag | 名前 | 値 |
 |---|---:|---|---|
-| scan | 0x01 | max_speed | u32 Hz（無ければ probe の最も遅い速さ） |
+| scan | 0x01 | max_speed | u32 Hz（無ければその wire の最も遅い速さ） |
 | scan（count = 0 だけ） | 0x02 | skip | u16。count = 0 の並びの先頭から飛ばす組の数 |
 | scan（rvswd だけ） | 0x04 | idle_clock | u8。scan の間の休ませ方（下） |
 | attach | 0x01 | max_speed | u32 Hz。**必須**、critical |
@@ -262,12 +231,11 @@ TLV:
 | attach | 0x05 | reset | channel(u16)、hold_ms(u16)。critical。上 |
 | detach | 0x01 | force | 長さ 0。critical |
 | attach の応答 | 0x10 | target_id | scheme(u8)、値 |
-| attach の応答 | 0x11 | dpc | u32（RV64 は 8 byte）。hart が止まっている（flags bit3）ときの dpc |
+| attach の応答 | 0x11 | dpc | u32。hart が止まっている（flags bit3）ときの dpc |
 | attach の応答 | 0x12 | search_retries | u16、任意。§1 |
 
 これらの wire が使う target_id の scheme（`target_id_scheme`、probe で 1 つの空間、§1）: 1 = DMI のアドレス 0x7F を読んだ u32（長さ 4）。0 と 0xFFFFFFFF は「無い」（付けない）。
-2 = swd の targetsel（u32、connections の entry だけに使う。錠には使わない）。scheme ごとの値の長さは registry に持つ
-（スロットの錠の mask / value の長さの確かめに使う）。
+2 = swd の targetsel（u32、connections の entry だけに使う）。
 
 - 既存の connection への attach が idle_clock を運び、それが今と違えば、probe はその connection の休ませ方を替えて返す。替えられない
   probe は、扱えない TLV の値として扱う（core §2.3）。
@@ -318,14 +286,7 @@ TLV:
 - **wake / 設定の手順の速さ**: T は 500 ns 以上、かつ 1 / (2 × max_speed) 以上。probe が dmactive を書くとき（§1 の 2）、その直後に同じ T で設定の組
   （DMI 0x7E、続けて DMI 0x7D）をもう 2 回書いてよい。これらの書き込みは wake / 設定の手順の一部である。
 - **速さの選び方**: probe は、DMSTATUS の読み出しで、一番遅い T から短い方へ進めて T を選ぶ（§1）。
-- （参考）線が休んでいる間に、target がリンクを失うことがある。参照の probe の戻し方: 300 µs 以上休んだ後の最初のフレームの前に、DMSTATUS を読む。その読み出しが失敗したか、DMSTATUS が
-  bit 7（authenticated）の立った「見つかった」（§1）でなければ、設定の組を 2 回送り（wake のパターンは無し）、DMSTATUS をもう一度読む。それでも失敗なら、
-  §2 のとおり再試行し、再試行の間は wake / 設定の手順の全体を送ってよい。
-- （参考）wake のパターンは、target のデバッグの口だけでなく target そのものをリセットすることがある。参照の probe は、応えない線を立ち上げるときだけ送り、
-  同期の取り直しでは送らない。T は、DMSTATUS を続けて 1000 回読んで同じ値とパリティの一致が得られたら受け入れ、書き込みは、scratch のレジスタへの書き込みと
-  読み戻しを 256 回往復して一致したら受け入れる。
-- （参考）ほかのデバッガは、つなぐときに、状態の問い合わせの長い形（ビットの区切り 85 個）も送ることがある。probe はそれを送らなくてよい。取り込んだ
-  波形を読む人は、それを誤りと読まないこと。
+- wake のパターンは、target のデバッグの口だけでなく target そのものをリセットしうる（§2 の、target の状態を変えない再試行の規則が掛かる）。
 
 ### 3.2 SWIO のフレーム
 
@@ -339,8 +300,6 @@ TLV:
 | 1 | 240 から 310 ns | 240 から 270 ns |
 | 0 | 840 から 1060 ns | 240 から 270 ns |
 
-- 勧める low は、1 が 262 ns、0 が 862 ns。
-- （参考）low の範囲は、1 つの target の系列で動くと測ったもので、target そのものの限界はわかっていない。
 
 **target が送るビットの区切り**（読み出しの区切り）: probe は線を 240 から 270 ns low に駆動し、駆動をやめる。target は、線を low に保って 0 を、
 上がるにまかせて 1 を送る。probe は、自分が作った立ち下がりから 520 から 600 ns 後に線を読む（high = 1、low = 0）。その後、線がまた high に読めるまで
@@ -358,7 +317,6 @@ low の駆動をやめた後と、0 を読んだ後に、probe は 1 回 30 ns �
   high のまま。
 - **速さ**: ビットの時間は決まっているので、probe は速さを選ばない。describe の min_clock_hz で、0 の区切りの速さ（1 / (その low + その high)）を宣言する。
   それより低い max_speed は rejected unsupported（§1）。
-- （参考）参照の probe は、attach の最初のフレームの前に線をプルアップだけにして 2 ms おき、そのとき線が low に読めれば target は無いとする。
 
 ## 4. `oep.target.riscv-dm`
 
@@ -368,9 +326,8 @@ low の駆動をやめた後と、0 を読んだ後に、probe は 1 回 30 ns �
   （core §1.2、§7.4）。read_block と write_block は組で持つ。host は、任意の op が
   無くても dmi で同じことを組める。
 - **dmi 以外の op（高水準の op）の範囲**: RV32 の hart 0 だけを扱う（番地、レジスタの値、pc は u32）。probe は高水準の op の中で
-  DMCONTROL の hartsel を 0 にし、**0 にして返す**（host が dmi で選んだ hartsel は、その dmi の要求の中だけ）。ほかの hart と RV64 は、
-  host が dmi で扱う（DMI の値が u32 なのは DMI の形で、RV32 に限る意味ではない）。RV64 の番地は、後から read_block / write_block の
-  critical TLV 0x01 `address_hi(u32)` で足す（予約。registry の reserved）。
+  DMCONTROL の hartsel を 0 にし、**0 にして返す**（host が dmi で選んだ hartsel は、その dmi の要求の中だけ）。ほかの hart は
+  host が dmi で扱う。
 
 **op の境界の不変条件**: **probe は、op の応答を返したあと、target の状態を持ち越さない**。op の中で使ったものは応答の前に戻す。
 host が raw の DMI（dmi の op）で何をしても、host が途中で死んでも（lease 切れ、force）、probe が戻し忘れるものは無い。
@@ -384,18 +341,22 @@ host が raw の DMI（dmi の op）で何をしても、host が途中で死ん
 | read_block / write_block | GPR（s0、s1、a0、a1）、DATA1 / DATA0、abstractauto、program buffer、sysbus | GPR、DATA1、DATA0、abstractauto を戻す。program buffer と SBCS / SBADDRESS は戻さない（host が使うなら設定し直す） |
 | run | pc、host が指定した GPR、dcsr（ebreakm、prv）、haltreq | **host の指示どおりに変えたまま返す**（host の責任）。abstractauto と haltreq は戻す |
 | dmi | host が書いたもの | 何も触らず、何も戻さない（host が DATA を使ったら host が戻す） |
-| console の読み（§4.6） | DATA0 / DATA1 | hart が止まっている間は読まない |
+| コンソールの読み | DATA0 / DATA1 | [コンソール](oep-if-console.ja.md) §3 のとおり |
 
-戻す値は、その op の中で読んだ「触る前の値」。高水準の op の中で DM の状態（abstractcs.busy の解除、allhalted、allresumeack）を待つ
-上限は、1 つの待ちにつき 100 ms（registry の `dm_wait_ms`）。過ぎたときの status は各 op の節のとおり（halt は timeout、resume / step は state）。DMI の busy は
-probe の中で 100 回まで（`dmi_busy_retries`）再試行し、使い切れば status wait（§6 の WAIT と同じ）。
+戻す値は、その op の中で読んだ「触る前の値」。高水準の op の中で DM の状態（abstractcs.busy の解除、allhalted、allresumeack）をどれだけ待つかは
+probe が決める（max_op_ms のうち）。待ち切れなかったときの status は各 op の節のとおり（halt は timeout、resume / step は state）。DMI の busy は
+probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ）。
+
+**DATA0 と DATA1**: コンソールの方式（[コンソール](oep-if-console.ja.md) §3）は DATA0 / DATA1 を target との郵便受けに使う。probe は、自分の op で
+使った DATA0 / DATA1 を応答の前に戻す（上の表）。host は、dmi の要求で抽象コマンドなどを使って DATA0 / DATA1 を変えたら、hart を走らせる前に、
+変える前の値を書き戻す。
 
 | op | 名前 | 要求（connection の後ろ） | 応答 |
 |---:|---|---|---|
 | 0x01 | dmi | n(u16)、n 個の手順 | done(u16)、status(u8)、nvals(u16)、nvals × value(u32)、[TLV] |
 | 0x02 | halt | — | status(u8)、[TLV] |
 | 0x03 | resume | — | status(u8)、[TLV] |
-| 0x04 | reset | mode(u8)、[TLV] | status(u8)、flags(u8)、attempts(u8)、pc(u32)（mode 2 では dpc）、[TLV] |
+| 0x04 | reset | mode(u8)、[TLV] | status(u8)、flags(u8)、pc(u32)（mode 2 では dpc）、[TLV] |
 | 0x05 | read_block | address(u32)、count(u16)、[TLV] | done(u16)、status(u8)、done × word(u32)、[TLV] |
 | 0x06 | write_block | address(u32)、count(u16)、count 個の語、[TLV] | done(u16)、status(u8)、[TLV] |
 | 0x07 | run | pc(u32)、timeout_ms(u32)、n(u8)、n × (regno(u16)、value(u32))、n_out(u8)、n_out × regno(u16)、[TLV] | status(u8)、stopped(u8)、dpc(u32)、elapsed_us(u32)、nvals(u8)、nvals × value(u32)、[TLV] |
@@ -414,8 +375,7 @@ probe の中で 100 回まで（`dmi_busy_retries`）再試行し、使い切れ
 | 0x04 | 待ち | wait_us(u32) | — |
 | 0x05 | 時間を上限に待つ | address(u8)、mask(u32)、value(u32)、max_us(u32) | 最後に読んだ値(u32) |
 
-- kind 0x10〜0x1F は、番地を u32 にした同じ手順に予約する。知らない kind は長さが分からないので、要求全体を rejected
-  malformed にする（probe は手順を全部確かめてから実行する）。
+- 知らない kind は長さが分からないので、要求全体を rejected malformed にする（probe は手順を全部確かめてから実行する）。
 - **done は最後まで済んだ手順の数**（失敗したときは、失敗した手順の 0 起点の番号）。値を足すのは 0x02 / 0x03 / 0x05 だけ。
   `nvals` は応答に入っている値の数（最初の done 個の手順のうち値を足す手順の数に、失敗した手順が 0x03 / 0x05 で待ち切れた
   （status timeout）なら 1 を足したもの）。線の不良などで読めずに失敗した手順は値を足さない。
@@ -427,14 +387,14 @@ probe の中で 100 回まで（`dmi_busy_retries`）再試行し、使い切れ
 
 ### 4.2 halt、resume、step
 
-- **halt** は、すでに止まっていれば何もせず ok。100 ms 以内に allhalted が見えなければ、probe は haltreq を下ろして status timeout で答える。
+- **halt** は、すでに止まっていれば何もせず ok。待っても allhalted が見えなければ、probe は haltreq を下ろして status timeout で答える。
 - **resume** は haltreq = 0、resumereq = 1 を 1 回書く。ok は「hart が debug mode を出た」ことで、DMSTATUS の allresumeack（または
-  allrunning で halted でない）で判断する。resumereq は出し直さない。100 ms 待っても見えなければ status state。
+  allrunning で halted でない）で判断する。resumereq は出し直さない。待っても見えなければ status state。
   - （参考）target によっては、これで足りない（allresumeack を立てない target がすぐ breakpoint で止まり直す、1 回の resumereq で出ない
     ことがある）。その扱い（dpc を読んで、動いていなければもう一度 resume する、など）は target を知っている host が行う。
 - **step** は dcsr.step を立てて resume を 1 回だけ出し、戻ったら dcsr.step を下ろす。dpc が動かなくても失敗にしない（status ok、moved = 0。自分自身へ
   跳ぶ命令は正しく進んでも dpc が同じなので、host が命令を読んで判断する）。prv は変えない。
-  hart が 100 ms 以内に debug mode に戻らなければ、probe は haltreq を立て、さらに 100 ms まで待つ。hart が止まれば、dcsr.step を下ろし、
+  hart が debug mode に戻らなければ、probe は haltreq を立てて待つ。hart が止まれば、dcsr.step を下ろし、
   DATA1 / DATA0 を戻し、dpc_after を有効にして status state で答える。止まらなければ、haltreq を下ろし、応答の TLV 0x01 step_left
   （長さ 0）を付けて status state で答える: dcsr.step が立ったままかもしれず、hart は走っている。host はそれを止めて dcsr.step を下ろす。
 
@@ -452,34 +412,28 @@ probe の中で 100 回まで（`dmi_busy_retries`）再試行し、使い切れ
 |---|---|
 | flags bit0 | 要求した mode の状態に達した（mode 0 / 1 は走っている、mode 2 は止まっている） |
 | flags bit1 | pc を読んで実行を確かめた（mode 1 だけ） |
-| flags bit2 | reset の手順をやり直した |
-| flags bit3 | 確認のための halt / resume が失敗した |
-| attempts | 行った reset の手順の回数（1 から） |
 | pc | mode 1 で確かめた pc、mode 2 では dpc。ほかは 0 |
 
 - outcome success の条件は、mode 0 と 2 では flags bit0、mode 1 では bit1。満たさなければ completed failed（形は同じ。status は
-  止まらない / 走らない = timeout、DM が応えない = line、cmderr = fault）。ndmreset を解いてから hart が止まる / 走るのを待つ上限は
-  1 回の手順につき 100 ms（DM が答えないときは、下の待ちの後、DM が答えた時から数える）、手順のやり直し（flags bit2）は 1 回まで。
+  止まらない / 走らない = timeout、DM が応えない = line、cmderr = fault）。hart が止まる / 走るのをどれだけ待つか、手順をやり直すかは probe が決める。
 - **DM が答えない間の待ち**: ndmreset を解いた後、target は自分でもう一度再起動することがあり（ブートローダを通る、など）、その間 debug module は
   線に答えない。probe は、DMSTATUS の読みが線の応答を得る（status line にならない）まで読み直して待つ。読みの間に、その wire の wake / 設定の
-  手順（§1 の 1、§3）を送り直してよい。1 つの reset の op の中でこの待ちに使う時間は、合わせて多くても 700 ms（registry の
-  `limits.reset_settle_ms`。max_op_ms で頭打ち）で、§2 の再試行に数えない。DM が答えるまで、op は答えない。上限までに DM が答えなければ、probe は手順を
-  やり直さず（flags bit2 を立てない）、status line の completed failed で答え、connection は保つ（§2 の線切れの判定は、reset を解いてからの
-  1000 ms を数えない）。host の待ちは、この 700 ms を引数の時間として数える（core §4.4）。
+  手順（§1 の 1、§3）を送り直してよい。max_op_ms のうちに DM が答えなければ、probe は status line の completed failed で答え、connection は保つ。
+  host の待ちは、reset の引数の時間を max_op_ms として数える（core §4.4）。
 - flags のほかの bit は 0。reset の後は havereset を確認応答し、haltreq を下ろす（mode 2 は止めたまま）。
 
-TLV 0x01 method（u8）: 0 probe の既定、revision 1 では ndmreset。1 ndmreset。2 は予約（target のシステムリセットには共通の手順が無いので、host が dmi で
-組む）。2 以上の method は、この probe が扱えない値である（core §2.3: critical で送られたら rejected unsupported、そうでなければ無視する）。**reset の op はリセットの線を動かさない**: リセットの線が動くのは、attach の reset TLV（§3）か、host が自分で治具のインターフェースを使うときだけ。
+reset は ndmreset を使う。**reset の op はリセットの線を動かさない**: リセットの線が動くのは、attach の reset TLV（§3）か、host が自分で治具のインターフェースを使うときだけ。
 
 ### 4.4 run
 
 - host のローダーを呼ぶためのもの。probe は dcsr の ebreakm と prv = M を立て、pc から走らせ、止まるのを待つ。**probe は run を
   出し直さない**（止まった位置が開始位置のままでも、走って戻った場合と区別できない）。走らなかったかどうかは host が dpc で
   判断し、ローダーを二度走らせてよいときだけやり直す。**デバッガの continue には使わない**（prv と ebreakm を変える）。
-- timeout_ms は 1〜core の max_op_ms（0 は rejected malformed、超えれば rejected unsupported）。host の待ちは timeout_ms を引数の時間として数える（core §4.4）。
+- timeout_ms が core の max_op_ms を超えれば rejected unsupported。host の待ちは timeout_ms を引数の時間として数える（core §4.4）。
   止まったら stopped = 1（success）。上限に達したら probe は hart を止めてから dpc と値を読み、stopped = 0、status timeout、outcome
   failed で返す（dpc と値はすべて有効）。止められなければ stopped = 2、status timeout、outcome failed、nvals = 0（dpc は無効）。
-  応答の形はいつも同じ（`run_stopped`: 0 時間切れで止めた、1 止まった、2 止められなかった）。
+  走らせる前の準備（レジスタ、dcsr、pc の設定）が失敗したら、probe は走らせずに stopped = 3（hart は止まったまま）、status はその失敗、outcome failed、
+  nvals = 0（dpc は無効）で返す。応答の形はいつも同じ（`run_stopped`: 0 時間切れで止めた、1 止まった、2 止められなかった、3 走らせなかった）。
 - regno は RISC-V の抽象レジスタ番号（a0 = 0x100A）。
 
 ### 4.5 read_block、write_block
@@ -487,21 +441,18 @@ TLV 0x01 method（u8）: 0 probe の既定、revision 1 では ndmreset。1 ndmr
 - 語（32 bit）単位。8 / 16 bit のアクセスは dmi の手順で組む。
 - **1 回の長さ**: read_block / write_block を持つ probe は、describe の共通 tag max_length（core §7.4）を必ず出す。単位は **byte 数**
   （4 の倍数）。probe は max_length を、read_block の応答（見出し 5 + done 2 + status 1 + 語）と write_block の要求（見出し 10 +
-  connection 2 + address 4 + count 2 + 語）がどちらも自分の max_frame に収まる値で宣言する（max_frame − 24 以下、registry の `block_frame_overhead_bytes`。これより小さく宣言してよい）。host は count を
+  connection 2 + address 4 + count 2 + 語）がどちらも自分の max_frame に収まる値で宣言する。host は count を
   max_length から決め、max_frame から計算しない。count × 4 が max_length を超えれば rejected unsupported（payload `0x00`）。count = 0 は
   success、done 0。4 の倍数でない address は rejected malformed。
 - **読みの意味**: read_block は target のバスを通して読む。probe の側に写しを持たない（直前の write_block、dmi、run で target が
   書いたものを反映する）。
 - **前提**: hart が止まっていること（止まっていなければ status state）。番地は、止まっている hart が M モードで使う番地。
-  （参考）hart が走ったままの読み出し（system bus を持つ debug module ならできる）は、後から features のビットと任意の TLV で、revision を変えずに足せる（core §2.7）。
 
 ### 4.6 RISC-V の connection の扱い
 
 - attach は保留中の havereset を先に確認応答する（確認応答するまで DMSTATUS の halt / running を固定する DM がある）。
 - **havereset を見たら**（要求の中でも、コンソールの読みの中でも）確認応答し、コンソールの dmseq の状態を未同期に戻し、その connection
   のストリームに mark restart（detail 1）を付ける。
-- **probe は connection を閉じるときもデバッグモジュールを reset しない**（dmactive を残し、haltreq などを下ろす）。reset すると
-  DATA0 の dmseq のフレームが消えることがあり、コンソールは target がそれを出し直すまで（短い待ちのうち、[dmseq](target-console-dmseq.ja.md)）待たされる。
 
 ## 5. `oep.wire.swd`
 
@@ -510,16 +461,14 @@ TLV 0x01 method（u8）: 0 probe の既定、revision 1 では ndmreset。1 ndmr
 | 0x01 | scan | count(u8)、count × (swdio(u16)、swclk(u16))、[TLV] | tried(u8)、count(u8)、count × (kind(u8)、swdio(u16)、swclk(u16)、id(u32))、[TLV] |
 | 0x02 | attach | method(u8: 0 だけ。ほかは rejected unsupported、payload `0x00`)、[TLV] | connection(u16)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] |
 | 0x03 | detach | connection(u16)、[TLV] | — |
-| 0x04 | — | 予約 | |
 | 0x05 | connections | first(u8) | §2.1（ロック不要） |
 
 - scan の kind は 2 = arm-adi、id は DPIDR。要求と応答の形は §3 と同じ（3 線で 1 つの形）。
 - TLV は §3 と同じ番号: scan 0x01 max_speed、0x02 skip、0x06 targetsel（下）。attach 0x01 max_speed（必須）、0x02 targetsel、
-  0x03 pins、0x05 reset（任意、§3 のとおり）。detach 0x01 force。attach の応答 0x10 target_id、0x12 search_retries（§1）。
-- **speed の選び方**: SWD は読んで速さを選べないので、`min(max_speed, describe の max_clock_hz)` で始める。
+  0x03 pins、0x05 reset（任意、§3 のとおり）。detach 0x01 force。attach の応答 0x12 search_retries（§1）。
 - **wake / 設定の手順**（§1 の 1）: JTAG から SWD への切り替え、dormant からの wake、与えられたときの TARGETSEL。swd は scratch のレジスタを名指さない。
 - attach は JTAG から SWD への切り替えを試し、答えがなければ dormant から起こす（flags bit2）。電源投入（CTRL/STAT の CDBGPWRUPREQ /
-  CSYSPWRUPREQ）は host が DP の書き込みで行う。§2 の再試行では、line reset と dormant 起こしをやり直す。
+  CSYSPWRUPREQ）は host が DP の書き込みで行う。
 - **線と packet**: この wire の線は SWDIO（ピンの役 1）と SWCLK（ピンの役 2）の 2 本で、Arm Debug Interface（ADIv5 / ADIv6）の SWD の手順を使う。
   probe は SWCLK を常に駆動する。packet とは、その手順の 1 つの SWD packet で、要求、確認応答、手順がそれに与えるデータの相を、それらの
   turnaround のサイクルとともに含む。packet の 1 つ 1 つと、line reset、JTAG から SWD への切り替え、dormant からの wake の手順の 1 つ 1 つが、§2 の 1 つのやり取りである。
@@ -547,15 +496,14 @@ TLV 0x01 method（u8）: 0 probe の既定、revision 1 では ndmreset。1 ndmr
 - ack は最後の転送の生の ACK（`swd_ack`: 線の順で bit0 が最初。OK = 1、WAIT = 2、FAULT = 4。無応答は status line）。req の bit4-7 が
   0 でなければ rejected malformed（req が転送の引数の長さを決めるので、知らない req では要求の残りを読めない。知らない dmi の kind と同じ）。nvals は読んだ値の数（最初の done 個の転送のうち読み出しの数）。
 - transfer は生の転送で、AP の読み出しが 1 つ遅れて返るのもそのまま（host が RDBUFF か次の AP の読み出しで受け取る）。
-  WAIT は probe の中で 100 回まで（registry の `swd_wait_retries`）再試行し、使い切れば status wait。FAULT で止まるので、host は ABORT で sticky を消す。
+  WAIT は probe の中で再試行し、諦めたら status wait。FAULT で止まるので、host は ABORT で sticky を消す。
 - read_block / write_block の 1 回の長さと読みの意味は riscv-dm（§4.5）と同じ: describe の max_length（byte 数、4 の倍数、要求も応答も
   max_frame に収まる値）を必ず出し、count × 4 がそれを超えれば rejected unsupported（payload `0x00`）。host は max_length から count を
   決める。read_block は target のバスを通して読み、probe の側に写しを持たない。
 - read_block / write_block は今の MEM-AP の TAR / DRW を使う。SELECT と CSW（32 bit、単一増加）は host が先に設定する。probe は
-  1 KiB の境界ごと（registry の `tar_rewrite_bytes`）に TAR を書き直し、1 つ遅れる読み出しを並べ直す。**hart の状態は問わない**（MEM-AP は走っていても読める）。
+  TAR の自動の増加が保証される範囲（ADI）を越えるところで TAR を書き直し、1 つ遅れる読み出しを並べ直す。**hart の状態は問わない**（MEM-AP は走っていても読める）。
   **done は probe が送った語の数**で、target が受けた保証ではない（posted write の FAULT は後の転送で見える）。TAR は進めたままにし、
-  SELECT / CSW は変えない（§4 の不変条件の arm 版: probe は host が設定したものを変えない）。64 bit の AP の番地は riscv-dm と同じ
-  TLV 0x01 `address_hi` で後から足す（予約）。
+  SELECT / CSW は変えない（§4 の不変条件の arm 版: probe は host が設定したものを変えない）。
 
 ## 7. 参照する仕様
 

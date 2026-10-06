@@ -40,7 +40,6 @@
 - 要求した位置（from 0）が書き込みの位置より先なら、応答は start = 書き込みの位置、len 0、flags 0。
 - len は max 以下で、かつ max_frame の中で応答に収まる分以下。バイトが残っていれば `more` を立てる: この応答の後ろにまだ読めるバイトがあり、
   host はすぐ次を読んでよい。
-- from 3 で arg > 0xFF は rejected malformed（マークの kind は u8）。
 - **read はロックなしで使える**（読んでも状態は変わらず、probe は読み手ごとの状態を持たない）。
 
 ### 1.3 マーク
@@ -61,6 +60,7 @@ mark : serial(u32)、position(u64)、kind(u8)、time_ns(u64)、detail(u8)       
 | 0x08 | link-lost | 線が落ちた（コンソールの読みの中で判定） | — |
 | 0x09 | closed | ストリームが閉じた | 理由（`mark_detail_closed`: 1 使っているものが全員外れた、2 セッションが終わった（end、lease の期限切れ、force）、3 スロットの置き換え・削除、4 connection が閉じた） |
 
+- マークの position は、probe がそのマークを付けた時の書き込みの位置である。position 以降のバイトはすべて、そのマークの出来事より後に受けた。
 - kind の空間: 0x01〜0x3F 標準、0x40〜0x7F インターフェース固有。detail の値は registry（`common.enum.mark_detail_*`）。0x40 以降は
   インターフェース固有。
 - `serial` はストリームごとのマークの通し番号（u32、一周する。core §2.6）。同じ位置に複数のマークが付いても、serial で
@@ -82,7 +82,7 @@ marks はロックなしで使える。
 |---|---|---|---|
 | clear | [stream(u16)] | — | 貯めたバイトを捨て、マーク clear を付ける |
 | mark | [stream(u16)]、value(u8) | — | マーク host（detail = value）を付ける |
-| write | [stream(u16)]、count(u16)、data | accepted(u16) | 相手への入力。`accepted` は、data の先頭から probe の送りの列に入れたバイトの数（count と列の空きの小さい方）で、届いたことは意味しない。列が満ちていれば accepted 0 = completed failed、0 < accepted < count = completed partial。count = 0 は malformed。列の大きさと、列から相手へ渡す速さはインターフェースが決める（コンソールは [コンソール](oep-if-console.ja.md) §2、fixture UART は UART の送信） |
+| write | [stream(u16)]、count(u16)、data | accepted(u16) | 相手への入力。`accepted` は、data の先頭から probe の送りの列に入れたバイトの数（count と列の空きの小さい方）で、届いたことは意味しない。accepted = count なら completed success、0 < accepted < count なら completed partial、count > 0 で accepted 0 なら completed failed。列の大きさと、列から相手へ渡す速さはインターフェースが決める（コンソールは [コンソール](oep-if-console.ja.md) §2、fixture UART は UART の送信） |
 
 どれもロックが要る。
 
