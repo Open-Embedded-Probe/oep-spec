@@ -130,6 +130,14 @@ New documents (oep-transports) are Japanese only until then (core §0, README, C
   The host closes, waits, reopens as a new open (confirm first; on USB the device may re-enumerate) and checks the new boot_id; a resend
   after the restart gets no_session (core §6.6, §12; link §3 host obligation 6). ops.json has the answer and the refusals; conformance,
   the host guide §5.2 and security §4 follow.
+- fn 0 describe restart_max_ms (tag 0x4F, u32, required when restart is in ops, at least `restart_after_answer_ms`): the longest time from
+  restart's answer until the probe answers confirm again on the same transport (re-enumeration or listening again included). The host
+  reopens and confirms until then (counted from the answer, or from the end of its wait when none came) and otherwise treats the probe as
+  gone. A relaying broker forwards a client's restart under its own session; after the success answer it returns a raised port_speed to
+  the boot speed, confirms until a new boot_id answers within restart_max_ms, then opens a new session; the clients' sessions end, and
+  client requests meanwhile get no_session (session_id other than 0, not open) or result_lost (open, session_id 0, confirm included);
+  a broker whose transport to the probe goes away ends and closes its clients (core §1.2, §4.3, §6.6, §7.5; transports §1). Conformance
+  and the host guide §5.2 follow; the vector test checks restart_max_ms against ops.
 
 ### Rule changes: standard interfaces
 

@@ -67,7 +67,7 @@ probe が実装しなければならない（MUST）もの:
 - §3 の経路の少なくとも 1 つと、そのフレーム;
 - §4〜§6;
 - fn 0 の confirm、list、describe、open、end、keepalive、lock_state、subscribe と unsubscribe;
-- fn 0 の describe の unit_id、transport、max_op_ms、discoverable（§7.5。プロジェクトの USB の VID:PID で列挙しない probe は 0）;
+- fn 0 の describe の unit_id、transport、max_op_ms、discoverable（§7.5。プロジェクトの USB の VID:PID で列挙しない probe は 0）。restart（§6.6）を持つ probe はそれに加えて restart_max_ms（§7.5）;
 - list に載せるすべての fn（fn 0 を含む）の describe の、共通の tag ops（§7.4）。
 
 plan_apply と plan_release は、どれかのインターフェースが plan の role（インターフェースの文書が plan を通して割り当てる role、§8。wire の attach が引数で選ぶピンの role は plan の role ではない）を持つときに要る。plan の role を持つインターフェースが 1 つも無い probe は、それらを持たない。任意: fn 0 の restart（§6.6）、fn 0 のハートビート以外の通知、すべてのインターフェース（その中に、線の試験と port_speed を持つ `oep.link`、[リンク](oep-if-link.ja.md)）。
@@ -259,7 +259,7 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出�
 | 0x09 | session_required | ロックが要る op の要求が session_id 0 を持つ | — |
 | 0x0A | no_connection | 要求の資源（connection、stream など、番号で指すもの）を probe が知らない。host は作り直す。どのインターフェースでも、知らない番号にはこれを使う | — |
 | 0x0B | unsupported | 定義にはあるが、この probe が扱えない（critical の TLV、固定部分の値、この probe が持つ op の任意の機能） | `tag(u8)`、[TLV]。tag は critical の TLV なら受け取ったままの値、固定部分の値なら 0x00。どの要素かを示すときは後ろに TLV（unavailable と同じ tag の空間: channel、index） |
-| 0x0C | result_lost | 送り直された要求の結果を覚えていない（§5.2） | — |
+| 0x0C | result_lost | 送り直された要求の結果を覚えていない（§5.2）。または、中継のブローカーが probe の再起動を待つあいだに受けた要求を実行しなかった（[経路](oep-transports.ja.md) §1） | — |
 | 0x0D | corr_reused | 同じ corr で fn、op、中身のどれかが違う要求が来た（§5.2） | — |
 | 0x0E | — | 予約 | — |
 
@@ -406,15 +406,17 @@ open の応答も boot_id を持つ: 知っていた boot_id と比べる host �
 
 probe 自身を起動し直す。host が、probe を抜き差しせずに、おかしな状態になった probe を立て直すためのもの。
 
-- **任意の op**（§1.2）: 持つ probe だけが fn 0 の ops に立てる。立てない probe への restart は rejected unknown_operation（§4.3 順 1）。
+- **任意の op**（§1.2）: 持つ probe だけが fn 0 の ops に立てる。立てない probe への restart は rejected unknown_operation（§4.3 順 1）。restart を立てる probe は、fn 0 の describe に restart_max_ms（§7.5）を必ず出す。
 - **ロックが要る**（§6.3）。断り方はロックの要るほかの op と同じ（§4.3）: session_id 0 は session_required、ロックが空いていれば no_session、別のセッションが持てば locked。restart は要求の TLV を定めない: 要求の TLV は §2.3 のとおり（critical なら rejected unsupported、そうでなければ無視して ignored に載せる）。
 - **応答が先**: 受け付けた restart に、probe は completed success で答える（payload は無い。ignored が要れば付ける）。restart は completed failed / partial を返さない。
 - **応答の後**: probe は、その応答が経路を出てから（応答の最後の byte を経路に渡し終え、probe が分かる所ではそれが送られてから）再起動を始める。始めるのは、そこから多くても `restart_after_answer_ms`（100 ms、registry）のうち。応答を送ってから再起動するまで、probe はどの経路の要求も処理せず（答えない。同じ経路で restart の後ろに来ていた要求も同じ）、通知を送らない。
 - **再起動の前に線の駆動をやめる**: probe はすべての connection を閉じ（target は必要以上に変えない: reset せず、止めていた hart は止めたまま。[線とデバッグ](oep-if-debug.ja.md) §2）、reserved（§7.5）でないすべての channel を、plan を解いたときと同じ空きの状態（§8）にする。
 - **再起動の後**は、OEP については電源を入れたときの起動と同じである: boot_id は新しい値（§6.5）。保存した設定は、どの起動とも同じに適用する（保存していない設定は残らない）。channel は §8 の起動時のとおり空きの状態。シリアルの口の速さは起動時の速さ（[リンク](oep-if-link.ja.md) §3）。セッション、ロック、§5.2 の表、購読、plan、connection、ストリームなど、前の起動のものは何も残らない（§9 の「probe の再起動」の行）。前のセッションの id の要求は no_session で断られる。
 - **経路**: 再起動のあいだ probe は経路に答えない。USB の経路では device が bus から外れて列挙し直してよく、TCP の接続は閉じてよい。host にはそれが、経路が閉じてまた開くことに見える。
-- **host の待ち方**: restart の応答を受けた host は、その probe にどの経路でも何も送らずに経路を閉じ、少なくとも `restart_after_answer_ms` 待ってから、新しく開くのと同じに開き直す: 最初に送るのは confirm で（[経路](oep-transports.ja.md) §3 の探りの規則。UART bridge では起動時の速さ）、USB では device が列挙し直すのを待つ。開けないか confirm に答えが無いあいだ、host は自分の決める時間まで開き直しと confirm を繰り返してよい（起動にかかる時間は probe による）。restart の応答を送った後の probe は何にも答えないので、その後に届いた confirm の応答は新しい起動のものである: host はその boot_id が restart の前と違うことを確かめ、§6.5 のとおり覚えた状態をすべて捨てる。
-- **応答が来なかったとき**: host は上と同じに開き直し、confirm の boot_id で確かめる（変わっていれば再起動した。同じなら restart は実行されなかったものとして扱う）。restart を同じ corr で送り直してもよい（§5.2）: 再起動した後の probe はそれを no_session で断る（表もロックも無い）。その no_session も再起動のしるしで、host は上と同じに開き直して boot_id を確かめる。
+- **戻るまでの時間**: probe は、restart の応答が経路を出てから restart_max_ms（§7.5）のうちに、その応答を送った経路で confirm にまた答える（USB の経路では列挙し直したうえで、TCP の経路では待ち受け直したうえで）。
+- **host の待ち方**: restart の応答を受けた host は、その probe にどの経路でも何も送らずに経路を閉じ、少なくとも `restart_after_answer_ms` 待ってから、新しく開くのと同じに開き直す: 最初に送るのは confirm で（[経路](oep-transports.ja.md) §3 の探りの規則。UART bridge では起動時の速さ）、USB では device が列挙し直すのを待つ。開けないか confirm に正しい応答が無いあいだ、host は、restart の応答を受けてから restart_max_ms（§7.5）が過ぎるまで開き直しと confirm を繰り返す（その間に送った confirm の応答は §4.4 のとおり待つ）。それまでに正しい confirm の応答が無ければ、host はその probe を無くなったものとして扱う: その probe の経路を閉じ、利用者が開き直すまで何も送らない。restart の応答を送った後の probe は何にも答えないので、その後に届いた confirm の応答は新しい起動のものである: host はその boot_id が restart の前と違うことを確かめ、§6.5 のとおり覚えた状態をすべて捨てる。
+- **応答が来なかったとき**: host は上と同じに開き直し、confirm の boot_id で確かめる（変わっていれば再起動した。同じなら restart は実行されなかったものとして扱う）。restart を同じ corr で送り直してもよい（§5.2）: 再起動した後の probe はそれを no_session で断る（表もロックも無い）。その no_session も再起動のしるしで、host は上と同じに開き直して boot_id を確かめる。このときの restart_max_ms は、restart の応答の待ち（§4.4。送り直したときは送り直した要求の待ち）が過ぎた時、または no_session を受けた時から数える。
+- **中継のブローカー**（[経路](oep-transports.ja.md) §1）は、client の restart を自分のセッションで probe に中継し、応答の後は上の host と同じに probe の戻りを待つ。そのあいだの client の要求への答え方は [経路](oep-transports.ja.md) §1 が定める。
 
 ## 7. 発見
 
@@ -519,6 +521,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x4C | chip | text。probe の MCU の型番とリビジョン: `<part> v<revision>`。part は `a-z 0-9` の 1〜24 文字。revision は数字で、`.数字` の組が続いてよい。リビジョンが分からなければ part だけ（例 `abc123 v1.0`、`abc123`）。取ったデータに、どのチップで取ったかを残すため（任意） |
 | 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。1〜600000（`max_op_ms_max`、10 分）。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host は §4.4 のとおり待つ |
 | 0x4E | — | 予約 |
+| 0x4F | restart_max_ms | u32。restart（§6.6）の応答が経路を出てから、probe が同じ経路で confirm にまた答えるまでの最長の時間（ms）。USB の経路では列挙し直す時間を、TCP の経路では待ち受け直す時間を含む。restart を ops に立てる probe は**必ず**出し、立てない probe は出さない。`restart_after_answer_ms`（100）以上で、値は probe が決める。host は §6.6 のとおり、この時間まで confirm を繰り返す |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 内蔵の USB シリアル（MCU のハードウェアが持つ USB のシリアルの口で、serial number を含む USB の記述子を probe が選べないもの）、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
   1〜3 がシリアルの口（[経路](oep-transports.ja.md) §4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を

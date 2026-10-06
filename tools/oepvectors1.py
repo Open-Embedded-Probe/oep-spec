@@ -477,12 +477,12 @@ def ops() -> dict:
     core = {"0": "oep.core"}
     restart = op("oep.core", "restart")
     add("core restart: completed success, sent before the probe restarts", "core §6.6", core,
-        "session S holds the lock; restart set in fn 0's ops; after this answer the probe restarts (a new boot_id, no session)",
+        "session S holds the lock; restart set in fn 0's ops with restart_max_ms in its describe; after this answer the probe restarts (a new boot_id, no session)",
         request(0x10, 0, restart, b"", S), ok(0x10))
-    add("core restart without a session: session_required", "core §4.1, §4.3 order 1, §6.6", core, "restart set in fn 0's ops",
+    add("core restart without a session: session_required", "core §4.1, §4.3 order 1, §6.6", core, "restart set in fn 0's ops with restart_max_ms in its describe",
         request(0x11, 0, restart, b""), rej(0x11, "session_required"))
     add("core restart while no session holds the lock: no_session", "core §6.2, §6.6", core,
-        "restart set in fn 0's ops; lock free (for example: the probe has restarted since S opened)",
+        "restart set in fn 0's ops with restart_max_ms in its describe; lock free (for example: the probe has restarted since S opened)",
         request(0x12, 0, restart, b"", S), rej(0x12, "no_session"))
     add("core restart not offered (not set in ops)", "core §1.2, §4.3 order 1, §6.6", core, "fn 0's ops without restart",
         request(0x13, 0, restart, b"", S), rej(0x13, "unknown_operation"))

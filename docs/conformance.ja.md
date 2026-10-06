@@ -20,7 +20,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - max_frame を超える長さ: 捨てて待つ。TCP では閉じる（transports §1）。`probe_frame_gap_ms` の途切れで読み直す。TCP を除く（transports §2）。
 - confirm の前でも 64 バイトまでのメッセージを受ける（transports §3）。max_frame を超えて送らない（transports §3）。
 - USB: probe が選べる口では シリアル番号 = unit_id（transports §3）。vendor bulk と HID は transports §3 の形で、それぞれ一つまで。
-- 自分で OEP の要求に答える端点は、後ろに何があっても probe である。中継する broker は transports §1 と core §5.2 に従う。
+- 自分で OEP の要求に答える端点は、後ろに何があっても probe である。中継する broker は transports §1 と core §5.2 に従う（restart の中継、その後の待ちとそのあいだの断り方、probe への transport が無くなったら終わることを含む）。
 
 **メッセージ、断り方、TLV**
 
@@ -56,17 +56,17 @@ probe は、自分が出す transport とインターフェースについてこ
   （§7.2）。
 - describe: ページ送り、宣言だけで boot_id が同じ間は変わらない、要求に TLV を置かない（§7.3）。
 - fn 0 の describe の必須の tag: unit_id、transport（transport ごとに一つ、interface の欄は §7.5 のとおり）、max_op_ms（1〜
-  `max_op_ms_max`）（§1.2、§7.5）。plan に上限があれば plan_roles（§7.5）。
+  `max_op_ms_max`）（§1.2、§7.5）。restart を ops に立てるなら restart_max_ms（§6.6、§7.5）。plan に上限があれば plan_roles（§7.5）。
   discoverable は、probe がプロジェクトの USB の VID:PID で列挙するときだけ 1、ほかは 0（§7.5）。unit_id の一意性と不変性、transport の index の不変性（§7.5）。
 - plan: fn ごとに不可分、その断り方、設定の plan、解放したピンは idle の状態へ、起動したら最初の答えの前に reserved でないすべての channel を idle の状態へ、plan を取ってもピンは変わらない（§8、§8.1）。
 - 通知: subscribe / unsubscribe、seq、fn 0 の heartbeat、答えを先に送ることと溜める量の上限（§11.2〜§11.4）。
-- restart（任意、§6.6）: 持つときだけ ops に立てる。ロックの要る op として断る。答えは completed success で、それを先に送る。答えの後はどの transport の要求も処理せず、connection を閉じて reserved でない channel を空きの状態にし、答えが transport を出てから `restart_after_answer_ms` のうちに再起動する。再起動の後は電源を入れたときと同じ（新しい boot_id、保存した設定だけが残る）。
+- restart（任意、§6.6）: 持つときだけ ops に立て、そのときは fn 0 の describe に restart_max_ms（`restart_after_answer_ms` 以上、§7.5）を出す。ロックの要る op として断る。答えは completed success で、それを先に送る。答えの後はどの transport の要求も処理せず、connection を閉じて reserved でない channel を空きの状態にし、答えが transport を出てから `restart_after_answer_ms` のうちに再起動する。再起動の後は電源を入れたときと同じ（新しい boot_id、保存した設定だけが残る）。答えが transport を出てから restart_max_ms のうちに、同じ transport で confirm にまた答える。
 
 **時間の上限**（値は `registry/oep-v1.toml`）
 
 - `probe_frame_gap_ms`（transports §2）。宣言した max_op_ms より長い要求はなく、超えうる op は断る（§7.5）。lease の範囲
   （§6.4）。heartbeat の周期（§11.3）。port_speed の verify_ms / idle_ms と戻る条件（[リンク](oep-if-link.ja.md) §3）。各 wire の attach と scan の予算
-  （[線とデバッグ](oep-if-debug.ja.md) §1）。restart の答えから再起動を始めるまでの `restart_after_answer_ms`（§6.6）。
+  （[線とデバッグ](oep-if-debug.ja.md) §1）。restart の答えから再起動を始めるまでの `restart_after_answer_ms` と、同じ transport で confirm にまた答えるまでの、宣言した restart_max_ms（§6.6、§7.5）。
 
 ## 2. host のチェックリスト
 
@@ -94,7 +94,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - **文字列**: 答えの文字を見せる前に制御文字と不正な UTF-8 を置き換える（§2.1）。unit_id とシリアル番号、unit_id どうしは ASCII の
   大文字小文字を区別せず比べる（transports §3）。`x-` の unit_id でまとめたり、名指したり、何かを覚えるキーにしたりしない（§7.5）。iProduct と
   インターフェースの文字列は表示だけ（transports §3）。`name#instance` と `oep://` のアドレス（§7.2、§7.6）。
-- **restart**: 使うときは、答え（または答えが来なかったとき）の後にその probe に何も送らずに閉じ、`restart_after_answer_ms` 以上待ってから新しく開くのと同じに開き直し（最初は confirm、UART bridge では起動時の速さ、USB では列挙し直すのを待つ）、confirm の boot_id が変わったことを確かめて覚えた状態を捨てる（§6.6、[リンク](oep-if-link.ja.md) §3 の host の義務 6）。
+- **restart**: 使うときは、答え（または答えが来なかったとき）の後にその probe に何も送らずに閉じ、`restart_after_answer_ms` 以上待ってから新しく開くのと同じに開き直し（最初は confirm、UART bridge では起動時の速さ、USB では列挙し直すのを待つ）、答えを受けてから（答えが来なかったときはその待ちが過ぎてから）describe の restart_max_ms まで開き直しと confirm を繰り返し、正しい答えが無ければその probe を無くなったものとして扱う。confirm の boot_id が変わったことを確かめて覚えた状態を捨てる（§6.6、[リンク](oep-if-link.ja.md) §3 の host の義務 6）。
 - **port_speed**: host が使うときは [リンク](oep-if-link.ja.md) §3 の host の義務 1〜7。UART bridge のどの口でも、上げた速さの後に confirm を繰り返す（transports §4）。
 - **アナログのキャプチャ**: host が電圧を示すときは、値 0 と 2^b − 1 を電圧ではなく振り切れ（低い端以下、高い端以上）として示す
   （[キャプチャ](oep-if-capture.ja.md) §1.2 規則 6）。

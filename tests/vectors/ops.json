@@ -7,7 +7,7 @@
       "fns": {
         "0": "oep.core"
       },
-      "state": "session S holds the lock; restart set in fn 0's ops; after this answer the probe restarts (a new boot_id, no session)",
+      "state": "session S holds the lock; restart set in fn 0's ops with restart_max_ms in its describe; after this answer the probe restarts (a new boot_id, no session)",
       "request_hex": "01100000001444332211",
       "answer_hex": "0210000100"
     },
@@ -17,7 +17,7 @@
       "fns": {
         "0": "oep.core"
       },
-      "state": "restart set in fn 0's ops",
+      "state": "restart set in fn 0's ops with restart_max_ms in its describe",
       "request_hex": "01110000001400000000",
       "answer_hex": "0211000009"
     },
@@ -27,7 +27,7 @@
       "fns": {
         "0": "oep.core"
       },
-      "state": "restart set in fn 0's ops; lock free (for example: the probe has restarted since S opened)",
+      "state": "restart set in fn 0's ops with restart_max_ms in its describe; lock free (for example: the probe has restarted since S opened)",
       "request_hex": "01120000001444332211",
       "answer_hex": "0212000007"
     },

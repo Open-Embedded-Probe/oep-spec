@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "798d67ece65d0823"
+REGISTRY_HASH = "fcd2454b5f7adea9"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -27,7 +27,7 @@ COMMON = _NS(enum={"target_id_scheme": {"wch_dmi_7f": 0x01, "targetsel": 0x02}, 
 
 INTERFACES = {}
 CORE = _NS(name="oep.core", revision=1, op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "plan_apply": 0x04, "plan_release": 0x05, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13, "restart": 0x14, "subscribe": 0x30, "unsubscribe": 0x32}, lock_free={0x01, 0x02, 0x03, 0x10, 0x13},
-    tlv={"plan_apply": {"role_assignment": 0x10}, "confirm_answer": {"transport": 0x01}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "unavailable_payload": {"cause": 0x01, "channel": 0x02, "holder_fn": 0x03, "holder_kind": 0x04, "fn": 0x05}, "unsupported_payload": {"supported": 0x01, "channel": 0x02, "fn": 0x05, "index": 0x40}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "transport": 0x49, "discoverable": 0x4A, "plan_roles": 0x4B, "chip": 0x4C, "max_op_ms": 0x4D}}, event={"heartbeat": 0x01}, enum={"unavailable_cause": {"pin_in_use": 0x01, "limit": 0x02, "storage_full": 0x03, "bound_in_group": 0x04, "held_by_settings": 0x05, "wrong_state": 0x06}, "holder_kind": {"plan": 0x01, "connection": 0x02, "slot": 0x03, "bind": 0x04, "settings_plan": 0x05, "disabled": 0x06, "settings_idle": 0x07}, "transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}}, own={},
+    tlv={"plan_apply": {"role_assignment": 0x10}, "confirm_answer": {"transport": 0x01}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "unavailable_payload": {"cause": 0x01, "channel": 0x02, "holder_fn": 0x03, "holder_kind": 0x04, "fn": 0x05}, "unsupported_payload": {"supported": 0x01, "channel": 0x02, "fn": 0x05, "index": 0x40}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "transport": 0x49, "discoverable": 0x4A, "plan_roles": 0x4B, "chip": 0x4C, "max_op_ms": 0x4D, "restart_max_ms": 0x4F}}, event={"heartbeat": 0x01}, enum={"unavailable_cause": {"pin_in_use": 0x01, "limit": 0x02, "storage_full": 0x03, "bound_in_group": 0x04, "held_by_settings": 0x05, "wrong_state": 0x06}, "holder_kind": {"plan": 0x01, "connection": 0x02, "slot": 0x03, "bind": 0x04, "settings_plan": 0x05, "disabled": 0x06, "settings_idle": 0x07}, "transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}}, own={},
     line_names={})
 INTERFACES["oep.core"] = CORE
 LINK = _NS(name="oep.link", revision=1, op={"source": 0x01, "sink": 0x02, "port_speed": 0x03}, lock_free={0x01, 0x02},

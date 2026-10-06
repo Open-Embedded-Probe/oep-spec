@@ -268,6 +268,7 @@ discoverable = 0x4A             # u8: 1 = the probe also enumerates with the pro
 plan_roles = 0x4B               # u32: the most role assignments the plan holds at once, every fn together (core §8)
 chip = 0x4C                     # text: the probe MCU's part and revision (optional)
 max_op_ms = 0x4D                # u32: the longest one request may take; required (core §7.5)
+restart_max_ms = 0x4F           # u32: the longest from restart's answer until the probe answers confirm again on the same transport; required when restart is in ops, at least restart_after_answer_ms (core §6.6, §7.5)
 [interface.enum.unavailable_cause]
 pin_in_use = 1
 limit = 2

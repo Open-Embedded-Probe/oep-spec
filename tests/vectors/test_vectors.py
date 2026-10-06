@@ -319,6 +319,12 @@ def test_example_probe_answers_carry_what_the_core_requires():
                 assert dict(got)[t["discoverable"]] == b"\x00", ex["name"]
             ms = struct.unpack("<I", dict(got)[t["max_op_ms"]])[0]
             assert 1 <= ms <= REG["limits"]["max_op_ms_max"]
+            restart = next(o["code"] for o in core["op"] if o["name"] == "restart")
+            if restart in declared:                                                        # core §6.6, §7.5: required with restart
+                assert tags.count(t["restart_max_ms"]) == 1, ex["name"]
+                assert struct.unpack("<I", dict(got)[t["restart_max_ms"]])[0] >= REG["limits"]["restart_after_answer_ms"]
+            else:                                                                          # a probe without restart does not send it
+                assert t["restart_max_ms"] not in tags, ex["name"]
     assert confirms >= 1 and describes >= 1
 
 
