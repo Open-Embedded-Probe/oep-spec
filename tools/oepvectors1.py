@@ -222,22 +222,20 @@ def headers() -> dict:
 def confirm() -> dict:
     confirm_op = op("core", "confirm")
     t_transport = CORE["tlv"]["confirm_answer"]["transport"]
-    t_uptime = CORE["tlv"]["confirm_answer"]["uptime_ns"]
-    uptime = 1_500_000_000                                                         # 1.5 s since boot (core §2.6a)
     t_supported = CORE["tlv"]["unsupported_payload"]["supported"]
     req = request(1, 0, confirm_op, b"OEP?" + bytes([1, 1]))
     fixed = b"OEP!" + struct.pack("<BBHIBI", 1, 0, 1024, 4096, 4, 0x12345678)
-    ans = answer(1, COMPLETED, 0, fixed + tlv(t_transport, b"\x00") + tlv(t_uptime, struct.pack("<Q", uptime)))
+    ans = answer(1, COMPLETED, 0, fixed + tlv(t_transport, b"\x00"))
     req_hi = request(2, 0, confirm_op, b"OEP?" + bytes([2, 3]))
     ans_hi = answer(2, REJECTED, REASON["unsupported"], b"\x00" + tlv(t_supported, bytes([1, 1])))
     return {
-        "about": "confirm (core §7.1). The answer's values (max_frame 1024, window 4096, max_inflight 4, boot_id 0x12345678, transport index 0, uptime_ns 1.5 s) are an example probe's.",
+        "about": "confirm (core §7.1). The answer's values (max_frame 1024, window 4096, max_inflight 4, boot_id 0x12345678, transport index 0) are an example probe's.",
         "exchanges": [
             {"name": "revision 1 asked and answered", "request": {"corr": 1, "min_rev": 1, "max_rev": 1},
              "request_hex": hx(req), "request_serial_frame_hex": hx(serial_frame(req)),
              "request_length_frame_hex": hx(length_frame(req)),
              "answer": {"corr": 1, "revision": 1, "flags": 0, "max_frame": 1024, "window": 4096, "max_inflight": 4,
-                        "boot_id": 0x12345678, "transport": 0, "uptime_ns": uptime},
+                        "boot_id": 0x12345678, "transport": 0},
              "answer_hex": hx(ans), "answer_serial_frame_hex": hx(serial_frame(ans))},
             {"name": "no revision in the range: unsupported with the supported range",
              "request": {"corr": 2, "min_rev": 2, "max_rev": 3}, "request_hex": hx(req_hi),
@@ -363,7 +361,7 @@ def discovery() -> dict:
     list_ans = answer(2, COMPLETED, 0, struct.pack("<HB", 0, 0))                  # no interface; fn 0 is never listed (core §7.2)
 
     # core §1.2: fn 0's required ops, all set in ops
-    offered = [op("core", n) for n in ("confirm", "list", "describe", "open", "end", "keepalive", "lock_state")]
+    offered = [op("core", n) for n in ("confirm", "list", "describe", "clock", "open", "end", "keepalive", "lock_state")]
     decl_tlvs = [tlv(REG["describe_common"]["ops"], ops_value(offered)), tlv(d["unit_id"], unit_id.encode()), tlv(d["transport"], bytes([t_index, t_kind, t_interface])),
                  tlv(d["discoverable"], bytes([discoverable])), tlv(d["max_op_ms"], struct.pack("<I", max_op_ms))]
     decl, n_decl = b"".join(decl_tlvs), len(decl_tlvs)
@@ -375,8 +373,8 @@ def discovery() -> dict:
     no_fn = request(5, 7, 0x01, b"")
     no_op = request(6, 0, 0x50, b"")
     return {
-        "about": "list, describe and the header refusals of the example probe (docs/getting-started.ja.md §2, §3, with its §6 step 1 done): no interface (list is empty: "
-                 "fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, open, end, keepalive, lock_state) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
+        "about": "list, describe and the header refusals of the example probe (docs/getting-started.ja.md §2, §3, with its §6 steps 1 and 2 done): no interface (list is empty: "
+                 "fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, clock, open, end, keepalive, lock_state) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
                  "The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. "
                  "Those values are an example probe's.",
         "exchanges": [
@@ -440,8 +438,11 @@ def ops_encoding() -> dict:
 def sessions() -> dict:
     """Scenarios of the session decision table (core §6.2), the resend table (core §5.2) and the release at end (core §9), as
     request / answer byte pairs from a stated initial state, for the example probe of confirm.json (boot_id 0x12345678)."""
-    open_op, end_op, keep_op, state_op = (op("core", n) for n in ("open", "end", "keepalive", "lock_state"))
+    open_op, end_op, keep_op, state_op, clock_op = (op("core", n) for n in ("open", "end", "keepalive", "lock_state", "clock"))
     boot_id, lease = 0x12345678, 2000
+
+    def clocked(corr, uptime_ns):
+        return answer(corr, COMPLETED, 0, struct.pack("<IQ", boot_id, uptime_ns))
     S, T = 0x11223344, 0x55667788
     owner_tag = CORE["tlv"]["lock_state_answer"]["owner"]
 
@@ -488,11 +489,25 @@ def sessions() -> dict:
              step("lock_state with session_id 0: held, the remaining time as if no time had passed",
                   request(4, 0, state_op, b""), ok(4, struct.pack("<BI", 1, lease))),
          ]},
+        {"name": "clock without a session and while a session holds the lock",
+         "spec": "core §4.1, §6.3, §7.7", "initial": "lock free, no session has held it since boot",
+         "steps": [
+             step("clock with session_id 0, no session: boot_id and uptime_ns", request(1, 0, clock_op, b""), clocked(1, 2_000_000_000)),
+             step("open S", request(2, 0, open_op, struct.pack("<IB", lease, 0), S), opened(2)),
+             step("clock with session_id 0 while S holds the lock: answered, the session, lock and lease untouched",
+                  request(3, 0, clock_op, b""), clocked(3, 2_001_000_000)),
+             step("lock_state with session_id 0: still held by a session",
+                  request(4, 0, state_op, b""), ok(4, struct.pack("<BI", 1, lease))),
+             step("clock with S: a lock-free op of the session holding the lock", request(5, 0, clock_op, b"", S), clocked(5, 2_002_000_000)),
+             step("end of S", request(6, 0, end_op, b"", S), ok(6)),
+             step("clock with session_id 0 after end: answered as before", request(7, 0, clock_op, b""), clocked(7, 2_003_000_000)),
+         ]},
     ]
     return {
         "about": "Session scenarios (core §5.2, §6, §9) of the example probe of confirm.json (boot_id 0x12345678). Each scenario starts from its "
                  "initial state; the steps are sent in order on one transport, each answered before the next. Remaining times are shown as if no time "
-                 "had passed between the steps: a real probe answers the time actually left. S = 0x11223344, T = 0x55667788.",
+                 "had passed between the steps: a real probe answers the time actually left. clock's uptime_ns values are an example probe's (a real probe answers its "
+                 "clock read just before the answer, which does not decrease while boot_id is the same). S = 0x11223344, T = 0x55667788.",
         "scenarios": scenarios,
     }
 

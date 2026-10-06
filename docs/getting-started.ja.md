@@ -58,12 +58,12 @@ length frame 10 00 01 01 00 00 00 01 00 00 00 00 4f 45 50 3f 01 01
 ```
 
 応答: `"OEP!" revision flags max_frame(u16) window(u32) max_inflight(u8) boot_id(u32)`、続いて TLV 0x01 transport（confirm が来た経路の
-index）と TLV 0x02 uptime_ns（probe の起動からの ns。応答を作る直前に読む）。どちらもいつも付く（core §7.1）。
+index。いつも付く、core §7.1）。
 
 ```text
-message      02 0100 01 00 | 4f 45 50 21 | 01 | 00 | 0004 | 00100000 | 04 | 78563412 | 01 01 00 00 | 02 08 00 00 2f 68 59 00 00 00 00
-               role corr completed success | "OEP!" | rev 1 | flags | max_frame 1024 | window 4096 | max_inflight 4 | boot_id | TLV transport = 0 | TLV uptime_ns = 1.5 s
-serial frame 00 03 02 01 02 01 06 4f 45 50 21 01 01 02 04 02 10 01 08 04 78 56 34 12 01 01 01 03 02 08 01 04 2f 68 59 01 01 01 03 d9 b5 00
+message      02 0100 01 00 | 4f 45 50 21 | 01 | 00 | 0004 | 00100000 | 04 | 78563412 | 01 01 00 00
+               role corr completed success | "OEP!" | rev 1 | flags | max_frame 1024 | window 4096 | max_inflight 4 | boot_id | TLV transport = 0
+serial frame 00 03 02 01 02 01 06 4f 45 50 21 01 01 02 04 02 10 01 08 04 78 56 34 12 01 01 01 03 ab a4 00
 ```
 
 範囲の中に扱える revision が無いとき（ここでは host が 2〜3 を求める）、probe は unsupported で断り、payload は tag 0x00 と、続く
@@ -105,13 +105,13 @@ serial frame 00 03 01 03 01 01 02 03 01 01 01 01 01 01 01 03 ea 30 00
 ```
 
 応答: `more(u8)`、続いて宣言の TLV。fn 0 でどの probe も出す 5 つ: ops（この fn が持つ op を base 0x01 と bitmap で示す、
-core §7.4。ここでは core §1.2 が fn 0 に求める 7 つ: confirm、list、describe、open、end、keepalive、lock_state）、unit_id、transport（経路ごとに 1 つ）、max_op_ms（core §1.2）と discoverable（core §7.5。UART bridge は
+core §7.4。ここでは core §1.2 が fn 0 に求める 8 つ: confirm、list、describe、clock、open、end、keepalive、lock_state）、unit_id、transport（経路ごとに 1 つ）、max_op_ms（core §1.2）と discoverable（core §7.5。UART bridge は
 プロジェクトの USB の VID:PID で列挙しないので、ここでは 0）。
 
 ```text
-message      02 0300 01 00 | 00 | 09 0400 01 07 80 07 | 42 0800 61 31 62 32 63 33 64 34 | 49 0300 00 01 ff | 4a 0100 00 | 4d 0400 e8 03 00 00
-               completed success | more 0 | ops 01-03 10-13 | unit_id "a1b2c3d4" | transport: index 0、kind 1、interface 0xFF | discoverable 0 | max_op_ms 1000
-serial frame 00 03 02 03 02 01 01 03 09 04 07 01 07 80 07 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4a 01 01 03 4d 04 03 e8 03 01 03 17 1f 00
+message      02 0300 01 00 | 00 | 09 0400 01 0f 80 07 | 42 0800 61 31 62 32 63 33 64 34 | 49 0300 00 01 ff | 4a 0100 00 | 4d 0400 e8 03 00 00
+               completed success | more 0 | ops 01-04 10-13 | unit_id "a1b2c3d4" | transport: index 0、kind 1、interface 0xFF | discoverable 0 | max_op_ms 1000
+serial frame 00 03 02 03 02 01 01 03 09 04 07 01 0f 80 07 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4a 01 01 03 4d 04 03 e8 03 01 03 db 2e 00
 ```
 
 `first` が TLV の数（ここでは 5）以上の describe には、more 0 で TLV 無しで答える（core §7.3。`discovery.json` の
@@ -150,7 +150,7 @@ probe がすることを順に（参照の先が規則）:
 5. **describe**: fn 0 なら `first` からの TLV（少なくとも ops、unit_id、transport、discoverable、max_op_ms。§3.3）を返す。入りきらなければ
    more = 1。`first` が数以上なら more 0 で TLV なし。要求に TLV があれば malformed。boot_id が同じ間、値は変わらない（core §7.3）。
    ops には、答える op だけを立てる（core §1.2）。この段の probe は confirm、list、describe の 3 つ（`01 07`: base 0x01、bitmap 0x07）
-   で、§6 で op を足すごとにビットを立てる。§3.3 のバイト列は、§6 の 1 を終えて fn 0 の必須の op をすべて持つ probe のもの。
+   で、§6 で op を足すごとにビットを立てる。§3.3 のバイト列は、§6 の 1 と 2 を終えて fn 0 の必須の op をすべて持つ probe のもの。
 6. **答える**: 同じ corr で、要求が来た経路に、来た順に、要求 1 つに応答 1 つ（core §4.2、§4.4）。シリアルの口では `0x00 COBS 0x00`。
 7. **boot_id**: 起動時に乱数から選ぶ（core §6.5）。**unit_id**: 小文字、変わらない、一意（probe ガイド §10）。
 
@@ -192,13 +192,22 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 
 **probe**（[適合](conformance.ja.md) §1）:
 
-1. セッション: open、end、keepalive、lock_state と、lease、core §6.2 の判断の表。session_id の確かめ（session_required、no_session、
+1. clock（op 0x04）: boot_id と、応答を作る直前に読んだ時計の uptime_ns を返す。ロック不要で、session_id 0 で来る（core §7.7）。
+   `sessions.json` の "clock without a session and while a session holds the lock" の最初の段（uptime_ns は例の 2.0 s）:
+
+   ```text
+   request      01 0100 0000 04 00000000
+   answer       02 0100 01 00 | 78563412 | 0094357700000000
+                  completed success | boot_id | uptime_ns = 2000000000
+   ```
+
+2. セッション: open、end、keepalive、lock_state と、lease、core §6.2 の判断の表。session_id の確かめ（session_required、no_session、
    locked）。end、lease の期限切れ、force のどれでも、セッションが作ったものを解放する（core §9）。
-2. core §5.2 の送り直しの表（少なくとも max_inflight 個、断りの応答も含め、成功した open のたびに捨てる）。
-3. core §4.3 の断り方の順のすべてと、core §2.3 の TLV の規則（critical、ignored、繰り返し、短い TLV と長すぎる TLV）。
-4. 通知を送り出すインターフェースがあれば、その fn の subscribe / unsubscribe と通知の送り方（core §11）。
-5. 欲しいインターフェース（[適合](conformance.ja.md) §3）。plan の role を持つインターフェースがあれば `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)）も。
-6. 任意: `oep.probe.link`（線の試験と、UART bridge の port_speed。[リンク](../interfaces/oep-if-link.ja.md)）、`oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)）、probe の設定（[probe の設定](../interfaces/oep-if-probe-config.ja.md)）、ほかの経路。
+3. core §5.2 の送り直しの表（少なくとも max_inflight 個、断りの応答も含め、成功した open のたびに捨てる）。
+4. core §4.3 の断り方の順のすべてと、core §2.3 の TLV の規則（critical、ignored、繰り返し、短い TLV と長すぎる TLV）。
+5. 通知を送り出すインターフェースがあれば、その fn の subscribe / unsubscribe と通知の送り方（core §11）。
+6. 欲しいインターフェース（[適合](conformance.ja.md) §3）。plan の role を持つインターフェースがあれば `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)）も。
+7. 任意: `oep.probe.link`（線の試験と、UART bridge の port_speed。[リンク](../interfaces/oep-if-link.ja.md)）、`oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)）、probe の設定（[probe の設定](../interfaces/oep-if-probe-config.ja.md)）、ほかの経路。
 
 **host**（[適合](conformance.ja.md) §2）:
 

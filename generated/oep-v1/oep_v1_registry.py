@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "956fbe381c4625b2"
+REGISTRY_HASH = "8c26e76bc1717dcc"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -28,8 +28,8 @@ REFERENCE = {"max_op_ms": 0x2710}
 COMMON = _NS(enum={"target_id_scheme": {"wch_dmi_7f": 0x01, "targetsel": 0x02}, "target_id_len": {"wch_dmi_7f": 0x04, "targetsel": 0x04}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "read_flags": {"more": 0x01, "gap": 0x02}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08, "closed": 0x09}, "mark_detail_reset": {"ndmreset": 0x01, "attach_reset": 0x03}, "mark_detail_restart": {"havereset": 0x01, "resync": 0x02}, "mark_detail_lost": {"overflow": 0x01, "framing": 0x02, "parity": 0x03, "target_timeout": 0x04}, "mark_detail_closed": {"all_released": 0x01, "session_ended": 0x02, "slot_changed": 0x03, "connection_closed": 0x04}})
 
 INTERFACES = {}
-CORE = _NS(op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13}, lock_free={0x01, 0x02, 0x03, 0x10, 0x13},
-    tlv={"confirm_answer": {"transport": 0x01, "uptime_ns": 0x02}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "unavailable_payload": {"cause": 0x01, "channel": 0x02, "holder_fn": 0x03, "holder_kind": 0x04, "fn": 0x05}, "unsupported_payload": {"supported": 0x01, "channel": 0x02, "fn": 0x05, "index": 0x40}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "transport": 0x49, "discoverable": 0x4A, "chip": 0x4C, "max_op_ms": 0x4D}}, event={}, enum={"unavailable_cause": {"pin_in_use": 0x01, "limit": 0x02, "storage_full": 0x03, "bound_in_group": 0x04, "held_by_settings": 0x05, "wrong_state": 0x06}, "holder_kind": {"plan": 0x01, "connection": 0x02, "slot": 0x03, "bind": 0x04, "settings_plan": 0x05, "disabled": 0x06, "settings_idle": 0x07}, "transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}}, own={},
+CORE = _NS(op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "clock": 0x04, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13}, lock_free={0x01, 0x02, 0x03, 0x04, 0x10, 0x13},
+    tlv={"confirm_answer": {"transport": 0x01}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "unavailable_payload": {"cause": 0x01, "channel": 0x02, "holder_fn": 0x03, "holder_kind": 0x04, "fn": 0x05}, "unsupported_payload": {"supported": 0x01, "channel": 0x02, "fn": 0x05, "index": 0x40}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "transport": 0x49, "discoverable": 0x4A, "chip": 0x4C, "max_op_ms": 0x4D}}, event={}, enum={"unavailable_cause": {"pin_in_use": 0x01, "limit": 0x02, "storage_full": 0x03, "bound_in_group": 0x04, "held_by_settings": 0x05, "wrong_state": 0x06}, "holder_kind": {"plan": 0x01, "connection": 0x02, "slot": 0x03, "bind": 0x04, "settings_plan": 0x05, "disabled": 0x06, "settings_idle": 0x07}, "transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}}, own={},
     line_names={})
 PROBE_PLAN = _NS(name="oep.probe.plan", revision=1, target=None, op={"plan_apply": 0x01, "plan_release": 0x02}, lock_free=set(),
     tlv={"plan_apply": {"role_assignment": 0x10}, "describe": {"plan_roles": 0x40}}, event={}, enum={}, own={},

@@ -49,17 +49,18 @@ probe は、自分が出す transport とインターフェースについてこ
 
 **fn 0（本体。名前を持たず、list に載らない）**
 
-- 必須の op: core §12 の行（confirm、list、describe、open、end、keepalive、lock_state）。
+- 必須の op: core §12 の行（confirm、list、describe、clock、open、end、keepalive、lock_state）。
 - confirm: revision の選び方、transport TLV、扱える範囲つきの断り。max_frame は 64 以上、window は max_frame 以上、
   max_inflight は 1 以上（§7.1）。
 - list: fn 0 を載せない、ラベル境界での一致、instance の番号、boot_id が同じ間は答えが変わらない、first が一致の数以上なら total と count 0
   （§7.2）。
 - describe: ページ送り、宣言だけで boot_id が同じ間は変わらない、要求に TLV を置かない（§7.3）。
+- clock: boot_id と uptime_ns（答えを作る直前に読んだ時計）。ロック不要で、session_id 0 ならセッションが無くても、ほかのセッションが
+  ロックを持っていても答え、セッション、ロック、lease に触れない。中継のブローカーは自分で答えず中継する（§7.7、transports §1）。
 - fn 0 の describe の必須の tag: unit_id、transport（transport ごとに一つ、interface の欄は §7.5 のとおり）、max_op_ms（1〜
   `max_op_ms_max`）（§1.2、§7.5）。
   discoverable は、probe がプロジェクトの USB の VID:PID で列挙するときだけ 1、ほかは 0（§7.5）。unit_id の一意性と不変性、transport の index の不変性（§7.5）。
 - channel: 解放したピンは空きの状態へ、起動したら最初の答えの前に reserved でないすべての channel を空きの状態へ、ピンを取ってもピンは変わらない、資源の取り合いは何も変えずに断る（§8、§8.1）。
-- confirm の答えに uptime_ns（答えを作る直前の時計）。confirm はセッションの途中でも答え、セッションとロックに触れない（§7.1）。
 - 通知（送り出すインターフェースがあれば）: その fn の subscribe（0x30）/ unsubscribe（0x32）を ops に立てる、送り出さない fn は持たない、seq、データだけをまとめ出来事は先の答えの後すぐ送る、答えを先に送ることと溜める量の上限（§11.2〜§11.4）。
 **時間の上限**（値は `registry/oep-v1.toml`）
 
@@ -86,6 +87,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - **セッション**: 0 でない乱数の session_id（§6.1）。答えの lease_ms が正で、keepalive が延ばす（§6.4）。no_session /
   locked への対応（§4.3、§6.2）。no_session の後は新しいセッションを開いて設定し直す。boot_id が（confirm でも open でも）変われば自分の状態は無効で、
   list し直す（§6.5）。一つのセッションの要求は一つの transport で（transports §3）。セッションの要らないロック不要の要求は session_id 0 で（§4.1）。
+- **probe の時刻**: probe の時刻を自分の時刻に写すときは clock で読み、送った時と受けた時の中点に当て、不確かさを往復の半分とする（§7.7）。
 - **ops**: §7.4 の符号を満たさない ops を受けたら、その fn を使わない（fn 0 の ops なら、その probe を使わない）。
 - **答えの読み方**: role が要求の role のメッセージは捨てる。5 バイトより短い答えと、ヘッダより短い出来事やデータのフレームは
   壊れたフレーム（§2.4）。知らない TLV と tag を飛ばす、繰り返された tag は最初を使う、0 でない真偽値は真と読む（§2.1、§2.3）。知らない
@@ -135,7 +137,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `discovery.json` | list（§7.2。fn 0 を載せないので、インターフェースの無い例の probe では空）、fn 0 の describe（§7.3、§7.5）、終わりを越えた describe、ヘッダの断り unknown_function / unknown_operation（§4.3 の順 1） |
 | `probe_config_hash.json` | probe.config の正規形と hash（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2） |
 | `refusals.json` | §4.3 の断り方と §2.3 の ignored の一覧について、要求とそのとおりの答え |
-| `sessions.json` | セッションの場面: 判定の表（§6.2）、送り直しの表（§5.2。送り直した end）、end での解放と no_session（§9）、force、session_id 0（§4.1）。決めた初めの状態から順に送る要求と答え |
+| `sessions.json` | セッションの場面: 判定の表（§6.2）、送り直しの表（§5.2。送り直した end）、end での解放と no_session（§9）、force、session_id 0（§4.1）、セッションが無いときと開いているときの clock（§7.7）。決めた初めの状態から順に送る要求と答え |
 | `ops_encoding.json` | describe の共通の tag ops の値の境（最短、最長、長さの誤り、op 0xFF の境、正規でない符号）と、正しい値が表す op の集合（§7.4） |
 | `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console、probe.config、logic の一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
 

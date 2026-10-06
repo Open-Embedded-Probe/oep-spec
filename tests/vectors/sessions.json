@@ -1,5 +1,5 @@
 {
-  "about": "Session scenarios (core §5.2, §6, §9) of the example probe of confirm.json (boot_id 0x12345678). Each scenario starts from its initial state; the steps are sent in order on one transport, each answered before the next. Remaining times are shown as if no time had passed between the steps: a real probe answers the time actually left. S = 0x11223344, T = 0x55667788.",
+  "about": "Session scenarios (core §5.2, §6, §9) of the example probe of confirm.json (boot_id 0x12345678). Each scenario starts from its initial state; the steps are sent in order on one transport, each answered before the next. Remaining times are shown as if no time had passed between the steps: a real probe answers the time actually left. clock's uptime_ns values are an example probe's (a real probe answers its clock read just before the answer, which does not decrease while boot_id is the same). S = 0x11223344, T = 0x55667788.",
   "scenarios": [
     {
       "name": "end releases the session; its id is then no_session, and a resent end is answered from the table",
@@ -99,6 +99,48 @@
           "note": "lock_state with session_id 0: held, the remaining time as if no time had passed",
           "request_hex": "01040000001300000000",
           "answer_hex": "020400010001d0070000"
+        }
+      ]
+    },
+    {
+      "name": "clock without a session and while a session holds the lock",
+      "spec": "core §4.1, §6.3, §7.7",
+      "initial": "lock free, no session has held it since boot",
+      "steps": [
+        {
+          "note": "clock with session_id 0, no session: boot_id and uptime_ns",
+          "request_hex": "01010000000400000000",
+          "answer_hex": "0201000100785634120094357700000000"
+        },
+        {
+          "note": "open S",
+          "request_hex": "01020000001044332211d007000000",
+          "answer_hex": "0202000100d007000078563412"
+        },
+        {
+          "note": "clock with session_id 0 while S holds the lock: answered, the session, lock and lease untouched",
+          "request_hex": "01030000000400000000",
+          "answer_hex": "02030001007856341240d6447700000000"
+        },
+        {
+          "note": "lock_state with session_id 0: still held by a session",
+          "request_hex": "01040000001300000000",
+          "answer_hex": "020400010001d0070000"
+        },
+        {
+          "note": "clock with S: a lock-free op of the session holding the lock",
+          "request_hex": "01050000000444332211",
+          "answer_hex": "0205000100785634128018547700000000"
+        },
+        {
+          "note": "end of S",
+          "request_hex": "01060000001144332211",
+          "answer_hex": "0206000100"
+        },
+        {
+          "note": "clock with session_id 0 after end: answered as before",
+          "request_hex": "01070000000400000000",
+          "answer_hex": "020700010078563412c05a637700000000"
         }
       ]
     }

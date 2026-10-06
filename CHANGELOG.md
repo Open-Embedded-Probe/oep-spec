@@ -42,10 +42,15 @@ external re-review of the same day (its §3.2 and §3.3). Japanese only while Ja
   min_bytes and max_delay_ms apply to data only; an event goes as soon as the answers ahead of it are sent (re-review §3.1, §3.3; core
   §1.2, §2.5, §11, §12). Logic, analog and capture-group get subscribe / unsubscribe (optional, in ops; streaming needs them) and lose
   features bit2 (notify); console and the fixtures say they have neither.
-- **Breaking**: confirm's answer carries TLV 0x02 uptime_ns (u64, always): the probe's clock read just before the answer is built.
-  confirm may be sent at any time, mid-session too, and touches no session, lock, lease, table or subscription; the answer still fits in
-  64 bytes with the room for ignored (core §2.6a, §7.1). A relaying broker that answers confirm itself may give its last upstream
-  confirm's value plus the time since; for the probe's own time the host talks to the probe or the broker relays confirm (transports §1).
+- **Breaking**: the probe's time is read with the new mandatory fn 0 op `clock` (0x04): no request fields, answer boot_id(u32)
+  uptime_ns(u64) [TLV], the clock (core §2.6a) read just before the answer is built. Lock-free; with session_id 0 it needs no session
+  and touches no session, lock or lease. The value is the probe's own clock, read between the host sending clock and receiving the
+  answer: a host takes the midpoint of its send and receive times, uncertain by half the round trip, and may keep the shortest of
+  several reads (core §1.2, §6.3, §7.7, §12). A relaying broker answers only the session ops (confirm, open, end, keepalive,
+  lock_state) itself and relays clock like any other request with the ordinary wait (transports §1), so the guarantee holds through it.
+  confirm's answer is unchanged (TLV 0x01 transport only; 45 bytes with the room for ignored, core §7.1). Registry, generated code,
+  vectors (discovery's fn 0 ops include 0x04; sessions.json has clock with session_id 0, with and without a session open, and with the
+  session's own id) and tests follow.
 - The ops encoding (re-review §3.2): the value is 2-33 bytes (a 1-32 byte bitmap), base + 8 × bitmap bytes ≤ 256, bit 0 is set (base is the
   lowest declared op) and the last byte is non-zero, so one op set has one encoding; a host that gets an ops breaking this does not use that
   fn (fn 0: the probe) (core §7.4). New vectors ops_encoding.json (shortest, longest, wrong lengths, the 0xFF bound, non-canonical) with

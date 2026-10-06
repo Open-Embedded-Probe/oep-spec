@@ -76,7 +76,7 @@ max_frame を使う（core §4.4）。
   number が同じものを開く（transports §3）。serial number が unit_id。device の中の口は interface の
   記述子で選ぶ（vendor bulk: class 0xFF / subclass 0x4F / protocol 0x45、HID: usage page 0xFF4F / usage 0x45、CDC はすべてシリアルの口）。
   開いたら最初に confirm だけを送り（応答が無ければ閉じる）、boot_id と上限を取り、describe の unit_id が serial と同じことを確かめる。
-  ロック無しの監視は confirm の boot_id で再起動を知る。
+  ロック無しの監視は confirm か clock の boot_id で再起動を知る。
 - **上限は使う前に確かめる。** confirm の応答では、max_frame は 64 以上、window は max_frame 以上、max_inflight は 1 以上。
   この範囲を外れたら、その経路にはもう何も送らず、値を知らせる（丸めない、core §7.1）。fn 0 の describe では、max_op_ms は 1〜
   `max_op_ms_max`（600000 ms）。0 かそれより大きければ probe は適合しない: 使わない（core §4.4、§7.5）。これで応答の待ちに上限が付く。
@@ -149,7 +149,8 @@ USB で列挙し直した、TCP が閉じた）ブローカーは終わり、道
 要求を束ねる（corr の付け替え、道具の open / end を probe に出さない、道具が切れたらその道具の資源を外す）。probe から見える
 transport とセッションは 1 つのまま。道具とブローカーの間は、仕様の TCP の形（`length(u16) message`、transports §1）を使える。セッションの
 op に自分で答え、ほかを中継するブローカーは、transports §1 と core §5.2 の中継のブローカーの規則に従う（confirm の transport の index は
-0xFF、client の接続ごとの corr の対応表）。
+0xFF、client の接続ごとの corr の対応表）。自分で答えるのはセッションの op（confirm、open、end、keepalive、lock_state）だけで、fn 0 の
+clock はほかの要求と同じに probe に中継する（道具が読む時刻が probe のものであるため。transports §1、core §7.7）。
 
 ## 8. 応答の対応付けと送り直し（transports §5 と core §5.2 が求めること）
 
@@ -238,11 +239,16 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
   使わない。両方 0 ならすぐ送る）。出来事はまとめられず、先の応答の後すぐ届く（core §11.3）。まとめを大きくするとフレームが減り、遅れを短くすると待ちが減る。シリアルの口では min_bytes を
   `host_serial_min_bytes_max`（2 KiB）以下に、待っている応答の量の合計を `host_serial_inflight_max_bytes`（6 KiB）以下に保つ。OS のドライバが一度に来た量を黙って落とすことがあるため
   （transports §4）。
-- **probe の時刻と再起動**: probe の今の時刻は confirm の応答の uptime_ns で読む（core §7.1。confirm はセッションの途中でもいつ送ってよく、
-  セッションとロックに触れない）。probe は応答を作る直前に時計を読むので、confirm を送ってから応答を受けるまでの中ほどの host の時刻と
-  突き合わせると、不確かさは往復の半分に収まる。キャプチャの前と後に読むと、二つの時計のずれの進み方も分かる。中継のブローカーが自分で
-  答える confirm の uptime_ns は推定で、中継の転送の時間の分だけ不確かになる（transports §1）。probe が生きているかは応答の待ち時間で、再起動は
-  confirm と open の boot_id で分かる（core §6.5）。
+- **probe の時刻の読み方**: probe の今の時刻は fn 0 の clock（op 0x04）で読む（core §7.7）。ロック不要で、session_id 0 で送れば
+  セッションが無くても、ほかの道具がロックを持っていても答えが来て、セッション、ロック、lease に触れない。応答は boot_id と uptime_ns。
+  1. 送る直前に自分の時計を読み（t0）、応答を受けた直後にまた読む（t1）。
+  2. uptime_ns は t0 と t1 の間のどこかで読んだ probe の時計の値なので、中点 (t0 + t1) / 2 をそれに当て、不確かさを (t1 − t0) / 2 とする。
+  3. 精度が要るときは clock を何度か続けて読み、t1 − t0 のいちばん短いものを使う（往復の遅れは揺れるが、短い往復ほど中点が確か）。
+  4. キャプチャの前と後など時を置いて読み直すと、二つの時計のずれ（一方がどれだけ速いか）が分かる。マークや区画の時刻（probe の時計）を
+     host の時刻に写すのに使う。
+  5. 応答の boot_id が前と違えば probe は再起動した: それより前の uptime_ns とは比べられない（core §6.5）。
+  中継のブローカーを通しても同じに使える: ブローカーは clock に自分で答えず probe に中継するので、値は probe のもので、中継の遅れは往復に
+  入る（transports §1）。probe が生きているかは応答の待ち時間で、再起動は confirm、clock、open の boot_id で分かる（core §6.5）。
 - 通知は購読を受けた経路に送られる。同じ session_id の open を別の経路で送ると、そちらに移る（core §6.2）。
 - キャプチャの流し続けには独自の規則がある: 送る余地が無いと probe は新しいデータを捨て、stop の前に取った分は送り続け、stop の後で
   受けた位置の終わりが status の write_pos と等しくなれば host はすべてを持っている（[キャプチャ](../interfaces/oep-if-capture.ja.md) §2.1）。受けている

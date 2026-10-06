@@ -19,7 +19,7 @@ OEP は 2 つの層からなる。
 
 | 層 | 中身 | 名前 | 版 |
 |---|---|---|---|
-| **本体（この文書）** | どの probe と host も、機能に関係なく実装するもの: 経路とフレーム（[OEP の経路](oep-transports.ja.md)）、メッセージ、セッションと排他、発見（confirm / list / describe）、channel と資源の寿命と取り合いの一般の規則、通知の仕組み、拡張の規則 | 持たない（fn 0 で話す。list に載らない） | プロトコルの revision（confirm） |
+| **本体（この文書）** | どの probe と host も、機能に関係なく実装するもの: 経路とフレーム（[OEP の経路](oep-transports.ja.md)）、メッセージ、セッションと排他、発見（confirm / list / describe）、probe の時刻（clock）、channel と資源の寿命と取り合いの一般の規則、通知の仕組み、拡張の規則 | 持たない（fn 0 で話す。list に載らない） | プロトコルの revision（confirm） |
 | **インターフェース** | 本体の仕組みだけで定義した、名前つきの機能。本体が必須としない機能は、すべてインターフェースにある | 逆 DNS の名前。project 自身のものは短い `oep.` の名前（§13） | インターフェースごとの revision |
 
 **線引きの規則**:
@@ -67,7 +67,7 @@ OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、
 probe が実装しなければならない（MUST）もの:
 - §3 の経路の少なくとも 1 つと、そのフレーム;
 - §4〜§6;
-- fn 0 の confirm、list、describe、open、end、keepalive、lock_state;
+- fn 0 の confirm、list、describe、clock、open、end、keepalive、lock_state;
 - fn 0 の describe の unit_id、transport、max_op_ms、discoverable（§7.5。プロジェクトの USB の VID:PID で列挙しない probe は 0）;
 - fn 0 と、list に載せるすべての fn の describe の、共通の tag ops（§7.4）;
 - §8 の channel の空きの状態;
@@ -196,8 +196,9 @@ seq（u16）と、インターフェースが定める通し番号や時刻の�
 
 ### 2.6a 時計
 
-probe の時計は 1 つ: **起動からの ns（u64）**。時計は、同じ boot_id の間、減らず、一周しない。ハードウェアの数え器が 64 bit より狭い probe は、ソフトウェアで広げ（一周の数を数える）、一周を見逃さないだけの頻度で読む。時刻を返す所（confirm の uptime_ns、マーク、区画、状態の「最後に試した時刻」）はすべてこの値で、
+probe の時計は 1 つ: **起動からの ns（u64）**。時計は、同じ boot_id の間、減らず、一周しない。ハードウェアの数え器が 64 bit より狭い probe は、ソフトウェアで広げ（一周の数を数える）、一周を見逃さないだけの頻度で読む。時刻を返す所（clock の uptime_ns、マーク、区画、状態の「最後に試した時刻」）はすべてこの値で、
 「まだ無い」は全ビット 1。継続時間（timeout_ms、hold_ms、wait_us、elapsed_us など）はそれぞれの単位のままでよい。
+host は時計の今の値を clock（§7.7）で読む。
 
 ### 2.7 名前と revision
 
@@ -370,7 +371,7 @@ owner を覚えている。§5.2 の表の判定（送り直し）はこの表�
 ### 6.3 ロックの要る要求
 
 状態を変える要求はすべてロックが要る（セッションの id を持つ、§4.1）。ロックなしで使えるのは、状態を変えない読むだけの要求に限る
-（confirm、list、describe、lock_state、インターフェースが定める読むだけの op）。インターフェース
+（confirm、list、describe、clock、lock_state、インターフェースが定める読むだけの op）。インターフェース
 がロックなしとする op は、状態を変えてはならない。
 
 ### 6.4 open、end、keepalive、force
@@ -394,9 +395,9 @@ owner を覚えている。§5.2 の表の判定（送り直し）はこの表�
 
 ### 6.5 boot_id
 
-boot_id は probe の起動ごとに変わる値で、confirm（§7.1）と open の応答に入る（同じ値）。probe は boot_id を、次の好ましい順に取る: ハードウェアの乱数源（32 bit）。不揮発の記憶に置き、起動ごとに変える値（数え上げ、または保存した乱数）。どちらも無ければ、起動ごとに変わる値を混ぜたもの（初期化していない RAM、ADC の入力の変換の雑音、最初の USB や UART の動きなど外からの出来事が来たときの、止まらないタイマーの数）。起動のコードの決まった場所で読んだタイマーは、そうした値ではない。最後の素しか持たない probe は boot_id を繰り返しうるし、host はその確率を受け入れる。0 も普通の値。host は、boot_id が変わった
+boot_id は probe の起動ごとに変わる値で、confirm（§7.1）、clock（§7.7）と open の応答に入る（同じ値）。probe は boot_id を、次の好ましい順に取る: ハードウェアの乱数源（32 bit）。不揮発の記憶に置き、起動ごとに変える値（数え上げ、または保存した乱数）。どちらも無ければ、起動ごとに変わる値を混ぜたもの（初期化していない RAM、ADC の入力の変換の雑音、最初の USB や UART の動きなど外からの出来事が来たときの、止まらないタイマーの数）。起動のコードの決まった場所で読んだタイマーは、そうした値ではない。最後の素しか持たない probe は boot_id を繰り返しうるし、host はその確率を受け入れる。0 も普通の値。host は、boot_id が変わった
 とき、そのセッションの資源（インターフェースの資源）と、覚えた fn の対応、資源の番号、ストリームの位置がすべて無効になったとみなす。
-ロックを持たない host（監視、発見）は confirm で再起動を知る。
+ロックを持たない host（監視、発見）は confirm か clock で再起動を知る。
 
 open の応答も boot_id を持つ: 知っていた boot_id と比べる host は、open のときに再起動を知り、覚えた fn の対応を使う前に list をやり直す（§7.2）。
 
@@ -410,14 +411,10 @@ open の応答も boot_id を持つ: 知っていた boot_id と比べる host �
 ```
 
 - TLV 0x01 transport（u8）: この confirm が来た経路の index（§7.5）。probe は必ず付ける。同じ接続で返す fn 0 の describe の entry を指す（中継のブローカーからは 0xFF、[経路](oep-transports.ja.md) §1）。シリアルの口や UART bridge の経路を指すインターフェースの値が、TCP の index を取ることはない。
-- TLV 0x02 uptime_ns（u64）: probe の今の時刻（§2.6a の時計）。probe は必ず付け、応答を作る直前に時計を読む（host が、応答の往復の
-  半分の不確かさで、probe の時計と自分の時計を突き合わせるため）。マークや区画の時刻（probe の時計）を host の時刻に写すのに使う。
-- **confirm はいつ送ってもよい**: セッションの途中でも、ロックを持っていても持っていなくても。confirm はロックの要らない読むだけの要求で
-  （§6.3）、セッション、ロック、lease、§5.2 の表、購読に影響しない。ある経路での confirm は、その経路の revision を決め直す（下）。
 
 host は扱えるプロトコルの revision の範囲を送り、probe はその中で扱える最大の revision を返す。範囲に扱えるものが無ければ
 rejected unsupported（下）。flags は予約（0）。max_frame は 64 以上（[経路](oep-transports.ja.md) §3）、window は max_frame 以上、max_inflight は 1 以上。この範囲を外れた confirm の応答を受けた host は、その経路を使えないものとして扱う: そこにはもう何も送らず、値を知らせる。host は flags のビットを無視する（予約、§2.4）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も、ignored を付けても 64 byte に収まる
-（[経路](oep-transports.ja.md) §3。応答は見出し 5、固定部分 17、transport 4、uptime_ns 11、ignored の場所 19 で 56 byte）。
+（[経路](oep-transports.ja.md) §3。応答は見出し 5、固定部分 17、transport 4、ignored の場所 19 で 45 byte）。
 
 - confirm の要求とその応答の固定部分、magic の `OEP?` / `OEP!`、confirm の前の規則（64 byte、[経路](oep-transports.ja.md) §1 のフレーム、[経路](oep-transports.ja.md) §3）は、どのプロトコルの revision でも同じ。
 - probe が選んだ revision は、**その confirm が来た経路**の、両方向のすべての message に、その経路の次の confirm まで掛かる。経路ごとに違う revision で動いてよい。TCP では、経路は受けた接続ごとである（[経路](oep-transports.ja.md) §1）。
@@ -531,6 +528,24 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 host が probe とスロットを名指す文字列: `oep://<unit_id>[/<slot name>]`。authority は unit_id（§7.5、小文字）、path は、保存した設定が
 target の線に付けた名前（スロットの名前。インターフェースの文書が定める）1 つだけ。path の無い `oep://<unit_id>` は probe 自身。v1 はこれ以外（query、port、
 複数の path）を定めない。IDE や設定のファイルが probe を覚えるときはこの形で覚える（VID:PID や口の名前ではなく）。
+
+### 7.7 clock
+
+```text
+要求: —
+応答: boot_id(u32)、uptime_ns(u64)、[TLV]
+```
+
+- clock は probe の今の時刻を返す。boot_id は §6.5 の値（confirm と open の応答と同じ）、uptime_ns は §2.6a の時計の値。
+- clock はロックの要らない読むだけの op（§6.3）である。セッションが無くても送れる: session_id 0 の clock は、セッションの確かめなしに処理し、
+  どのセッション、ロック、lease にも触れない（§4.1）。
+- probe は、clock の要求を受けた後、応答を作る直前に時計を読み、その値を uptime_ns に入れる。
+- **保証**: uptime_ns は probe 自身の時計の値で、host が clock の要求を送った時から、その応答を受けた時までの間に読んだものである。
+  だから host は、送った時と受けた時の中点を uptime_ns に当たる自分の時刻とし、その不確かさを往復の時間の半分としてよい。host は clock を
+  何度か読み、往復のいちばん短いものを使ってよい。この保証は中継のブローカーを通しても変わらない: ブローカーは clock に自分で答えず、
+  probe に中継する（[経路](oep-transports.ja.md) §1）。
+- （参考）host は clock で、probe の時計の時刻（マーク、区画など）を自分の時刻に写し、時を置いて読み直して二つの時計のずれを測る。
+  boot_id が前と違えば、probe は再起動している（§6.5）。
 
 ## 8. channel の空きの状態
 
@@ -658,6 +673,7 @@ subscribe と unsubscribe は、通知を送り出すインターフェース自
 | 0x01 | confirm | §7.1 | §7.1 | 不要 | 必須 |
 | 0x02 | list | §7.2 | §7.2 | 不要 | 必須 |
 | 0x03 | describe | §7.3 | §7.3 | 不要 | 必須 |
+| 0x04 | clock | — | boot_id(u32)、uptime_ns(u64)、[TLV]（§7.7） | 不要 | 必須 |
 | 0x10 | open | lease_ms(u32)、force(u8)、[TLV owner]（session_id は見出しのもの） | lease_ms(u32)、boot_id(u32)、[TLV] | open がロックを取る | 必須 |
 | 0x11 | end | — | — | 必要 | 必須 |
 | 0x12 | keepalive | — | — | 必要 | 必須 |

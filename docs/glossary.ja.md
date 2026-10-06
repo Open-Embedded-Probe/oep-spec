@@ -84,7 +84,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 知らない値 | unknown value | 読む側が知らない値の扱い | core §2.4 |
 | 実験用の値 | experimental value | u8 の enum の 0xF0〜0xFE、op の 0xF0〜0xFF。出荷も登録もしない | core §2.5 |
 | 一周する値 | wrapping value | seq、資源の番号: 通し番号の算術で比べる | core §2.6 |
-| 時計 | clock | probe の 1 つの時計: 起動からの ns（u64）。全ビット 1 は「まだ」 | core §2.6a |
+| 時計 | clock | probe の 1 つの時計: 起動からの ns（u64）。全ビット 1 は「まだ」。今の値は op の clock で読む | core §2.6a、§7.7 |
 | revision | revision | プロトコルの revision（confirm）とインターフェースの revision（list）。固定部分が変わるときだけ上げる | core §2.7、§7.1 |
 | max_frame、window、max_inflight | max_frame, window, max_inflight | 経路ごとの、メッセージの長さ、待っている byte、待っている要求の上限 | core §4.4 |
 | 待ち時間（の下限） | wait floor | host が応答を待つ最短の時間 | core §4.4 |
@@ -112,8 +112,9 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
-| confirm | confirm | 最初の要求: `OEP?` / `OEP!`、revision、上限、boot_id、uptime_ns。いつ送ってもよい | core §7.1 |
-| uptime_ns | uptime_ns | confirm の応答の probe の今の時刻（起動からの ns）。応答を作る直前に読む | core §2.6a、§7.1 |
+| confirm | confirm | 最初の要求: `OEP?` / `OEP!`、revision、上限、boot_id | core §7.1 |
+| clock（op） | clock (op) | fn 0 の op 0x04。必須、ロック不要、session_id 0 で送れる。応答は boot_id と uptime_ns。中継のブローカーも probe に中継する | core §7.7、transports §1 |
+| uptime_ns | uptime_ns | clock の応答の probe の今の時刻（起動からの ns）。応答を作る直前に読み、host が送ってから受けるまでの間の値 | core §2.6a、§7.7 |
 | list | list | 名前ごとのインターフェースと、その fn、instance、revision | core §7.2 |
 | describe | describe | インターフェースの、または（fn 0 で）probe 全体の宣言 | core §7.3 |
 | 宣言 | declaration | describe が返すもの。boot_id が同じ間変わらない | core §7.3 |

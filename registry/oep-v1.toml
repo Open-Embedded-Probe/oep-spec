@@ -223,6 +223,7 @@ op = [
   { code = 0x01, name = "confirm", lock = false },     # answer carries boot_id (core §7.1)
   { code = 0x02, name = "list", lock = false },
   { code = 0x03, name = "describe", lock = false },
+  { code = 0x04, name = "clock", lock = false },       # answer: boot_id(u32) uptime_ns(u64), the clock read just before the answer is built (core §7.7)
   { code = 0x10, name = "open", lock = false },
   { code = 0x11, name = "end", lock = true },
   { code = 0x12, name = "keepalive", lock = true },
@@ -230,7 +231,6 @@ op = [
 ]
 [core.tlv.confirm_answer]
 transport = 0x01                # u8: the index of the transport this confirm came on (0xFF: a relaying broker); always sent (core §7.1)
-uptime_ns = 0x02                # u64: the probe's clock (core §2.6a), read just before the answer is built; always sent (core §7.1)
 [core.tlv.open]
 owner = 0x01                    # text (1-32 bytes): who holds the lock, for display (core §6.4)
 [core.tlv.lock_state_answer]

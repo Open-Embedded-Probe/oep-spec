@@ -75,7 +75,7 @@ def tlvs(data: bytes) -> list[tuple[int, bytes]]:
 
 
 # core §1.2 (and the 必須 column of core §12): fn 0's ops every probe offers; plan_apply / plan_release only with a plan role
-REQUIRED_FN0_OPS = ("confirm", "list", "describe", "open", "end", "keepalive", "lock_state")
+REQUIRED_FN0_OPS = ("confirm", "list", "describe", "clock", "open", "end", "keepalive", "lock_state")
 
 
 def ops_set(value: bytes) -> set[int]:
@@ -204,7 +204,8 @@ def test_confirm_exchanges():
     a = ok["answer"]
     assert ans[5:9] == b"OEP!"
     assert struct.unpack_from("<BBHIBI", ans, 9) == (a["revision"], a["flags"], a["max_frame"], a["window"], a["max_inflight"], a["boot_id"])
-    assert tlvs(ans[9 + 13:]) == [(0x01, bytes([a["transport"]])), (0x02, struct.pack("<Q", a["uptime_ns"]))]   # transport, uptime_ns (core §7.1)
+    assert tlvs(ans[9 + 13:]) == [(0x01, bytes([a["transport"]]))]                                  # transport only (core §7.1); the time is clock's
+    assert set(CORE["tlv"]["confirm_answer"]) == {"transport"}
     assert len(ans) + 19 <= REG["constants"]["min_max_frame"]                                 # fits with the room for ignored (core §7.1)
     assert len(req) <= REG["constants"]["min_max_frame"] and len(ans) <= REG["constants"]["min_max_frame"]   # core §7.1
     ans = bytes.fromhex(refused["answer_hex"])
@@ -348,7 +349,6 @@ def test_example_probe_answers_carry_what_the_core_requires():
             confirms += 1
             got = dict(tlvs(ans[5 + 4 + 13:]))
             assert len(got.get(t_confirm, b"")) == 1, ex["name"]                              # core §7.1 "always attaches"
-            assert len(got.get(core["tlv"]["confirm_answer"]["uptime_ns"], b"")) == 8, ex["name"]   # core §7.1 uptime_ns, always
         elif fn == 0 and op == describe_op and struct.unpack_from("<H", req, 12)[0] == 0:
             describes += 1
             got = tlvs(ans[6:])
@@ -381,9 +381,13 @@ def test_session_scenarios_follow_the_decision_table():
     gets the same answer bytes; after end, the ended id is no_session; force hands the lock over."""
     reasons = {v: k for k, v in REG["reject_reasons"].items()}
     ops = {o["name"]: o["code"] for o in CORE["op"]}
+    assert ops["clock"] == 0x04 and not next(o["lock"] for o in CORE["op"] if o["name"] == "clock")     # core §12: no lock
+    clocks = {"no session": 0, "held, session_id 0": 0, "held, its own id": 0}
     for sc in load("sessions.json")["scenarios"]:
         seen = {}
         ended = set()
+        held = False
+        last_uptime = -1
         for st in sc["steps"]:
             req, ans = bytes.fromhex(st["request_hex"]), bytes.fromhex(st["answer_hex"])
             role, corr, fn, op, session = struct.unpack_from("<BHHBI", req)
@@ -405,9 +409,24 @@ def test_session_scenarios_follow_the_decision_table():
                 assert outcome in ("no_session", "locked"), st["note"]                       # nothing is resumed (core §6.4)
             if op == ops["keepalive"] and session == 0:
                 assert outcome == "session_required"
+            if op == ops["clock"]:
+                assert len(req) == 10, st["note"]                                                  # no fixed part (core §7.7)
+                if session == 0:
+                    assert outcome == "completed", st["note"]                                       # no session needed (core §4.1, §6.3)
+                if outcome == "completed":
+                    assert len(ans) == 5 + 12, st["note"]                                         # boot_id(u32) uptime_ns(u64)
+                    boot_id, uptime = struct.unpack_from("<IQ", ans, 5)
+                    assert boot_id == 0x12345678 and uptime >= last_uptime, st["note"]            # one boot: the clock does not decrease (core §2.6a)
+                    last_uptime = uptime
+                    clocks["held, its own id" if session else "held, session_id 0" if held else "no session"] += 1
+            if op == ops["open"] and outcome == "completed":
+                held = True
+            elif op == ops["end"] and outcome == "completed":
+                held = False
             if outcome == "locked":
                 assert len(ans) >= 9                                                          # remaining_ms(u32), [TLV owner]
                 tlvs(ans[9:])
+    assert all(clocks.values()), clocks                                                       # clock without a session and with one open
 
 
 def _fixed_sequence(payload: bytes, size_of) -> int:
