@@ -36,6 +36,7 @@ probe の値（`tests/vectors/confirm.json` と `discovery.json` のもの）:
 | boot_id | 0x12345678（起動のたびに新しい乱数） | confirm、core §6.5 |
 | unit_id | `a1b2c3d4` | describe 0x42、core §7.5 |
 | transport | index 0、kind 1（UART bridge）、interface 0xFF（USB でない） | describe 0x49、confirm の TLV 0x01 |
+| discoverable | 0（probe はプロジェクトの USB の VID:PID で列挙しない） | describe 0x4A、core §7.5 |
 | max_op_ms | 1000 | describe 0x4D |
 
 host は要求に corr 1、2、3 と順に番号を付ける（core §4.1）。
@@ -104,19 +105,20 @@ message      01 0300 0000 03 | 0000 | 0000
 serial frame 00 03 01 03 01 01 02 03 01 01 01 03 ea 4d 00
 ```
 
-応答: `more(u8)`、続いて宣言の TLV。fn 0 でどの probe も出す 3 つ（core §1.2）: unit_id、transport（経路ごとに 1 つ）、max_op_ms。
+応答: `more(u8)`、続いて宣言の TLV。fn 0 でどの probe も出す 4 つ: unit_id、transport（経路ごとに 1 つ）、
+max_op_ms（core §1.2）と discoverable（core §7.5。UART bridge はプロジェクトの USB の VID:PID で列挙しないので、ここでは 0）。
 
 ```text
-message      02 0300 01 00 | 00 | 42 08 61 31 62 32 63 33 64 34 | 49 03 00 01 ff | 4d 04 e8 03 00 00
-               completed success | more 0 | unit_id "a1b2c3d4" | transport: index 0、kind 1、interface 0xFF | max_op_ms 1000
-serial frame 00 03 02 03 02 01 01 0d 42 08 61 31 62 32 63 33 64 34 49 03 07 01 ff 4d 04 e8 03 01 03 a8 68 00
+message      02 0300 01 00 | 00 | 42 08 61 31 62 32 63 33 64 34 | 49 03 00 01 ff | 4a 01 00 | 4d 04 e8 03 00 00
+               completed success | more 0 | unit_id "a1b2c3d4" | transport: index 0、kind 1、interface 0xFF | discoverable 0 | max_op_ms 1000
+serial frame 00 03 02 03 02 01 01 0d 42 08 61 31 62 32 63 33 64 34 49 03 05 01 ff 4a 01 05 4d 04 e8 03 01 03 8a ef 00
 ```
 
-`first` が TLV の数（ここでは 3）以上の describe には、more 0 で TLV 無しで答える（core §7.3。`discovery.json` の
+`first` が TLV の数（ここでは 4）以上の describe には、more 0 で TLV 無しで答える（core §7.3。`discovery.json` の
 "describe fn 0 from beyond the last: more 0 and no TLVs"）:
 
 ```text
-request      01 0400 0000 03 | 0000 | 0300
+request      01 0400 0000 03 | 0000 | 0400
 answer       02 0400 01 00 | 00
 ```
 
@@ -145,8 +147,8 @@ probe がすることを順に（参照の先が規則）:
    無ければ §3.1 のとおり断る。どの confirm の応答にも transport の TLV を付ける。flags は 0。
 4. **list**: 名前をラベルの境で照らし（`oep` は `oep.core` に合う。空の prefix はすべてに合う）、`first` から 1 つのフレームに入るだけ
    項を入れる。total は合うものの総数。flags の bit 1〜7 が立った要求は unsupported（core §7.2）。
-5. **describe**: fn 0 なら `first` からの TLV を返す。入りきらなければ more = 1。`first` が数以上なら more 0 で TLV なし。要求に TLV が
-   あれば malformed。boot_id が同じ間、値は変わらない（core §7.3）。
+5. **describe**: fn 0 なら `first` からの TLV（少なくとも unit_id、transport、discoverable、max_op_ms。§3.3）を返す。入りきらなければ
+   more = 1。`first` が数以上なら more 0 で TLV なし。要求に TLV があれば malformed。boot_id が同じ間、値は変わらない（core §7.3）。
 6. **答える**: 同じ corr で、要求が来た経路に、来た順に、要求 1 つに応答 1 つ（core §4.2、§4.4）。シリアルの口では `0x00 COBS 0x00`。
 7. **boot_id**: 起動時に乱数から選ぶ（core §6.5）。**unit_id**: 小文字、変わらない、一意（probe ガイド §10）。
 

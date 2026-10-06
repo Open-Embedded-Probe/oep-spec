@@ -81,6 +81,9 @@ and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.m
 
 - `tests/vectors/`: machine-readable vectors computed from the text by `tools/oepvectors1.py` (CRCs, COBS and frames, headers and TLVs, confirm,
   the probe.config hash, refusals and ignored) (e21a9a2).
+- `discovery.json`: the example probe's describe of fn 0 also carries discoverable 0 (core §7.5: it does not enumerate with the project's USB
+  VID:PID), and the describe past the end asks from 4; a test checks that the example probe's confirm answers carry the transport TLV and its
+  describe of fn 0 carries unit_id, transport, max_op_ms and discoverable; getting-started's bytes follow (en + ja).
 - oepgen1: `[interface.line_names]` in all outputs (031ad71); `--check` refuses unlisted table kinds (73a0c37); SPDX lines and a C header
   `oep_v1_registry_c.h` (5d02a6f).
 

@@ -230,13 +230,14 @@ def test_discovery_exchanges():
     assert ans[5] == desc["answer"]["more"] == 0
     t = core["tlv"]["describe"]
     got = tlvs(ans[6:])
-    assert [tag for tag, _ in got] == [t["unit_id"], t["transport"], t["max_op_ms"]]          # the mandatory three (core §1.2)
+    assert [tag for tag, _ in got] == [t["unit_id"], t["transport"], t["discoverable"], t["max_op_ms"]]
     uid = got[0][1].decode()
     assert uid == desc["answer"]["unit_id"] and 1 <= len(uid) <= 32 and set(uid) <= set("abcdefghijklmnopqrstuvwxyz0123456789-")
     tr = desc["answer"]["transports"][0]
     assert got[1][1] == bytes([tr["index"], tr["kind"], tr["interface"]])
     assert tr["kind"] == core["enum"]["transport_kind"]["uart_bridge"]
-    assert struct.unpack("<I", got[2][1])[0] == desc["answer"]["max_op_ms"]
+    assert got[2][1] == bytes([desc["answer"]["discoverable"]])
+    assert struct.unpack("<I", got[3][1])[0] == desc["answer"]["max_op_ms"]
     assert t["unit_id"] != 0x3F and t["transport"] != 0x3F
 
     req, ans = bytes.fromhex(past["request_hex"]), bytes.fromhex(past["answer_hex"])
@@ -254,6 +255,44 @@ def test_discovery_exchanges():
             assert fn not in [e["fn"] for e in entries]
         else:
             assert fn == 0 and op not in defined
+
+
+def test_example_probe_answers_carry_what_the_core_requires():
+    """Every completed confirm answer of the example probe carries TLV 0x01 transport (core §7.1), and its describe of
+    fn 0 carries unit_id, transport and max_op_ms (core §1.2) and discoverable (core §7.5: 0 for a probe that does not
+    enumerate with the project's USB VID:PID, as a UART bridge does not)."""
+    core = REG["interface"][0]
+    t_confirm = core["tlv"]["confirm_answer"]["transport"]
+    t = core["tlv"]["describe"]
+    uart_bridge = core["enum"]["transport_kind"]["uart_bridge"]
+    confirm_op = next(o["code"] for o in core["op"] if o["name"] == "confirm")
+    describe_op = next(o["code"] for o in core["op"] if o["name"] == "describe")
+
+    exchanges = [ex for name in ("confirm.json", "discovery.json") for ex in load(name)["exchanges"]]
+    exchanges += load("refusals.json")["cases"]
+    confirms = describes = 0
+    for ex in exchanges:
+        req, ans = bytes.fromhex(ex["request_hex"]), bytes.fromhex(ex["answer_hex"])
+        if ans[3] != 0x01:                                                                     # only completed answers
+            continue
+        fn, op = struct.unpack_from("<HB", req, 3)
+        if fn == 0 and op == confirm_op:
+            confirms += 1
+            got = dict(tlvs(ans[5 + 4 + 13:]))
+            assert len(got.get(t_confirm, b"")) == 1, ex["name"]                              # core §7.1 "always attaches"
+        elif fn == 0 and op == describe_op and struct.unpack_from("<H", req, 8)[0] == 0:
+            describes += 1
+            got = tlvs(ans[6:])
+            tags = [tag for tag, _ in got]
+            for name in ("unit_id", "transport", "max_op_ms", "discoverable"):
+                assert t[name] in tags, (ex["name"], name)
+            assert tags.count(t["discoverable"]) == 1 and tags.count(t["max_op_ms"]) == 1
+            kinds = [v[1] for tag, v in got if tag == t["transport"]]
+            if all(k == uart_bridge for k in kinds):                                       # no USB port of its own
+                assert dict(got)[t["discoverable"]] == b"\x00", ex["name"]
+            ms = struct.unpack("<I", dict(got)[t["max_op_ms"]])[0]
+            assert 1 <= ms <= REG["limits"]["max_op_ms_max"]
+    assert confirms >= 1 and describes >= 1
 
 
 def test_the_tool_still_gives_these_files():

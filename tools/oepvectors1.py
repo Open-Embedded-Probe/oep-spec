@@ -321,7 +321,7 @@ def discovery() -> dict:
     core = IFACE["oep.core"]
     list_op, describe_op = op("oep.core", "list"), op("oep.core", "describe")
     d = core["tlv"]["describe"]
-    unit_id, max_op_ms = "a1b2c3d4", 1000
+    unit_id, max_op_ms, discoverable = "a1b2c3d4", 1000, 0   # a UART bridge: not the project's USB VID:PID, so 0 (core §7.5)
     t_index, t_kind, t_interface = 0, core["enum"]["transport_kind"]["uart_bridge"], 0xFF
 
     name = b"oep.core"
@@ -329,18 +329,19 @@ def discovery() -> dict:
     list_req = request(2, 0, list_op, struct.pack("<BHB", 0, 0, 0))
     list_ans = answer(2, COMPLETED, 0, struct.pack("<HB", 1, 1) + bytes([len(entry)]) + entry)
 
-    decl = (tlv(d["unit_id"], unit_id.encode()) + tlv(d["transport"], bytes([t_index, t_kind, t_interface]))
-            + tlv(d["max_op_ms"], struct.pack("<I", max_op_ms)))
+    decl_tlvs = [tlv(d["unit_id"], unit_id.encode()), tlv(d["transport"], bytes([t_index, t_kind, t_interface])),
+                 tlv(d["discoverable"], bytes([discoverable])), tlv(d["max_op_ms"], struct.pack("<I", max_op_ms))]
+    decl, n_decl = b"".join(decl_tlvs), len(decl_tlvs)
     desc_req = request(3, 0, describe_op, struct.pack("<HH", 0, 0))
     desc_ans = answer(3, COMPLETED, 0, b"\x00" + decl)
-    past_req = request(4, 0, describe_op, struct.pack("<HH", 0, 3))
+    past_req = request(4, 0, describe_op, struct.pack("<HH", 0, n_decl))
     past_ans = answer(4, COMPLETED, 0, b"\x00")
 
     no_fn = request(5, 7, 0x01, b"")
     no_op = request(6, 0, 0x50, b"")
     return {
         "about": "list, describe and the header refusals of the smallest probe (docs/getting-started.md §2, §3): only fn 0 (oep.core, "
-                 "instance 0, revision 1), one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", max_op_ms 1000. "
+                 "instance 0, revision 1), one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
                  "The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. "
                  "Those values are an example probe's.",
         "exchanges": [
@@ -354,10 +355,11 @@ def discovery() -> dict:
              "request": {"corr": 3, "fn": 0, "first": 0},
              "request_hex": hx(desc_req), "request_serial_frame_hex": hx(serial_frame(desc_req)),
              "answer": {"corr": 3, "more": 0, "unit_id": unit_id,
-                        "transports": [{"index": t_index, "kind": t_kind, "interface": t_interface}], "max_op_ms": max_op_ms},
+                        "transports": [{"index": t_index, "kind": t_kind, "interface": t_interface}],
+                        "discoverable": discoverable, "max_op_ms": max_op_ms},
              "answer_hex": hx(desc_ans), "answer_serial_frame_hex": hx(serial_frame(desc_ans))},
             {"name": "describe fn 0 from beyond the last: more 0 and no TLVs", "spec": "core §7.3 end of paging",
-             "request": {"corr": 4, "fn": 0, "first": 3},
+             "request": {"corr": 4, "fn": 0, "first": n_decl},
              "request_hex": hx(past_req), "answer": {"corr": 4, "more": 0}, "answer_hex": hx(past_ans)},
         ],
         "refusals": [

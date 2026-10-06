@@ -36,6 +36,7 @@ probe's values (from `tests/vectors/confirm.json` and `discovery.json`):
 | boot_id | 0x12345678 (a new random value at every boot) | confirm, core §6.5 |
 | unit_id | `a1b2c3d4` | describe 0x42, core §7.5 |
 | transport | index 0, kind 1 (UART bridge), interface 0xFF (not USB) | describe 0x49, confirm TLV 0x01 |
+| discoverable | 0 (the probe does not enumerate with the project's USB VID:PID) | describe 0x4A, core §7.5 |
 | max_op_ms | 1000 | describe 0x4D |
 
 The host numbers its requests with corr 1, 2, 3 and onwards (core §4.1).
@@ -104,20 +105,20 @@ message      01 0300 0000 03 | 0000 | 0000
 serial frame 00 03 01 03 01 01 02 03 01 01 01 03 ea 4d 00
 ```
 
-Answer: `more(u8)`, then the declaration TLVs. The three that every probe sends in fn 0 (core §1.2): unit_id, transport (one per transport),
-max_op_ms.
+Answer: `more(u8)`, then the declaration TLVs. The four that every probe sends in fn 0: unit_id, transport (one per transport) and
+max_op_ms (core §1.2), and discoverable (core §7.5; 0 here, since a UART bridge does not enumerate with the project's USB VID:PID).
 
 ```text
-message      02 0300 01 00 | 00 | 42 08 61 31 62 32 63 33 64 34 | 49 03 00 01 ff | 4d 04 e8 03 00 00
-               completed success | more 0 | unit_id "a1b2c3d4" | transport: index 0, kind 1, interface 0xFF | max_op_ms 1000
-serial frame 00 03 02 03 02 01 01 0d 42 08 61 31 62 32 63 33 64 34 49 03 07 01 ff 4d 04 e8 03 01 03 a8 68 00
+message      02 0300 01 00 | 00 | 42 08 61 31 62 32 63 33 64 34 | 49 03 00 01 ff | 4a 01 00 | 4d 04 e8 03 00 00
+               completed success | more 0 | unit_id "a1b2c3d4" | transport: index 0, kind 1, interface 0xFF | discoverable 0 | max_op_ms 1000
+serial frame 00 03 02 03 02 01 01 0d 42 08 61 31 62 32 63 33 64 34 49 03 05 01 ff 4a 01 05 4d 04 e8 03 01 03 8a ef 00
 ```
 
-A describe whose `first` is at or beyond the count of TLVs (here 3) is answered with more 0 and no TLVs (core §7.3; `discovery.json`,
+A describe whose `first` is at or beyond the count of TLVs (here 4) is answered with more 0 and no TLVs (core §7.3; `discovery.json`,
 "describe fn 0 from beyond the last: more 0 and no TLVs"):
 
 ```text
-request      01 0400 0000 03 | 0000 | 0300
+request      01 0400 0000 03 | 0000 | 0400
 answer       02 0400 01 00 | 00
 ```
 
@@ -146,8 +147,8 @@ What the probe does, in order (the references are the rules):
    the transport TLV on every confirm answer. flags is 0.
 4. **list**: match names by label boundaries (`oep` matches `oep.core`; an empty prefix matches everything), start from `first`, put as many
    entries as fit in one frame; total is the count of all matches. A request with flags bits 1 to 7 set is unsupported (core §7.2).
-5. **describe**: for fn 0 return the TLVs from `first`; more = 1 when some did not fit; when `first` is at or beyond the count, return more 0 and
-   no TLVs. A TLV in the request is malformed. The values do not change while the boot_id is the same (core §7.3).
+5. **describe**: for fn 0 return the TLVs (at least unit_id, transport, discoverable and max_op_ms, §3.3) from `first`; more = 1 when some
+   did not fit; when `first` is at or beyond the count, return more 0 and no TLVs. A TLV in the request is malformed. The values do not change while the boot_id is the same (core §7.3).
 6. **Answer** with the same corr, on the transport the request came from, in the order the requests arrived, one answer per request (core §4.2,
    §4.4). Frame it as `0x00 COBS 0x00` on a serial port.
 7. **boot_id**: choose it at boot from a random source (core §6.5). **unit_id**: lowercase, stable, unique (probe guide §10).

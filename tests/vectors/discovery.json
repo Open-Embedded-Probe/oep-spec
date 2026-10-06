@@ -1,5 +1,5 @@
 {
-  "about": "list, describe and the header refusals of the smallest probe (docs/getting-started.md §2, §3): only fn 0 (oep.core, instance 0, revision 1), one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", max_op_ms 1000. The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. Those values are an example probe's.",
+  "about": "list, describe and the header refusals of the smallest probe (docs/getting-started.md §2, §3): only fn 0 (oep.core, instance 0, revision 1), one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. Those values are an example probe's.",
   "exchanges": [
     {
       "name": "list everything from the first",
@@ -49,10 +49,11 @@
             "interface": 255
           }
         ],
+        "discoverable": 0,
         "max_op_ms": 1000
       },
-      "answer_hex": "0203000100004208613162326333643449030001ff4d04e8030000",
-      "answer_serial_frame_hex": "000302030201010d4208613162326333643449030701ff4d04e8030103a86800"
+      "answer_hex": "0203000100004208613162326333643449030001ff4a01004d04e8030000",
+      "answer_serial_frame_hex": "000302030201010d4208613162326333643449030501ff4a01054d04e80301038aef00"
     },
     {
       "name": "describe fn 0 from beyond the last: more 0 and no TLVs",
@@ -60,9 +61,9 @@
       "request": {
         "corr": 4,
         "fn": 0,
-        "first": 3
+        "first": 4
       },
-      "request_hex": "01040000000300000300",
+      "request_hex": "01040000000300000400",
       "answer": {
         "corr": 4,
         "more": 0
