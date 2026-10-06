@@ -407,3 +407,7 @@ def test_per_op_vectors_decode_exactly():
     p = pay("link source: 8 bytes, byte k = k & 0xFF")
     n = struct.unpack_from("<H", p)[0]
     assert p[2:2 + n] == bytes(k & 0xFF for k in range(n)) and len(p) == 2 + n
+    p = pay("link source: more than fits, len = max_frame - 26")                                 # max_frame 1024 (oep-if-link §2)
+    n = struct.unpack_from("<H", p)[0]
+    assert n == 1024 - 5 - 2 - 19 == 1024 - REG["limits"]["link_source_overhead_bytes"]            # header, len, room for ignored (core §2.3)
+    assert p[2:] == bytes(k & 0xFF for k in range(n))

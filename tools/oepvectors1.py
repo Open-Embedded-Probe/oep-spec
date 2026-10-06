@@ -477,6 +477,10 @@ def ops() -> dict:
     link = {"1": "oep.link"}
     add("link source: 8 bytes, byte k = k & 0xFF", "oep-if-link §2", link, "max_frame 1024",
         request(0x20, 1, op("oep.link", "source"), struct.pack("<I", 8)), ok(0x20, struct.pack("<H", 8) + bytes(range(8))))
+    most = 1024 - REG["limits"]["link_source_overhead_bytes"]          # room for ignored kept though nothing is ignored (oep-if-link §2)
+    add("link source: more than fits, len = max_frame - 26", "oep-if-link §2, core §2.3", link, "max_frame 1024",
+        request(0x25, 1, op("oep.link", "source"), struct.pack("<I", 2000)),
+        ok(0x25, struct.pack("<H", most) + bytes(k & 0xFF for k in range(most))))
     add("link source: length 0", "oep-if-link §2", link, "—",
         request(0x21, 1, op("oep.link", "source"), struct.pack("<I", 0)), ok(0x21, struct.pack("<H", 0)))
     add("link sink: 3 bytes, an empty answer", "oep-if-link §2", link, "—",

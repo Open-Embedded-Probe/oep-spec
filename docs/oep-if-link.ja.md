@@ -26,8 +26,9 @@ port_speed は任意で、describe の ops で宣言する（core §1.2、§7.4�
 
 source と sink は経路の速さを測るためのもの。状態を変えない。
 
-- **source**: data は len バイトで、k バイト目（k は 0 から）は k & 0xFF。len は length と、要求の来た経路の max_frame の 1 つの message に応答の
-  ほかの部分と一緒に入る最大の data の、小さいほう（core §4.4）。length 0 なら len 0。
+- **source**: data は len バイトで、k バイト目（k は 0 から）は k & 0xFF。len は length と、要求の来た経路の max_frame（core §4.4）から 26 を
+  引いた値の、小さいほう（registry の `link_source_overhead_bytes`）。26 は応答のほかの部分で、見出し 5、len 2 と、ignored の場所 19（core §2.3）。
+  probe は ignored の場所を、要求に無視する TLV が無くても残す。そのため len は要求の TLV によらない。length 0 なら len 0。
 - **sink**: count の後ろに、値が任意の count バイトが続く。count が後ろに続くバイトより大きければ rejected malformed。応答は completed success で、
   payload は空（ignored を除く、core §2.3）。
 - host はその応答を、ほかの要求と同じように待つ（core §4.4）。confirm のようには繰り返さない。

@@ -159,6 +159,9 @@ New documents (oep-transports) are Japanese only until then (core §0, README, C
   §3, §4.3); core §4.4's wait floor counts reset_settle_ms as argument time for both. Conformance, glossary and both guides follow.
 - probe-config (ja): an item value longer than its definition follows core §2.3's longer request TLV: critical = rejected unsupported
   with the item's tag, otherwise the item is not applied and is listed in ignored; added to the refusal table (probe-config §1, §2).
+- oep.link source (ja): the most that fits is max_frame − 26 (`limits.link_source_overhead_bytes`: header 5, len 2, room for ignored 19);
+  the probe keeps the room for ignored even when nothing is ignored, so len does not depend on the request's TLVs (link §2); a vector
+  "link source: more than fits" in ops.json.
 
 ### Tools and test vectors
 
