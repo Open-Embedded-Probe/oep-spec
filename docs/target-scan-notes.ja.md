@@ -1,7 +1,7 @@
 # target ごとの scan と attach の記録（ピンの探し方、つなぎ方、つまずき）
 
 状態: **記録**（規範ではない。追記は自由）。2026-10-02 作成。チップ名、ボード名、治具、日付つきの経験をそのまま書く。
-規範は [線とデバッグ](oep-if-debug.ja.md)（scan、attach、reset TLV、target_id）と [probe の設定](oep-if-probe-config.ja.md)
+規範は [線とデバッグ](../interfaces/oep-if-debug.ja.md)（scan、attach、reset TLV、target_id）と [probe の設定](../interfaces/oep-if-probe-config.ja.md)
 §1.1（スロット）。ピンの探し方の一般的な手順は [host 開発ガイド](host-development-guide.ja.md)（§21 リセットの線、§19 ピンの探し方（参考））。
 
 core（ArduinoCore-CH32RV の bench）は自動の scan で何度もつまずいた（特に CH32X035）。原因の多くは target 側の性質と治具の

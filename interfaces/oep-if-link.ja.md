@@ -2,7 +2,7 @@
 
 [English](oep-if-link.md)
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。本体は [OEP core](oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。本体は [OEP core](../docs/oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。
 
 | 名前 | revision | 役割 |
 |---|---:|---|
@@ -39,7 +39,7 @@ port_speed は、UART bridge の口で、セッションの間だけリンクの
 コンソール（線の block op の時間はデバッグの線の往復で決まり、リンクでは変わらない）。probe の
 fixture UART の速さは別（そのインターフェースの configure と設定）。この節が決めるのは**握手**だけである。どの速さを候補にするか、
 通ったとみなす基準、使っている間に戻す基準は host が決める（参考の手順:
-[host 開発ガイド](host-development-guide.ja.md) §17）。
+[host 開発ガイド](../docs/host-development-guide.ja.md) §17）。
 
 **語の定義**
 
@@ -89,7 +89,7 @@ fixture UART の速さは別（そのインターフェースの configure と�
    通れば（boot_id が同じなら戻っただけ、違えば再起動）そのセッションでは起動時の速さで続ける。上限の間 confirm が通らなければ
    リンクの失敗（上げた速さに戻って待ち直すことはしない）。
 6. 戻すの応答、end の応答、または restart の応答（core §6.6。probe は起動時の速さで起動し直す）を受けたら、起動時の速さに切り替える。
-7. どの速さを候補にするか、確かめの流し方、通ったとみなす基準、使用中に戻す基準は host が決める（参考: [host 開発ガイド](host-development-guide.ja.md) §17）。
+7. どの速さを候補にするか、確かめの流し方、通ったとみなす基準、使用中に戻す基準は host が決める（参考: [host 開発ガイド](../docs/host-development-guide.ja.md) §17）。
 
 UART bridge の口を開くどの host も、port_speed を使うかどうかにかかわらず、transports §4（「上げた速さの後」）のとおりそこで confirm を繰り返し、前の host が上げた速さを待ち切る。
 

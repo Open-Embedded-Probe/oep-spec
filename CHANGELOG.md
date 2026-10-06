@@ -1,6 +1,6 @@
 # Changelog
 
-Changes to the OEP specification: the normative text (`docs/oep-core.md`, `docs/oep-if-*.md`, `docs/target-console-dmseq.md`) and
+Changes to the OEP specification: the normative text (`docs/oep-core`, `docs/oep-transports`, `interfaces/oep-if-*`, `interfaces/target-console-dmseq`) and
 `registry/oep-v1.toml`, with the guides, tools and test vectors that go with them. How releases are tagged, and what a revision bump means:
 [versioning](docs/versioning.md). Before the v1 freeze, breaking changes go in without raising any revision.
 
@@ -10,6 +10,15 @@ v1 candidate. Changes since the last pushed state (ad9f8be). Most rule changes c
 [v1 rule-change proposal](docs/v1-rule-change-proposal-2026-10-02.md) (topics 1 to 12) and the
 [2026-10-06 rule-change proposal](docs/v1-rule-change-proposal-2026-10-06.md), reviewed by the implementers (ch32rv, WireSkein, bench),
 and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.md).
+
+### Structure: the core and the standard interfaces (2026-10-06)
+
+From the v1 structure proposal (2026-10-06), decided by the user with the implementers' conditions (ch32rv, WireSkein, bench), and the
+external re-review of the same day (its §3.2 and §3.3). Japanese only while Japanese is the working text.
+
+- Documents: `docs/` keeps the core (oep-core, oep-transports), the guides and the records; the standard interface documents
+  (`oep-if-*`, `target-console-dmseq`, both languages) move to `interfaces/`, with an index `interfaces/README.ja.md`. Core §14 (the list
+  of standard interface documents) goes and the guides' section becomes §14; every relative link follows. A move of text: no rule changes.
 
 ### Simplification after the external review (2026-10-06)
 
@@ -64,7 +73,7 @@ Text only, no wire change:
   lease expiry and force), capture (plan release and capture-group bind at the end of the session), probe settings. Registry: reject reason
   `expired` (0x0E) reserved, enum `resumed` removed, `mark_detail_closed` 2 is `session_ended`.
 - The link test and port_speed move out of fn 0 into the optional standard interface `oep.link` (user decision D3; new document
-  [oep-if-link](docs/oep-if-link.md)): op 0x01 source `length(u32)` → `len(u16), data`, op 0x02 sink `count(u16), data` → empty, op 0x03 port_speed
+  [oep-if-link](interfaces/oep-if-link.md)): op 0x01 source `length(u32)` → `len(u16), data`, op 0x02 sink `count(u16), data` → empty, op 0x03 port_speed
   (optional, declared by ops) with the handshake, states and return conditions unchanged. A minimal probe no longer implements the link test.
   The confirm repetition after a raised speed applies to every host on a UART bridge port and stays in the core (§3.3, §3.4); the old host
   obligation 7 is gone from the list (obligation 8 is now 7). Registry: fn 0 loses ops 0x14, 0x40 and 0x41 (fn 0 ops 0x40 to 0xEF are reserved),

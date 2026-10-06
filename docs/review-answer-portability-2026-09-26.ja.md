@@ -31,7 +31,7 @@ core の作業中の更新（資源番号 u16 化、長い操作の予約化な�
 
 ### R1 / P1: 汎用設定に target 固有の chip_id 判定がある
 
-根拠: [probe-config §1.1](oep-if-probe-config.ja.md)。自動 attach 後に chip_id を読み、bit [7:4] を必ず無視し、
+根拠: [probe-config §1.1](../interfaces/oep-if-probe-config.ja.md)。自動 attach 後に chip_id を読み、bit [7:4] を必ず無視し、
 0 / 0xFFFFFFFF を不明として扱う。
 
 別の MCU では、その位置が revision とは限らない。さらに、chip_id の取得場所・方法・識別体系が定義されていない。
@@ -46,7 +46,7 @@ pins を自動 attach に渡せない。bind は検証済みの接続設定を�
 
 ### R2 / P1: 全 wire 共通の寿命が RISC-V のレジスタで定義されている
 
-根拠: [debug §2](oep-if-debug.ja.md)。reset 後の havereset 確認、切断時の dmactive 維持・haltreq 解除が、ARM SWD を含む
+根拠: [debug §2](../interfaces/oep-if-debug.ja.md)。reset 後の havereset 確認、切断時の dmactive 維持・haltreq 解除が、ARM SWD を含む
 connection 全体の規則として書かれている。
 
 ARM 実装にはそのレジスタがない。「参照者がなくなれば閉じる」「不要な target reset を行わない」は共通部品に置き、
@@ -55,7 +55,7 @@ RISC-V の具体的な処理は riscv-dm、V00x の回復手順は該当 backend
 
 ### R3 / P1: riscv-dm の生転送と、32bit target 向けの便利操作が分離されていない
 
-根拠: [debug §4](oep-if-debug.ja.md)。memory address、run の PC・レジスタ値、step の DPC が u32。
+根拠: [debug §4](../interfaces/oep-if-debug.ja.md)。memory address、run の PC・レジスタ値、step の DPC が u32。
 「1 要求は 1 hart」とあるが、高水準 op がどの hart を対象とし、raw DMI の hartsel を維持するかは明示されていない。
 
 RV64 のレジスタ値や 4 GiB 以上の番地をこれらの op では運べない。ただし **DMI の value が u32 なのは別問題で、それ自体を
@@ -71,7 +71,7 @@ RISC-V 公式仕様も、32bit の実装例を 64 / 128bit 向けへ適応する
 
 ### R4 / P1: PC が変わらないことを「未実行」と判定して再実行する
 
-根拠: [debug §4.2、§4.4](oep-if-debug.ja.md)。resume の一部と run は、DPC が開始位置から動かなければ resume を出し直す。
+根拠: [debug §4.2、§4.4](../interfaces/oep-if-debug.ja.md)。resume の一部と run は、DPC が開始位置から動かなければ resume を出し直す。
 
 一度走り、処理を行って同じ位置で停止した場合にも DPC は等しくなる。run では loader の副作用を二度起こし得る。
 step の説明自体も「PC が同じでも実行済み」のケースを認めている。
@@ -82,7 +82,7 @@ RISC-V の標準的な resume 確認は resumeack に基づく。参考: [公式
 
 ### R5 / P1: plan と直接 attach の間に、共通の資源競合規則がない
 
-根拠: [core §7.4、§8](oep-core.ja.md)、[debug §1](oep-if-debug.ja.md)。plan は各インターフェースが検証する。
+根拠: [core §7.4、§8](oep-core.ja.md)、[debug §1](../interfaces/oep-if-debug.ja.md)。plan は各インターフェースが検証する。
 debug の pins は plan を通さず指定できる。
 
 GPIO と SWD が同じピンを出力として取得する場合、双方の個別検証だけなら通り得る。別ピンでも、UART と capture が同じ DMA / timer を
@@ -104,7 +104,7 @@ plan の識別番号を増やすことが唯一の解ではない。**変更す�
 
 ### R7 / P1: UART の plan 解放後も TX を high に駆動する
 
-根拠: [fixture §2](oep-if-fixture.ja.md)、[core §8](oep-core.ja.md)。TX は plan を解いた後も high に保つ。
+根拠: [fixture §2](../interfaces/oep-if-fixture.ja.md)、[core §8](oep-core.ja.md)。TX は plan を解いた後も high に保つ。
 
 所有権を返したはずのピンに駆動責任が残る。次に GPIO の low 出力や open-drain バスへ渡すとき、誰が UART の駆動を解除するのかが
 決まっていない。特に外付けバッファや pin mux のある probe では、単なる GPIO の上書きでは済まない。
@@ -114,7 +114,7 @@ idle high は UART が所有している間の規則にする。解放時は原�
 
 ### R8 / P1: アナログの frontend と換算がチャネル別に完結しない
 
-根拠: [capture §1.2、§3.3、§3.5](oep-if-capture.ja.md)。frontend は role ごとに attenuation を指定できるが、
+根拠: [capture §1.2、§3.3、§3.5](../interfaces/oep-if-capture.ja.md)。frontend は role ごとに attenuation を指定できるが、
 応答 scale は zero / scale_nv の一組で、どの role の換算かを持たない。attenuation 自体も「実装の値」。
 
 異なる入力範囲・ゲイン・校正値を持つ ADC チャネルを同時に取得すると、一つの換算式では正しく表示できない。
@@ -126,7 +126,7 @@ scale は role をキーに返す。frontend の候補は opaque な番号でも
 
 ### R9 / P1: 宣言上の大きさと TLV / フレーム上限が合っていない
 
-根拠: [core §2.2、§7.3](oep-core.ja.md)、[capture §3.3](oep-if-capture.ja.md)、[probe-config §1、§2](oep-if-probe-config.ja.md)。
+根拠: [core §2.2、§7.3](oep-core.ja.md)、[capture §3.3](../interfaces/oep-if-capture.ja.md)、[probe-config §1、§2](../interfaces/oep-if-probe-config.ja.md)。
 
 - アナログ timing の value 長は `1 + 4 + 4*C`。C=63 で 257 byte、C=64 で 261 byte となり、len(u8) の最大 255 を超える。
   アナログ role 0〜63 をすべて使う構成を現在の形式では記述できない。
@@ -140,7 +140,7 @@ configure 応答も、必要な情報が一フレームに収まる最大構成�
 
 ### R10 / P1: SWD の接続同一性と reset 操作が不足している
 
-根拠: [debug §1、§5](oep-if-debug.ja.md)。既存線への attach は同じ connection を返す一方、SWD は targetsel を受け付ける。
+根拠: [debug §1、§5](../interfaces/oep-if-debug.ja.md)。既存線への attach は同じ connection を返す一方、SWD は targetsel を受け付ける。
 
 同じピン上の target A に接続済みで target B を指定した場合、既存 connection を返すのか、切り替えるのか、拒否するのか決まっていない。
 接続の同一性に targetsel を含め、異なる指定は明示的に拒否して detach を要求するだけでも安全になる。
@@ -162,12 +162,12 @@ configure 応答も、必要な情報が一フレームに収まる最大構成�
 任意操作、値の対応範囲、安全に試してよい問い合わせを各インターフェースで決める。全機能を表す巨大な共通 schema は不要。
 channel_group の「完全一致」は RX のみ / TX のみを別 group に列挙すれば表せるが、その手順と role の個数制約も明示したい。
 
-SDI / DMDATA は [console §1](oep-if-console.ja.md) に方式名はあるが、dmseq と違い、この規範から実装できる framing の参照がない。
+SDI / DMDATA は [console §1](../interfaces/oep-if-console.ja.md) に方式名はあるが、dmseq と違い、この規範から実装できる framing の参照がない。
 現行コードを読まなくても同じ方式を実装できる短い定義または規範参照が必要である。
 
 ### R12 / P2: 永続設定の識別と原子性の範囲
 
-[core §7.2](oep-core.ja.md) の fn は起動中だけ安定するのに、[probe-config](oep-if-probe-config.ja.md) は plan / bind / target の fn を保存する。
+[core §7.2](oep-core.ja.md) の fn は起動中だけ安定するのに、[probe-config](../interfaces/oep-if-probe-config.ja.md) は plan / bind / target の fn を保存する。
 firmware 更新後に番号を振り直した際、旧 fn が別機能を指しても検知する規則がない。
 安定した機能・実体のキーで保存するか、宣言構成の識別値が変わったら適用しない規則が必要。数値 fn のまま無条件に復元しない。
 
@@ -188,7 +188,7 @@ USB 固有の設定が存在すること自体は問題ではなく、一般設�
 
 ### R14 / P2: 小さい同期実装の限界と host の接続開始条件
 
-[core §3、§4.4、§10](oep-core.ja.md) と [debug §4.4](oep-if-debug.ja.md) を合わせると、長い操作を予約に戻しても、run の無期限待ち自体は残る。
+[core §3、§4.4、§10](oep-core.ja.md) と [debug §4.4](../interfaces/oep-if-debug.ja.md) を合わせると、長い操作を予約に戻しても、run の無期限待ち自体は残る。
 単一ループの probe がその間応答できない場合、keepalive / force / 復旧をどう扱うかが不足する。
 非同期 activity を直ちに戻す必要はないが、長時間処理中も制御要求を処理するのか、有限時間に制限するのか、lease の扱いを決めたい。
 

@@ -4,7 +4,7 @@
 
 Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
 
-Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). Before the freeze, revision 1 alone does not identify a form: an implementation names the specification tag it implements ([versioning](versioning.md) §6). The core is [OEP core](oep-core.md). The only definition of the numbers is `registry/oep-v1.toml`.
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). Before the freeze, revision 1 alone does not identify a form: an implementation names the specification tag it implements ([versioning](../docs/versioning.md) §6). The core is [OEP core](../docs/oep-core.md). The only definition of the numbers is `registry/oep-v1.toml`.
 
 | Name | revision | Role |
 |---|---:|---|
@@ -40,7 +40,7 @@ port_speed raises the link speed of a UART bridge port above the boot speed for 
 console (the time of the wire's block ops is determined by the round trips on the debug wire and does not change with the link). The speed of the probe's
 fixture UART is separate (that interface's configure and settings). This section defines only the **handshake**. Which speeds to try as candidates, the
 criterion for considering one passed, and the criterion for falling back while in use are decided by the host (reference procedure:
-[host development guide](host-development-guide.md) §17).
+[host development guide](../docs/host-development-guide.md) §17).
 
 **Definitions of terms**
 
@@ -90,7 +90,7 @@ criterion for considering one passed, and the criterion for falling back while i
    If it passes (same boot_id means it merely returned; different means a reboot), continue at the boot speed for that session. If confirm does not pass within the limit, it is a
    link failure (do not go back to the raised speed and wait again).
 6. On receiving the answer to revert, or on receiving the answer to end, switch to the boot speed.
-7. Which speeds to try as candidates, the flow for verification, the criterion for considering one passed, and the criterion for falling back while in use are decided by the host (reference: [host development guide](host-development-guide.md) §17).
+7. Which speeds to try as candidates, the flow for verification, the criterion for considering one passed, and the criterion for falling back while in use are decided by the host (reference: [host development guide](../docs/host-development-guide.md) §17).
 
 Every host that opens a UART bridge port, whether or not it uses port_speed, repeats confirm there as core §3.4 says ("After a raised speed"), to wait out a speed a previous host raised.
 

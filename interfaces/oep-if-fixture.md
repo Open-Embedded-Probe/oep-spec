@@ -4,7 +4,7 @@
 
 Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
 
-Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). Before the freeze, revision 1 alone does not identify a form: an implementation names the specification tag it implements ([versioning](versioning.md) §6). The core is [OEP core](oep-core.md), the common parts are [common parts](oep-if-common.md) (§1 positioned
+Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). Before the freeze, revision 1 alone does not identify a form: an implementation names the specification tag it implements ([versioning](../docs/versioning.md) §6). The core is [OEP core](../docs/oep-core.md), the common parts are [common parts](oep-if-common.md) (§1 positioned
 streams). The only definition of the numbers is `registry/oep-v1.toml`. Capture is [capture](oep-if-capture.md).
 
 | Name | revision | Role | plan roles |

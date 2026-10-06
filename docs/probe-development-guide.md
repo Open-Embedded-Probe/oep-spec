@@ -47,7 +47,7 @@ The host side is the [host development guide](host-development-guide.md).
 - **On vendor bulk, receive OUT per packet** rather than as one large transfer ended by a zero-length packet: the host follows a write that
   is a multiple of wMaxPacketSize with a zero-length transfer (core §3.1), and a request that ends exactly on a packet boundary may otherwise
   wait for the next OUT. Skip a zero-length completion.
-- Measure the link with the source / sink ops of `oep.link` ([link](oep-if-link.md) §2), and measure again after changing the receive or send path.
+- Measure the link with the source / sink ops of `oep.link` ([link](../interfaces/oep-if-link.md) §2), and measure again after changing the receive or send path.
 
 ## 3. Nothing else on an OEP port; never block on a port nobody reads
 
@@ -69,7 +69,7 @@ The host side is the [host development guide](host-development-guide.md).
 
 - A UART bridge probe always boots at `uart_bridge_boot_baud` (115200 bps) 8N1 without flow control (core §3.4). Do not make the boot speed a
   setting: a forgotten setting locks users out, and automatic speed detection is unsafe on a port where raw bytes and OEP mix.
-- A faster link during a session is port_speed ([link](oep-if-link.md) §3, optional): list `oep.link`, implement its three states and its return
+- A faster link during a session is port_speed ([link](../interfaces/oep-if-link.md) §3, optional): list `oep.link`, implement its three states and its return
   conditions, and set op 0x03 in the ops of its describe. The speed it returns to is always the boot speed.
 - On USB CDC and built-in USB serial the line coding is only a number and does not change the speed; ignore it (core §3.4).
 
@@ -77,7 +77,7 @@ The host side is the [host development guide](host-development-guide.md).
 
 How to meet the rules of core §3.4:
 
-- **Receiving**: one reader per port. Bytes outside 0x00 go to the raw-byte destination (the bind, [probe settings](oep-if-probe-config.md)
+- **Receiving**: one reader per port. Bytes outside 0x00 go to the raw-byte destination (the bind, [probe settings](../interfaces/oep-if-probe-config.md)
   §1.2) at once; from a 0x00 to the next 0x00 is kept as a candidate. If a candidate does not decode, its CRC does not match, or input pauses
   for `probe_frame_gap_ms`, pass the kept bytes on as raw bytes. The candidate buffer holds the COBS length of max_frame + 2; when it would
   overflow, pass its contents on as raw bytes at that point.
@@ -186,7 +186,7 @@ often enough (from the main loop) not to miss a wrap.
 
 ## 11. Probe settings and saving
 
-For a probe that lists `oep.probe.config` ([probe settings](oep-if-probe-config.md)):
+For a probe that lists `oep.probe.config` ([probe settings](../interfaces/oep-if-probe-config.md)):
 
 - **Keep the items in their one form per tag** (critical bit cleared) and compute the hash over the canonical form
   (probe settings §2). Check your hash against `tests/vectors/probe_config_hash.json`.
@@ -219,7 +219,7 @@ General rules from the reference probe.
   chosen earlier garbles writes. Reset at the slowest speed, and choose the speed again after the hart has halted. The same for attach with
   reset: switch to the slowest speed before releasing reset. Re-measure from slow to fast without the wake pattern when the wake would reset the
   target. A garbled read can make DMSTATUS look like "running": treat values whose version field does not match as noise.
-- **How a wire rests between frames is part of the wire's definition** ([wire and debug](oep-if-debug.md) §3.1, §3.2, §5) and, where idle_clock
+- **How a wire rests between frames is part of the wire's definition** ([wire and debug](../interfaces/oep-if-debug.md) §3.1, §3.2, §5) and, where idle_clock
   allows, the host's choice per target. Follow the wire's section, and after a failed exchange rest the lines undriven (debug §2).
 - **Drive debug wires at the weakest output strength the wire's timing allows.** Sharp edges on a debug wire couple into neighbouring fixture
   lines (a nearby SPI or UART target loses or shifts bits while the console runs). Set it on every PHY and every port. The strength of wire and
@@ -228,7 +228,7 @@ General rules from the reference probe.
   resting and busy, look at the drive strength first, and measure before and after a fix with the same procedure.
 - **After fixing a problem, look for the same mechanism elsewhere** (other PHYs, other SoCs, fixtures that drive lines, the client and the fake),
   and record which places are fine and which are unchecked.
-- **Do not reissue resume or run** ([wire and debug](oep-if-debug.md) §4.2, §4.4). A target that needs a second resume request, or that does not
+- **Do not reissue resume or run** ([wire and debug](../interfaces/oep-if-debug.md) §4.2, §4.4). A target that needs a second resume request, or that does not
   report all-resumed, is handled by the host: target-specific knowledge in an interface with a generic name breaks core §13 rule 8.
 - **Changes that speed up block loops can change timing on the wire.** Measure across targets before keeping them.
 

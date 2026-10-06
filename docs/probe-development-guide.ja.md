@@ -42,7 +42,7 @@
 - **vendor bulk の OUT は packet ごとに受ける**。ZLP で終わる大きな転送として受けない: host は wMaxPacketSize の倍数の書き込みの後に
   長さ 0 の転送を続ける（transports §1）ので、ちょうど packet の境で終わる要求が次の OUT まで待たされることがある。長さ 0 の完了は
   読み飛ばす。
-- 線の速さは `oep.link` の source / sink の op（[リンク](oep-if-link.ja.md) §2）で測る。受信・送信の経路を変えたら測り直す。
+- 線の速さは `oep.link` の source / sink の op（[リンク](../interfaces/oep-if-link.ja.md) §2）で測る。受信・送信の経路を変えたら測り直す。
 
 ## 3. OEP の口にほかのものを出さない・誰も読まない口で止まらない
 
@@ -64,7 +64,7 @@
 
 - UART bridge の probe は、いつも `uart_bridge_boot_baud`（115200 bps）8N1、流れの制御なしで起動する（transports §4）。起動時の速さを
   設定にしない: 設定を忘れると入れなくなり、生のバイトと OEP が混ざる口では速さの自動の検出は危うい。
-- セッションの間だけ速くするのは port_speed（[リンク](oep-if-link.ja.md) §3、任意）: `oep.link` を list に出し、3 つの状態と戻る
+- セッションの間だけ速くするのは port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3、任意）: `oep.link` を list に出し、3 つの状態と戻る
   条件を実装し、その describe の ops に op 0x03 を立てる。戻り先はいつも起動時の速さ。
 - USB CDC と内蔵の USB シリアルでは、線の設定は数字が渡るだけで速さに関係しない。無視する（transports §4）。
 
@@ -72,7 +72,7 @@
 
 transports §4 の規則を守るための作り:
 
-- **受信**: 口ごとに 1 つの読み手。0x00 の外のバイトはすぐ生のバイトの行き先（bind、[probe の設定](oep-if-probe-config.ja.md) §1.2）へ
+- **受信**: 口ごとに 1 つの読み手。0x00 の外のバイトはすぐ生のバイトの行き先（bind、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.2）へ
   渡し、0x00 から次の 0x00 までを候補としてためる。候補が解けないか CRC が合わない、または入力が `probe_frame_gap_ms` 途切れたら、
   ためた分を生のバイトとして渡す。候補のバッファは max_frame の COBS の長さ + 2 を持つ。あふれそうになったら、その時点で中身を生の
   バイトとして渡す。
@@ -177,7 +177,7 @@ revision は数字に任意の `.数字` の組。revision が分からなけれ
 
 ## 11. probe の設定と保存
 
-`oep.probe.config` を list に出す probe のために（[probe の設定](oep-if-probe-config.ja.md)）:
+`oep.probe.config` を list に出す probe のために（[probe の設定](../interfaces/oep-if-probe-config.ja.md)）:
 
 - **項目は tag ごとの一つの形で持つ**（critical の bit は落とす）。hash は正規形で計算する（probe の設定
   §2）。自分の hash を `tests/vectors/probe_config_hash.json` で確かめる。
@@ -209,7 +209,7 @@ revision は数字に任意の `.数字` の組。revision が分からなけれ
   書き込みが化ける。リセットは最も遅い速さで行い、hart が止まってから速さを選び直す。リセットをかけながらの attach も同じで、リセットを
   放す前に最も遅い速さにする。wake が target をリセットする線では、wake を使わずに遅い速さから速めて測り直す。化けた読み出しで
   DMSTATUS が「走っている」に見えることがある: version の欄が合わない値は雑音として扱う。
-- **フレームの間の線の休み方は線の定義の一部**（[線とデバッグ](oep-if-debug.ja.md) §3.1、§3.2、§5）で、idle_clock が許す所では target
+- **フレームの間の線の休み方は線の定義の一部**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §3.1、§3.2、§5）で、idle_clock が許す所では target
   ごとに host が選ぶ。線の節に従い、やり取りが失敗した後は線を駆動しないで休ませる（debug §2）。
 - **debug の線は、線のタイミングが許すいちばん弱い出力の強さで駆動する。** debug の線の鋭いエッジは、隣の fixture の線に乗る（コンソールを
   読む間、近くの SPI や UART の target が bit を落とす・ずらす）。どの PHY、どの移植でも設定する。線と fixture の線の強さは probe が
@@ -218,13 +218,13 @@ revision は数字に任意の `.数字` の組。revision が分からなけれ
   出力の強さを見て、直ったかは前後を同じ手順で測る。
 - **問題を直したら、同じ仕組みの箇所を探す**（ほかの PHY、ほかの SoC、線を駆動する fixture、client と fake）。どこが大丈夫で、どこが
   未確認かを記録に残す。
-- **resume と run は出し直さない**（[線とデバッグ](oep-if-debug.ja.md) §4.2、§4.4）。resume の要求が 2 回要る target や、すべて再開したと
+- **resume と run は出し直さない**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.2、§4.4）。resume の要求が 2 回要る target や、すべて再開したと
   知らせない target は host が扱う: 汎用の名前のインターフェースに target 固有の知識を入れると core §13 の規則 8 に反する。
 - **ブロックのループを速くする変更は、線の上のタイミングを変えうる。** 残す前に複数の target で測る。
-- **コンソールの送りの列**（[コンソール](oep-if-console.ja.md) §2）: write は列の空きに入る分をすぐ受けて答え、target へは列から mechanism の
+- **コンソールの送りの列**（[コンソール](../interfaces/oep-if-console.ja.md) §2）: write は列の空きに入る分をすぐ受けて答え、target へは列から mechanism の
   運び方で渡す（target の受け取りを待ってから答えない）。send_queue は 64 以上で、1 行のコマンドが 1 回の write に入る大きさを選ぶ
   （max_frame から write の要求の見出しと固定部分を引いた分より大きくしても、1 回の write には入らない）。
-- **リセットを解いた後の待ち**（[線とデバッグ](oep-if-debug.ja.md) §3、§4.3）: ndmreset やリセットの線を解いた後に DM が答えない間は、
+- **リセットを解いた後の待ち**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §3、§4.3）: ndmreset やリセットの線を解いた後に DM が答えない間は、
   DMSTATUS を読み直して `reset_settle_ms`（700 ms）まで待つ。この間の失敗を、線の再試行の 200 ms にも線切れにも数えない。
 
 ## 13. 参照の firmware が宣言する値（規範が選び方を任せる所）

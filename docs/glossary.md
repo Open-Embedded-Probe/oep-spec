@@ -8,9 +8,9 @@ Status: **guide** (not normative). Every term the specification defines or uses 
 Japanese term the translations use. The definitions here are short summaries; the linked section is the definition. Where they differ, the
 normative text is right. This English text is authoritative; the Japanese version is its translation.
 
-Documents: core = [OEP core](oep-core.md); common = [common parts](oep-if-common.md); debug = [wire and debug](oep-if-debug.md);
-console = [console](oep-if-console.md); dmseq = [dmseq](target-console-dmseq.md); fixture = [fixture](oep-if-fixture.md);
-capture = [capture](oep-if-capture.md); settings = [probe settings](oep-if-probe-config.md). Numbers are in `registry/oep-v1.toml`.
+Documents: core = [OEP core](oep-core.md); common = [common parts](../interfaces/oep-if-common.md); debug = [wire and debug](../interfaces/oep-if-debug.md);
+console = [console](../interfaces/oep-if-console.md); dmseq = [dmseq](../interfaces/target-console-dmseq.md); fixture = [fixture](../interfaces/oep-if-fixture.md);
+capture = [capture](../interfaces/oep-if-capture.md); settings = [probe settings](../interfaces/oep-if-probe-config.md). Numbers are in `registry/oep-v1.toml`.
 
 ## Parties and layers
 

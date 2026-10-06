@@ -50,7 +50,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **OEP の要求に自分で答える端点は probe である**。何が運び、後ろに何があるかによらない（たとえば TCP で OEP を出し、別のデバッガを動かすプログラム）。probe の規則はすべてそれに掛かる。要求を OEP の probe に中継するだけのブローカーは、その probe に対しては host である。
 - **セッションの op に自分で答える中継のブローカー**（confirm、open、end、keepalive、lock_state）で、ほかの要求をすべて 1 つの OEP の probe に中継するものは、自分の describe を持たない: それが中継する fn 0 の describe は probe のもの。confirm の transport TLV では index 0xFF（「describe に無い」）を返す。probe に対しては host である。それらのセッションの op の規則はすべて、その応答に掛かる。
 - **中継のブローカーと restart**（core §6.6）: そのブローカーは、client の restart を、ほかのロックの要る op と同じにその client のセッションで判定し（core §4.3、§6.2）、通れば自分が probe に開いたセッションで probe に中継し、応答を client に返す。completed success の応答を受けたら、ブローカーは probe が再起動しているものとして扱う:
-  1. 上げた port_speed は起動時の速さに戻す（[リンク](oep-if-link.ja.md) §3 の host の義務 6）。probe には confirm のほか何も送らない。
+  1. 上げた port_speed は起動時の速さに戻す（[リンク](../interfaces/oep-if-link.ja.md) §3 の host の義務 6）。probe には confirm のほか何も送らない。
   2. 応答を受けてから restart_max_ms（core §7.5）が過ぎるまで、probe に confirm を繰り返す（core §6.6 の host の待ち方。それぞれの confirm の応答は core §4.4 のとおり待つ）。restart の前と違う boot_id の confirm の応答が来たら、新しい id で probe にセッションを開き、client の要求の中継に戻る。
   3. client のセッションはすべて、probe の再起動で終わったものとし（core §9 の「probe の再起動」の行）、ブローカーのロックは空く: それらの id の open でない要求は no_session で断る（core §6.2）。client は新しいセッションを開く。
   4. 1〜2 のあいだに client から来た要求は probe に送らず、実行せずに答える: open でない session_id ≠ 0 の要求は rejected no_session、ほかの要求（open と、confirm を含む session_id 0 の要求）は rejected result_lost。
@@ -87,7 +87,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   host が最初に送るのは confirm（core §7.1）だけである（core §5.2 の 1 回の送り直し、registry の `resend_max` を含む）。confirm の待ち時間
   （core §4.4。confirm には引数で決まる時間が無いので 1000 ms（`host_wait_add_ms`）と転送の時間）が過ぎても正しい confirm の応答が来なければ（送り直したときは、送り直した
   confirm の待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。ただし UART bridge（transport の
-  kind 1）の口では、送り直しの代わりに port_speed_idle_max_ms + 1000 ms（`port_speed_confirm_extra_ms`）の間 confirm を繰り返してよい（前の host が port_speed で上げた速さを待ち切るため、[リンク](oep-if-link.ja.md) §3。
+  kind 1）の口では、送り直しの代わりに port_speed_idle_max_ms + 1000 ms（`port_speed_confirm_extra_ms`）の間 confirm を繰り返してよい（前の host が port_speed で上げた速さを待ち切るため、[リンク](../interfaces/oep-if-link.ja.md) §3。
   送るのは confirm だけで、その間に正しい応答が来なければ閉じる）。正しい confirm の応答とは、送った
   confirm と同じ corr の completed で、payload が core §7.1 の形（`OEP!` で始まる）のものをいう。正しい応答が来た device と口は OEP の
   probe として扱う。
@@ -115,10 +115,10 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 シリアルの口は、OEP のフレームと生のバイト（target のコンソールなど）を同じ口で運ぶ。probe はどの口でもいつでも OEP を受ける
 （口を OEP 専用にする設定や、起動の型は持たない）。
 
-- **UART bridge の回線**: データ 8 bit、パリティなし、ストップ 1 bit、フロー制御なし。起動時の速さは **115200 bps**（registry の `uart_bridge_boot_baud`）。port_speed（[リンク](oep-if-link.ja.md) §3）が変えるのは速さだけ。
+- **UART bridge の回線**: データ 8 bit、パリティなし、ストップ 1 bit、フロー制御なし。起動時の速さは **115200 bps**（registry の `uart_bridge_boot_baud`）。port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3）が変えるのは速さだけ。
 - **上げた速さの後**: UART bridge の口を開く host は、port_speed を使うかどうかにかかわらず、起動時の速さで正しい confirm の応答が来なければ、
   あきらめる前にそこで port_speed_idle_max_ms + 1000 ms（`port_speed_confirm_extra_ms`）の間 confirm を繰り返す（前の host が上げた速さは
-  それまでに起動時の速さに戻る、[リンク](oep-if-link.ja.md) §3）。
+  それまでに起動時の速さに戻る、[リンク](../interfaces/oep-if-link.ja.md) §3）。
 - **USB のシリアルの口**（USB CDC、内蔵の USB シリアル）: probe は、host がどんな line coding を設定しても OEP を受けて送り、line coding を何にも掛けない。
 - **制御線**: probe は、OEP を受けるか送るかを DTR、RTS、回線の状態で決めない。host は口を開いている間 DTR と RTS を立てておく（UART bridge はそれを probe のリセットにつないでいることがある）。host が DTR を落としている間の probe の動きは定めない。
 - **probe の受け方**: 0x00 が来たら次の 0x00 までためて解く。解けて CRC が合えば OEP の要求。解けない、CRC が合わない、または

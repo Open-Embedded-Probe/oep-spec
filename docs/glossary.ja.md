@@ -5,9 +5,9 @@
 状態: **ガイド**（規範ではない）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。仕様が定める用語と、決まった意味で使う用語を、定めた節と、英語と日本語の対応と一緒に並べる。
 ここの意味は短いまとめで、定義はリンク先の節。食い違えば規範が正しい。
 
-文書: core = [OEP core](oep-core.ja.md)、common = [共通部品](oep-if-common.ja.md)、debug = [線とデバッグ](oep-if-debug.ja.md)、
-console = [コンソール](oep-if-console.ja.md)、dmseq = [dmseq](target-console-dmseq.ja.md)、fixture = [fixture](oep-if-fixture.ja.md)、
-capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定](oep-if-probe-config.ja.md)。数は `registry/oep-v1.toml`。
+文書: core = [OEP core](oep-core.ja.md)、common = [共通部品](../interfaces/oep-if-common.ja.md)、debug = [線とデバッグ](../interfaces/oep-if-debug.ja.md)、
+console = [コンソール](../interfaces/oep-if-console.ja.md)、dmseq = [dmseq](../interfaces/target-console-dmseq.ja.md)、fixture = [fixture](../interfaces/oep-if-fixture.ja.md)、
+capture = [キャプチャ](../interfaces/oep-if-capture.ja.md)、settings = [probe の設定](../interfaces/oep-if-probe-config.ja.md)。数は `registry/oep-v1.toml`。
 
 ## 登場するものと層
 

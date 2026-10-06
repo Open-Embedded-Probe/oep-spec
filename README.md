@@ -26,9 +26,9 @@ Every document in `docs/` states its status in its first lines: **normative**, *
 
 - [OEP core](docs/oep-core.md): layers, frames, messages, sessions, discovery, plan, lifetime of resources, notifications,
   how an interface is written.
-- Standard interfaces: [common parts](docs/oep-if-common.md), [wire and debug](docs/oep-if-debug.md),
-  [console](docs/oep-if-console.md) (framing: [dmseq](docs/target-console-dmseq.md)), [fixture](docs/oep-if-fixture.md),
-  [capture](docs/oep-if-capture.md), [probe settings](docs/oep-if-probe-config.md), [link](docs/oep-if-link.md).
+- Standard interfaces: [common parts](interfaces/oep-if-common.md), [wire and debug](interfaces/oep-if-debug.md),
+  [console](interfaces/oep-if-console.md) (framing: [dmseq](interfaces/target-console-dmseq.md)), [fixture](interfaces/oep-if-fixture.md),
+  [capture](interfaces/oep-if-capture.md), [probe settings](interfaces/oep-if-probe-config.md), [link](interfaces/oep-if-link.md).
 - [registry/oep-v1.toml](registry/oep-v1.toml): the only definition of every number on the v1 wire.
   `tools/oepgen1.py` generates `generated/oep-v1/` (C++, C, Python, JS) from it; `python3 tools/oepgen1.py --check` verifies they
   are in sync.

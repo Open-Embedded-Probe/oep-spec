@@ -2,9 +2,9 @@
 
 [English](oep-core.md)
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。この文書は OEP のプロトコル本体だけを定める。標準インターフェース
-（線、デバッグ、コンソール、fixture、キャプチャ、probe の設定）はそれぞれの文書が定める（§14）。この文書はそれだけで完結する: 読む人が規則の
-理由を必要とする所では、理由を規則と一緒に書く。ガイド（§15）は実務を足すもので、規則は足さない。この文書と、規範ではない文書が食い違えば、この文書が正しい。
+状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。この文書は OEP のプロトコル本体だけを定める。標準インターフェースは
+それぞれの文書が定める（一覧は [標準インターフェース](../interfaces/README.ja.md)）。この文書はそれだけで完結する: 読む人が規則の
+理由を必要とする所では、理由を規則と一緒に書く。ガイド（§14）は実務を足すもので、規則は足さない。この文書と、規範ではない文書が食い違えば、この文書が正しい。
 
 番号（op、tag、reject reason、status、enum）の唯一の定義は `registry/oep-v1.toml` で、この文書の表はその写しである。
 食い違えば registry が正しく、文書を直す。
@@ -70,7 +70,7 @@ probe が実装しなければならない（MUST）もの:
 - fn 0 の describe の unit_id、transport、max_op_ms、discoverable（§7.5。プロジェクトの USB の VID:PID で列挙しない probe は 0）。restart（§6.6）を持つ probe はそれに加えて restart_max_ms（§7.5）;
 - list に載せるすべての fn（fn 0 を含む）の describe の、共通の tag ops（§7.4）。
 
-plan_apply と plan_release は、どれかのインターフェースが plan の role（インターフェースの文書が plan を通して割り当てる role、§8。wire の attach が引数で選ぶピンの role は plan の role ではない）を持つときに要る。plan の role を持つインターフェースが 1 つも無い probe は、それらを持たない。任意: fn 0 の restart（§6.6）、fn 0 のハートビート以外の通知、すべてのインターフェース（その中に、線の試験と port_speed を持つ `oep.link`、[リンク](oep-if-link.ja.md)）。
+plan_apply と plan_release は、どれかのインターフェースが plan の role（インターフェースの文書が plan を通して割り当てる role、§8。wire の attach が引数で選ぶピンの role は plan の role ではない）を持つときに要る。plan の role を持つインターフェースが 1 つも無い probe は、それらを持たない。任意: fn 0 の restart（§6.6）、fn 0 のハートビート以外の通知、すべてのインターフェース（その中に、線の試験と port_speed を持つ `oep.link`、[リンク](../interfaces/oep-if-link.ja.md)）。
 
 **必ず持つ op と任意の op。** インターフェースの op の表（fn 0 は §12、ほかはそのインターフェースの文書の op の表）の op は、そのインターフェースを list に載せる probe が必ず持つ。文書が任意と書いた op は除く。**すべての fn は、持つ op を 1 か所で宣言する: describe の共通の tag ops（0x09、§7.4）。** 必須の op はすべてそこに立てる。任意の op は、probe がそれを持つときに限り立てる。実験用の op（0xF0〜0xFF、§2.5）は決して立てない。
 
@@ -119,7 +119,7 @@ tag(u8) | len(u16) | value(len byte)
 - **要求**: 要求の後ろに足せるのは TLV の並びだけ。host は、その項目が効かなければ要求に意味がないときに **critical の bit を
   付ける**（効かなくても構わない項目は付けずに送ってよい）。インターフェースの定義が critical で送ると決めた TLV（速さの上限、
   pins など、安全のための項目）は必ず付ける。**インターフェースの定義は、bit 7 が立っていてもいなくても probe が critical として扱う TLV を決めることもできる**
-  （[捕捉](oep-if-capture.ja.md) §3.3、§4.1）。そうした TLV を実装する probe は、critical の TLV の規則をすべてそれに当てはめる: 扱えない値も、知っている長さより
+  （[捕捉](../interfaces/oep-if-capture.ja.md) §3.3、§4.1）。そうした TLV を実装する probe は、critical の TLV の規則をすべてそれに当てはめる: 扱えない値も、知っている長さより
   長い値も rejected unsupported（受け取ったままの tag）で断り、その TLV を無視することはない。その tag を実装しない probe は、受け取った bit のとおり知らない TLV として扱う。probe は、知らない critical の
   TLV があれば rejected unsupported（payload に受け取ったままの tag）で断る。知らない非 critical の TLV は無視し、応答の
   後ろに ignored（tag 0x7F、下）を付ける。結果が completed なら、op の status が失敗でも付ける。
@@ -302,10 +302,10 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 - probe は要求を受け取った順に処理し、応答を受け取った順に返す。
 - confirm の max_frame、window、max_inflight は、**その confirm が来た経路の**上限である。経路ごとに別々に数え、ある経路で未解決の要求は、ほかの経路の受けの余地を使わない。§5.2 の表は probe に 1 つのまま（セッションの要求は 1 つの経路で送る、[経路](oep-transports.ja.md) §3）。
 - **host の待ち時間**: 応答が来ないことは時間切れだけで判断する（[経路](oep-transports.ja.md) §1）。host は要求ごとに**少なくとも**次を待つ: その要求の引数で決まる時間（run の timeout_ms、
-  dmi の待ちの和、save など。riscv-dm の reset は `reset_settle_ms`（[線とデバッグ](oep-if-debug.ja.md) §4.3）。attach は `attach_budget_ms`、reset TLV があればそれにその hold_ms と `reset_settle_ms` を足したもの（同 §3）、scan は `scan_budget_ms` + `attach_budget_ms`（同 §1）。無ければ 0。多くても max_op_ms、§7.5）+ 1000 ms（`host_wait_add_ms`）+ 転送の時間（[経路](oep-transports.ja.md) §6）。待ちは、要求を書き終えた時から始める。同じ経路に先の要求が未解決の間は、その 1 つ前の要求の応答が届いた時から始める（probe は順に答える）。
+  dmi の待ちの和、save など。riscv-dm の reset は `reset_settle_ms`（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.3）。attach は `attach_budget_ms`、reset TLV があればそれにその hold_ms と `reset_settle_ms` を足したもの（同 §3）、scan は `scan_budget_ms` + `attach_budget_ms`（同 §1）。無ければ 0。多くても max_op_ms、§7.5）+ 1000 ms（`host_wait_add_ms`）+ 転送の時間（[経路](oep-transports.ja.md) §6）。待ちは、要求を書き終えた時から始める。同じ経路に先の要求が未解決の間は、その 1 つ前の要求の応答が届いた時から始める（probe は順に答える）。
   この下限より長く待つことはいつでも許される。max_op_ms が 0 か `max_op_ms_max` を超えると読んだ host は、その probe を適合しないものとして扱い、使わない。待ちが過ぎたら §5.2 の送り直しに進む。
-- **この下限はすべての要求に当てはまる**。host 自身のリンクの要求（confirm と `oep.link` の op）も含む。[リンク](oep-if-link.ja.md) §3 が port_speed の段階について決める待ち（新しい速さを確かめる confirm の前の 20 ms 以上、verify_ms、idle_ms、port_speed_idle_max_ms + 1000 ms の間の confirm の繰り返し）はそこで決めるとおりのまま。それらは要求と要求の間の時間で、応答を待つ時間ではなく、その間に送るどの要求についてもこの下限を縮めない。
-  [リンク](oep-if-link.ja.md) §3（host の義務 5）、[経路](oep-transports.ja.md) §3、§4 が host に繰り返させる confirm は、それぞれ新しい corr の新しい要求で、§5.2 の送り直しではない: host は、前の confirm の下限が過ぎる前に次を送ってよい。後から届いた前の corr への応答は受けるか読み飛ばし、下限が過ぎる前に前の confirm を答えが無いものとは扱わない。`oep.link` の op はこのように繰り返さない。どれも自分の下限まで待つ。
+- **この下限はすべての要求に当てはまる**。host 自身のリンクの要求（confirm と `oep.link` の op）も含む。[リンク](../interfaces/oep-if-link.ja.md) §3 が port_speed の段階について決める待ち（新しい速さを確かめる confirm の前の 20 ms 以上、verify_ms、idle_ms、port_speed_idle_max_ms + 1000 ms の間の confirm の繰り返し）はそこで決めるとおりのまま。それらは要求と要求の間の時間で、応答を待つ時間ではなく、その間に送るどの要求についてもこの下限を縮めない。
+  [リンク](../interfaces/oep-if-link.ja.md) §3（host の義務 5）、[経路](oep-transports.ja.md) §3、§4 が host に繰り返させる confirm は、それぞれ新しい corr の新しい要求で、§5.2 の送り直しではない: host は、前の confirm の下限が過ぎる前に次を送ってよい。後から届いた前の corr への応答は受けるか読み飛ばし、下限が過ぎる前に前の confirm を答えが無いものとは扱わない。`oep.link` の op はこのように繰り返さない。どれも自分の下限まで待つ。
 
 ## 5. 立て直しと送り直し
 
@@ -410,8 +410,8 @@ probe 自身を起動し直す。host が、probe を抜き差しせずに、お
 - **ロックが要る**（§6.3）。断り方はロックの要るほかの op と同じ（§4.3）: session_id 0 は session_required、ロックが空いていれば no_session、別のセッションが持てば locked。restart は要求の TLV を定めない: 要求の TLV は §2.3 のとおり（critical なら rejected unsupported、そうでなければ無視して ignored に載せる）。
 - **応答が先**: 受け付けた restart に、probe は completed success で答える（payload は無い。ignored が要れば付ける）。restart は completed failed / partial を返さない。
 - **応答の後**: probe は、その応答が経路を出てから（応答の最後の byte を経路に渡し終え、probe が分かる所ではそれが送られてから）再起動を始める。始めるのは、そこから多くても `restart_after_answer_ms`（100 ms、registry）のうち。応答を送ってから再起動するまで、probe はどの経路の要求も処理せず（答えない。同じ経路で restart の後ろに来ていた要求も同じ）、通知を送らない。
-- **再起動の前に線の駆動をやめる**: probe はすべての connection を閉じ（target は必要以上に変えない: reset せず、止めていた hart は止めたまま。[線とデバッグ](oep-if-debug.ja.md) §2）、reserved（§7.5）でないすべての channel を、plan を解いたときと同じ空きの状態（§8）にする。
-- **再起動の後**は、OEP については電源を入れたときの起動と同じである: boot_id は新しい値（§6.5）。保存した設定は、どの起動とも同じに適用する（保存していない設定は残らない）。channel は §8 の起動時のとおり空きの状態。シリアルの口の速さは起動時の速さ（[リンク](oep-if-link.ja.md) §3）。セッション、ロック、§5.2 の表、購読、plan、connection、ストリームなど、前の起動のものは何も残らない（§9 の「probe の再起動」の行）。前のセッションの id の要求は no_session で断られる。
+- **再起動の前に線の駆動をやめる**: probe はすべての connection を閉じ（target は必要以上に変えない: reset せず、止めていた hart は止めたまま。[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）、reserved（§7.5）でないすべての channel を、plan を解いたときと同じ空きの状態（§8）にする。
+- **再起動の後**は、OEP については電源を入れたときの起動と同じである: boot_id は新しい値（§6.5）。保存した設定は、どの起動とも同じに適用する（保存していない設定は残らない）。channel は §8 の起動時のとおり空きの状態。シリアルの口の速さは起動時の速さ（[リンク](../interfaces/oep-if-link.ja.md) §3）。セッション、ロック、§5.2 の表、購読、plan、connection、ストリームなど、前の起動のものは何も残らない（§9 の「probe の再起動」の行）。前のセッションの id の要求は no_session で断られる。
 - **経路**: 再起動のあいだ probe は経路に答えない。USB の経路では device が bus から外れて列挙し直してよく、TCP の接続は閉じてよい。host にはそれが、経路が閉じてまた開くことに見える。
 - **戻るまでの時間**: probe は、restart の応答が経路を出てから restart_max_ms（§7.5）のうちに、その応答を送った経路で confirm にまた答える（USB の経路では列挙し直したうえで、TCP の経路では待ち受け直したうえで）。
 - **host の待ち方**: restart の応答を受けた host は、その probe にどの経路でも何も送らずに経路を閉じ、少なくとも `restart_after_answer_ms` 待ってから、新しく開くのと同じに開き直す: 最初に送るのは confirm で（[経路](oep-transports.ja.md) §3 の探りの規則。UART bridge では起動時の速さ）、USB では device が列挙し直すのを待つ。開けないか confirm に正しい応答が無いあいだ、host は、restart の応答を受けてから restart_max_ms（§7.5）が過ぎるまで開き直しと confirm を繰り返す（その間に送った confirm の応答は §4.4 のとおり待つ）。それまでに正しい confirm の応答が無ければ、host はその probe を無くなったものとして扱う: その probe の経路を閉じ、利用者が開き直すまで何も送らない。restart の応答を送った後の probe は何にも答えないので、その後に届いた confirm の応答は新しい起動のものである: host はその boot_id が restart の前と違うことを確かめ、§6.5 のとおり覚えた状態をすべて捨てる。
@@ -427,7 +427,7 @@ probe 自身を起動し直す。host が、probe を抜き差しせずに、お
 応答: "OEP!"、revision(u8)、flags(u8)、max_frame(u16)、window(u32)、max_inflight(u8)、boot_id(u32)、[TLV]
 ```
 
-- TLV 0x01 transport（u8）: この confirm が来た経路の index（§7.5）。probe は必ず付ける。同じ接続で返す fn 0 の describe の entry を指す（中継のブローカーからは 0xFF、[経路](oep-transports.ja.md) §1）。port_speed（UART bridge、[リンク](oep-if-link.ja.md) §3）と bind（シリアルの口、[probe の設定](oep-if-probe-config.ja.md) §1.2）が TCP の index を取ることはない。
+- TLV 0x01 transport（u8）: この confirm が来た経路の index（§7.5）。probe は必ず付ける。同じ接続で返す fn 0 の describe の entry を指す（中継のブローカーからは 0xFF、[経路](oep-transports.ja.md) §1）。port_speed（UART bridge、[リンク](../interfaces/oep-if-link.ja.md) §3）と bind（シリアルの口、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.2）が TCP の index を取ることはない。
 
 host は扱えるプロトコルの revision の範囲を送り、probe はその中で扱える最大の revision を返す。範囲に扱えるものが無ければ
 rejected unsupported（下）。flags は予約（0）。max_frame は 64 以上（[経路](oep-transports.ja.md) §3）、window は max_frame 以上、max_inflight は 1 以上。この範囲を外れた confirm の応答を受けた host は、その経路を使えないものとして扱う: そこにはもう何も送らず、値を知らせる。host は flags のビットを無視する（予約、§2.4）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も 64 byte に収まる
@@ -508,7 +508,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 |---:|---|---|
 | 0x40 | firmware | text |
 | 0x41 | model | text。probe の種類（同じ firmware を載せた同じ種類のハードウェアで同じ値。個体では変わらない）。**小文字の `a-z 0-9 -`**、1〜32 byte（registry の `model_max_bytes`）。project のものでない model は、作り手の逆 DNS の名前の `.` を `-` に替えたもので始める（例 `com-example-probe1`） |
-| 0x42 | unit_id | 個体の ID。**必須**。text で 1〜32 byte、使える文字は `a-z 0-9 -` だけ（チップの固有の番号を小文字の 16 進にしたもの、など）。同じ probe の経路を host がまとめるのに使うので、どの経路の describe でも同じ値を返す。USB の serial number と同じ（[経路](oep-transports.ja.md) §3）。host が probe を名指す値（アドレス `oep://<unit_id>/<スロットの名前>`、[probe の設定](oep-if-probe-config.ja.md) §1.1） |
+| 0x42 | unit_id | 個体の ID。**必須**。text で 1〜32 byte、使える文字は `a-z 0-9 -` だけ（チップの固有の番号を小文字の 16 進にしたもの、など）。同じ probe の経路を host がまとめるのに使うので、どの経路の describe でも同じ値を返す。USB の serial number と同じ（[経路](oep-transports.ja.md) §3）。host が probe を名指す値（アドレス `oep://<unit_id>/<スロットの名前>`、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.1） |
 | 0x43 | channels | u16。channel の数 |
 | 0x44 | reserved | base(u16)、bitmap。bit i が立っていれば、channel base+i は probe が自分で使っていてインターフェースに割り当てない channel |
 | 0x45 | profile | text。治具などの配線の名前 |
@@ -537,7 +537,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 ### 7.6 アドレス
 
 host が probe とスロットを名指す文字列: `oep://<unit_id>[/<slot name>]`。authority は unit_id（§7.5、小文字）、path はスロットの名前
-（[probe の設定](oep-if-probe-config.ja.md) §1.1）1 つだけ。path の無い `oep://<unit_id>` は probe 自身。v1 はこれ以外（query、port、
+（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.1）1 つだけ。path の無い `oep://<unit_id>` は probe 自身。v1 はこれ以外（query、port、
 複数の path）を定めない。IDE や設定のファイルが probe を覚えるときはこの形で覚える（VID:PID や口の名前ではなく）。
 
 ## 8. plan
@@ -561,8 +561,8 @@ plan は **fn ごと**に持つ。
   つまり **probe の設定がそのピンの idle を決めていればその状態（出力 low / high ならその level と、idle が決める強さで駆動し、Hi-Z にしない）、決めていなければ
   Hi-Z（入力、プルなし）**にする。インターフェースは、解いた後もピンを自分の駆動のまま残してはならない（空きの状態が出力なら、その駆動は
   設定の idle のもの。空きの状態の設定は `oep.probe.config` の idle、
-  [probe の設定](oep-if-probe-config.ja.md)）。
-- **起動時**、probe は最初の要求に答える前に、reserved（§7.5）でないすべての channel を空きの状態にする（上: 設定が idle を定めればその idle、そうでなければ Hi-Z: 入力、プルなし）。それまでピンは MCU のリセットの状態（参考: 誤った水準が害になる線には外付けのプルが要る、[probe の設定](oep-if-probe-config.ja.md) §5）。
+  [probe の設定](../interfaces/oep-if-probe-config.ja.md)）。
+- **起動時**、probe は最初の要求に答える前に、reserved（§7.5）でないすべての channel を空きの状態にする（上: 設定が idle を定めればその idle、そうでなければ Hi-Z: 入力、プルなし）。それまでピンは MCU のリセットの状態（参考: 誤った水準が害になる線には外付けのプルが要る、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §5）。
 - **plan を取ってもピンの電気の状態は変わらない。** ピンは、それを持つインターフェースが使い始めるまで空きの状態を保つ。どの操作で使い始めるかは、各インターフェースの文書が定める（plan そのもののインターフェースもある）。ピンを読むだけのインターフェースは決して変えない: 出力を止めず、ほかの機能や出力の idle が駆動するピンのプルや向きも変えない。
 - idle が出力（mode 3 / 4）の channel への plan をインターフェースの文書が断るとき、その断りは unavailable（cause 5、holder_kind 7）である。
 - plan の寿命は §9（fn ごと）。
@@ -600,7 +600,7 @@ plan は **fn ごと**に持つ。
 - セッションとほかのものが共有する資源（slot も使う connection、bind も送るストリーム）では、セッションの持ち分だけが外れ、
   使う者が残らなくなったときに、インターフェースの文書のとおり閉じる。
 - 資源が閉じた後もインターフェースが読めるまま残すものは、セッションの資源ではない: 閉じた console のストリームは、同じ場所で同じ仕組みが
-  次に開かれるまで読める（[コンソール](oep-if-console.ja.md) §2）。
+  次に開かれるまで読める（[コンソール](../interfaces/oep-if-console.ja.md) §2）。
 - 1 つのプロセスで 1 つのコマンドを走らせる host は、probe にまだ残っているものに明示の道で届く: 生きている組への attach はその
   connection を返し（slot はセッションをまたいで connection を保つ）、同じ場所と仕組みでの console の open は、開いていても閉じていてもそのストリームを、
   位置と mark ごと返す。
@@ -654,7 +654,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 | 0x32 | unsubscribe | fn(u16) | — |
 
 - **購読はロックの持ち主だけができ、ロックと一緒に終わる**（end、期限切れ、force で奪われたとき）。読むだけの監視は、シリアルの
-  口の生のバイト（bind、[probe の設定](oep-if-probe-config.ja.md)）で行う。ロックを持たない購読は予約（後から subscribe の TLV で
+  口の生のバイト（bind、[probe の設定](../interfaces/oep-if-probe-config.ja.md)）で行う。ロックを持たない購読は予約（後から subscribe の TLV で
   足す。今の購読の意味は変えない）。
 - fn 0 の subscribe / unsubscribe はどの probe も実装する。送り出さない fn への subscribe は rejected unsupported（§4.3 の順 6）。
   購読の無い fn の unsubscribe は何もせず成功。
@@ -690,7 +690,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 | 0x30 | subscribe | §11.3 | — | 必要 | 必須 |
 | 0x32 | unsubscribe | §11.3 | — | 必要 | 必須 |
 
-線の試験と port_speed は、任意のインターフェース `oep.link`（[リンク](oep-if-link.ja.md)）である。
+線の試験と port_speed は、任意のインターフェース `oep.link`（[リンク](../interfaces/oep-if-link.ja.md)）である。
 
 ## 13. 拡張の規則（インターフェースの書き方）
 
@@ -724,19 +724,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
    probe の firmware の更新が要る）。汎用の手順（生の転送と host の知識）で済むものは、そちらで組む。
 9. 標準インターフェースの番号は registry に載せる。独自のインターフェースの番号は、その定義が管理する。
 
-## 14. 標準インターフェースの文書
-
-| 文書 | インターフェース |
-|---|---|
-| [標準インターフェース: 共通部品](oep-if-common.ja.md) | 位置つきのストリーム、debug の connection |
-| [標準インターフェース: 線とデバッグ](oep-if-debug.ja.md) | `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`、`oep.target.riscv-dm`、`oep.target.arm-adi` |
-| [標準インターフェース: コンソール](oep-if-console.ja.md) | `oep.target.console`（framing の dmseq は [target-console-dmseq](target-console-dmseq.ja.md)） |
-| [標準インターフェース: fixture](oep-if-fixture.ja.md) | `oep.fixture.gpio`、`oep.fixture.uart`、`oep.fixture.i2c-target`、`oep.fixture.spi-target` |
-| [標準インターフェース: キャプチャ](oep-if-capture.ja.md) | `oep.fixture.logic`、`oep.fixture.analog`、`oep.fixture.capture-group` |
-| [標準インターフェース: probe の設定](oep-if-probe-config.ja.md) | `oep.probe.config` |
-| [標準インターフェース: リンク](oep-if-link.ja.md) | `oep.link`（線の試験と port_speed） |
-
-## 15. 規範ではない文書（ガイド）
+## 14. 規範ではない文書（ガイド）
 
 これらは規則を足さない。
 

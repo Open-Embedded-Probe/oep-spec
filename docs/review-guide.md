@@ -22,7 +22,7 @@ how to write flash and chip-specific procedures are in the host.
 
 ## 2. Current state
 
-- It is **a candidate for the v1 freeze**. The normative text is `docs/oep-core.md`, `docs/oep-if-*.md` (7 of them), `docs/target-console-dmseq.md`, and the numbers are `registry/oep-v1.toml`.
+- It is **a candidate for the v1 freeze**. The normative text is `docs/oep-core.md`, `interfaces/oep-if-*.md` (7 of them), `interfaces/target-console-dmseq.md`, and the numbers are `registry/oep-v1.toml`.
   No undecided numbers (the "to be decided" mark) remain in the normative text. What the freeze stops and what it does not is in [versioning](versioning.md); the changes are in [CHANGELOG](../CHANGELOG.md).
 - Until the freeze, breaking changes go in without raising the revision (there are no users yet). After the freeze, the revision is raised.
 - **Releases**: oep-spec is pushed to main on GitHub (there are no tags. It is pointed to by commit). The reference implementations are oep-probe-arduino **0.0.28** (Arduino library
@@ -45,10 +45,10 @@ how to write flash and chip-specific procedures are in the host.
 |---:|---|---|
 | 1 | `docs/project-concept.md` | Purpose and scope (the upstream agreement). Short |
 | 2 | `docs/versioning.md` | **The scope of the freeze**: what is stopped, what is free, the paths for extension, what a revision bump means; what is fixed on purpose and the reasons (§3.1) |
-| 3 | `docs/oep-core.md` | **The core (normative)**. §0 layers and the rules for drawing lines, §2 common rules (TLV, unknown values, number spaces, revision), §3 transports and frames, §4 messages and reject reasons (**the order of refusals** in §4.3), §5 recovery and resend, §6 sessions, §7 discovery (confirm / list / describe), §8 plan, §9 lifetime of resources, §10 long operations (reserved), §11 notifications, §12 core ops, §13 how to write an interface. **port_speed ([link](oep-if-link.md) §3) is the handshake only**: how to choose candidates, checking, and judging during use are the reference procedure of `host-development-guide` §17 |
-| 4 | `docs/oep-if-common.md` | The common parts of the standard interfaces (positioned streams, debug connections, the status of wire and target operations) |
-| 5 | `docs/oep-if-debug.md`, `docs/oep-if-console.md`, `docs/oep-if-fixture.md`, `docs/oep-if-capture.md`, `docs/oep-if-probe-config.md`, `docs/oep-if-link.md` | The standard interfaces (normative): wires and RISC-V DM / ARM ADI, the target console, GPIO / UART / I2C·SPI targets, logic / analog capture and groups, probe settings (slots, bind, disable), the link test and port_speed |
-| 6 | `docs/target-console-dmseq.md` | The console framing (dmseq): carried in both directions through the data registers of the debug module, with sequence numbers and CRC (normative for target and host) |
+| 3 | `docs/oep-core.md` | **The core (normative)**. §0 layers and the rules for drawing lines, §2 common rules (TLV, unknown values, number spaces, revision), §3 transports and frames, §4 messages and reject reasons (**the order of refusals** in §4.3), §5 recovery and resend, §6 sessions, §7 discovery (confirm / list / describe), §8 plan, §9 lifetime of resources, §10 long operations (reserved), §11 notifications, §12 core ops, §13 how to write an interface. **port_speed ([link](../interfaces/oep-if-link.md) §3) is the handshake only**: how to choose candidates, checking, and judging during use are the reference procedure of `host-development-guide` §17 |
+| 4 | `interfaces/oep-if-common.md` | The common parts of the standard interfaces (positioned streams, debug connections, the status of wire and target operations) |
+| 5 | `interfaces/oep-if-debug.md`, `interfaces/oep-if-console.md`, `interfaces/oep-if-fixture.md`, `interfaces/oep-if-capture.md`, `interfaces/oep-if-probe-config.md`, `interfaces/oep-if-link.md` | The standard interfaces (normative): wires and RISC-V DM / ARM ADI, the target console, GPIO / UART / I2C·SPI targets, logic / analog capture and groups, probe settings (slots, bind, disable), the link test and port_speed |
+| 6 | `interfaces/target-console-dmseq.md` | The console framing (dmseq): carried in both directions through the data registers of the debug module, with sequence numbers and CRC (normative for target and host) |
 | 7 | `registry/oep-v1.toml` | The only definition of numbers and values. `timing` / `limits` are the numbers of the normative text (subject to the freeze) |
 | 8 | `docs/getting-started.md`, `docs/conformance.md`, `docs/host-development-guide.md`, `docs/probe-development-guide.md`, `docs/security.md`, `docs/glossary.md` | Practice (not normative): the smallest probe and host with bytes; the conformance checklists for a probe and a host; how to send frames, recovery, refusals, notifications, probe settings, handling of USB-UART, **host guide §17 how to choose the serial port speed** (17.1 balance, 17.2 the minimal form, 17.3 the form that adds checks per use, 17.4 records, 17.5 measurements); identifiers and declarations (probe guide §10); security and safety in one place; terms |
 | 9 | `docs/release-testing.md` | Tests on real hardware before a release: who owns them, what they check |
@@ -70,7 +70,7 @@ specification does not need them.
 5. **Places where the source of the reference numbers is narrow.** The numbers of `host-development-guide` §17 (5 %, 10 %, 16 frames, 3 seconds, 60 frames)
    come from measurements of **2 kinds of conversion chips (CH340, and a CH552 that claims FTDI compatibility)** (summarised in host guide §17.5), and the host's
    serial receive limit of core §3.4 (6 KiB) from USB measurements on 2 families of MCUs. Measurements with other bridges (genuine FTDI, CP210x, CDC MCUs) and
-   on native OSes are welcome. The numbers of §17 are not normative ([link](oep-if-link.md) §3 is the handshake only), so they do not hold up the freeze.
+   on native OSes are welcome. The numbers of §17 are not normative ([link](../interfaces/oep-if-link.md) §3 is the handshake only), so they do not hold up the freeze.
 
 ## 5. oep-spec (specification, number tables, experiments)
 

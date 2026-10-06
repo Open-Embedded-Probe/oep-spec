@@ -199,7 +199,7 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 3. core §4.3 の断り方の順のすべてと、core §2.3 の TLV の規則（critical、ignored、繰り返し、短い TLV と長すぎる TLV）。
 4. subscribe / unsubscribe と fn 0 のハートビート（core §11）。
 5. plan の role を持つインターフェースがあれば plan_apply / plan_release（core §8）と、欲しいインターフェース（[適合](conformance.ja.md) §3）。
-6. 任意: `oep.link`（線の試験と、UART bridge の port_speed。[リンク](oep-if-link.ja.md)）、probe の設定（[probe の設定](oep-if-probe-config.ja.md)）、ほかの経路。
+6. 任意: `oep.link`（線の試験と、UART bridge の port_speed。[リンク](../interfaces/oep-if-link.ja.md)）、probe の設定（[probe の設定](../interfaces/oep-if-probe-config.ja.md)）、ほかの経路。
 
 **host**（[適合](conformance.ja.md) §2）:
 

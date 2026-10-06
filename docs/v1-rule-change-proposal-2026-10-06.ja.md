@@ -360,7 +360,7 @@ registry: `oep.wire.rvswd` と `oep.wire.swio` の `scan_kind` の enum から `
 
 **提案する文**（core §8、解放したピンの項目の後）:
 
-> - **起動時**、probe は最初の要求に答える前に、reserved（§7.5）でないすべての channel を空きの状態にする（上: 設定が idle を定めればその idle、そうでなければ Hi-Z: 入力、プルなし）。それまでピンは MCU のリセットの状態（参考: 誤った水準が害になる線には外付けのプルが要る、[probe の設定](oep-if-probe-config.ja.md) §5）。
+> - **起動時**、probe は最初の要求に答える前に、reserved（§7.5）でないすべての channel を空きの状態にする（上: 設定が idle を定めればその idle、そうでなければ Hi-Z: 入力、プルなし）。それまでピンは MCU のリセットの状態（参考: 誤った水準が害になる線には外付けのプルが要る、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §5）。
 
 **変わること。** probe: RP2 と classic ESP32 の firmware、FixtureProbe / ProbeConfig の例は、起動時にすべての channel を浮いた入力にしまい、提案のとおり。ESP32-P4 の firmware は、ピンをチップが起動したときのままにする（Esp32P4.h:193）: しまう呼び出しを足す。設定で disable にした channel は、probe-config §1 のとおり触らない。fake: ピンが無い。
 

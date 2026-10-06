@@ -46,7 +46,7 @@ A probe conforms when it does everything in this list for the transports and int
 - The resend table: at least max_inflight entries, rejected answers stored, discarded at every successful open, one table per probe (§5.2).
 - Lock-free ops change no state (§6.3); boot_id changes at every boot, taken from the sources of §6.5 in their order (§6.5).
 - The clock: ns since boot, never decreasing or wrapping while the boot_id is the same (§2.6a).
-- Everything a session created released when its lock ends, by end, expiry or force alike, and kept on a resent open (§9); no resume (§6.4); resource numbers (§9); closed console streams readable until the next open at the same place and mechanism ([console](oep-if-console.md) §2).
+- Everything a session created released when its lock ends, by end, expiry or force alike, and kept on a resent open (§9); no resume (§6.4); resource numbers (§9); closed console streams readable until the next open at the same place and mechanism ([console](../interfaces/oep-if-console.md) §2).
 
 **fn 0 (`oep.core`)**
 
@@ -66,8 +66,8 @@ A probe conforms when it does everything in this list for the transports and int
 **Timing bounds** (values in `registry/oep-v1.toml`)
 
 - `probe_frame_gap_ms` (§3.2); no request longer than the declared max_op_ms, and ops that could exceed it refused (§7.5); lease limits
-  (§6.4); heartbeat period (§11.3); port_speed verify_ms / idle_ms and the return conditions ([link](oep-if-link.md) §3); the attach and scan budgets of each
-  wire ([wire and debug](oep-if-debug.md) §1).
+  (§6.4); heartbeat period (§11.3); port_speed verify_ms / idle_ms and the return conditions ([link](../interfaces/oep-if-link.md) §3); the attach and scan budgets of each
+  wire ([wire and debug](../interfaces/oep-if-debug.md) §1).
 
 ## 2. Host checklist
 
@@ -96,9 +96,9 @@ A probe conforms when it does everything in this list for the transports and int
 - **Strings**: replace control characters and invalid UTF-8 before showing answer text (§2.1); compare unit_id with serial numbers and
   each other ignoring ASCII case (§3.3); never group, name or key anything by an `x-` unit_id (§7.5); iProduct and interface strings
   for display only (§3.3); `name#instance` and `oep://` addresses (§7.2, §7.6).
-- **port_speed**, when the host uses it: host obligations 1 to 7 of [link](oep-if-link.md) §3; on every UART bridge port, confirm repeated after a raised speed (§3.4).
+- **port_speed**, when the host uses it: host obligations 1 to 7 of [link](../interfaces/oep-if-link.md) §3; on every UART bridge port, confirm repeated after a raised speed (§3.4).
 - **Analog capture**, when the host shows voltages: values 0 and 2^b − 1 shown as clipped (at or below the low end, at or above the high end),
-  not as voltages ([capture](oep-if-capture.md) §1.2 rule 6).
+  not as voltages ([capture](../interfaces/oep-if-capture.md) §1.2 rule 6).
 
 ## 3. Standard interfaces
 
@@ -106,19 +106,19 @@ A probe that lists an `oep.` name follows that interface's whole document. The s
 
 | Interface | Required | Optional, declared by |
 |---|---|---|
-| Positioned streams ([common parts](oep-if-common.md) §1) | read, marks, clear, mark, write as §1 for each interface that uses them; status values of §3 | — |
-| `oep.wire.rvswd`, `oep.wire.swio`, `oep.wire.swd` ([wire and debug](oep-if-debug.md) §0 to §3, §5) | scan (on a wire without pins, count = 0 tries its one combination; a count = 0 sequence with nothing left from skip on answers success with tried 0), attach (max_speed mandatory), detach, connections; §1 attach rules and budgets; §2 lifetime and line states | the reset TLV of attach (role 3 of role_channels) |
+| Positioned streams ([common parts](../interfaces/oep-if-common.md) §1) | read, marks, clear, mark, write as §1 for each interface that uses them; status values of §3 | — |
+| `oep.wire.rvswd`, `oep.wire.swio`, `oep.wire.swd` ([wire and debug](../interfaces/oep-if-debug.md) §0 to §3, §5) | scan (on a wire without pins, count = 0 tries its one combination; a count = 0 sequence with nothing left from skip on answers success with tried 0), attach (max_speed mandatory), detach, connections; §1 attach rules and budgets; §2 lifetime and line states | the reset TLV of attach (role 3 of role_channels) |
 | `oep.target.riscv-dm` (§4) | dmi, halt, resume | reset, read_block / write_block, run, step: ops; max_length with read_block / write_block |
 | `oep.target.arm-adi` (§6) | transfer, read_block, write_block; max_length always emitted | — |
-| `oep.target.console` ([console](oep-if-console.md)) | the ops of §1; describe mechanisms always emitted; mechanism 2 framed as [dmseq](target-console-dmseq.md) | which mechanisms (describe mechanisms) |
-| `oep.fixture.gpio` ([fixture](oep-if-fixture.md) §1) | set, read; describe modes with mode 0 | output drive strength (§1.1) |
+| `oep.target.console` ([console](../interfaces/oep-if-console.md)) | the ops of §1; describe mechanisms always emitted; mechanism 2 framed as [dmseq](../interfaces/target-console-dmseq.md) | which mechanisms (describe mechanisms) |
+| `oep.fixture.gpio` ([fixture](../interfaces/oep-if-fixture.md) §1) | set, read; describe modes with mode 0 | output drive strength (§1.1) |
 | `oep.fixture.uart` (§2) | the ops of §2; describe formats with 8N1 | other formats |
 | `oep.fixture.i2c-target` (§3) | the ops of §3 except stretch; modes 1 and 2 | stretch (ops, with max_stretch_us); mode 3 (features bit0); pull-ups (features bit2, with pullup_ohms) |
 | `oep.fixture.spi-target` (§4) | the ops of §4; cs_setup_ns when MISO is driven in software | LSB first (features bit0) |
-| `oep.fixture.logic`, `oep.fixture.analog` ([capture](oep-if-capture.md) §1 to §3) | the ops of §3.2 except query and force; describe of §3.5; calibration on analog only | query, force (ops); notifications (features bit2) |
+| `oep.fixture.logic`, `oep.fixture.analog` ([capture](../interfaces/oep-if-capture.md) §1 to §3) | the ops of §3.2 except query and force; describe of §3.5; calibration on analog only | query, force (ops); notifications (features bit2) |
 | `oep.fixture.capture-group` (§4) | the ops of §4.1 except force; describe of §4.3 | force (ops); notifications (features bit2) |
-| `oep.link` ([link](oep-if-link.md)) | source, sink | port_speed (ops): its states and return conditions (§3) |
-| `oep.probe.config` ([probe settings](oep-if-probe-config.md)) | listed only by a probe that handles settings; get, set, unset, state; hash; refusals of §2; describe of §4 | save / erase (ops, with the storage tag; without them unknown_operation); slots; bind (bind_modes bits 0 and 1 when present) |
+| `oep.link` ([link](../interfaces/oep-if-link.md)) | source, sink | port_speed (ops): its states and return conditions (§3) |
+| `oep.probe.config` ([probe settings](../interfaces/oep-if-probe-config.md)) | listed only by a probe that handles settings; get, set, unset, state; hash; refusals of §2; describe of §4 | save / erase (ops, with the storage tag; without them unknown_operation); slots; bind (bind_modes bits 0 and 1 when present) |
 
 ## 4. How to check
 
@@ -132,7 +132,7 @@ the text disagree, the text is right (core §0 rule 4). They cover:
 | `headers.json` | request and answer headers and TLV encoding (§2.2, §4.1, §4.2) |
 | `confirm.json` | confirm exchanges (§7.1) |
 | `discovery.json` | list (§7.2), describe of fn 0 (§7.3, §7.5), describe past the end, and the header refusals unknown_function / unknown_operation (§4.3 order 1) |
-| `probe_config_hash.json` | the canonical form and hash of probe.config ([probe settings](oep-if-probe-config.md) §2) |
+| `probe_config_hash.json` | the canonical form and hash of probe.config ([probe settings](../interfaces/oep-if-probe-config.md) §2) |
 | `refusals.json` | requests and the exact answer for refusals of §4.3 and the ignored list of §2.3 |
 
 An implementation reads the JSON files and compares its own encoder, decoder and answers byte for byte. To check that the vectors agree

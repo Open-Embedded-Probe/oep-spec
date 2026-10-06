@@ -1,6 +1,6 @@
 # dmseq の記録（理由、経緯、実測）
 
-状態: **記録**（規範ではない）。規範は [target-console-dmseq](target-console-dmseq.md)（英語が原文、[日本語訳](target-console-dmseq.ja.md)）。
+状態: **記録**（規範ではない）。規範は [target-console-dmseq](../interfaces/target-console-dmseq.md)（英語が原文、[日本語訳](../interfaces/target-console-dmseq.ja.md)）。
 ここには、2026-10-02 に規範の文書から移した理由、経緯、実測を置く。実験の元の草案と結果の表は
 [experiments/dm-console-seq](../experiments/dm-console-seq/SPEC-draft.md)。
 
@@ -63,5 +63,5 @@ WCH-LinkE の AttachChip は ESIG を読んだ後に DATA0 に `0xffffffff` を�
 ## 9. hart を止める debugger
 
 halt 中に DATA0 / DATA1 を使って書き戻さないと target が待たされることは [link-measurements](link-measurements.ja.md) §3 にある。
-OEP の probe は DATA0 / DATA1 を使う op の答えの前に書き戻す（[線とデバッグ](oep-if-debug.ja.md) §4.2）。移す前の規範の文は
+OEP の probe は DATA0 / DATA1 を使う op の答えの前に書き戻す（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.2）。移す前の規範の文は
 「riscv-dm の halt / resume でこれを行う」と書いていたが、§4.2 は op ごとに書き戻すと定めているので、規範の文はそれに合わせた。

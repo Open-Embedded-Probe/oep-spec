@@ -360,7 +360,7 @@ Registry: `arm_adi = 2` is removed from the `scan_kind` enums of `oep.wire.rvswd
 
 **Proposed text** (core §8, after the bullet on released pins):
 
-> - **At boot**, before it answers its first request, the probe puts every channel that is not reserved (§7.5) in its idle state (above: the idle of the settings when they define one, otherwise Hi-Z: input, no pull). Until then the pins are in the MCU's reset state (informative: a line whose wrong level is harmful needs an external pull, [probe settings](oep-if-probe-config.md) §5).
+> - **At boot**, before it answers its first request, the probe puts every channel that is not reserved (§7.5) in its idle state (above: the idle of the settings when they define one, otherwise Hi-Z: input, no pull). Until then the pins are in the MCU's reset state (informative: a line whose wrong level is harmful needs an external pull, [probe settings](../interfaces/oep-if-probe-config.md) §5).
 
 **Changes.** probe: the RP2 and classic ESP32 firmwares and the FixtureProbe / ProbeConfig examples park every channel as a floating input at boot, as proposed. The ESP32-P4 firmware leaves the pins as the chip boots them (Esp32P4.h:193): add the park call. A channel disabled by the settings stays untouched, as probe-config §1 says. fake: no pins.
 

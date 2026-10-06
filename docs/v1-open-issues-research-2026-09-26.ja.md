@@ -8,7 +8,7 @@
 
 - [core §3.1、§3.3](oep-core.ja.md) に TCP 上の `length(u16) message`、認証のない OEP の信頼境界、複数経路で共有する
   セッションとロックがある。TCP の framing 自体を設計し直す必要はない。
-- 現行の [probe.config](oep-if-probe-config.ja.md) は USB の設定と永続化を持つが、IP の接続先・listen ポート・実際の状態は持たない。
+- 現行の [probe.config](../interfaces/oep-if-probe-config.ja.md) は USB の設定と永続化を持つが、IP の接続先・listen ポート・実際の状態は持たない。
 - USB に依存しない probe や、外部の設定手段を持つ probe も OEP を話せる。`oep.probe.config` が全 probe の必須機能ではない。
 - [review-response](review-response-2026-09-26.ja.md) にあるレビュー R1〜R14 はすでに判断・反映済み。
   古いレビュー文の指摘を、そのまま現在の未決事項として数えない。
@@ -45,7 +45,7 @@ Wi-Fi・Ethernet・LTE を一つの必須の `probe.config` 形式に押し込�
 
 ### 2.3 secret と現行の `get` / `hash` はそのまま結合できない
 
-[probe.config §2](oep-if-probe-config.ja.md) の hash は「現在の設定の正規形の CRC-32」で、host が望む設定から同じ hash を
+[probe.config §2](../interfaces/oep-if-probe-config.ja.md) の hash は「現在の設定の正規形の CRC-32」で、host が望む設定から同じ hash を
 計算して一致を確認する仕組み。Wi-Fi の secret を `get` から伏せても、hash に生の secret を含めれば、低エントロピーの候補を
 試す手掛かりを公開する。一方、hash から除くと、secret だけを変更した場合に hash が変わらず、「望む設定と一致する」の意味が崩れる。
 これは現行の正規形と API からの推論である。CRC-32 は通信エラー検出用で、秘密照合用ではない。

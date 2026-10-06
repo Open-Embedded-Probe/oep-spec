@@ -5,8 +5,8 @@ git の履歴、2026-09-26 の整理より前の版に残っている）。§6 /
 
 | # | 案 | 決定 | 規範の置き場 |
 |---:|---|---|---|
-| 1 | 線の組み合わせのスキャンと、長い操作（PENDING）の最初の実装 | ピンの組の指定を採用（2026-09-26、レビュー 2.5）。スキャンの続きは tried で host が送る（レビュー 7.8）。PENDING を含む長い操作は v1 から外した（レビュー 7.4） | [線とデバッグ](oep-if-debug.ja.md) §1、[core](oep-core.ja.md) §10 |
-| 2 | fixture の payload を v1 の形にするか | v1 の形に作り直す（2026-09-25、ch32rv の意見で案 B） | [fixture](oep-if-fixture.ja.md) |
+| 1 | 線の組み合わせのスキャンと、長い操作（PENDING）の最初の実装 | ピンの組の指定を採用（2026-09-26、レビュー 2.5）。スキャンの続きは tried で host が送る（レビュー 7.8）。PENDING を含む長い操作は v1 から外した（レビュー 7.4） | [線とデバッグ](../interfaces/oep-if-debug.ja.md) §1、[core](oep-core.ja.md) §10 |
+| 2 | fixture の payload を v1 の形にするか | v1 の形に作り直す（2026-09-25、ch32rv の意見で案 B） | [fixture](../interfaces/oep-if-fixture.ja.md) |
 | 3 | 資源の寿命を 1 つの表にする（レビュー 2.2 / 3.1） | 案のとおり（2026-09-26）。end の後に残った資源は次の open に移る（レビュー 7.6） | [core](oep-core.ja.md) §9 |
 | 4 | 状態を変える要求の重複排除（レビュー 2.4） | 案のとおり（2026-09-26）。その後、corr を要求ごとに 1 ずつ進め、同一性は corr だけで決める形に直した（レビュー 7.2 / 7.3） | [core](oep-core.ja.md) §4.1、§5.2 |
 | 5 | プロトコル本体と標準インターフェースの線引き | 案のとおり（2026-09-26）: 3 つの層、線引きの規則、文書の分け方。その後、特化したものは名前で分かるインターフェースに置く規則を足した（移植性レビュー R13） | [core](oep-core.ja.md) §0、§13 |
@@ -127,7 +127,7 @@ git の履歴、2026-09-26 の整理より前の版に残っている）。§6 /
 リセットでのやり直しを、スロットごとの任意の機能として採った（3 つの実装のセッションが、次の条件で合意）。
 - スロットの項目の錠の後ろに任意の boot_reset（u8、既定 0 しない）。リセットの線はスロットのフィールドに置かず、label の名前
   （`<スロットの name>.nrst`、スロットが 1 つ以下なら `nrst`）で probe が探す。見つからなければやり直さない。名前の決まりは規範に
-  上げた（[probe の設定](oep-if-probe-config.ja.md) §1.3。`power_hi` / `power_lo` は host が使う名前で、probe は使わない）。
+  上げた（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.3。`power_hi` / `power_lo` は host が使う名前で、probe は使わない）。
 - 行うのは起動の後、どのセッションもロックを取る前だけ。直前の自動の attach が線の応答をまったく得られなかった（status line）
   ときだけで、錠に不一致、target_id が無い、読み出しの保護、そのほかの失敗や断りの後には行わない。1 回の起動で多くても 1 回。
   hold_ms は registry の `slot_retry_reset_hold_ms`（20）。
@@ -151,9 +151,9 @@ git の履歴、2026-09-26 の整理より前の版に残っている）。§6 /
 
 ### 規範と手順の置き場
 
-- 出力の idle（mode 3 / 4）、起動の順、解いたピンは空きの状態に戻ること: [probe の設定](oep-if-probe-config.ja.md) §1 / §2 / §3.1、
+- 出力の idle（mode 3 / 4）、起動の順、解いたピンは空きの状態に戻ること: [probe の設定](../interfaces/oep-if-probe-config.ja.md) §1 / §2 / §3.1、
   [core](oep-core.ja.md) §8（5013ffb）。
-- 名前の決まり（`nrst`、`power_hi`、`power_lo`）とリセットでのやり直し: [probe の設定](oep-if-probe-config.ja.md) §1.1 / §1.3 / §3.1 / §3.3。
+- 名前の決まり（`nrst`、`power_hi`、`power_lo`）とリセットでのやり直し: [probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.1 / §1.3 / §3.1 / §3.3。
 - 電源の入れ直し、リセットをかけながらの attach、実測: [host 開発ガイド](host-development-guide.ja.md) §18（実測は [実装の記録](implementation-notes.ja.md) §H18.4）。
 
 ## 11. fixture の出力の強さを仕様で指定する: 決着（採用、2026-10-02）
@@ -173,7 +173,7 @@ git の履歴、2026-09-26 の整理より前の版に残っている）。§6 /
 - debug の線と、UART / SPI / I2C target の周辺の線は指定させない。
 - 強めると困る線と下の実験の数は [host 開発ガイド](host-development-guide.ja.md) §18.5 に置いた（実験の数は [実装の記録](implementation-notes.ja.md) §H18.5 に移した）。
 
-規範の置き場: [fixture](oep-if-fixture.ja.md) §1.1、[probe の設定](oep-if-probe-config.ja.md) §1 / §2、[core](oep-core.ja.md) §8、
+規範の置き場: [fixture](../interfaces/oep-if-fixture.ja.md) §1.1、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1 / §2、[core](oep-core.ja.md) §8、
 registry の gpio の `drive_levels` / `drive` / `drive_kind`。
 
 **案**（保留にしたときのもの）: `oep.fixture.gpio` の出力に任意の強さ。probe は describe に出せる段を目安の mA の並びで宣言し、host は gpio の set と

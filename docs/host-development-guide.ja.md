@@ -37,7 +37,7 @@
 ## 3. UART の速度
 
 UART bridge の probe は、いつも起動時の速さ `uart_bridge_boot_baud`（115200 bps）8N1、流れの制御なしで始まる（transports §4。逆引用符の
-名前は、すべての数を持つ `registry/oep-v1.toml` のキー）。port_speed（[リンク](oep-if-link.ja.md) §3、任意）は
+名前は、すべての数を持つ `registry/oep-v1.toml` のキー）。port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3、任意）は
 セッションの間だけそれを上げる。上げるかどうか、候補とその確かめ方は host が決める（§17）。それでも足りなければ、probe のより速い
 経路（ネイティブ USB）を使う。
 
@@ -67,10 +67,10 @@ max_frame を使う（core §4.4）。
 - **one-shot CLI はコマンドごとに新しいセッションを開く。** 再開は無い: セッションが終わると（end、lease の期限切れ、force）、
   probe はそれが作ったものをすべて解放する（core §6.4、§9）。前のコマンドから要るものは、明示の経路で probe の上に見つける:
   同じピンへの attach はスロットが保つ接続を返し（flags bit1。その attach が運ばない idle_clock などの設定は、接続の今のままになる。
-  [線とデバッグ](oep-if-debug.ja.md) §1）、同じ場所で同じ mechanism のコンソールの open は、閉じた後でも
-  位置とマークを保ったストリームを返すので、リセット直後の最初の行が残る（[コンソール](oep-if-console.ja.md) §2）。
+  [線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）、同じ場所で同じ mechanism のコンソールの open は、閉じた後でも
+  位置とマークを保ったストリームを返すので、リセット直後の最初の行が残る（[コンソール](../interfaces/oep-if-console.ja.md) §2）。
   コマンドの間も駆動し続けるピン（電源のスイッチ）は設定の plan か出力の idle にし、コマンドの間も張っておく接続はスロットにする
-  （[probe の設定](oep-if-probe-config.ja.md)）。boot_id を probe ごとに、unit_id をキーにして覚える（core §7.6）: open の応答の
+  （[probe の設定](../interfaces/oep-if-probe-config.ja.md)）。boot_id を probe ごとに、unit_id をキーにして覚える（core §7.6）: open の応答の
   boot_id が違えば probe は再起動したので、覚えた fn の対応を使う前に list し直す（core §6.5）。
 - **発見の手順**: USB の device を列挙し、プロジェクトの VID:PID を持つもの（§4）と、名指した unit_id と serial
   number が同じものを開く（transports §3）。serial number が unit_id。device の中の口は interface の
@@ -105,10 +105,10 @@ probe は unknown_operation で答える。restart を持つ probe は、fn 0 �
 同じ経路で confirm にまた答えるまでの最長の時間で、下の 5 の上限になる。restart の前に読んでおく。
 
 1. ロックを取る（restart はロックの要る op。session_id 0 なら session_required）。保存したい設定があれば先に save する:
-   保存していない設定は再起動で無くなる（[probe の設定](oep-if-probe-config.ja.md) §2）。
+   保存していない設定は再起動で無くなる（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2）。
 2. restart を送る。後ろに要求を続けない（どの経路にも）: 応答の後の probe は何も処理せず、答えない。
 3. completed success の応答が来たら、その probe の経路をすべて閉じる。UART bridge で port_speed を上げていたら、起動時の速さに
-   戻す（[リンク](oep-if-link.ja.md) §3 の host の義務 6）。
+   戻す（[リンク](../interfaces/oep-if-link.ja.md) §3 の host の義務 6）。
 4. `restart_after_answer_ms`（100 ms）以上待つ。probe はこの間に再起動を始める。
 5. 新しく開くのと同じに開き直す（§4、transports §3 の探りの規則: 最初は confirm）。USB では device が bus から外れて列挙し直す:
    OS の口の名前が変わることがあるので、serial number（= unit_id）で探し直す。開けないか confirm に答えが無ければ、応答を受けてから
@@ -190,7 +190,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 | corr_reused（0x0D） | 同じ corr で別の要求 | host の番号付けの誤り（core §4.1） |
 | 0x0E | 予約 | 失敗として扱う |
 
-- **completed failed / partial**: payload は op が決める（wire と target では `status` と `done`、[共通部品](oep-if-common.ja.md) §3）。
+- **completed failed / partial**: payload は op が決める（wire と target では `status` と `done`、[共通部品](../interfaces/oep-if-common.ja.md) §3）。
   status の line はふつう、速さを下げて attach し直す。wait は後で `done` から続ける。fault は原因を読んで消す。timeout は上限を見直す。
   state は先に target を要る状態にする。知らない status は失敗。
 - インターフェース固有の理由（0x40〜0x7F）は各インターフェースが定める。v1 には無い。
@@ -219,20 +219,20 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 
 - **v1 に長い操作は無い**（core §10 は予約）。どの op も 1 つの応答で終わる。時間のかかる op（run、キャプチャの configure、save、
   attach）は、応答が来るまで待つ。待ち時間は op の引数で決まる（core §4.4）。
-- run の間、probe はほかの要求に答えない（[線とデバッグ](oep-if-debug.ja.md) §4.4）。timeout は lease と応答の待ち時間より十分短くする。
+- run の間、probe はほかの要求に答えない（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.4）。timeout は lease と応答の待ち時間より十分短くする。
 - 書き込みのように多くの要求を送る処理は、lease が切れないよう、普段の要求か keepalive でロックを保つ。
 
 ## 12. 通知
 
 - 購読にはロックが要り、購読はロックと一緒に終わる（end、期限切れ、force。core §11.3）。監視だけの host は、代わりに bind した
-  シリアルの口の生のバイトを読むか（[probe の設定](oep-if-probe-config.ja.md) §1.2）、ロック不要の read の op で読みに行く。
+  シリアルの口の生のバイトを読むか（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.2）、ロック不要の read の op で読みに行く。
 - 同じ fn を購読し直すと購読は丸ごと置き換わり、seq は購読のたびに 0 から数える。何も出さない fn の購読は rejected unsupported
   （core §11.3）。
 - **role で振り分ける**（core §11.1）: corr で照らすのは応答（0x02）だけ。出来事（0x05）とデータ（0x06）は byte 1〜2 が fn。通知が
   来続けても、応答を待つ処理と入力を読む処理が期限までに終わるようにする。
 - **seq** は fn ごとのフレームの通し番号（u16、一周する）。飛びは、probe の中か途中で通知が失われたこと。データではストリームの
   `position` も失われた分を示す: フレームの position が前のフレームの終わりと合わなければ、その間のバイトは失われた（core §11.2、
-  [共通部品](oep-if-common.ja.md) §1.5）。
+  [共通部品](../interfaces/oep-if-common.ja.md) §1.5）。
 - **min_bytes / max_delay_ms の選び方**: probe は min_bytes がたまるか、最初のバイトから max_delay_ms が過ぎたら送る（0 はその条件を
   使わない。両方 0 ならすぐ送る）。まとめを大きくするとフレームが減り、遅れを短くすると待ちが減る。シリアルの口では min_bytes を
   `host_serial_min_bytes_max`（2 KiB）以下に、待っている応答の量の合計を `host_serial_inflight_max_bytes`（6 KiB）以下に保つ。OS のドライバが一度に来た量を黙って落とすことがあるため
@@ -241,7 +241,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
   ハートビートの出来事（kind 0x01: boot_id、uptime_ns）が来る。boot_id が変われば再起動。
 - 通知は購読を受けた経路に送られる。同じ session_id の open を別の経路で送ると、そちらに移る（core §6.2）。
 - キャプチャの流し続けには独自の規則がある: 送る余地が無いと probe は新しいデータを捨て、stop の前に取った分は送り続け、stop の後で
-  受けた位置の終わりが status の write_pos と等しくなれば host はすべてを持っている（[キャプチャ](oep-if-capture.ja.md) §2.1）。受けている
+  受けた位置の終わりが status の write_pos と等しくなれば host はすべてを持っている（[キャプチャ](../interfaces/oep-if-capture.ja.md) §2.1）。受けている
   間はロックを保つ。
 
 ## 13. plan とピン
@@ -259,7 +259,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 - モニターが一度閉じて戻るときは、前回読んだ位置から読む。
 - 応答の start が要求した位置より進んでいたら、その差が失われた量である。表示に残す。
 - 表示用の時刻は受け取った時刻を使う（probe は byte ごとの時刻を持たない）。
-- **入力を送る**: write は probe の送りの列（describe の send_queue、64 byte 以上）に入った分を accepted で返す（[コンソール](oep-if-console.ja.md) §2）。
+- **入力を送る**: write は probe の送りの列（describe の send_queue、64 byte 以上）に入った分を accepted で返す（[コンソール](../interfaces/oep-if-console.ja.md) §2）。
   1 行のコマンドは、send_queue 以下なら 1 回の write で送れる。accepted が count より少なければ、残りを少し待ってから送る（列は target が
   受け取った分だけ空く。dmseq では target の 1 つのフレームへの答えにつき 2 byte、DMDATA では 1 つの枠への答えにつき 3 byte）。accepted は target が受け取ったことでは
   ない: 届いたかはコンソールの出力（エコーなど）で見る。
@@ -267,7 +267,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 ## 15. probe の設定（`oep.probe.config`）の使い方
 
 設定は項目の並びで、項目ごとにキーがある。set はキーごとに置き換え、unset はキーを消し、save は今の設定を丸ごと書く
-（[probe の設定](oep-if-probe-config.ja.md)）。host は欲しい設定を自分のファイルに持ち、probe をそれに合わせる:
+（[probe の設定](../interfaces/oep-if-probe-config.ja.md)）。host は欲しい設定を自分のファイルに持ち、probe をそれに合わせる:
 
 1. **見る**: list に `oep.probe.config` があること（無い probe は設定を扱わない）。describe で items（扱う tag）、storage（max_bytes。
    0 は保存できない）、slots_max、bind_modes を見る。
@@ -294,7 +294,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
   解けず、その fn への plan_apply は断られる（core §8）。
 - idle: 相手の入力が浮くピンには pull-up の入力の idle を、電源の channel には電源が入る level の出力の idle を置く（§18.2）。出力の idle は
   ピンが空いている間ずっと、起動時にも駆動するので、保存する前に配線を確かめる。idle の項目のある channel は、count = 0 の scan と pins
-  の無い attach から外れる（[線とデバッグ](oep-if-debug.ja.md) §1）。
+  の無い attach から外れる（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。
 - disable: 外に出していない channel や、ほかの部品につながる channel を並べると、probe はそれを駆動しない。
 - label で名付けた線は、probe の設定 §1.3 の探し方で見つかる（§18.1）。
 - erase は保存した写しだけを消す。今の設定は次の起動まで残る。
@@ -321,7 +321,7 @@ python -m oep_client.fake_serve --tcp 0 --framing length   # TCP の経路: leng
 
 ## 17. シリアルの口の速さの選び方（参考）
 
-[リンク](oep-if-link.ja.md) §3 の port_speed は**握手だけ**を決める（op の形、口の 3 状態、probe が自分で戻る条件、host の義務）。どの速さを候補にするか、
+[リンク](../interfaces/oep-if-link.ja.md) §3 の port_speed は**握手だけ**を決める（op の形、口の 3 状態、probe が自分で戻る条件、host の義務）。どの速さを候補にするか、
 どう確かめるか、通ったとみなす基準、使っている間に戻す基準は host が決める。この節はその**参考の手順**で、これだけ読めば host が
 組めるように書く。手順は 2 段にした。**最小の形（§17.2、確かめなし）**は候補 1 つを切り替えて confirm で確かめ、決めるだけ（約 50 ms）で、
 短い CLI でも使える。**用途別に確かめを足す形（§17.3）**は転送量の予算が要る host（キャプチャの流し続け、書き込みの所要時間の見積もり）の
@@ -514,12 +514,12 @@ python -m oep_client.fake_serve --tcp 0 --framing length   # TCP の経路: leng
 
 target の電源とリセットの線は、probe の設定のスロットの項目に入れない。host が
 label で線を見つけ、`oep.fixture.gpio` と attach の reset TLV で自分で扱う。probe が自分でリセットの線を使うのは、boot_reset 1 の
-スロットの、起動直後のリセットでのやり直し（[probe の設定](oep-if-probe-config.ja.md) §3.1）だけ。この節は規範ではない（線の名前の
-決まりの規範は [probe の設定](oep-if-probe-config.ja.md) §1.3）。
+スロットの、起動直後のリセットでのやり直し（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §3.1）だけ。この節は規範ではない（線の名前の
+決まりの規範は [probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.3）。
 
 ### 18.1 線の名前（label の決まり）
 
-名前と探し方の規範は [probe の設定](oep-if-probe-config.ja.md) §1.3（ASCII の大文字と小文字は区別しない、一致が 2 つ以上なら線は
+名前と探し方の規範は [probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.3（ASCII の大文字と小文字は区別しない、一致が 2 つ以上なら線は
 無い）。ここはその使い方。`oep.probe.config` の label の項目（tag 0x02）で、線に次の名前を付けて保存する。host は設定の get で
 label を読み（firmware の固定のラベル、fn 0 の describe の tag 0x46 も合わせて）線を探す。
 
@@ -530,7 +530,7 @@ label を読み（firmware の固定のラベル、fn 0 の describe の tag 0x4
 | `power_lo` | low のとき target の電源が入る線 |
 
 - スロットが 2 つ以上ある probe では、`<スロットの name>.nrst`、`<スロットの name>.power_hi`、`<スロットの name>.power_lo` と付ける
-  （スロットの name は [probe の設定](oep-if-probe-config.ja.md) §1.1）。名前だけ（`nrst` など）は、スロットが 1 つ以下の probe でだけ使う（スロットの無い probe でも素の名前で付けられる）。
+  （スロットの name は [probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.1）。名前だけ（`nrst` など）は、スロットが 1 つ以下の probe でだけ使う（スロットの無い probe でも素の名前で付けられる）。
 - 探す順は probe の設定 §1.3 の規範のとおり。見つからなければ、その線は無いものとして扱う（リセットの線を探すなら §21）。probe も
   boot_reset のやり直しで `nrst` を同じ探し方で探す。
 - 1 つの target に付けるのは `power_hi` と `power_lo` のどちらか 1 つ。
@@ -544,7 +544,7 @@ label を読み（firmware の固定のラベル、fn 0 の describe の tag 0x4
 3. 電源が入る level にする。
 4. attach する。アプリが走る前に止めたいなら、止める attach（method 1）にする。
 5. plan を解く（plan_release）。channel は空きの状態（core §8）に戻る。電源を入れたままにするには、その channel に、電源が入る level の
-   出力の idle（`power_hi` なら mode 4 出力 high、`power_lo` なら mode 3 出力 low、[probe の設定](oep-if-probe-config.ja.md) §1）を
+   出力の idle（`power_hi` なら mode 4 出力 high、`power_lo` なら mode 3 出力 low、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1）を
    置いて保存しておく。保存した出力の idle は起動時にも掛かり、at boot のスロットの attach より先に target の電源が入る。
 
 - 電源の channel を gpio の plan で取っても電源は切れない（上の 1）。読むだけなら read で今の level が分かる。
@@ -553,12 +553,12 @@ label を読み（firmware の固定のラベル、fn 0 の describe の tag 0x4
 
 ### 18.3 リセットをかけながらの attach
 
-- `nrst` の channel を attach の reset TLV（[線とデバッグ](oep-if-debug.ja.md) §3）に渡す。その channel は probe が describe の
+- `nrst` の channel を attach の reset TLV（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §3）に渡す。その channel は probe が describe の
   role_channels の role 3（reset）で宣言していなければならない。
 - 使うのは host が選んだときだけ（書き込み、復旧、reset の直後で止める）。走っている target へのふつうの attach には付けない
   （target がリセットされる）。
 - 線を離した後に target が自分でもう一度再起動し、debug module がしばらく答えないことがある。probe はそれを `reset_settle_ms`（700 ms）
-  まで待ってから答えるので（[線とデバッグ](oep-if-debug.ja.md) §3。riscv-dm の reset の op も同じ、§4.3）、host はその attach の応答を
+  まで待ってから答えるので（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §3。riscv-dm の reset の op も同じ、§4.3）、host はその attach の応答を
   `attach_budget_ms` + hold_ms + 700 ms を引数の時間として待つ（core §4.4）。それでも status line で失敗したら、target はまだ起動の
   途中かもしれない: 間を置いて attach し直す。
 - target のリセットの線が有効かどうかは、probe からは見えない（線を無効にできる target がある）。無効のとき、reset TLV は何もしない
@@ -566,7 +566,7 @@ label を読み（firmware の固定のラベル、fn 0 の describe の tag 0x4
 
 ### 18.4 電源を入れたところを取る
 
-- トリガを待っているキャプチャ（state 2、[キャプチャ](oep-if-capture.ja.md) §3.2）は聞くだけで、その channel をほかの機能と共有する
+- トリガを待っているキャプチャ（state 2、[キャプチャ](../interfaces/oep-if-capture.ja.md) §3.2）は聞くだけで、その channel をほかの機能と共有する
   （キャプチャ §1.2 のピンの共有）。host は待っている間に、電源の channel を gpio で駆動してよい。
 - 電源の channel そのものを、取る channel の 1 つにしてよい（電源を入れた瞬間をトリガにできる）。
 - 共有を許すかは probe が決める（core §8.1）。許さない probe では、gpio の plan_apply が rejected unavailable になる。
@@ -574,7 +574,7 @@ label を読み（firmware の固定のラベル、fn 0 の describe の tag 0x4
 ### 18.5 出力の強さ
 
 `oep.fixture.gpio` の describe が drive_levels を宣言する probe では、gpio の set の drive と、probe の設定の idle の drive で、
-mode 3 / 4 の出力の強さを選べる（[fixture](oep-if-fixture.ja.md) §1.1）。指定しなければ既定の段。いま効いている段は gpio の
+mode 3 / 4 の出力の強さを選べる（[fixture](../interfaces/oep-if-fixture.ja.md) §1.1）。指定しなければ既定の段。いま効いている段は gpio の
 read の応答の drive で読める。
 
 - **既定のままでよい場面がほとんど**: 強さを変えるのは、要る理由（給電する target の消費、長い線、LED など）があるときだけに
@@ -619,13 +619,13 @@ oep-client-python では `oep pins` がこの手順を行い、target の系統�
    できるなら、option を読む（読むだけ）。無効なら、リセットの線は探さない。読んだら resume する。
 6. **リセットの線を確かめる。** 3 で止まった channel（無ければ候補を弱い pull-up のものから順に）を attach の reset TLV
    （method 1）に渡し、dpc がリセットのベクタかを見る（§21）。毎回 pins を付ける。
-7. **記録を勧める。** wire、pins をスロット（[probe の設定](oep-if-probe-config.ja.md) §1.1）の形で、リセットの線を label の
+7. **記録を勧める。** wire、pins をスロット（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.1）の形で、リセットの線を label の
    `<スロットの name>.nrst`（同 §1.3）の形で示す。書くのは利用者が頼んだときだけ。
 
 ### 19.2 安全の決まり
 
 - driven / active の channel は駆動しない、scan しない、low に保たない。scan は線を駆動するので、push-pull の出力とぶつかる。配線の
-  分からない治具に、利用者の同意なしに count = 0 の scan を送らない（[線とデバッグ](oep-if-debug.ja.md) §1）。
+  分からない治具に、利用者の同意なしに count = 0 の scan を送らない（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。
 - 電源の channel は、利用者が名指ししたときだけ触る。
 - low に保つのはオープンドレインだけ（high を駆動しない）。
 - 全体に時間の上限を置く（1 分以内）。最後に plan をすべて解き、自分で開いた接続を閉じる。
@@ -670,7 +670,7 @@ probe は target を知らず、host が知っている（core §13 の規則 8�
   レジスタの止め方はリセットを越えて残り、次の firmware が割り込みなしで走ることがある。
 - **attach の応答に target_id があれば、それで target を識別する**（core は解釈しない。ビットの意味は host が知っている）。無ければ、
   target の系統が定める識別のレジスタを読む。
-- **probe は run と resume を出し直さない**（[線とデバッグ](oep-if-debug.ja.md) §4.2、§4.4）。止まった dpc が開始位置のままなら
+- **probe は run と resume を出し直さない**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.2、§4.4）。止まった dpc が開始位置のままなら
   走っていない。二度走らせてよい操作（消去、同じページの書き込み）だけやり直す。target の resume の癖（resumereq が 2 回要る、
   allresumeack を立てない）は host が扱う: dpc を読み、要ればもう一度 resume する。
 
@@ -683,7 +683,7 @@ probe は target を知らず、host が知っている（core §13 の規則 8�
     rejected unavailable）は飛ばす。ほかの断りはチャンネルではなくピンや線のことなので、探すのをやめる。attach の失敗
     （completed failed）は外れとして再試行する。
   - 毎回の attach に pins を付ける。ピンを host が選ぶ線（role_channels）では、pins の無い attach はその線の唯一の生きた接続に
-    加わるだけで、接続が無ければ unavailable で断られる（[線とデバッグ](oep-if-debug.ja.md) §1）。
+    加わるだけで、接続が無ければ unavailable で断られる（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。
   - 当たりのあとは resume ではなく reset（走らせて確認）で、hart をベクタから確実に離す。ベクタに止まったまま残ると、次の外れの
     候補でも dpc = ベクタと読めて、偽の当たりになる。
   - 候補を一本ずつオープンドレインで low にする。治具の配線で low にしてはいけない線は候補から外す。

@@ -4,7 +4,7 @@
 
 ## Where the specification lives
 
-This repository is the source of truth for OEP. The specification is the normative text in `docs/` (`oep-core.md`,
+This repository is the source of truth for OEP. The specification is the normative text in `docs/` and `interfaces/` (`oep-core.md`,
 `oep-if-*.md`, `target-console-dmseq.md`) and the number registry `registry/oep-v1.toml`. Implementations follow it; they do
 not define it. What an implementation must do to conform, and how to check it, is listed in [conformance](docs/conformance.md).
 

@@ -43,7 +43,7 @@ procedures (port speed, power and reset, finding pins, writing flash).
 ## 3. UART speed
 
 A UART bridge probe always starts at the boot speed, `uart_bridge_boot_baud` (115200 bps) 8N1 without flow control (core §3.4; names in
-backquotes are keys of `registry/oep-v1.toml`, which holds every number). port_speed ([link](oep-if-link.md) §3,
+backquotes are keys of `registry/oep-v1.toml`, which holds every number). port_speed ([link](../interfaces/oep-if-link.md) §3,
 optional) raises it for the duration of a session; whether to raise it, the candidates and how to check them are the host's
 choice (§17). If that is still not enough, use a faster transport of the probe (its native USB).
 
@@ -74,9 +74,9 @@ the latest confirm answer on that port (core §4.4).
 - **A one-shot CLI opens a new session for every command.** There is no resume: when a session ends (end, lease expiry, force), the
   probe releases everything it created (core §6.4, §9). What one command needs from the previous one it finds on the probe through the
   explicit paths: an attach to the same pins returns a connection that a slot keeps (flags bit1), and a console open at the same place and
-  mechanism returns the stream with its position and marks, even after it closed, so the first lines after a reset are kept ([console](oep-if-console.md) §2).
+  mechanism returns the stream with its position and marks, even after it closed, so the first lines after a reset are kept ([console](../interfaces/oep-if-console.md) §2).
   Pins that must stay driven between commands (a power switch) are a settings plan or an output idle, and a connection that must stay up
-  between commands is a slot ([probe settings](oep-if-probe-config.md)). Remember the boot_id per probe, keyed by unit_id (core §7.6): when
+  between commands is a slot ([probe settings](../interfaces/oep-if-probe-config.md)). Remember the boot_id per probe, keyed by unit_id (core §7.6): when
   open's answer carries another boot_id, the probe rebooted, so list again before you use a remembered fn mapping (core §6.5).
 - **Discovery procedure**: list the USB devices; open those with the project's VID:PID (§4) and those whose serial number equals a
   named unit_id (core §3.3). The serial number is the
@@ -174,7 +174,7 @@ gives the first reason that applies in the order of core §4.3, so the reason sa
 | corr_reused (0x0D) | Same corr, different request | A numbering bug in the host (core §4.1) |
 | 0x0E | Reserved | Treat as a failure |
 
-- **completed failed / partial**: the payload is the op's (for wires and targets, `status` and `done`, [common parts](oep-if-common.md) §3).
+- **completed failed / partial**: the payload is the op's (for wires and targets, `status` and `done`, [common parts](../interfaces/oep-if-common.md) §3).
   status line usually means: lower the speed and attach again; wait: continue later from `done`; fault: read and clear the cause; timeout:
   review the limit; state: put the target in the needed state first. Unknown status values are failures.
 - Interface-specific reasons (0x40 to 0x7F) are defined by each interface; none are defined in v1.
@@ -205,21 +205,21 @@ gives the first reason that applies in the order of core §4.3, so the reason sa
 
 - **v1 has no long operations** (core §10 is reserved). Every op ends with one answer. For ops that take time (run, capture
   configure, save, attach), wait for the answer; the wait is set by the op's arguments (core §4.4).
-- During run the probe answers nothing else ([wire and debug](oep-if-debug.md) §4.4). Keep the timeout well below the lease and the
+- During run the probe answers nothing else ([wire and debug](../interfaces/oep-if-debug.md) §4.4). Keep the timeout well below the lease and the
   answer wait.
 - In work that sends many requests (writing flash), keep the lock with ordinary requests or keepalive so the lease does not run out.
 
 ## 12. Notifications
 
 - Subscribing needs the lock, and the subscription ends with the lock (end, expiry, force; core §11.3). A host that only monitors reads the
-  raw bytes of a bound serial port instead ([probe settings](oep-if-probe-config.md) §1.2), or polls the lock-free read ops.
+  raw bytes of a bound serial port instead ([probe settings](../interfaces/oep-if-probe-config.md) §1.2), or polls the lock-free read ops.
 - Subscribing to the same fn again replaces the subscription atomically; seq starts from 0 at every subscribe. A subscribe to an fn that emits
   nothing is rejected unsupported (core §11.3).
 - **Dispatch by role** (core §11.1): only answers (0x02) are matched by corr; events (0x05) and data (0x06) carry fn in bytes 1 to 2. Keep the
   code that waits for answers and the code that reads input on time even while notifications keep coming.
 - **seq** counts frames per fn (u16, wraps). A gap means notifications were lost inside the probe or on the way. For data, the stream
   `position` also shows what was lost: if a frame's position is not the end of the previous one, the bytes in between are gone (core §11.2,
-  [common parts](oep-if-common.md) §1.5).
+  [common parts](../interfaces/oep-if-common.md) §1.5).
 - **Choosing min_bytes / max_delay_ms**: the probe sends when min_bytes have accumulated or max_delay_ms has passed since the first byte (0
   disables that condition; both 0 sends at once). Larger batches mean fewer frames; a shorter delay means lower latency. On serial ports keep
   min_bytes at `host_serial_min_bytes_max` (2 KiB) or less and the total expected volume of answers outstanding at
@@ -230,7 +230,7 @@ gives the first reason that applies in the order of core §4.3, so the reason sa
 - Notifications go to the transport the subscribe came from. An open with the same session_id on another transport moves them there (core
   §6.2).
 - Capture's streaming has its own rules: the probe drops new data when it has no room, keeps sending what it captured before stop, and the host
-  has everything when the end of the received positions equals status's write_pos after stop ([capture](oep-if-capture.md) §2.1). Keep the lock
+  has everything when the end of the received positions equals status's write_pos after stop ([capture](../interfaces/oep-if-capture.md) §2.1). Keep the lock
   alive while receiving.
 
 ## 13. plan and pins
@@ -254,7 +254,7 @@ gives the first reason that applies in the order of core §4.3, so the reason sa
 ## 15. Using the probe's settings (`oep.probe.config`)
 
 The settings are a sequence of items, each with a key; set replaces items per key, unset deletes keys, save writes the whole current settings
-([probe settings](oep-if-probe-config.md)). A host keeps the settings it wants in its own file and brings the probe to them:
+([probe settings](../interfaces/oep-if-probe-config.md)). A host keeps the settings it wants in its own file and brings the probe to them:
 
 1. **Look**: list must contain `oep.probe.config` (a probe without it handles no settings). describe gives items (the tags it handles),
    storage (max_bytes; 0 = it cannot save), slots_max and bind_modes.
@@ -281,7 +281,7 @@ Points to remember:
   plan_release does not release it, and plan_apply on that fn is refused (core §8).
 - idle: give a pin whose peer input would float an input-with-pull-up idle; give a power channel an output idle at the powering level (§18.2).
   An output idle keeps driving whenever the pin is free, also at boot: check the wiring before saving one. Channels with an idle item are left
-  out of scan with count = 0 and of attach without pins ([wire and debug](oep-if-debug.md) §1).
+  out of scan with count = 0 and of attach without pins ([wire and debug](../interfaces/oep-if-debug.md) §1).
 - disable: list the channels that are not brought out or are wired to other parts, so the probe never drives them.
 - Lines named with labels are found by the search of probe settings §1.3 (§18.1).
 - erase deletes the saved copy only; the current settings stay until the next boot.
@@ -310,7 +310,7 @@ python -m oep_client.fake_serve --tcp 0 --framing length   # a TCP transport: le
 
 ## 17. Choosing the serial port speed (informative)
 
-[link](oep-if-link.md) §3's port_speed defines **only the handshake** (the op's form, the 3 states of a port, when the probe goes back by itself,
+[link](../interfaces/oep-if-link.md) §3's port_speed defines **only the handshake** (the op's form, the 3 states of a port, when the probe goes back by itself,
 the host obligations). Which speeds to try, how to check them, the criterion for passing and the criterion for falling back while
 in use are the host's. This section is a **reference procedure**, written so that a host can be built from it alone. It has two
 levels. **The minimal form (§17.2, no checking)** switches to one candidate, confirms and commits (about 50 ms) and suits even a
@@ -526,12 +526,12 @@ welcome ([review guide](review-guide.md) §4 item 5).
 
 The target's power and reset lines are not slot items of the probe's settings. The host finds them by label and drives them itself with
 `oep.fixture.gpio` and the reset TLV of attach. The only time the probe uses a reset line on its own is the retry with reset of a slot
-with boot_reset 1, right after boot ([probe settings](oep-if-probe-config.md) §3.1). This section is not normative (the normative
-convention for line names is [probe settings](oep-if-probe-config.md) §1.3).
+with boot_reset 1, right after boot ([probe settings](../interfaces/oep-if-probe-config.md) §3.1). This section is not normative (the normative
+convention for line names is [probe settings](../interfaces/oep-if-probe-config.md) §1.3).
 
 ### 18.1 Line names (the label convention)
 
-The names and the search are normative in [probe settings](oep-if-probe-config.md) §1.3 (ASCII case ignored; two or more matches mean
+The names and the search are normative in [probe settings](../interfaces/oep-if-probe-config.md) §1.3 (ASCII case ignored; two or more matches mean
 no line). This is how to use them. Give the lines these names with label items (tag 0x02) of `oep.probe.config` and save them. The host
 reads the labels with get (and the firmware's fixed labels, tag 0x46 of fn 0's describe) to find the lines.
 
@@ -542,7 +542,7 @@ reads the labels with get (and the firmware's fixed labels, tag 0x46 of fn 0's d
 | `power_lo` | A line that powers the target when low |
 
 - On a probe with two or more slots, name them `<slot name>.nrst`, `<slot name>.power_hi`, `<slot name>.power_lo` (slot names:
-  [probe settings](oep-if-probe-config.md) §1.1). Bare names (`nrst` etc.) are found only when the settings hold at most one slot item
+  [probe settings](../interfaces/oep-if-probe-config.md) §1.1). Bare names (`nrst` etc.) are found only when the settings hold at most one slot item
   (a probe without slots can use bare names too).
 - The search order is the normative one of probe settings §1.3. If nothing is found, treat the line as absent (to search for a reset line,
   §21). The probe finds `nrst` for its boot_reset retry by the same search.
@@ -558,7 +558,7 @@ reads the labels with get (and the firmware's fixed labels, tag 0x46 of fn 0's d
 3. Set the level that powers the target on.
 4. Attach. To stop before the application runs, use a halting attach (method 1).
 5. Release the plan (plan_release). The channel goes to the idle state (core §8). To keep the power on, put on that channel an output idle
-   at the powering level (`power_hi`: mode 4 output high; `power_lo`: mode 3 output low; [probe settings](oep-if-probe-config.md) §1) and
+   at the powering level (`power_hi`: mode 4 output high; `power_lo`: mode 3 output low; [probe settings](../interfaces/oep-if-probe-config.md) §1) and
    save it. A saved output idle is also applied at boot, so the target is powered before the at-boot attach of a slot.
 
 - Taking the power channel with a gpio plan does not cut the power (step 1). read gives the current level without driving.
@@ -567,7 +567,7 @@ reads the labels with get (and the firmware's fixed labels, tag 0x46 of fn 0's d
 
 ### 18.3 Attaching with reset
 
-- Pass the `nrst` channel in attach's reset TLV ([wire and debug](oep-if-debug.md) §3). The probe must declare that channel for role 3
+- Pass the `nrst` channel in attach's reset TLV ([wire and debug](../interfaces/oep-if-debug.md) §3). The probe must declare that channel for role 3
   (reset) in role_channels.
 - Use it only when the host chooses to (flashing, recovery, stopping right after reset). Do not add it to an ordinary attach to a running
   target (the target would be reset).
@@ -576,7 +576,7 @@ reads the labels with get (and the firmware's fixed labels, tag 0x46 of fn 0's d
 
 ### 18.4 Capturing power-up
 
-- A capture waiting for its trigger (state 2, [capture](oep-if-capture.md) §3.2) only listens and shares its channels with other functions
+- A capture waiting for its trigger (state 2, [capture](../interfaces/oep-if-capture.md) §3.2) only listens and shares its channels with other functions
   (capture §1.2, sharing pins). While it waits, the host may drive the power channel with gpio.
 - The power channel itself may be one of the captured channels (power-up can be the trigger).
 - Whether sharing is allowed is the probe's decision (core §8.1). On a probe that does not allow it, gpio's plan_apply is rejected
@@ -585,7 +585,7 @@ reads the labels with get (and the firmware's fixed labels, tag 0x46 of fn 0's d
 ### 18.5 Output drive strength
 
 On a probe whose `oep.fixture.gpio` describe declares drive_levels, gpio set's drive and the drive of a settings idle choose the strength
-of mode 3 / 4 outputs ([fixture](oep-if-fixture.md) §1.1). Without one, the default level applies. read's drive TLV gives the level in
+of mode 3 / 4 outputs ([fixture](../interfaces/oep-if-fixture.md) §1.1). Without one, the default level applies. read's drive TLV gives the level in
 effect.
 
 - **The default is right in most cases**: change the strength only for a reason (a target powered from the pin, a long line, an LED).
@@ -628,13 +628,13 @@ how to read options, max_speed / idle_clock) in one table (`targets.FAMILIES`). 
    line by an option, read the option (read only). If it is disabled, do not look for a reset line. Resume after reading.
 6. **Check the reset line.** Pass the channel that stopped activity in step 3 (or, if none, the candidates starting with weak pull-ups)
    in attach's reset TLV (method 1) and see whether dpc is the reset vector (§21). Send pins every time.
-7. **Suggest a record.** Show the wire and pins as a slot ([probe settings](oep-if-probe-config.md) §1.1) and the reset line as the label
+7. **Suggest a record.** Show the wire and pins as a slot ([probe settings](../interfaces/oep-if-probe-config.md) §1.1) and the reset line as the label
    `<slot name>.nrst` (same §1.3). Write them only when the user asks.
 
 ### 19.2 Safety rules
 
 - Do not drive, scan or hold low a driven / active channel. scan drives the lines, which collides with push-pull outputs. Do not send scan
-  with count = 0 to a fixture whose wiring you do not know without the user's consent ([wire and debug](oep-if-debug.md) §1).
+  with count = 0 to a fixture whose wiring you do not know without the user's consent ([wire and debug](../interfaces/oep-if-debug.md) §1).
 - Touch the power channel only when the user named it.
 - Hold low only open-drain (never drive high).
 - Put an overall time limit (within a minute). At the end release every plan and close the connections you opened.
@@ -680,7 +680,7 @@ The probe knows no target; the host does (core §13 rule 8). General rules:
   afterwards, even on errors: a debug-register mask can survive a reset and leave the next firmware running without interrupts.
 - **Identify the target from target_id when the attach answer carries it** (core does not interpret it; the host knows what its
   bits mean). Otherwise read the identification registers the target family defines.
-- **The probe does not reissue run or resume** ([wire and debug](oep-if-debug.md) §4.2, §4.4). If a stopped dpc is still the
+- **The probe does not reissue run or resume** ([wire and debug](../interfaces/oep-if-debug.md) §4.2, §4.4). If a stopped dpc is still the
   start address, the code did not run. Retry only operations that are safe to run twice (erase, writing the same page). Quirks of a
   target's resume (needing a second resumereq, not setting allresumeack) are handled by the host: read dpc and resume again if needed.
 
@@ -694,7 +694,7 @@ The probe knows no target; the host does (core §13 rule 8). General rules:
     (rejected unavailable naming that channel). Other refusals are about the pins or the wire, not the channel: stop searching.
     A failed attach (completed failed) is a miss; retry.
   - Send pins with every attach. On a wire where the host chooses the pins (role_channels), an attach without pins only joins the
-    wire's single live connection, and is rejected unavailable when there is none ([wire and debug](oep-if-debug.md) §1).
+    wire's single live connection, and is rejected unavailable when there is none ([wire and debug](../interfaces/oep-if-debug.md) §1).
   - After a hit, reset (and run) rather than resume, so that the hart is surely away from the vector; otherwise the next wrong
     candidate also reads dpc = vector and looks like a hit.
   - Pull candidates low one at a time, open-drain. Leave out lines the fixture's wiring must never pull low.

@@ -65,7 +65,7 @@ wire の形と「中断中の欠損」の扱いは未決。レビュー案であ
 
 ### P1: UART の片方向 plan が仕様に反して拒否される
 
-[fixture §2](oep-if-fixture.ja.md) は RX だけ、TX だけを plan できると定める。しかし
+[fixture §2](../interfaces/oep-if-fixture.ja.md) は RX だけ、TX だけを plan できると定める。しかし
 [FixtureUart::planCheck](../../oep-probe-arduino/src/OepV1Fixture.cpp) は `count != 2` を `unavailable` にする。
 P4 の UART fn に RX=12 だけ、TX=6 だけを個別に送った結果は両方 `rejected unavailable`（reason 4）。
 probe の `describe` は両 role に利用可能 channel を列挙しており、片方向不可を見分ける宣言もない。

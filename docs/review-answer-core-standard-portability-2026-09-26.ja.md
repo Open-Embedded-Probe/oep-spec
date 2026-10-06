@@ -114,7 +114,7 @@ classic ESP32 の SPI target は 3 MHz 上限を `max_clock_hz` で宣言し、2
 
 ### S1 — P1: wire の `scan(count=0)` が多数のピン組で表現できない
 
-[debug §1](oep-if-debug.ja.md) は `count=0` を「許す全組」とし、応答の `tried` を u8 にする。
+[debug §1](../interfaces/oep-if-debug.ja.md) は `count=0` を「許す全組」とし、応答の `tried` を u8 にする。
 自由な SWDIO/SWCLK ピンをそれぞれ20本持つ probe は候補が400組になる。`tried` は255までで、
 最初の走査が256組目以降に届いた場合の位置も、残りの組を取得する方法も定義できない。
 これは特定 MCU の実装不足でなく、汎用ピン割当を認める wire 形式そのものの上限。
@@ -123,7 +123,7 @@ classic ESP32 の SPI target は 3 MHz 上限を `max_clock_hz` で宣言し、2
 
 ### S2 — P1: 「汎用 console」の名前と実体が食い違う
 
-[console §1–3](oep-if-console.ja.md) の `oep.target.console` は debug connection を要し、
+[console §1–3](../interfaces/oep-if-console.ja.md) の `oep.target.console` は debug connection を要し、
 SDI / DMDATA / dmseq は DMI DATA0/1 を使う。ARM SWD や別系統の MCU に同じ名前で汎用 console を期待する host には
 実装できない。これは [core §13.8](oep-core.ja.md) の「汎用名にチップ固有の処理を入れない」とも合わない。
 少なくとも対応する wire/target の名前、使える mechanism、向き、最大 write を `describe` で宣言する。
@@ -132,23 +132,23 @@ SDI / DMDATA / dmseq は DMI DATA0/1 を使う。ARM SWD や別系統の MCU に
 
 ### S3 — P1: 宣言と非破壊の問い合わせが足りない機能
 
-- [fixture §1](oep-if-fixture.ja.md) の `modes` は fn 全体のビット集合。GPIO ごとに実装できる mode が違う MCU では、
+- [fixture §1](../interfaces/oep-if-fixture.ja.md) の `modes` は fn 全体のビット集合。GPIO ごとに実装できる mode が違う MCU では、
   host は対応しない pin/mode 組を事前に除外できない。per-channel mask を足すか、global modes は全候補 pin で保証する。
-- [fixture §2](oep-if-fixture.ja.md) の UART は format は宣言するが、baud の可否・許容誤差・実 baud を非破壊で
+- [fixture §2](../interfaces/oep-if-fixture.ja.md) の UART は format は宣言するが、baud の可否・許容誤差・実 baud を非破壊で
   照会する方法がない。現行 `FixtureUart` は 1200〜2,000,000 baud を固定で判定するが、その範囲を
   `describe` に出さない。configure の戻り値だけでは、既存 stream を止めずに候補選定できない。
   さらに同実装は片方向 plan を拒否するだけでなく、configure も RX が無ければ拒否するため、
   TX 専用を仕様どおり有効にするには両方の経路を直す必要がある。
-- [capture §3.5](oep-if-capture.ja.md) は「宣言にない組合せを query で確かめる」とするが、
+- [capture §3.5](../interfaces/oep-if-capture.ja.md) は「宣言にない組合せを query で確かめる」とするが、
   query は features bit0 の任意 op。query が無い probe は既存のデータを壊しうる configure で試すしかない。
   query を全 capture/analog に必須とするか、query 不在のときは宣言が完全であることを保証する。
-- [debug §3](oep-if-debug.ja.md) の attach_under_reset は許す reset channel と probe の既定 reset line を
+- [debug §3](../interfaces/oep-if-debug.ja.md) の attach_under_reset は許す reset channel と probe の既定 reset line を
   宣言しない。host の治具情報で channel を知れても、その probe が同時 attach で扱えるかは実行まで不明。
   対応 op と channel の候補を宣言し、不可なら通常 attach / GPIO 操作への退避を明示する。
 
 ### S4 — P1: GPIO の「順次 set」と core の拒否・部分成功を整合させる
 
-[fixture §1](oep-if-fixture.ja.md) の set は順序どおり pin を切り替えるため、reset pulse などに必要。
+[fixture §1](../interfaces/oep-if-fixture.ja.md) の set は順序どおり pin を切り替えるため、reset pulse などに必要。
 事前の不正 pin/mode は「何もせず rejected」とするが、途中でハードウェア設定に失敗した場合、
 前の pin は既に切り替わっている。戻すと reset pulse の電気的意味が変わり、戻さなければ一括成功と見なせない。
 `completed partial` に実行済み件数と失敗位置を返し、各 pin の現在 mode を照会できるようにするか、
@@ -156,7 +156,7 @@ SDI / DMDATA / dmseq は DMI DATA0/1 を使う。ARM SWD や別系統の MCU に
 
 ### S5 — P2: capture の既定値・応答・失敗理由を閉じる
 
-[capture §3.3](oep-if-capture.ja.md) は mode / rate / samples 等を TLV として置くが、どれを省略できるか、
+[capture §3.3](../interfaces/oep-if-capture.ja.md) は mode / rate / samples 等を TLV として置くが、どれを省略できるか、
 省略時の値、成功応答でどの actual TLV が必須かが一意でない。異なる MCU の host が `layout`、レート、区画サイズを
 必ず取得できるよう、モードごとの必須 request / response と不変条件を決める。
 `status.state=6` の原因、再 configure が旧区画を消すか、start/release 失敗時に何が残るかも定める。
@@ -165,7 +165,7 @@ mode 3 を宣言する probe は通知を実装することを明記する。
 
 ### S6 — P2: config の保存・復旧は前進しているが境界が残る
 
-[config §2–3](oep-if-probe-config.ja.md) の get/hash、保存一覧 ID、保存が読めない状態の宣言は良い。
+[config §2–3](../interfaces/oep-if-probe-config.ja.md) の get/hash、保存一覧 ID、保存が読めない状態の宣言は良い。
 一方 set が plan と bind を即時適用するため C1/C3 と同じ再構成失敗が起きる。
 `set` の拒否、適用途中失敗、自動 attach 失敗をそれぞれ独立した状態として照会できるようにする。
 `save` の電源断・容量不足後は、次回起動の storage state と hash で照合する。`reboot` の応答喪失は

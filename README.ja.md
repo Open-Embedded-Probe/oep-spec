@@ -18,15 +18,14 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
 
 ## 文書の地図
 
-`docs/` のどの文書も、冒頭の行に状態を書いている: **規範**、**ガイド**、**記録**。
+`docs/` には本体（core と経路）とガイドと記録、`interfaces/` には標準インターフェースの文書がある。どの文書も、冒頭の行に状態を書いている: **規範**、**ガイド**、**記録**。
 
 **規範**（仕様）:
 
 - [OEP core](docs/oep-core.ja.md): 層、メッセージ、セッション、発見、plan、資源の寿命、通知、インターフェースの書き方。
 - [OEP の経路](docs/oep-transports.ja.md): フレーム、送り方、複数の経路、USB の見分け方、シリアルの口の共用、区切りの立て直し（本体の層）。
-- 標準インターフェース: [共通部品](docs/oep-if-common.ja.md)、[線とデバッグ](docs/oep-if-debug.ja.md)、
-  [コンソール](docs/oep-if-console.ja.md)（framing: [dmseq](docs/target-console-dmseq.ja.md)）、[fixture](docs/oep-if-fixture.ja.md)、
-  [キャプチャ](docs/oep-if-capture.ja.md)、[probe の設定](docs/oep-if-probe-config.ja.md)、[リンク](docs/oep-if-link.ja.md)。
+- [標準インターフェース](interfaces/README.ja.md)（`interfaces/`）: 共通部品、線とデバッグ、コンソール（framing の dmseq）、fixture、キャプチャ、
+  probe の設定、リンク。一覧はその README にある。
 - [registry/oep-v1.toml](registry/oep-v1.toml): v1 の wire 上のすべての数の唯一の定義。`tools/oepgen1.py` がそこから
   `generated/oep-v1/`（C++、C、Python、JS）を作る。`python3 tools/oepgen1.py --check` で同期を確かめる。
 - [tests/vectors/](tests/vectors/): 機械で読める試験のベクタ（フレーム、ヘッダ、confirm、CRC、probe.config の hash、断り方）。

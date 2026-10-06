@@ -60,11 +60,11 @@ The host:
   min_bytes at `host_serial_min_bytes_max` or less, because OS drivers may silently drop bursts (core §3.4).
 - **Time**: no request takes longer than the declared max_op_ms, and ops whose arguments could exceed it are refused unsupported (core §7.5).
   Attach and scan have their budgets `attach_budget_ms` and `scan_budget_ms`, and one request retries the wire for at most `wire_retry_ms`
-  ([wire and debug](oep-if-debug.md) §1, §2). The lease lies between `lease_min_ms` and `lease_max_ms` (core §6.4).
+  ([wire and debug](../interfaces/oep-if-debug.md) §1, §2). The lease lies between `lease_min_ms` and `lease_max_ms` (core §6.4).
 - **Numbers**: resource numbers are u16, one space per probe; a closed number is not reused among the last `resource_reuse_distance` closed
   ones (core §9).
 - **Stored data**: positioned streams and capture segments are rings that push out the oldest data and report the loss (common §1.1,
-  [capture](oep-if-capture.md) §2); probe settings are bounded by max_bytes and refused unavailable cause 3 beyond it (probe settings §2).
+  [capture](../interfaces/oep-if-capture.md) §2); probe settings are bounded by max_bytes and refused unavailable cause 3 beyond it (probe settings §2).
 
 ## 4. Lock fairness
 
@@ -92,19 +92,19 @@ length-prefixed port (core §3.4, informative note).
 A probe drives real lines. The rules that keep it from harming a target, a fixture or itself:
 
 - **Drive strength**: the host chooses the strength only for gpio outputs and output idles (mode 3 / 4); the strength of wires and of the uart,
-  i2c-target and spi-target lines is the probe's choice ([fixture](oep-if-fixture.md) §1.1). Practice: drive debug wires at the weakest strength
+  i2c-target and spi-target lines is the probe's choice ([fixture](../interfaces/oep-if-fixture.md) §1.1). Practice: drive debug wires at the weakest strength
   their timing allows, and do not weaken a line that powers a target (probe guide §12, host guide §18.5).
 - **Idle outputs**: a released pin goes to its idle state, the settings' idle or Hi-Z (core §8). Taking a plan does not change a pin, and an
   interface that only reads never drives (core §8; capture §1.2). An output idle drives its level whenever the pin is free, from boot, without a
-  host; keeping it from meeting a target's output is the wiring's responsibility ([probe settings](oep-if-probe-config.md) §1). Channels with an
+  host; keeping it from meeting a target's output is the wiring's responsibility ([probe settings](../interfaces/oep-if-probe-config.md) §1). Channels with an
   idle item are left out of scan with count = 0 and of attach without pins, and naming one whose idle is an output is refused unavailable cause 5,
-  holder_kind 7 ([wire and debug](oep-if-debug.md) §1).
+  holder_kind 7 ([wire and debug](../interfaces/oep-if-debug.md) §1).
 - **Saved settings and boot**: at boot, before its first answer, the probe puts every channel that is not reserved in its idle state (core §8);
   saved settings drive lines at every boot without a host; before the firmware runs and the settings are applied the pins are in the MCU's reset
   state, so a line whose wrong level is harmful needs an external pull of its own; disable is a declaration, not a protection; settings have no
   authentication (probe settings §5).
 - **Back-powering**: from a failed exchange until one succeeds or the connection is lost, the probe rests a wire's lines undriven and drives them
-  only during an exchange, so that a target that lost power is not powered through its pins' protection diodes ([wire and debug](oep-if-debug.md)
+  only during an exchange, so that a target that lost power is not powered through its pins' protection diodes ([wire and debug](../interfaces/oep-if-debug.md)
   §2). When a connection closes, its pins go to the idle state (debug §2).
 - **Writes to the target before the speed is verified** are limited to the wake / configuration sequence and dmactive; the write check uses only
   scratch registers and restores them. A probe that attaches through another debugger declares `attach_writes_unbounded` instead (debug §1).

@@ -54,11 +54,11 @@ host は:
   `host_serial_min_bytes_max` 以下に保つ。OS のドライバが一度に来た量を黙って落とすことがあるため（transports §4）。
 - **時間**: どの要求も宣言した max_op_ms より長くかからず、引数がそれを超えうる op は unsupported で断る（core §7.5）。attach と scan
   には `attach_budget_ms` と `scan_budget_ms` の予算があり、1 つの要求が線を試し直すのは多くて `wire_retry_ms`
-  （[線とデバッグ](oep-if-debug.ja.md) §1、§2）。lease は `lease_min_ms` から `lease_max_ms` の間（core §6.4）。
+  （[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1、§2）。lease は `lease_min_ms` から `lease_max_ms` の間（core §6.4）。
 - **番号**: 資源の番号は u16 で probe に 1 つの空間。閉じた番号は、最近閉じた `resource_reuse_distance` 個の中では使い回さない
   （core §9）。
 - **ためるデータ**: 位置つきのストリームとキャプチャの区画は、古いものから押し出して失ったことを知らせる輪（common §1.1、
-  [キャプチャ](oep-if-capture.ja.md) §2）。probe の設定は max_bytes が上限で、超えれば unavailable cause 3（probe の設定 §2）。
+  [キャプチャ](../interfaces/oep-if-capture.ja.md) §2）。probe の設定は max_bytes が上限で、超えれば unavailable cause 3（probe の設定 §2）。
 
 ## 4. ロックの公平さ
 
@@ -89,18 +89,18 @@ host は:
 probe は本物の線を駆動する。target、治具、probe 自身を傷めないための規則:
 
 - **出力の強さ**: host が強さを選べるのは gpio の出力と出力の idle（mode 3 / 4）だけ。線と、uart、i2c-target、spi-target の線の強さは
-  probe が決める（[fixture](oep-if-fixture.ja.md) §1.1）。実務: debug の線はタイミングが許すいちばん弱い強さで駆動し、target に給電する
+  probe が決める（[fixture](../interfaces/oep-if-fixture.ja.md) §1.1）。実務: debug の線はタイミングが許すいちばん弱い強さで駆動し、target に給電する
   線は弱くしない（probe ガイド §12、host ガイド §18.5）。
 - **出力の idle**: 解いたピンは空きの状態（設定の idle か Hi-Z）に戻る（core §8）。plan を取ってもピンは変わらず、読むだけの
   インターフェースは駆動しない（core §8、キャプチャ §1.2）。出力の idle は、ピンが空いている間ずっと、起動時から、host なしで level を
-  駆動する。target の出力とぶつからないようにするのは配線の責任（[probe の設定](oep-if-probe-config.ja.md) §1）。idle の項目のある
+  駆動する。target の出力とぶつからないようにするのは配線の責任（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1）。idle の項目のある
   channel は count = 0 の scan と pins の無い attach から外れ、idle が出力の channel を名指せば unavailable cause 5、holder_kind 7
-  （[線とデバッグ](oep-if-debug.ja.md) §1）。
+  （[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。
 - **保存した設定と起動**: 起動したら、probe は最初の応答の前に、reserved でないすべての channel を空きの状態にする（core §8）。
   保存した設定は起動のたびに host なしで線を駆動する。firmware が動いて設定が掛かる前のピンは MCU のリセットの状態なので、level を
   誤ると害のある線にはそれだけで保つ外付けの pull が要る。disable は宣言で、守りではない。設定に認証は無い（probe の設定 §5）。
 - **逆給電**: やり取りが失敗してから、成功するか接続を失うまで、probe は線を駆動せずに休ませ、やり取りの最中だけ駆動する。電源の
-  落ちた target をピンの保護ダイオード経由で給電しないため（[線とデバッグ](oep-if-debug.ja.md) §2）。接続が閉じたら、そのピンは空きの
+  落ちた target をピンの保護ダイオード経由で給電しないため（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）。接続が閉じたら、そのピンは空きの
   状態に戻る（debug §2）。
 - **速さを確かめる前の target への書き込み**は、wake / 設定の手順と dmactive だけ。書き込みの確かめはスクラッチのレジスタだけを使い、
   元に戻す。別のデバッガ越しに attach する probe は、代わりに `attach_writes_unbounded` を宣言する（debug §1）。

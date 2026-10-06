@@ -72,7 +72,7 @@ A probe MUST implement:
 - in describe of fn 0, unit_id, transport, max_op_ms and discoverable (§7.5; 0 for a probe that does not enumerate with the project's USB VID:PID);
 - in the describe of every fn it lists, fn 0 included, the common tag ops (§7.4).
 
-plan_apply and plan_release are required when any of its interfaces has plan roles (roles that the interface's document assigns through the plan, §8; the pin roles that a wire's attach selects by argument are not plan roles). A probe none of whose interfaces has plan roles does not offer them. Optional: notifications other than fn 0's heartbeat, and every interface (among them `oep.link`, with the link test and port_speed, [link](oep-if-link.md)).
+plan_apply and plan_release are required when any of its interfaces has plan roles (roles that the interface's document assigns through the plan, §8; the pin roles that a wire's attach selects by argument are not plan roles). A probe none of whose interfaces has plan roles does not offer them. Optional: notifications other than fn 0's heartbeat, and every interface (among them `oep.link`, with the link test and port_speed, [link](../interfaces/oep-if-link.md)).
 
 **Required and optional ops.** Every op in an interface's op table (§12 for fn 0, the op table of the interface's document otherwise) is required of a probe that lists that interface, unless the document marks the op optional. **Every fn declares the ops it offers in one place: the common describe tag ops (0x09, §7.4).** Every required op is set in it; an optional op is set exactly when the probe offers it; an experimental op (0xF0 to 0xFF, §2.5) is never set.
 
@@ -121,7 +121,7 @@ tag(u8) | len(u16) | value(len byte)
 - **Requests**: the only thing that can be appended to a request is a sequence of TLVs. The host **sets the critical bit** when the request is meaningless unless that item
   takes effect (items that may be ignored may be sent without it). TLVs that an interface's definition says are sent critical (a speed limit,
   pins, and other items for safety) always carry it. **An interface's definition may also say that a probe treats a TLV as critical whether or not bit 7 is set**
-  ([capture](oep-if-capture.md) §3.3, §4.1). A probe that implements such a TLV applies every rule for a critical TLV to it: a value it cannot handle, or a value
+  ([capture](../interfaces/oep-if-capture.md) §3.3, §4.1). A probe that implements such a TLV applies every rule for a critical TLV to it: a value it cannot handle, or a value
   longer than it knows, is rejected unsupported (the tag as received), and the TLV is never ignored. A probe that does not implement the tag treats it as unknown, by the bit as received. If the probe sees an unknown critical
   TLV it refuses with rejected unsupported (the tag as received in the payload). It ignores unknown non-critical TLVs and appends ignored
   (tag 0x7F, below) to the answer. It does so on every completed answer, also when the op's status is a failure.
@@ -284,7 +284,7 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
   the first thing the host sends is a confirm (§7.1) only (including the single resend of §5.2, registry `resend_max`). When the wait for the confirm
   (§4.4; confirm has no time set by its arguments, so 1000 ms (`host_wait_add_ms`) plus the transfer time) has passed without a valid confirm answer (when resent, when the wait for the resent
   confirm has passed without one), the host closes the device or port and sends nothing else. On a UART bridge port (transport
-  kind 1), however, the host may repeat the confirm for port_speed_idle_max_ms + 1000 ms (`port_speed_confirm_extra_ms`) instead of the single resend (to wait out a speed a previous host raised with port_speed, [link](oep-if-link.md) §3;
+  kind 1), however, the host may repeat the confirm for port_speed_idle_max_ms + 1000 ms (`port_speed_confirm_extra_ms`) instead of the single resend (to wait out a speed a previous host raised with port_speed, [link](../interfaces/oep-if-link.md) §3;
   it sends confirms only, and closes the port when no valid answer has come by then). A valid confirm answer is a completed answer with the same corr as the sent
   confirm whose payload has the shape of §7.1 (starting with `OEP!`). A device or port that gave a valid answer is treated as an OEP
   probe.
@@ -312,10 +312,10 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 A serial port carries OEP frames and raw bytes (the target's console, etc.) on the same port. The probe accepts OEP on every port at all times
 (it has no setting that makes a port OEP-only, and no boot mode).
 
-- **The line of a UART bridge**: 8 data bits, no parity, 1 stop bit, no flow control. The boot speed is **115200 bps** (registry `uart_bridge_boot_baud`). port_speed ([link](oep-if-link.md) §3) changes only the speed.
+- **The line of a UART bridge**: 8 data bits, no parity, 1 stop bit, no flow control. The boot speed is **115200 bps** (registry `uart_bridge_boot_baud`). port_speed ([link](../interfaces/oep-if-link.md) §3) changes only the speed.
 - **After a raised speed**: a host that opens a UART bridge port, whether or not it uses port_speed, and gets no valid confirm answer at the boot speed
   repeats confirm there for port_speed_idle_max_ms + 1000 ms (`port_speed_confirm_extra_ms`) before it gives up (a speed a previous host raised returns
-  to the boot speed by then, [link](oep-if-link.md) §3).
+  to the boot speed by then, [link](../interfaces/oep-if-link.md) §3).
 - **USB serial ports** (USB CDC, built-in USB serial): the probe accepts and sends OEP whatever line coding the host sets, and applies the line coding to nothing.
 - **Control lines**: the probe does not use DTR, RTS or the line state to decide whether to accept or send OEP. The host keeps DTR and RTS asserted while the port is open (a UART bridge may wire them to the probe's reset). What a probe does while the host holds DTR deasserted is not defined.
 - **How the probe receives**: when 0x00 arrives, it accumulates up to the next 0x00 and decodes. If it decodes and the CRC matches, it is an OEP request. If it does not decode, the CRC does not match, or
@@ -432,10 +432,10 @@ the interface's index, etc.), except that there 0x01 is supported, the refusal o
 - The probe processes requests in the order received and returns answers in the order received.
 - max_frame, window and max_inflight of confirm are the limits **of the transport the confirm came on**. Each transport is counted separately, and requests outstanding on one transport do not use the receive room of another. The table of §5.2 stays one per probe (the requests of a session are sent on one transport, §3.3).
 - **The host's wait time**: the absence of an answer is decided only by timeout (§3.1). For each request the host waits **at least**: the time set by the request's arguments (the timeout_ms of run,
-  the hold_ms of reset, the sum of the waits of dmi, save, etc.; for attach, `attach_budget_ms` plus the hold_ms of its reset TLV; for scan, `scan_budget_ms` + `attach_budget_ms` ([wire and debug](oep-if-debug.md) §1); 0 if none; at most max_op_ms, §7.5) + 1000 ms (`host_wait_add_ms`) + the transfer time. The wait starts when the request has been written, or, while earlier requests on the same transport are outstanding, when the answer to the request before it arrives (the probe answers in order).
+  the hold_ms of reset, the sum of the waits of dmi, save, etc.; for attach, `attach_budget_ms` plus the hold_ms of its reset TLV; for scan, `scan_budget_ms` + `attach_budget_ms` ([wire and debug](../interfaces/oep-if-debug.md) §1); 0 if none; at most max_op_ms, §7.5) + 1000 ms (`host_wait_add_ms`) + the transfer time. The wait starts when the request has been written, or, while earlier requests on the same transport are outstanding, when the answer to the request before it arrives (the probe answers in order).
   The transfer time is 0 except on a UART bridge. On a UART bridge it is (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud seconds, where L is the length on the wire of the request's frame and baud is the port's current speed. Until the host has received a confirm answer on that transport, it uses `min_max_frame` (64) as max_frame; after that, the max_frame of the latest confirm answer there. A host that cannot tell whether a serial port is a UART bridge (for example before it has read the transport kinds in the describe of fn 0, §7.5) counts this transfer time on that serial port, with baud the speed it has set on the port. Waiting longer than this floor is always allowed. A host that reads a max_op_ms of 0 or above `max_op_ms_max` treats the probe as not conforming and does not use it. When the wait has passed, it proceeds to the resend of §5.2.
-- **This floor applies to every request** a host sends, its own link requests (confirm and the ops of `oep.link`) included. The waits that [link](oep-if-link.md) §3 states for the port_speed steps (20 ms or more before the confirm that verifies a new speed, verify_ms, idle_ms, and the repeat of confirm for port_speed_idle_max_ms + 1000 ms) stay as stated there. They are times between requests, not waits for an answer, and they do not shorten this floor for any request sent within them.
-  The confirms that [link](oep-if-link.md) §3 (host obligation 5), §3.3 and §3.4 have the host repeat are new requests, each with a new corr, not resends of §5.2: a host may send the next one before the floor of an earlier one has passed. It still accepts or skips an answer that arrives later for an earlier corr, and does not treat an earlier confirm as unanswered before its floor has passed. The ops of `oep.link` are not repeated this way; each waits for its own floor.
+- **This floor applies to every request** a host sends, its own link requests (confirm and the ops of `oep.link`) included. The waits that [link](../interfaces/oep-if-link.md) §3 states for the port_speed steps (20 ms or more before the confirm that verifies a new speed, verify_ms, idle_ms, and the repeat of confirm for port_speed_idle_max_ms + 1000 ms) stay as stated there. They are times between requests, not waits for an answer, and they do not shorten this floor for any request sent within them.
+  The confirms that [link](../interfaces/oep-if-link.md) §3 (host obligation 5), §3.3 and §3.4 have the host repeat are new requests, each with a new corr, not resends of §5.2: a host may send the next one before the floor of an earlier one has passed. It still accepts or skips an answer that arrives later for an earlier corr, and does not treat an earlier confirm as unanswered before its floor has passed. The ops of `oep.link` are not repeated this way; each waits for its own floor.
 
 ## 5. Recovery and resend
 
@@ -542,7 +542,7 @@ request: "OEP?", min_rev(u8), max_rev(u8), [TLV]
 answer:  "OEP!", revision(u8), flags(u8), max_frame(u16), window(u32), max_inflight(u8), boot_id(u32), [TLV]
 ```
 
-- TLV 0x01 transport (u8): the index (§7.5) of the transport this confirm came on. The probe always attaches it. It names an entry of the describe of fn 0 returned on the same connection (0xFF from a relaying broker, §3.1). port_speed (UART bridges, [link](oep-if-link.md) §3) and bind (serial ports, [probe settings](oep-if-probe-config.md) §1.2) never take a TCP index.
+- TLV 0x01 transport (u8): the index (§7.5) of the transport this confirm came on. The probe always attaches it. It names an entry of the describe of fn 0 returned on the same connection (0xFF from a relaying broker, §3.1). port_speed (UART bridges, [link](../interfaces/oep-if-link.md) §3) and bind (serial ports, [probe settings](../interfaces/oep-if-probe-config.md) §1.2) never take a TCP index.
 
 The host sends the range of protocol revisions it can handle, and the probe returns the highest revision within it that it can handle. If there is none in the range it can handle,
 rejected unsupported (below). flags is reserved (0). max_frame is 64 or more (§3.3), window is max_frame or more, and max_inflight is 1 or more. A host that receives a confirm answer outside these bounds treats that transport as not usable: it sends nothing more on it and reports the values. The host ignores the bits of flags (reserved, §2.4). boot_id is §6.5 (the place to learn of a reboot without the lock). Both request and answer fit in 64 bytes
@@ -623,7 +623,7 @@ appears in the answer.
 |---:|---|---|
 | 0x40 | firmware | text |
 | 0x41 | model | text. The kind of probe (the same value for hardware of the same kind carrying the same firmware. Does not vary per unit). **Lowercase `a-z 0-9 -`**, 1 to 32 bytes (registry `model_max_bytes`). A model that is not the project's own starts with its maker's reverse domain name, with `.` replaced by `-` (example `com-example-probe1`) |
-| 0x42 | unit_id | The ID of the unit. **Mandatory.** text of 1 to 32 bytes; the only usable characters are `a-z 0-9 -` (the chip's unique number in lowercase hex, etc.). Used by the host to group the transports of the same probe, so the describe of every transport returns the same value. Equals the USB serial number (§3.3). The value by which the host names a probe (the address `oep://<unit_id>/<slot name>`, [probe settings](oep-if-probe-config.md) §1.1) |
+| 0x42 | unit_id | The ID of the unit. **Mandatory.** text of 1 to 32 bytes; the only usable characters are `a-z 0-9 -` (the chip's unique number in lowercase hex, etc.). Used by the host to group the transports of the same probe, so the describe of every transport returns the same value. Equals the USB serial number (§3.3). The value by which the host names a probe (the address `oep://<unit_id>/<slot name>`, [probe settings](../interfaces/oep-if-probe-config.md) §1.1) |
 | 0x43 | channels | u16. The number of channels |
 | 0x44 | reserved | base(u16), bitmap. If bit i is set, channel base+i is used by the probe itself and is not assigned to interfaces |
 | 0x45 | profile | text. The name of the wiring, of a fixture or the like |
@@ -651,7 +651,7 @@ appears in the answer.
 ### 7.6 Addresses
 
 The string by which the host names a probe and a slot: `oep://<unit_id>[/<slot name>]`. The authority is the unit_id (§7.5, lowercase), the path is exactly one slot name
-([probe settings](oep-if-probe-config.md) §1.1). `oep://<unit_id>` without a path is the probe itself. v1 defines nothing beyond this (query, port,
+([probe settings](../interfaces/oep-if-probe-config.md) §1.1). `oep://<unit_id>` without a path is the probe itself. v1 defines nothing beyond this (query, port,
 several paths). When an IDE or a settings file remembers a probe, it remembers it in this form (not by VID:PID or port name).
 
 ## 8. plan
@@ -675,8 +675,8 @@ The plan is held **per fn**.
   that is **the idle the probe's settings define for that pin, if they define one (for output low / high it is driven at that level and with the strength the idle defines, not made Hi-Z); otherwise
   Hi-Z (input, no pull)**. An interface must not leave a pin under its own drive after it is released (when the idle state is an output, that drive belongs to
   the settings' idle. The setting of the idle state is the idle of `oep.probe.config`,
-  [probe settings](oep-if-probe-config.md)).
-- **At boot**, before it answers its first request, the probe puts every channel that is not reserved (§7.5) in its idle state (above: the idle of the settings when they define one, otherwise Hi-Z: input, no pull). Until then the pins are in the MCU's reset state (informative: a line whose wrong level is harmful needs an external pull, [probe settings](oep-if-probe-config.md) §5).
+  [probe settings](../interfaces/oep-if-probe-config.md)).
+- **At boot**, before it answers its first request, the probe puts every channel that is not reserved (§7.5) in its idle state (above: the idle of the settings when they define one, otherwise Hi-Z: input, no pull). Until then the pins are in the MCU's reset state (informative: a line whose wrong level is harmful needs an external pull, [probe settings](../interfaces/oep-if-probe-config.md) §5).
 - **Taking a plan does not change a pin's electrical state.** A pin keeps its idle state until the interface that holds it starts to use it. Each interface's document says which of its operations starts that use (for some interfaces the plan itself). An interface that only reads a pin never changes it: it does not stop an output, and it does not change the pull or direction of a pin that another function or an idle output drives.
 - When an interface's document refuses a plan on a channel whose idle is an output (mode 3 / 4), the refusal is unavailable (cause 5, holder_kind 7).
 - The lifetime of the plan is §9 (per fn).
@@ -714,7 +714,7 @@ session. What stays across sessions is what the probe's settings define (the pla
 - A resource shared by the session and something else (a connection a slot also uses, a stream a bind also sends) loses only the session's share, and closes
   when no user remains, as the interface's document says.
 - What an interface keeps readable after its resource has closed is not a session resource: a closed console stream stays readable until the same mechanism is
-  next opened at the same place ([console](oep-if-console.md) §2).
+  next opened at the same place ([console](../interfaces/oep-if-console.md) §2).
 - A host that runs one command per process reaches what is still on the probe through the explicit paths: an attach to a live combination returns that
   connection (a slot keeps a connection across sessions), and a console open at the same place and mechanism returns the stream, open or closed, with its
   position and marks.
@@ -768,7 +768,7 @@ event   role=0x05 | fn(u16) | seq(u16) | kind(u8) | fixed part | [TLV]          
 | 0x32 | unsubscribe | fn(u16) | — |
 
 - **Only the holder of the lock can subscribe, and the subscription ends together with the lock** (end, expiry, taken by force). Read-only monitoring is done through the raw bytes of a serial
-  port (bind, [probe settings](oep-if-probe-config.md)). Subscription without the lock is reserved (added later with a TLV of subscribe,
+  port (bind, [probe settings](../interfaces/oep-if-probe-config.md)). Subscription without the lock is reserved (added later with a TLV of subscribe,
   without changing the meaning of the present subscription).
 - Every probe implements the subscribe / unsubscribe of fn 0. A subscribe to an fn that emits nothing is rejected unsupported (order 6 of §4.3).
   An unsubscribe of an fn with no subscription does nothing and succeeds.
@@ -803,7 +803,7 @@ event   role=0x05 | fn(u16) | seq(u16) | kind(u8) | fixed part | [TLV]          
 | 0x30 | subscribe | §11.3 | — | Required | yes |
 | 0x32 | unsubscribe | §11.3 | — | Required | yes |
 
-The link test and port_speed are the optional interface `oep.link` ([link](oep-if-link.md)).
+The link test and port_speed are the optional interface `oep.link` ([link](../interfaces/oep-if-link.md)).
 
 ## 13. Rules for extension (how to write an interface)
 
@@ -841,13 +841,13 @@ Standard interfaces and independent interfaces are both defined by the following
 
 | Document | Interfaces |
 |---|---|
-| [Standard interfaces: common parts](oep-if-common.md) | Positioned streams, debug connections |
-| [Standard interfaces: wire and debug](oep-if-debug.md) | `oep.wire.rvswd`, `oep.wire.swio`, `oep.wire.swd`, `oep.target.riscv-dm`, `oep.target.arm-adi` |
-| [Standard interfaces: console](oep-if-console.md) | `oep.target.console` (the dmseq framing is [target-console-dmseq](target-console-dmseq.md)) |
-| [Standard interfaces: fixture](oep-if-fixture.md) | `oep.fixture.gpio`, `oep.fixture.uart`, `oep.fixture.i2c-target`, `oep.fixture.spi-target` |
-| [Standard interfaces: capture](oep-if-capture.md) | `oep.fixture.logic`, `oep.fixture.analog`, `oep.fixture.capture-group` |
-| [Standard interfaces: probe settings](oep-if-probe-config.md) | `oep.probe.config` |
-| [Standard interfaces: link](oep-if-link.md) | `oep.link` (the link test and port_speed) |
+| [Standard interfaces: common parts](../interfaces/oep-if-common.md) | Positioned streams, debug connections |
+| [Standard interfaces: wire and debug](../interfaces/oep-if-debug.md) | `oep.wire.rvswd`, `oep.wire.swio`, `oep.wire.swd`, `oep.target.riscv-dm`, `oep.target.arm-adi` |
+| [Standard interfaces: console](../interfaces/oep-if-console.md) | `oep.target.console` (the dmseq framing is [target-console-dmseq](../interfaces/target-console-dmseq.md)) |
+| [Standard interfaces: fixture](../interfaces/oep-if-fixture.md) | `oep.fixture.gpio`, `oep.fixture.uart`, `oep.fixture.i2c-target`, `oep.fixture.spi-target` |
+| [Standard interfaces: capture](../interfaces/oep-if-capture.md) | `oep.fixture.logic`, `oep.fixture.analog`, `oep.fixture.capture-group` |
+| [Standard interfaces: probe settings](../interfaces/oep-if-probe-config.md) | `oep.probe.config` |
+| [Standard interfaces: link](../interfaces/oep-if-link.md) | `oep.link` (the link test and port_speed) |
 
 ## 15. Non-normative documents (guides)
 
