@@ -20,7 +20,7 @@ flash の書き方やチップ固有の手順は host にある。
 
 ## 2. 今の状態
 
-- **v1 の凍結の候補**です。規範は `docs/oep-core.ja.md`、`docs/oep-if-*.ja.md`（7 つ）、`docs/target-console-dmseq.ja.md`、番号は `registry/oep-v1.toml`。
+- **v1 の凍結の候補**です。規範は `docs/oep-core.ja.md`、`docs/oep-transports.ja.md`、`docs/oep-if-*.ja.md`（7 つ）、`docs/target-console-dmseq.ja.md`、番号は `registry/oep-v1.toml`。
   規範の中に未決の数（「決める」の印）は残っていません。凍結で何を止め、何を止めないかは [版と安定性](versioning.ja.md)。変更の一覧は [CHANGELOG](../CHANGELOG.md)。
 - 凍結までは破壊的な変更を revision を上げずに入れます（利用者はまだいない）。凍結後は revision を上げます。
 - **リリース**: oep-spec は GitHub の main に push 済み（タグは無い。commit で指す）。参照の実装は oep-probe-arduino **0.0.28**（Arduino ライブラリ
@@ -43,14 +43,14 @@ flash の書き方やチップ固有の手順は host にある。
 |---:|---|---|
 | 1 | `docs/project-concept.ja.md` | 目的と範囲（上流の合意）。短い |
 | 2 | `docs/versioning.ja.md` | **凍結の範囲**: 止めるもの、自由なもの、伸ばす道、revision を上げる意味。意図して固定するものと理由（§3.1） |
-| 3 | `docs/oep-core.ja.md` | **本体（規範）**。§0 層と線引きの規則、§2 共通の規則（TLV、知らない値、番号の空間、revision）、§3 経路とフレーム、§4 メッセージと reject reason（§4.3 に**断り方の順**）、§5 立て直しと送り直し、§6 セッション、§7 発見（confirm / list / describe）、§8 plan、§9 資源の寿命、§10 長い操作（予約）、§11 通知、§12 core の op、§13 インターフェースの書き方。**port_speed（[リンク](oep-if-link.ja.md) §3）は握手だけ**: 候補の選び方、確かめ、使用中の判定は `host-development-guide` §17 の参考の手順 |
+| 3 | `docs/oep-core.ja.md` | **本体（規範）**。§0 層と線引きの規則、§2 共通の規則（TLV、知らない値、番号の空間、revision）、§3 経路（`oep-transports` を指す）、§4 メッセージと reject reason（§4.3 に**断り方の順**）、§5 立て直しと送り直し、§6 セッション、§7 発見（confirm / list / describe）、§8 plan、§9 資源の寿命、§10 長い操作（予約）、§11 通知、§12 core の op、§13 インターフェースの書き方。`docs/oep-transports.ja.md` は本体の層の経路とフレーム（フレーム、送り方、複数の経路、USB の見分け方と探りの規則、シリアルの口の共用、区切りの立て直し、待ちの転送の時間）。**port_speed（[リンク](oep-if-link.ja.md) §3）は握手だけ**: 候補の選び方、確かめ、使用中の判定は `host-development-guide` §17 の参考の手順 |
 | 4 | `docs/oep-if-common.ja.md` | 標準インターフェースの共通部品（位置つきのストリーム、debug の connection、線と target の status） |
 | 5 | `docs/oep-if-debug.ja.md`、`docs/oep-if-console.ja.md`、`docs/oep-if-fixture.ja.md`、`docs/oep-if-capture.ja.md`、`docs/oep-if-probe-config.ja.md`、`docs/oep-if-link.ja.md` | 標準インターフェース（規範）: 線と RISC-V DM / ARM ADI、target のコンソール、GPIO / UART / I2C・SPI の target、ロジック / アナログのキャプチャと組、probe の設定（スロット、bind、disable）、線の試験と port_speed |
 | 6 | `docs/target-console-dmseq.ja.md` | コンソールの framing（dmseq）: デバッグモジュールのデータレジスタで、通番と CRC つきで双方向に運ぶ（target と host の規範） |
 | 7 | `registry/oep-v1.toml` | 番号と数の唯一の定義。`timing` / `limits` は規範の文の数（凍結の対象） |
 | 8 | `docs/getting-started.ja.md`、`docs/conformance.ja.md`、`docs/host-development-guide.ja.md`、`docs/probe-development-guide.ja.md`、`docs/security.ja.md`、`docs/glossary.ja.md` | 実務（規範ではない）: いちばん小さい probe と host とバイト列。probe と host の適合の点検表。フレームの送り方、立て直し、断りごとの動き、通知、probe の設定、USB-UART の扱い、**host ガイド §17 シリアルの口の速さの選び方**（17.1 釣り合い、17.2 最小の形、17.3 用途別に確かめを足す形、17.4 記録、17.5 実測）。識別子と宣言（probe ガイド §10）。安全とセキュリティを 1 か所に。用語 |
 | 9 | `docs/release-testing.ja.md` | リリース前の実機の試験: 誰が持つか、何を確かめるか |
-| — | `docs/usb-identity.ja.md` | USB の識別（core §3.3 の理由） |
+| — | `docs/usb-identity.ja.md` | USB の識別（transports §3 の理由） |
 
 記録（日本語、経緯: 決めたときの理由、実測、レビュー、案）は 1 か所、§5.1 に並べる。仕様のレビューには要らない。
 
@@ -65,7 +65,7 @@ flash の書き方やチップ固有の手順は host にある。
 4. **8 つの原則に反する所は無いか。** 凍結の前の判定に使った原則: 容器は自分の長さを知る、伸ばし方は 1 つ、要求は probe に
    応答は host に合わせる、ハードウェアの性質の値は u32、宣言と状態を混ぜない、仕組みより不変条件、識別子と時計は 1 つずつ、断り方の順は 1 つ。
 5. **参考の数字の出どころが狭い所。** `host-development-guide` §17 の数字（5 %、10 %、16 フレーム、3 秒、60 フレーム）は
-   **2 種類の変換チップ（CH340 と、FTDI 互換を名乗る CH552）** の実測から来ている（要約は host ガイド §17.5）。core §3.4 の host のシリアルの受けの上限（6 KiB）は、
+   **2 種類の変換チップ（CH340 と、FTDI 互換を名乗る CH552）** の実測から来ている（要約は host ガイド §17.5）。transports §4 の host のシリアルの受けの上限（6 KiB）は、
    USB での 2 系統の MCU の実測から来ている。ほかのブリッジ（FTDI 純正、CP210x、CDC の MCU）や native の OS での計測を歓迎する。§17 の数字は規範ではない
    （[リンク](oep-if-link.ja.md) §3 は握手だけ）ので、凍結は止めない。
 
@@ -77,7 +77,7 @@ flash の書き方やチップ固有の手順は host にある。
 
 | 状態 | PATH（`docs/`） |
 |---|---|
-| **規範** | `oep-core`、`oep-if-*`（7 つ）、`target-console-dmseq` |
+| **規範** | `oep-core`、`oep-transports`、`oep-if-*`（7 つ）、`target-console-dmseq` |
 | **ガイド**（規範ではない） | `review-guide`、`getting-started`、`conformance`、`project-concept`、`host-development-guide`、`probe-development-guide`、`security`、`glossary`、`versioning`、`release-testing`、`usb-identity`。根の `CHANGELOG.md` |
 | **記録**: 凍結の範囲と決定 | `v1-freeze-decisions`（§0 範囲、§A / §B の 13 項目）、`v1-zero-base-proposal`、`v1-zero-base-review-2026-10-02`、`v1-zero-base-review-3-2026-10-02`、`v1-freeze-review-2026-10-01`（対応済み）、`v1-rule-change-proposal-2026-10-02`、`v1-rule-change-proposal-2026-10-06`（peer と合意して入れた規則の変更） |
 | **記録**: プロジェクトの作業の基準 | `development-guidelines` |
@@ -115,7 +115,7 @@ flash の書き方やチップ固有の手順は host にある。
 | PATH | 中身 |
 |---|---|
 | `src/Oep.h`、`src/OepResult.h` | 本体の部品（Interface の基底、TLV、describe、Tail の解析、結果） |
-| `src/OepEndpoint.*` | フレームの受け口、シリアルの口の共用（core §3.4）と port_speed（link §3）、名前で探すインターフェース、セッションのロック、通知、plan、複数の経路 |
+| `src/OepEndpoint.*` | フレームの受け口、シリアルの口の共用（transports §4）と port_speed（link §3）、名前で探すインターフェース、セッションのロック、通知、plan、複数の経路 |
 | `src/OepBind.*`、`src/OepStream.h` | シリアルの口に流すもの（bind）、位置つきのストリーム |
 | `src/OepRegistry.h` | oep-spec の生成物の写し |
 | `src/OepTarget.*`、`src/OepSwd.*`、`src/OepDebug.h` | `oep.wire.rvswd` / `oep.wire.swio` / `oep.wire.swd`、`oep.target.riscv-dm` / `oep.target.arm-adi`、共通部品 |

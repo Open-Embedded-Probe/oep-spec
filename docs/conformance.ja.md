@@ -12,15 +12,15 @@ probe は、自分が出す transport とインターフェースについてこ
 
 **transport とフレーム**
 
-- core §3.1 の transport を少なくとも一つ、そのフレームとともに（§1.2）。
-- シリアルの口: 両側を 0x00 で囲んだ COBS + CRC-16 のフレーム（§3.1）、受け方と生バイトの規則（§3.4）、UART ブリッジの
-  回線と起動時の速さ（§3.4）、DTR / RTS で何も決めない（§3.4）、セッションが口を持つ間の生転送の停止（§3.4）。
-- vendor bulk と TCP: `length(u16) message`（§3.1）、vendor bulk の長さ 0 の転送の規則（§3.1）、TCP では途切れで読み直さない（§3.2）。
-- HID: `count(u16)` の report が運ぶ長さつきの流れ、report をまたぐフレーム、count 0 は飛ばす、詰め物は 0 で送り無視する、report ID は 1 つか無し、流れの上のフレームの途切れ、長すぎる count（§3.1）。出力 report を interrupt OUT と SET_REPORT の両方で受ける（§3.3）。
-- max_frame を超える長さ: 捨てて待つ。TCP では閉じる（§3.1）。`probe_frame_gap_ms` の途切れで読み直す。TCP を除く（§3.2）。
-- confirm の前でも 64 バイトまでのメッセージを受ける（§3.3）。max_frame を超えて送らない（§3.3）。
-- USB: probe が選べる口では シリアル番号 = unit_id（§3.3）。vendor bulk と HID は §3.3 の形で、それぞれ一つまで。
-- 自分で OEP の要求に答える端点は、後ろに何があっても probe である。中継する broker は §3.1 と §5.2 に従う。
+- transports §1 の transport を少なくとも一つ、そのフレームとともに（§1.2）。
+- シリアルの口: 両側を 0x00 で囲んだ COBS + CRC-16 のフレーム（transports §1）、受け方と生バイトの規則（transports §4）、UART ブリッジの
+  回線と起動時の速さ（transports §4）、DTR / RTS で何も決めない（transports §4）、セッションが口を持つ間の生転送の停止（transports §4）。
+- vendor bulk と TCP: `length(u16) message`（transports §1）、vendor bulk の長さ 0 の転送の規則（transports §1）、TCP では途切れで読み直さない（transports §2）。
+- HID: `count(u16)` の report が運ぶ長さつきの流れ、report をまたぐフレーム、count 0 は飛ばす、詰め物は 0 で送り無視する、report ID は 1 つか無し、流れの上のフレームの途切れ、長すぎる count（transports §1）。出力 report を interrupt OUT と SET_REPORT の両方で受ける（transports §3）。
+- max_frame を超える長さ: 捨てて待つ。TCP では閉じる（transports §1）。`probe_frame_gap_ms` の途切れで読み直す。TCP を除く（transports §2）。
+- confirm の前でも 64 バイトまでのメッセージを受ける（transports §3）。max_frame を超えて送らない（transports §3）。
+- USB: probe が選べる口では シリアル番号 = unit_id（transports §3）。vendor bulk と HID は transports §3 の形で、それぞれ一つまで。
+- 自分で OEP の要求に答える端点は、後ろに何があっても probe である。中継する broker は transports §1 と core §5.2 に従う。
 
 **メッセージ、断り方、TLV**
 
@@ -63,37 +63,37 @@ probe は、自分が出す transport とインターフェースについてこ
 
 **時間の上限**（値は `registry/oep-v1.toml`）
 
-- `probe_frame_gap_ms`（§3.2）。宣言した max_op_ms より長い要求はなく、超えうる op は断る（§7.5）。lease の範囲
+- `probe_frame_gap_ms`（transports §2）。宣言した max_op_ms より長い要求はなく、超えうる op は断る（§7.5）。lease の範囲
   （§6.4）。heartbeat の周期（§11.3）。port_speed の verify_ms / idle_ms と戻る条件（[リンク](oep-if-link.ja.md) §3）。各 wire の attach と scan の予算
   （[線とデバッグ](oep-if-debug.ja.md) §1）。
 
 ## 2. host のチェックリスト
 
-- **フレーム**: 1 フレームを 1 回の write で送り、途中で 100 ms 以上止まらない（§3.2）。COBS の受け方（§3.1）。confirm の答えの前は
-  64 バイトを超えて送らず、後は max_frame を超えて送らず、65535 バイトまで受けられる（§3.3）。vendor bulk の長さ 0 の転送（§3.1）。
+- **フレーム**: 1 フレームを 1 回の write で送り、途中で 100 ms 以上止まらない（transports §2）。COBS の受け方（transports §1）。confirm の答えの前は
+  64 バイトを超えて送らず、後は max_frame を超えて送らず、65535 バイトまで受けられる（transports §3）。vendor bulk の長さ 0 の転送（transports §1）。
 - **見つけ方**: USB の自動識別は project の VID:PID `1209:4F45` だけ、名指しの probe は unit_id で、それ以外は
-  利用者が選ぶ（§3.3）。試し方の規則: confirm だけを送り、正しい答えがなければ閉じる（§3.3）。OEP の probe と分かった機器の中の口の選び方（§3.3）。
-  transport を試す順（§3.3）。排他で開く（§3.3）。DTR / RTS を立てる（§3.4）。
+  利用者が選ぶ（transports §3）。試し方の規則: confirm だけを送り、正しい答えがなければ閉じる（transports §3）。OEP の probe と分かった機器の中の口の選び方（transports §3）。
+  transport を試す順（transports §3）。排他で開く（transports §3）。DTR / RTS を立てる（transports §4）。
 - **confirm と revision**: 扱える範囲を送り、その後は使っている revision を `min_rev = max_rev` で送る（§7.1）。revision を知らない
   インターフェースは使わない（§2.7）。§7.1 の範囲（max_frame、window、max_inflight）を外れた confirm の答え: その transport には
   もう何も送らず、値を知らせる（§7.1）。
 - **待ち**: すべての要求に §4.4 の下限、自分のリンクの要求も含む。UART ブリッジでの転送時間、その transport での最初の confirm の
   答えまでは `min_max_frame` で（§4.4）。max_op_ms が 0 か `max_op_ms_max` を超える: その probe を使わない（§4.4）。シリアルの口での
-  受け取れる量（§3.4）。
+  受け取れる量（transports §4）。
 - **再送と回復**: 同じ corr で一度まで（§5.2）。corr は要求ごとに 1 進め、0 を飛ばす（§4.1）。長さつきフレームの再同期と
-  `host_resync_wait_ms`（§5.1）。再送にも答えが無ければその transport は失敗した: そこで何かを送る前に、どの種類のフレームでも §5.1 の
+  `host_resync_wait_ms`（transports §5）。再送にも答えが無ければその transport は失敗した: そこで何かを送る前に、どの種類のフレームでも transports §5 の
   confirm で立て直すか開き直し、状態を変える要求を繰り返す前に状態を読む（§5.2）。
 - **セッション**: 0 でない乱数の session_id（§6.1）。答えの lease_ms が正で、keepalive が延ばす（§6.4）。no_session /
   locked への対応（§4.3、§6.2）。no_session の後は新しいセッションを開いて設定し直す。boot_id が（confirm でも open でも）変われば自分の状態は無効で、
-  list し直す（§6.5）。一つのセッションの要求は一つの transport で（§3.3）。セッションの要らないロック不要の要求は session_id 0 で（§4.1）。
+  list し直す（§6.5）。一つのセッションの要求は一つの transport で（transports §3）。セッションの要らないロック不要の要求は session_id 0 で（§4.1）。
 - **答えの読み方**: role が要求の role のメッセージは捨てる。5 バイトより短い答えと、ヘッダより短い出来事やデータのフレームは
   壊れたフレーム（§2.4）。知らない TLV と tag を飛ばす、繰り返された tag は最初を使う、0 でない真偽値は真と読む（§2.1、§2.3）。知らない
   値は §2.4 のとおり。ignored とその 0x00 の項目を読む（§2.3）。role と corr で振り分ける（§11.1）。TLV が効かなければ意味のない要求では
   critical の印を付ける（§2.3）。
 - **文字列**: 答えの文字を見せる前に制御文字と不正な UTF-8 を置き換える（§2.1）。unit_id とシリアル番号、unit_id どうしは ASCII の
-  大文字小文字を区別せず比べる（§3.3）。`x-` の unit_id でまとめたり、名指したり、何かを覚えるキーにしたりしない（§7.5）。iProduct と
-  インターフェースの文字列は表示だけ（§3.3）。`name#instance` と `oep://` のアドレス（§7.2、§7.6）。
-- **port_speed**: host が使うときは [リンク](oep-if-link.ja.md) §3 の host の義務 1〜7。UART bridge のどの口でも、上げた速さの後に confirm を繰り返す（§3.4）。
+  大文字小文字を区別せず比べる（transports §3）。`x-` の unit_id でまとめたり、名指したり、何かを覚えるキーにしたりしない（§7.5）。iProduct と
+  インターフェースの文字列は表示だけ（transports §3）。`name#instance` と `oep://` のアドレス（§7.2、§7.6）。
+- **port_speed**: host が使うときは [リンク](oep-if-link.ja.md) §3 の host の義務 1〜7。UART bridge のどの口でも、上げた速さの後に confirm を繰り返す（transports §4）。
 - **アナログのキャプチャ**: host が電圧を示すときは、値 0 と 2^b − 1 を電圧ではなく振り切れ（低い端以下、高い端以上）として示す
   （[キャプチャ](oep-if-capture.ja.md) §1.2 規則 6）。
 
@@ -124,8 +124,8 @@ probe は、自分が出す transport とインターフェースについてこ
 
 | ファイル | 扱うもの |
 |---|---|
-| `checks.json` | CRC-16（core §3.1）、CRC-32（§5.2）、dmseq の CRC-8 |
-| `cobs.json` | COBS の符号とシリアルの口のフレーム全体。復号が受け入れるもう一つの形も含む（§3.1） |
+| `checks.json` | CRC-16（transports §1）、CRC-32（§5.2）、dmseq の CRC-8 |
+| `cobs.json` | COBS の符号とシリアルの口のフレーム全体。復号が受け入れるもう一つの形も含む（transports §1） |
 | `headers.json` | 要求と答えのヘッダ、TLV の符号（§2.2、§4.1、§4.2） |
 | `confirm.json` | confirm のやりとり（§7.1） |
 | `discovery.json` | list（§7.2）、fn 0 の describe（§7.3、§7.5）、終わりを越えた describe、ヘッダの断り unknown_function / unknown_operation（§4.3 の順 1） |
@@ -165,5 +165,5 @@ attach と scan の予算）は共有の道具では確かめていない。電�
   適合しない（core §13 規則 1 と 7）。自分のインターフェースは逆ドメインの名前を使う。
 - 適合は project の USB VID:PID を使う許可を与えない。それは [oep-probe-arduino](https://github.com/Open-Embedded-Probe/oep-probe-arduino)
   の PID-USE の条件（そのライブラリから作る、ソースを公開する、仕様どおりに OEP を話す、正直に名乗る、など）のもとで別に与えられる。
-  ほかの実装は自分の USB ID を使う。host は利用者がそれを名指すか口を選んだときに開く（core §3.3）。
+  ほかの実装は自分の USB ID を使う。host は利用者がそれを名指すか口を選んだときに開く（transports §3）。
 - 適合しても probe が自動で識別されるようにはならず、扱える target のチップ、速さ、規範の文書が求める以上の電気的な振る舞いについては何も言わない。

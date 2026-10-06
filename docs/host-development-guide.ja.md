@@ -13,12 +13,12 @@
 
 ## 1. probe をリセットせずに開く
 
-- **DTR と RTS を両方立てたまま開く**（多くのシリアルのライブラリの既定）。core §3.4 は、口を開いている間それを立てておくことを
+- **DTR と RTS を両方立てたまま開く**（多くのシリアルのライブラリの既定）。transports §4 は、口を開いている間それを立てておくことを
   host に求める。probe はどちらも判断に使わない。
 - **どうしても下ろすなら、RTS を DTR より先に下ろす。** 多くのボードは DTR / RTS を自動リセットの回路につないでいて、RTS = 1・
   DTR = 0 の状態で MCU がリセットされる。DTR を先に下ろすとその状態を通る。
 - 閉じるときは何もしなくてよい。
-- DTR を下ろしたまま使わない: DTR が low の間は送らない USB シリアルのスタックがある（core §3.4 はそのときの probe の動きを決めて
+- DTR を下ろしたまま使わない: DTR が low の間は送らない USB シリアルのスタックがある（transports §4 はそのときの probe の動きを決めて
   いない）。
 - probe の口を 1200 bps で開かない: 1200 bps で開いて閉じることをブートローダに入る合図にする USB スタックがいくつもある。
 - 以上は、Linux で測ったすべてのボードで成り立った: 自動リセットの回路つきの USB-UART の変換チップ（CH340、CH343）、内蔵の USB シリアル
@@ -26,17 +26,17 @@
 
 ## 2. シリアルの口は常に COBS、フレームの外は雑音
 
-- OS からシリアルデバイスに見える口（UART bridge、USB CDC、内蔵の USB シリアル）は、どれも COBS + CRC-16 で話す（core §3.1）。
+- OS からシリアルデバイスに見える口（UART bridge、USB CDC、内蔵の USB シリアル）は、どれも COBS + CRC-16 で話す（transports §1）。
   フレームの形は経路の種類で決まり、VID:PID では選ばない。
-- 口の上には、OEP の応答と一緒に生のバイト（target のコンソールなど）が流れてくる（core §3.4）。フレームにならないバイト、
+- 口の上には、OEP の応答と一緒に生のバイト（target のコンソールなど）が流れてくる（transports §4）。フレームにならないバイト、
   CRC の合わない候補、待っていない corr の応答は雑音として捨てる。**雑音を見ても送り直さない**。応答が来ないことは待ち時間だけで
-  判断し（core §3.1、§4.4）、送り直しは core §5.2 の 1 回（`resend_max`）。
+  判断し（transports §1、core §4.4）、送り直しは core §5.2 の 1 回（`resend_max`）。
 - 送るフレームは必ず前後を 0x00 で囲む。前の 0x00 が無いと、probe はフレームの頭を生のバイトとして流してしまう。
-- 自分のセッションが口を持っている間、その口の生の転送は止まる（core §3.4）。コンソールは OEP の read で読む。
+- 自分のセッションが口を持っている間、その口の生の転送は止まる（transports §4）。コンソールは OEP の read で読む。
 
 ## 3. UART の速度
 
-UART bridge の probe は、いつも起動時の速さ `uart_bridge_boot_baud`（115200 bps）8N1、流れの制御なしで始まる（core §3.4。逆引用符の
+UART bridge の probe は、いつも起動時の速さ `uart_bridge_boot_baud`（115200 bps）8N1、流れの制御なしで始まる（transports §4。逆引用符の
 名前は、すべての数を持つ `registry/oep-v1.toml` のキー）。port_speed（[リンク](oep-if-link.ja.md) §3、任意）は
 セッションの間だけそれを上げる。上げるかどうか、候補とその確かめ方は host が決める（§17）。それでも足りなければ、probe のより速い
 経路（ネイティブ USB）を使う。
@@ -48,13 +48,13 @@ max_frame を使う（core §4.4）。
 ## 4. USB の probe の見つけ方
 
 - host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID `1209:4F45`（VID 0x1209、PID 0x4F45。registry の
-  `usb` の `project_vid` / `project_pid`。core §3.3）だけである。probe の一覧を作るときは、この VID:PID の USB の device を並べる。
+  `usb` の `project_vid` / `project_pid`。transports §3）だけである。probe の一覧を作るときは、この VID:PID の USB の device を並べる。
   それぞれの USB の serial number が unit_id で、開かずに区別できる。
 - ほかのもので probe と見分けない: iProduct も、interface の class / subclass / protocol も、HID の usage page も使わない。これらは
   ほかの製品と偶然重なりうる。iProduct は人のための名前で、何もそれで probe を見分けない。interface の値は、probe と分かった
-  device の中で口を選ぶためだけに使う（core §3.3）。
+  device の中で口を選ぶためだけに使う（transports §3）。
 - ほかの device と口は、利用者が probe を unit_id で名指したとき（USB の serial number がそれと同じ device）か、口を選んだときだけ
-  開く（core §3.3）。開いたら core §3.3 の探りの規則で確かめる: 最初に送るのは confirm だけで、正しい confirm の応答が待ち時間の
+  開く（transports §3）。開いたら transports §3 の探りの規則で確かめる: 最初に送るのは confirm だけで、正しい confirm の応答が待ち時間の
   うちに来なければ、閉じてほかに何も送らない。
 - プロジェクトの VID:PID を持てない probe がある: USB-UART の bridge の向こうの probe（bridge は自分の VID:PID と serial number で
   列挙する）と、ハードウェアが記述子を決める内蔵の USB シリアルの probe。host はこれらを自分では見つけられない: 利用者が口を
@@ -72,7 +72,7 @@ max_frame を使う（core §4.4）。
   （[probe の設定](oep-if-probe-config.ja.md)）。boot_id を probe ごとに、unit_id をキーにして覚える（core §7.6）: open の応答の
   boot_id が違えば probe は再起動したので、覚えた fn の対応を使う前に list し直す（core §6.5）。
 - **発見の手順**: USB の device を列挙し、プロジェクトの VID:PID を持つもの（§4）と、名指した unit_id と serial
-  number が同じものを開く（core §3.3）。serial number が unit_id。device の中の口は interface の
+  number が同じものを開く（transports §3）。serial number が unit_id。device の中の口は interface の
   記述子で選ぶ（vendor bulk: class 0xFF / subclass 0x4F / protocol 0x45、HID: usage page 0xFF4F / usage 0x45、CDC はすべてシリアルの口）。
   開いたら最初に confirm だけを送り（応答が無ければ閉じる）、boot_id と上限を取り、describe の unit_id が serial と同じことを確かめる。
   ロック無しの監視は confirm の boot_id で再起動を知る。
@@ -88,17 +88,17 @@ max_frame を使う（core §4.4）。
 ### 5.1 1 つの probe の複数の経路
 
 - 1 つの probe が複数の経路（vendor bulk、HID、シリアルの口、TCP）を見せることがある。経路はセッションとロックを 1 つ共有する
-  （core §3.3）。fn 0 の describe の unit_id（ASCII の大文字と小文字を区別せずに比べる）でまとめ、`x-` で始まる unit_id ではまとめない
+  （transports §3）。fn 0 の describe の unit_id（ASCII の大文字と小文字を区別せずに比べる）でまとめ、`x-` で始まる unit_id ではまとめない
   （core §7.5）。
-- 選べるなら vendor bulk、HID、シリアルの口の順に使う（core §3.3）。シリアルの口は生のバイトも運び、受けの量にも限りがある
-  （core §3.4）。
-- 自分のセッションの id を持つ要求は、すべて 1 つの経路で送る（core §3.3）。ロック不要の要求は別の経路で送ってよい（たとえば、
+- 選べるなら vendor bulk、HID、シリアルの口の順に使う（transports §3）。シリアルの口は生のバイトも運び、受けの量にも限りがある
+  （transports §4）。
+- 自分のセッションの id を持つ要求は、すべて 1 つの経路で送る（transports §3）。ロック不要の要求は別の経路で送ってよい（たとえば、
   デバッガが vendor bulk を持つ間に、HID で describe と state を読む）。
 - max_frame、window、max_inflight とプロトコルの revision は経路ごと（core §4.4、§7.1）: 使う経路ごとに confirm する。
 
 ## 6. 排他とロックの奪い方
 
-- **シリアルの口は必ず排他で開く**（Linux / macOS は `ioctl(TIOCEXCL)`、Windows は元から排他。core §3.3）。排他でないと、応答の
+- **シリアルの口は必ず排他で開く**（Linux / macOS は `ioctl(TIOCEXCL)`、Windows は元から排他。transports §3）。排他でないと、応答の
   バイトが別のプロセスに渡り、経路が成り立たない。協力型のロック（`flock`。「exclusive」と呼ぶライブラリもある）は、それを見ない道具を
   止めないので、開いた後に TIOCEXCL を掛ける。root は TIOCEXCL を素通りする。
 - libusb / WinUSB の claim は OS が排他する。
@@ -106,7 +106,7 @@ max_frame を使う（core §4.4）。
   - **transport がシリアルの口 1 つだけの probe**: 排他で開けた時点で、前の持ち主のプロセスは口を握っていないので、open の force で
     その場で奪ってよい。
   - **transport が複数の probe**: lock_state で残り時間を読み、残りだけ待つ（上限は数秒）。持ち主が lease を更新し続けているなら、
-    待たずに「使用中」とする。force は利用者が明示したときだけ使う（force は認証ではなく、TCP は信頼できる接続でだけ使う。core §3.1、
+    待たずに「使用中」とする。force は利用者が明示したときだけ使う（force は認証ではなく、TCP は信頼できる接続でだけ使う。transports §1、
     §6.4）。
 - lease は、対話的な道具は短く（2〜3 秒）、試験のセッションのように長く握る道具は長く（10 秒、keepalive で更新）。
 
@@ -114,13 +114,13 @@ max_frame を使う（core §4.4）。
 
 1 つの probe を同じ PC の複数の道具で同時に使うときは、host の側のブローカーが probe との 1 本のセッションを持ち、道具ごとの
 要求を束ねる（corr の付け替え、道具の open / end を probe に出さない、道具が切れたらその道具の資源を外す）。probe から見える
-transport とセッションは 1 つのまま。道具とブローカーの間は、仕様の TCP の形（`length(u16) message`、core §3.1）を使える。セッションの
-op に自分で答え、ほかを中継するブローカーは、core §3.1 と §5.2 の中継のブローカーの規則に従う（confirm の transport の index は
+transport とセッションは 1 つのまま。道具とブローカーの間は、仕様の TCP の形（`length(u16) message`、transports §1）を使える。セッションの
+op に自分で答え、ほかを中継するブローカーは、transports §1 と core §5.2 の中継のブローカーの規則に従う（confirm の transport の index は
 0xFF、client の接続ごとの corr の対応表）。
 
-## 8. 応答の対応付けと送り直し（core §5.1 と §5.2 が求めること）
+## 8. 応答の対応付けと送り直し（transports §5 と core §5.2 が求めること）
 
-- **corr が合わない応答は受け取らず、入力を読み捨てて同期し直す**（core §5.1）。USB の経路によっては、取り消した転送の残りが次の
+- **corr が合わない応答は受け取らず、入力を読み捨てて同期し直す**（transports §5）。USB の経路によっては、取り消した転送の残りが次の
   応答として届くことがある（USB-over-IP の層を通したときに見た）。vendor bulk / HID / TCP のフレームには CRC が無いので、
   corr の照合がこの防御になる。
 - **corr は要求ごとに 1 ずつ進める**（session_id 0 の要求も数える。65535 の次は 1、0 は使わない。core §4.1）。同じ corr を使うのは
@@ -132,7 +132,7 @@ op に自分で答え、ほかを中継するブローカーは、core §3.1 と
   - 立て直しの中で unsubscribe と end を送ったときは、元の要求は送り直さない。
 - **送り直しにも答えが無ければ、その経路は失敗した**（core §5.2）: その要求の結果は分からず、その経路で出ている要求もいっしょに
   失敗する。何もなかったように次の要求を送らない。COBS を含むどの種類のフレームでも、先に立て直す: 入力が静かになるのを待ち、
-  自分の corr を持つ応答が返るまで confirm する（core §5.1）か、口を閉じて開き直す。その confirm で boot_id が変わっていれば再起動
+  自分の corr を持つ応答が返るまで confirm する（transports §5）か、口を閉じて開き直す。その confirm で boot_id が変わっていれば再起動
   （やり直す、§5）。その後、状態を変える要求を繰り返す前に状態を読む。
 
 ## 9. 断りごとに host がすること
@@ -203,7 +203,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 - **min_bytes / max_delay_ms の選び方**: probe は min_bytes がたまるか、最初のバイトから max_delay_ms が過ぎたら送る（0 はその条件を
   使わない。両方 0 ならすぐ送る）。まとめを大きくするとフレームが減り、遅れを短くすると待ちが減る。シリアルの口では min_bytes を
   `host_serial_min_bytes_max`（2 KiB）以下に、待っている応答の量の合計を `host_serial_inflight_max_bytes`（6 KiB）以下に保つ。OS のドライバが一度に来た量を黙って落とすことがあるため
-  （core §3.4）。
+  （transports §4）。
 - **ハートビート**: fn 0 を購読すると、max_delay_ms ごと（0 なら `heartbeat_default_ms`。`heartbeat_min_ms` より短い周期は probe がそれに丸めてよい）に
   ハートビートの出来事（kind 0x01: boot_id、uptime_ns）が来る。boot_id が変われば再起動。
 - 通知は購読を受けた経路に送られる。同じ session_id の open を別の経路で送ると、そちらに移る（core §6.2）。
@@ -353,7 +353,7 @@ python -m oep_client.fake_serve --tcp 0 --framing length   # TCP の経路: leng
 
 | 用途 | 使う流し方 | 候補の例（実測した組合せ。規則ではない） |
 |---|---|---|
-| 書き込み | host → probe、n = max（probe の max_inflight と host の受けの上限 core §3.4 の小さい方） | 通る最高（1500000 → 921600 → 500000） |
+| 書き込み | host → probe、n = max（probe の max_inflight と host の受けの上限 transports §4 の小さい方） | 通る最高（1500000 → 921600 → 500000） |
 | キャプチャ / ログの読み出し | probe → host、n = max | 921600 → 500000 |
 | コンソール / デバッグ | 両方向、n = 1〜2 | 500000 の 1 候補 |
 

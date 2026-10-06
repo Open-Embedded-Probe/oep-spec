@@ -223,7 +223,7 @@ start は、その fn の購読が無ければ rejected unavailable（cause 6）
 configure の応答の blocking_ms が core の max_op_ms を超える構成は、configure で rejected unsupported。
 
 - start の応答から blocking_ms の間、probe はどの transport のフレームも処理しないことがあり、失うことがある。host はその間、その probe に
-  どの transport でも何も送らない。その後、長さ前置きの transport では core §5.1 の resync から始める。シリアルポートではそのまま続ける。
+  どの transport でも何も送らない。その後、長さ前置きの transport では transports §5 の resync から始める。シリアルポートではそのまま続ける。
   lease も host の待ち（core §4.4）も blocking_ms を数えない。
 
 ### 3.3 configure

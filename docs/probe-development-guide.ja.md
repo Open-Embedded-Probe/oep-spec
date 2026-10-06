@@ -19,7 +19,7 @@
 - 経路を開閉しても probe はリセットしない。DTR / RTS の変化で MCU をリセットする回路を持つボードは、host がそれを避けて開く
   （host ガイド §1）。probe は、口が開いた・閉じたことで自分から再起動しない。
 - **DTR に頼らない。** DTR が下りている間は送らない USB シリアルのスタックがある。それを切って（スタックの「流れの制御を無視する」
-  設定など）、host の開き方が違っても話し続けるようにする。core §3.4: probe は DTR、RTS、線の状態を何の判断にも使わない。
+  設定など）、host の開き方が違っても話し続けるようにする。transports §4: probe は DTR、RTS、線の状態を何の判断にも使わない。
 - **経路の開閉では状態を変えない。** attach、ピン、線の状態はそのまま。資源を外すのは core §9 の寿命の規則のときだけ（明示の
   release / detach、lease の期限切れと force でのそのセッションの分）。外すときも target をリセットしない。解いたピンは設定の idle の
   状態（既定は Hi-Z）にし、駆動し続けない（core §8）。
@@ -40,7 +40,7 @@
 - **宣言した max_frame の要求を丸ごと受けられるようにする**: フレームのバッファと、その下の受信の ring（下の層が 1 回に置く量の
   2 倍以上）。足りないとフレームの途中がこぼれ、以後の区切りがずれる。
 - **vendor bulk の OUT は packet ごとに受ける**。ZLP で終わる大きな転送として受けない: host は wMaxPacketSize の倍数の書き込みの後に
-  長さ 0 の転送を続ける（core §3.1）ので、ちょうど packet の境で終わる要求が次の OUT まで待たされることがある。長さ 0 の完了は
+  長さ 0 の転送を続ける（transports §1）ので、ちょうど packet の境で終わる要求が次の OUT まで待たされることがある。長さ 0 の完了は
   読み飛ばす。
 - 線の速さは `oep.link` の source / sink の op（[リンク](oep-if-link.ja.md) §2）で測る。受信・送信の経路を変えたら測り直す。
 
@@ -55,22 +55,22 @@
 
 - USB（CDC、vendor bulk）はデータを保証するが、**USB-UART の変換チップを挟む経路は保証しない**: probe と変換チップの間の UART、
   変換チップの中、USB をネットワークで運ぶ層で、byte が落ちたり化けたりする。
-- そのためシリアルの口は COBS + CRC-16/CCITT-FALSE を運ぶ（core §3.1）: 壊れたフレームは捨てられ、host が送り直す（core §5.2）。
+- そのためシリアルの口は COBS + CRC-16/CCITT-FALSE を運ぶ（transports §1）: 壊れたフレームは捨てられ、host が送り直す（core §5.2）。
   host は「応答が来た」ことを正しさの根拠にしない。
 - target の側も同じ: debug の線の 1 bit の parity は、壊れた応答の半分を通す。メモリの読み出しや flash の結果は、上位の CRC か
   読み戻しで確かめる。
 
 ## 5. UART bridge の起動時の速さ
 
-- UART bridge の probe は、いつも `uart_bridge_boot_baud`（115200 bps）8N1、流れの制御なしで起動する（core §3.4）。起動時の速さを
+- UART bridge の probe は、いつも `uart_bridge_boot_baud`（115200 bps）8N1、流れの制御なしで起動する（transports §4）。起動時の速さを
   設定にしない: 設定を忘れると入れなくなり、生のバイトと OEP が混ざる口では速さの自動の検出は危うい。
 - セッションの間だけ速くするのは port_speed（[リンク](oep-if-link.ja.md) §3、任意）: `oep.link` を list に出し、3 つの状態と戻る
   条件を実装し、その describe の ops に op 0x03 を立てる。戻り先はいつも起動時の速さ。
-- USB CDC と内蔵の USB シリアルでは、線の設定は数字が渡るだけで速さに関係しない。無視する（core §3.4）。
+- USB CDC と内蔵の USB シリアルでは、線の設定は数字が渡るだけで速さに関係しない。無視する（transports §4）。
 
 ## 6. シリアルの口の共用の作り
 
-core §3.4 の規則を守るための作り:
+transports §4 の規則を守るための作り:
 
 - **受信**: 口ごとに 1 つの読み手。0x00 の外のバイトはすぐ生のバイトの行き先（bind、[probe の設定](oep-if-probe-config.ja.md) §1.2）へ
   渡し、0x00 から次の 0x00 までを候補としてためる。候補が解けないか CRC が合わない、または入力が `probe_frame_gap_ms` 途切れたら、
@@ -94,19 +94,19 @@ RTS を立てて開き（host ガイド §1）、それでもリセットする�
 ネイティブ USB を持つ probe のために:
 
 - **VID:PID**: host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID `1209:4F45`（VID 0x1209、PID 0x4F45。
-  registry の `usb`。core §3.3）だけ。probe は oep-probe-arduino の PID-USE の条件の下でそれを使う。それで列挙する probe は
+  registry の `usb`。transports §3）だけ。probe は oep-probe-arduino の PID-USE の条件の下でそれを使う。それで列挙する probe は
   fn 0 の describe の discoverable を 1 にする（別の口から開いた host にも分かる）。そうでない probe は 0 を返し、利用者が名指すか
   口を選ぶ。USB-UART の bridge の向こうの口と、ハードウェアが記述子を決める内蔵の USB シリアルは、プロジェクトの VID:PID を
   持てない。
-- **iProduct** は人のための名前で、何もそれで probe を見分けない（core §3.3）。
-- **serial number は unit_id**（core §3.3）。利用者が unit_id で名指した probe は、host がこれで探す。
-- device の中の口は core §3.3 のとおり: CDC はすべてシリアルの口。vendor bulk は class 0xFF / subclass 0x4F / protocol 0x45 の
+- **iProduct** は人のための名前で、何もそれで probe を見分けない（transports §3）。
+- **serial number は unit_id**（transports §3）。利用者が unit_id で名指した probe は、host がこれで探す。
+- device の中の口は transports §3 のとおり: CDC はすべてシリアルの口。vendor bulk は class 0xFF / subclass 0x4F / protocol 0x45 の
   interface の bulk の組（Microsoft OS 2.0 の compatible ID `WINUSB` を付ける）。HID は usage page 0xFF4F / usage 0x45 で、出力の
   report を interrupt OUT と SET_REPORT の両方で受ける。vendor bulk と HID はそれぞれ多くて 1 つ。
 - よい組は **vendor bulk（OEP）、HID（OEP）、CDC（シリアルの口）**:
   - vendor bulk は host の主な、速い経路;
   - HID は、他の道具が vendor や CDC を握っていても読め、ドライバも要らず、ロック不要の発見（describe、設定の get と state）に向く;
-  - CDC は IDE や端末から見えるシリアルの口。OEP も受けるが（core §3.4）、主にはコンソールを流す。
+  - CDC は IDE や端末から見えるシリアルの口。OEP も受けるが（transports §4）、主にはコンソールを流す。
 - 出している経路をすべて fn 0 の describe（transport の tag）に並べ、どの経路でも同じ unit_id を返す。
 - 参照の probe の今の USB の形: [USB の識別](usb-identity.ja.md)。
 
@@ -122,7 +122,7 @@ host は transport の数でロックの奪い方を決める（host ガイド �
 
 **unit_id**（fn 0 の describe 0x42、core §7.5）: `a-z 0-9 -` の 1〜`unit_id_max_bytes`（32）byte。個体ごとに違い、個体の値だけから
 作り、どの経路でも、どの firmware の版と profile でも同じで、接尾辞を付けない。probe が serial number を選べる所では USB の serial
-number と等しい（core §3.3）。
+number と等しい（transports §3）。
 
 | 元にするもの | 利点 | 欠点 |
 |---|---|---|
@@ -158,7 +158,7 @@ revision は数字に任意の `.数字` の組。revision が分からなけれ
   外れた経路を host は使わない。
 - max_inflight: 受け付ける待ちの要求の数、1 以上（core §7.1）。送り直しの表は応答と一緒に少なくとも max_inflight 個を持つ（core §5.2）。メモリは
   max_inflight × 覚える最大の応答。覚える応答の大きさに上限を置いてよい（それより大きい応答の送り直しは result_lost になる）。
-- シリアルの口では、host は待つ応答の量を `host_serial_inflight_max_bytes` 以下に保つ（core §3.4）。window を大きくしても host の
+- シリアルの口では、host は待つ応答の量を `host_serial_inflight_max_bytes` 以下に保つ（transports §4）。window を大きくしても host の
   役には立たない。
 
 **max_op_ms**（0x4D、必須）: 1 つの要求にかかる最長の時間。save と flash のローダーも含む。1〜`max_op_ms_max`（600000 ms。

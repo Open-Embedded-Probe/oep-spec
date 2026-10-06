@@ -3,7 +3,7 @@
   "cases": [
     {
       "name": "crc16 123456789",
-      "spec": "core §3.1",
+      "spec": "transports §1",
       "algorithm": "crc16-ccitt-false",
       "input_hex": "313233343536373839",
       "crc": 10673

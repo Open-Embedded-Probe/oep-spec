@@ -89,7 +89,7 @@ def test_ops_examples_of_the_text():
 def test_crc_check_values_match_the_text():
     cases = {c["name"]: c for c in load("checks.json")["cases"]}
     digits = b"123456789"
-    assert cases["crc16 123456789"]["crc"] == binascii.crc_hqx(digits, 0xFFFF) == 0x29B1      # core §3.1
+    assert cases["crc16 123456789"]["crc"] == binascii.crc_hqx(digits, 0xFFFF) == 0x29B1      # transports §1
     assert cases["crc32 123456789"]["crc"] == zlib.crc32(digits) == 0xCBF43926                # core §5.2
     assert cases["crc8 123456789"]["crc"] == crc8(digits) == 0xFB                             # dmseq CRC-8
     assert cases["crc8 one zero byte"]["crc"] == crc8(b"\x00") == 0xF3

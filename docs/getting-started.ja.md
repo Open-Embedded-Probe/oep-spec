@@ -16,7 +16,7 @@ describe を読むいちばん小さい host を、線の上のすべてのバ�
 - **バイトの順**: 数はすべてリトルエンディアン（core §2.1）。
 - **シリアルの口のフレーム**（UART bridge、USB CDC、内蔵の USB シリアル）: `0x00 COBS(message + CRC-16) 0x00`。CRC-16/CCITT-FALSE
   （多項式 0x1021、初期値 0xFFFF、反転なし。"123456789" → 0x29B1）をリトルエンディアンで付け、254 byte の区切りの COBS にする
-  （core §3.1）。vendor bulk と TCP のフレームは `length(u16) message` で、CRC は無い。
+  （transports §1）。vendor bulk と TCP のフレームは `length(u16) message` で、CRC は無い。
 - **要求**: `role(0x01) corr(u16) fn(u16) op(u8) session_id(u32) payload`（見出し 10 byte）。session_id 0 はセッション無しを表す。
   セッションの要求はその id を持つ（core §4.1）。
 - **応答**: `role(0x02) corr(u16) resolution(u8) detail(u8) payload`（見出し 5 byte）。resolution 0x01 completed なら detail は outcome
@@ -26,7 +26,7 @@ describe を読むいちばん小さい host を、線の上のすべてのバ�
 
 ## 2. 例
 
-probe 1 台、経路 1 つ: UART bridge（transport の kind 1、index 0）を起動時の速さ `uart_bridge_boot_baud`、115200 8N1 で（core §3.4）。
+probe 1 台、経路 1 つ: UART bridge（transport の kind 1、index 0）を起動時の速さ `uart_bridge_boot_baud`、115200 8N1 で（transports §4）。
 probe の値（`tests/vectors/confirm.json` と `discovery.json` のもの）:
 
 | 値 | 例 | どこ |
@@ -139,8 +139,8 @@ request fn 0 op 0x50   01 0600 0000 50 00000000     answer 02 0600 00 02    reje
 probe がすることを順に（参照の先が規則）:
 
 1. **フレームを受ける。** 0x00 から次の 0x00 までのバイトをため、COBS を解き、CRC-16 を確かめる。解けない候補と CRC の合わない候補は
-   要求ではない（シリアルの口では生のバイト、core §3.4）。フレームの途中で `probe_frame_gap_ms`（200 ms）途切れたら読み直す（core §3.2）。
-   confirm の前でも、少なくとも `min_max_frame`（64）byte のメッセージを受ける（core §3.3）。
+   要求ではない（シリアルの口では生のバイト、transports §4）。フレームの途中で `probe_frame_gap_ms`（200 ms）途切れたら読み直す（transports §2）。
+   confirm の前でも、少なくとも `min_max_frame`（64）byte のメッセージを受ける（transports §3）。
 2. **見出しを読む。** role 0x01 で 10 byte 以上（ほかのメッセージは捨てる、core §2.4）。これらはロック不要の要求なので session_id は 0。core §4.3 の順に、fn（unknown_function）、op
    （unknown_operation）、固定部分の長さ（malformed）を見る。
 3. **confirm**（payload は `OEP?` min_rev max_rev）: `min_rev > max_rev` は malformed。1 が [min_rev, max_rev] にあれば §3.1 のとおり答え、
@@ -158,18 +158,18 @@ probe がすることを順に（参照の先が規則）:
 
 ## 5. 最初の host
 
-1. **口を開く**: 排他で（Linux は TIOCEXCL）、UART bridge なら 115200 8N1、DTR と RTS を立てて（core §3.3、§3.4、host ガイド §1）。
-2. **confirm を送る**: 1 回の書き込みで、前後を 0x00 で囲む（core §3.1、§3.2）。見分けていない口に送るのはこれだけ（探りの規則、
-   core §3.3）。64 byte に収まる。
+1. **口を開く**: 排他で（Linux は TIOCEXCL）、UART bridge なら 115200 8N1、DTR と RTS を立てて（transports §3、§4、host ガイド §1）。
+2. **confirm を送る**: 1 回の書き込みで、前後を 0x00 で囲む（transports §1、§2）。見分けていない口に送るのはこれだけ（探りの規則、
+   transports §3）。64 byte に収まる。
 3. **待つ**: 少なくとも `host_wait_add_ms`（1000 ms）+ 転送の時間（core §4.4）。UART bridge かもしれないシリアルの口では、転送の時間は
    (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒。L は線の上の要求のフレームの長さ（ここでは 21 byte）。confirm の
    応答の前には host は max_frame を知らない。参照の client は `min_max_frame`（64）で数える: (21 + 64 × 3) × 10 / 115200 ≈ 18 ms。長く
    待つのはいつでもよい。
 4. **受ける**: 0x00 の間の候補をすべて解く。口を開いてから最初の 0x00 までのバイトも解く。解けない、CRC が合わない、role を知らない、
-   待っていない corr の候補は雑音として捨てる（core §3.1、§11.1）。
-5. **応答を確かめる**: completed、同じ corr、payload が `OEP!` で始まる（core §3.3）。来なければ同じ corr で 1 回だけ送り直し
-   （`resend_max`）、それでも来なければ口を閉じ、ほかに何も送らない（core §3.3、§5.2）。max_frame、window、max_inflight、boot_id、
-   transport の index を取っておく。以後 max_frame より長いメッセージは送らない（core §3.3）。
+   待っていない corr の候補は雑音として捨てる（transports §1、core §11.1）。
+5. **応答を確かめる**: completed、同じ corr、payload が `OEP!` で始まる（transports §3）。来なければ同じ corr で 1 回だけ送り直し
+   （`resend_max`）、それでも来なければ口を閉じ、ほかに何も送らない（transports §3、core §5.2）。max_frame、window、max_inflight、boot_id、
+   transport の index を取っておく。以後 max_frame より長いメッセージは送らない（transports §3）。
 6. **list**: `first` 0 から、受けた項の数を `first` に足しながら `total` まで読む。名前 → fn の対応は boot_id が同じ間覚えてよい
    （core §7.2）。
 7. **fn 0 を describe**: `first` 0 から。more = 1 の間、受けた TLV の数を `first` に足して聞き直す。知らない tag は読み飛ばす
@@ -200,10 +200,10 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 
 **host**（[適合](conformance.ja.md) §2）:
 
-1. corr の振り方と 1 回の送り直し（core §4.1、§5.2）。長さつきの口での同期のし直し（core §5.1）。
+1. corr の振り方と 1 回の送り直し（core §4.1、§5.2）。長さつきの口での同期のし直し（transports §5）。
 2. セッション: 乱数の session_id、open の応答の lease、keepalive、断りごとにすること（host ガイド §9）。
 3. revision と知らない値（core §2.4、§2.7、host ガイド §10）。購読するなら通知（host ガイド §12）。
-4. USB の probe の発見と複数の経路（core §3.3、host ガイド §4、§5）。
+4. USB の probe の発見と複数の経路（transports §3、host ガイド §4、§5）。
 
 それから [適合](conformance.ja.md) §4 で確かめる: 試験ベクトル、fake の probe、本物の probe への `oep dump`。
 

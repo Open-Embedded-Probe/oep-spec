@@ -10,9 +10,9 @@
 - OEP には**認証も暗号も無い**。probe の経路を開けるプログラムは何でもそれを使え、ロックを取れるプログラムは何でも状態を変えられる。
   ロックの force は認証ではなく、取り違えを防ぐだけ（core §6.4）。
 - USB とシリアルの経路は、PC のほかの手元の装置と同じく信頼する。**TCP は信頼できる手元の接続か、認証したトンネルの中でだけ使う**
-  （core §3.1）。
+  （transports §1）。
 - OEP の要求に自分で答える端点は、後ろに何があっても probe で、probe の規則すべてに従う。中継するだけのブローカーは probe に対して
-  host（core §3.1）。
+  host（transports §1）。
 - probe 自身の firmware の更新は OEP の外（core §0）。OEP は firmware を運ばず、署名もしない。
 - target のメモリの読み出しと、その読み出しの保護は host のこと: probe は host の要求を実行し、target の知識を持たない（core §13 の
   規則 8、host ガイド §20）。
@@ -25,19 +25,19 @@ probe は:
   （core §2.2）、tag 0x7F / 0xFF（core §2.3）、0 / 1 以外の真偽値、正しい UTF-8 でないか制御文字を含む文字列（core §2.1）;
 - 実行の前に断る: 要求は core §4.3 の順で確かめ、すべてを通るまで何も動かさない（plan_apply と probe の設定の set は、全部が受け
   付けられなければ何も変えない: core §8、probe の設定 §2）;
-- max_frame を超える長さのフレームは、次の途切れまでの入力と一緒に捨てる。TCP では接続を閉じる（core §3.1）;
-- フレームの途中で `probe_frame_gap_ms` 途切れたら、TCP 以外のどの経路でも読み直す（core §3.2）;
-- report が運べるより大きい count の HID の report は、次の途切れまでの流れの入力と一緒に捨て、report の詰め物は無視する（core §3.1）;
+- max_frame を超える長さのフレームは、次の途切れまでの入力と一緒に捨てる。TCP では接続を閉じる（transports §1）;
+- フレームの途中で `probe_frame_gap_ms` 途切れたら、TCP 以外のどの経路でも読み直す（transports §2）;
+- report が運べるより大きい count の HID の report は、次の途切れまでの流れの入力と一緒に捨て、report の詰め物は無視する（transports §1）;
 - role が要求の role でないメッセージと、10 byte のヘッダより短い要求は、答えずに捨てる（core §2.4）。
 
 host は:
 
-- 候補を解き、解けないもの、CRC が合わないもの、role を知らないもの、待っていない corr のものを捨てる（core §3.1、§11.1）;
+- 候補を解き、解けないもの、CRC が合わないもの、role を知らないもの、待っていない corr のものを捨てる（transports §1、core §11.1）;
 - role が要求の role のメッセージは捨て、5 byte より短い応答、ヘッダより短い出来事やデータのフレーム（core §2.4）、固定部分より短い
   応答は壊れたものとし、知らない tag は読み飛ばし、長さが定義と違う TLV の値は壊れたものとし、知らない status と reason は失敗とする（core §2.3、§2.4）;
 - 送り直しにも答えが無ければ、その経路は失敗したとし、そこで何かを送る前に confirm で立て直す（か開き直す）（core §5.2）;
 - 65535 byte までのメッセージを受けられる。正しい COBS のフレームは、2 つの 0x00 の間が `cobs_frame_max_bytes` より長くならない
-  （core §3.1、§3.3）;
+  （transports §1、§3）;
 - 応答の文字列は、見せる前に制御文字と不正な UTF-8 を置き換える（core §2.1）。
 
 ## 3. 資源を使い尽くさせないこと
@@ -51,7 +51,7 @@ host は:
   飛びに見える。probe は応答を先に送り、通知の書き込みでブロックしない（core §11.4）。ハートビートの周期は `heartbeat_min_ms` に
   丸めてよい（core §11.3）。
 - **シリアルの口での host の受けの量**: host は待つ応答の量を `host_serial_inflight_max_bytes` 以下に、subscribe の min_bytes を
-  `host_serial_min_bytes_max` 以下に保つ。OS のドライバが一度に来た量を黙って落とすことがあるため（core §3.4）。
+  `host_serial_min_bytes_max` 以下に保つ。OS のドライバが一度に来た量を黙って落とすことがあるため（transports §4）。
 - **時間**: どの要求も宣言した max_op_ms より長くかからず、引数がそれを超えうる op は unsupported で断る（core §7.5）。attach と scan
   には `attach_budget_ms` と `scan_budget_ms` の予算があり、1 つの要求が線を試し直すのは多くて `wire_retry_ms`
   （[線とデバッグ](oep-if-debug.ja.md) §1、§2）。lease は `lease_min_ms` から `lease_max_ms` の間（core §6.4）。
@@ -75,10 +75,10 @@ host は:
 
 ## 5. target の出力で偽れるロック不要の応答
 
-シリアルの口では、target の生のバイトは OEP の応答と同じ口で host に届く（core §3.4）。host の role と corr の照合は、偶然できた
+シリアルの口では、target の生のバイトは OEP の応答と同じ口で host に届く（transports §4）。host の role と corr の照合は、偶然できた
 フレームは捨てるが、わざと作ったフレームは止めない: 生の転送が止まっていない口では、target の出力が、正しい CRC と、待っている
 ロック不要の要求の corr（1 ずつ進むので予測できる）を持つフレームを含みうる。応答の中身を信じる必要のある host は、生の転送が
-止まっている口（自分のセッションの要求がそこに届いた後）か、長さつきの口で要求を送る（core §3.4 の参考の注）。
+止まっている口（自分のセッションの要求がそこに届いた後）か、長さつきの口で要求を送る（transports §4 の参考の注）。
 
 ## 6. 電気の安全
 
@@ -112,12 +112,12 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
 
 ## 7. 同じ口のほかのソフトウェア
 
-- host は、OS が許す所ではシリアルの口と HID を排他で開く（core §3.3）。協力型のロックはほかの道具を止めない（host ガイド §6）。
-- 見分けていない device や口には、host は confirm だけを送り、正しい応答が来なければ閉じる（探りの規則、core §3.3）。probe でない
-  device を乱さないため。class / subclass / protocol や usage page だけで probe とは決めない（core §3.3）。
-- probe は DTR、RTS、線の設定を何の判断にも使わず、1200 bps の touch と CDC の線の設定は何もしない（core §3.4、probe の設定 §1.2）。
-  host は自動リセットの回路を動かさないよう DTR と RTS を立てておく（core §3.4、host ガイド §1）。
-- 共用のシリアルの口の生のバイトは、その口に結んだ流れへ行き、セッションが口を使う間は生の転送が止まる（core §3.4）。
+- host は、OS が許す所ではシリアルの口と HID を排他で開く（transports §3）。協力型のロックはほかの道具を止めない（host ガイド §6）。
+- 見分けていない device や口には、host は confirm だけを送り、正しい応答が来なければ閉じる（探りの規則、transports §3）。probe でない
+  device を乱さないため。class / subclass / protocol や usage page だけで probe とは決めない（transports §3）。
+- probe は DTR、RTS、線の設定を何の判断にも使わず、1200 bps の touch と CDC の線の設定は何もしない（transports §4、probe の設定 §1.2）。
+  host は自動リセットの回路を動かさないよう DTR と RTS を立てておく（transports §4、host ガイド §1）。
+- 共用のシリアルの口の生のバイトは、その口に結んだ流れへ行き、セッションが口を使う間は生の転送が止まる（transports §4）。
 
 ## 8. probe が見せる情報
 

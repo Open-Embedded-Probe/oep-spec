@@ -39,10 +39,10 @@ CRITICAL = REG["constants"]["tag_critical"]
 IGNORED = REG["constants"]["tag_ignored"]
 
 
-# ---- checks (core §3.1, §5.2; dmseq "CRC-8") ------------------------------------------------------------
+# ---- checks (transports §1, core §5.2; dmseq "CRC-8") ------------------------------------------------------------
 
 def crc16_ccitt_false(data: bytes) -> int:
-    """poly 0x1021, init 0xFFFF, no reflection, no final XOR (core §3.1)."""
+    """poly 0x1021, init 0xFFFF, no reflection, no final XOR (transports §1)."""
     crc = 0xFFFF
     for b in data:
         crc ^= b << 8
@@ -71,7 +71,7 @@ def crc8_dmseq(data: bytes) -> int:
     return crc
 
 
-# ---- COBS (core §3.1) -------------------------------------------------------------------------------------
+# ---- COBS (transports §1) -------------------------------------------------------------------------------------
 
 def cobs_encode(data: bytes) -> bytes:
     """Standard COBS in 254-byte blocks; no empty block after a final full block (code 0xFF)."""
@@ -136,7 +136,7 @@ def checks() -> dict:
     return {
         "about": "Check values of the three CRCs of OEP v1.",
         "cases": [
-            {"name": "crc16 123456789", "spec": "core §3.1", "algorithm": "crc16-ccitt-false",
+            {"name": "crc16 123456789", "spec": "transports §1", "algorithm": "crc16-ccitt-false",
              "input_hex": hx(digits), "crc": crc16_ccitt_false(digits)},
             {"name": "crc32 123456789", "spec": "core §5.2", "algorithm": "crc32-ieee",
              "input_hex": hx(digits), "crc": crc32_ieee(digits)},
@@ -172,9 +172,9 @@ def cobs() -> dict:
                  "encoded_hex": hx(cobs_encode(full) + b"\x01"), "data_hex": hx(full)}]
     msg = request(1, 0, op("oep.core", "confirm"), b"OEP?\x01\x01")
     crc = crc16_ccitt_false(msg)
-    frames = [{"name": "confirm request on a serial port", "spec": "core §3.1",
+    frames = [{"name": "confirm request on a serial port", "spec": "transports §1",
                "message_hex": hx(msg), "crc16": crc, "frame_hex": hx(serial_frame(msg))}]
-    return {"about": "COBS (core §3.1): the encoding alone, then whole serial-port frames (0x00 COBS(message + CRC-16 LE) 0x00).",
+    return {"about": "COBS (transports §1): the encoding alone, then whole serial-port frames (0x00 COBS(message + CRC-16 LE) 0x00).",
             "encode": cases, "decode_also_accepts": accepted, "frames": frames}
 
 

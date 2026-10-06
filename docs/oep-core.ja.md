@@ -16,7 +16,7 @@ OEP は 3 つの層からなる。
 
 | 層 | 中身 | 名前 | 版 |
 |---|---|---|---|
-| **本体（この文書）** | どの probe と host も、機能に関係なく実装するもの: 経路とフレーム、メッセージ、セッションと排他、発見（confirm / list / describe）、plan、資源の寿命の一般の規則、通知の仕組み、拡張の規則 | `oep.core`（fn 0） | プロトコルの revision（confirm） |
+| **本体（この文書）** | どの probe と host も、機能に関係なく実装するもの: 経路とフレーム（[OEP の経路](oep-transports.ja.md)）、メッセージ、セッションと排他、発見（confirm / list / describe）、plan、資源の寿命の一般の規則、通知の仕組み、拡張の規則 | `oep.core`（fn 0） | プロトコルの revision（confirm） |
 | **標準インターフェース** | 本体の仕組みだけで定義した、名前つきの機能。project が名前と番号を管理する、よく使う機能の定義で、一般の標準という意味ではない（特定のチップや系統に特化したものも含む） | `oep.` で始まる名前 | インターフェースごとの revision |
 | **拡張** | 標準インターフェースの任意機能と別の定義、独自のインターフェース | `oep.` の別の定義、または逆 DNS の名前 | それぞれ |
 
@@ -36,7 +36,7 @@ OEP は 3 つの層からなる。
 OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、USB の記述子の細部。
 
 **外部の仕様**: OEP のプロトコルは、これらの文書だけで定まる。target、バス、経路を動かすには、それぞれの文書が「参照する仕様」の節に並べる
-外部の仕様も要る（経路は §16）。
+外部の仕様も要る（経路のものは [経路](oep-transports.ja.md) §7）。
 
 **言語**: 凍結までは、日本語の文（`.ja.md`）が作業の文で、規則はそこで決める。英語の文書は凍結のときに日本語から作り直し、そのときから英語の文が規範として正しくなる。それまでの英語の文書は古いことがある。
 
@@ -48,7 +48,7 @@ OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、
 | host | probe を使うソフトウェア |
 | target | probe がつながる相手（開発中のマイコンなど） |
 | 経路（transport） | OEP のフレームを運ぶもの（UART bridge、USB CDC、内蔵の USB シリアル、USB の vendor bulk、HID、TCP） |
-| シリアルの口（serial port） | 経路のうち OS からシリアルデバイスに見えるもの（UART bridge、USB CDC、内蔵の USB シリアル）。OEP と生のバイトを共用する（§3.4） |
+| シリアルの口（serial port） | 経路のうち OS からシリアルデバイスに見えるもの（UART bridge、USB CDC、内蔵の USB シリアル）。OEP と生のバイトを共用する（[経路](oep-transports.ja.md) §4） |
 | インターフェース | probe が名前で出す機能。list で見つけ、fn で呼ぶ |
 | fn | そのセッションの間、インターフェースを指す番号（u16）。fn 0 は `oep.core` |
 | op | インターフェースの中の操作の番号（u8） |
@@ -76,7 +76,7 @@ plan_apply と plan_release は、どれかのインターフェースが plan �
 
 probe は、その fn の ops が立てない op（インターフェースが定義しない op、または持たない任意の op）の要求に rejected unknown_operation で答える（§4.3 順 1）。持つ op に、宣言しない任意の機能（mode、format、値、critical の TLV、ピンの組み合わせ）を求める要求には rejected unsupported で答える（§4.3 順 6）。
 
-host がしなければならない（MUST）こと: 知らない TLV と tag を読み飛ばす（§2.3、§2.4）。§3.2 と §3.3 の探りの規則に従う。§4.4 のとおり待つ。§5.2 のとおり送り直す。§11.1 のとおりフレームを振り分ける。
+host がしなければならない（MUST）こと: 知らない TLV と tag を読み飛ばす（§2.3、§2.4）。[経路](oep-transports.ja.md) §2 と [経路](oep-transports.ja.md) §3 の探りの規則に従う。§4.4 のとおり待つ。§5.2 のとおり送り直す。§11.1 のとおりフレームを振り分ける。
 
 ## 2. 共通の規則
 
@@ -151,7 +151,7 @@ tag(u8) | len(u16) | value(len byte)
 
 - 知らない role のフレームは捨てる。
 - probe は、role が要求の role（0x01）でない message と、見出し（10 byte）より短い要求を、答えずに捨てる。host は、role が要求の role の message を捨てる。
-- host は、5 byte より短い応答と、見出しより短い出来事やデータのフレームを、壊れたフレームとして扱う（§5.1、§5.2）。
+- host は、5 byte より短い応答と、見出しより短い出来事やデータのフレームを、壊れたフレームとして扱う（§5.2、[経路](oep-transports.ja.md) §5）。
 - 知らない resolution、completed の知らない outcome は失敗として扱う。
 - インターフェースの status や reason の知らない値は失敗として扱う。
 - 知らない出来事の kind は捨てる（seq は数える）。
@@ -206,139 +206,11 @@ probe の時計は 1 つ: **起動からの ns（u64）**。時計は、同じ b
 - 名前を変えるのは、インターフェースの意味が変わるときだけ。
 - 本体の形を変えるときは、プロトコルの revision（confirm）を上げる。この文書の形は revision 1。
 
-## 3. 経路とフレーム
+## 3. 経路
 
-### 3.1 フレーム
-
-経路の種類は 2 つに分かれる。**シリアルの口（serial port）** は OS からシリアルデバイスに見える経路（UART bridge = probe の
-UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB シリアル）で、OEP とシリアルの生のバイトを同じ口で運ぶ（§3.4）。
-ほかの経路（USB の vendor bulk、HID、TCP）は OEP だけを運ぶ。
-
-| 経路 | フレーム |
-|---|---|
-| シリアルの口（UART bridge、USB CDC、内蔵の USB シリアル） | COBS + CRC-16、0x00 で区切る（下） |
-| USB の vendor bulk、TCP | `length(u16) message`。CRC なし。length 0 は予約（keepalive。読み飛ばす）。vendor bulk では 1 回の転送に複数のフレームが入ってよく、フレームが転送をまたいでもよい |
-| USB の HID（vendor 定義の report） | vendor bulk の長さつきのバイト列を report で運ぶ: report = `count(u16)`、その列の count バイト、埋め（report の大きさは HID の記述子のとおり）。規則は下 |
-
-- **HID の report**: 向きごとに、report は 1 つのバイト列を運ぶ。
-  1. report の OEP のバイトは、count の後ろの count バイトである。向きごとに report の順につなげると、1 つの長さつきのバイト列になる。
-     vendor bulk と同じ列（`length(u16) message`）である。
-  2. フレームは report をまたいでよく、1 つの report があるフレームの終わりと次のフレームの始まりを持ってよい。送る側はフレームごとに新しい report から始めてよい。
-     受ける側はそれに頼らない。
-  3. count が 0 の report は空で、読み飛ばす。
-  4. 送る側は埋めを 0 にする。受ける側は、埋めをその値によらず無視する。
-  5. OEP の HID の interface は、report ID を宣言しないか、その input の report と output の report が使う report ID を 1 つ宣言する。宣言するときは、
-     両方向のすべての report がそれで始まり、count はその後ろから数える。受ける側は、別の ID で始まる report を捨てる。
-  6. §3.2 の途切れの規則はこの列に掛かる: フレームが途中で、report が 200 ms（`probe_frame_gap_ms`）来ないとき、probe は
-     途中のフレームを捨て、列の次のバイトを長さの始まりとして読む。host は §5.1 で立て直す。
-  7. count が report に入る量（report の長さ − 2、report ID があれば − 3）より大きい report は捨て、受ける側は列が壊れたとして
-     扱う: 200 ms 途切れるまで入力を捨てる。max_frame より大きい長さ（下）と同じ。
-- **COBS のフレーム**: message の後ろに CRC-16/CCITT-FALSE（多項式 0x1021、初期値 0xFFFF、反転なし、"123456789" → 0x29B1）を
-  little endian で付け、COBS（254 byte のブロックに分ける標準の形）で符号にし、**前後を 0x00 で囲んで送る**（`0x00 <COBS> 0x00`）。
-  probe も host も前の 0x00 を省かない。最後のブロックが 254 byte の data を持つ（code 0xFF）とき、符号にする側は後ろに空のブロックを付けず、解く側は
-  付いた形も付かない形も受ける。空のフレーム（0x00 の連続）は読み飛ばす。
-- **host の受け方（COBS）**: 口を開いた直後から最初の 0x00 までと、0x00 から次の 0x00 までを、どちらもフレームの候補として解く
-  （開く前に送られたバイトや、開いた直後に落ちたバイトで前の 0x00 が届かないことがある）。解けない候補、CRC の合わない候補、
-  role か corr の合わないフレーム（§11.1）は、シリアルの生のバイト（雑音）として捨てる。応答が来ないことは時間切れだけで判断する。
-  （参考）正しい COBS のフレームは、2 つの 0x00 の間に 65796 byte より多くを持たない（registry の `cobs_frame_max_bytes`: 65535 byte の message とその CRC-16、
-  254 byte ごとに COBS の code の 1 byte）。だから、それより長くなった候補は、閉じの 0x00 を待たずに生のバイトとして捨ててよい。
-- **USB の束ね方**（vendor bulk）: host は、書き込みの長さが wMaxPacketSize の倍数なら長さ 0 の転送を続ける。probe は、送り
-  終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか最後の 1 byte を別の転送に分ける。
-  続きがすぐ来るときは倍数のままでよい。
-- **max_frame より大きい長さ**: probe はそのフレームと、次に `probe_frame_gap_ms` 途切れるまでの入力を捨て、次のフレームを待つ。応答は送らない。TCP では代わりに接続を閉じる。HID では、これは列から読んだ長さに掛かる（report の count は上の規則 7）。
-- どのフレームを使うかは経路の種類だけで決まる（VID:PID で選ばない）。
-- **TCP は、信頼できるローカルの接続か、認証したトンネルの内側でだけ使う。** OEP は認証を持たない（§6.4 の force を含む）。
-  1 つの probe を複数の host で使うときは、ブローカーが 1 つのセッションに束ねる（probe の規則がブローカーに何を求めるかは次の項目）。
-- **OEP の要求に自分で答える端点は probe である**。何が運び、後ろに何があるかによらない（たとえば TCP で OEP を出し、別のデバッガを動かすプログラム）。probe の規則はすべてそれに掛かる。要求を OEP の probe に中継するだけのブローカーは、その probe に対しては host である。
-- **セッションの op に自分で答える中継のブローカー**（confirm、open、end、keepalive、lock_state）で、ほかの要求をすべて 1 つの OEP の probe に中継するものは、自分の describe を持たない: それが中継する fn 0 の describe は probe のもの。confirm の transport TLV では index 0xFF（「describe に無い」）を返す。probe に対しては host である。それらのセッションの op の規則はすべて、その応答に掛かる。
-- **TCP の経路**: TCP で待ち受ける probe は、待ち受けの socket 1 つを fn 0 の describe の経路 1 つとして並べる（kind 6、interface 0xFF）。その socket で受けた接続はどれも、confirm の transport TLV でその index を返す。§3.3、§4.4、§7.1、§11.4 が経路ごとに掛ける規則（セッションの要求は 1 つの経路で、max_frame / window / max_inflight、使っている revision、通知の送り先）は、受けた接続ごとに別々に掛かる。
-  probe が待ち受ける TCP の port と、host が TCP の probe を見つける方法は、この仕様の外である。
-
-### 3.2 フレームの送り方
-
-- host は **1 つのフレームを 1 回の書き込みで送り**、フレームの途中で 100 ms（`host_frame_pause_max_ms`）以上止めない。
-- シリアルの口、vendor bulk、HID では、フレームの途中で 200 ms（`probe_frame_gap_ms`）入力が途切れたら、probe は読み取りを最初からやり直す。**TCP ではやり直さない。** TCP は区切りを失わず、流れの壊れた TCP の接続は閉じる。
-
-### 3.3 複数の経路
-
-- probe は OEP の制御を複数の経路で受けてよい。**複数の経路はセッションとロックを 1 つ共有する**。どの経路から来た要求も同じ
-  ものとして扱い、応答はその要求の来た経路に返す。通知は subscribe が来た経路に送る（§11.4）。
-- **1 つのセッションの id を持つ要求は 1 つの経路で送る**（§5.2 の順序の判定が経路の遅れで誤らないため）。session_id 0 の要求は
-  別の経路から送ってよい。host が 1 つのセッションの要求を 2 つの経路から送ったときの誤判定は host の責任で、probe は確かめない。
-- host は、同じ probe に複数の経路があれば vendor bulk、HID、シリアルの口の順に試す（シリアルの口は生のバイトの転送にも
-  使われる、§3.4）。probe の経路の一覧は fn 0 の describe の transport（§7.5）で分かる。
-- **USB の OEP の probe の見分け方**: host が知らない device の中から OEP の probe を自動で見分けるのは、**プロジェクトの USB の
-  VID:PID `1209:4F45` で列挙する device** だけである（VID 0x1209、PID 0x4F45。registry の `usb` の `project_vid` / `project_pid`）。ほかの値で
-  OEP の probe を自動で見分けることはない。それ以外は、利用者が probe を名指すか口を選ぶ（次の 2 つの項目）。device の
-  文字列 iProduct は表示のための自由な文字列で、host は見分けに使わない。interface の文字列も表示のためのもので、見分けには使わない。
-- **名指した probe**: 利用者が probe を unit_id で名指したとき（アドレス `oep://<unit_id>[/<slot name>]`、§7.6）、host は、serial number
-  がその unit_id と同じ USB の device を、見分けずに開いてよい。開いた後は下の探りの規則に従い、confirm の後に送る fn 0 の describe の
-  unit_id が名指した値と同じときだけ、その device をその probe として使う。違えば host はその device を閉じ、ほかに何も送らない。ここでの比べ方（unit_id と
-  serial number、unit_id どうし）は、英字の大文字と小文字を区別しない（serial number を大文字で見せる OS や道具があるため。unit_id
-  は §7.5 の文字だけなので、区別しなくても別の値が同じにはならない）。
-- **ほかの device とシリアルの口**: 上の 2 つに当たらない USB の device とシリアルの口は、host が自分で扱い方を持つものか、利用者が
-  明示して選んだものだけを開く。
-- **探りの規則**: host が見分けずに開く device と口（名指した device、利用者の選んだ口、host が自分で扱う device）では、
-  host が最初に送るのは confirm（§7.1）だけである（§5.2 の 1 回の送り直し、registry の `resend_max` を含む）。confirm の待ち時間
-  （§4.4。confirm には引数で決まる時間が無いので 1000 ms（`host_wait_add_ms`）と転送の時間）が過ぎても正しい confirm の応答が来なければ（送り直したときは、送り直した
-  confirm の待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。ただし UART bridge（transport の
-  kind 1）の口では、送り直しの代わりに port_speed_idle_max_ms + 1000 ms（`port_speed_confirm_extra_ms`）の間 confirm を繰り返してよい（前の host が port_speed で上げた速さを待ち切るため、[リンク](oep-if-link.ja.md) §3。
-  送るのは confirm だけで、その間に正しい応答が来なければ閉じる）。正しい confirm の応答とは、送った
-  confirm と同じ corr の completed で、payload が §7.1 の形（`OEP!` で始まる）のものをいう。正しい応答が来た device と口は OEP の
-  probe として扱う。
-- **口の選び方**: OEP の probe と分かった device（プロジェクトの VID:PID、名指した device、正しい confirm の応答が来た device）の中の
-  口は、interface の記述子で選ぶ: CDC（ACM）はすべてシリアルの口（§3.4。どれも OEP を受ける）、**bInterfaceClass 0xFF、
-  bInterfaceSubClass 0x4F ('O')、bInterfaceProtocol 0x45 ('E') の interface の bulk IN / OUT の組**は vendor bulk、**usage page 0xFF4F、
-  usage 0x45 の HID** は HID（registry の `usb`）。probe は vendor bulk と HID をこの形で出し、それぞれ高々 1 つしか出さない。host は、
-  この class / subclass / protocol と usage page / usage だけで device を OEP の probe とは決めない。ほかの class 0xFF の interface
-  （内蔵の USB シリアルのデバッグの機能、WebUSB など）はこの subclass / protocol を持たないので掴まない。ほかの機能（DFU、Mass Storage など）は
-  OEP の外。
-- **USB の serial number は unit_id**（§7.5）: probe が serial を選べる口（CDC、vendor bulk、HID を自分で出す device）では、serial number を
-  unit_id そのものにする（§7.5 の不変性）。host は開かずに個体を見分けられ（名指した probe を探せる）、どの経路の describe とも同じ値に
-  なる。serial を選べない口（内蔵の USB シリアル、USB-UART の変換チップ）は、host が経路を外から指定し、describe で unit_id を確かめる。
-  confirm と describe は口を開いた後にしか使えないので、口の選び方はこの規則による。
-- **max_frame は両方向の上限**: probe は max_frame を超える message を送らず、host は max_frame を超える message を送らない。
-- **confirm の前**: どの probe も 64 byte（registry の `min_max_frame`）までの message を受ける（confirm の max_frame は 64 以上）。
-  host は confirm の応答を受けるまで、64 byte を超える message を送らない。host は probe から長さ 65535 byte までの message を
-  受けられるようにする。
-- host は、OS が許すところでは、シリアルの口と HID を排他で開く（Linux では tty に TIOCEXCL）。
-- HID を出す probe は、output の report を、interrupt OUT の endpoint でも SET_REPORT（Output）でも受ける。
-- vendor bulk を出す probe は、できれば（SHOULD）その interface に Microsoft OS 2.0 の compatible ID `WINUSB` を付ける。
-
-### 3.4 シリアルの口の共用
-
-シリアルの口は、OEP のフレームと生のバイト（target のコンソールなど）を同じ口で運ぶ。probe はどの口でもいつでも OEP を受ける
-（口を OEP 専用にする設定や、起動の型は持たない）。
-
-- **UART bridge の回線**: データ 8 bit、パリティなし、ストップ 1 bit、フロー制御なし。起動時の速さは **115200 bps**（registry の `uart_bridge_boot_baud`）。port_speed（[リンク](oep-if-link.ja.md) §3）が変えるのは速さだけ。
-- **上げた速さの後**: UART bridge の口を開く host は、port_speed を使うかどうかにかかわらず、起動時の速さで正しい confirm の応答が来なければ、
-  あきらめる前にそこで port_speed_idle_max_ms + 1000 ms（`port_speed_confirm_extra_ms`）の間 confirm を繰り返す（前の host が上げた速さは
-  それまでに起動時の速さに戻る、[リンク](oep-if-link.ja.md) §3）。
-- **USB のシリアルの口**（USB CDC、内蔵の USB シリアル）: probe は、host がどんな line coding を設定しても OEP を受けて送り、line coding を何にも掛けない。
-- **制御線**: probe は、OEP を受けるか送るかを DTR、RTS、回線の状態で決めない。host は口を開いている間 DTR と RTS を立てておく（UART bridge はそれを probe のリセットにつないでいることがある）。host が DTR を落としている間の probe の動きは定めない。
-- **probe の受け方**: 0x00 が来たら次の 0x00 までためて解く。解けて CRC が合えば OEP の要求。解けない、CRC が合わない、または
-  次の 0x00 の前に 200 ms 途切れた（§3.2）ときは、ためた分（前の 0x00 を含む）を生のバイトとして扱う。候補を閉じた 0x00 は
-  次の候補の始まりになる。**0x00 だけで中身の無い候補**（フレームの閉じの 0x00 の後に何も来ないとき、0x00 の連続）は区切りで
-  あり、200 ms 途切れても生のバイトにしない。0x00 の外で来たバイトはすぐ生のバイトとして扱う。
-- **生のバイトの行き先**: probe がその口に結んだ流れ（どの流れを結ぶかは probe の設定が決める。結んでいなければ捨てる）。
-  （参考）上の受け方により、0x00 の後に来た生のバイトは、次の 0x00 が来るか入力が 200 ms 途切れたときに初めて結んだ流れに届く。だから結んだ流れは
-  文字の流れに向く。0x00 を含む二進の流れは、0x00 ごとに最長 200 ms 遅れる。
-- **probe の送り方**: 応答と通知は `0x00 <COBS> 0x00`。1 つの口の送信は 1 つの書き手が行い、フレームの途中に生のバイトを挟ま
-  ない（フレームは生のバイトより先に出してよく、生のバイトどうしの順は保つ）。
-- **生の転送を止める口**: ロックを持つセッションの要求（その session_id を持つ要求。ロックを取った open も含む）が 1 つでも
-  来た口では、そのセッションが終わる（end、lease の期限切れ、force で奪われる）まで、probe は生のバイトを送らず、口から来た
-  生のバイトを捨てる。ロックの要らない要求だけが来た口と、ほかの経路でセッションが動いている口は止めない。セッションが終わった
-  後、どこから生の転送を再開するかは、口に結んだ流れを定める設定が決める。
-- host は、生のバイトの中に正しいフレームに見えるものが偶然現れても、role と corr の照合（§11.1）で捨てる。
-  （参考）この照合は、わざと作ったフレームは止めない。生の転送が止まっていない口では、target の出力が、CRC の合ったフレームで、
-  未解決のロックなしの要求の corr を持つものを含みうる（corr は 1 ずつ進むので予測できる）。host はそれを応答として受ける。応答の中身を信じる必要のある host は、
-  生の転送が止まった口（上のとおり、自分のセッションの要求が届いた後）か、長さつきのフレームの口で要求を送る。
-- **host の受けの量**: OS のシリアルドライバは、probe の送るフレームがドライバの受けの量を超えてまとまって届くと黙って失うことがある
-  （理由: ドライバの読みのバッファには限りがあり、入りきらない burst はエラーなしに捨てられる。よく使われるドライバの 1 つでは約 8 KiB の burst が失われたので、
-  下の上限は余裕をとっている）。host はシリアルの口では、未解決の要求の応答の見込み量（同時数 × フレームの上限）を
-  6 KiB 以下に保つ（registry の `host_serial_inflight_max_bytes`）。通知も同じ: シリアルの口で購読するとき、host は subscribe の min_bytes を小さく（2 KiB 以下、`host_serial_min_bytes_max`）保ち、probe が一度に
-  送る量を自分の受けに合わせる（§11.3）。大量の転送は長さ付きフレームの口（vendor bulk）を優先する。probe の max_inflight と window は
-  probe の受けの上限であって、host の受けの上限ではない。
+メッセージは経路のフレームで運ぶ。経路とそのフレーム、host が probe の口を見つけて開くやり方（USB の見分け方、探りの規則、口の選び方）、
+1 つの probe の複数の経路、シリアルの口を生のバイトと共用すること、長さつきのフレームの区切りの立て直し、host の待ちが数える転送の時間は
+[OEP の経路](oep-transports.ja.md) が定める。その文書は本体の一部である: probe はその経路を少なくとも 1 つ実装し（§1.2）、host はそれに従う。
 
 ## 4. メッセージ
 
@@ -428,36 +300,30 @@ payload の中で指す fn（describe、subscribe、plan、設定の項目）が
 - host は両方の上限を守る。超えた要求を probe は rejected window_exceeded で断ってよいが、バッファを超えて失われた要求には
   応答も返らない。守るのは host の責任である。
 - probe は要求を受け取った順に処理し、応答を受け取った順に返す。
-- confirm の max_frame、window、max_inflight は、**その confirm が来た経路の**上限である。経路ごとに別々に数え、ある経路で未解決の要求は、ほかの経路の受けの余地を使わない。§5.2 の表は probe に 1 つのまま（セッションの要求は 1 つの経路で送る、§3.3）。
-- **host の待ち時間**: 応答が来ないことは時間切れだけで判断する（§3.1）。host は要求ごとに**少なくとも**次を待つ: その要求の引数で決まる時間（run の timeout_ms、
-  reset の hold_ms、dmi の待ちの和、save など。attach は `attach_budget_ms` にその reset TLV の hold_ms を足したもの、scan は `scan_budget_ms` + `attach_budget_ms`（[線とデバッグ](oep-if-debug.ja.md) §1）。無ければ 0。多くても max_op_ms、§7.5）+ 1000 ms（`host_wait_add_ms`）+ 転送の時間。待ちは、要求を書き終えた時から始める。同じ経路に先の要求が未解決の間は、その 1 つ前の要求の応答が届いた時から始める（probe は順に答える）。
-  転送の時間は UART bridge 以外では 0。UART bridge では (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒で、L はその要求のフレームの線の上の長さ、baud は口の今の速さ。その経路で confirm の応答を受け取るまで、host は max_frame として `min_max_frame`（64）を使う。その後は、そこでのいちばん新しい confirm の応答の max_frame を使う。シリアルの口が UART bridge かどうか分からない host（たとえば fn 0 の describe で経路の種類を読む前、§7.5）は、そのシリアルの口でこの転送の時間を数え、baud は自分がその口に設定した速さとする。この下限より長く待つことはいつでも許される。max_op_ms が 0 か `max_op_ms_max` を超えると読んだ host は、その probe を適合しないものとして扱い、使わない。待ちが過ぎたら §5.2 の送り直しに進む。
+- confirm の max_frame、window、max_inflight は、**その confirm が来た経路の**上限である。経路ごとに別々に数え、ある経路で未解決の要求は、ほかの経路の受けの余地を使わない。§5.2 の表は probe に 1 つのまま（セッションの要求は 1 つの経路で送る、[経路](oep-transports.ja.md) §3）。
+- **host の待ち時間**: 応答が来ないことは時間切れだけで判断する（[経路](oep-transports.ja.md) §1）。host は要求ごとに**少なくとも**次を待つ: その要求の引数で決まる時間（run の timeout_ms、
+  reset の hold_ms、dmi の待ちの和、save など。attach は `attach_budget_ms` にその reset TLV の hold_ms を足したもの、scan は `scan_budget_ms` + `attach_budget_ms`（[線とデバッグ](oep-if-debug.ja.md) §1）。無ければ 0。多くても max_op_ms、§7.5）+ 1000 ms（`host_wait_add_ms`）+ 転送の時間（[経路](oep-transports.ja.md) §6）。待ちは、要求を書き終えた時から始める。同じ経路に先の要求が未解決の間は、その 1 つ前の要求の応答が届いた時から始める（probe は順に答える）。
+  この下限より長く待つことはいつでも許される。max_op_ms が 0 か `max_op_ms_max` を超えると読んだ host は、その probe を適合しないものとして扱い、使わない。待ちが過ぎたら §5.2 の送り直しに進む。
 - **この下限はすべての要求に当てはまる**。host 自身のリンクの要求（confirm と `oep.link` の op）も含む。[リンク](oep-if-link.ja.md) §3 が port_speed の段階について決める待ち（新しい速さを確かめる confirm の前の 20 ms 以上、verify_ms、idle_ms、port_speed_idle_max_ms + 1000 ms の間の confirm の繰り返し）はそこで決めるとおりのまま。それらは要求と要求の間の時間で、応答を待つ時間ではなく、その間に送るどの要求についてもこの下限を縮めない。
-  [リンク](oep-if-link.ja.md) §3（host の義務 5）、§3.3、§3.4 が host に繰り返させる confirm は、それぞれ新しい corr の新しい要求で、§5.2 の送り直しではない: host は、前の confirm の下限が過ぎる前に次を送ってよい。後から届いた前の corr への応答は受けるか読み飛ばし、下限が過ぎる前に前の confirm を答えが無いものとは扱わない。`oep.link` の op はこのように繰り返さない。どれも自分の下限まで待つ。
+  [リンク](oep-if-link.ja.md) §3（host の義務 5）、[経路](oep-transports.ja.md) §3、§4 が host に繰り返させる confirm は、それぞれ新しい corr の新しい要求で、§5.2 の送り直しではない: host は、前の confirm の下限が過ぎる前に次を送ってよい。後から届いた前の corr への応答は受けるか読み飛ばし、下限が過ぎる前に前の confirm を答えが無いものとは扱わない。`oep.link` の op はこのように繰り返さない。どれも自分の下限まで待つ。
 
 ## 5. 立て直しと送り直し
 
 ### 5.1 区切りの立て直し（長さつきのフレーム）
 
-長さつきのフレーム（vendor bulk、HID、TCP）で、host は、corr の合わない応答、あり得ない長さ（max_frame を超える）、途中で
-止まったフレーム（続きが 200 ms 来ない。TCP を除く: TCP ではフレームの途中の休みは普通のことで、host はそのフレームを読み続ける、§3.2）を見たら、入力が 50 ms（`resync_quiet_ms`）静かになるまで読み捨て、confirm を送って自分の corr の応答が返ることを
-確かめてから再開する。応答の末尾の TLV が途中で切れていたら、その応答は壊れている。通知が流れ続けて入力が静かにならないときは、
-unsubscribe と end を確かめずに送ってよい（二度実行しても害がない）。COBS のフレームは CRC で壊れたものを捨てられるので、
-この手順は要らない。
-
-立て直しの confirm の前と、長さつきのフレームの口を開いて最初の confirm の前には、host は、50 ms 静かな入力に加えて、その口に最後に書いてから `host_resync_wait_ms`（registry、250 ms = probe_frame_gap_ms + 50 ms）が過ぎるまで待つ。TCP では、代わりに接続を閉じて新しく開いてもよい（長すぎる長さの後は、probe が閉じている、§3.1）。
+長さつきのフレーム（vendor bulk、HID、TCP）では、host は [経路](oep-transports.ja.md) §5 のとおりに区切りを立て直す。COBS のフレームは、壊れたものを CRC で捨てる。
 
 ### 5.2 送り直しと重複排除
 
 - 応答が壊れたか来なかったとき、host は**同じ corr で 1 回送り直してよい**（registry の `resend_max`。状態を変える要求も）。セッションが口を持っている間
-  （§3.4、生の転送は止まっている）に届いた壊れたフレームは、待っている答えのものとして扱ってよく、待ち時間を待たずに送り直してよい。立て直しの中で unsubscribe
+  （[経路](oep-transports.ja.md) §4、生の転送は止まっている）に届いた壊れたフレームは、待っている答えのものとして扱ってよく、待ち時間を待たずに送り直してよい。立て直しの中で unsubscribe
   と end を送ったときは、セッションが終わっているので、元の要求は送り直さない。
-- 送り直しの待ち時間も答えなしに過ぎたら、host はその経路が失敗したとして扱う: その要求の結果は分からず、その経路で出ている要求もいっしょに失敗する。そこで何かを送る前に、host は §5.1 の confirm で立て直す（COBS を含むどの種類のフレームでも: 入力が静かになってから、自分の corr を持つ応答が返る confirm）か、経路を閉じて開き直す。その confirm で boot_id が変わっていれば再起動（§6.5）。立て直した後、host は状態を変える要求を繰り返す前に状態を読む。
+- 送り直しの待ち時間も答えなしに過ぎたら、host はその経路が失敗したとして扱う: その要求の結果は分からず、その経路で出ている要求もいっしょに失敗する。そこで何かを送る前に、host は [経路](oep-transports.ja.md) §5 の confirm で立て直す（COBS を含むどの種類のフレームでも: 入力が静かになってから、自分の corr を持つ応答が返る confirm）か、経路を閉じて開き直す。その confirm で boot_id が変わっていれば再起動（§6.5）。立て直した後、host は状態を変える要求を繰り返す前に状態を読む。
 - probe は、最後のセッションの id を持った要求について、直近の max_inflight 個以上の (corr, fn, op, 要求の payload の CRC-32,
   応答) と、そのセッションで最も新しい corr を覚えておく。**要求の同一性は corr だけで決まる**（§4.1 の順序）。CRC は host の
   番号付けの誤りを見つけるためだけのもの。
 - probe は、最後のセッションの要求のうち §4.3 の順 2 を通ったものすべての応答を、rejected の応答も含めて覚え、それに合わせて最も新しい corr を進める。rejected になった要求を直して送る host は、新しい corr で送る。
-- §5.2 はどの probe（OEP の要求に自分で答えるどの端点も、§3.1）にも、TCP を含むどの経路でも掛かる。TCP はフレームを失わないが、応答が遅れれば host は待ち（§4.4）の後に送り直すので、probe は要求を二度実行しないように表を持つ。表は probe に 1 つで、セッションと同じく、すべての経路と TCP の接続で共有する。OEP の probe に中継するだけのブローカーは自分の表を持たない。corr を付け直すときは、client の送り直しを、最初に使ったのと同じ corr で中継する。そのために、受けた client の接続ごとに、client の corr から上流で使った corr への対応を、少なくともその client の直近の max_inflight 個の要求について持ち、その接続が閉じたら捨てる。
+- §5.2 はどの probe（OEP の要求に自分で答えるどの端点も、[経路](oep-transports.ja.md) §1）にも、TCP を含むどの経路でも掛かる。TCP はフレームを失わないが、応答が遅れれば host は待ち（§4.4）の後に送り直すので、probe は要求を二度実行しないように表を持つ。表は probe に 1 つで、セッションと同じく、すべての経路と TCP の接続で共有する。OEP の probe に中継するだけのブローカーは自分の表を持たない。corr を付け直すときは、client の送り直しを、最初に使ったのと同じ corr で中継する。そのために、受けた client の接続ごとに、client の corr から上流で使った corr への対応を、少なくともその client の直近の max_inflight 個の要求について持ち、その接続が閉じたら捨てる。
 - 最後のセッションの session_id を持つ要求は、**§6.2 の判定より先に**次のとおり見る（ロックが空いていても同じ）。open は表で
   引かない（送り直した open は §6.2 で決まる）:
   - 表に同じ corr があり、fn、op、CRC が同じなら、**実行せずに覚えた応答を返す**。ロックの状態も lease も変えない（送り直した
@@ -540,14 +406,14 @@ open の応答も boot_id を持つ: 知っていた boot_id と比べる host �
 応答: "OEP!"、revision(u8)、flags(u8)、max_frame(u16)、window(u32)、max_inflight(u8)、boot_id(u32)、[TLV]
 ```
 
-- TLV 0x01 transport（u8）: この confirm が来た経路の index（§7.5）。probe は必ず付ける。同じ接続で返す fn 0 の describe の entry を指す（中継のブローカーからは 0xFF、§3.1）。port_speed（UART bridge、[リンク](oep-if-link.ja.md) §3）と bind（シリアルの口、[probe の設定](oep-if-probe-config.ja.md) §1.2）が TCP の index を取ることはない。
+- TLV 0x01 transport（u8）: この confirm が来た経路の index（§7.5）。probe は必ず付ける。同じ接続で返す fn 0 の describe の entry を指す（中継のブローカーからは 0xFF、[経路](oep-transports.ja.md) §1）。port_speed（UART bridge、[リンク](oep-if-link.ja.md) §3）と bind（シリアルの口、[probe の設定](oep-if-probe-config.ja.md) §1.2）が TCP の index を取ることはない。
 
 host は扱えるプロトコルの revision の範囲を送り、probe はその中で扱える最大の revision を返す。範囲に扱えるものが無ければ
-rejected unsupported（下）。flags は予約（0）。max_frame は 64 以上（§3.3）、window は max_frame 以上、max_inflight は 1 以上。この範囲を外れた confirm の応答を受けた host は、その経路を使えないものとして扱う: そこにはもう何も送らず、値を知らせる。host は flags のビットを無視する（予約、§2.4）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も 64 byte に収まる
-（§3.3）。
+rejected unsupported（下）。flags は予約（0）。max_frame は 64 以上（[経路](oep-transports.ja.md) §3）、window は max_frame 以上、max_inflight は 1 以上。この範囲を外れた confirm の応答を受けた host は、その経路を使えないものとして扱う: そこにはもう何も送らず、値を知らせる。host は flags のビットを無視する（予約、§2.4）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も 64 byte に収まる
+（[経路](oep-transports.ja.md) §3）。
 
-- confirm の要求とその応答の固定部分、magic の `OEP?` / `OEP!`、confirm の前の規則（64 byte、§3.1 のフレーム、§3.3）は、どのプロトコルの revision でも同じ。
-- probe が選んだ revision は、**その confirm が来た経路**の、両方向のすべての message に、その経路の次の confirm まで掛かる。経路ごとに違う revision で動いてよい。TCP では、経路は受けた接続ごとである（§3.1）。
+- confirm の要求とその応答の固定部分、magic の `OEP?` / `OEP!`、confirm の前の規則（64 byte、[経路](oep-transports.ja.md) §1 のフレーム、[経路](oep-transports.ja.md) §3）は、どのプロトコルの revision でも同じ。
+- probe が選んだ revision は、**その confirm が来た経路**の、両方向のすべての message に、その経路の次の confirm まで掛かる。経路ごとに違う revision で動いてよい。TCP では、経路は受けた接続ごとである（[経路](oep-transports.ja.md) §1）。
 - ある経路で最初の confirm をした後、host はそこでの後の confirm（立て直し、探り直し）ではすべて、`min_rev = max_rev =` 使っている revision を送る。
 - 範囲の中に扱える revision が無いとき: rejected unsupported で、payload は tag 0x00 の後に TLV 0x01 supported（min(u8)、max(u8): probe が扱える範囲）。`min_rev > max_rev` は rejected malformed。
 
@@ -621,7 +487,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 |---:|---|---|
 | 0x40 | firmware | text |
 | 0x41 | model | text。probe の種類（同じ firmware を載せた同じ種類のハードウェアで同じ値。個体では変わらない）。**小文字の `a-z 0-9 -`**、1〜32 byte（registry の `model_max_bytes`）。project のものでない model は、作り手の逆 DNS の名前の `.` を `-` に替えたもので始める（例 `com-example-probe1`） |
-| 0x42 | unit_id | 個体の ID。**必須**。text で 1〜32 byte、使える文字は `a-z 0-9 -` だけ（チップの固有の番号を小文字の 16 進にしたもの、など）。同じ probe の経路を host がまとめるのに使うので、どの経路の describe でも同じ値を返す。USB の serial number と同じ（§3.3）。host が probe を名指す値（アドレス `oep://<unit_id>/<スロットの名前>`、[probe の設定](oep-if-probe-config.ja.md) §1.1） |
+| 0x42 | unit_id | 個体の ID。**必須**。text で 1〜32 byte、使える文字は `a-z 0-9 -` だけ（チップの固有の番号を小文字の 16 進にしたもの、など）。同じ probe の経路を host がまとめるのに使うので、どの経路の describe でも同じ値を返す。USB の serial number と同じ（[経路](oep-transports.ja.md) §3）。host が probe を名指す値（アドレス `oep://<unit_id>/<スロットの名前>`、[probe の設定](oep-if-probe-config.ja.md) §1.1） |
 | 0x43 | channels | u16。channel の数 |
 | 0x44 | reserved | base(u16)、bitmap。bit i が立っていれば、channel base+i は probe が自分で使っていてインターフェースに割り当てない channel |
 | 0x45 | profile | text。治具などの配線の名前 |
@@ -629,14 +495,14 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x47 | resets_on_open | u8。経路を開くと probe がリセットするか |
 | 0x48 | — | 予約 |
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8): USB CDC（kind 2）は CDC の通信の interface の bInterfaceNumber（その機能の最初の interface）。内蔵の USB シリアル（kind 3）は、ハードウェアが見せるその同じ番号、probe が知れなければ 0xFF。vendor bulk と HID はその interface の番号。UART bridge（kind 1）と TCP は 0xFF。probe の経路ごとに 1 つ。**必須** |
-| 0x4A | discoverable | u8。1 = probe はプロジェクトの USB の VID:PID（§3.3）でも列挙している（今の経路がそうでなくても）。それで列挙しない probe は 0 |
+| 0x4A | discoverable | u8。1 = probe はプロジェクトの USB の VID:PID（[経路](oep-transports.ja.md) §3）でも列挙している（今の経路がそうでなくても）。それで列挙しない probe は 0 |
 | 0x4B | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す（§8） |
 | 0x4C | chip | text。probe の MCU の型番とリビジョン: `<part> v<revision>`。part は `a-z 0-9` の 1〜24 文字。revision は数字で、`.数字` の組が続いてよい。リビジョンが分からなければ part だけ（例 `abc123 v1.0`、`abc123`）。取ったデータに、どのチップで取ったかを残すため（任意） |
 | 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。1〜600000（`max_op_ms_max`、10 分）。超えうる op（run、dmi の待ちの和、キャプチャの start、save、attach の reset の hold_ms）は、引数の和がこれを超えれば rejected unsupported。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host は §4.4 のとおり待つ |
 | 0x4E | — | 予約 |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 内蔵の USB シリアル（MCU のハードウェアが持つ USB のシリアルの口で、serial number を含む USB の記述子を probe が選べないもの）、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
-  1〜3 がシリアルの口（§3.4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
+  1〜3 がシリアルの口（[経路](oep-transports.ja.md) §4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
   使う。probe の起動の間は変わらない。
 - **経路の index の不変性**: 経路は、同じ model の firmware の版を越えて index を保つ。経路を足す firmware は、それまで使っていない index を付け、外した index は使い直さない。
 - host は transport の数で、ロックの奪い方を決めてよい（経路がシリアルの口 1 つだけなら、口を排他で開けた時点で前の持ち主は
@@ -644,7 +510,7 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 - **unit_id の一意性**: unit_id は個体ごとに違う値にする（チップの固有の番号、など）。保存はあるが固有の番号の無い probe は、最初の起動で乱数から unit_id を作って保存する。
   どちらも無い probe は `x-` で始まる unit_id を使う（一意ではない）。host は `x-` で始まる unit_id で経路をまとめず、それで probe を名指さず、セッションを越えて持つもの（たとえば口のリンクの速さの記録）のキーにしない。同じ口のほかの個体が何も引き継がないためである。
 - **unit_id の不変性**: unit_id は個体の値（チップの固有の番号、保存した乱数。`x-` の unit_id だけは例外）だけから作り、firmware の版、profile、ビルド、経路の種類で
-  変えない。接尾辞を足さない。host と OS は unit_id（= USB の serial number、§3.3）で probe を覚える。
+  変えない。接尾辞を足さない。host と OS は unit_id（= USB の serial number、[経路](oep-transports.ja.md) §3）で probe を覚える。
 
 ### 7.6 アドレス
 
@@ -741,7 +607,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 
 - 受け取ったフレームを role で振り分ける。corr で照合するのは role 0x02 だけ（0x05 / 0x06 のバイト 1〜2 は fn）。
 - 知らない role のフレームと、待っていない corr の応答は捨てる（シリアルの口では、生のバイトが偶然フレームに見えたものもこれで
-  捨てる、§3.4）。
+  捨てる、[経路](oep-transports.ja.md) §4）。
 - 通知が届き続けても、応答を待つ処理と受信を読む処理が締め切りどおりに終わるようにする。
 
 ### 11.2 形
@@ -782,7 +648,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 
 1. **応答を先に送る。** 届いている要求をすべて処理してから、通知を送る。
 2. **送りかけの通知を小さく保つ。** 経路の送信バッファに、送りかけの通知を max_frame × 2 byte を超えて
-   ためず、書き込みで待たない。入らない通知は probe の中で捨てる（seq の抜けで分かる、§11.3）。シリアルの口では host の OS の受けの量（§3.4）も上限で、host が min_bytes で伝える。
+   ためず、書き込みで待たない。入らない通知は probe の中で捨てる（seq の抜けで分かる、§11.3）。シリアルの口では host の OS の受けの量（[経路](oep-transports.ja.md) §4）も上限で、host が min_bytes で伝える。
 3. 通知は、その fn の subscribe が来た経路に送る。
 
 ## 12. core（fn 0）の操作一覧
@@ -855,14 +721,3 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 - [host 開発ガイド](host-development-guide.ja.md)、[probe 開発ガイド](probe-development-guide.ja.md): 実装の実務。
 - [適合](conformance.ja.md): probe と host のチェックリスト。
 - [安全とセキュリティ](security.ja.md)、[用語集](glossary.ja.md)、[版と安定性](versioning.ja.md)。
-
-## 16. 参照する仕様
-
-OEP のフレームと message は、この文だけで定まる。USB の経路を出す probe は、次にも従う:
-
-| 仕様 | 使う部分 |
-|---|---|
-| Universal Serial Bus Specification, Revision 2.0 | 列挙、device と interface の記述子、serial number の文字列、bulk 転送と長さ 0 のパケット（§3.1、§3.3） |
-| USB Class Definitions for Communications Devices 1.2 とその PSTN subclass（CDC ACM） | USB CDC のシリアルの口の CDC ACM の機能: その interface、line coding、制御線（§3.3、§3.4） |
-| Device Class Definition for HID 1.11 | vendor 定義の input と output の report、report ID、SET_REPORT（§3.1、§3.3） |
-| Microsoft OS 2.0 Descriptors Specification | vendor bulk の interface の compatible ID `WINUSB`（§3.3） |

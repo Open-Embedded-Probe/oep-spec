@@ -1,5 +1,5 @@
 {
-  "about": "COBS (core §3.1): the encoding alone, then whole serial-port frames (0x00 COBS(message + CRC-16 LE) 0x00).",
+  "about": "COBS (transports §1): the encoding alone, then whole serial-port frames (0x00 COBS(message + CRC-16 LE) 0x00).",
   "encode": [
     {
       "name": "no zero",
@@ -47,7 +47,7 @@
   "frames": [
     {
       "name": "confirm request on a serial port",
-      "spec": "core §3.1",
+      "spec": "transports §1",
       "message_hex": "010100000001000000004f45503f0101",
       "crc16": 38408,
       "frame_hex": "0003010101010201010101094f45503f0101089600"

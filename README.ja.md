@@ -22,7 +22,8 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
 
 **規範**（仕様）:
 
-- [OEP core](docs/oep-core.ja.md): 層、フレーム、メッセージ、セッション、発見、plan、資源の寿命、通知、インターフェースの書き方。
+- [OEP core](docs/oep-core.ja.md): 層、メッセージ、セッション、発見、plan、資源の寿命、通知、インターフェースの書き方。
+- [OEP の経路](docs/oep-transports.ja.md): フレーム、送り方、複数の経路、USB の見分け方、シリアルの口の共用、区切りの立て直し（本体の層）。
 - 標準インターフェース: [共通部品](docs/oep-if-common.ja.md)、[線とデバッグ](docs/oep-if-debug.ja.md)、
   [コンソール](docs/oep-if-console.ja.md)（framing: [dmseq](docs/target-console-dmseq.ja.md)）、[fixture](docs/oep-if-fixture.ja.md)、
   [キャプチャ](docs/oep-if-capture.ja.md)、[probe の設定](docs/oep-if-probe-config.ja.md)、[リンク](docs/oep-if-link.ja.md)。
@@ -63,7 +64,7 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
   （`pip install oep-client-python`）、`oep` の命令と偽の probe。
 
 USB の識別: host が OEP の probe を自動で見分けるのは、プロジェクトの USB の VID:PID `1209:4F45`（registry の `usb`）だけである。
-unit_id で名指した probe は USB の serial number で見つけ、confirm と describe で確かめる。それ以外は利用者が口を選ぶ（core §3.3）。
+unit_id で名指した probe は USB の serial number で見つけ、confirm と describe で確かめる。それ以外は利用者が口を選ぶ（transports §3）。
 VID:PID を使ってよい範囲: [PID-USE.ja.md](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/PID-USE.ja.md)。
 
 ## 貢献

@@ -13,11 +13,11 @@ capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定]
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
-| probe | probe | OEP を話す装置。OEP の要求に自分で答える端点もすべて | core §1、§3.1 |
+| probe | probe | OEP を話す装置。OEP の要求に自分で答える端点もすべて | core §1、transports §1 |
 | host | host | probe を使うソフトウェア | core §1 |
 | target | target | probe がつながる相手（開発中の MCU） | core §1 |
-| ブローカー | broker | 複数の道具を 1 つのセッションに束ねる host の側のソフトウェア。probe に対しては host | core §3.1 |
-| 中継のブローカー | relaying broker | セッションの op に自分で答え、ほかを 1 つの probe に中継するブローカー | core §3.1、§5.2 |
+| ブローカー | broker | 複数の道具を 1 つのセッションに束ねる host の側のソフトウェア。probe に対しては host | transports §1 |
+| 中継のブローカー | relaying broker | セッションの op に自分で答え、ほかを 1 つの probe に中継するブローカー | transports §1、core §5.2 |
 | core（本体） | core | どの probe と host も実装するもの。`oep.core`、fn 0 | core §0 |
 | 標準インターフェース | standard interface | `oep.` の名前で、番号がプロジェクトの registry にあるインターフェース | core §0、§13 |
 | 独立したインターフェース、拡張 | independent interface, extension | 逆 DNS の名前で、自分の文書が定めるインターフェース | core §0、§13 |
@@ -28,28 +28,28 @@ capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定]
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
-| 経路 | transport | OEP のフレームを運ぶもの: UART bridge、USB CDC、内蔵の USB シリアル、vendor bulk、HID、TCP（`transport_kind` 1〜6） | core §1、§3.1、§7.5 |
-| シリアルの口 | serial port | OS からシリアルデバイスに見える経路（kind 1〜3）。OEP と生のバイトを運ぶ | core §1、§3.4 |
-| UART bridge | UART bridge | probe の UART を USB-UART の変換チップで出したもの | core §3.1 |
+| 経路 | transport | OEP のフレームを運ぶもの: UART bridge、USB CDC、内蔵の USB シリアル、vendor bulk、HID、TCP（`transport_kind` 1〜6） | core §1、transports §1、core §7.5 |
+| シリアルの口 | serial port | OS からシリアルデバイスに見える経路（kind 1〜3）。OEP と生のバイトを運ぶ | core §1、transports §4 |
+| UART bridge | UART bridge | probe の UART を USB-UART の変換チップで出したもの | transports §1 |
 | 内蔵の USB シリアル | built-in USB serial | MCU のハードウェアが作る USB シリアルの口。記述子を probe が選べない | core §7.5 |
-| vendor bulk | vendor bulk | class 0xFF / 0x4F / 0x45 の interface の bulk の組 | core §3.1、§3.3 |
+| vendor bulk | vendor bulk | class 0xFF / 0x4F / 0x45 の interface の bulk の組 | transports §1、§3 |
 | 経路の index | transport index | probe の中の経路の番号。firmware をまたいで変えない | core §7.5 |
-| フレーム | frame | 経路の上の 1 つのメッセージと、その包み | core §3.1 |
-| COBS のフレーム | COBS frame | `0x00 COBS(message + CRC-16) 0x00`。シリアルの口で使う | core §3.1 |
-| 長さつきのフレーム | length-prefixed frame | `length(u16) message`。vendor bulk、HID の report、TCP で使う | core §3.1 |
-| 候補 | candidate | 0x00 から次の 0x00 までのバイト。フレームかもしれないものとして解く | core §3.1、§3.4 |
+| フレーム | frame | 経路の上の 1 つのメッセージと、その包み | transports §1 |
+| COBS のフレーム | COBS frame | `0x00 COBS(message + CRC-16) 0x00`。シリアルの口で使う | transports §1 |
+| 長さつきのフレーム | length-prefixed frame | `length(u16) message`。vendor bulk、HID の report、TCP で使う | transports §1 |
+| 候補 | candidate | 0x00 から次の 0x00 までのバイト。フレームかもしれないものとして解く | transports §1、§4 |
 | 壊れた候補 | broken candidate | 解けないか CRC の合わない候補 | link §3 |
-| 生のバイト | raw bytes | シリアルの口の、OEP のフレームの外のバイト（target のコンソールなど） | core §3.4 |
-| 生の転送 | raw transfer | シリアルの口と、それに結んだ流れの間で生のバイトを運ぶこと。セッションが口を使う間は止まる | core §3.4 |
-| フレームの途切れ | frame gap | フレームの途中の `probe_frame_gap_ms` の途切れ。probe は読み直す（TCP では読み直さない） | core §3.2 |
-| 区切りの立て直し | resync | 長さつきのフレームで、host が区切りを取り戻すこと | core §5.1 |
-| 起動時の速さ | boot speed | UART bridge の起動時の速さ、`uart_bridge_boot_baud` | core §3.4、link §3 |
+| 生のバイト | raw bytes | シリアルの口の、OEP のフレームの外のバイト（target のコンソールなど） | transports §4 |
+| 生の転送 | raw transfer | シリアルの口と、それに結んだ流れの間で生のバイトを運ぶこと。セッションが口を使う間は止まる | transports §4 |
+| フレームの途切れ | frame gap | フレームの途中の `probe_frame_gap_ms` の途切れ。probe は読み直す（TCP では読み直さない） | transports §2 |
+| 区切りの立て直し | resync | 長さつきのフレームで、host が区切りを取り戻すこと | transports §5 |
+| 起動時の速さ | boot speed | UART bridge の起動時の速さ、`uart_bridge_boot_baud` | transports §4、link §3 |
 | port_speed | port_speed | セッションの間だけ UART bridge を速くする任意の握手: 試す、決める、戻す | link §3 |
 | 握手 | handshake | port_speed のうち仕様が定める部分（速さの選び方は含まない） | link §3 |
 | 流し方 | flow | 向きと同時数。host が速さを確かめるときに使う | link §3 |
-| 探りの規則 | probing rule | 見分けていない device や口には confirm だけを送り、正しい応答が無ければ閉じる | core §3.3 |
-| 名指した probe | named probe | 利用者が unit_id で名指した probe | core §3.3 |
-| プロジェクトの VID:PID | project's VID:PID | `1209:4F45`（registry の `usb`）: host が probe を自動で見分ける唯一の USB の ID | core §3.3 |
+| 探りの規則 | probing rule | 見分けていない device や口には confirm だけを送り、正しい応答が無ければ閉じる | transports §3 |
+| 名指した probe | named probe | 利用者が unit_id で名指した probe | transports §3 |
+| プロジェクトの VID:PID | project's VID:PID | `1209:4F45`（registry の `usb`）: host が probe を自動で見分ける唯一の USB の ID | transports §3 |
 | discoverable | discoverable | fn 0 の describe の tag: プロジェクトの VID:PID でも列挙している | core §7.5 |
 
 ## メッセージ

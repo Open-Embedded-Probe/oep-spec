@@ -69,6 +69,11 @@ Text only, no wire change:
   The confirm repetition after a raised speed applies to every host on a UART bridge port and stays in the core (§3.3, §3.4); the old host
   obligation 7 is gone from the list (obligation 8 is now 7). Registry: fn 0 loses ops 0x14, 0x40 and 0x41 (fn 0 ops 0x40 to 0xEF are reserved),
   `port_speed_step` moves to `oep.link`; the timing comments point to oep-if-link.
+- The core is split (proposal 4.6), Japanese only while Japanese is the working text: the transports (frames, sending, several transports, USB
+  identification and the probing rule, serial-port sharing, the recovery of delimiting, the transfer time of the host's wait and the USB
+  references) move to the new `docs/oep-transports.ja.md` (sections 1 to 7); core §3 and §5.1 point to it and keep their numbers. Every
+  cross-reference of the Japanese documents, the registry comments, the tools and the vectors follows ("core §3.4" is now "transports §4").
+  No rule changes in the move.
 
 **Working language until the freeze** (user decision, 2026-10-06): until the v1 freeze the Japanese documents (`.ja.md`) are the working
 text; the English documents are marked out of date and are regenerated from the Japanese at the freeze, when English becomes authoritative.

@@ -54,7 +54,7 @@ OEP v1 は凍結の候補。凍結までは、壊す変更も **どの revision 
 | confirm の前の 64 byte | 交渉の前の約束。小さいほど安全 | — |
 | probe.config の項目のキー（slot u8、port u8、fn u16、channel u16） | 1 台の probe の中の数。u8 / u16 で足りる | — |
 | confirm に host の受けの上限を入れない | 応答の量は host が同時に出す要求の数で、通知の量は min_bytes で決める。probe が host の上限を知っても使い道が無い（通知に ack が無い） | confirm の非 critical の要求 TLV を後から |
-| max_frame は両方向の上限 | シリアルの口の受けの問題は 1 フレームではなく burst の量（core §3.4 の host の規則） | — |
+| max_frame は両方向の上限 | シリアルの口の受けの問題は 1 フレームではなく burst の量（transports §4 の host の規則） | — |
 | DFU / firmware の更新は OEP の外（core §0） | USB の記述子にすべてある。OEP が写しを持つと版ごとに食い違う。unit_id = USB の serial は変わらないので、焼く側は個体を見失わない | `oep.probe.firmware` のような名前つきのインターフェース |
 | read_block に `max_count` の宣言や専用の理由を足さない | max_length（byte）で表せる。断りは unsupported | address_hi は予約（RV64） |
 | port_speed で probe は速さの候補を宣言しない | 通る速さは host 側の変換チップで決まり、probe からは見えない。候補は host の表 | 「試した結果」を運ぶ要求 TLV を後から |
@@ -75,7 +75,7 @@ OEP v1 は凍結の候補。凍結までは、壊す変更も **どの revision 
 | describe の tag | 共通 0x01〜0x3E、インターフェース 0x40〜0x7F。どの固定の形とも同じく、describe の値は延ばさない（core §2.3、§7.4） |
 | probe.config の項目と線の名前 | 新しい項目の tag（項目の形は固定）。標準の線の名前は registry に（probe の設定 §1、§1.3） |
 | 新しいインターフェース | `oep.` の名前はこのリポジトリを通して。逆 DNS の名前は誰でも登録なしに（core §13） |
-| 新しい経路 | フレームの方式と一緒に新しい transport の kind を（core §3.1） |
+| 新しい経路 | フレームの方式と一緒に新しい transport の kind を（transports §1） |
 
 インターフェースの revision を上げる probe は、できれば古い revision も別の fn で出し続ける（core §2.7）。古い host が動き続けるように。
 
