@@ -166,6 +166,7 @@ uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than t
 uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)
 fixture_count_max = 255         # i2c-target / spi-target: u8 counts (pending, queued) stop at this (oep-if-fixture §3, §4)
 max_op_ms_max = 600000          # fn 0 describe max_op_ms is 1 to this (10 minutes); a host that reads 0 or more than this does not use the probe (core §7.5, §4.4)
+restart_after_answer_ms = 100   # fn 0 restart: the probe begins its restart at most this long after its answer has left the transport (core §6.6)
 
 [reference]                     # values that are not the specification's, outside the freeze (core, top)
 max_op_ms = 10000               # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
@@ -228,6 +229,7 @@ op = [
   { code = 0x11, name = "end", lock = true },
   { code = 0x12, name = "keepalive", lock = true },
   { code = 0x13, name = "lock_state", lock = false },
+  { code = 0x14, name = "restart", lock = true },       # optional, declared in ops: answers, then the probe restarts as from power-on (core §6.6)
   { code = 0x30, name = "subscribe", lock = true },
   { code = 0x32, name = "unsubscribe", lock = true },
 ]

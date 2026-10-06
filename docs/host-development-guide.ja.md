@@ -97,6 +97,31 @@ max_frame を使う（core §4.4）。
   デバッガが vendor bulk を持つ間に、HID で describe と state を読む）。
 - max_frame、window、max_inflight とプロトコルの revision は経路ごと（core §4.4、§7.1）: 使う経路ごとに confirm する。
 
+### 5.2 probe を再起動する（restart）
+
+fn 0 の restart（core §6.6）は、口を抜き差しせずに probe を起動し直す。おかしな状態になった probe の立て直しと、host 自身の
+「probe が再起動した」ときの道筋の試験に使う。任意の op なので、fn 0 の describe の ops（op 0x14 のビット）を見てから使う。持たない
+probe は unknown_operation で答える。
+
+1. ロックを取る（restart はロックの要る op。session_id 0 なら session_required）。保存したい設定があれば先に save する:
+   保存していない設定は再起動で無くなる（[probe の設定](oep-if-probe-config.ja.md) §2）。
+2. restart を送る。後ろに要求を続けない（どの経路にも）: 応答の後の probe は何も処理せず、答えない。
+3. completed success の応答が来たら、その probe の経路をすべて閉じる。UART bridge で port_speed を上げていたら、起動時の速さに
+   戻す（[リンク](oep-if-link.ja.md) §3 の host の義務 6）。
+4. `restart_after_answer_ms`（100 ms）以上待つ。probe はこの間に再起動を始める。
+5. 新しく開くのと同じに開き直す（§4、transports §3 の探りの規則: 最初は confirm）。USB では device が bus から外れて列挙し直す:
+   OS の口の名前が変わることがあるので、serial number（= unit_id）で探し直す。開けないか confirm に答えが無ければ、自分の決める
+   上限（たとえば 10 s。起動と列挙にかかる時間は probe と OS による）まで開き直しと confirm を繰り返す。UART bridge と TCP の口は
+   閉じずに残ることもあるが、同じ手順でよい。
+6. confirm の boot_id を restart の前のものと比べる。違えば再起動した: 覚えた fn の対応、資源の番号、ストリームの位置、セッションを
+   すべて捨て（core §6.5）、list し直し、要るなら新しいセッションを開く。前のセッションの id の要求は no_session で断られる。同じなら
+   restart は実行されなかったものとして扱う。
+7. 応答が来なかったときも 5〜6 と同じに確かめる。restart を同じ corr で送り直したときは、再起動した後の probe は no_session で
+   断る: それも再起動のしるしで、5〜6 に進む。
+
+再起動の後、保存した設定はどの起動とも同じに掛かる（at boot のスロットはまた attach する）。probe は再起動の前に connection を
+閉じて線を空きの状態にするが、target は reset せず、止めていた hart は止めたまま残る（core §6.6）。
+
 ## 6. 排他とロックの奪い方
 
 - **シリアルの口は必ず排他で開く**（Linux / macOS は `ioctl(TIOCEXCL)`、Windows は元から排他。transports §3）。排他でないと、応答の

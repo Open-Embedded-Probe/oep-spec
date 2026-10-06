@@ -388,6 +388,13 @@ def test_per_op_vectors_decode_exactly():
     def pay(name):
         return bytes.fromhex(by[name]["answer_hex"])[5:]
 
+    core = next(i for i in REG["interface"] if i["name"] == "oep.core")
+    restart = next(o["code"] for o in core["op"] if o["name"] == "restart")
+    for name in ("core restart: completed success, sent before the probe restarts", "core restart without a session: session_required",
+                 "core restart while no session holds the lock: no_session", "core restart not offered (not set in ops)"):
+        req = bytes.fromhex(by[name]["request_hex"])
+        assert struct.unpack_from("<HB", req, 3) == (0, restart) and len(req) == 10, name              # fn 0, no fixed part (core §6.6)
+    assert pay("core restart: completed success, sent before the probe restarts") == b""                 # completed success, no payload
     p = pay("rvswd connections: one connection with a target_id")
     assert p[0] == 0 and 1 + _fixed_sequence(p[1:], lambda b, i: 18 + b[i + 17]) == len(p)        # entry 18 bytes + tid
     p = pay("rvswd scan: one combination listed and found")

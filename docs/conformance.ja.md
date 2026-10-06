@@ -60,12 +60,13 @@ probe は、自分が出す transport とインターフェースについてこ
   discoverable は、probe がプロジェクトの USB の VID:PID で列挙するときだけ 1、ほかは 0（§7.5）。unit_id の一意性と不変性、transport の index の不変性（§7.5）。
 - plan: fn ごとに不可分、その断り方、設定の plan、解放したピンは idle の状態へ、起動したら最初の答えの前に reserved でないすべての channel を idle の状態へ、plan を取ってもピンは変わらない（§8、§8.1）。
 - 通知: subscribe / unsubscribe、seq、fn 0 の heartbeat、答えを先に送ることと溜める量の上限（§11.2〜§11.4）。
+- restart（任意、§6.6）: 持つときだけ ops に立てる。ロックの要る op として断る。答えは completed success で、それを先に送る。答えの後はどの transport の要求も処理せず、connection を閉じて reserved でない channel を空きの状態にし、答えが transport を出てから `restart_after_answer_ms` のうちに再起動する。再起動の後は電源を入れたときと同じ（新しい boot_id、保存した設定だけが残る）。
 
 **時間の上限**（値は `registry/oep-v1.toml`）
 
 - `probe_frame_gap_ms`（transports §2）。宣言した max_op_ms より長い要求はなく、超えうる op は断る（§7.5）。lease の範囲
   （§6.4）。heartbeat の周期（§11.3）。port_speed の verify_ms / idle_ms と戻る条件（[リンク](oep-if-link.ja.md) §3）。各 wire の attach と scan の予算
-  （[線とデバッグ](oep-if-debug.ja.md) §1）。
+  （[線とデバッグ](oep-if-debug.ja.md) §1）。restart の答えから再起動を始めるまでの `restart_after_answer_ms`（§6.6）。
 
 ## 2. host のチェックリスト
 
@@ -93,6 +94,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - **文字列**: 答えの文字を見せる前に制御文字と不正な UTF-8 を置き換える（§2.1）。unit_id とシリアル番号、unit_id どうしは ASCII の
   大文字小文字を区別せず比べる（transports §3）。`x-` の unit_id でまとめたり、名指したり、何かを覚えるキーにしたりしない（§7.5）。iProduct と
   インターフェースの文字列は表示だけ（transports §3）。`name#instance` と `oep://` のアドレス（§7.2、§7.6）。
+- **restart**: 使うときは、答え（または答えが来なかったとき）の後にその probe に何も送らずに閉じ、`restart_after_answer_ms` 以上待ってから新しく開くのと同じに開き直し（最初は confirm、UART bridge では起動時の速さ、USB では列挙し直すのを待つ）、confirm の boot_id が変わったことを確かめて覚えた状態を捨てる（§6.6、[リンク](oep-if-link.ja.md) §3 の host の義務 6）。
 - **port_speed**: host が使うときは [リンク](oep-if-link.ja.md) §3 の host の義務 1〜7。UART bridge のどの口でも、上げた速さの後に confirm を繰り返す（transports §4）。
 - **アナログのキャプチャ**: host が電圧を示すときは、値 0 と 2^b − 1 を電圧ではなく振り切れ（低い端以下、高い端以上）として示す
   （[キャプチャ](oep-if-capture.ja.md) §1.2 規則 6）。
@@ -132,7 +134,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `probe_config_hash.json` | probe.config の正規形と hash（[probe の設定](oep-if-probe-config.ja.md) §2） |
 | `refusals.json` | §4.3 の断り方と §2.3 の ignored の一覧について、要求とそのとおりの答え |
 | `sessions.json` | セッションの場面: 判定の表（§6.2）、送り直しの表（§5.2。送り直した end）、end での解放と no_session（§9）、force、session_id 0（§4.1）。決めた初めの状態から順に送る要求と答え |
-| `ops.json` | 標準インターフェースの op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.link`、gpio、rvswd、riscv-dm、console、probe.config、logic の一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
+| `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（fn 0 の restart、`oep.link`、gpio、rvswd、riscv-dm、console、probe.config、logic の一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
 
 実装は JSON を読み、自分の符号器、復号器、答えをバイト単位で比べる。ベクタが文書と registry に合っているかを確かめるには:
 

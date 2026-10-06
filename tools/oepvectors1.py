@@ -473,6 +473,20 @@ def ops() -> dict:
     unav = IFACE["oep.core"]["tlv"]["unavailable_payload"]
     cause = IFACE["oep.core"]["enum"]["unavailable_cause"]
 
+    # fn 0 restart (core §6.6): optional, declared in fn 0's ops; requires the lock; the answer has no payload
+    core = {"0": "oep.core"}
+    restart = op("oep.core", "restart")
+    add("core restart: completed success, sent before the probe restarts", "core §6.6", core,
+        "session S holds the lock; restart set in fn 0's ops; after this answer the probe restarts (a new boot_id, no session)",
+        request(0x10, 0, restart, b"", S), ok(0x10))
+    add("core restart without a session: session_required", "core §4.1, §4.3 order 1, §6.6", core, "restart set in fn 0's ops",
+        request(0x11, 0, restart, b""), rej(0x11, "session_required"))
+    add("core restart while no session holds the lock: no_session", "core §6.2, §6.6", core,
+        "restart set in fn 0's ops; lock free (for example: the probe has restarted since S opened)",
+        request(0x12, 0, restart, b"", S), rej(0x12, "no_session"))
+    add("core restart not offered (not set in ops)", "core §1.2, §4.3 order 1, §6.6", core, "fn 0's ops without restart",
+        request(0x13, 0, restart, b"", S), rej(0x13, "unknown_operation"))
+
     # oep.link (oep-if-link §1, §2)
     link = {"1": "oep.link"}
     add("link source: 8 bytes, byte k = k & 0xFF", "oep-if-link §2", link, "max_frame 1024",

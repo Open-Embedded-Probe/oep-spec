@@ -70,7 +70,7 @@ probe が実装しなければならない（MUST）もの:
 - fn 0 の describe の unit_id、transport、max_op_ms、discoverable（§7.5。プロジェクトの USB の VID:PID で列挙しない probe は 0）;
 - list に載せるすべての fn（fn 0 を含む）の describe の、共通の tag ops（§7.4）。
 
-plan_apply と plan_release は、どれかのインターフェースが plan の role（インターフェースの文書が plan を通して割り当てる role、§8。wire の attach が引数で選ぶピンの role は plan の role ではない）を持つときに要る。plan の role を持つインターフェースが 1 つも無い probe は、それらを持たない。任意: fn 0 のハートビート以外の通知、すべてのインターフェース（その中に、線の試験と port_speed を持つ `oep.link`、[リンク](oep-if-link.ja.md)）。
+plan_apply と plan_release は、どれかのインターフェースが plan の role（インターフェースの文書が plan を通して割り当てる role、§8。wire の attach が引数で選ぶピンの role は plan の role ではない）を持つときに要る。plan の role を持つインターフェースが 1 つも無い probe は、それらを持たない。任意: fn 0 の restart（§6.6）、fn 0 のハートビート以外の通知、すべてのインターフェース（その中に、線の試験と port_speed を持つ `oep.link`、[リンク](oep-if-link.ja.md)）。
 
 **必ず持つ op と任意の op。** インターフェースの op の表（fn 0 は §12、ほかはそのインターフェースの文書の op の表）の op は、そのインターフェースを list に載せる probe が必ず持つ。文書が任意と書いた op は除く。**すべての fn は、持つ op を 1 か所で宣言する: describe の共通の tag ops（0x09、§7.4）。** 必須の op はすべてそこに立てる。任意の op は、probe がそれを持つときに限り立てる。実験用の op（0xF0〜0xFF、§2.5）は決して立てない。
 
@@ -397,6 +397,25 @@ boot_id は probe の起動ごとに変わる値で、confirm（§7.1）と open
 
 open の応答も boot_id を持つ: 知っていた boot_id と比べる host は、open のときに再起動を知り、覚えた fn の対応を使う前に list をやり直す（§7.2）。
 
+### 6.6 restart（任意）
+
+```text
+要求: [TLV]
+応答: [TLV]（固定部分は無い）
+```
+
+probe 自身を起動し直す。host が、probe を抜き差しせずに、おかしな状態になった probe を立て直すためのもの。
+
+- **任意の op**（§1.2）: 持つ probe だけが fn 0 の ops に立てる。立てない probe への restart は rejected unknown_operation（§4.3 順 1）。
+- **ロックが要る**（§6.3）。断り方はロックの要るほかの op と同じ（§4.3）: session_id 0 は session_required、ロックが空いていれば no_session、別のセッションが持てば locked。restart は要求の TLV を定めない: 要求の TLV は §2.3 のとおり（critical なら rejected unsupported、そうでなければ無視して ignored に載せる）。
+- **応答が先**: 受け付けた restart に、probe は completed success で答える（payload は無い。ignored が要れば付ける）。restart は completed failed / partial を返さない。
+- **応答の後**: probe は、その応答が経路を出てから（応答の最後の byte を経路に渡し終え、probe が分かる所ではそれが送られてから）再起動を始める。始めるのは、そこから多くても `restart_after_answer_ms`（100 ms、registry）のうち。応答を送ってから再起動するまで、probe はどの経路の要求も処理せず（答えない。同じ経路で restart の後ろに来ていた要求も同じ）、通知を送らない。
+- **再起動の前に線の駆動をやめる**: probe はすべての connection を閉じ（target は必要以上に変えない: reset せず、止めていた hart は止めたまま。[線とデバッグ](oep-if-debug.ja.md) §2）、reserved（§7.5）でないすべての channel を、plan を解いたときと同じ空きの状態（§8）にする。
+- **再起動の後**は、OEP については電源を入れたときの起動と同じである: boot_id は新しい値（§6.5）。保存した設定は、どの起動とも同じに適用する（保存していない設定は残らない）。channel は §8 の起動時のとおり空きの状態。シリアルの口の速さは起動時の速さ（[リンク](oep-if-link.ja.md) §3）。セッション、ロック、§5.2 の表、購読、plan、connection、ストリームなど、前の起動のものは何も残らない（§9 の「probe の再起動」の行）。前のセッションの id の要求は no_session で断られる。
+- **経路**: 再起動のあいだ probe は経路に答えない。USB の経路では device が bus から外れて列挙し直してよく、TCP の接続は閉じてよい。host にはそれが、経路が閉じてまた開くことに見える。
+- **host の待ち方**: restart の応答を受けた host は、その probe にどの経路でも何も送らずに経路を閉じ、少なくとも `restart_after_answer_ms` 待ってから、新しく開くのと同じに開き直す: 最初に送るのは confirm で（[経路](oep-transports.ja.md) §3 の探りの規則。UART bridge では起動時の速さ）、USB では device が列挙し直すのを待つ。開けないか confirm に答えが無いあいだ、host は自分の決める時間まで開き直しと confirm を繰り返してよい（起動にかかる時間は probe による）。restart の応答を送った後の probe は何にも答えないので、その後に届いた confirm の応答は新しい起動のものである: host はその boot_id が restart の前と違うことを確かめ、§6.5 のとおり覚えた状態をすべて捨てる。
+- **応答が来なかったとき**: host は上と同じに開き直し、confirm の boot_id で確かめる（変わっていれば再起動した。同じなら restart は実行されなかったものとして扱う）。restart を同じ corr で送り直してもよい（§5.2）: 再起動した後の probe はそれを no_session で断る（表もロックも無い）。その no_session も再起動のしるしで、host は上と同じに開き直して boot_id を確かめる。
+
 ## 7. 発見
 
 ### 7.1 confirm
@@ -573,7 +592,7 @@ plan は **fn ごと**に持つ。
 | lease の期限切れ | 解放する | 終わる | 残る | end の後と同じ |
 | force で奪われる | 解放する | 終わる | 捨てる（奪った open が捨てる） | 奪った側が持つ間は locked、その後は no_session |
 | 同じ ID の open（保持中） | 残る | 残る（送り先はその経路） | 捨てる | — |
-| probe の再起動 | 無くなる（boot_id が変わる） | 無くなる | 無くなる | no_session |
+| probe の再起動（restart、§6.6 を含む） | 無くなる（boot_id が変わる） | 無くなる | 無くなる | no_session |
 
 - セッションとほかのものが共有する資源（slot も使う connection、bind も送るストリーム）では、セッションの持ち分だけが外れ、
   使う者が残らなくなったときに、インターフェースの文書のとおり閉じる。
@@ -664,6 +683,7 @@ probe から送る通知の仕組み。probe の対応は任意で、host は購
 | 0x11 | end | — | — | 必要 | 必須 |
 | 0x12 | keepalive | — | — | 必要 | 必須 |
 | 0x13 | lock_state | — | locked(u8)、remaining_ms(u32)、[TLV owner] | 不要 | 必須 |
+| 0x14 | restart | [TLV]（§6.6） | —（応答の後に probe が再起動する） | 必要 | 任意（ops で宣言、§6.6） |
 | 0x30 | subscribe | §11.3 | — | 必要 | 必須 |
 | 0x32 | unsubscribe | §11.3 | — | 必要 | 必須 |
 

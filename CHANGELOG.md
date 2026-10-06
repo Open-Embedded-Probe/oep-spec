@@ -124,6 +124,12 @@ New documents (oep-transports) are Japanese only until then (core §0, README, C
 - USB identification: the project's USB VID:PID is `1209:4F45` (registry `usb.project_vid` / `usb.project_pid`). A host identifies an OEP
   probe automatically only by it; otherwise the user names the probe or chooses the port. Name-based discovery (iProduct) is gone.
   discoverable is 1 only for a probe that enumerates with the project's VID:PID (core §3.3, §7.5) (671ce9c, 1fca3cb).
+- fn 0 restart (op 0x14, optional, declared in ops; requires the lock): the probe answers completed success with no payload, stops processing,
+  closes its connections and puts every non-reserved channel in its free state, then restarts within `limits.restart_after_answer_ms`
+  (100 ms) after the answer has left the transport, as from power-on (a new boot_id, saved settings applied, nothing of the old boot kept).
+  The host closes, waits, reopens as a new open (confirm first; on USB the device may re-enumerate) and checks the new boot_id; a resend
+  after the restart gets no_session (core §6.6, §12; link §3 host obligation 6). ops.json has the answer and the refusals; conformance,
+  the host guide §5.2 and security §4 follow.
 
 ### Rule changes: standard interfaces
 
