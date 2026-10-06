@@ -2,7 +2,7 @@
 
 [English](v1-simplification-proposal-2026-10-06.md)
 
-Status: **提案**（規範ではない）。[2026-10-06 の外部レビュー](external-spec-review-2026-10-06.ja.md)に項目ごとに答え、規範文書と registry への変更を提案する。ユーザーが決め、`docs/oep-*.md` と `registry/oep-v1.toml` に変更が入るまで、ここに書いたことは効力を持たない。英語版が正であり、この日本語版はその翻訳である。
+Status: **提案**（規範ではない）。**適用の状態（2026-10-06）**: 表の「適用」の列の commit で規範文書と registry に入れた（ユーザーの判断 D1〜D4 と、ch32rv、WireSkein、bench の答えを入れて）。§7 の op ごとの byte vector は一部だけで、残りは CHANGELOG と下の 6.1 に書く。凍結までは日本語が作業の文になったので（同日のユーザーの判断）、`oep-transports` と分割は日本語だけで入れた。[2026-10-06 の外部レビュー](external-spec-review-2026-10-06.ja.md)に項目ごとに答え、規範文書と registry への変更を提案する。ユーザーが決め、`docs/oep-*.md` と `registry/oep-v1.toml` に変更が入るまで、ここに書いたことは効力を持たない。英語版が正であり、この日本語版はその翻訳である。
 
 ## 0. 要約
 
@@ -12,25 +12,25 @@ Status: **提案**（規範ではない）。[2026-10-06 の外部レビュー](
 
 目標を一文で言うと（レビュアーの言葉）: **固定形式は revision で守り、互換追加は TLV、意味が違うものは別 interface。**
 
-| レビューの項目 | 推奨 | wire の変更 | 破壊的 |
-|---|---|---|---|
-| 3.1 answer の sequence の len と op 表の食い違い | 採る（5.1 を通して）: element の len をどこにも置かない。規則は `count × element` の一つ | あり | あり |
-| 3.2 SDI / DMDATA の「(Reference)」 | 採る: そのまま規範とし、由来の注を消す（debug の一つも） | なし | なし |
-| 3.3 freeze 前の revision 1 | 一部採る: versioning §6 を決め、tag を明記する。実行時の edition 欄は置かない | なし | なし |
-| 3.4 HID の再構成 | 採る: 一本の byte stream、count 0、padding、report ID、途切れの規則 | なし | なし |
-| 3.5 外部仕様 | 採る: interface ごとの参照一覧。「文書だけで」の範囲を明記する | なし | なし |
-| 3.6 answer の enum の追加 | 一部採る: 3 つの条件。capability による opt-in は置かない | なし | なし |
-| 3.7 probe.config の paging の文 | 採る（文言） | なし | なし |
-| 3.8 候補の無い scan | 採る: completed success、tried 0、count 0 | なし | なし |
-| 4.2 interface のテンプレート | 一部採る: いま core §13 にチェックリスト、テンプレートの手引きは後で | なし | なし |
-| 5.1 拡張の道を 4 つに限る | 採る。末尾の省略可能な欄は固定部に入れる | あり | あり |
-| 5.2 end 後の resource を残さない、resume を無くす | 採る | あり | あり |
-| 5.3 request header を一つに | 一部採る: session_id（0 = なし）を持つ 10 byte の header 一つ。corr は u16 のまま | あり | あり |
-| 5.4 TLV header を一つに | 採る: `tag(u8), len(u16), value` | あり | あり |
-| 5.5 optional op の宣言を共通に | 採る: describe の共通 tag `ops`（base + bitmap）を全 fn に | あり | あり |
-| 5.6 core と transport の分離 | 採る: 3 つのファイル。link test と port_speed を `oep.link` へ移す（ユーザーの判断 D3） | あり（D3） | あり（D3） |
-| §7 試験の不足 | 一部採る: op ごとの byte vector と session / resend / paging のシナリオ。timing と電気は release 試験のまま | なし | なし |
-| §8 優先順位 | 順序を採る。3 項目を freeze 前へ移し、corr u32 は採らない（6.2） | — | — |
+| レビューの項目 | 推奨 | wire の変更 | 破壊的 | 適用 |
+|---|---|---|---|---|
+| 3.1 answer の sequence の len と op 表の食い違い | 採る（5.1 を通して）: element の len をどこにも置かない。規則は `count × element` の一つ | あり | あり | applied d8a1d92 |
+| 3.2 SDI / DMDATA の「(Reference)」 | 採る: そのまま規範とし、由来の注を消す（debug の一つも） | なし | なし | applied b69ec26 |
+| 3.3 freeze 前の revision 1 | 一部採る: versioning §6 を決め、tag を明記する。実行時の edition 欄は置かない | なし | なし | applied b69ec26 |
+| 3.4 HID の再構成 | 採る: 一本の byte stream、count 0、padding、report ID、途切れの規則 | なし | なし | applied b69ec26 |
+| 3.5 外部仕様 | 採る: interface ごとの参照一覧。「文書だけで」の範囲を明記する | なし | なし | applied b69ec26 |
+| 3.6 answer の enum の追加 | 一部採る: 3 つの条件。capability による opt-in は置かない | なし | なし | applied b69ec26 |
+| 3.7 probe.config の paging の文 | 採る（文言） | なし | なし | applied b69ec26 |
+| 3.8 候補の無い scan | 採る: completed success、tried 0、count 0 | なし | なし | applied b69ec26 |
+| 4.2 interface のテンプレート | 一部採る: いま core §13 にチェックリスト、テンプレートの手引きは後で | なし | なし | applied b69ec26 |
+| 5.1 拡張の道を 4 つに限る | 採る。末尾の省略可能な欄は固定部に入れる | あり | あり | applied d8a1d92 |
+| 5.2 end 後の resource を残さない、resume を無くす | 採る | あり | あり | applied 22e4319 |
+| 5.3 request header を一つに | 一部採る: session_id（0 = なし）を持つ 10 byte の header 一つ。corr は u16 のまま | あり | あり | applied d8a1d92 |
+| 5.4 TLV header を一つに | 採る: `tag(u8), len(u16), value` | あり | あり | applied d8a1d92 |
+| 5.5 optional op の宣言を共通に | 採る: describe の共通 tag `ops`（base + bitmap）を全 fn に | あり | あり | applied b015000 |
+| 5.6 core と transport の分離 | 採る: 3 つのファイル。link test と port_speed を `oep.link` へ移す（ユーザーの判断 D3） | あり（D3） | あり（D3） | applied 0222e0d（oep.link）、c0588aa（分割、日本語だけ） |
+| §7 試験の不足 | 一部採る: op ごとの byte vector と session / resend / paging のシナリオ。timing と電気は release 試験のまま | なし | なし | applied 23b591f（一部。残りは下） |
+| §8 優先順位 | 順序を採る。3 項目を freeze 前へ移し、corr u32 は採らない（6.2） | — | — | — |
 
 ## 1. すべての項目に共通の前提
 
@@ -372,6 +372,8 @@ monitor が 50 Hz で console を poll すると、線はいま 2250 B/s（11520
 - session の判断表（5.2）、resend の表、paging（describe、connections、state、segments）、plan の競合に **シナリオの vector**: 決まった初期状態からの（request の byte、answer の byte）の並び。このリポジトリの Python fake と、どの probe に対しても走らせる。
 - **timing、lease、途切れ、port_speed、電気の規則**は byte の vector にしない: 実機の probe での release 試験（release-testing）に残し、不足を conformance に明記する。
 - **いつ**: 4.1〜4.5 の wire の変更の後。vector を一度で書くためである。5.2 がその表を変えるので、session のシナリオから。
+
+**適用（23b591f、一部）**: `sessions.json`（判定の表、送り直した end、end の後の no_session、force、session_id 0）と `ops.json`（oep.link、gpio、rvswd、riscv-dm、console、probe.config、logic の 31 件）。**残り**: ほかの op（wire の attach / detach、arm-adi、fixture の uart / i2c-target / spi-target、analog と capture-group、probe.config の get / set / unset / save / erase の成功、console の open / write / close）、ページ送りの続き（describe、connections、state、segments）、plan と取り合い、completed failed / partial の payload。
 
 **影響。** このリポジトリのツールと試験。Python fake がそれを走らせる。Arduino probe の host 試験と ch32rv の fake probe は JSON を読み込んでよい。
 
