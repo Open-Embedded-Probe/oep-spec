@@ -1,6 +1,6 @@
 # v1 の規則の見直し: 残すか、簡単にするか、外すか（2026-10-07）
 
-Status: **proposal**（非規範）。利用者の判断を待つ。規則を変える項目は、利用者が選んだ後、決まりどおり ch32rv、WireSkein、bench に先に送る。言葉だけの直し（§3）は peers に回さずに入れてよい。
+Status: **記録**（非規範）。§3（言葉だけの直し）は 50bd986、§2（規則の変更）は 2026-10-07 に利用者の方針と peers（ch32rv、WireSkein、bench）の条件で適用した（§7: 項目ごとの commit と、案と違えたところ）。
 
 元にしたもの: 規範の文書を 4 つに分けて全部の規則を 1 行ずつ判定した見直し（core と経路、debug と common、console と dmseq と capture、fixture と probe-config と link と plan と restart）と、待っている提案（[v1-pending-proposals-2026-10-07](v1-pending-proposals-2026-10-07.ja.md) の Q1〜Q9、[v1-debug-link-proposal-2026-10-06](v1-debug-link-proposal-2026-10-06.ja.md) の P1〜P4）。前に決めたことは [凍結前の決定](v1-freeze-decisions.ja.md)、[ゼロベース再検討](v1-zero-base-proposal.ja.md)、[案と決めた経緯](v1-open-proposals.ja.md)、[規則の変更の提案 10-02](v1-rule-change-proposal-2026-10-02.ja.md) / [10-06](v1-rule-change-proposal-2026-10-06.ja.md)、[単純化の提案](v1-simplification-proposal-2026-10-06.ja.md)、[構成の見直し](v1-structure-proposal-2026-10-06.ja.md) で調べた。
 
@@ -35,6 +35,8 @@ Status: **proposal**（非規範）。利用者の判断を待つ。規則を変
 delete の多くは言い直しと理由の文で、規則は変わらない（§3）。規則が変わるものを §2 にまとめた。
 
 ## 2. 利用者に決めてもらうこと
+
+**適用済み**（2026-10-07）。項目ごとの commit と、案と違えたところとその理由は §7。
 
 前の決定の印:
 - 〔利用者〕 前に利用者が決めた（または「案のとおり」で採った）。**変えるには、はっきり決め直してもらう必要がある。**
@@ -293,3 +295,71 @@ spec からはこの文書を参照しない（規範の文に 1 つの実装を
 - WireSkein: capture の configure の応答（jitter_kind、rate_accuracy、frontend_used）、describe、chip。
 - bench: probe-config（錠、bind の mode、boot_reset、drive の kind）、port_speed。
 - 文書: conformance、glossary、security、host / probe 開発ガイド、getting-started、usb-identity、implementation-notes、英語版（凍結のときに作り直すなら後で）。
+
+## 7. §2 の適用（2026-10-07）
+
+利用者の方針（簡単、小さく、伸ばせる。前提の変わった前の決定は縛らない。食い違いは、守るべきものを決めて、それだけを守る 1 つの規則にする）と、
+peers の条件（WireSkein: データの意味のフィールドを残す。ch32rv: restart の 1 文、link の義務 6、DATA0 / DATA1 の書き戻し。bench: clock stretch を
+任意の op で残す、線の名前を残す）で §2 を適用した。外した tag、reason、op、enum の値は registry に予約として残し、v1 では使い直さない。
+
+commit（oep-spec）: A = dac3182（core と経路）、B = b9b30ad（debug と common）、C = a018203（console と dmseq）、D = 64a2776（capture）、
+E = c34ba22（fixture）、F = e8c7cd6（probe-config）、G = 678d854（link、plan、restart）、H = 5eb8ea6（ガイド、適合、用語集、安全、版、はじめに、
+CHANGELOG）。oep-probe-arduino: 1f36caf（`docs/implementation-limits.ja.md`、§4 の行き先）。
+
+| 項目 | commit | 案と違えたところと理由 |
+|---|---|---|
+| 1 ignored | A（link と debug の余白は A / B） | 0x7F は tag として予約に残す（外した番号は使い直さない）。**実装する TLV は bit 7 によらず同じに確かめる**（長さの違いは malformed、扱わない値は unsupported）。critical の bit が効くのは、probe が実装しない tag だけ。案は「知らない非 critical は無視」だけを書いたが、実装する TLV の扱えない値を critical でなければ黙って無視すると、target とデータを黙って害しうる（キャプチャの rate、gpio の drive）。これで 21 の例外も要らなくなる |
+| 2 時間と回数 | B（registry の 13 項目、[reference] は A） | 案どおり。scan の予算は「次の組で max_op_ms を越えそうなら止める（少なくとも 1 組）」に、block の余白の数は「要求と応答が max_frame に収まる」の文に。値は実装の限界の文書 §1.2 |
+| 3 断り方の順 | A | 案どおり。payload の中の fn の unknown_function は理由の表の定義（「見出しの fn、または payload で指す fn」）に入れた。refusals.json は理由が 1 つだけ当たる状態の例にした |
+| 4 スロットの錠 | F | 案どおり（bench）。スロットの wire は「スロットが乗る線（rvswd / swio）」にした（錠のための scheme の条件だった） |
+| 5 boot_reset | F | 案どおり（bench）。nrst / power_hi / power_lo は host の名前として残す。今までの動き（20 ms）は実装の限界の文書 §2.6 |
+| 6 bind の mode | F | 案どおり（bench） |
+| 7 port_speed | G（transports は A） | 案どおり。上げている口がある間の別の口の試すは unavailable cause 6（切り替えない）。`port_speed_idle_max_ms` は `port_speed_idle_ms` に改めた（idle_ms のフィールドが無くなり、最長ではなくなった）。義務 7（500000 と 1 秒）は host ガイド §17 の勧めにした（規範ではない） |
+| 8 describe の宣言 | A（core）、C（console）、D（capture） | **chip と model は残す**（自由な text、文字の規則と `model_max_bytes` は外す。WireSkein と ch32rv の条件）。firmware、unit_id も残す |
+| 9 corr_reused と CRC-32 | A | 案どおり。0x0D は予約 |
+| 10 list の prefix | A | 案どおり。`name#instance` は host ガイド §5.3 |
+| 11 i2c-target | E | **clock stretch は任意の op（ops で宣言、max_stretch_us）として残す**（bench の条件: 試験の実例がある）。op の番号は付け直さず、arm_rx 0x02 と reset 0x06 を予約にした。max_length を超えた書き込みは max_length までを積み errors + 1 |
+| 12 gpio の drive | E（probe-config の idle も E） | 案どおり。idle の drive は mode 0〜2 では見ない（入力に drive を強いる malformed の規則を作らない） |
+| 13 設定の hash | A | 案どおり。storage_hash は「保存を今の設定にした時の hash で、その後に変わっていなければ get の hash と同じ」と定めた（host が save の要否を判断できるように） |
+| 14 holder_* | A | 案どおり。cause 5 の説明に「設定の plan、disable、出力の idle、スロット」を足した |
+| 15 restart | G | **ch32rv の条件の 1 文を規範に残す**: 応答の後はどの経路にも答えず、restart_max_ms のうちに同じ経路で confirm に答える。target を reset しないことも残した（線を害さないため）。host の手順と中継は host ガイド §5.2 |
+| 16 ピンの無い wire | B | 案どおり（ch32rv の同意） |
+| 17 console の 20 ms | C | 案どおり。§7.5 の「長い要求の間もほかの経路とコンソールの読みを続ける」も外した（§3 の残り a） |
+| 18 reset の method | B | 案どおり。method の tag 0x01 と flags bit2 / bit3 は予約 |
+| 19 dmseq の host の義務 | C（書き戻しは B） | **DATA0 / DATA1 の書き戻しは riscv-dm に移して残す**（ch32rv: probe は自分の op の分、host は自分の dmi の一連の分を、hart を走らせる前に）。debug §4.6 の「閉じるときも DM を reset しない」は §2 の一般の規則に任せて外した |
+| 20 configure の応答 | D | **jitter_ns も外す**（timing の TLV ごと）、**frontend_used と reference は残す**（WireSkein の条件）。区画の flags bit2 は「予定の時刻を 1 サンプル周期以上過ぎたサンプル」で定めた |
+| 21 bit 7 の例外 | A、D、E、G | 1 の規則（実装する TLV は bit によらず確かめる）で、例外も「critical で送る」の host の義務も要らなくなった |
+| 22 search_retries | B | 案どおり。今の数え方は実装の限界の文書 §1.3 |
+| 23 `wch_dmi_7f` | B | `dmi_7f` |
+| 24 予約と未来の話 | A、B | op と enum の実験用の範囲（0xF0〜）も外し、予約にした（試すものは自分の名前のインターフェースで） |
+| 25 端の場合の断り | A、B、E、F | label の text は長さの規則だけ残す。スロットの name の文字の規則は残す（host のアドレスの書き方に要る）。frontend の同じ role の重複は矛盾として残す |
+| 26 ほかの小さな規則 | A、E、F | 起動の順は「disable と idle をほかのどの項目より先に」（disable の pin を一度も駆動しないため disable も入れた） |
+| P1 | B | 案どおり（debug §2 の 1 文）。rvswd の wake が target をリセットしうることを §3.1 に書いた |
+| P2 + P3 | B | 案どおり（一般の 1 文）。target が受けなかったと答えた書き込み（DMI の busy、SWD の WAIT）は除く |
+| P4 | 1f36caf | 実装の限界の文書 §1.4 |
+| Q1 | B | 案どおり（stopped 3 not_run、registry に足した） |
+| Q2 | H | host ガイド §14。実装の限界の文書 §1.5 にも |
+| Q3 | F | 案どおり。条件は実装の限界の文書 §2.1 |
+| Q4 | 1f36caf | 実装の限界の文書 §2.2（firmware の変更はこれから） |
+| Q5 | B | 案どおり（common §1.3、すべての kind） |
+| Q6 | H | host ガイド §8。実装の限界の文書 §5 |
+| Q7 | G、H | 15 で問いが消えた。利用者が前もって頼んだ開き直しは、利用者が開き直すことに当たる（host ガイド §5.2） |
+| Q8 | H | host ガイド §17.3.2 の 4（上げた速さのまま先に送り直す、下がった後も probe は試すを受ける） |
+| Q9 | C、1f36caf | 案 A も B も採らない。今の firmware の動きと直す向きは実装の限界の文書 §4.1 |
+
+**§3 で残した項目**（同じ基準で決めた）:
+
+- core §7.5 の「max_op_ms の間もほかの経路とコンソールの読みを続ける」: 外す（A、C）。守るものが無い: ほかの経路の host は自分の待ちで
+  送り直し、コンソールの target は待つか出力を捨てるだけで、どちらも害にならない。1 つの MCU に並行の処理を求める重い規則になる。
+- transports §4 の上げた速さの後の confirm: §4 の 1 か所に規範として残し（守るもの: 前の host が上げた速さを待ち切らずに別の host があきらめる
+  こと）、時間は `port_speed_idle_ms` + `host_wait_add_ms`。§3 の探りの規則はそこを指す（A、G）。
+- debug §1「書いたものが読み戻らない速さは使わない」: 残す（化けた値を target に書かないための唯一の規則）。
+- debug §1 の max_speed の無い scan の速さ: 「その wire の最も遅い速さで試す」（B）。target を害しえない最も簡単な規則。
+- debug §4 の dmi の n = 0、max_reads / max_us = 0、n_out の重複: 1 行で答えが決まるので残す。
+
+**§6.1 のほか**: `resync_quiet_ms`、`host_resync_wait_ms`、`host_frame_pause_max_ms` を外し、規則は `probe_frame_gap_ms` で書いた（A）。
+`cobs_frame_max_bytes` と `host_serial_*` は host ガイド §2、§8 へ（A、H）。swd の送らない target_id / dpc、scan の kind riscv_dm、使わない attach の
+flags を予約にした（B）。`[reference]` の表は registry と生成の道具から外した（A）。規範の文は実装の限界の文書を指さない。probe ガイド §13（ガイド）だけが、参照の firmware の値の置き場として指す（H）。外した describe の 0x44〜0x45 などは、案と違い予約に残す。
+
+**大きさ**（規範の文書の行数と byte 数、適用の前 → 後）: core 690 → 631 行（75885 → 63843 byte）、transports 161 → 154 行（23711 → 22268 byte）、
+インターフェース（`interfaces/*.ja.md`）2165 → 1926 行（228214 → 191016 byte）。合わせて 3016 → 2711 行（327810 → 277127 byte、約 15 % 減）。
