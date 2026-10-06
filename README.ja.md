@@ -28,7 +28,7 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
   probe の設定、plan、再起動、リンク。一覧はその README にある。
 - [registry/oep-v1.toml](registry/oep-v1.toml): v1 の wire 上のすべての数の唯一の定義。`tools/oepgen1.py` がそこから
   `generated/oep-v1/`（C++、C、Python、JS）を作る。`python3 tools/oepgen1.py --check` で同期を確かめる。
-- [tests/vectors/](tests/vectors/): 機械で読める試験のベクタ（フレーム、ヘッダ、confirm、CRC、probe.config の hash、断り方）。
+- [tests/vectors/](tests/vectors/): 機械で読める試験のベクタ（フレーム、ヘッダ、confirm、CRC、発見、セッション、断り方、op）。
   `tools/oepvectors1.py` が文書から計算する。
 
 **ガイド**（規範ではない）:

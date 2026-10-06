@@ -35,7 +35,6 @@ probe の値（`tests/vectors/confirm.json` と `discovery.json` のもの）:
 | boot_id | 0x12345678（起動のたびに新しい乱数） | confirm、core §6.5 |
 | unit_id | `a1b2c3d4` | describe 0x42、core §7.5 |
 | transport | index 0、kind 1（UART bridge）、interface 0xFF（USB でない） | describe 0x49、confirm の TLV 0x01 |
-| discoverable | 0（probe はプロジェクトの USB の VID:PID で列挙しない） | describe 0x4A、core §7.5 |
 | max_op_ms | 1000 | describe 0x4D |
 
 host は要求に corr 1、2、3 と順に番号を付ける（core §4.1）。
@@ -77,12 +76,11 @@ answer       02 0200 00 0b | 00 | 01 02 00 01 01
 
 ### 3.2 list（core §7.2）
 
-ベクタ: `discovery.json` の "list everything from the first"。要求: `flags(u8) first(u16) prefix_len(u8) prefix` = 最初から
-すべての名前。
+ベクタ: `discovery.json` の "list everything from the first"。要求: `first(u16)` = 最初のインターフェースから。
 
 ```text
-message      01 0200 0000 02 00000000 | 00 | 0000 | 00
-serial frame 00 03 01 02 01 01 02 02 01 01 01 01 01 01 01 03 aa 9e 00
+message      01 0200 0000 02 00000000 | 0000
+serial frame 00 03 01 02 01 01 02 02 01 01 01 01 01 03 dc 47 00
 ```
 
 応答: `total(u16) count(u8)`、続いて項を前に長さを置かずに並べる: `fn(u16) instance(u16) revision(u8) flags(u8)
@@ -104,27 +102,26 @@ message      01 0300 0000 03 00000000 | 0000 | 0000
 serial frame 00 03 01 03 01 01 02 03 01 01 01 01 01 01 01 03 ea 30 00
 ```
 
-応答: `more(u8)`、続いて宣言の TLV。fn 0 でどの probe も出す 5 つ: ops（この fn が持つ op を base 0x01 と bitmap で示す、
-core §7.4。ここでは core §1.2 が fn 0 に求める 8 つ: confirm、list、describe、clock、open、end、keepalive、lock_state）、unit_id、transport（経路ごとに 1 つ）、max_op_ms（core §1.2）と discoverable（core §7.5。UART bridge は
-プロジェクトの USB の VID:PID で列挙しないので、ここでは 0）。
+応答: `more(u8)`、続いて宣言の TLV。fn 0 でどの probe も出す 4 つ: ops（この fn が持つ op を base 0x01 と bitmap で示す、
+core §7.4。ここでは core §1.2 が fn 0 に求める 8 つ: confirm、list、describe、clock、open、end、keepalive、lock_state）、unit_id、transport（経路ごとに 1 つ）、max_op_ms（core §1.2）。
 
 ```text
-message      02 0300 01 00 | 00 | 09 0400 01 0f 80 07 | 42 0800 61 31 62 32 63 33 64 34 | 49 0300 00 01 ff | 4a 0100 00 | 4d 0400 e8 03 00 00
-               completed success | more 0 | ops 01-04 10-13 | unit_id "a1b2c3d4" | transport: index 0、kind 1、interface 0xFF | discoverable 0 | max_op_ms 1000
-serial frame 00 03 02 03 02 01 01 03 09 04 07 01 0f 80 07 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4a 01 01 03 4d 04 03 e8 03 01 03 db 2e 00
+message      02 0300 01 00 | 00 | 09 0400 01 0f 80 07 | 42 0800 61 31 62 32 63 33 64 34 | 49 0300 00 01 ff | 4d 0400 e8 03 00 00
+               completed success | more 0 | ops 01-04 10-13 | unit_id "a1b2c3d4" | transport: index 0、kind 1、interface 0xFF | max_op_ms 1000
+serial frame 00 03 02 03 02 01 01 03 09 04 07 01 0f 80 07 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4d 04 03 e8 03 01 03 93 b4 00
 ```
 
-`first` が TLV の数（ここでは 5）以上の describe には、more 0 で TLV 無しで答える（core §7.3。`discovery.json` の
+`first` が TLV の数（ここでは 4）以上の describe には、more 0 で TLV 無しで答える（core §7.3。`discovery.json` の
 "describe fn 0 from beyond the last: more 0 and no TLVs"）:
 
 ```text
-request      01 0400 0000 03 00000000 | 0000 | 0500
+request      01 0400 0000 03 00000000 | 0000 | 0400
 answer       02 0400 01 00 | 00
 ```
 
 ### 3.4 ほかはすべて断る
 
-いちばん小さい probe は、ほかの要求を core §4.3 の順で最初に当たる理由で断る: 持たない fn は unknown_function、fn 0 に無い op は
+いちばん小さい probe は、ほかの要求を core §4.3 の見出しの順で断る: 持たない fn は unknown_function、fn 0 に無い op は
 unknown_operation。ここでは断りの応答に payload は無い（`discovery.json` の "refusals"）。
 
 ```text
@@ -145,10 +142,9 @@ probe がすることを順に（参照の先が規則）:
    （unknown_operation）、固定部分の長さ（malformed）を見る。
 3. **confirm**（payload は `OEP?` min_rev max_rev）: `min_rev > max_rev` は malformed。1 が [min_rev, max_rev] にあれば §3.1 のとおり答え、
    無ければ §3.1 のとおり断る。どの confirm の応答にも transport の TLV を付ける。flags は 0。
-4. **list**: 名前をラベルの境で照らし（`oep` は `oep.fixture.gpio` に合う。空の prefix はすべてに合う。fn 0 は載せない）、`first` から 1 つのフレームに入るだけ
-   項を入れる。total は合うものの総数。flags の bit 1〜7 が立った要求は unsupported（core §7.2）。
-5. **describe**: fn 0 なら `first` からの TLV（少なくとも ops、unit_id、transport、discoverable、max_op_ms。§3.3）を返す。入りきらなければ
-   more = 1。`first` が数以上なら more 0 で TLV なし。要求に TLV があれば malformed。boot_id が同じ間、値は変わらない（core §7.3）。
+4. **list**: インターフェースを `first` から 1 つのフレームに入るだけ項に入れる（fn 0 は載せない）。total はインターフェースの総数（core §7.2）。
+5. **describe**: fn 0 なら `first` からの TLV（少なくとも ops、unit_id、transport、max_op_ms。§3.3）を返す。入りきらなければ
+   more = 1。`first` が数以上なら more 0 で TLV なし。boot_id が同じ間、値は変わらない（core §7.3）。
    ops には、答える op だけを立てる（core §1.2）。この段の probe は confirm、list、describe の 3 つ（`01 07`: base 0x01、bitmap 0x07）
    で、§6 で op を足すごとにビットを立てる。§3.3 のバイト列は、§6 の 1 と 2 を終えて fn 0 の必須の op をすべて持つ probe のもの。
 6. **答える**: 同じ corr で、要求が来た経路に、来た順に、要求 1 つに応答 1 つ（core §4.2、§4.4）。シリアルの口では `0x00 COBS 0x00`。
@@ -204,7 +200,7 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 2. セッション: open、end、keepalive、lock_state と、lease、core §6.2 の判断の表。session_id の確かめ（session_required、no_session、
    locked）。end、lease の期限切れ、force のどれでも、セッションが作ったものを解放する（core §9）。
 3. core §5.2 の送り直しの表（少なくとも max_inflight 個、断りの応答も含め、成功した open のたびに捨てる）。
-4. core §4.3 の断り方の順のすべてと、core §2.3 の TLV の規則（critical、ignored、繰り返し、短い TLV と長すぎる TLV）。
+4. core §4.3 の断り方と、core §2.3 の TLV の規則（critical、知らない TLV、長さの違う TLV）。
 5. 通知を送り出すインターフェースがあれば、その fn の subscribe / unsubscribe と通知の送り方（core §11）。
 6. 欲しいインターフェース（[適合](conformance.ja.md) §3）。plan の role を持つインターフェースがあれば `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)）も。
 7. 任意: `oep.probe.link`（線の試験と、UART bridge の port_speed。[リンク](../interfaces/oep-if-link.ja.md)）、`oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)）、probe の設定（[probe の設定](../interfaces/oep-if-probe-config.ja.md)）、ほかの経路。

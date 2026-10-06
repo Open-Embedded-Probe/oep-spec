@@ -2,7 +2,7 @@
 
 [English](probe-development-guide.md)
 
-状態: **ガイド**（規範ではない。2026-10-06 にその日の規範の文に合わせて更新）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。probe を作る人のために、[OEP core](oep-core.ja.md) と
+状態: **ガイド**（規範ではない。2026-10-07 にその日の規範の文に合わせて更新）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。probe を作る人のために、[OEP core](oep-core.ja.md) と
 `oep-if-*.ja.md` が probe に求めることを満たす実務のやり方と、実際に踏んだ罠をまとめる。規範と食い違えば規範が正しい。host の側は [host 開発ガイド](host-development-guide.ja.md)。
 
 - 最初の一歩（confirm、list、describe に答えるいちばん小さい probe とバイト列）は [はじめに](getting-started.ja.md)、probe が
@@ -23,11 +23,11 @@
 - **経路の開閉では状態を変えない。** attach、ピン、線の状態はそのまま。資源を外すのは core §9 の寿命の規則のときだけ（明示の
   release / detach、lease の期限切れと force でのそのセッションの分）。外すときも target をリセットしない。解いたピンは設定の idle の
   状態（既定は Hi-Z）にし、駆動し続けない（core §8）。
-- **起動したら、答える前にピンをしまう。** 最初の応答の前に、`reserved` でないすべての channel を空きの状態にする: 設定が idle を
+- **起動したら、答える前にピンをしまう。** 最初の応答の前に、自分で使う channel を除くすべての channel を空きの状態にする: 設定が idle を
   定めればその idle、そうでなければ Hi-Z（入力、プルなし）（core §8）。MCU の起動のコードや周辺回路のドライバが残したままにしない。
   firmware が動くまで、ピンは MCU のリセットの状態で、どの firmware も変えられない。誤った水準が害になる線には外付けのプルが要る
   と利用者に伝える（[安全とセキュリティ](security.ja.md) §6）。
-- 開くとどうしてもリセットされる probe は、fn 0 の describe で `resets_on_open` を宣言する（core §7.5）。
+- 開くとどうしてもリセットされる probe は、その文書で利用者にそう伝える。
 
 ## 2. 送受信のバッファ
 
@@ -86,7 +86,7 @@ transports §4 の規則を守るための作り:
 
 口を開閉しても probe が再起動しないようにする（§1）。USB スタックの再起動のきっかけ（DTR / RTS の並び、1200 bps の「touch」、vendor の
 リセットの要求）をすべて切る。きっかけが firmware の外にあるとき（USB-UART の変換チップの先の自動リセットの回路）は、host が DTR と
-RTS を立てて開き（host ガイド §1）、それでもリセットするなら probe は `resets_on_open` を宣言する。例: ESP32 の USB-Serial/JTAG の口は、chip-reset-disable のビットを
+RTS を立てて開き（host ガイド §1）、それでもリセットするなら、その probe の文書で利用者に伝える。例: ESP32 の USB-Serial/JTAG の口は、chip-reset-disable のビットを
 立てないと DTR / RTS の並びでチップをリセットする。arduino-esp32 の TinyUSB の CDC（`USBCDC`）は `enableReboot(false)` で再起動しなくなる。
 
 ## 8. 推奨の USB の作り（VID:PID、iProduct、serial number、interface）
@@ -94,9 +94,8 @@ RTS を立てて開き（host ガイド §1）、それでもリセットする�
 ネイティブ USB を持つ probe のために:
 
 - **VID:PID**: host が自動で OEP の probe と見分けるのは、プロジェクトの USB の VID:PID `1209:4F45`（VID 0x1209、PID 0x4F45。
-  registry の `usb`。transports §3）だけ。probe は oep-probe-arduino の PID-USE の条件の下でそれを使う。それで列挙する probe は
-  fn 0 の describe の discoverable を 1 にする（別の口から開いた host にも分かる）。そうでない probe は 0 を返し、利用者が名指すか
-  口を選ぶ。USB-UART の bridge の向こうの口と、ハードウェアが記述子を決める内蔵の USB シリアルは、プロジェクトの VID:PID を
+  registry の `usb`。transports §3）だけ。probe は oep-probe-arduino の PID-USE の条件の下でそれを使う。それで列挙しない probe は、
+  利用者が名指すか口を選ぶ。USB-UART の bridge の向こうの口と、ハードウェアが記述子を決める内蔵の USB シリアルは、プロジェクトの VID:PID を
   持てない。
 - **iProduct** は人のための名前で、何もそれで probe を見分けない（transports §3）。
 - **serial number は unit_id**（transports §3）。利用者が unit_id で名指した probe は、host がこれで探す。
@@ -136,18 +135,17 @@ number と等しい（transports §3）。
 新しい経路には使ったことの無い index を付け、外した index は使い回さない。保存した bind はシリアルの口を index で指す（probe の設定
 §1.2）。
 
-**model**（0x41）: 小文字の `a-z 0-9 -`、1〜`model_max_bytes`（32）byte。同じ種類のハードウェアに同じ firmware なら同じ値で、個体ごとに
-変えない。プロジェクトのものでない model は、作り手の逆ドメイン名の `.` を `-` にしたもので始める（`com-example-probe1`）。
+**model**（0x41、任意）: 自由な文字列。同じ種類のハードウェアに同じ firmware なら同じ値にし、個体ごとに変えない。
 
-**firmware**（0x40）: 自由な文字列（ふつうは版）。**chip**（0x4C、任意）: `<part> v<revision>`。part は `a-z 0-9` の 1〜24 文字、
-revision は数字に任意の `.数字` の組。revision が分からなければ part だけ。
+**firmware**（0x40）: 自由な文字列（ふつうは版）。describe は宣言だけなので、起動ごとに変わる情報（前の起動の終わり方など）を入れない。
+**chip**（0x4C、任意）: 自由な文字列。MCU の型番とリビジョン（キャプチャの記録に、どのチップで取ったかを残すのに使われる）。
 
 **インターフェースとその順**（core §7.2）: probe が起動している間 fn は変わらない。同じ (name, revision) の instance は fn の昇順に
 数え、保存した設定はインターフェースを (name, instance, revision) で指す: 同じ名前のインターフェースの順を firmware の版をまたいで
 変えない。インターフェースの固定部分を変えるときは revision を上げ、できれば古い revision も別の fn で出し続ける（core §2.7）。
 
 **ピン**（core §7.4）: ピンを集合のどれにでも割り当てられる機能は role_channels を、組が決まっている機能は組ごとに channel_group を
-宣言する。両方を使ってもよい。probe 自身が使う channel は `reserved`（0x44）に、配線の固定の名前は `label`（0x46）に置く。plan に
+宣言する。両方を使ってもよい。probe 自身が使う channel はどの宣言にも載せず（インターフェースに割り当てない）、配線の固定の名前は `label`（0x46）に置く。plan に
 上限があれば `oep.probe.plan` の describe に plan_roles を宣言する（[plan](../interfaces/oep-if-plan.ja.md) §1）。
 片方向だけの UART（RX だけ、TX だけ）は、host が `oep.fixture.uart` の plan で片方の role だけを割り当てて使う。ピンの組が決まっている
 probe は、RX と TX の組のほかに、RX だけの組と TX だけの組も channel_group に別々に書く（channel_group は完全一致なので、書かないと片方だけの
@@ -157,16 +155,13 @@ plan を受けられない）（[fixture](../interfaces/oep-if-fixture.ja.md) §
 
 - max_frame: `min_max_frame`（64）以上。その長さの要求が 1 つ丸ごと受信の経路に入るように選ぶ（§2）。max_length のような
   インターフェースの上限は、要求と応答が max_frame に収まるようにする。
-- window: max_op_ms の間忙しくしている間に持てる、待っている要求の byte 数。max_frame 以上（core §7.1）。confirm の応答がこの範囲を
-  外れた経路を host は使わない。
+- window: max_op_ms の間忙しくしている間に持てる、待っている要求の byte 数。max_frame 以上（core §7.1）。
 - max_inflight: 受け付ける待ちの要求の数、1 以上（core §7.1）。送り直しの表は応答と一緒に少なくとも max_inflight 個を持つ（core §5.2）。メモリは
   max_inflight × 覚える最大の応答。覚える応答の大きさに上限を置いてよい（それより大きい応答の送り直しは result_lost になる）。
-- シリアルの口では、host は待つ応答の量を `host_serial_inflight_max_bytes` 以下に保つ（transports §4）。window を大きくしても host の
-  役には立たない。
+- シリアルの口では、host の OS の受けの量が先に限られる（host ガイド §8）。window を大きくしても host の役には立たない。
 
-**max_op_ms**（0x4D、必須）: 1 つの要求にかかる最長の時間。save と flash のローダーも含む。1〜`max_op_ms_max`（600000 ms。
-0 かそれより大きく宣言する probe を host は使わない、core §4.4）。引数がそれを超えうる op は unsupported で
-断る。host は来ない応答を max_op_ms + `host_wait_add_ms` 待つので、要る分よりずっと大きく宣言しない。
+**max_op_ms**（0x4D、必須）: 1 つの要求にかかる最長の時間。save、flash のローダー、attach、scan、reset も含む。1〜`max_op_ms_max`（600000 ms）。
+引数がそれを超えうる op は unsupported で断る。host は来ない応答を max_op_ms + `host_wait_add_ms` 待つので、要る分よりずっと大きく宣言しない。
 
 **boot_id**（core §6.5）: 起動のたびに新しい値。次の好ましい順に取る: ハードウェアの乱数。不揮発の記憶に置き、起動ごとに変える値
 （数え上げ、または保存した乱数）。どちらも無ければ、起動ごとに変わる値を混ぜたもの（初期化していない RAM、ADC の変換の雑音、
@@ -178,14 +173,14 @@ plan を受けられない）（[fixture](../interfaces/oep-if-fixture.ja.md) §
 clock（core §7.7）の応答の uptime_ns は、その要求を処理する中でこの時計を読んだ値にする（前に読んだ値を使い回さない）。host はその値を、
 自分が送った時と受けた時の中点に当てる。
 
-**session_id** は host が選ぶ。probe は最後のものを覚えるだけで、決して返さない（core §6.4）。
+**session_id** は host が選ぶ。probe は最後のものを覚えるだけ（core §6.1）。
 
 ## 11. probe の設定と保存
 
 `oep.probe.config` を list に出す probe のために（[probe の設定](../interfaces/oep-if-probe-config.ja.md)）:
 
-- **項目は tag ごとの一つの形で持つ**（critical の bit は落とす）。hash は正規形で計算する（probe の設定
-  §2）。自分の hash を `tests/vectors/probe_config_hash.json` で確かめる。
+- **項目は tag ごとの一つの形で持つ**（critical の bit は落とす）。hash は今の設定が変われば変わる u32 にする（作り方は probe が決める:
+  項目の TLV の CRC、変わるたびに進める数など。probe の設定 §2）。storage_hash は、保存を今の設定にした時（起動時か save）の hash。
 - **save は丸ごと置き換え、途中で電源が落ちても前の保存か新しい保存のどちらかが読める**（probe の設定 §2）。作り方の例:
   - 2 つの写し（A / B）。それぞれに通し番号と CRC を付ける: 新しい写しを古いほうに書き、確かめ、起動時は正しい写しのうち通し番号の
     大きいほうを使う;
@@ -193,13 +188,13 @@ clock（core §7.7）の応答の uptime_ns は、その要求を処理する中
   中身が保存と同じなら書かない（probe の設定 §2）。不要な save を送る host がいても flash を消耗させない。
 - **保存は、項目が指す fn ごとに (name, instance, revision) を持ち**、起動時に今の fn に書き換える。どれかが無いか revision が違う、
   または保存した bind の口がもうシリアルの口でなければ、保存全体を掛けない（読めない、理由 2）。
-- **起動の順**: 保存を今の設定にし、disable、idle（出力は強さと一緒に）、plan、uart を掛けてから、at boot の attach を始め、bind を
-  つなぐ（probe の設定 §2、§3.1）。
-- **max_bytes**（describe 0x40）は、いつでも保存できる正規形の長さ。識別子の表に要る分を引いて宣言する。
+- **起動の順**: 保存を今の設定にし、ほかのどの項目より先に disable と idle（出力は強さと一緒に）を掛ける（probe の設定 §2）。そのあと plan、uart、
+  at boot の attach、bind の順にするのが分かりやすい。
+- **安全な起動**: 起動してすぐ落ちることが続く probe は、at boot のスロットの attach を飛ばして起動してよい（probe の設定 §3.1:
+  試せるときに attach する。試さなかったことは slot_state 1 と last_try_at_ns で見える）。
+- **max_bytes**（describe 0x40）は、いつでも保存できる項目の TLV の byte 数の合計。識別子の表に要る分を引いて宣言する。
 - **安全**: 保存した設定は、起動のたびに host なしで線を駆動する。掛かる前のピンは MCU のリセットの状態にある（[安全とセキュリティ](security.ja.md) §6）。
   レベルを誤ると害のある線には、それだけで安全な level を保つ外付けの pull が要ることを利用者に伝える。
-- **boot_reset の保持の時間**は `slot_retry_reset_hold_ms`（20 ms）に決まっている。もっと長い保持の要るボードのために後から足すなら、
-  slot をキーにした新しい項目の tag にする（core §13.1: 新しい項目の tag は OEP の伸び方の一つ）。revision は変わらない。
 
 ## 12. target を扱う部品
 
@@ -227,16 +222,22 @@ clock（core §7.7）の応答の uptime_ns は、その要求を処理する中
   知らせない target は host が扱う: 汎用の名前のインターフェースに target 固有の知識を入れると core §13 の規則 8 に反する。
 - **ブロックのループを速くする変更は、線の上のタイミングを変えうる。** 残す前に複数の target で測る。
 - **コンソールの送りの列**（[コンソール](../interfaces/oep-if-console.ja.md) §2）: write は列の空きに入る分をすぐ受けて答え、target へは列から mechanism の
-  運び方で渡す（target の受け取りを待ってから答えない）。send_queue は 64 以上で、1 行のコマンドが 1 回の write に入る大きさを選ぶ
+  運び方で渡す（target の受け取りを待ってから答えない）。列の大きさは probe が決める: 1 行のコマンドが 1 回の write に入る大きさを選ぶ
   （max_frame から write の要求の見出しと固定部分を引いた分より大きくしても、1 回の write には入らない）。
 - **リセットを解いた後の待ち**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §3、§4.3）: ndmreset やリセットの線を解いた後に DM が答えない間は、
-  DMSTATUS を読み直して `reset_settle_ms`（700 ms）まで待つ。この間の失敗を、線の再試行の 200 ms にも線切れにも数えない。
+  DMSTATUS を読み直して待つ（多くても max_op_ms）。この間の失敗を、線の再試行にも線切れにも数えない。
+- **線の再試行は書き込みを繰り返さない**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）: 書いた後の確かめで線の失敗が分かったら、書き込みを
+  やり直さずに failed / partial で答え、done は失敗より前に済んだ数にする（target が受けなかったと答えた DMI の busy と SWD の WAIT は除く）。
+  connection の上の再試行と同期の取り直しでは、target をリセットしうる wake を送らない。
+- **コンソールの読みの順**（[コンソール](../interfaces/oep-if-console.ja.md) §3）: その connection の riscv-dm の要求に答えた後は、次にコンソールのために DATA0 を
+  読む前に DMSTATUS を読み、hart が止まっていれば読まない。
 
-## 13. 参照の firmware が宣言する値（規範が選び方を任せる所）
+## 13. 参照の firmware の値（規範が選び方を任せる所）
 
-- **model**（core §7.5、0x41）: チップの名前をハイフンなしの小文字で（`esp32p4`、`esp32`、`rp2040`、`rp2350`）。Arduino の profile の
-  名前と同じ。
-- **max_op_ms**（0x4D）: 10000（registry の `[reference]`）。
-- **chip**（0x4C）: 型番とリビジョン。例 `esp32p4 v1.3`、`rp2350 v2`。
+参照の firmware（oep-probe-arduino）が宣言する値（max_op_ms、model、chip）、線の時間と回数（再試行、線切れ、attach、scan、DM の待ち）と、
+platform ごとの限界は、そのリポジトリの
+[implementation-limits](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/implementation-limits.ja.md) にまとめてある。
+仕様はそれらの値を決めない。
+
 - **unit_id**: チップの固有の番号を小文字の 16 進で。
 - **UART bridge の起動時の速さ**: `uart_bridge_boot_baud`（§5）。

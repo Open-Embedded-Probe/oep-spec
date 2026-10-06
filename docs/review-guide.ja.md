@@ -2,7 +2,7 @@
 
 [English](review-guide.md)
 
-状態: **ガイド**（規範ではない）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。2026-10-06 時点の地図（v1 の凍結前。凍結前の決定とゼロベースの再検討を規範に入れ、残っていた数を埋めた後）。OEP をまだ知らない人が
+状態: **ガイド**（規範ではない）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。2026-10-07 時点の地図（v1 の凍結前。凍結前の決定とゼロベースの再検討を規範に入れ、規則の見直し（2026-10-07）で規則を減らした後）。OEP をまだ知らない人が
 v1 の凍結のレビューをするときに、どこから読めばよいか、どの PATH に何があるか、何を見てほしいかをまとめる。PATH は各リポジトリの根からの相対。
 
 ## 1. OEP とは
@@ -43,7 +43,7 @@ flash の書き方やチップ固有の手順は host にある。
 |---:|---|---|
 | 1 | `docs/project-concept.ja.md` | 目的と範囲（上流の合意）。短い |
 | 2 | `docs/versioning.ja.md` | **凍結の範囲**: 止めるもの、自由なもの、伸ばす道、revision を上げる意味。意図して固定するものと理由（§3.1） |
-| 3 | `docs/oep-core.ja.md` | **本体（規範）**。§0 層、§2 共通の規則（TLV、知らない値、番号の空間、revision）、§3 経路（`oep-transports` を指す）、§4 メッセージと reject reason（§4.3 に**断り方の順**）、§5 立て直しと送り直し、§6 セッション、§7 発見（confirm / list / describe）、§8 channel の空きの状態と資源の取り合い、§9 資源の寿命、§10 長い操作（予約）、§11 通知、§12 本体（fn 0）の op、§13 インターフェースの書き方。本体は名前を持たず、list に載らない。`docs/oep-transports.ja.md` は本体の層の経路とフレーム（フレーム、送り方、複数の経路、USB の見分け方と探りの規則、シリアルの口の共用、区切りの立て直し、待ちの転送の時間）。**port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3）は握手だけ**: 候補の選び方、確かめ、使用中の判定は `host-development-guide` §17 の参考の手順 |
+| 3 | `docs/oep-core.ja.md` | **本体（規範）**。§0 層、§2 共通の規則（TLV、知らない値、番号の空間、revision）、§3 経路（`oep-transports` を指す）、§4 メッセージと reject reason（§4.3 に**断り方**）、§5 立て直しと送り直し、§6 セッション、§7 発見（confirm / list / describe）、§8 channel の空きの状態と資源の取り合い、§9 資源の寿命、§11 通知、§12 本体（fn 0）の op、§13 インターフェースの書き方。本体は名前を持たず、list に載らない。`docs/oep-transports.ja.md` は本体の層の経路とフレーム（フレーム、送り方、複数の経路、USB の見分け方と探りの規則、シリアルの口の共用、区切りの立て直し、待ちの転送の時間）。**port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3）は握手だけ**: 候補の選び方、確かめ、使用中の判定は `host-development-guide` §17 の参考の手順 |
 | 4 | `interfaces/README.ja.md`、`interfaces/oep-if-common.ja.md` | 名前が `oep.` で始まるインターフェースの一覧と、その共通部品（位置つきのストリーム、debug の connection、線と target の status） |
 | 5 | `interfaces/oep-if-debug.ja.md`、`interfaces/oep-if-console.ja.md`、`interfaces/oep-if-fixture.ja.md`、`interfaces/oep-if-capture.ja.md`、`interfaces/oep-if-probe-config.ja.md`、`interfaces/oep-if-plan.ja.md`、`interfaces/oep-if-restart.ja.md`、`interfaces/oep-if-link.ja.md` | 名前が `oep.` で始まるインターフェース（規範）: 線と RISC-V DM / ARM ADI、target のコンソール、GPIO / UART / I2C・SPI の target、ロジック / アナログのキャプチャと組、probe の設定（スロット、bind、disable）、plan、probe の再起動、線の試験と port_speed |
 | 6 | `interfaces/target-console-dmseq.ja.md` | コンソールの framing（dmseq）: デバッグモジュールのデータレジスタで、通番と CRC つきで双方向に運ぶ（target と host の規範） |
@@ -58,14 +58,14 @@ flash の書き方やチップ固有の手順は host にある。
 
 1. **規範の文だけで作れるか。** core と `oep-if-*` と registry だけを読んで、host（または probe）を書けるか。足りない所、ガイドや記録を読まないと
    決まらない所、「目安」や「など」で逃げている所を指摘してほしい。数が規範の文と registry で食い違っていれば registry が誤り。
-2. **断りの理由は 1 つに決まるか。** core §4.3 の「断り方の順」（見出し → 送り直し → セッション → window → malformed → unsupported →
-   unavailable → no_connection）を、各インターフェースの op に当てたとき、同じ状況に 2 つの理由が作れる所が残っていないか。
+2. **断りで host の動きが決まるか。** core §4.3 は見出し → 送り直し → セッションの順だけを決め、ほかは当たる理由のどれか 1 つで断る。
+   理由によって host の動きが変わる（直すか諦めるかで済まない）所が残っていないか。
 3. **意図して固定した所の理由は成り立つか。** [版と安定性](versioning.ja.md) §3.1 の表（フレームの見出し、u8 の op / tag、要求の並びに len 無し、
    confirm に host の上限を足さない、probe は速さの候補を宣言しない、など）。理由が崩れる使い方があれば、それが凍結前に直す候補。
 4. **8 つの原則に反する所は無いか。** 凍結の前の判定に使った原則: 容器は自分の長さを知る、伸ばし方は 1 つ、要求は probe に
    応答は host に合わせる、ハードウェアの性質の値は u32、宣言と状態を混ぜない、仕組みより不変条件、識別子と時計は 1 つずつ、断り方の順は 1 つ。
 5. **参考の数字の出どころが狭い所。** `host-development-guide` §17 の数字（5 %、10 %、16 フレーム、3 秒、60 フレーム）は
-   **2 種類の変換チップ（CH340 と、FTDI 互換を名乗る CH552）** の実測から来ている（要約は host ガイド §17.5）。transports §4 の host のシリアルの受けの上限（6 KiB）は、
+   **2 種類の変換チップ（CH340 と、FTDI 互換を名乗る CH552）** の実測から来ている（要約は host ガイド §17.5）。host ガイド §8 のシリアルの受けの目安（6 KiB）は、
    USB での 2 系統の MCU の実測から来ている。ほかのブリッジ（FTDI 純正、CP210x、CDC の MCU）や native の OS での計測を歓迎する。§17 の数字は規範ではない
    （[リンク](../interfaces/oep-if-link.ja.md) §3 は握手だけ）ので、凍結は止めない。
 
@@ -79,7 +79,7 @@ flash の書き方やチップ固有の手順は host にある。
 |---|---|
 | **規範** | `oep-core`、`oep-transports`。`interfaces/` の `oep-if-*`（9 つ）、`target-console-dmseq` |
 | **ガイド**（規範ではない） | `interfaces/README`、`review-guide`、`getting-started`、`conformance`、`project-concept`、`host-development-guide`、`probe-development-guide`、`security`、`glossary`、`versioning`、`release-testing`、`usb-identity`。根の `CHANGELOG.md` |
-| **記録**: 凍結の範囲と決定 | `v1-freeze-decisions`（§0 範囲、§A / §B の 13 項目）、`v1-zero-base-proposal`、`v1-zero-base-review-2026-10-02`、`v1-zero-base-review-3-2026-10-02`、`v1-freeze-review-2026-10-01`（対応済み）、`v1-rule-change-proposal-2026-10-02`、`v1-rule-change-proposal-2026-10-06`（peer と合意して入れた規則の変更） |
+| **記録**: 凍結の範囲と決定 | `v1-freeze-decisions`（§0 範囲、§A / §B の 13 項目）、`v1-zero-base-proposal`、`v1-zero-base-review-2026-10-02`、`v1-zero-base-review-3-2026-10-02`、`v1-freeze-review-2026-10-01`（対応済み）、`v1-rule-change-proposal-2026-10-02`、`v1-rule-change-proposal-2026-10-06`（peer と合意して入れた規則の変更）、`v1-rule-review-2026-10-07`（規則の見直し: 残す、簡単にする、外す。§2 と §3 を適用済み）、`v1-pending-proposals-2026-10-07` と `v1-debug-link-proposal-2026-10-06`（その Q1〜Q9 と P1〜P4 は規則の見直し §2.4 で決めた） |
 | **記録**: プロジェクトの作業の基準 | `development-guidelines` |
 | **記録**: 実測（追記は自由） | `link-measurements`、`target-scan-notes`（target ごとの scan と attach）、`implementation-notes`（ガイドから移したチップ固有の話と実測）、`uart-speed-negotiation`、`logic-capture`（§7 以降）、`probe-cdc-and-persistence` §7、`target-console-dmseq-notes` |
 | **記録**: v1 の理由 | `session-and-exclusivity`、`capability-*`（3 つ）、`console-stream`、`target-connection-use-cases`、`probe-cdc-and-persistence` |

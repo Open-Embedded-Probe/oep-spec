@@ -22,14 +22,12 @@ USB の VID:PID で見分けるのは、「OEP の probe か」だけである�
 - host が知らない device を自動で OEP の probe と見分けるのは、**プロジェクトの USB の VID:PID で列挙する device** だけ（transports §3）。
 - 参照の firmware の iProduct は `OEP probe (ESP32-P4)`、`OEP probe (RP2040)` など。iProduct は人のための名前で、何もそれで
   probe を見分けない。
-- 利用者が unit_id で名指した probe（`oep://<unit_id>`）は、serial number が同じ device を開き、confirm と describe の unit_id で
+- 利用者が unit_id で名指した probe（アドレス `oep://<unit_id>`、host 開発ガイド §5.3）は、serial number が同じ device を開き、confirm と describe の unit_id で
   確かめる（transports §3）。
 - device の中の口は、OEP と分かった device の中で interface の記述子で選ぶ（CDC はすべてシリアルの口、class 0xFF / subclass 0x4F /
   protocol 0x45 の bulk の組、usage page 0xFF4F / usage 0x45 の HID。registry の `usb`）。interface の文字列は表示のためだけ。
 - host が probe を覚えるとき（IDE、sketch.yaml、bench の設定）は、VID:PID や口の名前ではなく unit_id（= USB の serial number）で
   覚える。
-- fn 0 の describe の `discoverable = 1`（0x4A）は、「プロジェクトの USB の VID:PID でも列挙している」という意味（内蔵の USB
-  シリアルのように別の口から開いた host にも分かる）。参照の firmware は、それで列挙する口を持つとき 1 を返す。
 - probe が VID:PID と serial number を選べない口（USB-UART の bridge、ハードウェアが記述子を決める内蔵の USB シリアル）は、
   プロジェクトの VID:PID で列挙しない。利用者が口を選び、confirm の後、fn 0 の describe がその probe の unit_id を返す。
 

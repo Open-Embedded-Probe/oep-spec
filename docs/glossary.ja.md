@@ -39,7 +39,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | COBS のフレーム | COBS frame | `0x00 COBS(message + CRC-16) 0x00`。シリアルの口で使う | transports §1 |
 | 長さつきのフレーム | length-prefixed frame | `length(u16) message`。vendor bulk、HID の report、TCP で使う | transports §1 |
 | 候補 | candidate | 0x00 から次の 0x00 までのバイト。フレームかもしれないものとして解く | transports §1、§4 |
-| 壊れた候補 | broken candidate | 解けないか CRC の合わない候補 | link §3 |
+| 壊れた候補 | broken candidate | 解けないか CRC の合わない候補 | transports §4 |
 | 生のバイト | raw bytes | シリアルの口の、OEP のフレームの外のバイト（target のコンソールなど） | transports §4 |
 | 生の転送 | raw transfer | シリアルの口と、それに結んだ流れの間で生のバイトを運ぶこと。セッションが口を使う間は止まる | transports §4 |
 | フレームの途切れ | frame gap | フレームの途中の `probe_frame_gap_ms` の途切れ。probe は読み直す（TCP では読み直さない） | transports §2 |
@@ -51,7 +51,6 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 探りの規則 | probing rule | 見分けていない device や口には confirm だけを送り、正しい応答が無ければ閉じる | transports §3 |
 | 名指した probe | named probe | 利用者が unit_id で名指した probe | transports §3 |
 | プロジェクトの VID:PID | project's VID:PID | `1209:4F45`（registry の `usb`）: host が probe を自動で見分ける唯一の USB の ID | transports §3 |
-| discoverable | discoverable | fn 0 の describe の tag: プロジェクトの VID:PID でも列挙している | core §7.5 |
 
 ## メッセージ
 
@@ -68,21 +67,19 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | resolution | resolution | completed（0x01）か rejected（0x00）。0x02 は予約 | core §4.2 |
 | outcome | outcome | completed の success 0、failed 1、partial 2 | core §4.2 |
 | 断り（rejected） | rejected / refusal | 要求が受け付けられなかった | core §4.2 |
-| 断りの理由 | reject reason | rejected の detail（unknown_function … corr_reused） | core §4.3 |
-| 断り方の順 | order of refusal | probe が要求を確かめる決まった順。最初に当たった理由で断る | core §4.3 |
-| cause、holder_fn、holder_kind | cause, holder_fn, holder_kind | unavailable の断りの TLV: 理由と、資源を持っているもの | core §4.3 |
+| 断りの理由 | reject reason | rejected の detail（unknown_function … result_lost） | core §4.3 |
+| 断り方の順 | order of refusal | 見出し、送り直しの表、セッションの順。それ以外は当たった理由のどれか 1 つで断る | core §4.3 |
+| cause | cause | unavailable の断りの TLV: 理由（ピンが使われている、上限、設定が持つ、状態が違う…） | core §4.3 |
 | status | status | 線と target の操作の結果: ok、wait、line、fault、timeout、state | common §3 |
 | TLV | TLV | `tag(u8) len(u16) value`。どの長さでも形は一つ | core §2.2 |
 | tag の文脈 | tag context | tag の空間: (fn, op) ごと | core §2.2 |
-| critical | critical | 要求の TLV の tag の bit 7: それが効かなければ要求に意味が無い | core §2.2、§2.3 |
-| ignored | ignored | 応答の TLV 0x7F。probe が無視した非 critical の要求の TLV を並べる | core §2.3 |
+| critical | critical | 要求の TLV の tag の bit 7: その tag を実装しない probe は断る（印が無ければ無視する） | core §2.2、§2.3 |
 | 固定部分 | fixed part | (name, revision) が形を決める payload の部分 | core §2.3、§2.7 |
 | 末尾、後ろ | tail | 要求、応答、出来事、データの固定部分の後ろに続く TLV | core §2.3 |
 | 並び、要素 | sequence, element | 数の付いた並び、`count × element`。要素は固定の形で、自分の長さを持たない | core §2.3 |
 | bitmap | bitmap | bit i は byte ⌊i/8⌋ の bit (i mod 8) | core §2.1 |
-| 真偽値、文字列 | boolean, text | u8 の 0 / 1。終端なしの UTF-8。要求では確かめる | core §2.1 |
+| 真偽値、文字列 | boolean, text | u8 の 0 / 1（0 でなければ真と読む）。終端なしの UTF-8 | core §2.1 |
 | 知らない値 | unknown value | 読む側が知らない値の扱い | core §2.4 |
-| 実験用の値 | experimental value | u8 の enum の 0xF0〜0xFE、op の 0xF0〜0xFF。出荷も登録もしない | core §2.5 |
 | 一周する値 | wrapping value | seq、資源の番号: 通し番号の算術で比べる | core §2.6 |
 | 時計 | clock | probe の 1 つの時計: 起動からの ns（u64）。全ビット 1 は「まだ」。今の値は op の clock で読む | core §2.6a、§7.7 |
 | revision | revision | プロトコルの revision（confirm）とインターフェースの revision（list）。固定部分が変わるときだけ上げる | core §2.7、§7.1 |
@@ -104,9 +101,8 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | force | force | ほかのセッションからロックを奪う open（認証ではない） | core §6.4 |
 | owner | owner | open に付ける表示の文字列。lock_state と locked で返る | core §6.4 |
 | boot_id | boot_id | 起動のたびに変わる値 | core §6.5 |
-| 資源、資源の番号 | resource, resource number | セッションが作るもの（plan、接続、ストリーム…）。番号は probe に 1 つの空間の u16 | core §9 |
+| 資源、資源の番号 | resource, resource number | セッションが作るもの（plan、接続、ストリーム…）。番号は probe に 1 つの空間の u16 で、1 ずつ進め、使用中の番号は飛ばす | core §9 |
 | 寿命 | lifetime | end、期限切れ、force、再起動で資源がどうなるか | core §9 |
-| 長い操作 | long operation | 後の revision のために予約 | core §10 |
 
 ## 発見と宣言
 
@@ -120,18 +116,18 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 宣言 | declaration | describe が返すもの。boot_id が同じ間変わらない | core §7.3 |
 | ページング | paging | more = 1 の間、`first` を進めて聞き直す | core §7.3 |
 | 名前、ラベル | name, label (of a name) | `a-z 0-9 - .`。`.` で区切ったラベルが 2 つ以上 | core §7.2、§13 |
-| instance、`name#instance` | instance | 同じ (name, revision) のインターフェースの中の番号 | core §7.2 |
+| instance、`name#instance` | instance | 同じ (name, revision) のインターフェースの中の番号。文字で書く形は host ガイド §5.3 | core §7.2 |
 | role_channels、channel_group | role_channels, channel_group | 役が使える channel、決まった組 | core §7.4 |
 | features | features | インターフェースの、op でない任意の機能の u32 の bit（モード、format、通知） | core §7.4 |
-| ops | ops | すべての fn が持つ op を宣言する、describe の共通の tag 0x09（base + bitmap）。1 つの op の集合に符号は 1 つ。正しくない ops の fn は使わない | core §1.2、§7.4 |
+| ops | ops | すべての fn が持つ op を宣言する、describe の共通の tag 0x09（base + bitmap、op 0xFF を越えない） | core §1.2、§7.4 |
 | unit_id | unit_id | 個体の識別子。`a-z 0-9 -` の 1〜32、USB の serial number と等しい | core §7.5 |
 | `x-` の unit_id | `x-` unit_id | 一意でない unit_id。まとめにも名指しにも使わない | core §7.5 |
-| model、chip、firmware | model, chip, firmware | probe の種類、その MCU、firmware の文字列 | core §7.5 |
+| model、chip、firmware | model, chip, firmware | probe の種類、その MCU、firmware の自由な文字列 | core §7.5 |
 | max_op_ms | max_op_ms | probe が 1 つの要求にかける最長の時間 | core §7.5 |
-| reserved、label | reserved (channels), label (firmware) | probe 自身が使う channel。firmware の固定の channel の名前 | core §7.5 |
-| アドレス | address | `oep://<unit_id>[/<スロットの name>]` | core §7.6 |
+| label | label (firmware) | firmware の固定の channel の名前 | core §7.5 |
+| アドレス | address | `oep://<unit_id>[/<スロットの name>]` | host ガイド §5.3 |
 | 線の試験 | link test | `oep.probe.link` の source と sink の op。経路を測る | link §2 |
-| restart | restart | `oep.probe.restart` の op: 応答を先に送り、probe が起動し直す。restart_max_ms のうちに confirm にまた答える | restart §2、§3 |
+| restart | restart | `oep.probe.restart` の op: 応答を先に送り、probe が起動し直す。restart_max_ms のうちに confirm にまた答える | restart §2 |
 
 ## plan とピン
 
@@ -170,19 +166,17 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | ピンの組 | combination | 線の 1 回の試しの channel | debug §1 |
 | scan、attach、detach | scan, attach, detach | target を探す、つなぐ、離れる | debug §1、§2 |
 | 席、max_connections | seat, max_connections | 線が一度に持てる接続の数 | debug §1 |
-| attach の予算、scan の予算 | attach budget, scan budget | `attach_budget_ms`、`scan_budget_ms` | debug §1 |
-| リセットの後の待ち | reset settle wait | リセットを解いた後、黙った debug module が答えるまでの待ち。多くても `reset_settle_ms`、線の再試行に数えない | debug §3、§4.3 |
-| 立ち上げ、search_retries | bring-up, search_retries | wake、速さを選んで確かめること。その追加の試しの数 | debug §1 |
+| リセットの後の待ち | reset settle wait | リセットを解いた後、黙った debug module が答えるまでの待ち。多くても max_op_ms、線の再試行に数えない | debug §3、§4.3 |
+| 立ち上げ、search_retries | bring-up, search_retries | wake、速さを選んで確かめること。その追加の試しの数（数え方は実装が決める、診断用） | debug §1 |
 | スクラッチのレジスタ | scratch register | 書き込みの確かめに使い、後で元に戻すレジスタ | debug §1 |
 | target_id、scheme | target_id, scheme | probe が読んだ識別子と、その読み方 | debug §1 |
-| attach_writes_unbounded | attach_writes_unbounded | 別のデバッガ越しに attach する線の features の bit | debug §1 |
 | やり取り | exchange | 線の上の 1 つのフレーム、packet、wake pattern | debug §2 |
-| 線切れ | wire loss | 実時間で `wire_lost_ms` の間、線から応答が無い | debug §2 |
+| 線切れ | wire loss | 線からの応答の無い失敗が続き、probe が connection を閉じると決めること | debug §2 |
 | 放した状態、休み方 | free state, rest state | 失敗の後の駆動しない線。やり取りの間の線の状態 | debug §2、§3、§5 |
 | idle_clock | idle_clock | 2 線のクロックの休み方（high か low） | debug §3 |
 | mechanism（方式） | mechanism | コンソールの運び方: SDI、DMDATA、dmseq | console §1、§3 |
 | dmseq | dmseq | DATA0 / DATA1 の上の、順番の bit と CRC-8 を持つコンソールの framing | dmseq |
-| 送りの列 | send queue | コンソールの write を受ける、ストリームごとの probe の列。大きさは describe の send_queue | console §2 |
+| 送りの列 | send queue | コンソールの write を受ける、ストリームごとの probe の列。大きさは probe が決める | console §2 |
 
 ## キャプチャ
 
@@ -203,13 +197,11 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | idle | idle (item) | channel の空きの状態: Hi-Z、pull、出力 low / high | settings §1 |
 | disable | disable | probe が決して使わない channel | settings §1 |
 | スロット | slot | target がつながる場所の登録 | settings §1.1 |
-| 錠 | slot lock | スロットの接続が合うべき target_id の mask と値 | settings §1.1 |
 | attach の方針 | attach policy | host か at boot | settings §3.1 |
-| boot_reset | boot_reset | 起動の後のスロットの、リセットの線での 1 回のやり直し | settings §1.1、§3.1 |
-| bind | bind | シリアルの口が流すもの: last-reset、manual、mixed | settings §1.2 |
+| bind | bind | シリアルの口が流すストリーム 1 つ（スロットのコンソールか fixture UART の受信） | settings §1.2 |
 | 口の位置 | position of the port | bind の口が、流すストリームのどこにいるか | settings §1.2 |
 | 線の名前 | line names | `nrst`、`power_hi`、`power_lo`。ほかは `x-` | settings §1.3 |
-| 正規形、hash | canonical form, hash | 並べた項目と、その CRC-32 | settings §2 |
+| hash | hash | 今の設定を表す u32。設定が変われば変わり、作り方は probe が決める | settings §2 |
 | 保存、消去 | save, erase | 保存の写しを書く / 消す | settings §2 |
 | storage_state、読めない理由 | storage_state, unreadable reason | 保存があり、掛かっているか | settings §3.3 |
 | slot_state、bind_state | slot_state, bind_state | スロットと bind の今の状態 | settings §3.2、§3.3 |

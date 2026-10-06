@@ -11,6 +11,73 @@ v1 candidate. Changes since the last pushed state (ad9f8be). Most rule changes c
 [2026-10-06 rule-change proposal](docs/v1-rule-change-proposal-2026-10-06.md), reviewed by the implementers (ch32rv, WireSkein, bench),
 and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.md).
 
+### Rule review (2026-10-07)
+
+From the v1 rule review of 2026-10-07 (`docs/v1-rule-review-2026-10-07.ja.md`): a rule stays normative only if, without it, independent
+hosts and probes would fail to interoperate or would silently harm the target or the data; the rest moves to the guides, to the reference
+implementation's limits document (oep-probe-arduino `docs/implementation-limits`), or goes. §3 (wording only) went in first; §2 (rule changes,
+with the implementers' conditions: ch32rv, WireSkein, bench) follows. Japanese only while Japanese is the working text. Removed numbers stay
+reserved in the registry and are never reused.
+
+- **Breaking**, core: the ignored TLV (0x7F) goes. A probe ignores an unknown non-critical TLV and refuses an unknown critical one
+  (unsupported); a TLV it implements is checked the same with or without bit 7 (wrong length or excluded value malformed, unused or unhandled
+  value unsupported). Tags 0x00 and 0x7F are never tags. No room for ignored in answers (confirm fits 64 bytes; link source is max_frame - 7).
+  The capture "always critical" exception, plan's role_assignment sent critical and uart's format note go with it.
+- **Breaking**, core: refusal order keeps header, resend table and session; every other check is made before anything changes and any one
+  reason that applies may answer. The contradiction paragraph and the interface refusal tables go.
+- **Breaking**, core: corr_reused (0x0D, reserved) and CRC-32 go; the resend table keeps (corr, answer). probe.config's hash is a u32 the
+  probe chooses that changes with the settings (get keeps tag and key order, max_bytes counts item TLV bytes, storage_hash equals get's hash
+  while the saved settings are the current ones); `probe_config_hash.json` and the CRC-32 check value go.
+- **Breaking**, core: list is `first(u16)` only (no prefix, no exact). `name#instance` and the `oep://` address move to the host guide (§5.3).
+- **Breaking**, core: describe loses implementation (common 0x07), reserved (0x44), profile (0x45), resets_on_open (0x47), discoverable
+  (0x4A) and model's character rules (`model_max_bytes`); model, chip and firmware are optional free text. unavailable loses holder_fn /
+  holder_kind (cause 5 now covers the settings' plan, disable, output idle and slot).
+- Core: §10 (long operations), the experimental value ranges and the reserved lock-free subscribe leave the text (registry reserves only);
+  booleans read non-zero as true; request text, repeated tags and a describe TLV are no longer refused (a reader uses the first tag);
+  resource numbers advance by one and skip numbers in use (no reuse distance); the ops value is base and a bitmap not past op 0xFF (no
+  canonical form); no host rule for out-of-range max_op_ms or confirm values; no lease exception for table resends.
+- Transports: a host writes one frame per write without a `probe_frame_gap_ms` pause (`host_frame_pause_max_ms` goes); a length-prefixed
+  resync waits longer than `probe_frame_gap_ms` since the last write (`resync_quiet_ms`, `host_resync_wait_ms` go); a host opening a UART
+  bridge repeats confirm for `port_speed_idle_ms` + `host_wait_add_ms` (`port_speed_confirm_extra_ms` goes), and the probing rule points
+  there; the host receive-volume paragraph moves to the host guide §8 (`host_serial_*`, `cobs_frame_max_bytes` go).
+- **Breaking**, debug: the probe's internal times and counts leave the text (`wire_retry_ms`, `wire_lost_ms`, `attach_budget_ms`,
+  `scan_budget_ms`, `scan_tried_max`, `reset_settle_ms`, `dm_wait_ms`, `dmi_busy_retries`, `reset_wait_ms`, `reset_retries`,
+  `swd_wait_retries`, `block_frame_overhead_bytes`, `tar_rewrite_bytes`): attach, scan and riscv-dm reset answer within max_op_ms, which a
+  host counts as their argument time. New rules: wire retries never repeat a write that may have reached the target (busy / WAIT excepted;
+  failed / partial with done before it; reads may repeat), and while a connection exists the probe's own retries and resyncs do not change
+  the target (a wake that may reset it only inside attach and reset). A scan without max_speed tries the wire's slowest speed.
+- **Breaking**, debug: the pinless wire, `attach_writes_unbounded` and the non-two-pin forms go; riscv-dm reset loses method, flags bit2 /
+  bit3 and attempts (answer: status, flags, pc); run whose preparation fails answers stopped 3 (`not_run`); DATA0 / DATA1 restore is stated
+  in riscv-dm (the probe for its ops, the host for its own dmi sequences); search_retries is diagnostic; the target_id scheme `wch_dmi_7f`
+  is renamed `dmi_7f`; reserved op 0x04, address_hi, RV64 and running reads leave the text; the reference probe's RVSWD / SWIO / SWD notes
+  move to the implementation limits.
+- Common: a mark's position is the write position when the probe adds it (every later byte came after the event); read from 3 with
+  arg > 0xFF and write count 0 are not refused.
+- **Breaking**, console: the 20 ms DMSTATUS poll becomes an order (no console DATA0 / DATA1 access while a riscv-dm request of the connection
+  runs or the hart is halted; DMSTATUS read after such a request before the next console read); send_queue and its minimum go. dmseq: host
+  rule 1's answer after three invalid words, the empty-frame-only-when-idle rule and the host DM-reset / restore notes go.
+- **Breaking**, capture: the configure answer loses timing (jitter_kind, jitter_ns) and rate_accuracy; describe loses mode's background,
+  rate_list, rate_limit, channels' layout candidates, max_read, segment_ring, frontend_shared; capture-group loses max_tracks, budget and
+  start_skew. skew, start_ns / start_uncertainty_ns, zero / scale_nv, frontend_used, reference and calibration stay.
+- **Breaking**, fixture: gpio's drive is a level number (u8, 0xFF default; out of range or undeclared is unsupported), read loses drive, mode 7
+  goes; uart's status loses configured; i2c-target has one form (configure takes the address, a write with data is one frame, reads answer from
+  preload_tx; arm_rx, reset, the modes and pullup_ohms go; clock stretch stays an optional op); spi-target loses reset and counts errors once
+  per transfer.
+- **Breaking**, probe-config: the slot lock, boot_reset and the probe's retry with reset go (slot_state 0 / 1, no tid); bind is one stream
+  (`port kind id`), without modes, mixed lines or counted resets, and resumes where it stopped after a session; the idle item is 4 bytes; the
+  refusal table goes and only disable and idle must come first at start-up; at-boot slots are attached when the probe can try.
+- **Breaking**, link: port_speed is the handshake only (`baud step verify_ms`; the port is the one the request came on; returns on its own
+  after verify_ms, after `port_speed_idle_ms` without a good frame, or at the session's end; the host waits `port_speed_switch_wait_ms`
+  and returns to the boot speed after revert, end or a restart). The 500000 default ceiling and the one-second check become the host guide's
+  recommendation (§17). `port_speed_idle_max_ms` is renamed `port_speed_idle_ms`; `port_speed_broken_max` goes; `port_speed_tolerance_pct` (2) is added.
+- Restart: the probe answers nothing until it restarts and answers confirm within restart_max_ms on the same transport, and does not reset
+  the target; `restart_after_answer_ms` and the host procedure (now host guide §5.2, with the relaying broker) leave the interface.
+- Guides: host guide §5.2 (restart), §5.3 (address and `name#instance`), §8 (broken frames on a serial port, receive volume), §10, §14 (SDI /
+  DMDATA limits), §15 (settings without a computed hash), §17 (port_speed: the ceiling as a recommendation, resend at the raised speed first);
+  probe guide §10 to §13 (reference values move to oep-probe-arduino's implementation limits); conformance, glossary, security, versioning,
+  getting-started (list and describe bytes), review guide, USB identity and CONTRIBUTING follow.
+- Registry, generated code, vectors (`checks`, `headers`, `refusals`, `discovery`, `ops_encoding`, `ops`) and tests follow.
+
 ### Structure: the core and the standard interfaces (2026-10-06)
 
 From the v1 structure proposal (2026-10-06), decided by the user with the implementers' conditions (ch32rv, WireSkein, bench), and the

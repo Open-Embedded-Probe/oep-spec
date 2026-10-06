@@ -103,7 +103,6 @@ uart_bridge_boot_baud = 115200  # a UART bridge's boot speed, 8N1 without flow c
 port_speed_idle_ms = 3000       # a committed port_speed goes back to the boot speed after this long without a good frame (oep-if-link §3)
 host_wait_add_ms = 1000         # host: waits at least the request's argument time (at most max_op_ms) plus this plus the transfer time (core §4.4)
 notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §11.4)
-slot_retry_reset_hold_ms = 20   # probe: hold_ms of the retry with reset of a boot_reset slot (oep-if-probe-config §3.1)
 port_speed_switch_wait_ms = 20  # host: after the answer to try, at least this long before the next request at the new speed (oep-if-link §3 host 1)
 
 [describe_common]               # declaration tags every interface's describe may use (core §7.4); 0x04, 0x07 (was implementation) and 0x3F reserved
@@ -848,7 +847,7 @@ bind = 0x05                     # port(u8) kind(u8) id(u16): the stream a serial
 uart = 0x06                     # fn(u16) baud(u32) format(u8): a fixture UART's settings, applied when its plan is set
 disable = 0x07                  # channel(u16): a channel the probe never uses or touches (not on this board)
 [interface.tlv.describe]        # declarations only; the state is op 0x06 (oep-if-probe-config §3.3)
-storage = 0x40                  # max_bytes(u32, 1 or more): canonical bytes it can save; present exactly when ops offers save and erase
+storage = 0x40                  # max_bytes(u32, 1 or more): the item TLV bytes it can always save; present exactly when ops offers save and erase
 items = 0x41                    # u8 list: the item tags this probe takes
 slots_max = 0x42                # u8
 [interface.reserved]

@@ -21,9 +21,9 @@
 
 probe は:
 
-- 動く前にすべての要求の長さと符号化を確かめ、malformed で断る（core §4.3 の順 5）: 合わない数、TLV の符号化の誤り、len が終わりを越える TLV
-  （core §2.2）、tag 0x7F / 0xFF（core §2.3）、0 / 1 以外の真偽値、正しい UTF-8 でないか制御文字を含む文字列（core §2.1）;
-- 実行の前に断る: 要求は core §4.3 の順で確かめ、すべてを通るまで何も動かさない（plan_apply と probe の設定の set は、全部が受け
+- 動く前にすべての要求の長さと符号化を確かめ、malformed で断る（core §4.3）: 合わない数、TLV の符号化の誤り、len が終わりを越える TLV
+  （core §2.2）、実装する TLV の長さの誤り（core §2.3）;
+- 実行の前に断る: 要求は core §4.3 のとおりすべて確かめ、すべてを通るまで何も動かさない（plan_apply と probe の設定の set は、全部が受け
   付けられなければ何も変えない: [plan](../interfaces/oep-if-plan.ja.md) §2.1、probe の設定 §2）;
 - max_frame を超える長さのフレームは、次の途切れまでの入力と一緒に捨てる。TCP では接続を閉じる（transports §1）;
 - フレームの途中で `probe_frame_gap_ms` 途切れたら、TCP 以外のどの経路でも読み直す（transports §2）;
@@ -36,7 +36,7 @@ host は:
 - role が要求の role のメッセージは捨て、5 byte より短い応答、ヘッダより短い出来事やデータのフレーム（core §2.4）、固定部分より短い
   応答は壊れたものとし、知らない tag は読み飛ばし、長さが定義と違う TLV の値は壊れたものとし、知らない status と reason は失敗とする（core §2.3、§2.4）;
 - 送り直しにも答えが無ければ、その経路は失敗したとし、そこで何かを送る前に confirm で立て直す（か開き直す）（core §5.2）;
-- 65535 byte までのメッセージを受けられる。正しい COBS のフレームは、2 つの 0x00 の間が `cobs_frame_max_bytes` より長くならない
+- 65535 byte までのメッセージを受けられる。正しい COBS のフレームは、2 つの 0x00 の間が 65796 byte より長くならない
   （transports §3、host 開発ガイド §2）;
 - 応答の文字列は、見せる前に制御文字と不正な UTF-8 を置き換える（core §2.1）。
 
@@ -46,17 +46,15 @@ host は:
   守らない host は要求を失う（core §4.4）。
 - **送り直しの表**は少なくとも max_inflight 個を持つ。probe は覚える応答の大きさに上限を置いてよく、それより大きい応答の送り直しには
   result_lost で答える（core §5.2）。
-- **ignored の並び**は多くて `ignored_max_entries` 個で、probe はいつもその余地を残す（core §2.3）。
 - **通知**: 経路の送信のバッファで待つのは多くて max_frame × `notify_pending_max_frames` byte。残りは probe の中で捨てられ、seq の
   飛びに見える。probe は応答を先に送り、通知の書き込みでブロックしない（core §11.4）。通知を送るのは、ロックの持ち主が購読した fn だけ
   （core §11.3）。
-- **シリアルの口での host の受けの量**: host は待つ応答の量を `host_serial_inflight_max_bytes` 以下に、subscribe の min_bytes を
-  `host_serial_min_bytes_max` 以下に保つ。OS のドライバが一度に来た量を黙って落とすことがあるため（transports §4）。
-- **時間**: どの要求も宣言した max_op_ms より長くかからず、引数がそれを超えうる op は unsupported で断る（core §7.5）。attach と scan
-  には `attach_budget_ms` と `scan_budget_ms` の予算があり、1 つの要求が線を試し直すのは多くて `wire_retry_ms`
-  （[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1、§2）。lease は `lease_min_ms` から `lease_max_ms` の間（core §6.4）。
-- **番号**: 資源の番号は u16 で probe に 1 つの空間。閉じた番号は、最近閉じた `resource_reuse_distance` 個の中では使い回さない
-  （core §9）。
+- **シリアルの口での host の受けの量**: OS のドライバは一度に来た量を黙って落とすことがあるので、host は待つ応答の量と subscribe の
+  min_bytes を小さく保つ（host 開発ガイド §8）。
+- **時間**: どの要求も宣言した max_op_ms より長くかからず、引数がそれを超えうる op は unsupported で断る（core §7.5）。attach、scan、
+  riscv-dm の reset もそのうちに答える（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1、§4.3）。lease は `lease_min_ms` から `lease_max_ms` の間（core §6.4）。
+- **番号**: 資源の番号は u16 で probe に 1 つの空間。1 ずつ進め、使用中の番号は飛ばす。一周の後は古い番号が別の資源を指しうるので、
+  host は no_connection を受けた番号を捨てる（core §9）。
 - **ためるデータ**: 位置つきのストリームとキャプチャの区画は、古いものから押し出して失ったことを知らせる輪（common §1.1、
   [キャプチャ](../interfaces/oep-if-capture.ja.md) §2）。probe の設定は max_bytes が上限で、超えれば unavailable cause 3（probe の設定 §2）。
 
@@ -94,10 +92,11 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
 - **出力の idle**: 解いたピンは空きの状態（設定の idle か Hi-Z）に戻る（core §8）。plan を取ってもピンは変わらず、読むだけの
   インターフェースは駆動しない（core §8、キャプチャ §1.2）。出力の idle は、ピンが空いている間ずっと、起動時から、host なしで level を
   駆動する。target の出力とぶつからないようにするのは配線の責任（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1）。idle の項目のある
-  channel は count = 0 の scan と pins の無い attach から外れ、idle が出力の channel を名指せば unavailable cause 5、holder_kind 7
+  channel は count = 0 の scan と pins の無い attach から外れ、idle が出力の channel を名指せば unavailable cause 5
   （[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。
-- **保存した設定と起動**: 起動したら、probe は最初の応答の前に、reserved でないすべての channel を空きの状態にする（core §8）。
-  保存した設定（idle、plan、at boot の attach とその boot_reset）は起動のたびに host が居ても居なくても線を駆動する（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2、§3.1）。
+- **保存した設定と起動**: 起動したら、probe は最初の応答の前に、自分で使う channel を除くすべての channel を空きの状態にし、保存した設定では
+  disable と idle をほかの項目より先に掛ける（core §8、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2）。
+  保存した設定（idle、plan、at boot の attach）は起動のたびに host が居ても居なくても線を駆動する（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2、§3.1）。
   電源投入やリセットから firmware が設定を掛けるまで、firmware を更新している間、firmware が壊れたときは、ピンは MCU のリセットの状態で、
   設定が定めるものは何も駆動されない。level を誤ると害のある線（target の電源を切り替える線など）にはそれだけで安全な level に保つ外付けの pull が要る。
   disable は利用者の宣言で、守りではない: ロックを持つ host は unset で外し、その channel を使える。設定に認証は無い: ロックを取ったどの host も、
@@ -106,7 +105,9 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
   落ちた target をピンの保護ダイオード経由で給電しないため（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）。接続が閉じたら、そのピンは空きの
   状態に戻る（debug §2）。
 - **速さを確かめる前の target への書き込み**は、wake / 設定の手順と dmactive だけ。書き込みの確かめはスクラッチのレジスタだけを使い、
-  元に戻す。別のデバッガ越しに attach する probe は、代わりに `attach_writes_unbounded` を宣言する（debug §1）。
+  元に戻す（debug §1）。
+- **線の再試行**: probe の線の再試行は、target に届いたかもしれない書き込みを繰り返さず（失敗は failed / partial で見える）、connection がある間は
+  target の状態を変えない（target をリセットしうる wake は attach と reset の中だけ）（debug §2）。
 - **count = 0 の scan** は空いている候補のピンを順に駆動する。配線の分からない治具に、利用者の同意なしに送らない（debug §1、参考）。
 - **治具の線**: spi-target は CS が有効な間だけ MISO を駆動し（cs_setup_ns を除く）、ソフトウェアで MISO を出し始めるなら cs_setup_ns を
   宣言する（fixture §4）。i2c-target は SDA / SCL をオープンドレインでだけ駆動し、内部の pull-up は宣言し、バスの general call や 10 bit の見出しに

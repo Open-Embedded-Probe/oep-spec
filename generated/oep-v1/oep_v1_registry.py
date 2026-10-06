@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "10199d3fa729dcde"
+REGISTRY_HASH = "dfde1fc24a026b9a"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -19,7 +19,7 @@ OUTCOMES = {"success": 0x00, "failed": 0x01, "partial": 0x02}
 REJECT_REASONS = {"unknown_function": 0x01, "unknown_operation": 0x02, "malformed": 0x03, "unavailable": 0x04, "busy": 0x05, "window_exceeded": 0x06, "no_session": 0x07, "locked": 0x08, "session_required": 0x09, "no_connection": 0x0A, "unsupported": 0x0B, "result_lost": 0x0C}
 STATUS = {"ok": 0x00, "wait": 0x01, "line": 0x02, "fault": 0x03, "timeout": 0x04, "state": 0x05}
 DESCRIBE_COMMON = {"role_channels": 0x01, "max_clock_hz": 0x02, "max_length": 0x03, "min_clock_hz": 0x05, "features": 0x06, "channel_group": 0x08, "ops": 0x09}
-TIMING = {"probe_frame_gap_ms": 0xC8, "uart_bridge_boot_baud": 0x1C200, "port_speed_idle_ms": 0xBB8, "host_wait_add_ms": 0x3E8, "notify_pending_max_frames": 0x02, "slot_retry_reset_hold_ms": 0x14, "port_speed_switch_wait_ms": 0x14}
+TIMING = {"probe_frame_gap_ms": 0xC8, "uart_bridge_boot_baud": 0x1C200, "port_speed_idle_ms": 0xBB8, "host_wait_add_ms": 0x3E8, "notify_pending_max_frames": 0x02, "port_speed_switch_wait_ms": 0x14}
 USB = {"project_vid": 0x1209, "project_pid": 0x4F45, "vendor_bulk_class": 0xFF, "vendor_bulk_subclass": 0x4F, "vendor_bulk_protocol": 0x45, "hid_usage_page": 0xFF4F, "hid_usage": 0x45}
 LIMITS = {"lease_min_ms": 0x3E8, "lease_max_ms": 0xEA60, "owner_max_bytes": 0x20, "unit_id_max_bytes": 0x20, "slot_name_max_bytes": 0x20, "label_max_bytes": 0x20, "interface_name_max_bytes": 0x40, "resend_max": 0x01, "port_speed_tolerance_pct": 0x02, "uart_baud_tolerance_pct": 0x05, "uart_default_baud": 0x1C200, "max_op_ms_max": 0x927C0}
 COMMON = _NS(enum={"target_id_scheme": {"dmi_7f": 0x01, "targetsel": 0x02}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "read_flags": {"more": 0x01, "gap": 0x02}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08, "closed": 0x09}, "mark_detail_reset": {"ndmreset": 0x01, "attach_reset": 0x03}, "mark_detail_restart": {"havereset": 0x01, "resync": 0x02}, "mark_detail_lost": {"overflow": 0x01, "framing": 0x02, "parity": 0x03, "target_timeout": 0x04}, "mark_detail_closed": {"all_released": 0x01, "session_ended": 0x02, "slot_changed": 0x03, "connection_closed": 0x04}})

@@ -36,7 +36,7 @@ merge したときにだけ割り当てる。その pull request では:
 3. `python3 tools/oepvectors1.py --check` を走らせる（ベクタが扱う規則が変わったら `python3 tools/oepvectors1.py` を走らせ、`tests/vectors/` を commit する）。
 4. `cd tests && uv run pytest registry_v1 vectors` を走らせる。
 
-merge されるまでは、自分の逆 DNS の名前か、出荷する probe が使わない実験用の op の範囲 0xF0〜0xFF（core §2.5）で試す。
+merge されるまでは、自分の逆 DNS の名前のインターフェースで試す（core §13）。
 
 ## 第三者のインターフェース
 
