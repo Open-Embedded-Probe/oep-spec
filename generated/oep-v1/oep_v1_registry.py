@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "6d05b7c18a5e28bb"
+REGISTRY_HASH = "b7461ef01f9f5821"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -21,7 +21,7 @@ STATUS = {"ok": 0x00, "wait": 0x01, "line": 0x02, "fault": 0x03, "timeout": 0x04
 DESCRIBE_COMMON = {"role_channels": 0x01, "max_clock_hz": 0x02, "max_length": 0x03, "min_clock_hz": 0x05, "features": 0x06, "channel_group": 0x08, "ops": 0x09}
 TIMING = {"probe_frame_gap_ms": 0xC8, "uart_bridge_boot_baud": 0x1C200, "port_speed_idle_max_ms": 0xBB8, "host_wait_add_ms": 0x3E8, "notify_pending_max_frames": 0x02, "slot_retry_reset_hold_ms": 0x14, "port_speed_switch_wait_ms": 0x14}
 USB = {"project_vid": 0x1209, "project_pid": 0x4F45, "vendor_bulk_class": 0xFF, "vendor_bulk_subclass": 0x4F, "vendor_bulk_protocol": 0x45, "hid_usage_page": 0xFF4F, "hid_usage": 0x45}
-LIMITS = {"lease_min_ms": 0x3E8, "lease_max_ms": 0xEA60, "owner_max_bytes": 0x20, "unit_id_max_bytes": 0x20, "slot_name_max_bytes": 0x20, "label_max_bytes": 0x20, "interface_name_max_bytes": 0x40, "resend_max": 0x01, "port_speed_broken_max": 0x03, "console_dmstatus_poll_ms": 0x14, "console_send_queue_min_bytes": 0x40, "uart_baud_tolerance_pct": 0x05, "uart_default_baud": 0x1C200, "fixture_count_max": 0xFF, "max_op_ms_max": 0x927C0, "restart_after_answer_ms": 0x64}
+LIMITS = {"lease_min_ms": 0x3E8, "lease_max_ms": 0xEA60, "owner_max_bytes": 0x20, "unit_id_max_bytes": 0x20, "slot_name_max_bytes": 0x20, "label_max_bytes": 0x20, "interface_name_max_bytes": 0x40, "resend_max": 0x01, "port_speed_broken_max": 0x03, "uart_baud_tolerance_pct": 0x05, "uart_default_baud": 0x1C200, "fixture_count_max": 0xFF, "max_op_ms_max": 0x927C0, "restart_after_answer_ms": 0x64}
 COMMON = _NS(enum={"target_id_scheme": {"dmi_7f": 0x01, "targetsel": 0x02}, "target_id_len": {"dmi_7f": 0x04, "targetsel": 0x04}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "read_flags": {"more": 0x01, "gap": 0x02}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08, "closed": 0x09}, "mark_detail_reset": {"ndmreset": 0x01, "attach_reset": 0x03}, "mark_detail_restart": {"havereset": 0x01, "resync": 0x02}, "mark_detail_lost": {"overflow": 0x01, "framing": 0x02, "parity": 0x03, "target_timeout": 0x04}, "mark_detail_closed": {"all_released": 0x01, "session_ended": 0x02, "slot_changed": 0x03, "connection_closed": 0x04}})
 
 INTERFACES = {}
@@ -61,7 +61,7 @@ TARGET_ARM_ADI = _NS(name="oep.target.arm-adi", revision=1, target="ARM targets 
     line_names={})
 INTERFACES["oep.target.arm-adi"] = TARGET_ARM_ADI
 TARGET_CONSOLE = _NS(name="oep.target.console", revision=1, target=None, op={"open": 0x01, "read": 0x02, "marks": 0x03, "clear": 0x04, "mark": 0x05, "write": 0x06, "close": 0x07, "streams": 0x08}, lock_free={0x02, 0x03, 0x08},
-    tlv={"describe": {"mechanisms": 0x40, "send_queue": 0x41}}, event={}, enum={"mechanism": {"sdi": 0x00, "dmdata": 0x01, "dmseq": 0x02, "none": 0xFF}, "open_flags": {"existing": 0x01}, "stream_state": {"open": 0x00, "closed": 0x01}, "stream_users": {"host_session": 0x01, "slot": 0x02}}, own={},
+    tlv={"describe": {"mechanisms": 0x40}}, event={}, enum={"mechanism": {"sdi": 0x00, "dmdata": 0x01, "dmseq": 0x02, "none": 0xFF}, "open_flags": {"existing": 0x01}, "stream_state": {"open": 0x00, "closed": 0x01}, "stream_users": {"host_session": 0x01, "slot": 0x02}}, own={},
     line_names={})
 INTERFACES["oep.target.console"] = TARGET_CONSOLE
 FIXTURE_GPIO = _NS(name="oep.fixture.gpio", revision=1, target=None, op={"set": 0x01, "read": 0x02}, lock_free={0x02},

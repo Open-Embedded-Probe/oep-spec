@@ -33,8 +33,6 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
   正確に決める**（版を持たない）。知らない mechanism と、
   describe の mechanisms に無い mechanism は rejected unsupported（payload `0x00`、core §4.3）。
 - describe: tag 0x40 mechanisms（u8 の並び。その probe が開ける mechanism）。必ず出す。
-- describe: tag 0x41 send_queue（u16、byte）。ストリームごとの送りの列（§2）の大きさで、64 以上（registry の `console_send_queue_min_bytes`）。
-  mechanisms に 1 か 2（host → target を運ぶ mechanism）があれば必ず出す。どちらも無ければ出さない。
 - 知らない stream は rejected no_connection（core §4.3）。別の種類の資源の番号（connection の番号を stream に）は rejected unavailable
   cause 6。arm-adi（swd）の connection への open も rejected unavailable cause 6（[線とデバッグ](oep-if-debug.ja.md) §5）。
 - ストリームの番号（u16）は core §9 の規則で振る（probe で 1 つの空間、1 から進めて一周する。同じ場所の再 open は番号を消費しない、§2）。
@@ -60,7 +58,7 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
   閉じる。target の自己リセット（havereset）を見たら mark restart（1）を付け、dmseq は未同期に戻す。**閉じたストリームも、同じ場所で同じ mechanism が
   次に open されるまで読める**（read / marks。write / mark / clear は rejected unavailable）。別の場所の open では消えない。
 - ストリームが使う connection は、そのストリームを開いたセッション（または `oep.probe.config` のスロット）が使っているものとして数える。
-- **送りの列**: probe は、host → target を運ぶ mechanism（1、2）のストリームごとに、describe の send_queue の大きさの送りの列を持つ。
+- **送りの列**: probe は、host → target を運ぶ mechanism（1、2）のストリームごとに、送りの列を持つ（大きさは probe が決める）。
   write は data を先頭から、列の空きに入る分だけ列の終わりに入れる。**accepted は列に入れたバイトの数**（count と列の空きの小さい方）で、
   target が受け取ったことは意味しない。accepted 0（completed failed）は、列が満ちているときだけ（mechanism 0 は §3.1）。
   0 < accepted < count は completed partial。残り（data の accepted 番目から）は host が後で送る（列は probe が target に渡した分だけ空く）
@@ -76,11 +74,9 @@ mechanism 0、1、2 は debug module の DATA0（DMI 0x04）と DATA1（0x05）�
 規則で受け取る。
 
 - **mechanism 0〜2 の中では、1 つの connection に生きているストリームは 1 つ。** そのうちの別のものの open は rejected unavailable（cause 6）。
-- probe がコンソールの読みを止めるのは、**その connection の riscv-dm の要求を実行している間と、hart が止まっている間**
-  だけ（ほかの connection の長い要求の間も、この connection の読みは続ける。core §7.5 max_op_ms。抽象コマンドの一連の扱いは
-  [線とデバッグ](oep-if-debug.ja.md) §4.1）。「hart が止まっている」は probe が DMSTATUS で見る: host が dmi の要求の中で hart を止めても走らせても
-  （debugger が dmcontrol の haltreq / resumereq を自分で書いても）、hart が走っていれば probe は読みを続ける（戻す）。probe が
-  DMSTATUS を見る間隔は 20 ms 以下（registry の `console_dmstatus_poll_ms`。host が raw で止めたあと、probe が DATA0 を読みうるのはその間だけ）。
+- probe は、**その connection の riscv-dm の要求を実行している間と、hart が止まっている間**（DMSTATUS の anyhalted が 1）は、コンソールのために
+  DATA0 / DATA1 を読み書きしない。probe は、その connection の riscv-dm の要求に答えた後、次にコンソールのために DATA0 を読む前に DMSTATUS を読む。
+  hart がまた走れば、probe は読みを再開する。抽象コマンドの一連の扱いは [線とデバッグ](oep-if-debug.ja.md) §4.1。
 
 | mechanism | 名前 | 向き | 定義 |
 |---:|---|---|---|

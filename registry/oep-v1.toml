@@ -135,8 +135,6 @@ label_max_bytes = 32            # probe.config label text: valid UTF-8 without c
 interface_name_max_bytes = 64
 resend_max = 1                  # host: resends of one request with the same corr (core §5.2; the probing rule of transports §3)
 port_speed_broken_max = 3       # probe: broken candidates in a row with no valid frame, after commit, that return a raised port to the boot speed (oep-if-link §3 return condition 4)
-console_dmstatus_poll_ms = 20   # console: while reading, the probe checks DMSTATUS at least this often (oep-if-console §3)
-console_send_queue_min_bytes = 64  # console: describe send_queue is at least this (oep-if-console §1, §2)
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused or not used (oep-if-fixture §2, oep-if-probe-config §1)
 uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)
 fixture_count_max = 255         # i2c-target / spi-target: u8 counts (pending, queued) stop at this (oep-if-fixture §3, §4)
@@ -492,7 +490,6 @@ op = [
 ]
 [interface.tlv.describe]
 mechanisms = 0x40               # u8 list: the mechanisms this probe opens (required; oep-if-console §1)
-send_queue = 0x41               # u16: bytes of each stream's send queue that write fills, at least console_send_queue_min_bytes; required when mechanisms has 1 or 2 (oep-if-console §1, §2)
 [interface.enum.mechanism]      # read_from / mark_kind / mark details: [common.enum.*]
 sdi = 0
 dmdata = 1
@@ -506,6 +503,8 @@ closed = 1                      # still readable until the next open at the same
 [interface.enum.stream_users]
 host_session = 0x01
 slot = 0x02
+[interface.reserved]
+"tlv.describe" = [[0x41, 0x41]] # was send_queue
 
 [[interface]]
 name = "oep.fixture.gpio"
