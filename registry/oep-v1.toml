@@ -648,33 +648,27 @@ op = [
   { code = 0x32, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
 [interface.tlv.configure]       # also the request of query (the analog-only tag 0x47 frontend is not used here)
-mode = 0x40                     # always critical (oep-if-capture §3.3)
-rate = 0x42                     # always critical
+mode = 0x40
+rate = 0x42
 samples = 0x43
 segments = 0x44
-trigger = 0x45                  # always critical: type(u8) role(u8) value(u32)
-pretrigger = 0x46               # always critical
+trigger = 0x45                  # type(u8) role(u8) value(u32)
+pretrigger = 0x46
 [interface.tlv.configure_answer]  # the answer of configure and query
 actual_rate = 0x50
 layout = 0x51                   # w(u8) C(u8) pos[C](u8)
 actual_samples = 0x52
 actual_segments = 0x53
-timing = 0x54                   # jitter_kind(u8, enum jitter_kind) jitter_ns(u32) (oep-if-capture §3.3)
 blocking_ms = 0x56
-rate_accuracy = 0x5A            # how(u8, enum rate_accuracy_how) ppm(u32, 0 unknown)
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error: why state is 6
 [interface.tlv.data]            # the data frame's TLV tail (core §11.2)
 generation = 0x01               # u32, required in streaming mode
 [interface.tlv.describe]        # plus the common tags (ops 0x09, features 0x06, enum features)
-mode = 0x40                     # repeats, one per mode: mode(u8) background(u8) max_samples(u32) max_segments(u32): the maximum (not the current free space)
+mode = 0x40                     # repeats, one per mode: mode(u8) max_samples(u32) max_segments(u32): the maximum (not the current free space)
 rate_range = 0x41
-rate_list = 0x42                # repeats (union): n(u8) n x rate_hz(u32)
-rate_limit = 0x43               # repeats, one per condition: mode(u8) channels(u8) max_hz(u32): the limit for C <= channels
-channels = 0x44                 # max(u8) layouts(u32 bit set: bit i = w 2^i, 1-128)
+channels = 0x44                 # max(u8)
 trigger = 0x45                  # types(u32 bit set) max_pretrigger(u32)
-max_read = 0x47
-segment_ring = 0x48
 [interface.event]
 segment = 0x01                  # the segment record (oep-if-capture §2)
 stopped = 0x02                  # reason(u8) error(u8)
@@ -682,13 +676,12 @@ triggered = 0x03                # serial(u32) trigger_index(u32) trigger_ns(u64)
 [interface.enum.features]       # none in revision 1; 0x01 / 0x02 / 0x04 reserved (query, force, subscribe and unsubscribe are declared by ops)
 [interface.reserved]
 features = [[0x01, 0x04]]
+"tlv.configure_answer" = [[0x54, 0x54], [0x5A, 0x5A]]   # were timing, rate_accuracy
+"tlv.describe" = [[0x42, 0x43], [0x47, 0x48]]   # were rate_list, rate_limit, max_read, segment_ring
 [interface.enum.mode]
 one_shot = 1
 repeat = 2
 streaming = 3
-[interface.enum.background]     # describe mode's background byte (oep-if-capture §3.5); other values reserved
-blocks = 0                      # the probe does not answer while capturing in this mode; start's blocking_ms says for how long
-answers = 1                     # the probe keeps answering while capturing; start's blocking_ms is 0
 [interface.enum.trigger]
 immediate = 0
 level = 1
@@ -710,20 +703,13 @@ error = 3
 peripheral = 1
 storage = 2
 clock = 3
-[interface.enum.jitter_kind]    # configure answer timing's jitter_kind (oep-if-capture §3.3)
-none = 0
-fractional_division = 1
-software = 2
-[interface.enum.rate_accuracy_how]  # configure answer rate_accuracy's how (oep-if-capture §3.3)
-computed = 0                    # the nominal value calculated from the division
-measured = 1
 [interface.enum.status_flag]    # status flags, reset on start
 dropped = 0x01
 slipped = 0x02
 [interface.enum.segment_flag]      # segment flags (oep-if-capture §2)
 gap = 0x01
 short = 0x02
-slipped = 0x04                     # the time base bent inside the segment (samples later than the timing answer)
+slipped = 0x04                     # the time base bent inside the segment (a sample taken one sample period or more late)
 
 [[interface]]
 name = "oep.fixture.analog"            # logic-capture §0.1: the same operations and numbers as oep.fixture.logic, one analog track
@@ -743,23 +729,21 @@ op = [
   { code = 0x32, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
 [interface.tlv.configure]       # also the request of query
-mode = 0x40                     # always critical (oep-if-capture §3.3)
-rate = 0x42                     # always critical
+mode = 0x40
+rate = 0x42
 samples = 0x43
 segments = 0x44
-trigger = 0x45                  # always critical: type(u8) role(u8) value(u32)
-pretrigger = 0x46               # always critical
-frontend = 0x47                 # repeats, one per channel; always critical: role(u8) frontend(u8) (oep-if-capture §3.3)
+trigger = 0x45                  # type(u8) role(u8) value(u32)
+pretrigger = 0x46
+frontend = 0x47                 # repeats, one per channel: role(u8) frontend(u8) (oep-if-capture §3.3)
 [interface.tlv.configure_answer]  # the answer of configure and query
 actual_rate = 0x50
 layout = 0x51                   # s(u8) o(u8) b(u8, 1-31) C(u8) order[C](u8)
 actual_samples = 0x52
 actual_segments = 0x53
-timing = 0x54                   # jitter_kind(u8, enum jitter_kind) jitter_ns(u32) (oep-if-capture §3.3)
 scale = 0x55                    # repeats, one per channel: role(u8) zero(i32) scale_nv(i32): the pin voltage (attenuation included)
 blocking_ms = 0x56
 skew = 0x57                     # repeats, one per channel: role(u8) skew_ns(u32)
-rate_accuracy = 0x5A            # how(u8, enum rate_accuracy_how) ppm(u32, 0 unknown)
 frontend_used = 0x58            # repeats, one per channel: role(u8) frontend(u8): the frontend each channel took
 reference = 0x59                # source(u8, enum reference_source) mv(u32) how(u8, enum reference_how)
 [interface.tlv.status_answer]
@@ -772,14 +756,9 @@ vrefint = 0x02                  # raw(u32) ns(u64) nominal_mv(u32): the internal
 [interface.tlv.describe]        # plus the common tags (ops 0x09, features 0x06, enum features)
 mode = 0x40                     # repeats, one per mode: the maximum (not the current free space)
 rate_range = 0x41
-rate_list = 0x42                # repeats (union): n(u8) n x rate_hz(u32)
-rate_limit = 0x43               # repeats, one per condition
-channels = 0x44                 # max(u8) layouts(u32 bit set: bit 3-5 = s 8 / 16 / 32)
+channels = 0x44                 # max(u8)
 trigger = 0x45                  # types(u32 bit set) max_pretrigger(u32)
 frontend = 0x46                 # repeats, one per input range: frontend(u8) range_min_mv(i32) range_max_mv(i32) attenuation_mdb(u32)
-max_read = 0x47
-segment_ring = 0x48
-frontend_shared = 0x49          # u8 1 = every channel takes the same frontend
 [interface.event]
 segment = 0x01
 stopped = 0x02                  # reason(u8) error(u8)
@@ -787,13 +766,12 @@ triggered = 0x03
 [interface.enum.features]       # none in revision 1; 0x01 / 0x02 / 0x04 reserved (query, force, subscribe and unsubscribe are declared by ops)
 [interface.reserved]
 features = [[0x01, 0x04]]
+"tlv.configure_answer" = [[0x54, 0x54], [0x5A, 0x5A]]   # were timing, rate_accuracy
+"tlv.describe" = [[0x42, 0x43], [0x47, 0x49]]   # were rate_list, rate_limit, max_read, segment_ring, frontend_shared
 [interface.enum.mode]
 one_shot = 1
 repeat = 2
 streaming = 3
-[interface.enum.background]     # describe mode's background byte (oep-if-capture §3.5); other values reserved
-blocks = 0                      # the probe does not answer while capturing in this mode; start's blocking_ms says for how long
-answers = 1                     # the probe keeps answering while capturing; start's blocking_ms is 0
 [interface.enum.trigger]
 immediate = 0
 cross_up = 3
@@ -819,13 +797,6 @@ error = 3
 peripheral = 1
 storage = 2
 clock = 3
-[interface.enum.jitter_kind]    # configure answer timing's jitter_kind (oep-if-capture §3.3)
-none = 0
-fractional_division = 1
-software = 2
-[interface.enum.rate_accuracy_how]  # configure answer rate_accuracy's how (oep-if-capture §3.3)
-computed = 0                    # the nominal value calculated from the division
-measured = 1
 [interface.enum.reference_how]  # configure answer reference's how (oep-if-capture §3.3)
 nominal = 0
 measured = 1
@@ -835,7 +806,7 @@ slipped = 0x02
 [interface.enum.segment_flag]      # segment flags (oep-if-capture §2)
 gap = 0x01
 short = 0x02
-slipped = 0x04                     # the time base bent inside the segment (samples later than the timing answer)
+slipped = 0x04                     # the time base bent inside the segment (a sample taken one sample period or more late)
 
 [[interface]]
 name = "oep.fixture.capture-group"     # oep-if-capture §4: capture / analog tracks started together (mixed signal)
@@ -850,20 +821,18 @@ op = [
   { code = 0x32, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
 [interface.tlv.bind]
-trigger_track = 0x01            # always critical, fn(u16): the track whose configure trigger starts the group (absent: immediate)
+trigger_track = 0x01            # fn(u16): the track whose configure trigger starts the group (absent: immediate)
 [interface.tlv.start_answer]
 generations = 0x01              # n x (fn(u16) generation(u32)): each track's new generation
 [interface.tlv.describe]        # plus ops 0x09 and features 0x06 (enum features)
 tracks = 0x40                   # n(u8) n x fn(u16): the tracks it can bind
-max_tracks = 0x41               # u8
-budget = 0x42                   # repeats: max_sps(u32, channels x rate summed, sample/s) n(u8) n x fn(u16): shared when bound together
-start_skew = 0x43               # repeats, one per track: fn(u16) typical_ns(u32): how late that track starts after the group (display)
 [interface.event]               # numbered as the tracks' events
 stopped = 0x02                  # reason(u8) error(u8): as the track's stopped
 triggered = 0x03                # trigger_fn(u16, 0 on force) trigger_ns(u64)
 [interface.enum.features]       # none in revision 1; 0x01 / 0x02 / 0x04 reserved (force, subscribe and unsubscribe are declared by ops)
 [interface.reserved]
 features = [[0x01, 0x04]]
+"tlv.describe" = [[0x41, 0x43]]   # were max_tracks, budget, start_skew
 [interface.enum.state]          # as the tracks'
 unconfigured = 0
 configured = 1

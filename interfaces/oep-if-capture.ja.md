@@ -153,12 +153,11 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | start_ns | 区画の最初のサンプルの時刻の推定値（probe の時計: 起動からの ns、u64 で一周しない）。probe が知っている補正を済ませた値 |
 | start_uncertainty_ns | start_ns の不確かさ（±ns）。probe が見積もれる範囲の目安で、保証ではない |
 | trigger_index | 区画の中でトリガが立ったサンプルの番号。トリガを含まない区画は 0xFFFFFFFF |
-| flags | bit0 前の区画との間が空いた（リピートで空き区画がなかった、ストリーミングで押し出された）、bit1 短い（stop で終わった）、bit2 区画の中でサンプルの時刻が configure の timing（jitter_ns）を超えてずれた（ソフトウェアの歩調で遅れたサンプルがある） |
+| flags | bit0 前の区画との間が空いた（リピートで空き区画がなかった、ストリーミングで押し出された）、bit1 短い（stop で終わった）、bit2 時間の基準が曲がった（予定の時刻を 1 サンプル周期以上過ぎて取ったサンプルがある） |
 
 - 区画の中は連続を約束する。リピートとストリーミングでは、flags bit0 が立っていない限り、区画は前の区画の直後から続く。
-- flags bit2 は、probe が自分で遅れを見つけられるときに立てる（ソフトウェアの歩調なら、予定の時刻を 1 サンプル周期以上過ぎて取った
-  サンプルがあったとき）。
-- 区画の情報は本文とは別の小さなリングにためる（上限は宣言する）。
+- flags bit2 は、probe が自分で遅れを見つけられるときに立てる。
+- 区画の情報は本文とは別の小さなリングにためる（いくつ覚えるかは probe が決める）。
 
 ## 3. 操作
 
@@ -196,7 +195,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
   まだ取れていない位置なら、あるところまで返す（何もなければ空。max = 0 も空の成功）。
 - release はリピートだけ（ワンショットとストリーミングでは何もせず成功）。serial **以下**（inclusive）を解放する。state 5 で空きが
   できれば probe は自動で取得を再開し（state 3）、再開した最初の区画に flags bit0 を立てる。stopped reason 2 は送らない（予約）。
-- read が実際に返す量は、probe の frame と `max_read`（宣言）で決まる。
+- read が実際に返す量は probe が決める（max 以下で、応答が max_frame に収まる量）。
 - segments の more は、まだ返していない区画があること。from_serial が serial_done より先なら空の成功。
 
 **状態の遷移**（行 = 今の state、列 = 契機。「—」は何もせず成功。force の列は force を持つ probe に当てはまる）:
@@ -221,18 +220,17 @@ configure の応答の blocking_ms が core の max_op_ms を超える構成は�
 
 ### 3.3 configure
 
-**設定の TLV**（critical である TLV（または値）を probe が扱えなければ configure 全体を
-rejected unsupported（0x0B、payload に tag）で断り、critical でなければ無視する。core §2.3。下で「常に」の TLV は critical の bit が無くても critical。「critical で送るもの」を見よ）:
+**設定の TLV**（扱えない値は、core §2.3 のとおり configure 全体を rejected unsupported（受け取ったままの tag）で断る）:
 
-| tag | 名前 | 値 | 対象 | critical で送るか |
-|---|---|---|---|---|
-| 0x40 | mode | u8: 1 ワンショット、2 リピート、3 ストリーミング（0x40〜 は別の定義） | 両方 | 常に |
-| 0x42 | rate | rate_hz(u32)（アナログはチャネルあたり。1 Hz 以上。それより遅い記録は host の問い合わせの範囲で、v1 には入れない） | 両方 | 常に |
-| 0x43 | samples | u32（1 区画のサンプル数。ストリーミングでは省略してよい） | 両方 | 立てずに送ってよい |
-| 0x44 | segments | u32（リピートの区画の数。省略すれば probe に任せる） | 両方 | 立てずに送ってよい |
-| 0x45 | trigger | type(u8)、role(u8)、value(u32) | 両方 | 常に |
-| 0x46 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 | 常に |
-| 0x47 | frontend | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。繰り返す（core §2.3）。同じ role に 2 つあれば rejected malformed | アナログ | 常に |
+| tag | 名前 | 値 | 対象 |
+|---|---|---|---|
+| 0x40 | mode | u8: 1 ワンショット、2 リピート、3 ストリーミング | 両方 |
+| 0x42 | rate | rate_hz(u32)（アナログはチャネルあたり。1 Hz 以上） | 両方 |
+| 0x43 | samples | u32（1 区画のサンプル数。ストリーミングでは省略してよい） | 両方 |
+| 0x44 | segments | u32（リピートの区画の数。省略すれば probe に任せる） | 両方 |
+| 0x45 | trigger | type(u8)、role(u8)、value(u32) | 両方 |
+| 0x46 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 |
+| 0x47 | frontend | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。繰り返す（core §2.3）。同じ role に 2 つあれば rejected malformed | アナログ |
 
 - **問い合わせは別の操作（0x09）**。configure の TLV のフラグにすると、probe はロックの要否を操作の番号で決めるので、
   ロックなしの問い合わせができない。問い合わせは今の設定と取ったデータを壊さない。
@@ -241,11 +239,9 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
   宣言に無い type は rejected unsupported。
 - **samples は区画の総数**（pretrigger を含む）。トリガが早く立ってプリトリガの分が足りなければ、区画は短く、trigger_index はそのまま
   小さい。force で始めたときは trigger_index = その瞬間のサンプルで triggered を送る。type 0（即時）では triggered を送らない。
-- **critical で送るもの**: host は mode、rate、trigger、pretrigger、frontend を critical の bit を立てて送らなければならない（MUST）。probe は、bit が立っていても
-  いなくても、そのそれぞれを critical として扱う（core §2.3）: そのどれかに従えなければ configure を断り（unsupported、受け取ったままの tag）、どれも無視しない。query でも同じ。
-- **rate**: critical で送ったとき、probe は宣言した rate_range の中で実現できる最も近い値を使う（向きは問わない。どれかは actual_rate
+- **rate**: probe は宣言した rate_range の中で実現できる最も近い値を使う（向きは問わない。どれかは actual_rate
   で分かる）。範囲の外の rate は rejected unsupported（tag 0x42）。
-- **samples と segments** は critical を立てずに送ってよい。probe が持てる量を超える samples は、その上限に切り下げ、応答の actual_samples（0x52）
+- probe が持てる量を超える samples は、その上限に切り下げ、応答の actual_samples（0x52）
   が正である。host は送った値を仮定せず、actual_samples と actual_segments を読む。
 
 **応答の TLV**:
@@ -256,12 +252,10 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 | 0x51 | layout | ロジック: w(u8)、C(u8)、pos[C](u8)。アナログ: s(u8)、o(u8)、b(u8)、C(u8)、order[C](u8)（§1） | 両方 |
 | 0x52 | actual_samples | u32 | 両方 |
 | 0x53 | actual_segments | u32 | 両方 |
-| 0x54 | timing | jitter_kind(u8、registry の enum `jitter_kind`: 0 なし / 1 分数分周 / 2 ソフトウェア)、jitter_ns(u32) | 両方 |
 | 0x57 | skew | role(u8)、skew_ns(u32)。チャネルごとに 1 つ（遅れが 0 のチャネルは省いてよい） | アナログ |
 | 0x55 | scale | role(u8)、zero(i32、値)、scale_nv(i32、1 値あたりの nV。負は反転する frontend)。チャネルごとに 1 つ。probe の入力ピンの電圧への 1 次式（§1.2） | アナログ |
 | 0x56 | blocking_ms | u32（取っている間 probe が答えない時間の見込み。0 なら答える） | 両方 |
 | 0x58 | frontend_used | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。値の意味（測れる範囲、減衰）はその frontend の宣言で決まる | アナログ |
-| 0x5A | rate_accuracy | how(u8、enum `rate_accuracy_how`: 0 分周から計算した公称値、1 測った値)、ppm(u32: actual_rate の不確かさの目安、0 は不明)。トラック間で時間の倍率を合わせ込むべきかの目安 | 両方 |
 | 0x59 | reference | source(u8、enum `reference_source`: 0 電源、1 内部、2 外部)、mv(u32)、how(u8、enum `reference_how`: 0 公称、1 測った)。ADC の基準電圧。電源が基準の ADC では、同じ生の値の意味が電源電圧で変わる。scale の 1 次式はこの電圧を前提にした換算 | アナログ |
 
 ### 3.4 通知（core §11）
@@ -284,16 +278,11 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 |---|---|---|
 | 0x09 | ops | 持つ op（core §7.4）: query、force、subscribe と unsubscribe は持つときだけ立てる |
 | 0x06 | features | 共通のビット。revision 1 はビットを定めない（bit0〜bit2 は予約、0） |
-| 0x40 | mode | mode(u8)、background(u8: 1 = このモードで取っている間も probe は要求に答え続け、start の blocking_ms は 0。0 = 取っている間は答えず、start の blocking_ms がその長さを示す、§3.2。ほかの値は予約)、max_samples(u32、1 区画)、max_segments(u32)（モードごとに 1 つ。**最大**の置き場で答える。describe は宣言だけなので、その時点の空きでは答えない） |
+| 0x40 | mode | mode(u8)、max_samples(u32、1 区画)、max_segments(u32)（モードごとに 1 つ。**最大**の置き場で答える。describe は宣言だけなので、その時点の空きでは答えない） |
 | 0x41 | rate_range | min_hz(u32)、max_hz(u32)、exact(u8: 1 = 範囲内の任意の値を指定できる) |
-| 0x42 | rate_list | n(u8)、n × rate_hz(u32)。代表的なレート。UI の一覧の候補。1 つの TLV に入らなければ繰り返してよい（和集合） |
-| 0x43 | rate_limit | mode(u8)、channels(u8)、max_hz(u32)。チャネル数 C ≤ channels のときの上限（条件ごとに繰り返してよい） |
-| 0x44 | channels | max(u8)、layout の候補(u32: ビット i が立っていれば 2^i を選べる。ロジックは w（1〜128: ビット 0〜7）、アナログは s（8、16、32: ビット 3〜5）） |
+| 0x44 | channels | max(u8)。チャネル数の上限 |
 | 0x45 | trigger | types(u32: type のビット集合)、max_pretrigger(u32) |
 | 0x46 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)、attenuation_mdb(u32: 前段の減衰、ミリ dB。0 は減衰なし、0xFFFFFFFF は減衰で表せない前段)。入力範囲の候補ごとに 1 つ（アナログ）。番号は configure の frontend で選ぶ。候補が 1 つだけの probe はそれだけ書く |
-| 0x49 | frontend_shared | u8: 1 = すべてのチャネルが同じ frontend しか使えない（違う指定は configure で断る） |
-| 0x47 | max_read | u32 |
-| 0x48 | segment_ring | u16（覚えている区画の情報の数） |
 
 - **宣言は目安、configure の応答が正。** 宣言に出ていない組み合わせは query で確かめる。
 
@@ -348,11 +337,11 @@ bind の TLV:
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x01 | trigger_track | fn(u16)。組の開始の条件を持つトラック（そのトラックの configure の trigger と pretrigger）。無ければ即時。**critical で送る**（無視されると意味が変わる）: host は critical の bit を立てなければならず（MUST）、probe は bit が立っていてもいなくても critical として扱う（従えなければ unsupported、無視しない。core §2.3） |
+| 0x01 | trigger_track | fn(u16)。組の開始の条件を持つトラック（そのトラックの configure の trigger と pretrigger）。無ければ即時 |
 
 - **bind** は、configure 済みのトラック（`oep.fixture.logic` / `oep.fixture.analog` の fn）を束ねる。n = 0 で解く（state 3 のときは
   rejected unavailable cause 6。束ねていないときの n = 0 は何もせず成功）。断り方: 同じ fn の重複は malformed、宣言（tracks）に無い fn
-  は unsupported、configure していない・モードが揃っていない・trigger_track 以外が即時でないトリガを持つ・budget を超える は
+  は unsupported、configure していない・モードが揃っていない・trigger_track 以外が即時でないトリガを持つ・一緒に取る資源が足りない は
   unavailable（cause 6 / 2）。どのトラックについての断りかは payload の TLV fn（0x05、core §4.3。unsupported の payload も同じ）で返す。
   何も変えずに断る。束ねている間、各トラックの configure、start、stop、force は rejected unavailable
   （cause 4。組の op を使う。configure し直すときは、いったん n = 0 で解く）。束ねたトラックの plan の
@@ -393,11 +382,8 @@ kind の番号はトラック（§3.4）と揃える（triggered 3、stopped 2�
 | 0x09 | ops | 持つ op（core §7.4）: force、subscribe と unsubscribe は持つときだけ立てる |
 | 0x06 | features | revision 1 はビットを定めない（bit0〜bit2 は予約、0） |
 | 0x40 | tracks | n(u8)、n × fn(u16)。束ねられるトラック |
-| 0x41 | max_tracks | u8。1 つの組に入れられるトラックの数 |
-| 0x42 | budget | max_sps(u32、チャネル数 × レートの合計の上限、sample/s)、n(u8)、n × fn(u16)。挙げた fn を一緒に束ねたときに分け合う上限（繰り返してよい。例: 1 つの ADC を 2 つのトラックで使う、DMA を分け合う） |
-| 0x43 | start_skew | fn(u16)、typical_ns(u32)。トラックごとに 1 つ。繰り返す。そのトラックの開始が組の開始から遅れる目安（区画の start_ns で実際の値が分かるので、表示のため） |
 
-- どのトラックの組が束ねられるかは tracks と budget で宣言し、確かめたいときは bind を試す（断られても何も変わらない）。
+- 束ねられるトラックは tracks で宣言する。ある組を束ねられるかは bind を試して確かめる（断られても何も変わらない）。
 - 1 つのトラックの中の複数チャネル（1 つの ADC を順番に切り替える）は今までどおり、そのトラックの order と skew（§1.2、§3.3）。
 
 ### 4.4 使い方の例
