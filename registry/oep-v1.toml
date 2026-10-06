@@ -5,15 +5,15 @@
 # declaration; the same value in another context is another tag (core §2.2).
 # Per op: `lock` = needs the session lock. The key `fields` is reserved on ops for
 # payload layouts later (encoders / decoders generated from here). Shared enums live under [common.enum.*]; USB
-# descriptor constants under [usb]; text and value limits the spec states under [limits] (2026-10-01); values that are
-# not the specification's under [reference]. After the freeze keys are never renamed, only added (versioning §5);
+# descriptor constants under [usb]; text and value limits the spec states under [limits] (2026-10-01). After the freeze keys are
+# never renamed, only added (versioning §5);
 # the hash tells only whether generated code matches this file, nothing about wire compatibility.
 # The hash embedded in the generated files is the sha256 of this file with line endings normalized to LF.
 # Per interface: `reserved.<enum or "op">` = ranges [[lo, hi]] no value may use; `status` / `reject_reasons` = the
 # interface's own values (0x40-0x7F). Common describe tags ([describe_common]) are not repeated in an interface.
 # TLV tags are written as their number, the low 7 bits (core §2.2); a request sets bit 7 itself when it sends one critical.
-# A tag appears at most once in a request (core §2.3), and an answer's reader uses the first, unless its comment says `repeats`.
-# In every u8 enum, 0xF0-0xFE are experimental unless the enum says otherwise: never registered (core §2.5).
+# A tag appears once unless its comment says `repeats`; a reader that meets a non-repeating tag twice uses the first (core §2.3).
+# A value, tag or op that v1 removed stays reserved (a comment or a `reserved` range): it is never given another meaning.
 #
 # Table kinds. The registry uses these and no others; a generator written from this list reads the whole file.
 #   [registry]         schema = integer (the layout of this file; 1).
@@ -22,7 +22,6 @@
 #   [roles] [resolutions] [outcomes] [reject_reasons] [status]
 #                      name = integer: a u8 wire value of the core.
 #   [timing] [limits]  name = integer: a time (suffix _ms), a size (_bytes), a speed (_baud), or a count; the spec states it.
-#   [reference]        name = integer: a value that is not the specification's (outside the freeze).
 #   [describe_common]  name = integer: a describe TLV tag (u8, low 7 bits) every interface may use.
 #   [usb]              name = integer: a USB descriptor value (the project's VID / PID u16, class / subclass / protocol u8,
 #                      HID usage page / usage u16).
@@ -52,10 +51,9 @@ byte_order = "little"
 [constants]
 confirm_request_magic = "OEP?"
 confirm_result_magic = "OEP!"
-tag_critical = 0x80             # bit 7 of a TLV tag in a request: the probe must honour it or refuse
-tag_ignored = 0x7F              # in every context: a response TLV listing the non-critical tags the probe ignored
-tag_invalid = 0xFF
+tag_critical = 0x80             # bit 7 of a TLV tag in a request: a probe that does not implement the tag refuses (core §2.3)
 tag_reserved_zero = 0x00        # never a TLV tag; the rejected unsupported payload's "fixed-part value" marker (core §4.3)
+# 0x7F: never a TLV tag, in every context (core §2.5; was the ignored list)
 min_max_frame = 64              # every probe takes messages this long; a host sends no longer message before confirm answers (transports §3)
 op_subscribe = 0x30             # reserved in every interface's op space: subscribe of the interface that sends notifications (core §11.3)
 op_unsubscribe = 0x32           # reserved in every interface's op space: unsubscribe (core §11.3)
@@ -69,7 +67,7 @@ data = 0x06
 [resolutions]
 rejected = 0x00
 completed = 0x01
-accepted = 0x02                 # reserved: v1 has no long operations (core §10); a host treats it as a failure
+accepted = 0x02                 # reserved; a host treats an unknown resolution as a failure (core §2.4)
 
 [outcomes]                      # the detail byte of a completed result
 success = 0x00
@@ -81,7 +79,7 @@ unknown_function = 0x01
 unknown_operation = 0x02
 malformed = 0x03
 unavailable = 0x04
-busy = 0x05                     # reserved with the long operations (core §10)
+busy = 0x05                     # reserved
 window_exceeded = 0x06
 no_session = 0x07               # a request with a session_id while no session holds the lock: open a new session (core §6.2, §9)
 locked = 0x08
@@ -89,8 +87,7 @@ session_required = 0x09
 no_connection = 0x0A
 unsupported = 0x0B
 result_lost = 0x0C              # a resend whose answer is not kept (it fell out of the table, or was too large): read the state again (core §5.2)
-corr_reused = 0x0D              # a request sent again with the same corr but another fn, op or payload
-# 0x0E reserved (core §4.3)
+# 0x0D reserved (was corr_reused), 0x0E reserved
 
 [status]                        # wire and target operations (oep-if-common §3); 0x06-0x3F reserved, 0x40-0x7F per interface
 ok = 0
@@ -101,27 +98,22 @@ timeout = 4
 state = 5
 
 [timing]                        # times and line values host and probe both implement (transports §2, §4, §5; core §11)
-resync_quiet_ms = 50            # host: read and discard until the input is this quiet, then confirm
-probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restarts its reader (not on TCP; transports §2)
-host_resync_wait_ms = 250       # host: before a resync's confirm, and the first confirm on a length-prefixed port, this long since its last write (transports §5)
+probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restarts its reader (not on TCP; transports §2); a host waits longer than this before a resync's confirm (transports §5)
 uart_bridge_boot_baud = 115200  # a UART bridge's boot speed, 8N1 without flow control (transports §4)
-host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
 port_speed_idle_max_ms = 3000   # a raised port_speed goes back after this long without a good frame, whatever idle_ms said (oep-if-link §3)
 host_wait_add_ms = 1000         # host: waits at least the request's argument time (at most max_op_ms) plus this plus the transfer time (core §4.4)
 notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §11.4)
 slot_retry_reset_hold_ms = 20   # probe: hold_ms of the retry with reset of a boot_reset slot (oep-if-probe-config §3.1)
 port_speed_switch_wait_ms = 20  # host: after the answer to try, at least this long at the new speed before the confirm that verifies it (oep-if-link §3 host obligation 2)
-port_speed_confirm_extra_ms = 1000  # host: repeats confirm at the boot speed for port_speed_idle_max_ms + this (oep-if-link §3 host obligation 5; transports §4 after a raised speed)
 
-[describe_common]               # declaration tags every interface's describe may use (core §7.4); 0x04 reserved, 0x3F response meta
+[describe_common]               # declaration tags every interface's describe may use (core §7.4); 0x04, 0x07 (was implementation) and 0x3F reserved
 role_channels = 0x01            # repeats: the same role may be written several times (union; core §7.4)
 max_clock_hz = 0x02
 max_length = 0x03
 min_clock_hz = 0x05
 features = 0x06
-implementation = 0x07
 channel_group = 0x08            # repeats, one per combination: group(u8) n(u8) n x (role(u8) channel(u16))
-ops = 0x09                      # base(u8) bitmap: bit i = op base + i is offered; every fn's describe carries it, fn 0 included (core §1.2, §7.4)
+ops = 0x09                      # base(u8) bitmap (1 byte or more, base + 8 x bytes <= 256): bit i = op base + i is offered; every fn's describe carries it, fn 0 included (core §1.2, §7.4)
 
 [usb]                           # USB identification and the shape of a probe's interfaces (transports §3)
 project_vid = 0x1209            # the project's USB VID:PID: the only automatic identification of an OEP probe (transports §3)
@@ -141,14 +133,8 @@ unit_id_max_bytes = 32
 slot_name_max_bytes = 32
 label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
 interface_name_max_bytes = 64
-model_max_bytes = 32            # fn 0 describe model text (core §7.5)
 resend_max = 1                  # host: resends of one request with the same corr (core §5.2; the probing rule of transports §3)
 port_speed_broken_max = 3       # probe: broken candidates in a row with no valid frame, after commit, that return a raised port to the boot speed (oep-if-link §3 return condition 4)
-host_serial_inflight_max_bytes = 6144  # host: on a serial port, the expected volume of answers to outstanding requests (concurrency x frame limit) at most this (transports §4)
-host_serial_min_bytes_max = 2048  # host: on a serial port, subscribe's min_bytes at most this (transports §4)
-cobs_frame_max_bytes = 65796    # the most bytes between the two 0x00 of a valid COBS frame: a 65535-byte message, its CRC-16, one code byte per 254 (host guide §2)
-ignored_max_entries = 16        # entries of the ignored TLV; 0x00 as the 16th = more were ignored (core §2.3)
-resource_reuse_distance = 1024  # a closed resource number is not reused among the most recently closed this many (core §9)
 dm_wait_ms = 100                # riscv-dm: one wait for a DM state inside a high-level op (oep-if-debug §4)
 dmi_busy_retries = 100          # riscv-dm: DMI busy is retried this many times, then status wait (oep-if-debug §4)
 reset_wait_ms = 100             # riscv-dm reset: wait for the hart after releasing ndmreset, per attempt (oep-if-debug §4.3)
@@ -161,18 +147,14 @@ attach_budget_ms = 1000         # wire: one attach answer at most, speed search 
 scan_budget_ms = 500            # wire: no scan combination starts later than this after the request arrived (oep-if-debug §1, core §4.4)
 scan_tried_max = 255            # wire: combinations one scan request tries at most (tried is u8; oep-if-debug §1)
 block_frame_overhead_bytes = 24 # read_block / write_block: max_length is at most max_frame minus this (oep-if-debug §4.5, §6)
-link_source_overhead_bytes = 26 # oep.probe.link source: len is at most max_frame minus this (header 5, len 2, room for ignored 19, kept even with no ignored TLV) (oep-if-link §2)
 tar_rewrite_bytes = 1024        # arm-adi read_block / write_block: the probe rewrites TAR at every boundary of this many bytes (oep-if-debug §6)
 console_dmstatus_poll_ms = 20   # console: while reading, the probe checks DMSTATUS at least this often (oep-if-console §3)
 console_send_queue_min_bytes = 64  # console: describe send_queue is at least this (oep-if-console §1, §2)
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused or not used (oep-if-fixture §2, oep-if-probe-config §1)
 uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)
 fixture_count_max = 255         # i2c-target / spi-target: u8 counts (pending, queued) stop at this (oep-if-fixture §3, §4)
-max_op_ms_max = 600000          # fn 0 describe max_op_ms is 1 to this (10 minutes); a host that reads 0 or more than this does not use the probe (core §7.5, §4.4)
+max_op_ms_max = 600000          # fn 0 describe max_op_ms is 1 to this (10 minutes) (core §7.5)
 restart_after_answer_ms = 100   # oep.probe.restart: the probe begins its restart at most this long after its answer has left the transport (oep-if-restart §2)
-
-[reference]                     # values that are not the specification's, outside the freeze (versioning §3)
-max_op_ms = 10000               # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
 
 [common.enum.target_id_scheme]  # one space for the whole probe; each wire states which it uses (oep-if-debug §1)
 wch_dmi_7f = 1                  # the u32 at DMI address 0x7F of that debug module; 0 and all ones = none (not sent)
@@ -240,8 +222,6 @@ owner = 0x01
 [core.tlv.unavailable_payload]   # the rejected unavailable payload (core §4.3), every fn; 0x40+ per interface
 cause = 0x01                    # u8, enum unavailable_cause
 channel = 0x02                  # u16; repeats
-holder_fn = 0x03                # u16
-holder_kind = 0x04              # u8, enum holder_kind
 fn = 0x05                       # u16: the fn the refusal is about (a track in capture-group's bind or start)
 [core.tlv.unsupported_payload]   # the rejected unsupported payload after tag(u8) (0x00 = a fixed-part value), every fn (core §4.3)
 supported = 0x01                # confirm only: min(u8) max(u8), the protocol revisions the probe handles (core §7.1)
@@ -253,12 +233,8 @@ firmware = 0x40
 model = 0x41
 unit_id = 0x42
 channels = 0x43
-reserved = 0x44
-profile = 0x45
 label = 0x46                    # repeats, one per channel: channel(u16) text: the firmware's fixed channel names (settings' labels: probe.config get)
-resets_on_open = 0x47
-transport = 0x49                # repeats, one per transport: index(u8) kind(u8) interface(u8, 0xFF not USB); required (0x48 reserved)
-discoverable = 0x4A             # u8: 1 = the probe also enumerates with the project's USB VID:PID ([usb] project_vid / project_pid; transports §3, core §7.5)
+transport = 0x49                # repeats, one per transport: index(u8) kind(u8) interface(u8, 0xFF not USB); required
 chip = 0x4C                     # text: the probe MCU's part and revision (optional)
 max_op_ms = 0x4D                # u32: the longest one request may take; required (core §7.5)
 [core.enum.unavailable_cause]
@@ -266,16 +242,8 @@ pin_in_use = 1
 limit = 2
 storage_full = 3
 bound_in_group = 4
-held_by_settings = 5
+held_by_settings = 5            # the settings' plan, disable, output idle or slot (core §4.3)
 wrong_state = 6
-[core.enum.holder_kind]
-plan = 1
-connection = 2
-slot = 3
-bind = 4
-settings_plan = 5
-disabled = 6                    # a channel the settings' disable item takes out (oep-if-probe-config §1)
-settings_idle = 7               # a channel the settings' idle item takes charge of: output idles refused when named, every idle left out of count = 0 (oep-if-debug §1, oep-if-capture §1.2)
 [core.enum.transport_kind] # describe transport (core §7.5); 1-3 are serial ports (transports §4)
 uart_bridge = 1
 usb_cdc = 2
@@ -284,8 +252,9 @@ vendor_bulk = 4
 hid = 5
 tcp = 6
 [core.reserved]
-op = [[0x20, 0x2F], [0x30, 0xEF]]   # 0x20-0x2F the long operations (core §10); the rest reserved (core §2.5); fn 0 sends no notifications
-"tlv.describe" = [[0x48, 0x48], [0x4E, 0x4E], [0x3F, 0x3F]]
+op = [[0x20, 0xEF]]                 # reserved (core §2.5; 0xF0-0xFF are outside every interface's op space); fn 0 sends no notifications
+"tlv.describe" = [[0x3F, 0x3F], [0x44, 0x45], [0x47, 0x48], [0x4A, 0x4A], [0x4E, 0x4E]]   # 0x44 reserved, 0x45 profile, 0x47 resets_on_open, 0x4A discoverable: removed
+"tlv.unavailable_payload" = [[0x03, 0x04]]   # were holder_fn, holder_kind
 
 [[interface]]
 name = "oep.probe.plan"                # which channel each role of an interface uses (oep-if-plan); listed when an interface has plan roles

@@ -39,7 +39,7 @@ plan は **fn ごと**に持つ。
   何も変えずに rejected（置き換えるはずだった fn の今の plan も残る）。
 - **割り当ての数**: 置き換えた後の割り当ての合計（すべての fn。設定の plan を含む）が plan_roles を超える plan_apply（と設定の set）は、何も変えずに
   rejected unavailable（cause 2。資源が足りない。core §8.1 と同じ断り方。要求の形は正しいので malformed ではない）。
-- 応答は completed success で、payload は無い（ignored が要れば付ける、core §2.3）。
+- 応答は completed success で、payload は無い。
 
 ### 2.2 plan_release
 

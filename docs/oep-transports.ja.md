@@ -53,7 +53,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 
 ## 2. フレームの送り方
 
-- host は **1 つのフレームを 1 回の書き込みで送り**、フレームの途中で 100 ms（`host_frame_pause_max_ms`）以上止めない。
+- host は **1 つのフレームを 1 回の書き込みで送り**、フレームの途中で `probe_frame_gap_ms` 止めない。
 - シリアルの口、vendor bulk、HID では、フレームの途中で 200 ms（`probe_frame_gap_ms`）入力が途切れたら、probe は読み取りを最初からやり直す。**TCP ではやり直さない。** TCP は区切りを失わず、流れの壊れた TCP の接続は閉じる。
 
 ## 3. 複数の経路
@@ -68,7 +68,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   VID:PID `1209:4F45` で列挙する device** だけである（VID 0x1209、PID 0x4F45。registry の `usb` の `project_vid` / `project_pid`）。ほかの値で
   OEP の probe を自動で見分けることはない。それ以外は、利用者が probe を名指すか口を選ぶ（次の 2 つの項目）。device の
   文字列 iProduct は表示のための自由な文字列で、host は見分けに使わない。interface の文字列も表示のためのもので、見分けには使わない。
-- **名指した probe**: 利用者が probe を unit_id で名指したとき（アドレス `oep://<unit_id>[/<slot name>]`、core §7.6）、host は、serial number
+- **名指した probe**: 利用者が probe を unit_id で名指したとき、host は、serial number
   がその unit_id と同じ USB の device を、見分けずに開いてよい。開いた後は下の探りの規則に従い、confirm の後に送る fn 0 の describe の
   unit_id が名指した値と同じときだけ、その device をその probe として使う。違えば host はその device を閉じ、ほかに何も送らない。ここでの比べ方（unit_id と
   serial number、unit_id どうし）は、英字の大文字と小文字を区別しない（serial number を大文字で見せる OS や道具があるため。unit_id
@@ -79,8 +79,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   host が最初に送るのは confirm（core §7.1）だけである（core §5.2 の 1 回の送り直し、registry の `resend_max` を含む）。confirm の待ち時間
   （core §4.4。confirm には引数で決まる時間が無いので 1000 ms（`host_wait_add_ms`）と転送の時間）が過ぎても正しい confirm の応答が来なければ（送り直したときは、送り直した
   confirm の待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。ただし UART bridge（transport の
-  kind 1）の口では、送り直しの代わりに port_speed_idle_max_ms + 1000 ms（`port_speed_confirm_extra_ms`）の間 confirm を繰り返してよい（前の host が port_speed で上げた速さを待ち切るため、[リンク](../interfaces/oep-if-link.ja.md) §3。
-  送るのは confirm だけで、その間に正しい応答が来なければ閉じる）。正しい confirm の応答とは、送った
+  kind 1）の口では、送り直しの代わりに §4 の「上げた速さの後」のとおり confirm を繰り返す（送るのは confirm だけで、その間に正しい応答が来なければ閉じる）。正しい confirm の応答とは、送った
   confirm と同じ corr の completed で、payload が core §7.1 の形（`OEP!` で始まる）のものをいう。正しい応答が来た device と口は OEP の
   probe として扱う。
 - **口の選び方**: OEP の probe と分かった device（プロジェクトの VID:PID、名指した device、正しい confirm の応答が来た device）の中の
@@ -108,7 +107,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 
 - **UART bridge の回線**: データ 8 bit、パリティなし、ストップ 1 bit、フロー制御なし。起動時の速さは **115200 bps**（registry の `uart_bridge_boot_baud`）。port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3）が変えるのは速さだけ。
 - **上げた速さの後**: UART bridge の口を開く host は、port_speed を使うかどうかにかかわらず、起動時の速さで正しい confirm の応答が来なければ、
-  あきらめる前にそこで port_speed_idle_max_ms + 1000 ms（`port_speed_confirm_extra_ms`）の間 confirm を繰り返す（前の host が上げた速さは
+  あきらめる前にそこで `port_speed_idle_max_ms` + `host_wait_add_ms` の間 confirm を繰り返す（前の host が上げた速さは
   それまでに起動時の速さに戻る、[リンク](../interfaces/oep-if-link.ja.md) §3）。
 - **USB のシリアルの口**（USB CDC、内蔵の USB シリアル）: probe は、host がどんな line coding を設定しても OEP を受けて送り、line coding を何にも掛けない。
 - **制御線**: probe は、OEP を受けるか送るかを DTR、RTS、回線の状態で決めない。host は口を開いている間 DTR と RTS を立てておく（UART bridge はそれを probe のリセットにつないでいることがある）。
@@ -128,22 +127,16 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   （参考）この照合は、わざと作ったフレームは止めない。生の転送が止まっていない口では、target の出力が、CRC の合ったフレームで、
   未解決のロックなしの要求の corr を持つものを含みうる（corr は 1 ずつ進むので予測できる）。host はそれを応答として受ける。応答の中身を信じる必要のある host は、
   生の転送が止まった口（上のとおり、自分のセッションの要求が届いた後）か、長さつきのフレームの口で要求を送る。
-- **host の受けの量**: OS のシリアルドライバは、probe の送るフレームがドライバの受けの量を超えてまとまって届くと黙って失うことがある
-  （理由: ドライバの読みのバッファには限りがあり、入りきらない burst はエラーなしに捨てられる。よく使われるドライバの 1 つでは約 8 KiB の burst が失われたので、
-  下の上限は余裕をとっている）。host はシリアルの口では、未解決の要求の応答の見込み量（同時数 × フレームの上限）を
-  6 KiB 以下に保つ（registry の `host_serial_inflight_max_bytes`）。通知も同じ: シリアルの口で購読するとき、host は subscribe の min_bytes を小さく（2 KiB 以下、`host_serial_min_bytes_max`）保ち、probe が一度に
-  送る量を自分の受けに合わせる（core §11.3）。大量の転送は長さ付きフレームの口（vendor bulk）を優先する。probe の max_inflight と window は
-  probe の受けの上限であって、host の受けの上限ではない。
 
 ## 5. 区切りの立て直し（長さつきのフレーム）
 
 長さつきのフレーム（vendor bulk、HID、TCP）で、host は、corr の合わない応答、あり得ない長さ（max_frame を超える）、途中で
-止まったフレーム（続きが 200 ms 来ない。TCP を除く: TCP ではフレームの途中の休みは普通のことで、host はそのフレームを読み続ける、§2）を見たら、入力が 50 ms（`resync_quiet_ms`）静かになるまで読み捨て、confirm を送って自分の corr の応答が返ることを
+止まったフレーム（続きが 200 ms 来ない。TCP を除く: TCP ではフレームの途中の休みは普通のことで、host はそのフレームを読み続ける、§2）を見たら、入力が静かになるまで読み捨て、confirm を送って自分の corr の応答が返ることを
 確かめてから再開する。通知が流れ続けて入力が静かにならないときは、
 unsubscribe と end を確かめずに送ってよい（二度実行しても害がない）。COBS のフレームは CRC で壊れたものを捨てられるので、
 この手順は要らない。
 
-立て直しの confirm の前と、長さつきのフレームの口を開いて最初の confirm の前には、host は、50 ms 静かな入力に加えて、その口に最後に書いてから `host_resync_wait_ms`（registry、250 ms = probe_frame_gap_ms + 50 ms）が過ぎるまで待つ。TCP では、代わりに接続を閉じて新しく開いてもよい（長すぎる長さの後は、probe が閉じている、§1）。
+立て直しの confirm の前と、長さつきのフレームの口を開いて最初の confirm の前には、host は、その口に最後に書いてから `probe_frame_gap_ms` より長く待つ（probe が途中のフレームを捨てるまで）。TCP では、代わりに接続を閉じて新しく開いてもよい（長すぎる長さの後は、probe が閉じている、§1）。
 
 ## 6. host の待ちの転送の時間
 

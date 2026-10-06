@@ -1,17 +1,15 @@
 {
-  "about": "list, describe and the header refusals of the example probe (docs/getting-started.ja.md §2, §3, with its §6 steps 1 and 2 done): no interface (list is empty: fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, clock, open, end, keepalive, lock_state) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. Those values are an example probe's.",
+  "about": "list, describe and the header refusals of the example probe (docs/getting-started.ja.md §2, §3, with its §6 steps 1 and 2 done): no interface (list is empty: fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, clock, open, end, keepalive, lock_state) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", max_op_ms 1000. The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. Those values are an example probe's.",
   "exchanges": [
     {
       "name": "list everything from the first",
       "spec": "core §7.2",
       "request": {
         "corr": 2,
-        "flags": 0,
-        "first": 0,
-        "prefix": ""
+        "first": 0
       },
-      "request_hex": "0102000000020000000000000000",
-      "request_serial_frame_hex": "00030102010102020101010101010103aa9e00",
+      "request_hex": "010200000002000000000000",
+      "request_serial_frame_hex": "0003010201010202010101010103dc4700",
       "answer": {
         "corr": 2,
         "total": 0,
@@ -51,11 +49,10 @@
             "interface": 255
           }
         ],
-        "discoverable": 0,
         "max_op_ms": 1000
       },
-      "answer_hex": "020300010000090400010f800742080061316232633364344903000001ff4a0100004d0400e8030000",
-      "answer_serial_frame_hex": "0003020302010103090407010f800742080b61316232633364344903010501ff4a0101034d0403e8030103db2e00"
+      "answer_hex": "020300010000090400010f800742080061316232633364344903000001ff4d0400e8030000",
+      "answer_serial_frame_hex": "0003020302010103090407010f800742080b61316232633364344903010501ff4d0403e803010393b400"
     },
     {
       "name": "describe fn 0 from beyond the last: more 0 and no TLVs",
@@ -63,9 +60,9 @@
       "request": {
         "corr": 4,
         "fn": 0,
-        "first": 5
+        "first": 4
       },
-      "request_hex": "0104000000030000000000000500",
+      "request_hex": "0104000000030000000000000400",
       "answer": {
         "corr": 4,
         "more": 0

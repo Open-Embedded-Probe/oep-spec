@@ -24,14 +24,14 @@ describe（core §7.4 の共通の tag のほか）:
 ## 2. restart
 
 - **ロックが要る**（core §6.3）。restart は要求の TLV を定めない: 要求の TLV は core §2.3 のとおり（critical なら rejected unsupported、
-  そうでなければ無視して ignored に載せる）。
-- **応答が先**: 受け付けた restart に、probe は completed success で答える（payload は無い。ignored が要れば付ける）。restart は completed failed /
+  そうでなければ無視する）。
+- **応答が先**: 受け付けた restart に、probe は completed success で答える（payload は無い）。restart は completed failed /
   partial を返さない。
 - **応答の後**: probe は、その応答が経路を出てから（応答の最後の byte を経路に渡し終え、probe が分かる所ではそれが送られてから）再起動を始める。
   始めるのは、そこから多くても `restart_after_answer_ms`（100 ms、registry）のうち。応答を送ってから再起動するまで、probe はどの経路の要求も
   処理せず（答えない。同じ経路で restart の後ろに来ていた要求も同じ）、通知を送らない。
 - **再起動の前に線の駆動をやめる**: probe はすべての connection を閉じ（target は必要以上に変えない: reset せず、止めていた hart は止めたまま。
-  [線とデバッグ](oep-if-debug.ja.md) §2）、reserved（core §7.5）でないすべての channel を空きの状態（core §8）にする。
+  [線とデバッグ](oep-if-debug.ja.md) §2）、自分で使う channel を除くすべての channel を空きの状態（core §8）にする。
 - **再起動の後**は、OEP については電源を入れたときの起動と同じである: boot_id は新しい値（core §6.5）。保存した設定は、どの起動とも同じに適用する
   （保存していない設定は残らない）。channel は core §8 の起動時のとおり空きの状態。シリアルの口の速さは起動時の速さ（[経路](../docs/oep-transports.ja.md) §4）。
   セッション、ロック、core §5.2 の表、購読、plan、connection、ストリームなど、前の起動のものは何も残らない（core §9 の「probe の再起動」の行）。

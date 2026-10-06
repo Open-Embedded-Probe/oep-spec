@@ -53,16 +53,16 @@ probe が実装しなければならない（MUST）もの:
 - §3 の経路の少なくとも 1 つと、そのフレーム;
 - §4〜§6;
 - fn 0 の confirm、list、describe、clock、open、end、keepalive、lock_state;
-- fn 0 の describe の unit_id、transport、max_op_ms、discoverable（§7.5。プロジェクトの USB の VID:PID で列挙しない probe は 0）;
+- fn 0 の describe の unit_id、transport、max_op_ms（§7.5）;
 - fn 0 と、list に載せるすべての fn の describe の、共通の tag ops（§7.4）;
 - §8 の channel の空きの状態;
 - 通知を送り出すインターフェースを持つなら、§11.3 と §11.4。
 
 任意: すべてのインターフェース。あるインターフェースを出す probe が、ほかにどのインターフェースを出さなければならないかは、そのインターフェースの文書が定める（§0）。
 
-**必ず持つ op と任意の op。** インターフェースの op の表（fn 0 は §12、ほかはそのインターフェースの文書の op の表）の op は、そのインターフェースを list に載せる probe が必ず持つ。文書が任意と書いた op は除く。**すべての fn は、持つ op を 1 か所で宣言する: describe の共通の tag ops（0x09、§7.4）。** 必須の op はすべてそこに立てる。任意の op は、probe がそれを持つときに限り立てる。実験用の op（0xF0〜0xFF、§2.5）は決して立てない。
+**必ず持つ op と任意の op。** インターフェースの op の表（fn 0 は §12、ほかはそのインターフェースの文書の op の表）の op は、そのインターフェースを list に載せる probe が必ず持つ。文書が任意と書いた op は除く。**すべての fn は、持つ op を 1 か所で宣言する: describe の共通の tag ops（0x09、§7.4）。** 必須の op はすべてそこに立てる。任意の op は、probe がそれを持つときに限り立てる。
 
-probe は、その fn の ops が立てない op（インターフェースが定義しない op、または持たない任意の op）の要求に rejected unknown_operation で答える（§4.3 順 1）。持つ op に、宣言しない任意の機能（mode、format、値、critical の TLV、ピンの組み合わせ）を求める要求には rejected unsupported で答える（§4.3 順 6）。
+probe は、その fn の ops が立てない op（インターフェースが定義しない op、または持たない任意の op）の要求に rejected unknown_operation で答える（§4.3）。持つ op に、宣言しない任意の機能（mode、format、値、critical の TLV、ピンの組み合わせ）を求める要求には rejected unsupported で答える（§4.3）。
 
 ## 2. 共通の規則
 
@@ -71,8 +71,8 @@ probe は、その fn の ops が立てない op（インターフェースが�
 数値はすべて little endian。文字列は UTF-8 のバイト列で、長さは別に持つ（終端の 0 は付けない）。
 **bitmap** は byte の並びで、bit i は byte ⌊i/8⌋ の bit (i mod 8) である（bit 0 は最下位の bit）。bitmap は、それを含む値の終わりまで続く。
 
-- 真偽値の u8 は 0（偽）か 1（真）。要求の中でほかの値なら rejected malformed。応答では、host は 0 でない値をすべて真と読む。
-- 要求の中の text が正しい UTF-8 でないか、C0 の制御文字（0x00〜0x1F）か 0x7F を含めば rejected malformed。host は、応答の text を見せる前に、そうした文字と正しくない UTF-8 を置き換える。
+- 真偽値の u8 は、送る側が 0（偽）か 1（真）を置き、読む側は 0 でない値をすべて真と読む。
+- host は、応答の text を見せる前に、C0 の制御文字（0x00〜0x1F）、0x7F と正しくない UTF-8 を置き換える。
 
 ### 2.2 TLV
 
@@ -81,9 +81,9 @@ tag(u8) | len(u16) | value(len byte)
 ```
 
 - **すべての TLV が 1 つの形**で、値の長さ（0〜65535 byte）によらない。len がそれを含む message の終わりを越える TLV は、
-  要求では malformed（§4.3 順 5）。応答、出来事、データの中にあれば、その応答、出来事、データは壊れている。
-- **tag の番号は下位 7 bit（0x01〜0x7E）。** bit 7 は critical の印。要求の中でだけ使い、番号には含めない: 0x10 と 0x90 は同じ TLV を、印なしと印ありで送ったもの。応答、出来事、データでは bit 7 は 0 で、そこで bit 7 の立った TLV に会った読む側は、知らない tag として読み飛ばす。tag 0x00 は予約（TLV には使わない。rejected unsupported の payload の印、§4.3）、0x7F は応答の ignored 専用、0xFF は無効。
-- ignored は tag の番号（bit 7 を落としたもの）を並べる。rejected unsupported の payload は、受け取ったままの tag の byte（bit 7 を含む）を持つ。
+  要求では malformed。応答、出来事、データの中にあれば、その応答、出来事、データは壊れている。
+- **tag の番号は下位 7 bit（0x01〜0x7E）。** bit 7 は critical の印。要求の中でだけ使い、番号には含めない: 0x10 と 0x90 は同じ TLV を、印なしと印ありで送ったもの。応答、出来事、データでは bit 7 は 0 で、そこで bit 7 の立った TLV に会った読む側は、知らない tag として読み飛ばす。tag 0x00 と 0x7F は TLV に使わない（0x00 は rejected unsupported の payload の印、§4.3）。
+- rejected unsupported の payload は、受け取ったままの tag の byte（bit 7 を含む）を持つ。
 - tag の空間は **(fn, op) の文脈ごと**（同じ値でも文脈が違えば別物）。
 - 同じ tag の繰り返しは、繰り返すと定義が言う tag で、並びを表す（§2.3）。
 
@@ -92,7 +92,7 @@ tag(u8) | len(u16) | value(len byte)
 - **容器は自分の長さを知る**: フレーム、TLV、並び、バイト列（data）のどれも、読む側が要求や外の知識なしに終わりが分かる。
   可変の部分（並び、バイト列、文字列）には前に数か長さを置く。
 - **固定の形はどれも (名前, revision) で決まる**（§2.7）: 要求、応答、出来事、データの payload の固定部分、TLV の値、並びの
-  要素、probe.config の項目。固定の形は後ろに伸ばさない。その中の可変の部分（名前、錠の値、要素の中の一覧）は前に数か長さを
+  要素、probe.config の項目。固定の形は後ろに伸ばさない。その中の可変の部分（名前、要素の中の一覧）は前に数か長さを
   置くので、固定の形も自分の長さを知る。
 - **並び**: `count、count × 要素`。要求でも応答でも同じ。要素は自分の長さを持たない。要素の形は revision で決まり、読む側は
   フィールドを 1 つずつ読む。
@@ -102,22 +102,17 @@ tag(u8) | len(u16) | value(len byte)
   **応答の固定部分の形は (op, resolution, outcome) ごとに
   op の定義が決める**（成功と失敗で形が違ってよい。インターフェースの共通部品 §3）。
 - **出来事とデータ**（§11.2）も応答と同じ: 固定部分の後ろは TLV の並び。
-- **要求**: 要求の後ろに足せるのは TLV の並びだけ。host は、その項目が効かなければ要求に意味がないときに **critical の bit を
-  付ける**（効かなくても構わない項目は付けずに送ってよい）。インターフェースの定義が critical で送ると決めた TLV（速さの上限、
-  pins など、安全のための項目）は必ず付ける。**インターフェースの定義は、bit 7 が立っていてもいなくても probe が critical として扱う TLV を決めることもできる**
-  （[捕捉](../interfaces/oep-if-capture.ja.md) §3.3、§4.1）。そうした TLV を実装する probe は、critical の TLV の規則をすべてそれに当てはめる: 扱えない値も、知っている長さより
-  長い値も rejected unsupported（受け取ったままの tag）で断り、その TLV を無視することはない。その tag を実装しない probe は、受け取った bit のとおり知らない TLV として扱う。probe は、知らない critical の
-  TLV があれば rejected unsupported（payload に受け取ったままの tag）で断る。知らない非 critical の TLV は無視し、応答の
-  後ろに ignored（tag 0x7F、下）を付ける。結果が completed なら、op の status が失敗でも付ける。
-- ignored は、無視した TLV の番号（bit 7 を落としたもの）を**要求に現れた順に**、無視した TLV 1 つにつき 1 つ、多くても 16 個（`ignored_max_entries`）並べる。無視した TLV が 16 を超えたら、probe は最初の 15 個を並べ、16 個目に **0x00** を置く（「ほかにも無視した」。0x00 は tag にならない、§2.2）。0x00 を見た host は、自分の要求の TLV のうち並んでいないものをすべて、無視されたかもしれないものとして扱う。
-- probe は、ignored の要る応答から ignored を省かない。応答に入れる可変のデータ（data、並び）の量を決めるときは、ignored の場所（多くても 19 byte）を残す。固定部分だけでも場所が足りなければ、入るだけの数を並べ、最後を 0x00 にする。`0x7F 0x01 0x00 0x00`（4 byte）は必ず入る。
-- 繰り返すと定義が言わない tag は、1 つの要求に高々 1 回しか現れない。2 つ以上あれば、critical かどうかによらず rejected malformed。応答では、host は最初のものを使う。
-- この probe が実装する TLV の値が定義より短いか、定義が除く値を持てば、critical かどうかによらず要求を rejected malformed にする。定義の中の値でこの probe が扱えないものだけが unsupported（critical）か ignored（critical でない）になる。probe が実装しない TLV は、長さによらず、その probe にとって知らない TLV である。
-- **要求の TLV の値は後ろに伸ばさない。** 新しいフィールドは新しい tag に置く。実装する要求の TLV で、値が知っている長さより長いものに会った probe は、critical なら unsupported（受け取ったままのその tag）で断り、そうでなければ TLV 全体を無視して ignored に載せる。
-- 要求の中に tag 0x7F か 0xFF があれば rejected malformed。固定部分より短い要求は rejected malformed。
+- **要求**: 要求の後ろに足せるのは TLV の並びだけ。host は、効かなければ要求に意味が無いか、害がある項目（速さの上限、pins など）に
+  **critical の bit を付ける**。
+- **知らない TLV**（この probe が実装しない tag）: critical なら、probe は要求を rejected unsupported（payload に受け取ったままの tag）で断る。
+  critical でなければ無視する。
+- **実装する TLV** は、bit 7 によらず同じに扱う: 値の長さが定義と違う（可変の部分を持つ値なら、その数と長さが決める長さと違う）か、定義が除く値を
+  持てば rejected malformed。定義が使わずに残した値と、この probe が扱わない値は rejected unsupported（受け取ったままの tag）。
+- **要求の TLV の値は後ろに伸ばさない。** 新しいフィールドは新しい tag に置く。
+- 繰り返すと定義が言わない tag が 2 つ以上あれば、読む側は最初のものを使う。
+- 固定部分より短い要求は rejected malformed。
 - **可変の並びは前に数を置く**（後ろに TLV を付けられるように）。
 - 固定部分に省略できるフィールドを置かない（省略したい値は TLV にする）。
-- host が安全のために足す引数（速さの上限など）は critical にする。
 
 ### 2.4 知らない値
 
@@ -127,25 +122,23 @@ tag(u8) | len(u16) | value(len byte)
 - 知らない resolution、completed の知らない outcome は失敗として扱う。
 - インターフェースの status や reason の知らない値は失敗として扱う。
 - 知らない出来事の kind は捨てる（seq は数える）。
-- host は応答の flags の予約のビットを無視する。応答の enum の知らない値で失敗を知らせないもの（cause、holder_kind、scan の entry の kind）は、知らない値として見せる。status と reason の知らない値は失敗のまま。
+- host は応答の flags の予約のビットを無視する。応答の enum の知らない値で失敗を知らせないもの（cause、scan の entry の kind）は、知らない値として見せる。status と reason の知らない値は失敗のまま。
 
 ### 2.5 番号の空間
 
 | 空間 | 範囲 |
 |---|---|
 | role | 0x01 要求、0x02 応答、0x05 出来事、0x06 データ。0x00、0x03、0x04 と 0x07〜0xFF は予約 |
-| 本体（fn 0）の op | 0x01〜0x0F 発見、0x10〜0x1F セッション、0x20〜0x2F 予約（長い操作、§10）、0x30〜0xEF 予約、0xF0〜0xFF 実験用（出荷する probe は使わない） |
-| インターフェースの op | 0x01〜0xEF はインターフェースの定義が決める。ただし 0x30 は subscribe、0x32 は unsubscribe に、すべてのインターフェースで予約する（§11.3）。0xF0〜0xFF は実験用 |
+| 本体（fn 0）の op | 0x01〜0x0F 発見、0x10〜0x1F セッション、0x20〜0xFF 予約 |
+| インターフェースの op | 0x01〜0xEF はインターフェースの定義が決める。ただし 0x30 は subscribe、0x32 は unsubscribe に、すべてのインターフェースで予約する（§11.3）。0xF0〜0xFF は予約 |
 | reject reason | 0x01〜0x3F 本体（全インターフェース共通）、0x40〜0x7F インターフェース、0x80〜0xFF 予約 |
 | outcome | 0 success、1 failed、2 partial。ほかは予約 |
 | 出来事の kind | fn ごとの空間。0x01〜0x7F はインターフェースが決める、0x80〜0xFF は予約（fn 0 は通知を送らない、§11.2） |
-| TLV の tag | (fn, op) の文脈ごと。番号は下位 7 bit で、bit 7 は critical の印（§2.2）。0x00、0x7F、0xFF は全文脈で予約 |
-| describe の tag | 0x01〜0x3E 本体の共通タグ（§7.4）、0x3F 予約（応答のメタ情報）、0x40〜0x7F インターフェース |
+| TLV の tag | (fn, op) の文脈ごと。番号は下位 7 bit で、bit 7 は critical の印（§2.2）。0x00 と 0x7F は全文脈で予約 |
+| describe の tag | 0x01〜0x3F 本体の共通タグ（§7.4）、0x40〜0x7E インターフェース |
 | 資源の番号 | u16、probe で 1 つの空間（§9） |
 
-定義が別に言わない限り、enum の使っていない値と要求の予約のビットは、どれも後から定義されうる（§2.7）。probe は §4.3 の順 6 でそれらを断る。
-
-**実験用の値**: 定義が別に言わないすべての u8 の enum で、0xF0〜0xFE は実験用である。何かを試す間は誰が使ってもよい。出荷する probe と公開した host は使わず、registry に載せることもない。（tag の番号には実験用の範囲は無い。自分の情報は自分の名前のインターフェースに置く、§13 の規則 7。）
+定義が別に言わない限り、enum の使っていない値と要求の予約のビットは、どれも後から定義されうる（§2.7）。probe はそれらを rejected unsupported で断る。
 
 ### 2.6 一周する値
 
@@ -183,7 +176,7 @@ role=0x01 | corr(u16) | fn(u16) | op(u8) | session_id(u32) | payload    見出�
 - `corr`: host が振る番号。**host は要求ごとに 1 ずつ進める**（session_id 0 の要求も数える。65535 の次は 1。0 は使わない）。
   同じ番号をもう一度使うのは、§5.2 の送り直しのときだけ。probe は、送り直しと、覚えていない古い要求の見分けにこの順序を使う。
 - `session_id`: 要求が属するセッション、または **0 = セッションなし**。どの要求もこれを持つ。
-  - ロックが要る op（§6.3）の要求は、ロックを持つセッションの id を持つ。0 なら rejected session_required（§4.3 順 1）。
+  - ロックが要る op（§6.3）の要求は、ロックを持つセッションの id を持つ。0 なら rejected session_required。
   - ロックなしの op の要求は 0 を持ってよい: そのときはセッションの確かめ（§5.2、§6.2）なしに処理し、lease に触れない。0 でない id なら、
     ロックが要る要求と同じくそれらを通り、lease を数え直す（§6.1）。
   - open は、開くセッションの id を持つ（§6.4）。0 なら rejected malformed。
@@ -198,7 +191,6 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出�
 |---|---:|---|---|
 | rejected | 0x00 | reject reason（§4.3） | reason が定める補助の情報 |
 | completed | 0x01 | outcome（0 success、1 failed、2 partial） | op が定める |
-| — | 0x02 | — | 予約（長い操作、§10） |
 
 - 要求ごとに応答はちょうど 1 つ。応答はその要求の来た経路に、同じ corr で返す。fn と op は返さない。
 - **rejected は「要求を受け付けなかった」ときだけ**（書式、番号、セッション、今の状態で受けられない）。受け付けて実行した
@@ -208,11 +200,10 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出�
 
 | 値 | 名前 | 意味 | payload |
 |---:|---|---|---|
-| 0x01 | unknown_function | その fn は無い | — |
+| 0x01 | unknown_function | その fn は無い（見出しの fn、または payload で指す fn） | — |
 | 0x02 | unknown_operation | その fn にその op は無い | — |
 | 0x03 | malformed | 長さ・値域の誤り | — |
 | 0x04 | unavailable | 今の状態・資源では受けられない | TLV の並び（任意、下） |
-| 0x05 | busy | 予約（長い操作、§10） | — |
 | 0x06 | window_exceeded | window / max_inflight を超えた | — |
 | 0x07 | no_session | 要求は session_id を持つが、どのセッションもロックを持っていない（セッションが終わった、または初めから無い）。host はセッションを開き直す | — |
 | 0x08 | locked | 他のセッションがロックを持つ | 残り時間 ms（u32）、[TLV owner（§6.4）] |
@@ -220,34 +211,26 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出�
 | 0x0A | no_connection | 要求の資源（connection、stream など、番号で指すもの）を probe が知らない。host は作り直す。どのインターフェースでも、知らない番号にはこれを使う | — |
 | 0x0B | unsupported | 定義にはあるが、この probe が扱えない（critical の TLV、固定部分の値、この probe が持つ op の任意の機能） | `tag(u8)`、[TLV]。tag は critical の TLV なら受け取ったままの値、固定部分の値なら 0x00。どの要素かを示すときは後ろに TLV（unavailable と同じ tag の空間: channel、index） |
 | 0x0C | result_lost | 送り直された要求の結果を覚えていない（§5.2） | — |
-| 0x0D | corr_reused | 同じ corr で fn、op、中身のどれかが違う要求が来た（§5.2） | — |
-| 0x0E | — | 予約 | — |
 
 rejected の detail は reason で、そのほかの情報は payload に置く。
 
-**断り方の順**（probe は次の順に見て、最初に当たった理由で断る。同じ状況に 2 つの理由を作らない）:
+**断り方の順**: probe は次の順に見て、最初に当たったもので答える。
 
-1. 見出し: unknown_function → unknown_operation（その fn の ops が立てない op: インターフェースが定義しない op、またはこの probe が持たない任意の op、§1.2）→ session_required。
-2. 送り直し（§5.2 の表）: corr_reused / result_lost / 覚えた応答。
+1. 見出し: unknown_function → unknown_operation（その fn の ops が立てない op、§1.2）→ session_required。
+2. 送り直し（§5.2 の表）: result_lost / 覚えた応答。
 3. セッション（§6.2）: no_session / locked。
-4. window_exceeded。
-5. **書式** → malformed: 長さ、中身と合わない数、TLV の符号化の誤り、フィールドどうしの矛盾、そしてフィールドの定義がどの revision でも除く値（7 bit の `address > 0x7F`、0 / 1 以外の真偽値、定義が無効と言う値、長さが分からず要求の残りを読めなくなる値、たとえば知らない dmi の step の kind）。書式が正しければ続けて: payload の中で指す fn（describe の fn、インターフェースの op が payload で指す fn）が無い → unknown_function。
-6. **この probe が扱わない** → unsupported: 定義が使わずに残した値（enum の使っていない値、要求の flags の予約のビット）、定義にあるがこの probe が宣言しない値（mode、format、rate、trigger の type）、知らない critical の TLV、宣言が許さないピンの組。payload の tag は、固定部分の値なら 0x00、critical の TLV の中の値ならその TLV の受け取ったままの tag（そうした値を持つ critical でない TLV は無視する、§2.3）。
-7. **今の状態・資源で受けられない**（ピンの割り当て、接続、動いている、容量、組に束ねられている）→ unavailable（cause 付き）。
-8. 番号で指す資源を知らない → no_connection。
+4. そのほか: probe は、書式（malformed: 長さ、中身と合わない数、TLV の符号化、フィールドどうしの矛盾、定義が除く値）、対応（unknown_function: payload で指す fn が無い。
+   unsupported: 定義が使わずに残した値、この probe が宣言しない値、知らない critical の TLV、宣言が許さないピンの組）、状態（window_exceeded、unavailable: 今の状態や資源で受けられない。
+   no_connection: 番号で指す資源を知らない）を、何も変える前にすべて確かめ、当たった理由のどれか 1 つで断る。
 
-**矛盾と定義されていない値**: 順 5 の矛盾の確かめは、定義された値を持つフィールドどうしにだけ当てはめる。定義が使わずに残した値（順 6: enum の使っていない値、予約のビット）を持つフィールドは、その値について unsupported で断り、そのフィールドが関わる矛盾（そのフィールドを別のフィールドと比べる規則、またはその値によって決まる規則）は確かめない。順 5 のほかの確かめ（長さ、数、TLV の符号化、定義がどの revision でも除く値、長さが分からない値）はこれに影響されず、先に来る。例: drive を持つ mode 5 の probe.config の idle の項目は、mode について unsupported で断り、mode 3 / 4 以外の drive として malformed にはしない。
-
-payload の中で指す fn（describe の fn、インターフェースの op が payload で指す fn）が無いときは、順 5 の終わりで unknown_function を流用する。
+unsupported の payload の tag は、固定部分の値なら 0x00、TLV についての断りならその TLV の受け取ったままの tag。
 
 **unavailable の payload**（任意の TLV の並び。host は知らない tag を飛ばし、無くても扱えるようにする。probe は分かる範囲で付ける）:
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x01 | cause | u8: 1 ピンが使われている、2 数の上限（ピンの割り当て、スロット、接続など）、3 保存先が足りない、4 組（capture-group）に束ねられている、5 設定が持つ（設定の plan、スロット）、6 状態が違う（configure していない、動いている、など） |
+| 0x01 | cause | u8: 1 ピンが使われている、2 数の上限（ピンの割り当て、スロット、接続など）、3 保存先が足りない、4 組（capture-group）に束ねられている、5 設定が持つ（設定の plan、disable、出力の idle、スロット）、6 状態が違う（configure していない、動いている、など） |
 | 0x02 | channel | u16。ぶつかった channel（繰り返してよい） |
-| 0x03 | holder_fn | u16。その資源を持っている fn |
-| 0x04 | holder_kind | u8: 1 plan、2 線の接続、3 スロット、4 bind、5 設定の plan、6 設定の disable、7 設定の idle |
 | 0x05 | fn | u16。断りの対象の fn（capture-group の bind で、どのトラックかを示す） |
 
 インターフェースは 0x40 以降に自分の tag を足せる。rejected unsupported の payload の後ろの TLV も同じ空間（channel 0x02、fn 0x05、
@@ -263,9 +246,9 @@ payload の中で指す fn（describe の fn、インターフェースの op �
 - confirm の max_frame、window、max_inflight は、**その confirm が来た経路の**上限である。経路ごとに別々に数え、ある経路で未解決の要求は、ほかの経路の受けの余地を使わない。§5.2 の表は probe に 1 つのまま（セッションの要求は 1 つの経路で送る、[経路](oep-transports.ja.md) §3）。
 - **host の待ち時間**: 応答が来ないことは時間切れだけで判断する。host は要求ごとに**少なくとも**次を待つ: その要求の引数で決まる時間（インターフェースの文書が
   op ごとに定める。定めなければ 0。多くても max_op_ms、§7.5）+ 1000 ms（`host_wait_add_ms`）+ 転送の時間（[経路](oep-transports.ja.md) §6）。待ちは、要求を書き終えた時から始める。同じ経路に先の要求が未解決の間は、その 1 つ前の要求の応答が届いた時から始める（probe は順に答える）。
-  この下限より長く待つことはいつでも許される。max_op_ms が 0 か `max_op_ms_max` を超えると読んだ host は、その probe を適合しないものとして扱い、使わない。待ちが過ぎたら §5.2 の送り直しに進む。
-- **この下限はすべての要求に当てはまる**。経路を試し、速さを変えるインターフェースの op も含む。インターフェースの文書が要求と要求の間に置く待ち（新しい速さを確かめる confirm の前の待ち、confirm を繰り返す時間など）はその文書が決めるとおりのまま。それらは要求と要求の間の時間で、応答を待つ時間ではなく、その間に送るどの要求についてもこの下限を縮めない。
-  インターフェースの文書と [経路](oep-transports.ja.md) §3、§4 が host に繰り返させる confirm は、それぞれ新しい corr の新しい要求で、§5.2 の送り直しではない: host は、前の confirm の下限が過ぎる前に次を送ってよい。後から届いた前の corr への応答は受けるか読み飛ばし、下限が過ぎる前に前の confirm を答えが無いものとは扱わない。confirm のほかの要求はこのように繰り返さない。どれも自分の下限まで待つ。
+  この下限より長く待つことはいつでも許される。待ちが過ぎたら §5.2 の送り直しに進む。
+- **この下限はすべての要求に当てはまる**。インターフェースの文書が要求と要求の間に置く待ちは、応答を待つ時間ではなく、この下限を縮めない。
+  [経路](oep-transports.ja.md) §3、§4 が host に繰り返させる confirm は、それぞれ新しい corr の新しい要求で、§5.2 の送り直しではない: host は、前の confirm の下限が過ぎる前に次を送ってよく、後から届いた前の corr への応答は受けるか読み飛ばす。ほかの要求はこのように繰り返さない。
 
 ## 5. 立て直しと送り直し
 
@@ -275,16 +258,13 @@ payload の中で指す fn（describe の fn、インターフェースの op �
   （[経路](oep-transports.ja.md) §4、生の転送は止まっている）に届いた壊れたフレームは、待っている答えのものとして扱ってよく、待ち時間を待たずに送り直してよい。立て直しの中で unsubscribe
   と end を送ったときは、セッションが終わっているので、元の要求は送り直さない。
 - 送り直しの待ち時間も答えなしに過ぎたら、host はその経路が失敗したとして扱う: その要求の結果は分からず、その経路で出ている要求もいっしょに失敗する。そこで何かを送る前に、host は [経路](oep-transports.ja.md) §5 の confirm で立て直す（COBS を含むどの種類のフレームでも: 入力が静かになってから、自分の corr を持つ応答が返る confirm）か、経路を閉じて開き直す。その confirm で boot_id が変わっていれば再起動（§6.5）。立て直した後、host は状態を変える要求を繰り返す前に状態を読む。
-- probe は、最後のセッションの id を持った要求について、直近の max_inflight 個以上の (corr, fn, op, 要求の payload の CRC-32,
-  応答) と、そのセッションで最も新しい corr を覚えておく。**要求の同一性は corr だけで決まる**（§4.1 の順序）。CRC は host の
-  番号付けの誤りを見つけるためだけのもの。
+- probe は、最後のセッションの id を持った要求について、直近の max_inflight 個以上の (corr, 応答) と、そのセッションで最も新しい corr を覚えておく。
+  **要求の同一性は corr だけで決まる**（§4.1 の順序）。
 - probe は、最後のセッションの要求のうち §4.3 の順 2 を通ったものすべての応答を、rejected の応答も含めて覚え、それに合わせて最も新しい corr を進める。rejected になった要求を直して送る host は、新しい corr で送る。
 - §5.2 はどの probe（OEP の要求に自分で答えるどの端点も、[経路](oep-transports.ja.md) §1）にも、TCP を含むどの経路でも掛かる。TCP はフレームを失わないが、応答が遅れれば host は待ち（§4.4）の後に送り直すので、probe は要求を二度実行しないように表を持つ。表は probe に 1 つで、セッションと同じく、すべての経路と TCP の接続で共有する。OEP の probe に中継するだけのブローカーは自分の表を持たない。corr を付け直すときは、client の送り直しを、最初に使ったのと同じ corr で中継する。そのために、受けた client の接続ごとに、client の corr から上流で使った corr への対応を、少なくともその client の直近の max_inflight 個の要求について持ち、その接続が閉じたら捨てる。
 - 最後のセッションの session_id を持つ要求は、**§6.2 の判定より先に**次のとおり見る（ロックが空いていても同じ）。open は表で
   引かない（送り直した open は §6.2 で決まる）:
-  - 表に同じ corr があり、fn、op、CRC が同じなら、**実行せずに覚えた応答を返す**。ロックの状態も lease も変えない（送り直した
-    end でロックが立ち直ることはない）。
-  - 表に同じ corr があり、どれかが違えば rejected corr_reused。
+  - 表に同じ corr があれば、**実行せずに覚えた応答を返す**。ロックの状態は変えない（送り直した end でロックが立ち直ることはない）。
   - 表に無く、corr が最も新しい corr より新しくない（差を u16 の符号付きで見て 0 以下）なら、実行せずに rejected result_lost
     （表から落ちた古い要求の送り直し。host は状態を読み直して確かめる）。
   - それ以外は新しい要求として §6.2 へ進む。
@@ -293,7 +273,6 @@ payload の中で指す fn（describe の fn、インターフェースの op �
 - **覚えた表と最も新しい corr は成功した open のたびに捨てる**（end、lease の期限切れ、force では捨てない: 送り直された end には
   表から答える）。セッションが変わったときの exactly-once は約束しない。
 - session_id 0 の要求は重複排除しない。
-- CRC-32 は IEEE（reflected、多項式 0xEDB88320、初期値と最終の XOR 0xFFFFFFFF。"123456789" → 0xCBF43926）。
 
 ## 6. セッションと排他
 
@@ -301,7 +280,7 @@ payload の中で指す fn（describe の fn、インターフェースの op �
 
 - probe は**ロックを 1 つ**持つ。ロックを持つセッションだけが状態を変える要求を実行できる。
 - host はセッションごとの session_id を、予測できない 32 bit の乱数で選ぶ。決まった値や 0 は使わない。session_id 0 の open は rejected malformed。probe は最後にロックを持った session_id を覚えている。
-- lease は open で決まる。ロックを持つセッションの要求で §4.3 の順 3 を通ったものへの応答のたびに（rejected の応答も含む）、lease は数え直す（応答を送った時から lease_ms を数え直す）。§5.2 の表から返し直した応答では数え直さない。期限を過ぎるとロックは空く
+- lease は open で決まる。ロックを持つセッションの要求で §4.3 の順 3 を通ったものへの応答のたびに（rejected の応答も含む）、lease は数え直す（応答を送った時から lease_ms を数え直す）。期限を過ぎるとロックは空く
   （§9 の期限切れ）。**要求を実行している間は lease を数えない**（長い op が lease より長くてもセッションは切れない。長さの上限は
   describe の max_op_ms、§7.5）。
 
@@ -340,7 +319,7 @@ owner を覚えている。§5.2 の表の判定（送り直し）はこの表�
 - **owner**: open の TLV 0x01 owner（text、1〜32 byte、非 critical）で、host は持ち主の名前（例 "flash-tool pid 1234"）を
   付けてよい。probe は owner をロックを立てる open から取り、ロックが持たれている間覚え（持つ側の id の open では変えない）、ロックが
   終わると忘れる。ロックが持たれている間、lock_state の応答と rejected locked の payload の後ろに
-  TLV 0x01 owner で付ける（owner が無ければ付けない）。**session_id は返さない**（返すと他の host が force なしでそのセッションとして要求を送れる）。owner は表示のためだけのもので、
+  TLV 0x01 owner で付ける（owner が無ければ付けない）。owner は表示のためだけのもので、
   probe は解釈しない。（参考）owner は lock_state でどの host からも読めるので、host は秘密を入れない。
 - **force**: 他のセッションがロックを持っていても奪う。probe は、前のセッションの資源をその終わりと同じく解放してから（§9）
   ロックを渡す。force は認証ではなく、取り違えを防ぐだけのものである。
@@ -365,7 +344,7 @@ open の応答も boot_id を持つ: 知っていた boot_id と比べる host �
 - TLV 0x01 transport（u8）: この confirm が来た経路の index（§7.5）。probe は必ず付ける。同じ接続で返す fn 0 の describe の entry を指す（中継のブローカーからは 0xFF、[経路](oep-transports.ja.md) §1）。
 
 host は扱えるプロトコルの revision の範囲を送り、probe はその中で扱える最大の revision を返す。範囲に扱えるものが無ければ
-rejected unsupported（下）。flags は予約（0）。max_frame は 64 以上（[経路](oep-transports.ja.md) §3）、window は max_frame 以上、max_inflight は 1 以上。この範囲を外れた confirm の応答を受けた host は、その経路を使えないものとして扱う: そこにはもう何も送らず、値を知らせる。host は flags のビットを無視する（予約、§2.4）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も、ignored を付けても 64 byte に収まる
+rejected unsupported（下）。flags は予約（0）。max_frame は 64 以上（[経路](oep-transports.ja.md) §3）、window は max_frame 以上、max_inflight は 1 以上。host は flags のビットを無視する（予約、§2.4）。boot_id は §6.5（ロックなしで再起動を知るための置き場）。要求も応答も 64 byte に収まる
 （[経路](oep-transports.ja.md) §3）。
 
 - confirm の要求とその応答の固定部分、magic の `OEP?` / `OEP!`、confirm の前の規則（64 byte、[経路](oep-transports.ja.md) §1 のフレーム、[経路](oep-transports.ja.md) §3）は、どのプロトコルの revision でも同じ。
@@ -376,23 +355,18 @@ rejected unsupported（下）。flags は予約（0）。max_frame は 64 以上
 ### 7.2 list
 
 ```text
-要求: flags(u8: bit0 exact)、first(u16)、prefix_len(u8)、prefix
+要求: first(u16)
 応答: total(u16)、count(u8)、count × entry
 entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
 ```
 
-- prefix に一致する名前を、first 番目から 1 フレームに入る分だけ返す。**一致は label（`.` で区切った部分）の境界で見る**:
-  名前が prefix と同じか、`prefix + "."` で始まれば一致（`oep.fixture.uart` は `oep.fixture.uart` と `oep.fixture.uart.stream` に
-  一致し、`oep.fixture.uart2` には一致しない）。prefix は label の並びで、末尾に `.` を付けない（`oep.` は何にも一致しない。
-  `oep` と書く）。空の prefix はすべてに一致する。exact なら完全一致だけ（空の prefix は何にも一致しない）。本体（fn 0）は名前を持たないので
-  list に載らない: entry の fn は 0 でない。要求の flags の bit 1〜7 は予約: どれかが立った要求は rejected unsupported（payload の tag 0x00、§2.5）。
+- probe のインターフェースを、first 番目から 1 フレームに入る分だけ返す。total はインターフェースの数。本体（fn 0）は名前を持たないので
+  list に載らない: entry の fn は 0 でない。
 - 名前は 1〜64 byte、使える文字は `a-z 0-9 - .`（§13）。
 - instance は、同じ名前のインターフェースが複数あるときの見分け。**同じ (名前, revision) のインターフェースを fn の昇順に 0 から振る**。probe は同じ名前のインターフェースの
   順を firmware の版を越えて保つ（保存した設定が (name, instance, revision) でインターフェースを指すため）。flags は予約（0）。
-- 文字で 1 つのインターフェースを指すとき（CLI、設定のファイル、ログ）は `name#instance` と書く（instance はこの値、0 から。
-  `#0` は省いてよい）。例: `oep.fixture.uart#1` は 2 つめの `oep.fixture.uart`。
 - list の応答（どのインターフェースがあるか、その fn、instance、revision、名前）は、同じ boot_id の間変わらない。インターフェースが増えたり減ったりする probe は再起動する（新しい boot_id）。host は boot_id が同じ間、名前から fn への対応を覚えてよい。
-- first が一致する entry の数以上なら、応答はその total と count 0。
+- first が total 以上なら、応答は total と count 0。
 
 ### 7.3 describe
 
@@ -406,13 +380,11 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 
 **describe は宣言だけを返す**: 同じ boot_id の間、TLV の並びと値は変わらない（host は boot_id が同じ間 cache してよく、ページングは
 途中で設定が変わっても崩れない）。変わるもの（接続、保存の有無、スロットの状態、空き容量）は、インターフェースが状態を返す op
-（ロック不要）で出す。応答そのものが TLV の並びなので、
-**describe の要求には TLV を置かない**（あれば rejected malformed。probe.config の get も同じ）: 応答に ignored（0x7F）が
-現れることはない。
+（ロック不要）で出す。
 - **ページングの終わり**（describe、state、connections、streams、segments、get に共通）: first が数以上なら count 0 と more 0 を
   返す。host は more = 0 で止める。list は more を持たず、total で終わりが分かる（§7.2）。
 
-### 7.4 describe の共通タグ（0x01〜0x3E。0x3F は応答のメタ情報）
+### 7.4 describe の共通タグ（0x01〜0x3F）
 
 | tag | 名前 | 値 |
 |---:|---|---|
@@ -421,22 +393,14 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x03 | max_length | u16。1 回に扱える最大の長さ。その op の要求と応答が max_frame に収まる値で宣言する（単位はインターフェースの文書が決める）。超えた要求は rejected unsupported |
 | 0x05 | min_clock_hz | u32 |
 | 0x06 | features | u32。op でない任意機能のビット: モード、format、通知など（意味はインターフェースが決める）。任意の op は ops で宣言し、決して features では宣言しない |
-| 0x07 | implementation | u8。0 未指定、1 ソフトウェア、2 専用ペリフェラル、3 ペリフェラル + DMA / PIO（表示と診断のため） |
 | 0x08 | channel_group | group(u8)、n(u8)、n × (role(u8)、channel(u16))。この group を使うなら、各 role はここの channel に固定される。group が 1 つ以上ある機能では、選んだピンの組はどれか 1 つの group に完全に一致しなければならない |
 | 0x09 | ops | base(u8)、bitmap。bit i が立っていれば op base + i を持つ（§1.2）。fn 0 を含むすべての fn の describe が付ける |
 
-0x04 は予約。role の番号はインターフェースが定める。これらの値は固定の形で、足す情報は新しい tag にする（§2.3）。
+role の番号はインターフェースが定める。これらの値は固定の形で、足す情報は新しい tag にする（§2.3）。
 
-- **ops の符号**: 1 つの op の集合に符号は 1 つだけである。
-  1. 値は 2〜33 byte（base が 1 byte、bitmap が 1〜32 byte）。
-  2. `base + 8 × bitmap の byte 数 ≤ 256`（bitmap は op 0xFF を越えない）。
-  3. base は宣言する op のうち最も小さいもの: bitmap の bit 0 は立っている。
-  4. bitmap の最後の byte は 0 でない。
-
-  これを満たさない ops を受けた host は、その fn を使わない（fn 0 の ops なら、その probe を使わない）。
+- **ops の値**: base(u8) と、1 byte 以上の bitmap。`base + 8 × bitmap の byte 数 ≤ 256`（bitmap は op 0xFF を越えない）。
 - **ops** の例: op 0x01〜0x08 をすべて持つ riscv-dm の fn は `09 02 00 01 FF` を送る。dmi、halt、resume だけ（0x01〜0x03）を持つものは `09 02 00 01 07` を送る。
-  `01 01 00`（最後の byte が 0）、`00 02`（bit 0 が立っていない）、`F9 01`（op 0xFF を越える）は正しくない。
-  host は op があるかを知るのに、features ではなく bitmap を読む。
+  `F9 01`（op 0xFF を越える）は正しくない。host は op があるかを知るのに、features ではなく bitmap を読む。
 
 - どのピンにも割り当てられる機能は role_channels に候補を並べ、ピンの組が決まっている機能は channel_group を組の数だけ書く。
   両方を書いた場合、選んだピンの組は channel_group のどれかに一致し、かつ role_channels の候補にも入っていなければならない。
@@ -450,36 +414,22 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | tag | 名前 | 値 |
 |---:|---|---|
 | 0x40 | firmware | text |
-| 0x41 | model | text。probe の種類（同じ firmware を載せた同じ種類のハードウェアで同じ値。個体では変わらない）。**小文字の `a-z 0-9 -`**、1〜32 byte（registry の `model_max_bytes`）。project のものでない model は、作り手の逆 DNS の名前の `.` を `-` に替えたもので始める（例 `com-example-probe1`） |
-| 0x42 | unit_id | 個体の ID。**必須**。text で 1〜32 byte、使える文字は `a-z 0-9 -` だけ（チップの固有の番号を小文字の 16 進にしたもの、など）。同じ probe の経路を host がまとめるのに使うので、どの経路の describe でも同じ値を返す。USB の serial number と同じ（[経路](oep-transports.ja.md) §3）。host が probe を名指す値（アドレス `oep://<unit_id>/<スロットの名前>`、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.1） |
+| 0x41 | model | text。probe の種類の名前（任意。個体では変わらない） |
+| 0x42 | unit_id | 個体の ID。**必須**。text で 1〜32 byte、使える文字は `a-z 0-9 -` だけ（チップの固有の番号を小文字の 16 進にしたもの、など）。同じ probe の経路を host がまとめるのに使うので、どの経路の describe でも同じ値を返す。USB の serial number と同じ（[経路](oep-transports.ja.md) §3）。host が probe を名指す値 |
 | 0x43 | channels | u16。channel の数 |
-| 0x44 | reserved | base(u16)、bitmap。bit i が立っていれば、channel base+i は probe が自分で使っていてインターフェースに割り当てない channel |
-| 0x45 | profile | text。治具などの配線の名前 |
 | 0x46 | label | channel(u16)、text。**firmware（配線の profile）が持つ固定の** channel の名前（NRST など）。設定で付けた名前は、その設定を定めるインターフェースの op で読む（describe は宣言だけ、§7.3） |
-| 0x47 | resets_on_open | u8。経路を開くと probe がリセットするか |
-| 0x48 | — | 予約 |
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8): USB CDC（kind 2）は CDC の通信の interface の bInterfaceNumber（その機能の最初の interface）。内蔵の USB シリアル（kind 3）は、ハードウェアが見せるその同じ番号、probe が知れなければ 0xFF。vendor bulk と HID はその interface の番号。UART bridge（kind 1）と TCP は 0xFF。probe の経路ごとに 1 つ。**必須** |
-| 0x4A | discoverable | u8。1 = probe はプロジェクトの USB の VID:PID（[経路](oep-transports.ja.md) §3）でも列挙している（今の経路がそうでなくても）。それで列挙しない probe は 0 |
-| 0x4C | chip | text。probe の MCU の型番とリビジョン: `<part> v<revision>`。part は `a-z 0-9` の 1〜24 文字。revision は数字で、`.数字` の組が続いてよい。リビジョンが分からなければ part だけ（例 `abc123 v1.0`、`abc123`）。取ったデータに、どのチップで取ったかを残すため（任意） |
-| 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。1〜600000（`max_op_ms_max`、10 分）。引数で時間が決まる op（§4.4）は、その時間がこれを超えれば rejected unsupported（どの op かはインターフェースの文書が定める）。実行中は lease を数えない（§6.1）。ほかの経路と connection のコンソールの読みは続ける。値は probe が決める。host は §4.4 のとおり待つ |
-| 0x4E | — | 予約 |
+| 0x4C | chip | text。probe の MCU の型番とリビジョン（任意） |
+| 0x4D | max_op_ms | u32。probe が 1 つの要求にかける最長の時間。**必須**。1〜600000（`max_op_ms_max`、10 分）。引数で時間が決まる op（§4.4）は、その時間がこれを超えれば rejected unsupported（どの op かはインターフェースの文書が定める）。実行中は lease を数えない（§6.1）。値は probe が決める。host は §4.4 のとおり待つ |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 内蔵の USB シリアル（MCU のハードウェアが持つ USB のシリアルの口で、serial number を含む USB の記述子を probe が選べないもの）、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
   1〜3 がシリアルの口（[経路](oep-transports.ja.md) §4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
   使う。probe の起動の間は変わらない。
 - **経路の index の不変性**: 経路は、同じ model の firmware の版を越えて index を保つ。経路を足す firmware は、それまで使っていない index を付け、外した index は使い直さない。
-- host は transport の数で、ロックの奪い方を決めてよい（経路がシリアルの口 1 つだけなら、口を排他で開けた時点で前の持ち主は
-  いない。[host 開発ガイド](host-development-guide.ja.md) §6）。
 - **unit_id の一意性**: unit_id は個体ごとに違う値にする（チップの固有の番号、など）。保存はあるが固有の番号の無い probe は、最初の起動で乱数から unit_id を作って保存する。
   どちらも無い probe は `x-` で始まる unit_id を使う（一意ではない）。host は `x-` で始まる unit_id で経路をまとめず、それで probe を名指さず、セッションを越えて持つもの（たとえば口のリンクの速さの記録）のキーにしない。同じ口のほかの個体が何も引き継がないためである。
 - **unit_id の不変性**: unit_id は個体の値（チップの固有の番号、保存した乱数。`x-` の unit_id だけは例外）だけから作り、firmware の版、profile、ビルド、経路の種類で
   変えない。接尾辞を足さない。host と OS は unit_id（= USB の serial number、[経路](oep-transports.ja.md) §3）で probe を覚える。
-
-### 7.6 アドレス
-
-host が probe とスロットを名指す文字列: `oep://<unit_id>[/<slot name>]`。authority は unit_id（§7.5、小文字）、path は、保存した設定が
-target の線に付けた名前（スロットの名前。インターフェースの文書が定める）1 つだけ。path の無い `oep://<unit_id>` は probe 自身。v1 はこれ以外（query、port、
-複数の path）を定めない。IDE や設定のファイルが probe を覚えるときはこの形で覚える（VID:PID や口の名前ではなく）。
 
 ### 7.7 clock
 
@@ -502,12 +452,12 @@ channel（probe のピン、§1）は、インターフェースがそれを取�
   idle が決める強さで駆動し、Hi-Z にしない）、決めていなければ **Hi-Z（入力、プルなし）**。
 - 解いたピンは、どの道で解いても（インターフェースが定める解く操作、§9 の lease の期限切れと force での後始末）、空きの状態にする。
   インターフェースは、解いた後もピンを自分の駆動のまま残してはならない（空きの状態が出力なら、その駆動は保存した設定の idle のもの）。
-- **起動時**、probe は最初の要求に答える前に、reserved（§7.5）でないすべての channel を空きの状態にする。それまでピンは MCU のリセットの
+- **起動時**、probe は最初の要求に答える前に、自分で使う channel を除くすべての channel を空きの状態にする。それまでピンは MCU のリセットの
   状態である（参考: 誤った水準が害になる線には外付けのプルが要る）。
 - **ピンを取ってもピンの電気の状態は変わらない。** ピンは、それを取ったインターフェースが使い始めるまで空きの状態を保つ。どの操作で使い始めるかは、
   各インターフェースの文書が定める。ピンを読むだけのインターフェースは決して変えない: 出力を止めず、ほかの機能や出力の idle が駆動するピンのプルや
   向きも変えない。
-- idle が出力（保存した設定の出力の空きの状態）の channel を取る要求をインターフェースの文書が断るとき、その断りは unavailable（cause 5、holder_kind 7）である。
+- idle が出力（保存した設定の出力の空きの状態）の channel を取る要求をインターフェースの文書が断るとき、その断りは unavailable（cause 5）である。
 
 ### 8.1 資源の取り合い
 
@@ -535,16 +485,9 @@ channel（probe のピン、§1）は、インターフェースがそれを取�
   （誰が使っているか、いつ閉じるか）。
 - 保存した設定（インターフェースが定める）から入れた資源は、セッションの資源ではない。
 - **資源の番号は u16 で、probe で 1 つの空間**（connection、ストリームなど、インターフェースが番号で指すものすべて。別のインター
-  フェースの資源を渡されたら rejected unavailable cause 6）。新しい資源を作るたびに 1 から順に進め、65535 の次は 1（§2.6）。閉じた
-  番号は十分離れてから再利用してよい（直近に閉じた 1024 個の番号は使わない。registry の `resource_reuse_distance`）。失敗した作成（作る op が
-  失敗した、または今ある資源を返した）は番号を消費しない。閉じた資源の番号を使った要求は rejected no_connection。一周の後は古い番号が
+  フェースの資源を渡されたら rejected unavailable cause 6）。新しい資源を作るたびに前の番号から 1 進め（65535 の次は 1、§2.6）、使用中の番号は
+  飛ばす。閉じた資源の番号を使った要求は rejected no_connection。一周の後は古い番号が
   別の資源を指しうる: host は no_connection を受けた番号を捨て、長く持つ番号は一覧の op（connections、streams）で確かめる。
-
-## 10. 長い操作（予約）
-
-v1 は長い操作を持たない。すべての op は 1 つの応答で完了する。resolution 0x02、reject reason 0x05 busy、本体（fn 0）の op 0x20〜0x2F は、
-長い操作を定めるときのために予約する（そのときに、結果を取り出せるセッション、番号の振り方、lease の期限切れと force での
-扱いを一緒に決める）。
 
 ## 11. 通知
 
@@ -588,8 +531,7 @@ subscribe と unsubscribe は、通知を送り出すインターフェース自
   決める）。
   （参考）中継のブローカーは、どの fn への要求でも、この番号で購読を見分けて断れる。
 - **購読はロックの持ち主だけができ、ロックと一緒に終わる**（end、期限切れ、force で奪われたとき）。読むだけの監視は、シリアルの
-  口の生のバイト（[経路](oep-transports.ja.md) §4）で行う。ロックを持たない購読は予約（後から subscribe の TLV で
-  足す。今の購読の意味は変えない）。
+  口の生のバイト（[経路](oep-transports.ja.md) §4）で行う。
 - 購読の無い fn の unsubscribe は何もせず成功。
 - 同じ fn をもう一度 subscribe したら、前の購読を原子的に置き換える（送る条件、送り先の経路、seq を 0 から）。1 つの fn の購読は
   1 つだけ。
@@ -602,7 +544,7 @@ subscribe と unsubscribe は、通知を送り出すインターフェース自
 
 1. **応答を先に送る。** 届いている要求をすべて処理してから、通知を送る。
 2. **送りかけの通知を小さく保つ。** 経路の送信バッファに、送りかけの通知を max_frame × 2 byte を超えて
-   ためず、書き込みで待たない。入らない通知は probe の中で捨てる（seq の抜けで分かる、§11.3）。シリアルの口では host の OS の受けの量（[経路](oep-transports.ja.md) §4）も上限で、host が min_bytes で伝える。
+   ためず、書き込みで待たない。入らない通知は probe の中で捨てる（seq の抜けで分かる、§11.3）。
 3. 通知は、その fn の subscribe が来た経路に送る。
 
 ## 12. 本体（fn 0）の操作一覧
@@ -635,13 +577,12 @@ subscribe と unsubscribe は、通知を送り出すインターフェース自
    - 各 op の要求と応答の TLV（その op の文脈の tag の空間）。
    - 各 op の completed success、completed failed、completed partial の payload（§4.2）。
    - インターフェース自身の status の値（0x40〜0x7F）と reject reason（0x40〜0x7F）。
-   - describe のインターフェース固有のタグ（0x40〜0x7F）と、ピンの role の番号。
+   - describe のインターフェース固有のタグ（0x40〜0x7E）と、ピンの role の番号。
    - どの target の系統のためのものか（規則 8。どの系統にも使うものはそう書く）。
    - インターフェースが作る資源とその寿命（§9 の上で）。
    - 通知を送り出すか。送り出すなら subscribe / unsubscribe（§11.3）が必須か任意か、出来事の kind（0x01〜0x7F）とその payload、
      通知のデータの payload の形。
    - 読む側が、応答の enum の知らない値と知らない flags をどう扱うか（§2.4、§13.1）。
-   - §4.3 の順の断り方の表。
    - 頼る外部の仕様と、その版と、使う部分（「参照する仕様」の節）。
 3. **形の規則**: §2.3 のとおり（固定の形、足すものは TLV だけ、可変の並びの前に数を置き要素に長さを置かない、省略できるフィールドを置かない、安全の引数は critical）。
 4. **失敗**: 受け付けなかったものは rejected、受け付けて失敗したものは completed failed / partial（§4.2）。
@@ -662,7 +603,7 @@ subscribe と unsubscribe は、通知を送り出すインターフェース自
 
 1. **新しい TLV**: 要求、応答、出来事、データ、describe の中に。または probe.config の新しい項目の tag。
 2. **新しい任意の op**（ops で宣言する、§1.2）か**新しい出来事の kind**。
-3. **予約の空間の新しい値**: 古い probe が unsupported で断る要求の値（§4.3 順 6）、または下の条件のもとでの
+3. **予約の空間の新しい値**: 古い probe が unsupported で断る要求の値（§2.5）、または下の条件のもとでの
    応答の値。
 4. 新しい意味には**新しいインターフェースの名前**、変わった固定の形には**新しい revision**（§2.7）。
 

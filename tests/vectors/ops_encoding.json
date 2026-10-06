@@ -1,5 +1,5 @@
 {
-  "about": "The value of describe's common tag ops (core §7.4): base(u8), bitmap; 2-33 bytes, base + 8 x bitmap bytes <= 256, bit 0 set, the last byte non-zero, so one op set has one encoding. `valid` false: a host that receives it does not use that fn (fn 0: the probe). `ops` is the decoded set of a valid value.",
+  "about": "The value of describe's common tag ops (core §7.4): base(u8) and a bitmap of 1 byte or more, base + 8 x bitmap bytes <= 256 (the bitmap never passes op 0xFF). `ops` is the decoded set of a valid value; one set may have several valid values.",
   "cases": [
     {
       "name": "the shortest: one op",
@@ -49,7 +49,7 @@
     },
     {
       "name": "the longest value: 33 bytes, base 0 and a 32-byte bitmap",
-      "note": "base + 8 x 32 = 256: the decoder limit only (op 0x00 and 0xF0-0xFF are never set by a shipping probe, core §1.2, §2.5)",
+      "note": "base + 8 x 32 = 256: the decoder limit only (op 0x00 and 0xF0-0xFF are reserved, core §2.5)",
       "value_hex": "000100000000000000000000000000000000000000000000000000000000000080",
       "valid": true,
       "ops": [
@@ -59,7 +59,7 @@
     },
     {
       "name": "base + 8 x n = 256 exactly",
-      "note": "the decoder limit only: 0xF8 is experimental (core §2.5)",
+      "note": "the decoder limit only: 0xF8 is reserved (core §2.5)",
       "value_hex": "f801",
       "valid": true,
       "ops": [
@@ -95,25 +95,22 @@
       "ops": null
     },
     {
-      "name": "bit 0 clear: base is not the lowest op",
-      "note": "non-canonical (the same set is 01 01)",
+      "name": "bit 0 clear: base below the lowest op",
+      "note": "valid: the same set as 01 01",
       "value_hex": "0002",
-      "valid": false,
-      "ops": null
+      "valid": true,
+      "ops": [
+        1
+      ]
     },
     {
       "name": "a trailing zero byte",
-      "note": "non-canonical (the same set is 01 01)",
+      "note": "valid: the same set as 01 01",
       "value_hex": "010100",
-      "valid": false,
-      "ops": null
-    },
-    {
-      "name": "an empty set",
-      "note": "bit 0 clear, last byte zero",
-      "value_hex": "0100",
-      "valid": false,
-      "ops": null
+      "valid": true,
+      "ops": [
+        1
+      ]
     }
   ]
 }

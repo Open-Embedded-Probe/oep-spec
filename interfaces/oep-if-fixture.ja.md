@@ -55,8 +55,7 @@
   1 つの TLV が並びの要素 1 つに効き、繰り返して複数の要素に付ける（要素ごとに強さが違ってよいため。電源の線と信号の線を 1 要求で
   動かせる）。index が n 以上、同じ index が 2 回、指す要素の mode が 3 / 4 でない のどれかなら、要求全体を
   rejected malformed。0 以外の value を持つ kind 2 も同じ。未定義の kind（3 以上）と、段の数以上の kind 0 の value は、この probe が扱えない値であり、その TLV を無視する。drive_levels を宣言しない probe は、drive の TLV を
-  形を確かめずにすべて無視する（drive の TLV で rejected malformed にしない）。無視した drive は応答の ignored（core §2.3）に載せる。
-  ignored は tag だけを並べるので、どの要素の drive を無視したかは示さない。host は効いた段を read の応答の TLV drive で知る。
+  形を確かめずにすべて無視する（drive の TLV で rejected malformed にしない）。host は効いた段を read の応答の TLV drive で知る。
   critical の bit を付けた drive の TLV は core §2.3 に従う: 無視するはずの場合は、無視せずに要求を rejected unsupported で断る。
 - **効く強さ**: set で mode 3 / 4 にした要素の強さは、その要素の drive（無視しなかったもの）があればその段、無ければその channel の
   idle の項目（[probe の設定](oep-if-probe-config.ja.md) §1）が drive を持てばその段、どちらも無ければ既定の段。強さは、その channel を

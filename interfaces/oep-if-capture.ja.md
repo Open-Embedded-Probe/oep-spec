@@ -107,7 +107,7 @@ configure の応答で probe が返す値:
   来ても断る。黙ってほかの機能の読み書きを壊してはならない。
 - **plan を取ってもピンの電気的な状態は変わらない**（core §8）。ロジックのキャプチャは決してそれを変えない: 聞くだけである。出力を止めず、
   ほかの機能や idle の出力が駆動しているピンのプルや向きも変えない。アナログのチャネルは start で空きの状態を離れる（pad がデジタルの機能を離れる）。
-- idle が出力（mode 3 / 4）の channel へのアナログの plan は rejected unavailable（cause 5、holder_kind 7）。
+- idle が出力（mode 3 / 4）の channel へのアナログの plan は rejected unavailable（cause 5）。
 
 ## 2. モードと区画
 
@@ -222,7 +222,7 @@ configure の応答の blocking_ms が core の max_op_ms を超える構成は�
 ### 3.3 configure
 
 **設定の TLV**（critical である TLV（または値）を probe が扱えなければ configure 全体を
-rejected unsupported（0x0B、payload に tag）で断り、critical でなければ無視して応答の `ignored`（0x7F）に載せる。core §2.3。下で「常に」の TLV は critical の bit が無くても critical。「critical で送るもの」を見よ）:
+rejected unsupported（0x0B、payload に tag）で断り、critical でなければ無視する。core §2.3。下で「常に」の TLV は critical の bit が無くても critical。「critical で送るもの」を見よ）:
 
 | tag | 名前 | 値 | 対象 | critical で送るか |
 |---|---|---|---|---|
@@ -242,8 +242,7 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 - **samples は区画の総数**（pretrigger を含む）。トリガが早く立ってプリトリガの分が足りなければ、区画は短く、trigger_index はそのまま
   小さい。force で始めたときは trigger_index = その瞬間のサンプルで triggered を送る。type 0（即時）では triggered を送らない。
 - **critical で送るもの**: host は mode、rate、trigger、pretrigger、frontend を critical の bit を立てて送らなければならない（MUST）。probe は、bit が立っていても
-  いなくても、そのそれぞれを critical として扱う（core §2.3）: そのどれかに従えなければ configure を断り（unsupported、受け取ったままの tag）、どれも無視せず、どれも
-  ignored に載せない。query でも同じ。
+  いなくても、そのそれぞれを critical として扱う（core §2.3）: そのどれかに従えなければ configure を断り（unsupported、受け取ったままの tag）、どれも無視しない。query でも同じ。
 - **rate**: critical で送ったとき、probe は宣言した rate_range の中で実現できる最も近い値を使う（向きは問わない。どれかは actual_rate
   で分かる）。範囲の外の rate は rejected unsupported（tag 0x42）。
 - **samples と segments** は critical を立てずに送ってよい。probe が持てる量を超える samples は、その上限に切り下げ、応答の actual_samples（0x52）
@@ -264,7 +263,6 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 | 0x58 | frontend_used | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。値の意味（測れる範囲、減衰）はその frontend の宣言で決まる | アナログ |
 | 0x5A | rate_accuracy | how(u8、enum `rate_accuracy_how`: 0 分周から計算した公称値、1 測った値)、ppm(u32: actual_rate の不確かさの目安、0 は不明)。トラック間で時間の倍率を合わせ込むべきかの目安 | 両方 |
 | 0x59 | reference | source(u8、enum `reference_source`: 0 電源、1 内部、2 外部)、mv(u32)、how(u8、enum `reference_how`: 0 公称、1 測った)。ADC の基準電圧。電源が基準の ADC では、同じ生の値の意味が電源電圧で変わる。scale の 1 次式はこの電圧を前提にした換算 | アナログ |
-| 0x7F | ignored | tag(u8) の並び（core §2.3 の全文脈共通の ignored） | 両方 |
 
 ### 3.4 通知（core §11）
 
@@ -357,7 +355,7 @@ bind の TLV:
   は unsupported、configure していない・モードが揃っていない・trigger_track 以外が即時でないトリガを持つ・budget を超える は
   unavailable（cause 6 / 2）。どのトラックについての断りかは payload の TLV fn（0x05、core §4.3。unsupported の payload も同じ）で返す。
   何も変えずに断る。束ねている間、各トラックの configure、start、stop、force は rejected unavailable
-  （cause 4、holder_fn = 組の fn。組の op を使う。configure し直すときは、いったん n = 0 で解く）。束ねたトラックの plan の
+  （cause 4。組の op を使う。configure し直すときは、いったん n = 0 で解く）。束ねたトラックの plan の
   plan_release / plan_apply も rejected unavailable（cause 4）。**bind はセッションの資源**（core §9: セッションのロックが終わるとき（end、lease の
   期限切れ、force）に解ける）。
 - トラックを束ねていないとき: start は rejected unavailable cause 6。stop と、持っていれば force は、何もせず成功。state は 0。

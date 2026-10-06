@@ -1,9 +1,9 @@
 {
-  "about": "Refusals (core §4.3) and the ignored list (core §2.3). `fns` says which interface each fn number is in the example (the numbers come from list in a real session). Requests with session_id 0x11223344 come from the session that holds the lock; the lock-free read and confirm carry session_id 0. The ignored-TLV case assumes channel 3 is in fn 2's plan; the other refusals come before any state check (core §4.3 orders 5 and 6).",
+  "about": "Refusals (core §2.3, §4.3) and an ignored unknown TLV. `fns` says which interface each fn number is in the example (the numbers come from list in a real session). Requests with session_id 0x11223344 come from the session that holds the lock; the lock-free read and confirm carry session_id 0. Every case assumes a state in which only the reason given applies (channel 3 is in fn 2's plan, the connections and streams exist), so each request has one answer (core §4.3 order 4).",
   "cases": [
     {
       "name": "gpio mode 8 (a value a later revision may define)",
-      "spec": "core §2.5, §4.3 order 6; fixture §1",
+      "spec": "core §2.5, §4.3; fixture §1",
       "fns": {
         "2": "oep.fixture.gpio"
       },
@@ -13,7 +13,7 @@
     },
     {
       "name": "i2c-target address above 0x7F (excluded by the definition)",
-      "spec": "core §4.3 order 5; fixture §3",
+      "spec": "core §4.3; fixture §3",
       "fns": {
         "3": "oep.fixture.i2c-target"
       },
@@ -23,7 +23,7 @@
     },
     {
       "name": "i2c-target mode 4 (a value a later revision may define)",
-      "spec": "core §4.3 order 6; fixture §3",
+      "spec": "core §4.3; fixture §3",
       "fns": {
         "3": "oep.fixture.i2c-target"
       },
@@ -33,7 +33,7 @@
     },
     {
       "name": "attach method 2",
-      "spec": "core §4.3 order 6; debug §3",
+      "spec": "core §4.3; debug §3",
       "fns": {
         "4": "oep.wire.rvswd"
       },
@@ -62,18 +62,8 @@
       "answer_hex": "021500000bbe"
     },
     {
-      "name": "the same non-repeating TLV twice",
-      "spec": "core §2.3",
-      "fns": {
-        "4": "oep.wire.rvswd"
-      },
-      "request_hex": "011600040002443322110081040040420f0081040040420f00",
-      "answer": "malformed",
-      "answer_hex": "0216000003"
-    },
-    {
       "name": "a TLV whose length runs past the end of the request",
-      "spec": "core §2.2, §4.3 order 5",
+      "spec": "core §2.2, §4.3",
       "fns": {
         "4": "oep.wire.rvswd"
       },
@@ -83,7 +73,7 @@
     },
     {
       "name": "read from 4",
-      "spec": "core §4.3 order 6; common §1.2",
+      "spec": "core §2.5, §4.3; common §1.2",
       "fns": {
         "5": "oep.fixture.uart"
       },
@@ -93,7 +83,7 @@
     },
     {
       "name": "riscv-dm reset mode 3",
-      "spec": "core §4.3 order 6; debug §4.3",
+      "spec": "core §2.5, §4.3; debug §4.3",
       "fns": {
         "6": "oep.target.riscv-dm"
       },
@@ -110,14 +100,14 @@
       "answer_hex": "021a000003"
     },
     {
-      "name": "an unknown non-critical TLV is ignored and listed",
+      "name": "an unknown non-critical TLV is ignored",
       "spec": "core §2.3",
       "fns": {
         "2": "oep.fixture.gpio"
       },
       "request_hex": "011b0002000144332211010300003e010001",
       "answer": "completed success",
-      "answer_hex": "021b0001007f01003e"
+      "answer_hex": "021b000100"
     }
   ]
 }

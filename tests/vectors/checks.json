@@ -1,5 +1,5 @@
 {
-  "about": "Check values of the three CRCs of OEP v1.",
+  "about": "Check values of the two CRCs of OEP v1.",
   "cases": [
     {
       "name": "crc16 123456789",
@@ -7,13 +7,6 @@
       "algorithm": "crc16-ccitt-false",
       "input_hex": "313233343536373839",
       "crc": 10673
-    },
-    {
-      "name": "crc32 123456789",
-      "spec": "core §5.2",
-      "algorithm": "crc32-ieee",
-      "input_hex": "313233343536373839",
-      "crc": 3421780262
     },
     {
       "name": "crc8 123456789",

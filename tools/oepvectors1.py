@@ -38,10 +38,9 @@ ROLE_REQUEST, ROLE_ANSWER = REG["roles"]["request"], REG["roles"]["result"]
 REJECTED, COMPLETED = REG["resolutions"]["rejected"], REG["resolutions"]["completed"]
 REASON = REG["reject_reasons"]
 CRITICAL = REG["constants"]["tag_critical"]
-IGNORED = REG["constants"]["tag_ignored"]
 
 
-# ---- checks (transports §1, core §5.2; dmseq "CRC-8") ------------------------------------------------------------
+# ---- checks (transports §1; dmseq "CRC-8") ------------------------------------------------------------------
 
 def crc16_ccitt_false(data: bytes) -> int:
     """poly 0x1021, init 0xFFFF, no reflection, no final XOR (transports §1)."""
@@ -51,16 +50,6 @@ def crc16_ccitt_false(data: bytes) -> int:
         for _ in range(8):
             crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
     return crc
-
-
-def crc32_ieee(data: bytes) -> int:
-    """reflected, poly 0xEDB88320, init and final XOR 0xFFFFFFFF (core §5.2)."""
-    crc = 0xFFFFFFFF
-    for b in data:
-        crc ^= b
-        for _ in range(8):
-            crc = (crc >> 1) ^ 0xEDB88320 if crc & 1 else crc >> 1
-    return crc ^ 0xFFFFFFFF
 
 
 def crc8_dmseq(data: bytes) -> int:
@@ -126,10 +115,10 @@ def ops_value(codes: list[int]) -> bytes:
 
 
 def ops_decode(value: bytes) -> list[int] | None:
-    """The op set of an ops value, or None when the value is not the one canonical encoding (core §7.4): 2-33 bytes,
-    base + 8 x bitmap bytes <= 256, bit 0 set, last bitmap byte non-zero."""
+    """The op set of an ops value, or None when the value is not valid (core §7.4): base(u8), a bitmap of 1 byte or more,
+    base + 8 x bitmap bytes <= 256."""
     n = len(value) - 1
-    if not 1 <= n <= 32 or value[0] + 8 * n > 256 or not value[1] & 1 or value[-1] == 0:
+    if n < 1 or value[0] + 8 * n > 256:
         return None
     return [value[0] + i for i in range(8 * n) if value[1 + i // 8] >> (i % 8) & 1]
 
@@ -145,12 +134,10 @@ def checks() -> dict:
     syn = 0x98            # T = 1, TO = 0, S = 0, A = 1, SYN = 1, N = 0 (dmseq "Byte order" example)
     host = 0x00           # K = 0, H = 0, M = 0
     return {
-        "about": "Check values of the three CRCs of OEP v1.",
+        "about": "Check values of the two CRCs of OEP v1.",
         "cases": [
             {"name": "crc16 123456789", "spec": "transports §1", "algorithm": "crc16-ccitt-false",
              "input_hex": hx(digits), "crc": crc16_ccitt_false(digits)},
-            {"name": "crc32 123456789", "spec": "core §5.2", "algorithm": "crc32-ieee",
-             "input_hex": hx(digits), "crc": crc32_ieee(digits)},
             {"name": "crc8 123456789", "spec": "target-console-dmseq CRC-8", "algorithm": "crc8-dmseq",
              "input_hex": hx(digits), "crc": crc8_dmseq(digits)},
             {"name": "crc8 one zero byte", "spec": "target-console-dmseq CRC-8", "algorithm": "crc8-dmseq",
@@ -214,7 +201,6 @@ def headers() -> dict:
              "tlv_hex": hx(tlv(0x81, struct.pack("<I", 1_000_000)))},
             {"name": "255 bytes: the same form", "tag": 0x41, "value_len": 255, "value_byte": 0xAA,
              "tlv_hex": hx(tlv(0x41, b"\xaa" * 255))},
-            {"name": "the smallest ignored", "tag": IGNORED, "value_hex": "00", "tlv_hex": hx(tlv(IGNORED, b"\x00"))},
         ],
     }
 
@@ -245,55 +231,8 @@ def confirm() -> dict:
     }
 
 
-def probe_config_hash() -> dict:
-    """probe-config §2 hash: canonical form = items sorted by tag, then key compared as numbers field by field, the
-    critical bit cleared, each as a TLV (core §2.2); hash = CRC-32 of it. Every item has its one fixed form (probe-config §1)."""
-    pc = IFACE["oep.probe.config"]
-    item = pc["tlv"]["item"]
-    plan, label, idle, slot = item["plan"], item["label"], item["idle"], item["slot"]
-    kind = IFACE["oep.fixture.gpio"]["enum"]["drive_kind"]
-    mode = pc["enum"]["idle_mode"]
-    at_boot = pc["enum"]["slot_attach"]["at_boot"]
-    dmseq = IFACE["oep.target.console"]["enum"]["mechanism"]["dmseq"]
-    name = b"dut"
-    slot0 = (struct.pack("<BHHHBBIIBB", 0, 4, 0x0001, 0x0002, at_boot, 1, 500, 1_000_000, 0, dmseq)
-             + bytes([len(name)]) + name + bytes([0]))   # slot 0 on wire fn 4, boot_reset 1, no lock (lock_len 0)
-    sent = [   # (tag as sent, value): the order and critical bits the host happened to use
-        (label | CRITICAL, struct.pack("<H", 0x0102) + b"nrst"),
-        (plan | CRITICAL, struct.pack("<HBH", 0x0100, 1, 2)),
-        (idle, struct.pack("<HBBH", 0x0004, mode["output_high"], kind["level"], 1)),
-        (plan, struct.pack("<HBH", 0x0003, 2, 5)),
-        (slot | CRITICAL, slot0),
-        (label, struct.pack("<H", 0x0020) + b"x-boot0"),
-        (idle, struct.pack("<HBBH", 0x0005, mode["pull_up"], kind["default"], 0)),
-        (plan | CRITICAL, struct.pack("<HBH", 0x0003, 1, 7)),
-    ]
-
-    def key(tag: int, value: bytes) -> tuple:
-        if tag == plan:
-            return (tag,) + struct.unpack_from("<HBH", value)
-        if tag == slot:
-            return (tag, value[0])
-        return (tag, struct.unpack_from("<H", value)[0])
-
-    items = sorted(((t & 0x7F, v) for t, v in sent), key=lambda p: key(*p))
-    canonical = b"".join(tlv(t, v) for t, v in items)
-    return {
-        "about": "The hash of probe.config (oep-if-probe-config §2): items as the host sent them, the canonical form and its CRC-32. "
-                 "Keys compare as numbers (channel 0x0020 before 0x0102, although their little-endian bytes compare the other way), "
-                 "multi-field keys field by field (plan: fn, role, channel), critical bits cleared. Each item has its one fixed form: "
-                 "an idle is 6 bytes (an input idle carries drive_kind 2 = default and drive_value 0), a slot carries boot_reset after attach.",
-        "cases": [
-            {"name": "plan, label, idle and slot items", "items_sent": [{"tag": t, "value_hex": hx(v)} for t, v in sent],
-             "canonical_order": [{"tag": t, "value_hex": hx(v)} for t, v in items],
-             "canonical_hex": hx(canonical), "hash": crc32_ieee(canonical)},
-            {"name": "no items", "items_sent": [], "canonical_order": [], "canonical_hex": "", "hash": crc32_ieee(b"")},
-        ],
-    }
-
-
 def refusals() -> dict:
-    """Requests and the answer a probe gives, for the refusals of core §4.3 (and the ignored list of §2.3)."""
+    """Requests and the answer a probe gives, for the refusals of core §2.3 and §4.3."""
     s = 0x11223344
     gpio_set = op("oep.fixture.gpio", "set")
     i2c_conf = op("oep.fixture.i2c-target", "configure")
@@ -313,37 +252,35 @@ def refusals() -> dict:
                       "answer": "completed success" if completed else reason, "answer_hex": hx(ans)})
 
     fns_gpio = {"2": "oep.fixture.gpio"}
-    add("gpio mode 8 (a value a later revision may define)", "core §2.5, §4.3 order 6; fixture §1", fns_gpio,
+    add("gpio mode 8 (a value a later revision may define)", "core §2.5, §4.3; fixture §1", fns_gpio,
         request(0x0010, 2, gpio_set, bytes([1]) + struct.pack("<HB", 3, 8), s), "unsupported",
         b"\x00" + tlv(unav["channel"], struct.pack("<H", 3)) + tlv(idx_tag, b"\x00"))
-    add("i2c-target address above 0x7F (excluded by the definition)", "core §4.3 order 5; fixture §3",
+    add("i2c-target address above 0x7F (excluded by the definition)", "core §4.3; fixture §3",
         {"3": "oep.fixture.i2c-target"}, request(0x0011, 3, i2c_conf, bytes([0x80, 1]), s), "malformed")
-    add("i2c-target mode 4 (a value a later revision may define)", "core §4.3 order 6; fixture §3",
+    add("i2c-target mode 4 (a value a later revision may define)", "core §4.3; fixture §3",
         {"3": "oep.fixture.i2c-target"}, request(0x0012, 3, i2c_conf, bytes([0x50, 4]), s), "unsupported", b"\x00")
-    add("attach method 2", "core §4.3 order 6; debug §3", {"4": "oep.wire.rvswd"},
+    add("attach method 2", "core §4.3; debug §3", {"4": "oep.wire.rvswd"},
         request(0x0013, 4, rv_attach, bytes([2]) + ms, s), "unsupported", b"\x00")
     add("attach without max_speed (a mandatory TLV)", "debug §1", {"4": "oep.wire.rvswd"},
         request(0x0014, 4, rv_attach, bytes([0]), s), "malformed")
     add("an unknown critical TLV: its tag as received", "core §2.3", {"4": "oep.wire.rvswd"},
         request(0x0015, 4, rv_attach, bytes([0]) + ms + tlv(0x3E | CRITICAL, b""), s), "unsupported", bytes([0x3E | CRITICAL]))
-    add("the same non-repeating TLV twice", "core §2.3", {"4": "oep.wire.rvswd"},
-        request(0x0016, 4, rv_attach, bytes([0]) + ms + ms, s), "malformed")
-    add("a TLV whose length runs past the end of the request", "core §2.2, §4.3 order 5", {"4": "oep.wire.rvswd"},
+    add("a TLV whose length runs past the end of the request", "core §2.2, §4.3", {"4": "oep.wire.rvswd"},
         request(0x0017, 4, rv_attach, bytes([0, max_speed | CRITICAL]) + struct.pack("<H", 8) + struct.pack("<I", 1_000_000), s), "malformed")
-    add("read from 4", "core §4.3 order 6; common §1.2", {"5": "oep.fixture.uart"},
+    add("read from 4", "core §2.5, §4.3; common §1.2", {"5": "oep.fixture.uart"},
         request(0x0018, 5, uart_read, bytes([4]) + struct.pack("<QH", 0, 64)), "unsupported", b"\x00")
-    add("riscv-dm reset mode 3", "core §4.3 order 6; debug §4.3", {"6": "oep.target.riscv-dm"},
+    add("riscv-dm reset mode 3", "core §2.5, §4.3; debug §4.3", {"6": "oep.target.riscv-dm"},
         request(0x0019, 6, dm_reset, struct.pack("<HB", 0, 3), s), "unsupported", b"\x00")
     add("confirm min_rev > max_rev", "core §7.1", {},
         request(0x001A, 0, op("core", "confirm"), b"OEP?" + bytes([2, 1])), "malformed")
-    add("an unknown non-critical TLV is ignored and listed", "core §2.3", fns_gpio,
-        request(0x001B, 2, gpio_set, bytes([1]) + struct.pack("<HB", 3, 0) + tlv(0x3E, b"\x01"), s), "",
-        tlv(IGNORED, bytes([0x3E])), completed=True)
+    add("an unknown non-critical TLV is ignored", "core §2.3", fns_gpio,
+        request(0x001B, 2, gpio_set, bytes([1]) + struct.pack("<HB", 3, 0) + tlv(0x3E, b"\x01"), s), "", completed=True)
     return {
-        "about": "Refusals (core §4.3) and the ignored list (core §2.3). `fns` says which interface each fn number is in the example "
+        "about": "Refusals (core §2.3, §4.3) and an ignored unknown TLV. `fns` says which interface each fn number is in the example "
                  "(the numbers come from list in a real session). Requests with session_id 0x11223344 come from the session that holds the lock; "
                  "the lock-free read and confirm carry session_id 0. "
-                 "The ignored-TLV case assumes channel 3 is in fn 2's plan; the other refusals come before any state check (core §4.3 orders 5 and 6).",
+                 "Every case assumes a state in which only the reason given applies (channel 3 is in fn 2's plan, the connections and streams exist), "
+                 "so each request has one answer (core §4.3 order 4).",
         "cases": cases,
     }
 
@@ -354,16 +291,16 @@ def discovery() -> dict:
     core = CORE
     list_op, describe_op = op("core", "list"), op("core", "describe")
     d = core["tlv"]["describe"]
-    unit_id, max_op_ms, discoverable = "a1b2c3d4", 1000, 0   # a UART bridge: not the project's USB VID:PID, so 0 (core §7.5)
+    unit_id, max_op_ms = "a1b2c3d4", 1000
     t_index, t_kind, t_interface = 0, core["enum"]["transport_kind"]["uart_bridge"], 0xFF
 
-    list_req = request(2, 0, list_op, struct.pack("<BHB", 0, 0, 0))
+    list_req = request(2, 0, list_op, struct.pack("<H", 0))
     list_ans = answer(2, COMPLETED, 0, struct.pack("<HB", 0, 0))                  # no interface; fn 0 is never listed (core §7.2)
 
     # core §1.2: fn 0's required ops, all set in ops
     offered = [op("core", n) for n in ("confirm", "list", "describe", "clock", "open", "end", "keepalive", "lock_state")]
     decl_tlvs = [tlv(REG["describe_common"]["ops"], ops_value(offered)), tlv(d["unit_id"], unit_id.encode()), tlv(d["transport"], bytes([t_index, t_kind, t_interface])),
-                 tlv(d["discoverable"], bytes([discoverable])), tlv(d["max_op_ms"], struct.pack("<I", max_op_ms))]
+                 tlv(d["max_op_ms"], struct.pack("<I", max_op_ms))]
     decl, n_decl = b"".join(decl_tlvs), len(decl_tlvs)
     desc_req = request(3, 0, describe_op, struct.pack("<HH", 0, 0))
     desc_ans = answer(3, COMPLETED, 0, b"\x00" + decl)
@@ -374,12 +311,12 @@ def discovery() -> dict:
     no_op = request(6, 0, 0x50, b"")
     return {
         "about": "list, describe and the header refusals of the example probe (docs/getting-started.ja.md §2, §3, with its §6 steps 1 and 2 done): no interface (list is empty: "
-                 "fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, clock, open, end, keepalive, lock_state) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
+                 "fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, clock, open, end, keepalive, lock_state) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", max_op_ms 1000. "
                  "The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. "
                  "Those values are an example probe's.",
         "exchanges": [
             {"name": "list everything from the first", "spec": "core §7.2",
-             "request": {"corr": 2, "flags": 0, "first": 0, "prefix": ""},
+             "request": {"corr": 2, "first": 0},
              "request_hex": hx(list_req), "request_serial_frame_hex": hx(serial_frame(list_req)),
              "answer": {"corr": 2, "total": 0, "entries": []},
              "answer_hex": hx(list_ans), "answer_serial_frame_hex": hx(serial_frame(list_ans))},
@@ -388,7 +325,7 @@ def discovery() -> dict:
              "request_hex": hx(desc_req), "request_serial_frame_hex": hx(serial_frame(desc_req)),
              "answer": {"corr": 3, "more": 0, "ops": offered, "unit_id": unit_id,
                         "transports": [{"index": t_index, "kind": t_kind, "interface": t_interface}],
-                        "discoverable": discoverable, "max_op_ms": max_op_ms},
+                        "max_op_ms": max_op_ms},
              "answer_hex": hx(desc_ans), "answer_serial_frame_hex": hx(serial_frame(desc_ans))},
             {"name": "describe fn 0 from beyond the last: more 0 and no TLVs", "spec": "core §7.3 end of paging",
              "request": {"corr": 4, "fn": 0, "first": n_decl},
@@ -407,8 +344,8 @@ def discovery() -> dict:
 
 
 def ops_encoding() -> dict:
-    """The value of the common describe tag ops (core §7.4) at its boundaries: valid values decode to their op set, invalid ones make
-    the host leave that fn unused (fn 0: the probe)."""
+    """The value of the common describe tag ops (core §7.4) at its boundaries: base(u8) and a bitmap of 1 byte or more, base + 8 x bitmap
+    bytes <= 256; valid values decode to their op set."""
     widest = ops_value([0x01, 0xEF])                       # the lowest and the highest op an interface may define (core §2.5)
     longest = bytes([0x00]) + bytes([0x01]) + bytes(30) + bytes([0x80])     # 33 bytes: base 0, bitmap 32 bytes (bits 0 and 255)
     cases = [
@@ -416,20 +353,18 @@ def ops_encoding() -> dict:
         ("riscv-dm with ops 0x01-0x08 (the core's example)", bytes([0x01, 0xFF]), "core §7.4 example"),
         ("dmi, halt and resume only (the core's example)", bytes([0x01, 0x07]), "core §7.4 example"),
         ("ops 0x01 and 0xEF: the widest set of defined ops, a 30-byte bitmap", widest, "base 0x01, highest 0xEF"),
-        ("the longest value: 33 bytes, base 0 and a 32-byte bitmap", longest, "base + 8 x 32 = 256: the decoder limit only (op 0x00 and 0xF0-0xFF are never set by a shipping probe, core §1.2, §2.5)"),
-        ("base + 8 x n = 256 exactly", bytes([0xF8, 0x01]), "the decoder limit only: 0xF8 is experimental (core §2.5)"),
+        ("the longest value: 33 bytes, base 0 and a 32-byte bitmap", longest, "base + 8 x 32 = 256: the decoder limit only (op 0x00 and 0xF0-0xFF are reserved, core §2.5)"),
+        ("base + 8 x n = 256 exactly", bytes([0xF8, 0x01]), "the decoder limit only: 0xF8 is reserved (core §2.5)"),
         ("no bitmap: 1 byte", bytes([0x01]), "invalid length"),
         ("34 bytes", bytes([0x00, 0x01]) + bytes(31) + bytes([0x01]), "invalid length"),
         ("past op 0xFF: base 0xF9 with a 1-byte bitmap", bytes([0xF9, 0x01]), "base + 8 x n > 256"),
         ("past op 0xFF: base 0xF0 with a 3-byte bitmap", bytes([0xF0, 0x01, 0x00, 0x01]), "base + 8 x n > 256"),
-        ("bit 0 clear: base is not the lowest op", bytes([0x00, 0x02]), "non-canonical (the same set is 01 01)"),
-        ("a trailing zero byte", bytes([0x01, 0x01, 0x00]), "non-canonical (the same set is 01 01)"),
-        ("an empty set", bytes([0x01, 0x00]), "bit 0 clear, last byte zero"),
+        ("bit 0 clear: base below the lowest op", bytes([0x00, 0x02]), "valid: the same set as 01 01"),
+        ("a trailing zero byte", bytes([0x01, 0x01, 0x00]), "valid: the same set as 01 01"),
     ]
     return {
-        "about": "The value of describe's common tag ops (core §7.4): base(u8), bitmap; 2-33 bytes, base + 8 x bitmap bytes <= 256, bit 0 set, the "
-                 "last byte non-zero, so one op set has one encoding. `valid` false: a host that receives it does not use that fn (fn 0: the probe). "
-                 "`ops` is the decoded set of a valid value.",
+        "about": "The value of describe's common tag ops (core §7.4): base(u8) and a bitmap of 1 byte or more, base + 8 x bitmap bytes <= 256 "
+                 "(the bitmap never passes op 0xFF). `ops` is the decoded set of a valid value; one set may have several valid values.",
         "cases": [{"name": n, "note": note, "value_hex": hx(v), "valid": ops_decode(v) is not None, "ops": ops_decode(v)}
                   for n, v, note in cases],
     }
@@ -546,13 +481,13 @@ def ops() -> dict:
     add("plan_apply: gpio role 1 on channel 3", "oep-if-plan §2.1", pl,
         "session S holds the lock; channel 3 free and in gpio's role_channels for role 1; plan_roles not exceeded",
         request(0x14, 10, apply_, tlv(ra, struct.pack("<HBH", 2, 1, 3)), S), ok(0x14))
-    add("plan_apply naming fn 0: malformed", "oep-if-plan §2.5, core §4.3 order 5", pl, "session S",
+    add("plan_apply naming fn 0: malformed", "oep-if-plan §2.5, core §4.3", pl, "session S",
         request(0x15, 10, apply_, tlv(ra, struct.pack("<HBH", 0, 1, 3)), S), rej(0x15, "malformed"))
-    add("plan_apply naming a fn the probe does not have: unknown_function", "oep-if-plan §2.5, core §4.3 order 5", pl, "session S; no fn 12",
+    add("plan_apply naming a fn the probe does not have: unknown_function", "oep-if-plan §2.5, core §4.3", pl, "session S; no fn 12",
         request(0x16, 10, apply_, tlv(ra, struct.pack("<HBH", 12, 1, 3)), S), rej(0x16, "unknown_function"))
     add("plan_release: fn 2", "oep-if-plan §2.2", pl, "session S; fn 2 has the plan above",
         request(0x17, 10, release, bytes([1]) + struct.pack("<H", 2), S), ok(0x17))
-    add("plan_release: n = 2 with one fn", "oep-if-plan §2.5, core §4.3 order 5", pl, "session S",
+    add("plan_release: n = 2 with one fn", "oep-if-plan §2.5, core §4.3", pl, "session S",
         request(0x18, 10, release, bytes([2]) + struct.pack("<H", 2), S), rej(0x18, "malformed"))
     add("plan_apply without a session: session_required", "core §4.1, §4.3 order 1", pl, "—",
         request(0x19, 10, apply_, tlv(ra, struct.pack("<HBH", 2, 1, 3))), rej(0x19, "session_required"))
@@ -561,15 +496,15 @@ def ops() -> dict:
     link = {"1": "oep.probe.link"}
     add("link source: 8 bytes, byte k = k & 0xFF", "oep-if-link §2", link, "max_frame 1024",
         request(0x20, 1, op("oep.probe.link", "source"), struct.pack("<I", 8)), ok(0x20, struct.pack("<H", 8) + bytes(range(8))))
-    most = 1024 - REG["limits"]["link_source_overhead_bytes"]          # room for ignored kept though nothing is ignored (oep-if-link §2)
-    add("link source: more than fits, len = max_frame - 26", "oep-if-link §2, core §2.3", link, "max_frame 1024",
+    most = 1024 - 5 - 2                                                 # the answer's header and len (oep-if-link §2)
+    add("link source: more than fits, len = max_frame - 7", "oep-if-link §2", link, "max_frame 1024",
         request(0x25, 1, op("oep.probe.link", "source"), struct.pack("<I", 2000)),
         ok(0x25, struct.pack("<H", most) + bytes(k & 0xFF for k in range(most))))
     add("link source: length 0", "oep-if-link §2", link, "—",
         request(0x21, 1, op("oep.probe.link", "source"), struct.pack("<I", 0)), ok(0x21, struct.pack("<H", 0)))
     add("link sink: 3 bytes, an empty answer", "oep-if-link §2", link, "—",
         request(0x22, 1, op("oep.probe.link", "sink"), struct.pack("<H", 3) + b"\xaa\xbb\xcc"), ok(0x22))
-    add("link sink: count larger than the bytes that follow", "oep-if-link §2, core §4.3 order 5", link, "—",
+    add("link sink: count larger than the bytes that follow", "oep-if-link §2, core §4.3", link, "—",
         request(0x23, 1, op("oep.probe.link", "sink"), struct.pack("<H", 5) + b"\xaa\xbb\xcc"), rej(0x23, "malformed"))
     add("link port_speed not offered (not set in ops)", "oep-if-link §1, core §1.2", link, "ops of fn 1: source and sink only",
         request(0x24, 1, op("oep.probe.link", "port_speed"), struct.pack("<BIBHI", 0, 921600, 0, 2000, 3000), S), rej(0x24, "unknown_operation"))
@@ -582,12 +517,12 @@ def ops() -> dict:
         request(0x30, 2, gset, bytes([1]) + struct.pack("<HB", 3, 4), S), ok(0x30))
     add("gpio read: channel 3 reads 1", "fixture §1", gpio, "as above, after the set; no drive_levels",
         request(0x31, 2, gread, bytes([1]) + struct.pack("<H", 3)), ok(0x31, bytes([1, 1])))
-    add("gpio set: channel 9 not in the plan", "fixture §1, core §4.3 order 7", gpio, "channel 9 in no plan of fn 2",
+    add("gpio set: channel 9 not in the plan", "fixture §1, core §4.3", gpio, "channel 9 in no plan of fn 2",
         request(0x32, 2, gset, bytes([2]) + struct.pack("<HBHB", 3, 4, 9, 0), S),
         rej(0x32, "unavailable", tlv(unav["channel"], struct.pack("<H", 9)) + tlv(gidx, b"\x01")))
     add("gpio set without a session: session_required", "core §4.1, §4.3 order 1", gpio, "—",
         request(0x33, 2, gset, bytes([1]) + struct.pack("<HB", 3, 4)), rej(0x33, "session_required"))
-    add("gpio set: n = 2 with one element", "core §4.3 order 5", gpio, "—",
+    add("gpio set: n = 2 with one element", "core §4.3", gpio, "—",
         request(0x34, 2, gset, bytes([2]) + struct.pack("<HB", 3, 4), S), rej(0x34, "malformed"))
 
     # oep.wire.rvswd (debug §1 to §3)
@@ -615,7 +550,7 @@ def ops() -> dict:
     dm = {"6": "oep.target.riscv-dm"}
     add("riscv-dm halt: halted", "debug §4.2", dm, "session S; connection 1 open; the hart halts",
         request(0x50, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<H", 1), S), ok(0x50, bytes([REG["status"]["ok"]])))
-    add("riscv-dm halt on an unknown connection", "core §4.3 order 8", dm, "no connection 9",
+    add("riscv-dm halt on an unknown connection", "core §4.3", dm, "no connection 9",
         request(0x51, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<H", 9), S), rej(0x51, "no_connection"))
     add("riscv-dm run not offered", "debug §4, core §1.2", dm, "ops of fn 6: dmi, halt, resume (09 02 00 01 07)",
         request(0x52, 6, op("oep.target.riscv-dm", "run"), struct.pack("<HIIBB", 1, 0x20000000, 100, 0, 0), S), rej(0x52, "unknown_operation"))
@@ -625,7 +560,7 @@ def ops() -> dict:
         ok(0x53, struct.pack("<HBHI", 1, 0, 1, 0x00400382)))
     add("riscv-dm dmi: n = 0", "debug §4", dm, "session S; connection 1",
         request(0x54, 6, rd, struct.pack("<HH", 1, 0), S), ok(0x54, struct.pack("<HBH", 0, 0, 0)))
-    add("riscv-dm dmi: an unknown step kind", "debug §4.1, core §4.3 order 5", dm, "—",
+    add("riscv-dm dmi: an unknown step kind", "debug §4.1, core §4.3", dm, "—",
         request(0x55, 6, rd, struct.pack("<HH", 1, 1) + bytes([0x10, 0x11]), S), rej(0x55, "malformed"))
 
     # oep.target.console (console §1, common §1)
@@ -642,7 +577,7 @@ def ops() -> dict:
     add("console read: empty at the write position", "common §1.2", con, "stream 2, 5 bytes written (position 5)",
         request(0x62, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 2, 0, 5, 64)),
         ok(0x62, struct.pack("<QBH", 5, 0, 0)))
-    add("console read from 4", "common §1.2, core §4.3 order 6", con, "—",
+    add("console read from 4", "common §1.2, core §4.3", con, "—",
         request(0x63, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 2, 4, 0, 64)), rej(0x63, "unsupported", b"\x00"))
 
     # oep.probe.config (probe settings §3.3)
@@ -688,13 +623,12 @@ def ops() -> dict:
         rej(0x81, "unavailable", tlv(unav["cause"], bytes([cause["wrong_state"]]))))
     return {
         "about": "Per-op byte vectors. `fns` says which interface each fn number is in the example; `state` is the probe state the answer assumes. "
-                 "Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0. "
-                 "Answers carry no ignored TLV because no request TLV is ignored.",
+                 "Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0.",
         "cases": cases,
     }
 
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
-         "probe_config_hash.json": probe_config_hash, "refusals.json": refusals,
+         "refusals.json": refusals,
          "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding}
 
 

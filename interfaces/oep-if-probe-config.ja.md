@@ -17,7 +17,7 @@
 
 **設定 = 項目（TLV）の並び**。tag はこの文脈の空間。項目ごとに**キー**があり、同じ tag の項目はキーで見分ける。
 
-- **項目の channel**: label、idle、disable の項目の channel は、`channels`（fn 0 の describe の 0x43）未満で、`reserved`（0x44）に無い。そうでなければ set は rejected unsupported（受け取ったままの項目の tag）。
+- **項目の channel**: label、idle、disable の項目の channel は、`channels`（fn 0 の describe の 0x43）未満で、probe が自分で使う channel でない。そうでなければ set は rejected unsupported（受け取ったままの項目の tag）。
 
 | tag | 項目 | 値 | キー |
 |---:|---|---|---|
@@ -31,10 +31,8 @@
 
 - どの項目もすぐ効く。扱う項目は describe の items で宣言し、宣言していない項目の set は rejected unsupported（payload の tag は受け取ったままの項目の tag、core §4.3）。tag 0x7E は応答の
   メタ情報のために予約し、v1 の probe は置かない。
-- **定義より長い項目の値**: 項目の値は後ろに伸ばさない（core §2.3: 新しいフィールドは新しい項目の tag に置く）。probe が扱う項目で、値が
-  定義の長さ（可変の部分を持つ項目は、その数と長さが決める長さ）より長いものは、core §2.3 の、知っている長さより長い要求の TLV と同じに扱う:
-  critical の bit が立っていれば要求全体を rejected unsupported（受け取ったままの項目の tag）。立っていなければ、その項目を適用せず
-  （そのキーは置き換えも作りもしない）、応答の ignored（core §2.3）に載せ、ほかの項目は適用する。定義より短い値は rejected malformed（core §2.3）。label の text は値の終わりまで続くので、この規則は掛からない（text の長さの規則のとおり）。
+- **項目の値の長さ**: 項目の値は後ろに伸ばさない（core §2.3: 新しいフィールドは新しい項目の tag に置く）。probe が扱う項目で、値の長さが
+  定義の長さ（可変の部分を持つ項目は、その数と長さが決める長さ）と違うものは、critical の bit によらず rejected malformed（core §2.3）。label の text は値の終わりまで続く。
 - **plan**: その fn の plan_apply と同じ（[plan](oep-if-plan.ja.md) §2.1）。設定の plan は設定だけが変える: セッションの plan_release（n = 0 を含む）
   はそれを解かず、plan_apply がその fn を挙げたら rejected unavailable（[plan](oep-if-plan.ja.md) §2.3）。
 - **label**: 設定で付けた channel の名前。get で読む（core の describe の label（0x46）は firmware が持つ固定の名前で、設定では
@@ -48,7 +46,7 @@
   自分のボードに合わせて明示する。firmware が使えると宣言した channel（describe の role_channels など）を減らすだけで、firmware が
   使えないとしたピンを使えるようにはできない（それは自前のビルドで行う）。
   - 無効にした channel を指す要求（plan_apply、設定の plan、線の attach の pins と reset、scan の組、gpio など）は rejected unavailable
-    （cause 5 設定が持つ、channel と holder_kind 6 無効化 付き）。scan の count = 0 の並びと、pins の無い attach の候補には入れない
+    （cause 5 設定が持つ、channel 付き）。scan の count = 0 の並びと、pins の無い attach の候補には入れない
     （候補がそれしか無ければ同じく cause 5）。同じ set の中で disable と、その channel を使う plan / slot を両方送った場合も cause 5。
   - firmware が宣言していない channel の disable は rejected unsupported（上の、項目の channel）。
   - probe はその channel の pin を駆動も設定もしない（起動時と解放時の空きの状態にもしない。リセットの後のまま）。
@@ -58,7 +56,7 @@
   - describe は宣言だけなので変わらない（core §7.3）。host は get の disable を合わせて、使える channel を知る。
   - 保存すれば起動時に、空きの状態を掛けるより先に適用する。
 - **idle**: plan にも接続にも使われていないピンの状態。起動時と、そのピンが解放されるたび（core §8）に、この状態にする。
-  idle の項目（mode を問わない）を持つ channel は、count = 0 の scan と pins の無い attach の候補に入れない。その channel を名指す要求は、idle が出力（mode 3 / 4）なら rejected unavailable（cause 5、holder_kind 7）（[線とデバッグ](oep-if-debug.ja.md) §1）。
+  idle の項目（mode を問わない）を持つ channel は、count = 0 の scan と pins の無い attach の候補に入れない。その channel を名指す要求は、idle が出力（mode 3 / 4）なら rejected unavailable（cause 5）（[線とデバッグ](oep-if-debug.ja.md) §1）。
   mode 3 / 4 では、そのピンが空きの間ずっと、probe がその level で駆動する。idle が無いピンは Hi-Z。治具の配線で相手の入力が浮くピン（相手の RX につながる TX など）は、host が idle で明示し、保存する。
   出力の mode は、plan が持っていない間もある level を保たなければならない channel（target の電源のスイッチなど）のためにある。
   idle の項目の変更（set / unset）は、空いている channel にはすぐ効き、plan や接続が持つ channel には、次に空きになったときに効く。
@@ -142,7 +140,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (kind(u8)、id(u16))
   などで動かしたリセットの線は数えない。選ばれた target の接続が切れても、選択は替えない。
 - 並びが 1 つなら、どの mode でもそれが流れる（1 つのときと 2 つ以上のときで動きが変わらない）。
 - **mixed の行**: LF で閉じる。閉じない出力は、128 byte たまるか、最後のバイトから 100 ms 静かだったら閉じる。name はスロットの
-  name。fixture UART は、その fn の plan の RX の channel に label（§1）があればその label、無ければ `name#instance`（core §7.2、
+  name。fixture UART は、その fn の plan の RX の channel に label（§1）があればその label、無ければ `name#instance`（list の名前と instance、
   例 `oep.fixture.uart#1`）。
   label を印にするとき、probe は `]` と 0x20 未満のバイト（CR、LF など）を `_` に置き換える。
   行の前後は、target どうしでは行が閉じた順（機械で読む用途には向かない）。
@@ -204,13 +202,12 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
   ずに rejected。自動の attach とコンソールを開くこと（外の状態を変えること）は、set が済んだ後に行い、その結果は state（op 0x06、
   §3.3）の slot_state と bind_state で分かる（巻き戻さない）。
 - **どの項目も tag ごとに形が一つ**（§1）なので、get は各項目をその形で、host が送ったとおりに、critical の bit を外して返す。
-- **hash** は今の設定の正規形の CRC-32（core §5.2 と同じ IEEE）。正規形 = 項目を tag の昇順に、同じ tag の中はキー（plan は
-  (fn, role, channel)）の昇順に並べ、TLV（core §2.2）でつないだバイト列。host は自分の欲しい設定から同じ値を計算し、
-  get の hash と同じなら何もしない。正規形では tag の critical の bit を落とす。キーは数として比べ、複数のフィールドのキーは最初のフィールドから順に比べる。get はこの正規形の順で first 番目の項目から返し、どのページも同じ hash を返す（変わっていたら
-  host は最初から読み直す）。
+- **hash** は今の設定を表す u32 で、作り方は probe が決める。今の設定が変われば hash も変わる（host は hash を計算しない）。get は項目を
+  tag の昇順に、同じ tag の中はキー（plan は (fn, role, channel)）の昇順に並べ、first 番目の項目から返す。キーは数として比べ、複数のフィールドのキーは
+  最初のフィールドから順に比べる。どのページも同じ hash を返す（変わっていたら host は最初から読み直す）。
 - **save は host の明示的な操作だけ**で、今の設定をそのまま保存する（同じ内容なら書かない）。書いている間はほかの要求に答えない
   （core の max_op_ms の対象。host の待ちは、save の引数の時間として max_op_ms を数える、core §4.4）。**保存は丸ごと置き換え**で、途中で電源が落ちても前の保存か新しい保存のどちらかが読める。describe の
-  `max_bytes` は正規形の byte 数で、その長さ以下の設定は必ず保存できる（識別子の表の分は probe が差し引いて宣言する）。超えれば
+  `max_bytes` は項目の TLV の byte 数の合計で、それ以下の設定は必ず保存できる（識別子の表の分は probe が差し引いて宣言する）。超えれば
   rejected unavailable（cause 3）。erase は保存を消す（今の設定は変えない。消した後は状態 0、hash 0）。save と erase は
   任意で組で持ち、describe の ops で宣言する（core §1.2）。保存の無い probe はそれらに unknown_operation で答える。describe の storage の tag は
   save を持つときに限り載る。get、set、unset、state は必須。
@@ -232,9 +229,8 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 |---|---|
 | 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset が 2 以上（真偽値）と host のスロットの boot_reset 1、drive が kind 2 で value 0 でない mode 0〜2 の idle、0 以外の value の drive_kind 2、6 byte より短い idle の値、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
 | 指す fn が無い（plan、slot の wire_fn、bind の kind 2、uart） | unknown_function |
-| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か reserved にある label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、idle の未定義の drive_kind（3 以上）、2 以上の slot の attach、2 以上の slot の idle_clock、1 / 2 以外の bind のストリームの kind、その線が持たない lock_scheme（定義にあってもなくても）、critical の bit が立った項目の、定義より長い値 | unsupported |
+| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か probe が自分で使う label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、idle の未定義の drive_kind（3 以上）、2 以上の slot の attach、2 以上の slot の idle_clock、1 / 2 以外の bind のストリームの kind、その線が持たない lock_scheme（定義にあってもなくても） | unsupported |
 | plan_roles（[plan](oep-if-plan.ja.md) §1）超え、ピンや資源の取り合い、at boot のスロットが max_connections を超える、保存先が足りない | unavailable（cause 2 / 1 / 2 / 3） |
-| critical の bit が立っていない項目の、定義より長い値 | 断らない: その項目を適用せず、ignored に載せる（§1） |
 
 ## 3. スロットの接続と状態
 
@@ -292,7 +288,7 @@ slot_state: slot(u8)、state(u8、§3.2)、connection(u16、無ければ 0)、la
 bind_state: port(u8)、mode(u8)、selected(u8: 今選ばれている並びの番号。mixed では 0xFF)、flow(u8: 0 流すものが無い / 1 流している / 2 セッションで止めている)
 ```
 
-- storage_state: 0 保存なし、1 あり・適用済み、2 あり・読めない。storage_hash は、保存を今の fn に読み替えた後の正規形の hash
+- storage_state: 0 保存なし、1 あり・適用済み、2 あり・読めない。storage_hash は、保存した設定を今の設定にした時（起動時の適用か save）の hash で、その後に今の設定が変わっていなければ get の hash と同じ
   （読めなければ 0）。unreadable_reason: 0 なし、1 形が読めない（壊れた、別の版の形）、2 指す interface が無い・revision が違う・bind の port がシリアルの口でない、
   3 適用が断られた（資源がぶつかる）。
 - 登録したスロットを slot の昇順に first_slot 番目から、bind を port の昇順に first_bind 番目から、1 フレームに入る分だけ返す。
@@ -305,7 +301,7 @@ describe は宣言だけ（core §7.3）。状態は state（§3.3）。
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x40 | storage | max_bytes(u32、正規形の byte 数、1 以上)。save と erase を持つときに限り載る（ops、§2） |
+| 0x40 | storage | max_bytes(u32、項目の TLV の byte 数の合計、1 以上)。save と erase を持つときに限り載る（ops、§2） |
 | 0x41 | items | 扱う項目の tag の並び（u8） |
 | 0x42 | slots_max | u8。登録できるスロットの数（0 はスロットを扱わない） |
 | 0x43 | bind_modes | u32 のビット: bit0 last-reset、bit1 manual、bit2 mixed。bind を扱う probe は bit0 と bit1 を必ず立てる |

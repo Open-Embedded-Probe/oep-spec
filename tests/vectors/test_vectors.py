@@ -1,6 +1,6 @@
 """The test vectors of tests/vectors/ agree with themselves and with the rules of the text.
 
-The checks here use other code than tools/oepvectors1.py where Python has it (binascii, zlib) and decode what the tool
+The checks here use other code than tools/oepvectors1.py where Python has it (binascii) and decode what the tool
 encoded, so a mistake in the tool does not pass unseen. The last test runs the tool's --check.
 """
 
@@ -9,7 +9,6 @@ import importlib.util
 import json
 import struct
 import tomllib
-import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -91,39 +90,32 @@ def test_ops_examples_of_the_text():
     assert ops_set(tlvs(bytes.fromhex("0902000107"))[0][1]) == {1, 2, 3}
 
 
-def canonical_ops(value: bytes) -> bool:
-    """core §7.4, written out separately from the tool: the length, the 0xFF bound, bit 0 and the last byte."""
-    if len(value) < 2 or len(value) > 33:
+def valid_ops(value: bytes) -> bool:
+    """core §7.4, written out separately from the tool: base and a bitmap of 1 byte or more, not past op 0xFF."""
+    if len(value) < 2:
         return False
     nbytes = len(value) - 1
-    return value[0] + 8 * nbytes <= 0x100 and value[1] & 0x01 == 0x01 and value[len(value) - 1] != 0
+    return value[0] + 8 * nbytes <= 0x100
 
 
 def test_ops_encoding_boundaries():
-    """ops_encoding.json: valid values decode to their set and re-encode to the same bytes (one encoding per set); invalid ones are
-    rejected for the reason the text gives (core §7.4)."""
+    """ops_encoding.json: valid values decode to their set; invalid ones break the length or the 0xFF bound (core §7.4)."""
     cases = load("ops_encoding.json")["cases"]
     assert {c["valid"] for c in cases} == {True, False}
     for c in cases:
         v = bytes.fromhex(c["value_hex"])
-        assert canonical_ops(v) == c["valid"], c["name"]
+        assert valid_ops(v) == c["valid"], c["name"]
         if not c["valid"]:
             assert c["ops"] is None
             continue
-        got = sorted(ops_set(v))
-        assert got == c["ops"], c["name"]
-        base = min(got)
-        bits = bytearray((max(got) - base) // 8 + 1)
-        for op in got:
-            bits[(op - base) // 8] |= 1 << ((op - base) % 8)
-        assert bytes([base]) + bytes(bits) == v, c["name"]                                       # the one encoding of that set
+        assert sorted(ops_set(v)) == c["ops"], c["name"]
     lengths = {len(bytes.fromhex(c["value_hex"])) for c in cases}
     assert {2, 33, 1, 34} <= lengths                                                             # both ends of 2-33 and just outside
     assert any(c["valid"] and int(c["value_hex"][:2], 16) + 8 * (len(c["value_hex"]) // 2 - 1) == 256 for c in cases)
 
 
-def test_every_ops_in_the_vectors_is_canonical():
-    """Every describe in the vectors carries a canonical ops (core §7.4)."""
+def test_every_ops_in_the_vectors_is_valid():
+    """Every describe in the vectors carries a valid ops (core §7.4)."""
     ops_tag = REG["describe_common"]["ops"]
     for name in ("discovery.json",):
         for ex in load(name)["exchanges"]:
@@ -131,14 +123,13 @@ def test_every_ops_in_the_vectors_is_canonical():
             if struct.unpack_from("<B", req, 5)[0] == next(o["code"] for o in CORE["op"] if o["name"] == "describe") and len(ans) > 6:
                 for tag, value in tlvs(ans[6:]):
                     if tag == ops_tag:
-                        assert canonical_ops(value), ex["name"]
+                        assert valid_ops(value), ex["name"]
 
 
 def test_crc_check_values_match_the_text():
     cases = {c["name"]: c for c in load("checks.json")["cases"]}
     digits = b"123456789"
     assert cases["crc16 123456789"]["crc"] == binascii.crc_hqx(digits, 0xFFFF) == 0x29B1      # transports §1
-    assert cases["crc32 123456789"]["crc"] == zlib.crc32(digits) == 0xCBF43926                # core §5.2
     assert cases["crc8 123456789"]["crc"] == crc8(digits) == 0xFB                             # dmseq CRC-8
     assert cases["crc8 one zero byte"]["crc"] == crc8(b"\x00") == 0xF3
     for c in cases.values():
@@ -206,36 +197,10 @@ def test_confirm_exchanges():
     assert struct.unpack_from("<BBHIBI", ans, 9) == (a["revision"], a["flags"], a["max_frame"], a["window"], a["max_inflight"], a["boot_id"])
     assert tlvs(ans[9 + 13:]) == [(0x01, bytes([a["transport"]]))]                                  # transport only (core §7.1); the time is clock's
     assert set(CORE["tlv"]["confirm_answer"]) == {"transport"}
-    assert len(ans) + 19 <= REG["constants"]["min_max_frame"]                                 # fits with the room for ignored (core §7.1)
     assert len(req) <= REG["constants"]["min_max_frame"] and len(ans) <= REG["constants"]["min_max_frame"]   # core §7.1
     ans = bytes.fromhex(refused["answer_hex"])
     assert struct.unpack_from("<BHBB", ans) == (0x02, 2, 0x00, REG["reject_reasons"]["unsupported"])
     assert ans[5] == 0x00 and tlvs(ans[6:]) == [(0x01, bytes(refused["answer"]["supported"]))]
-
-
-def test_probe_config_canonical_form_and_hash():
-    for case in load("probe_config_hash.json")["cases"]:
-        sent = [(i["tag"], bytes.fromhex(i["value_hex"])) for i in case["items_sent"]]
-
-        def key(item):
-            tag, v = item
-            if tag == 0x01:
-                return (tag,) + struct.unpack_from("<HBH", v)                                 # plan: fn, role, channel
-            if tag == 0x04:
-                return (tag, v[0])                                                             # slot: slot(u8)
-            return (tag,) + struct.unpack_from("<H", v)                                        # label, idle: channel
-
-        for tag, v in sent:
-            if tag & 0x7F == 0x03:
-                assert len(v) == 6                                                             # idle: one fixed form (probe settings §1)
-                if v[2] <= 2:
-                    assert v[3:] == b"\x02\x00\x00"                                           # an input idle carries kind 2 (default), value 0
-
-        order = sorted(((t & 0x7F, v) for t, v in sent), key=key)
-        assert [(i["tag"], i["value_hex"]) for i in case["canonical_order"]] == [(t, v.hex()) for t, v in order]
-        canonical = bytes.fromhex(case["canonical_hex"])
-        assert tlvs(canonical) == order
-        assert case["hash"] == zlib.crc32(canonical)
 
 
 def test_refusals_answer_their_requests():
@@ -245,9 +210,7 @@ def test_refusals_answer_their_requests():
         assert ans[0] == 0x02 and ans[1:3] == req[1:3], c["name"]                                 # same corr
         payload = ans[5:]
         if c["answer"] == "completed success":
-            assert ans[3:5] == bytes([0x01, 0x00])
-            ignored = dict(tlvs(payload))[0x7F]
-            assert all(tag & 0x80 == 0 for tag in ignored)
+            assert ans[3:5] == bytes([0x01, 0x00]) and payload == b""                               # an unknown non-critical TLV is ignored (core §2.3)
             continue
         assert ans[3] == 0x00 and ans[4] == reasons[c["answer"]], c["name"]
         if c["answer"] == "unsupported":
@@ -277,8 +240,7 @@ def test_discovery_exchanges():
 
     req, ans = bytes.fromhex(lst["request_hex"]), bytes.fromhex(lst["answer_hex"])
     assert struct.unpack_from("<HB", req, 3) == (0, ops["list"])
-    flags, first, plen = struct.unpack_from("<BHB", req, 10)
-    assert (flags, first, plen) == (0, 0, 0) and len(req) == 14
+    assert struct.unpack_from("<H", req, 10)[0] == 0 and len(req) == 12                       # first(u16) only (core §7.2)
     total, count = struct.unpack_from("<HB", ans, 5)
     i, entries = 8, []
     for _ in range(count):                                                                     # count x entry, no element len
@@ -296,7 +258,7 @@ def test_discovery_exchanges():
     t = core["tlv"]["describe"]
     got = tlvs(ans[6:])
     ops_tag = REG["describe_common"]["ops"]
-    assert [tag for tag, _ in got] == [ops_tag, t["unit_id"], t["transport"], t["discoverable"], t["max_op_ms"]]
+    assert [tag for tag, _ in got] == [ops_tag, t["unit_id"], t["transport"], t["max_op_ms"]]
     offered = ops_set(got[0][1])
     assert sorted(offered) == desc["answer"]["ops"] and offered == {ops[n] for n in REQUIRED_FN0_OPS}   # core §1.2, no plan role
     got = got[1:]
@@ -305,8 +267,7 @@ def test_discovery_exchanges():
     tr = desc["answer"]["transports"][0]
     assert got[1][1] == bytes([tr["index"], tr["kind"], tr["interface"]])
     assert tr["kind"] == core["enum"]["transport_kind"]["uart_bridge"]
-    assert got[2][1] == bytes([desc["answer"]["discoverable"]])
-    assert struct.unpack("<I", got[3][1])[0] == desc["answer"]["max_op_ms"]
+    assert struct.unpack("<I", got[2][1])[0] == desc["answer"]["max_op_ms"]
     assert t["unit_id"] != 0x3F and t["transport"] != 0x3F
 
     req, ans = bytes.fromhex(past["request_hex"]), bytes.fromhex(past["answer_hex"])
@@ -328,12 +289,10 @@ def test_discovery_exchanges():
 
 def test_example_probe_answers_carry_what_the_core_requires():
     """Every completed confirm answer of the example probe carries TLV 0x01 transport (core §7.1), and its describe of
-    fn 0 carries unit_id, transport and max_op_ms (core §1.2) and discoverable (core §7.5: 0 for a probe that does not
-    enumerate with the project's USB VID:PID, as a UART bridge does not), with every op core §1.2 requires of fn 0 set in ops."""
+    fn 0 carries unit_id, transport and max_op_ms (core §1.2), with every op core §1.2 requires of fn 0 set in ops."""
     core = CORE
     t_confirm = core["tlv"]["confirm_answer"]["transport"]
     t = core["tlv"]["describe"]
-    uart_bridge = core["enum"]["transport_kind"]["uart_bridge"]
     confirm_op = next(o["code"] for o in core["op"] if o["name"] == "confirm")
     describe_op = next(o["code"] for o in core["op"] if o["name"] == "describe")
 
@@ -353,16 +312,13 @@ def test_example_probe_answers_carry_what_the_core_requires():
             describes += 1
             got = tlvs(ans[6:])
             tags = [tag for tag, _ in got]
-            for name in ("unit_id", "transport", "max_op_ms", "discoverable"):
+            for name in ("unit_id", "transport", "max_op_ms"):
                 assert t[name] in tags, (ex["name"], name)
             assert tags.count(REG["describe_common"]["ops"]) == 1, ex["name"]                  # every fn's describe (core §1.2)
             declared = ops_set(dict(got)[REG["describe_common"]["ops"]])                           # base(u8), bitmap (core §7.4)
             required = {o["code"] for o in core["op"] if o["name"] in REQUIRED_FN0_OPS}
             assert required <= declared, (ex["name"], sorted(required - declared))            # core §1.2: every required op is set
-            assert tags.count(t["discoverable"]) == 1 and tags.count(t["max_op_ms"]) == 1
-            kinds = [v[1] for tag, v in got if tag == t["transport"]]
-            if all(k == uart_bridge for k in kinds):                                       # no USB port of its own
-                assert dict(got)[t["discoverable"]] == b"\x00", ex["name"]
+            assert tags.count(t["max_op_ms"]) == 1
             ms = struct.unpack("<I", dict(got)[t["max_op_ms"]])[0]
             assert 1 <= ms <= REG["limits"]["max_op_ms_max"]
     assert confirms >= 1 and describes >= 1
@@ -503,7 +459,7 @@ def test_per_op_vectors_decode_exactly():
     p = pay("link source: 8 bytes, byte k = k & 0xFF")
     n = struct.unpack_from("<H", p)[0]
     assert p[2:2 + n] == bytes(k & 0xFF for k in range(n)) and len(p) == 2 + n
-    p = pay("link source: more than fits, len = max_frame - 26")                                 # max_frame 1024 (oep-if-link §2)
+    p = pay("link source: more than fits, len = max_frame - 7")                                  # max_frame 1024 (oep-if-link §2)
     n = struct.unpack_from("<H", p)[0]
-    assert n == 1024 - 5 - 2 - 19 == 1024 - REG["limits"]["link_source_overhead_bytes"]            # header, len, room for ignored (core §2.3)
+    assert n == 1024 - 5 - 2                                                                      # the answer's header and len
     assert p[2:] == bytes(k & 0xFF for k in range(n))

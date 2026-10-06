@@ -35,7 +35,7 @@ def check(reg: dict) -> list[str]:
     errors = []
     # The table kinds the registry header lists; anything else needs a pull request that also updates the header.
     top = {"registry", "protocol", "constants", "roles", "resolutions", "outcomes", "reject_reasons", "status", "timing",
-           "limits", "reference", "describe_common", "usb", "common", "core", "interface"}
+           "limits", "describe_common", "usb", "common", "core", "interface"}
     if set(reg) - top:
         errors.append(f"unknown table kinds {sorted(set(reg) - top)} (registry header)")
     if set(reg.get("common", {})) - {"enum"}:
@@ -71,7 +71,7 @@ def check(reg: dict) -> list[str]:
                 errors.append(f"{n}: op {c:#x} used by {codes[c]} and {op['name']}")
             codes[c] = op["name"]
             if not 0x01 <= c <= 0xEF:
-                errors.append(f"{n}: op {op['name']} = {c:#x} outside 0x01-0xEF (0xF0-0xFF are experimental)")
+                errors.append(f"{n}: op {op['name']} = {c:#x} outside 0x01-0xEF (0xF0-0xFF are reserved)")
             if set(op) - {"code", "name", "lock", "fields"}:
                 errors.append(f"{n}: op {op['name']} has unknown keys {sorted(set(op) - {'code', 'name', 'lock', 'fields'})}")
         if iface is reg["core"]:
@@ -169,7 +169,7 @@ def cpp(reg: dict, digest: str) -> str:
     L.append("")
     for k, v in reg["timing"].items():
         L.append(f"constexpr uint32_t k{camel(k)} = {v};")
-    for group, prefix in (("usb", "Usb"), ("limits", "Limit"), ("reference", "Reference")):
+    for group, prefix in (("usb", "Usb"), ("limits", "Limit")):
         L.append("")
         for k, v in reg.get(group, {}).items():
             L.append(f'constexpr const char *k{prefix}{camel(k)} = "{v}";' if isinstance(v, str)
@@ -224,8 +224,7 @@ def c(reg: dict, digest: str) -> str:
          f'#define OEP_V1_REGISTRY_HASH "{digest}"', f"#define OEP_V1_PROTOCOL_REVISION {reg['protocol']['revision']}u"]
     for k, v in reg["constants"].items():
         L.append(d(up("OEP_V1", k), v))
-    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits",
-                  "reference"):
+    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits"):
         L.append("")
         for k, v in reg.get(group, {}).items():
             L.append(d(up("OEP_V1", group, k), v))
@@ -266,7 +265,7 @@ def py(reg: dict, digest: str) -> str:
          f"PROTOCOL_REVISION = {reg['protocol']['revision']}"]
     for k, v in reg["constants"].items():
         L.append(f"{k.upper()} = {v!r}" if isinstance(v, str) else f"{k.upper()} = 0x{v:02X}")
-    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits", "reference"):
+    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits"):
         L.append(f"{group.upper()} = {{" + ", ".join(f'"{k}": {v!r}' if isinstance(v, str) else f'"{k}": 0x{v:02X}'
                                                  for k, v in reg.get(group, {}).items()) + "}")
     en = ", ".join(f'"{e}": {{' + ", ".join(f'"{k}": 0x{v:02X}' for k, v in vals.items()) + "}"
@@ -306,7 +305,7 @@ def js(reg: dict, digest: str) -> str:
         L.append(f"export const {k.upper()} = '{v}';" if isinstance(v, str) else f"export const {k.upper()} = 0x{v:02X};")
     def objs(d: dict) -> str:
         return "{" + ", ".join((f"{k}: '{v}'" if isinstance(v, str) else f"{k}: 0x{v:02X}") for k, v in d.items()) + "}"
-    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits", "reference"):
+    for group in ("roles", "resolutions", "outcomes", "reject_reasons", "status", "describe_common", "timing", "usb", "limits"):
         L.append(f"export const {group.upper()} = Object.freeze({objs(reg.get(group, {}))});")
     en = "{" + ", ".join(f"{e}: {obj(v)}" for e, v in reg.get("common", {}).get("enum", {}).items()) + "}"
     L += [f"export const COMMON = {{ enum: {en} }};", "", "/** @type {Record<string, any>} */", "export const INTERFACES = {};"]
