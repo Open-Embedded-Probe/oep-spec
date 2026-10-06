@@ -96,6 +96,8 @@ A probe conforms when it does everything in this list for the transports and int
   each other ignoring ASCII case (§3.3); never group, name or key anything by an `x-` unit_id (§7.5); iProduct and interface strings
   for display only (§3.3); `name#instance` and `oep://` addresses (§7.2, §7.6).
 - **port_speed**, when the host uses it: host obligations 1 to 8 of §3.5.
+- **Analog capture**, when the host shows voltages: values 0 and 2^b − 1 shown as clipped (at or below the low end, at or above the high end),
+  not as voltages ([capture](oep-if-capture.md) §1.2 rule 6).
 
 ## 3. Standard interfaces
 

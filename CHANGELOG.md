@@ -73,6 +73,9 @@ and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.m
   reset detail 2 reserved; i2c-target refuses the reserved addresses 0x00-0x07 / 0x78-0x7F unsupported; spi-target arm count > length is
   malformed, fixture uart write without TX is unavailable cause 6; a signed converter result is sent as offset binary; rvswd / swio scan
   entries are kind 1 (riscv-dm); probe-config state pages carry storage_* as they are when answered, the host uses the last page.
+- Analog capture: a value of 0 or 2^b − 1 (the converter's minimum or maximum code) means the input was at or beyond that end of the
+  frontend's range; the host shows it as clipped, not as a voltage, and the probe sends it unchanged (capture §1.2 rule 6; conformance host
+  checklist).
 
 ### Tools and test vectors
 

@@ -91,6 +91,10 @@ Rules:
    a separate definition). **This voltage is the voltage at the probe's input pin** (a value converted including the attenuation of the front stage. The attenuation_mdb of the frontend of describe is for
    display, and the host does not apply it again).
 5. The time of channel k lags the time of the sample by `skew_ns[k]` (for an ADC that switches channels in turn).
+6. A value of 0 (the converter's minimum code) or 2^b − 1 (its maximum code) means the input was at or beyond that end of the range
+   the frontend converts; the voltage the input actually had is not known. The host shows such a value as clipped, not as a voltage:
+   at or below the low end, or at or above the high end, where the ends are the voltages rule 4 gives for values 0 and 2^b − 1 (with a
+   negative `scale_nv`, value 0 is the high end). The probe sends these values unchanged, like any other value.
 
 Examples:
 
