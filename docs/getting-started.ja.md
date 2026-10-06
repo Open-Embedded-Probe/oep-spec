@@ -195,9 +195,9 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
    locked）。end、lease の期限切れ、force のどれでも、セッションが作ったものを解放する（core §9）。
 2. core §5.2 の送り直しの表（少なくとも max_inflight 個、断りの応答も含め、成功した open のたびに捨てる）。
 3. core §4.3 の断り方の順のすべてと、core §2.3 の TLV の規則（critical、ignored、繰り返し、短い TLV と長すぎる TLV）。
-4. subscribe / unsubscribe と fn 0 のハートビート（core §11）、link_source / link_sink（core §12）。
+4. subscribe / unsubscribe と fn 0 のハートビート（core §11）。
 5. plan の role を持つインターフェースがあれば plan_apply / plan_release（core §8）と、欲しいインターフェース（[適合](conformance.ja.md) §3）。
-6. 任意: UART bridge の port_speed（core §3.5）、probe の設定（[probe の設定](oep-if-probe-config.ja.md)）、ほかの経路。
+6. 任意: `oep.link`（線の試験と、UART bridge の port_speed。[リンク](oep-if-link.ja.md)）、probe の設定（[probe の設定](oep-if-probe-config.ja.md)）、ほかの経路。
 
 **host**（[適合](conformance.ja.md) §2）:
 

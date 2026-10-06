@@ -39,15 +39,15 @@ capture = [capture](oep-if-capture.md); settings = [probe settings](oep-if-probe
 | COBS frame | COBS のフレーム | `0x00 COBS(message + CRC-16) 0x00`, used on serial ports | core §3.1 |
 | length-prefixed frame | 長さつきのフレーム | `length(u16) message`, used on vendor bulk, HID reports and TCP | core §3.1 |
 | candidate | 候補 | Bytes from a 0x00 to the next 0x00, decoded as a possible frame | core §3.1, §3.4 |
-| broken candidate | 壊れた候補 | A candidate that does not decode or whose CRC does not match | core §3.5 |
+| broken candidate | 壊れた候補 | A candidate that does not decode or whose CRC does not match | link §3 |
 | raw bytes | 生のバイト | Bytes on a serial port outside OEP frames (the target's console, etc.) | core §3.4 |
 | raw transfer | 生の転送 | Forwarding raw bytes between a serial port and its bound flow; stopped while a session uses the port | core §3.4 |
 | frame gap | フレームの途切れ | A pause of `probe_frame_gap_ms` inside a frame that restarts the probe's reader (not on TCP) | core §3.2 |
 | resync | 区切りの立て直し | The host's recovery of delimiting on length-prefixed frames | core §5.1 |
-| boot speed | 起動時の速さ | A UART bridge's speed at boot, `uart_bridge_boot_baud` | core §3.4, §3.5 |
-| port_speed | port_speed | The optional handshake that raises a UART bridge's speed for a session: try, commit, revert | core §3.5 |
-| handshake | 握手 | The part of port_speed the specification defines (not the choice of speeds) | core §3.5 |
-| flow | 流し方 | A direction and a concurrency, for the host's checks of a speed | core §3.5 |
+| boot speed | 起動時の速さ | A UART bridge's speed at boot, `uart_bridge_boot_baud` | core §3.4, link §3 |
+| port_speed | port_speed | The optional handshake that raises a UART bridge's speed for a session: try, commit, revert | link §3 |
+| handshake | 握手 | The part of port_speed the specification defines (not the choice of speeds) | link §3 |
+| flow | 流し方 | A direction and a concurrency, for the host's checks of a speed | link §3 |
 | probing rule | 探りの規則 | On an unidentified device or port the host sends only confirm, and closes it without a valid answer | core §3.3 |
 | named probe | 名指した probe | A probe the user names by its unit_id | core §3.3 |
 | project's VID:PID | プロジェクトの VID:PID | `1209:4F45` (registry `usb`): the only USB ID by which a host identifies a probe automatically | core §3.3 |
@@ -128,7 +128,7 @@ capture = [capture](oep-if-capture.md); settings = [probe settings](oep-if-probe
 | max_op_ms | max_op_ms | The longest time the probe spends on one request | core §7.5 |
 | reserved (channels), label (firmware) | reserved、label | Channels the probe uses itself; fixed channel names of the firmware | core §7.5 |
 | address | アドレス | `oep://<unit_id>[/<slot name>]` | core §7.6 |
-| link test | 線の試験 | link_source / link_sink, for measuring a transport | core §12 |
+| link test | 線の試験 | The source and sink ops of `oep.link`, for measuring a transport | link §2 |
 
 ## Plan and pins
 

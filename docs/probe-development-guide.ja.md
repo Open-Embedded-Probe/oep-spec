@@ -43,7 +43,7 @@
 - **vendor bulk の OUT は packet ごとに受ける**。ZLP で終わる大きな転送として受けない: host は wMaxPacketSize の倍数の書き込みの後に
   長さ 0 の転送を続ける（core §3.1）ので、ちょうど packet の境で終わる要求が次の OUT まで待たされることがある。長さ 0 の完了は
   読み飛ばす。
-- 線の速さは fn 0 の link_source / link_sink（core §12）で測る。受信・送信の経路を変えたら測り直す。
+- 線の速さは `oep.link` の source / sink の op（[リンク](oep-if-link.ja.md) §2）で測る。受信・送信の経路を変えたら測り直す。
 
 ## 3. OEP の口にほかのものを出さない・誰も読まない口で止まらない
 
@@ -65,8 +65,8 @@
 
 - UART bridge の probe は、いつも `uart_bridge_boot_baud`（115200 bps）8N1、流れの制御なしで起動する（core §3.4）。起動時の速さを
   設定にしない: 設定を忘れると入れなくなり、生のバイトと OEP が混ざる口では速さの自動の検出は危うい。
-- セッションの間だけ速くするのは port_speed（core §3.5、任意）: 3 つの状態と戻る条件を実装し、fn 0 の describe の
-  ops に op 0x14 を立てる。戻り先はいつも起動時の速さ。
+- セッションの間だけ速くするのは port_speed（[リンク](oep-if-link.ja.md) §3、任意）: `oep.link` を list に出し、3 つの状態と戻る
+  条件を実装し、その describe の ops に op 0x03 を立てる。戻り先はいつも起動時の速さ。
 - USB CDC と内蔵の USB シリアルでは、線の設定は数字が渡るだけで速さに関係しない。無視する（core §3.4）。
 
 ## 6. シリアルの口の共用の作り

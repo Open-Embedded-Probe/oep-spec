@@ -66,11 +66,11 @@ In capitals, MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119 
 A probe MUST implement:
 - at least one transport of §3, with its frame;
 - §4 to §6;
-- fn 0 confirm, list, describe, open, end, keepalive, lock_state, subscribe and unsubscribe, link_source and link_sink;
+- fn 0 confirm, list, describe, open, end, keepalive, lock_state, subscribe and unsubscribe;
 - in describe of fn 0, unit_id, transport, max_op_ms and discoverable (§7.5; 0 for a probe that does not enumerate with the project's USB VID:PID);
 - in the describe of every fn it lists, fn 0 included, the common tag ops (§7.4).
 
-plan_apply and plan_release are required when any of its interfaces has plan roles (roles that the interface's document assigns through the plan, §8; the pin roles that a wire's attach selects by argument are not plan roles). A probe none of whose interfaces has plan roles does not offer them. Optional: port_speed (§3.5), notifications other than fn 0's heartbeat, and every interface.
+plan_apply and plan_release are required when any of its interfaces has plan roles (roles that the interface's document assigns through the plan, §8; the pin roles that a wire's attach selects by argument are not plan roles). A probe none of whose interfaces has plan roles does not offer them. Optional: notifications other than fn 0's heartbeat, and every interface (among them `oep.link`, with the link test and port_speed, [link](oep-if-link.md)).
 
 **Required and optional ops.** Every op in an interface's op table (§12 for fn 0, the op table of the interface's document otherwise) is required of a probe that lists that interface, unless the document marks the op optional. **Every fn declares the ops it offers in one place: the common describe tag ops (0x09, §7.4).** Every required op is set in it; an optional op is set exactly when the probe offers it; an experimental op (0xF0 to 0xFF, §2.5) is never set.
 
@@ -163,7 +163,7 @@ the index of its element).
 | Space | Range |
 |---|---|
 | role | 0x01 request, 0x02 answer, 0x05 event, 0x06 data. 0x00, 0x03, 0x04 and 0x07 to 0xFF are reserved |
-| op of core (fn 0) | 0x01 to 0x0F discovery and plan, 0x10 to 0x1F session, 0x20 to 0x2F reserved (long operations, §10), 0x30 to 0x3F notification, 0x40 to 0x4F link test, 0x50 to 0xEF reserved, 0xF0 to 0xFF experimental (shipping probes do not use them) |
+| op of core (fn 0) | 0x01 to 0x0F discovery and plan, 0x10 to 0x1F session, 0x20 to 0x2F reserved (long operations, §10), 0x30 to 0x3F notification, 0x40 to 0xEF reserved, 0xF0 to 0xFF experimental (shipping probes do not use them) |
 | op of an interface | 0x01 to 0xEF are decided by the interface's definition. 0xF0 to 0xFF are experimental |
 | reject reason | 0x01 to 0x3F core (common to all interfaces), 0x40 to 0x7F interface, 0x80 to 0xFF reserved |
 | outcome | 0 success, 1 failed, 2 partial. Others reserved |
@@ -282,7 +282,7 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
   the first thing the host sends is a confirm (§7.1) only (including the single resend of §5.2, registry `resend_max`). When the wait for the confirm
   (§4.4; confirm has no time set by its arguments, so 1000 ms (`host_wait_add_ms`) plus the transfer time) has passed without a valid confirm answer (when resent, when the wait for the resent
   confirm has passed without one), the host closes the device or port and sends nothing else. On a UART bridge port (transport
-  kind 1), however, the host may repeat the confirm for the time of host obligation 7 in §3.5 instead of the single resend (to wait out a rate a previous host raised;
+  kind 1), however, the host may repeat the confirm for port_speed_idle_max_ms + 1000 ms (`port_speed_confirm_extra_ms`) instead of the single resend (to wait out a speed a previous host raised with port_speed, [link](oep-if-link.md) §3;
   it sends confirms only, and closes the port when no valid answer has come by then). A valid confirm answer is a completed answer with the same corr as the sent
   confirm whose payload has the shape of §7.1 (starting with `OEP!`). A device or port that gave a valid answer is treated as an OEP
   probe.
@@ -310,7 +310,10 @@ The other transports (USB vendor bulk, HID, TCP) carry only OEP.
 A serial port carries OEP frames and raw bytes (the target's console, etc.) on the same port. The probe accepts OEP on every port at all times
 (it has no setting that makes a port OEP-only, and no boot mode).
 
-- **The line of a UART bridge**: 8 data bits, no parity, 1 stop bit, no flow control. The boot speed is **115200 bps** (registry `uart_bridge_boot_baud`). port_speed (§3.5) changes only the speed.
+- **The line of a UART bridge**: 8 data bits, no parity, 1 stop bit, no flow control. The boot speed is **115200 bps** (registry `uart_bridge_boot_baud`). port_speed ([link](oep-if-link.md) §3) changes only the speed.
+- **After a raised speed**: a host that opens a UART bridge port, whether or not it uses port_speed, and gets no valid confirm answer at the boot speed
+  repeats confirm there for port_speed_idle_max_ms + 1000 ms (`port_speed_confirm_extra_ms`) before it gives up (a speed a previous host raised returns
+  to the boot speed by then, [link](oep-if-link.md) §3).
 - **USB serial ports** (USB CDC, built-in USB serial): the probe accepts and sends OEP whatever line coding the host sets, and applies the line coding to nothing.
 - **Control lines**: the probe does not use DTR, RTS or the line state to decide whether to accept or send OEP. The host keeps DTR and RTS asserted while the port is open (a UART bridge may wire them to the probe's reset). What a probe does while the host holds DTR deasserted is not defined.
 - **How the probe receives**: when 0x00 arrives, it accumulates up to the next 0x00 and decodes. If it decodes and the CRC matches, it is an OEP request. If it does not decode, the CRC does not match, or
@@ -336,72 +339,6 @@ A serial port carries OEP frames and raw bytes (the target's console, etc.) on t
   at 6 KiB or less (registry `host_serial_inflight_max_bytes`). Notifications likewise: when subscribing on a serial port, the host keeps the min_bytes of subscribe small (2 KiB or less, `host_serial_min_bytes_max`) and matches the amount the probe
   sends at once to its own receive capacity (§11.3). Bulk transfers prefer a length-prefixed port (vendor bulk). The probe's max_inflight and window are
   the probe's receive limits, not the host's receive limits.
-
-### 3.5 Serial port speed (optional function)
-
-An optional function to raise the link speed of a UART bridge port above the boot speed for the duration of a session. Its uses are large writes, capture, and the console
-(the time of the wire's block ops is determined by the round trips on the debug wire and does not change with the link). The speed of the probe's fixture UART is separate (that interface's
-configure and settings). This section defines only the **handshake**. Which speeds to try as candidates, the criterion for considering one passed, and the criterion for falling back while in use
-are decided by the host (reference procedure: [host development guide](host-development-guide.md) §17).
-
-**Definitions of terms**
-
-- **Boot speed**: 115200 bps (§3.4). The fallback for everything on the probe.
-- **Candidate**: the sequence of speeds the host tries. The probe does not declare candidates (which speeds pass is determined by the converter chip and the OS, and the probe cannot know). This specification
-  decides neither the candidates nor a default.
-- **Flow**: the pair of direction (probe → host, host → probe, both directions) and concurrency n. A term for the host's verification and records (this specification does not decide the
-  flow).
-- **Broken candidate** (probe side): in the receiving of §3.4, a candidate closed by 0x00 that does not decode or whose CRC does not match. Delimiters of 0x00 only, and bytes arriving outside
-  0x00, are not counted.
-
-**Probe**
-
-- Only a probe with it ON sets op port_speed (fn 0, 0x14, lock required) in the ops of fn 0's describe (§1.2) and accepts it. OFF is
-  unknown_operation. Only ports of transport kind 1 (UART bridge) are eligible.
-
-```text
-port_speed  request: port(u8), baud(u32), step(u8: 0 try, 1 commit, 2 revert), verify_ms(u16), idle_ms(u32), [TLV]
-            answer:  baud(u32: the speed actually applied), [TLV]
-```
-
-- port: the index (§7.5) of the transport this request came on (the transport TLV of the confirm answer, §7.1).
-- Refusals: port is not the port this request came from → rejected unavailable (cause 6). If the nearest speed the UART can produce differs from the request by more than 2 %, rejected unsupported. The answer's baud is the speed actually applied.
-  verify_ms 0 in step 0 (try) is rejected malformed. In step 1 (commit) and step 2 (revert) verify_ms has no meaning and any value is accepted.
-  A step of 3 or more is rejected unsupported (payload tag 0x00, §2.5).
-  Refusals when the lock is missing or different follow the order of §4.3 (session_required, no_session, locked).
-- The state is one of 3 per port: **boot / trying / committed**.
-  - **Try** (step 0, accepted in the boot state): after finishing sending the answer at the current speed, switch to the baud of the answer and become **trying**. verify_ms starts
-    with the value of this request.
-  - **Commit** (step 1, accepted in the trying state, with the same baud, at the new speed): become **committed**. idle_ms starts with the value of this request (at most
-    port_speed_idle_max_ms = 3000 ms. 0 and longer values are treated as the maximum).
-  - **Revert** (step 2, in either trying or committed): send the answer (baud is the boot speed) at the current speed, then return to the boot speed.
-  - A step that does not fit the state (commit in the boot state, commit after committed, revert in the boot state, try on a port that is trying or committed, commit with a baud different from
-    the one being tried) is rejected unavailable (cause 6). The probe raises only one port at a time: if a try arrives on another port while one port is raised, it sends that answer,
-    then returns the raised port to the boot speed and puts the new port into trying.
-- **Conditions under which the probe returns to the boot speed by itself** (it does not announce the return):
-  1. verify_ms passed while still trying.
-  2. In the trying state, after one valid frame was received at the new speed, one broken candidate arrived on that port (broken candidates right after switching, before the first valid
-     frame at the new speed, are not counted).
-  3. After committing, no valid frame arrives on that port for idle_ms. idle_ms restarts whenever a valid frame is received and whenever an answer is sent (it does not advance while a request is being
-     executed. Same as the lease, §6.1).
-  4. After committing, 3 broken candidates in a row with no valid frame in between (registry `port_speed_broken_max`).
-  5. The session ended (end, lease expiry, the owner changed by force). For end and force, it returns after sending the answer.
-- Between trying and committing, the session's resources and lock do not change. Raw transfer (§3.4) is stopped for the duration of the session.
-
-**Host obligations**
-
-1. Send from a UART bridge (transport kind 1) port, holding the lock.
-2. On receiving the answer to try, switch to the requested baud (or the baud of the answer if it could not be produced), wait 20 ms or more (registry `port_speed_switch_wait_ms`), then verify the new speed with confirm.
-3. Within verify_ms, either send commit, or do not send it and wait for the probe to return (confirm at the boot speed after verify_ms has elapsed).
-4. While raised, send keepalive or other requests at intervals shorter than half of idle_ms.
-5. If an answer does not arrive within the wait time (§4.4) at the raised speed, return to the boot speed and repeat confirm (up to port_speed_idle_max_ms + 1000 ms, registry `port_speed_confirm_extra_ms`).
-   Even if the probe is still at the raised speed, a confirm at the boot speed reaches the probe as broken candidates, and it returns after 3 with no valid frame in between (return condition 4), so this converges.
-   If it passes (same boot_id means it merely returned; different means a reboot), continue at the boot speed for that session. If confirm does not pass within the limit, it is a
-   link failure (do not go back to the raised speed and wait again).
-6. On receiving the answer to revert, or on receiving the answer to end, switch to the boot speed.
-7. A host opening a port repeats confirm for port_speed_idle_max_ms + 1000 ms (`port_speed_confirm_extra_ms`) if confirm does not pass at the boot speed (waiting for the leftover of a previous host's
-   raise to return).
-8. Which speeds to try as candidates, the flow for verification, the criterion for considering one passed, and the criterion for falling back while in use are decided by the host (reference: [host development guide](host-development-guide.md) §17).
 
 ## 4. Messages
 
@@ -495,8 +432,8 @@ the interface's index, etc.), except that there 0x01 is supported, the refusal o
 - **The host's wait time**: the absence of an answer is decided only by timeout (§3.1). For each request the host waits **at least**: the time set by the request's arguments (the timeout_ms of run,
   the hold_ms of reset, the sum of the waits of dmi, save, etc.; for attach, `attach_budget_ms` plus the hold_ms of its reset TLV; for scan, `scan_budget_ms` + `attach_budget_ms` ([wire and debug](oep-if-debug.md) §1); 0 if none; at most max_op_ms, §7.5) + 1000 ms (`host_wait_add_ms`) + the transfer time. The wait starts when the request has been written, or, while earlier requests on the same transport are outstanding, when the answer to the request before it arrives (the probe answers in order).
   The transfer time is 0 except on a UART bridge. On a UART bridge it is (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud seconds, where L is the length on the wire of the request's frame and baud is the port's current speed. Until the host has received a confirm answer on that transport, it uses `min_max_frame` (64) as max_frame; after that, the max_frame of the latest confirm answer there. A host that cannot tell whether a serial port is a UART bridge (for example before it has read the transport kinds in the describe of fn 0, §7.5) counts this transfer time on that serial port, with baud the speed it has set on the port. Waiting longer than this floor is always allowed. A host that reads a max_op_ms of 0 or above `max_op_ms_max` treats the probe as not conforming and does not use it. When the wait has passed, it proceeds to the resend of §5.2.
-- **This floor applies to every request** a host sends, its own link requests (confirm, link_source, link_sink, port_speed) included. The waits §3.5 states for the port_speed steps (20 ms or more before the confirm that verifies a new speed, verify_ms, idle_ms, and the repeat of confirm for port_speed_idle_max_ms + 1000 ms) stay as §3.5 states them. They are times between requests, not waits for an answer, and they do not shorten this floor for any request sent within them.
-  The confirms that §3.5 (host obligations 5 and 7) and §3.3 have the host repeat are new requests, each with a new corr, not resends of §5.2: a host may send the next one before the floor of an earlier one has passed. It still accepts or skips an answer that arrives later for an earlier corr, and does not treat an earlier confirm as unanswered before its floor has passed. link_source, link_sink and port_speed are not repeated this way; each waits for its own floor.
+- **This floor applies to every request** a host sends, its own link requests (confirm and the ops of `oep.link`) included. The waits that [link](oep-if-link.md) §3 states for the port_speed steps (20 ms or more before the confirm that verifies a new speed, verify_ms, idle_ms, and the repeat of confirm for port_speed_idle_max_ms + 1000 ms) stay as stated there. They are times between requests, not waits for an answer, and they do not shorten this floor for any request sent within them.
+  The confirms that [link](oep-if-link.md) §3 (host obligation 5), §3.3 and §3.4 have the host repeat are new requests, each with a new corr, not resends of §5.2: a host may send the next one before the floor of an earlier one has passed. It still accepts or skips an answer that arrives later for an earlier corr, and does not treat an earlier confirm as unanswered before its floor has passed. The ops of `oep.link` are not repeated this way; each waits for its own floor.
 
 ## 5. Recovery and resend
 
@@ -564,7 +501,7 @@ the lock is held. The decision of the table of §5.2 (resend) comes before this 
 ### 6.3 Requests that require the lock
 
 Every request that changes state requires the lock (it carries the session's id, §4.1). What can be used without the lock is limited to read-only requests that do not change state
-(confirm, list, describe, lock_state, link_source / link_sink, the read-only ops defined by interfaces). An op that an interface
+(confirm, list, describe, lock_state, the read-only ops defined by interfaces). An op that an interface
 declares lock-free must not change state.
 
 ### 6.4 open, end, keepalive, force
@@ -603,7 +540,7 @@ request: "OEP?", min_rev(u8), max_rev(u8), [TLV]
 answer:  "OEP!", revision(u8), flags(u8), max_frame(u16), window(u32), max_inflight(u8), boot_id(u32), [TLV]
 ```
 
-- TLV 0x01 transport (u8): the index (§7.5) of the transport this confirm came on. The probe always attaches it. It names an entry of the describe of fn 0 returned on the same connection (0xFF from a relaying broker, §3.1). port_speed (UART bridges, §3.5) and bind (serial ports, [probe settings](oep-if-probe-config.md) §1.2) never take a TCP index.
+- TLV 0x01 transport (u8): the index (§7.5) of the transport this confirm came on. The probe always attaches it. It names an entry of the describe of fn 0 returned on the same connection (0xFF from a relaying broker, §3.1). port_speed (UART bridges, [link](oep-if-link.md) §3) and bind (serial ports, [probe settings](oep-if-probe-config.md) §1.2) never take a TCP index.
 
 The host sends the range of protocol revisions it can handle, and the probe returns the highest revision within it that it can handle. If there is none in the range it can handle,
 rejected unsupported (below). flags is reserved (0). max_frame is 64 or more (§3.3), window is max_frame or more, and max_inflight is 1 or more. A host that receives a confirm answer outside these bounds treats that transport as not usable: it sends nothing more on it and reports the values. The host ignores the bits of flags (reserved, §2.4). boot_id is §6.5 (the place to learn of a reboot without the lock). Both request and answer fit in 64 bytes
@@ -861,14 +798,10 @@ event   role=0x05 | fn(u16) | seq(u16) | kind(u8) | fixed part | [TLV]          
 | 0x11 | end | — | — | Required | yes |
 | 0x12 | keepalive | — | — | Required | yes |
 | 0x13 | lock_state | — | locked(u8), remaining_ms(u32), [TLV owner] | Not required | yes |
-| 0x14 | port_speed | §3.5 | baud(u32) | Required | optional (ops) |
 | 0x30 | subscribe | §11.3 | — | Required | yes |
 | 0x32 | unsubscribe | §11.3 | — | Required | yes |
-| 0x40 | link_source | length(u32), [TLV] | len(u16), data, [TLV]: len is the smaller of length and what fits in one frame; byte k of data is k & 0xFF | Not required | yes |
-| 0x41 | link_sink | count(u16), data (count bytes, any values), [TLV] | — | Not required | yes |
 
-link_source / link_sink are for measuring the speed of the wire and do not change state. A link_sink whose count is larger than the bytes that follow is rejected
-malformed.
+The link test and port_speed are the optional interface `oep.link` ([link](oep-if-link.md)).
 
 ## 13. Rules for extension (how to write an interface)
 
@@ -912,6 +845,7 @@ Standard interfaces and independent interfaces are both defined by the following
 | [Standard interfaces: fixture](oep-if-fixture.md) | `oep.fixture.gpio`, `oep.fixture.uart`, `oep.fixture.i2c-target`, `oep.fixture.spi-target` |
 | [Standard interfaces: capture](oep-if-capture.md) | `oep.fixture.logic`, `oep.fixture.analog`, `oep.fixture.capture-group` |
 | [Standard interfaces: probe settings](oep-if-probe-config.md) | `oep.probe.config` |
+| [Standard interfaces: link](oep-if-link.md) | `oep.link` (the link test and port_speed) |
 
 ## 15. Non-normative documents (guides)
 

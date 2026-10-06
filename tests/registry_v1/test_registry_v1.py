@@ -30,6 +30,17 @@ def test_no_op_has_an_open_ended_form():
     assert any("unknown keys" in e for e in gen.check(reg))
 
 
+def test_the_link_test_and_port_speed_are_oep_link():
+    """D3: fn 0 has no link ops; oep.link has source, sink and the optional port_speed (oep-if-link §1)."""
+    reg, _ = gen.load()
+    core = next(i for i in reg["interface"] if i["name"] == "oep.core")
+    assert not {o["name"] for o in core["op"]} & {"link_source", "link_sink", "port_speed"}
+    link = next(i for i in reg["interface"] if i["name"] == "oep.link")
+    assert {o["name"]: (o["code"], o["lock"]) for o in link["op"]} == {
+        "source": (0x01, False), "sink": (0x02, False), "port_speed": (0x03, True)}
+    assert link["enum"]["port_speed_step"] == {"try": 0, "commit": 1, "revert": 2}
+
+
 def test_one_request_header_and_one_tlv_header():
     """No role bit for a session id and no long TLV form remain in the registry (core §2.2, §4.1)."""
     reg, _ = gen.load()

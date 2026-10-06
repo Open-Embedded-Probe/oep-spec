@@ -48,9 +48,8 @@ probe は、自分が出す transport とインターフェースについてこ
 
 **fn 0（`oep.core`）**
 
-- 必須の op: core §12 で「yes」の行（confirm、list、describe、open、end、keepalive、lock_state、subscribe、unsubscribe、
-  link_source、link_sink）。plan_apply / plan_release はどれかのインターフェースが plan の役割を持つとき。そうでなければ持たない（§1.2）。
-  port_speed は任意。持つ（ops に立てる）ときは §3.5 のすべて（状態、戻る条件）。
+- 必須の op: core §12 で「yes」の行（confirm、list、describe、open、end、keepalive、lock_state、subscribe、unsubscribe）。
+  plan_apply / plan_release はどれかのインターフェースが plan の役割を持つとき。そうでなければ持たない（§1.2）。
 - confirm: revision の選び方、transport TLV、扱える範囲つきの断り。max_frame は 64 以上、window は max_frame 以上、
   max_inflight は 1 以上（§7.1）。
 - list: ラベル境界での一致、instance の番号、boot_id が同じ間は答えが変わらない、first が一致の数以上なら total と count 0
@@ -65,7 +64,7 @@ probe は、自分が出す transport とインターフェースについてこ
 **時間の上限**（値は `registry/oep-v1.toml`）
 
 - `probe_frame_gap_ms`（§3.2）。宣言した max_op_ms より長い要求はなく、超えうる op は断る（§7.5）。lease の範囲
-  （§6.4）。heartbeat の周期（§11.3）。port_speed の verify_ms / idle_ms と戻る条件（§3.5）。各 wire の attach と scan の予算
+  （§6.4）。heartbeat の周期（§11.3）。port_speed の verify_ms / idle_ms と戻る条件（[リンク](oep-if-link.ja.md) §3）。各 wire の attach と scan の予算
   （[線とデバッグ](oep-if-debug.ja.md) §1）。
 
 ## 2. host のチェックリスト
@@ -94,7 +93,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - **文字列**: 答えの文字を見せる前に制御文字と不正な UTF-8 を置き換える（§2.1）。unit_id とシリアル番号、unit_id どうしは ASCII の
   大文字小文字を区別せず比べる（§3.3）。`x-` の unit_id でまとめたり、名指したり、何かを覚えるキーにしたりしない（§7.5）。iProduct と
   インターフェースの文字列は表示だけ（§3.3）。`name#instance` と `oep://` のアドレス（§7.2、§7.6）。
-- **port_speed**: host が使うときは §3.5 の host の義務 1〜8。
+- **port_speed**: host が使うときは [リンク](oep-if-link.ja.md) §3 の host の義務 1〜7。UART bridge のどの口でも、上げた速さの後に confirm を繰り返す（§3.4）。
 - **アナログのキャプチャ**: host が電圧を示すときは、値 0 と 2^b − 1 を電圧ではなく振り切れ（低い端以下、高い端以上）として示す
   （[キャプチャ](oep-if-capture.ja.md) §1.2 規則 6）。
 
@@ -115,6 +114,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `oep.fixture.spi-target`（§4） | §4 の op。MISO をソフトウェアで駆動するなら cs_setup_ns | LSB first（features bit0） |
 | `oep.fixture.logic`、`oep.fixture.analog`（[キャプチャ](oep-if-capture.ja.md) §1〜§3） | query と force を除く §3.2 の op。§3.5 の describe。calibration はアナログだけ | query、force（ops）。通知（features bit2） |
 | `oep.fixture.capture-group`（§4） | force を除く §4.1 の op。§4.3 の describe | force（ops）。通知（features bit2） |
+| `oep.link`（[リンク](oep-if-link.ja.md)） | source、sink | port_speed（ops）: その状態と戻る条件（§3） |
 | `oep.probe.config`（[probe の設定](oep-if-probe-config.ja.md)） | 設定を扱う probe だけが list に出す。get、set、unset、state。hash。§2 の断り方。§4 の describe | save / erase（ops、storage の tag とともに。無ければ unknown_operation）。slot。bind（あれば bind_modes の bit 0 と 1） |
 
 ## 4. 確かめ方

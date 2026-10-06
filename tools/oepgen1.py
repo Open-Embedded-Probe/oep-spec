@@ -70,7 +70,7 @@ def check(reg: dict) -> list[str]:
             if set(op) - {"code", "name", "lock", "fields"}:
                 errors.append(f"{n}: op {op['name']} has unknown keys {sorted(set(op) - {'code', 'name', 'lock', 'fields'})}")
         if n == "oep.core":
-            ranges = [(0x01, 0x0F), (0x10, 0x1F), (0x20, 0x2F), (0x30, 0x3F), (0x40, 0x4F)]
+            ranges = [(0x01, 0x0F), (0x10, 0x1F), (0x20, 0x2F), (0x30, 0x3F)]
             for c, opname in codes.items():
                 if not any(a <= c <= b for a, b in ranges):
                     errors.append(f"oep.core: op {opname} = {c:#x} outside the core ranges")

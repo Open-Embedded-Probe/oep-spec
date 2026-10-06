@@ -52,7 +52,7 @@ These are fixed on purpose and not extended. If a use breaks a reason, that is a
 | op (u8), TLV tag (u8, bit 7 critical), reject reason (u8), event kind (u8) | If they run short, split the interface: splitting by name is kinder to the host than widening the space | An interface with another name (another fn) |
 | No len on the elements of sequences, and no fixed form extended at its end | One rule for every reader: an element's form is fixed by the revision. Additions are TLVs, and information about an element goes in an answer TLV that carries the element's index | TLVs, revision |
 | The fixed part of answers | Changing a fixed part is a revision and a new fn. Additions are TLVs (one way to extend) | TLV, revision |
-| The meaning of link_source / link_sink | They exist to test the link; there is no reason to add meaning | — |
+| The meaning of the link test (source / sink of `oep.link`) | They exist to test the link; there is no reason to add meaning | — |
 | The 64 bytes before confirm | A promise before negotiation: the smaller, the safer | — |
 | The keys of probe.config items (slot u8, port u8, fn u16, channel u16) | Numbers within one probe; u8 / u16 is enough | — |
 | No host receive limit in confirm | The host sets the amount of answers by how many requests it keeps in flight, and the amount of notifications by min_bytes. The probe would have no use for the host's limit (notifications have no ack) | A non-critical request TLV of confirm later |

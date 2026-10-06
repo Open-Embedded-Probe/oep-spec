@@ -48,9 +48,8 @@ A probe conforms when it does everything in this list for the transports and int
 
 **fn 0 (`oep.core`)**
 
-- Required ops: the rows marked "yes" in core §12 (confirm, list, describe, open, end, keepalive, lock_state, subscribe, unsubscribe,
-  link_source, link_sink). plan_apply / plan_release when any interface has plan roles, otherwise not offered (§1.2). port_speed is
-  optional; when offered (set in ops), the whole of §3.5 (states, return conditions).
+- Required ops: the rows marked "yes" in core §12 (confirm, list, describe, open, end, keepalive, lock_state, subscribe, unsubscribe).
+  plan_apply / plan_release when any interface has plan roles, otherwise not offered (§1.2).
 - confirm: revision choice, the transport TLV, the refusal with the supported range; max_frame 64 or more, window max_frame or more,
   max_inflight 1 or more (§7.1).
 - list: label-boundary matching, instance numbering, the answer unchanged while the boot_id is the same, count 0 with the total when first
@@ -65,7 +64,7 @@ A probe conforms when it does everything in this list for the transports and int
 **Timing bounds** (values in `registry/oep-v1.toml`)
 
 - `probe_frame_gap_ms` (§3.2); no request longer than the declared max_op_ms, and ops that could exceed it refused (§7.5); lease limits
-  (§6.4); heartbeat period (§11.3); port_speed verify_ms / idle_ms and the return conditions (§3.5); the attach and scan budgets of each
+  (§6.4); heartbeat period (§11.3); port_speed verify_ms / idle_ms and the return conditions ([link](oep-if-link.md) §3); the attach and scan budgets of each
   wire ([wire and debug](oep-if-debug.md) §1).
 
 ## 2. Host checklist
@@ -95,7 +94,7 @@ A probe conforms when it does everything in this list for the transports and int
 - **Strings**: replace control characters and invalid UTF-8 before showing answer text (§2.1); compare unit_id with serial numbers and
   each other ignoring ASCII case (§3.3); never group, name or key anything by an `x-` unit_id (§7.5); iProduct and interface strings
   for display only (§3.3); `name#instance` and `oep://` addresses (§7.2, §7.6).
-- **port_speed**, when the host uses it: host obligations 1 to 8 of §3.5.
+- **port_speed**, when the host uses it: host obligations 1 to 7 of [link](oep-if-link.md) §3; on every UART bridge port, confirm repeated after a raised speed (§3.4).
 - **Analog capture**, when the host shows voltages: values 0 and 2^b − 1 shown as clipped (at or below the low end, at or above the high end),
   not as voltages ([capture](oep-if-capture.md) §1.2 rule 6).
 
@@ -116,6 +115,7 @@ A probe that lists an `oep.` name follows that interface's whole document. The s
 | `oep.fixture.spi-target` (§4) | the ops of §4; cs_setup_ns when MISO is driven in software | LSB first (features bit0) |
 | `oep.fixture.logic`, `oep.fixture.analog` ([capture](oep-if-capture.md) §1 to §3) | the ops of §3.2 except query and force; describe of §3.5; calibration on analog only | query, force (ops); notifications (features bit2) |
 | `oep.fixture.capture-group` (§4) | the ops of §4.1 except force; describe of §4.3 | force (ops); notifications (features bit2) |
+| `oep.link` ([link](oep-if-link.md)) | source, sink | port_speed (ops): its states and return conditions (§3) |
 | `oep.probe.config` ([probe settings](oep-if-probe-config.md)) | listed only by a probe that handles settings; get, set, unset, state; hash; refusals of §2; describe of §4 | save / erase (ops, with the storage tag; without them unknown_operation); slots; bind (bind_modes bits 0 and 1 when present) |
 
 ## 4. How to check

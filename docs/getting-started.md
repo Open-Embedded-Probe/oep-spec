@@ -195,9 +195,9 @@ A probe that answers only confirm, list and describe is not yet an OEP probe. In
    no_session, locked); end, lease expiry and force all release what the session created (core §9).
 2. The resend table of core §5.2 (at least max_inflight entries, rejected answers included, discarded at every successful open).
 3. The whole refusal order of core §4.3 and the TLV rules of core §2.3 (critical, ignored, repeated, short and over-long TLVs).
-4. subscribe / unsubscribe with the fn 0 heartbeat (core §11), link_source / link_sink (core §12).
+4. subscribe / unsubscribe with the fn 0 heartbeat (core §11).
 5. plan_apply / plan_release when an interface has plan roles (core §8), and the interfaces you want ([conformance](conformance.md) §3).
-6. Optional: port_speed on a UART bridge (core §3.5), probe settings ([probe settings](oep-if-probe-config.md)), more transports.
+6. Optional: `oep.link` (the link test, and port_speed on a UART bridge, [link](oep-if-link.md)), probe settings ([probe settings](oep-if-probe-config.md)), more transports.
 
 **Host** ([conformance](conformance.md) §2):
 

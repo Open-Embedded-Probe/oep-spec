@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "d4937a1293fa942a"
+REGISTRY_HASH = "a7ee67b38a36912a"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -26,10 +26,14 @@ REFERENCE = {"max_op_ms": 0x2710}
 COMMON = _NS(enum={"target_id_scheme": {"wch_dmi_7f": 0x01, "targetsel": 0x02}, "target_id_len": {"wch_dmi_7f": 0x04, "targetsel": 0x04}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "read_flags": {"more": 0x01, "gap": 0x02}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08, "closed": 0x09}, "mark_detail_reset": {"ndmreset": 0x01, "attach_reset": 0x03}, "mark_detail_restart": {"havereset": 0x01, "resync": 0x02}, "mark_detail_lost": {"overflow": 0x01, "framing": 0x02, "parity": 0x03, "target_timeout": 0x04}, "mark_detail_closed": {"all_released": 0x01, "session_ended": 0x02, "slot_changed": 0x03, "connection_closed": 0x04}})
 
 INTERFACES = {}
-CORE = _NS(name="oep.core", revision=1, op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "plan_apply": 0x04, "plan_release": 0x05, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13, "port_speed": 0x14, "subscribe": 0x30, "unsubscribe": 0x32, "link_source": 0x40, "link_sink": 0x41}, lock_free={0x01, 0x02, 0x03, 0x10, 0x13, 0x40, 0x41},
-    tlv={"plan_apply": {"role_assignment": 0x10}, "confirm_answer": {"transport": 0x01}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "unavailable_payload": {"cause": 0x01, "channel": 0x02, "holder_fn": 0x03, "holder_kind": 0x04, "fn": 0x05}, "unsupported_payload": {"supported": 0x01, "channel": 0x02, "fn": 0x05, "index": 0x40}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "transport": 0x49, "discoverable": 0x4A, "plan_roles": 0x4B, "chip": 0x4C, "max_op_ms": 0x4D}}, event={"heartbeat": 0x01}, enum={"unavailable_cause": {"pin_in_use": 0x01, "limit": 0x02, "storage_full": 0x03, "bound_in_group": 0x04, "held_by_settings": 0x05, "wrong_state": 0x06}, "holder_kind": {"plan": 0x01, "connection": 0x02, "slot": 0x03, "bind": 0x04, "settings_plan": 0x05, "disabled": 0x06, "settings_idle": 0x07}, "transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}, "port_speed_step": {"try": 0x00, "commit": 0x01, "revert": 0x02}}, own={},
+CORE = _NS(name="oep.core", revision=1, op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "plan_apply": 0x04, "plan_release": 0x05, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13, "subscribe": 0x30, "unsubscribe": 0x32}, lock_free={0x01, 0x02, 0x03, 0x10, 0x13},
+    tlv={"plan_apply": {"role_assignment": 0x10}, "confirm_answer": {"transport": 0x01}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "unavailable_payload": {"cause": 0x01, "channel": 0x02, "holder_fn": 0x03, "holder_kind": 0x04, "fn": 0x05}, "unsupported_payload": {"supported": 0x01, "channel": 0x02, "fn": 0x05, "index": 0x40}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "reserved": 0x44, "profile": 0x45, "label": 0x46, "resets_on_open": 0x47, "transport": 0x49, "discoverable": 0x4A, "plan_roles": 0x4B, "chip": 0x4C, "max_op_ms": 0x4D}}, event={"heartbeat": 0x01}, enum={"unavailable_cause": {"pin_in_use": 0x01, "limit": 0x02, "storage_full": 0x03, "bound_in_group": 0x04, "held_by_settings": 0x05, "wrong_state": 0x06}, "holder_kind": {"plan": 0x01, "connection": 0x02, "slot": 0x03, "bind": 0x04, "settings_plan": 0x05, "disabled": 0x06, "settings_idle": 0x07}, "transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}}, own={},
     line_names={})
 INTERFACES["oep.core"] = CORE
+LINK = _NS(name="oep.link", revision=1, op={"source": 0x01, "sink": 0x02, "port_speed": 0x03}, lock_free={0x01, 0x02},
+    tlv={}, event={}, enum={"port_speed_step": {"try": 0x00, "commit": 0x01, "revert": 0x02}}, own={},
+    line_names={})
+INTERFACES["oep.link"] = LINK
 WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "connections": 0x05}, lock_free={0x05},
     tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "skip": 0x02, "idle_clock": 0x04}, "detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "pins": 0x03, "idle_clock": 0x04, "reset": 0x05}, "attach_answer": {"target_id": 0x10, "dpc": 0x11, "search_retries": 0x12}}, event={}, enum={"connection_users": {"host_session": 0x01, "slot": 0x02}, "scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "existing": 0x02, "dormant_woken": 0x04, "halted": 0x08}, "features": {"attach_writes_unbounded": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}, "idle_clock": {"high": 0x00, "low": 0x01}}, own={},
     line_names={})

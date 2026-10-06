@@ -63,6 +63,12 @@ Text only, no wire change:
   position and marks, so a one-command-per-process host keeps the first lines after a reset (console §2). Common §2, debug §2 (one row for end,
   lease expiry and force), capture (plan release and capture-group bind at the end of the session), probe settings. Registry: reject reason
   `expired` (0x0E) reserved, enum `resumed` removed, `mark_detail_closed` 2 is `session_ended`.
+- The link test and port_speed move out of fn 0 into the optional standard interface `oep.link` (user decision D3; new document
+  [oep-if-link](docs/oep-if-link.md)): op 0x01 source `length(u32)` → `len(u16), data`, op 0x02 sink `count(u16), data` → empty, op 0x03 port_speed
+  (optional, declared by ops) with the handshake, states and return conditions unchanged. A minimal probe no longer implements the link test.
+  The confirm repetition after a raised speed applies to every host on a UART bridge port and stays in the core (§3.3, §3.4); the old host
+  obligation 7 is gone from the list (obligation 8 is now 7). Registry: fn 0 loses ops 0x14, 0x40 and 0x41 (fn 0 ops 0x40 to 0xEF are reserved),
+  `port_speed_step` moves to `oep.link`; the timing comments point to oep-if-link.
 
 ### Rule changes: core and registry
 

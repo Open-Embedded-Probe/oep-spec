@@ -38,15 +38,15 @@ capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定]
 | COBS のフレーム | COBS frame | `0x00 COBS(message + CRC-16) 0x00`。シリアルの口で使う | core §3.1 |
 | 長さつきのフレーム | length-prefixed frame | `length(u16) message`。vendor bulk、HID の report、TCP で使う | core §3.1 |
 | 候補 | candidate | 0x00 から次の 0x00 までのバイト。フレームかもしれないものとして解く | core §3.1、§3.4 |
-| 壊れた候補 | broken candidate | 解けないか CRC の合わない候補 | core §3.5 |
+| 壊れた候補 | broken candidate | 解けないか CRC の合わない候補 | link §3 |
 | 生のバイト | raw bytes | シリアルの口の、OEP のフレームの外のバイト（target のコンソールなど） | core §3.4 |
 | 生の転送 | raw transfer | シリアルの口と、それに結んだ流れの間で生のバイトを運ぶこと。セッションが口を使う間は止まる | core §3.4 |
 | フレームの途切れ | frame gap | フレームの途中の `probe_frame_gap_ms` の途切れ。probe は読み直す（TCP では読み直さない） | core §3.2 |
 | 区切りの立て直し | resync | 長さつきのフレームで、host が区切りを取り戻すこと | core §5.1 |
-| 起動時の速さ | boot speed | UART bridge の起動時の速さ、`uart_bridge_boot_baud` | core §3.4、§3.5 |
-| port_speed | port_speed | セッションの間だけ UART bridge を速くする任意の握手: 試す、決める、戻す | core §3.5 |
-| 握手 | handshake | port_speed のうち仕様が定める部分（速さの選び方は含まない） | core §3.5 |
-| 流し方 | flow | 向きと同時数。host が速さを確かめるときに使う | core §3.5 |
+| 起動時の速さ | boot speed | UART bridge の起動時の速さ、`uart_bridge_boot_baud` | core §3.4、link §3 |
+| port_speed | port_speed | セッションの間だけ UART bridge を速くする任意の握手: 試す、決める、戻す | link §3 |
+| 握手 | handshake | port_speed のうち仕様が定める部分（速さの選び方は含まない） | link §3 |
+| 流し方 | flow | 向きと同時数。host が速さを確かめるときに使う | link §3 |
 | 探りの規則 | probing rule | 見分けていない device や口には confirm だけを送り、正しい応答が無ければ閉じる | core §3.3 |
 | 名指した probe | named probe | 利用者が unit_id で名指した probe | core §3.3 |
 | プロジェクトの VID:PID | project's VID:PID | `1209:4F45`（registry の `usb`）: host が probe を自動で見分ける唯一の USB の ID | core §3.3 |
@@ -127,7 +127,7 @@ capture = [キャプチャ](oep-if-capture.ja.md)、settings = [probe の設定]
 | max_op_ms | max_op_ms | probe が 1 つの要求にかける最長の時間 | core §7.5 |
 | reserved、label | reserved (channels), label (firmware) | probe 自身が使う channel。firmware の固定の channel の名前 | core §7.5 |
 | アドレス | address | `oep://<unit_id>[/<スロットの name>]` | core §7.6 |
-| 線の試験 | link test | link_source / link_sink。経路を測る | core §12 |
+| 線の試験 | link test | `oep.link` の source と sink の op。経路を測る | link §2 |
 
 ## plan とピン
 

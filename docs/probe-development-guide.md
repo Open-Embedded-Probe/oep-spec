@@ -45,7 +45,7 @@ The host side is the [host development guide](host-development-guide.md).
 - **On vendor bulk, receive OUT per packet** rather than as one large transfer ended by a zero-length packet: the host follows a write that
   is a multiple of wMaxPacketSize with a zero-length transfer (core §3.1), and a request that ends exactly on a packet boundary may otherwise
   wait for the next OUT. Skip a zero-length completion.
-- Measure the link with fn 0's link_source / link_sink (core §12), and measure again after changing the receive or send path.
+- Measure the link with the source / sink ops of `oep.link` ([link](oep-if-link.md) §2), and measure again after changing the receive or send path.
 
 ## 3. Nothing else on an OEP port; never block on a port nobody reads
 
@@ -67,8 +67,8 @@ The host side is the [host development guide](host-development-guide.md).
 
 - A UART bridge probe always boots at `uart_bridge_boot_baud` (115200 bps) 8N1 without flow control (core §3.4). Do not make the boot speed a
   setting: a forgotten setting locks users out, and automatic speed detection is unsafe on a port where raw bytes and OEP mix.
-- A faster link during a session is port_speed (core §3.5, optional): implement its three states, its return conditions, and set op 0x14 in
-  the ops of fn 0's describe. The speed it returns to is always the boot speed.
+- A faster link during a session is port_speed ([link](oep-if-link.md) §3, optional): list `oep.link`, implement its three states and its return
+  conditions, and set op 0x03 in the ops of its describe. The speed it returns to is always the boot speed.
 - On USB CDC and built-in USB serial the line coding is only a number and does not change the speed; ignore it (core §3.4).
 
 ## 6. Sharing a serial port

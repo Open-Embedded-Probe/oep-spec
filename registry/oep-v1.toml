@@ -103,12 +103,12 @@ uart_bridge_boot_baud = 115200  # a UART bridge's boot speed, 8N1 without flow c
 host_frame_pause_max_ms = 100   # host: never pause inside one frame longer than this
 heartbeat_default_ms = 1000     # fn 0 subscription with max_delay_ms 0
 heartbeat_min_ms = 100          # probe: may round a shorter heartbeat period up to this (core §11.3)
-port_speed_idle_max_ms = 3000   # a raised port_speed goes back after this long without a good frame, whatever idle_ms said (core §3.5)
+port_speed_idle_max_ms = 3000   # a raised port_speed goes back after this long without a good frame, whatever idle_ms said (oep-if-link §3)
 host_wait_add_ms = 1000         # host: waits at least the request's argument time (at most max_op_ms) plus this plus the transfer time (core §4.4)
 notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §11.4)
 slot_retry_reset_hold_ms = 20   # probe: hold_ms of the retry with reset of a boot_reset slot (oep-if-probe-config §3.1)
-port_speed_switch_wait_ms = 20  # host: after the answer to try, at least this long at the new speed before the confirm that verifies it (core §3.5 host obligation 2)
-port_speed_confirm_extra_ms = 1000  # host: repeats confirm at the boot speed for port_speed_idle_max_ms + this (core §3.5 host obligations 5 and 7)
+port_speed_switch_wait_ms = 20  # host: after the answer to try, at least this long at the new speed before the confirm that verifies it (oep-if-link §3 host obligation 2)
+port_speed_confirm_extra_ms = 1000  # host: repeats confirm at the boot speed for port_speed_idle_max_ms + this (oep-if-link §3 host obligation 5; core §3.4 after a raised speed)
 
 [describe_common]               # declaration tags every interface's describe may use (core §7.4); 0x04 reserved, 0x3F response meta
 role_channels = 0x01            # repeats: the same role may be written several times (union; core §7.4)
@@ -140,7 +140,7 @@ label_max_bytes = 32            # probe.config label text: valid UTF-8 without c
 interface_name_max_bytes = 64
 model_max_bytes = 32            # fn 0 describe model text (core §7.5)
 resend_max = 1                  # host: resends of one request with the same corr (core §5.2; the probing rule of core §3.3)
-port_speed_broken_max = 3       # probe: broken candidates in a row with no valid frame, after commit, that return a raised port to the boot speed (core §3.5 return condition 4)
+port_speed_broken_max = 3       # probe: broken candidates in a row with no valid frame, after commit, that return a raised port to the boot speed (oep-if-link §3 return condition 4)
 host_serial_inflight_max_bytes = 6144  # host: on a serial port, the expected volume of answers to outstanding requests (concurrency x frame limit) at most this (core §3.4)
 host_serial_min_bytes_max = 2048  # host: on a serial port, subscribe's min_bytes at most this (core §3.4)
 cobs_frame_max_bytes = 65796    # the most bytes between the two 0x00 of a valid COBS frame: a 65535-byte message, its CRC-16, one code byte per 254 (core §3.1)
@@ -225,11 +225,8 @@ op = [
   { code = 0x11, name = "end", lock = true },
   { code = 0x12, name = "keepalive", lock = true },
   { code = 0x13, name = "lock_state", lock = false },
-  { code = 0x14, name = "port_speed", lock = true },   # optional (ops): a UART bridge's speed raised for the session (core §3.5)
   { code = 0x30, name = "subscribe", lock = true },
   { code = 0x32, name = "unsubscribe", lock = true },
-  { code = 0x40, name = "link_source", lock = false },
-  { code = 0x41, name = "link_sink", lock = false },
 ]
 [interface.tlv.plan_apply]
 role_assignment = 0x10          # repeats; always sent critical (0x90): fn(u16) role(u8) channel(u16); one assignment is identified by all three (core §8)
@@ -288,15 +285,24 @@ usb_serial_jtag = 3             # built-in USB serial: the MCU hardware's USB se
 vendor_bulk = 4
 hid = 5
 tcp = 6
-[interface.enum.port_speed_step]   # op port_speed's step (core §3.5)
-try = 0
-commit = 1
-revert = 2
 [interface.event]
 heartbeat = 0x01                # boot_id(u32), uptime_ns(u64)
 [interface.reserved]
 op = [[0x20, 0x2F]]             # the long operations (core §10)
 "tlv.describe" = [[0x48, 0x48], [0x4E, 0x4E], [0x3F, 0x3F]]
+
+[[interface]]
+name = "oep.link"                      # optional: the link test and a UART bridge's speed for a session (oep-if-link)
+revision = 1
+op = [
+  { code = 0x01, name = "source", lock = false },     # length(u32) -> len(u16) data: byte k = k & 0xFF
+  { code = 0x02, name = "sink", lock = false },       # count(u16) data -> (empty)
+  { code = 0x03, name = "port_speed", lock = true },  # optional (ops): oep-if-link §3
+]
+[interface.enum.port_speed_step]   # port_speed's step (oep-if-link §3)
+try = 0
+commit = 1
+revert = 2
 
 [[interface]]
 name = "oep.wire.rvswd"

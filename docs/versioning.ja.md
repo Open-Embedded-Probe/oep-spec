@@ -50,7 +50,7 @@ OEP v1 は凍結の候補。凍結までは、壊す変更も **どの revision 
 | op（u8）、TLV の tag（u8、bit 7 critical）、reject reason（u8）、出来事の kind（u8） | 足りなくなったらインターフェースを分ける。空間を広げるより名前で分ける方が host に優しい | 別の名前のインターフェース（別の fn） |
 | 並びの要素に len を置かず、固定の形を末尾で延ばさない | どの読み手にも規則は一つ: 要素の形は revision で決まる。足すものは TLV で、要素についての情報は、その要素の番号を持つ応答の TLV に入れる | TLV、revision |
 | 応答の固定部 | 固定部を変えるのは revision と新しい fn。足すものは TLV（伸ばし方は 1 つ） | TLV、revision |
-| link_source / link_sink の意味 | 線の試験のためにある。意味を足す理由が無い | — |
+| 線の試験（`oep.link` の source / sink）の意味 | 線の試験のためにある。意味を足す理由が無い | — |
 | confirm の前の 64 byte | 交渉の前の約束。小さいほど安全 | — |
 | probe.config の項目のキー（slot u8、port u8、fn u16、channel u16） | 1 台の probe の中の数。u8 / u16 で足りる | — |
 | confirm に host の受けの上限を入れない | 応答の量は host が同時に出す要求の数で、通知の量は min_bytes で決める。probe が host の上限を知っても使い道が無い（通知に ack が無い） | confirm の非 critical の要求 TLV を後から |

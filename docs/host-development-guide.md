@@ -41,7 +41,7 @@ procedures (port speed, power and reset, finding pins, writing flash).
 ## 3. UART speed
 
 A UART bridge probe always starts at the boot speed, `uart_bridge_boot_baud` (115200 bps) 8N1 without flow control (core §3.4; names in
-backquotes are keys of `registry/oep-v1.toml`, which holds every number). port_speed (core §3.5,
+backquotes are keys of `registry/oep-v1.toml`, which holds every number). port_speed ([link](oep-if-link.md) §3,
 optional) raises it for the duration of a session; whether to raise it, the candidates and how to check them are the host's
 choice (§17). If that is still not enough, use a faster transport of the probe (its native USB).
 
@@ -308,12 +308,12 @@ python -m oep_client.fake_serve --tcp 0 --framing length   # a TCP transport: le
 
 ## 17. Choosing the serial port speed (informative)
 
-core §3.5's port_speed defines **only the handshake** (the op's form, the 3 states of a port, when the probe goes back by itself,
+[link](oep-if-link.md) §3's port_speed defines **only the handshake** (the op's form, the 3 states of a port, when the probe goes back by itself,
 the host obligations). Which speeds to try, how to check them, the criterion for passing and the criterion for falling back while
 in use are the host's. This section is a **reference procedure**, written so that a host can be built from it alone. It has two
 levels. **The minimal form (§17.2, no checking)** switches to one candidate, confirms and commits (about 50 ms) and suits even a
 short CLI. **The form that adds checks per use (§17.3)** is the full procedure for hosts that need a transfer budget (streaming
-capture, estimating write times). Both satisfy core §3.5. A host may simplify further (one candidate, one flow, skipping
+capture, estimating write times). Both satisfy link §3. A host may simplify further (one candidate, one flow, skipping
 criteria). Where this differs from the normative text, the normative text is right. The numbers (5 %, 10 %, 16 frames, 3 s, 60
 frames, 32 KiB, 1 s, 2 s, 1 day, 30 days) are guides taken from measurements (§17.5), not rules.
 
@@ -359,15 +359,15 @@ small two-way flows such as a console or debugging, and short CLIs (500000 passe
    far. No checking and no throughput measurement. If none answers, wait out verify_ms, confirm at the boot speed, and record this
    speed as failed.
 3. While in use, watch only two things. (a) An answer does not arrive within the wait (core §4.4) → go back to the boot speed and
-   repeat confirm (core §3.5 obligation 5; this converges whether the probe went back first or is still at the raised speed).
+   repeat confirm (link §3 obligation 5; this converges whether the probe went back first or is still at the raised speed).
    (b) Resends (§8) fail several times in a row (for example 3) → send port_speed (revert) and go back to the boot speed. In both
    cases **do not raise again to that speed or a faster one in that session** (with one candidate, stay at the boot speed; with
    several, fall back to the next slower one as in step 4 of §17.3.2).
 4. Record "this speed failed" per port + unit_id (§17.4) and do not try it next time.
-5. Otherwise follow the obligations of core §3.5: keepalive or ordinary requests at intervals shorter than half of idle_ms
+5. Otherwise follow the obligations of link §3: keepalive or ordinary requests at intervals shorter than half of idle_ms
    (obligation 4), and switch to the boot speed on the answer to revert or end (obligation 6).
 
-This satisfies the handshake of core §3.5 (obligations 1 to 8). The negotiation costs almost nothing (about 50 ms), so it pays even
+This satisfies the handshake of link §3 (obligations 1 to 7). The negotiation costs almost nothing (about 50 ms), so it pays even
 for a short session with a 4-times return. What it gives up is only the number "how fast this speed really
 is": on a line where confirm (a small frame) passes but large frames break, (a) or (b) appears within 1 s at the first large
 frame and the host goes back to the boot speed. Nothing is lost and no state diverges (the probe goes back after `port_speed_broken_max` broken
@@ -382,8 +382,8 @@ All numbers are guides (§17.5).
 
 #### 17.3.1 Flows and candidates per use
 
-A flow = a direction (probe → host / host → probe / both) and a concurrency n (the term of core §3.5). probe → host is driven with
-link_source, host → probe with link_sink (core §12). Check **only the flows you use**.
+A flow = a direction (probe → host / host → probe / both) and a concurrency n (the term of link §3). probe → host is driven with
+the source op of `oep.link`, host → probe with its sink op (link §2). Check **only the flows you use**.
 
 | Use | Flows used | Example candidates (combinations that were measured; not rules) |
 |---|---|---|
@@ -399,15 +399,15 @@ link_source, host → probe with link_sink (core §12). Check **only the flows y
 
 #### 17.3.2 The full procedure (baseline → check → in use → record)
 
-**Frames counted** (on the host's receiving side; core §3.5's "broken candidate" is the probe's count, a different thing): **good**
+**Frames counted** (on the host's receiving side; link §3's "broken candidate" is the probe's count, a different thing): **good**
 = an answer or notification that decoded with a matching CRC. **Broken** = a candidate closed by 0x00 that did not decode or whose
 CRC did not match (an answer broken on the line looks like this to the host; it cannot tell which request it belonged to, so on
 the request side it is also "lost": to avoid counting one accident twice, count either broken or lost consistently; the procedure
 below counts lost). **Lost** = a request for which no good answer arrived within the wait. **Ratio** = lost / (good + lost). Right
 after switching speed, broken frames before the first good frame at the new speed are not counted.
 
-1. **Preconditions**: confirm and describe done at the boot speed, port_speed declared, the lock held. Send from that port (core
-   §3.5 obligation 1).
+1. **Preconditions**: confirm and describe done at the boot speed, port_speed offered (set in the ops of
+   `oep.link`), the lock held. Send from that port (link §3 obligation 1).
 2. **Baseline** (how the boot speed breaks; converters can drop frames even at the boot speed, so absolute counts are not used):
    - The ratio of what this session actually moved at the boot speed. If there is none, measure it by moving 60 frames with the same
      flow as the one used.
@@ -422,7 +422,7 @@ after switching speed, broken frames before the first good frame at the new spee
       flow). idle_ms is at least twice the keepalive interval you will use (at most 3000 ms). On rejected unsupported go to the next
       candidate. If your port cannot produce the answer's baud (the speed actually applied), send nothing, wait verify_ms (the probe
       goes back) and go to step 6.
-   2. Switch to the requested baud (or the answer's baud), wait `port_speed_switch_wait_ms` or more (core §3.5 obligation 2), and send confirm up to 3
+   2. Switch to the requested baud (or the answer's baud), wait `port_speed_switch_wait_ms` or more (link §3 obligation 2), and send confirm up to 3
       times with a 100 ms wait. If none answers, wait until verify_ms has passed and go to step 6.
    3. Move at least 16 frames per flow used, counting broken and lost. After a lost frame, resynchronise with confirm before
       continuing.
@@ -432,7 +432,7 @@ after switching speed, broken frames before the first good frame at the new spee
    5. If it passes, send port_speed (commit, same baud) at the new speed. If the answer arrives, use that speed with the n caps. If
       not, go to step 6 (the probe has gone back).
    6. If it fails, send port_speed (revert) at the new speed (no answer needed). Go back to the boot speed and repeat confirm until it
-      passes, for at most `port_speed_idle_max_ms` + `port_speed_confirm_extra_ms` (core §3.5 obligation 5). If it does not pass, it is a link failure. Do not
+      passes, for at most `port_speed_idle_max_ms` + `port_speed_confirm_extra_ms` (link §3 obligation 5). If it does not pass, it is a link failure. Do not
       use this candidate in this session (fallback targets while in use are then only slower candidates), and record it as failed
       ("unknown" within the settling time, §17.4). Go to the next candidate.
    - This 16-frame check is a **quick gate**: it misses lines that break later in long transfers. The probation of step 4 catches
@@ -498,7 +498,7 @@ after switching speed, broken frames before the first good frame at the new spee
   - Interactive console: the minimal form with the single candidate 500000. If it fails, stay at the boot speed.
 - **Allowed simplifications**: skip all checks (= the minimal form §17.2), one candidate, one flow, a baseline of 0 (thresholds are only the
   5 % / 10 % floors), skip the in-use judgement and rely only on the return when an answer is lost (obligation 5), skip the probation,
-  fall back only to the boot speed. Interoperability needs only core §3.5's obligations; this procedure stays inside the host.
+  fall back only to the boot speed. Interoperability needs only link §3's obligations; this procedure stays inside the host.
 
 ### 17.5 Measurements
 

@@ -57,7 +57,7 @@ The boards are `OEP_HW_BOARDS` (a list of board-identify ids, for example `esp32
    in / out / duplex, 1 and max in flight) and record the results. **First measure the same matrix (the same n) at the boot speed as the
    baseline**, and compare the candidates' broken and lost rates with it (a CH340 drops 1 to 3 % even at 115200, so absolute counts cannot
    decide). How to take the baseline and the thresholds: [host development
-   guide](host-development-guide.md) §17.3.2 (a reference procedure; core §3.5 decides only the handshake).
+   guide](host-development-guide.md) §17.3.2 (a reference procedure; [link](oep-if-link.md) §3 decides only the handshake).
 7. Sessions: end, lease expiry and force each release what the session created (a later request gets no_session or locked), force there and back.
 8. The host's receiving limit on serial ports (CDC, USB-Serial/JTAG, UART bridge): `linktest` in, with the expected amount of outstanding
    answers (in flight × frame length) raised to the client's limit (6 KiB, the note of core §3.4), loses nothing (checks that Linux
