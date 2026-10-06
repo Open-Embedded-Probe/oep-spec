@@ -107,7 +107,8 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
 - **同時に持てる接続の数**: wire のインターフェースは describe の max_connections（tag 0x40、u8）で宣言する。宣言が無ければ 1。
   ロックは probe に 1 つのまま（接続ごとのロックは無い）。
 - **scan と生きている接続**: 生きている接続の組は、scan で線を初めからやり直さず、その接続で読んだ値（DMSTATUS など）で見つかった
-  組として返す（動いている接続を scan で壊さない）。
+  組として返す（動いている接続を scan で壊さない）。scan の max_speed と idle_clock は、生きている接続の設定（下の、既存の
+  connection に加わる attach の項）を変えない。
 - **席が埋まっているときの scan**: max_connections の接続が生きている間、scan で試せるのは生きている接続の組だけである（ほかの組を
   試すには、線をその接続から離すことになる）。ほかの組を並べた要求は、何も実行せずに rejected unavailable。count = 0 の並びは
   生きている接続の組だけになる。
@@ -119,6 +120,13 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
   止め、止まっていれば何もしない。method = 0 は動いている hart に触れない。既存の connection が max_speed より速ければ、
   probe はその connection の速さを max_speed 以下に下げて返す。下げられない probe は、扱えない TLV の値として扱う
   （core §2.3）。
+- **既存の connection に加わる attach は、運ばない設定の TLV について、その connection の今の設定を受け継ぐ**。connection の設定とは、
+  wire が connection ごとに定める線の設定である: 線の速さ（max_speed で抑える）と、その wire が定めるときはクロックの休ませ方（idle_clock、§3）。
+  加わる attach が設定を変えるのは運んだ TLV だけで、それぞれの規則に従う（速さは上の項、休ませ方は §3）。max_speed は attach では
+  必須なので、いつも運ばれる。TLV が無いときの値（idle_clock の 0 = high など）は、新しい connection を作る attach だけが使う。
+  pins（組を選ぶ）、reset（1 回の動作）、swd の targetsel（connection の同一性、§5）は、ここでいう設定ではない。
+- （参考）スロットやほかのセッションの connection にただ加わるだけの tool が、線の休み方を変えてはならないからである。target によっては、
+  2 本の線がどちらも high で休むと debug の論理を reset する。
 - `speed_hz` は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。
 - max_speed（TLV 0x01、u32 Hz）: probe はこれを超える速さを選ばない。**attach では必須**（無ければ rejected malformed）、critical で
   送る。probe の min_clock_hz より小さければ rejected unsupported（tag 0x01）。scan にも付けられる（無ければ probe の最も遅い速さで
@@ -254,7 +262,7 @@ TLV:
 | scan（rvswd だけ） | 0x04 | idle_clock | u8。scan の間の休ませ方（下） |
 | attach | 0x01 | max_speed | u32 Hz。**必須**、critical |
 | attach | 0x03 | pins | swdio(u16)、swclk(u16)。critical |
-| attach（rvswd だけ） | 0x04 | idle_clock | u8。線を休ませる間の SWCLK: 0 = high（無いときと同じ）、1 = low。critical。rvswd 以外に 1 を送れば rejected unsupported（tag 0x04） |
+| attach（rvswd だけ） | 0x04 | idle_clock | u8。線を休ませる間の SWCLK: 0 = high（新しい connection で無いときと同じ。既存の connection に加わる attach で無ければ、その connection の今の休ませ方、§1）、1 = low。critical。rvswd 以外に 1 を送れば rejected unsupported（tag 0x04） |
 | attach | 0x05 | reset | channel(u16)、hold_ms(u16)。critical。上 |
 | detach | 0x01 | force | 長さ 0。critical |
 | attach の応答 | 0x10 | target_id | scheme(u8)、値 |
@@ -267,11 +275,12 @@ TLV:
 
 - **線の設定は target の性質で、host が持つ**: 線の速さの上限（max_speed）と休ませ方（idle_clock）は、target（チップ）が
   求めるものである（target は、クロックの休む向きが違うと debug の論理を reset することがあり、reset の直後の遅いクロックで走る間は
-  ある速さを超えると失敗することがある）。probe はそれを既定値として持たない。host が attach ごとに渡し、host 無しで attach する
+  ある速さを超えると失敗することがある）。probe はそれを既定値として持たない。host が attach ごとに渡し（既存の connection に加わる
+  attach が渡さない設定は、その connection の今の設定のまま、§1）、host 無しで attach する
   スロットは、スロットの項目に同じ値を持つ（[probe の設定](oep-if-probe-config.ja.md) §1.1）。scan でも同じ TLV を受ける（そういう
   target を scan で壊さず見つけるため）。
-- 既存の connection への attach で idle_clock が今と違えば、probe はその connection の休ませ方を替えて返す。替えられない probe は、
-  扱えない TLV の値として扱う（core §2.3）。
+- 既存の connection への attach が idle_clock を運び、それが今と違えば、probe はその connection の休ませ方を替えて返す。替えられない
+  probe は、扱えない TLV の値として扱う（core §2.3）。idle_clock を運ばない attach は、その connection の休ませ方を変えない（§1）。
 
 ### 3.1 RVSWD のフレーム
 

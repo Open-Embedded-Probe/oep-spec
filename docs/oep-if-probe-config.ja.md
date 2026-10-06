@@ -104,7 +104,9 @@ lock_len は錠の部分（lock_scheme から lock_value まで）の長さ。0 
 | lock_mask、lock_value | 錠があるときだけ。同じ長さ n = (lock_len − 1) / 2。**n はその scheme の値の長さと同じ**（scheme 1 は 4。違えば rejected malformed。長さは registry の `[common.enum.target_id_len]`）。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
 
 - max_speed と idle_clock は target の性質で（[線とデバッグ](oep-if-debug.ja.md) §3）、probe が自分でスロットを attach するとき
-  （at boot、やり直し）に使う。host の attach はそれぞれの TLV で自分の値を渡す（スロットの値は使わない）。
+  （at boot、やり直し）に使う。host の attach はそれぞれの TLV で自分の値を渡す（スロットの項目を既定には使わない）。host の attach が
+  渡さない設定は、新しい connection では TLV の無いときの値、スロットの接続など既存の connection に加わるなら、その connection の今の
+  設定のまま（[線とデバッグ](oep-if-debug.ja.md) §1）。
 - 同じ wire_fn と同じピンの組のスロットを 2 つ作れない（設定どうしの矛盾: rejected malformed）。
 - **スロットの項目を置き換えた・消したとき**: そのスロットが使っていた接続からスロットの分を外し（ほかに使うものが無ければ閉じる。
   target は reset しない、[線とデバッグ](oep-if-debug.ja.md) §2）、bind で開いていたコンソールのスロットの分を外す（mark closed 3）。

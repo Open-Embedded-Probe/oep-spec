@@ -104,7 +104,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | インターフェース | 必須 | 任意（宣言するもの） |
 |---|---|---|
 | 位置つきのストリーム（[共通部品](oep-if-common.ja.md) §1） | それを使う各インターフェースで §1 の read、marks、clear、mark、write。§3 の status の値 | — |
-| `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（[線とデバッグ](oep-if-debug.ja.md) §0〜§3、§5） | scan（ピンのない wire では count = 0 がその 1 つの組を試す。skip の後に何も残らない count = 0 の並びは tried 0 の success で答える）、attach（max_speed は必須）、detach、connections。§1 の attach の規範と予算。§2 の寿命と線の状態 | attach の reset TLV（role_channels の role 3）。持つなら、線を離した後に DM を待つ（§3、`reset_settle_ms`） |
+| `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（[線とデバッグ](oep-if-debug.ja.md) §0〜§3、§5） | scan（ピンのない wire では count = 0 がその 1 つの組を試す。skip の後に何も残らない count = 0 の並びは tried 0 の success で答える）、attach（max_speed は必須。既存の connection に加わる attach は、運ばない設定（idle_clock など）をその connection の今のまま保つ）、detach、connections。§1 の attach の規範と予算。§2 の寿命と線の状態 | attach の reset TLV（role_channels の role 3）。持つなら、線を離した後に DM を待つ（§3、`reset_settle_ms`） |
 | `oep.target.riscv-dm`（§4） | dmi、halt、resume | reset、read_block / write_block、run、step: ops。reset があれば、ndmreset を解いた後に DM を待つ（§4.3、`reset_settle_ms`）。read_block / write_block があれば max_length |
 | `oep.target.arm-adi`（§6） | transfer、read_block、write_block。max_length は必ず出す | — |
 | `oep.target.console`（[コンソール](oep-if-console.ja.md)） | §1 の op。describe の mechanisms は必ず出す。mechanism 1 か 2 を持てば describe の send_queue（64 以上）を出し、write をその送りの列で受ける（§2）。方式 2 の枠は [dmseq](target-console-dmseq.ja.md) のとおり | どの方式か（describe の mechanisms） |

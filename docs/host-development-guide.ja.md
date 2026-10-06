@@ -66,7 +66,8 @@ max_frame を使う（core §4.4）。
 - open のたびに新しい、予測できない 32 bit の乱数の session_id を選ぶ。0、連番、固定値にしない（core §6.1）。
 - **one-shot CLI はコマンドごとに新しいセッションを開く。** 再開は無い: セッションが終わると（end、lease の期限切れ、force）、
   probe はそれが作ったものをすべて解放する（core §6.4、§9）。前のコマンドから要るものは、明示の経路で probe の上に見つける:
-  同じピンへの attach はスロットが保つ接続を返し（flags bit1）、同じ場所で同じ mechanism のコンソールの open は、閉じた後でも
+  同じピンへの attach はスロットが保つ接続を返し（flags bit1。その attach が運ばない idle_clock などの設定は、接続の今のままになる。
+  [線とデバッグ](oep-if-debug.ja.md) §1）、同じ場所で同じ mechanism のコンソールの open は、閉じた後でも
   位置とマークを保ったストリームを返すので、リセット直後の最初の行が残る（[コンソール](oep-if-console.ja.md) §2）。
   コマンドの間も駆動し続けるピン（電源のスイッチ）は設定の plan か出力の idle にし、コマンドの間も張っておく接続はスロットにする
   （[probe の設定](oep-if-probe-config.ja.md)）。boot_id を probe ごとに、unit_id をキーにして覚える（core §7.6）: open の応答の

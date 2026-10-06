@@ -162,6 +162,11 @@ New documents (oep-transports) are Japanese only until then (core §0, README, C
 - oep.link source (ja): the most that fits is max_frame − 26 (`limits.link_source_overhead_bytes`: header 5, len 2, room for ignored 19);
   the probe keeps the room for ignored even when nothing is ignored, so len does not depend on the request's TLVs (link §2); a vector
   "link source: more than fits" in ops.json.
+- Wire attach joining a connection (ja, agreed by ch32rv, from a bench failure): an attach that joins an existing connection keeps the
+  connection's current setting for every setting TLV it does not carry (idle_clock; max_speed is always carried); only the TLVs it carries
+  change the settings, under their existing rules. The values for an absent TLV (idle_clock 0 = high) apply to a new connection only. A scan
+  does not change a live connection's settings. Informative reason: a tool that only joins a slot's connection must not change how the line
+  rests (debug §1, §3; probe-config §1.1; conformance and the host guide follow).
 
 ### Tools and test vectors
 
