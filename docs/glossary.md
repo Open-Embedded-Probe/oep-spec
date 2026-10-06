@@ -2,6 +2,8 @@
 
 [日本語](glossary.ja.md)
 
+Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
+
 Status: **guide** (not normative). Every term the specification defines or uses with a fixed meaning, with the section that defines it and the
 Japanese term the translations use. The definitions here are short summaries; the linked section is the definition. Where they differ, the
 normative text is right. This English text is authoritative; the Japanese version is its translation.

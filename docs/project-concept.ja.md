@@ -2,7 +2,7 @@
 
 [English](project-concept.md)
 
-状態: **ガイド**（規範ではない）。上流で合意したprojectの目的と範囲: project名、相互運用を中心とする目的、機能に必要な通信経路をOEP native pathまたは明示的なexternal bindingとして扱う原則、および非互換な派生をOEPとして識別しない原則。この文書はprotocolの構造や技術的な解決方法を規定しない。それはv1の仕様（[OEP core](oep-core.ja.md)と標準インターフェース）が定める。
+状態: **ガイド**（規範ではない）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。上流で合意したprojectの目的と範囲: project名、相互運用を中心とする目的、機能に必要な通信経路をOEP native pathまたは明示的なexternal bindingとして扱う原則、および非互換な派生をOEPとして識別しない原則。この文書はprotocolの構造や技術的な解決方法を規定しない。それはv1の仕様（[OEP core](oep-core.ja.md)と標準インターフェース）が定める。
 
 ## 背景
 

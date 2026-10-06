@@ -2,11 +2,11 @@
 
 [English](usb-identity.md)
 
-状態: **ガイド**（規範ではない。規範は core §3.3、§7.5）。2026-10-06 に改めた。プロジェクトの USB の VID:PID は `1209:4F45`
+状態: **ガイド**（規範ではない。規範は core §3.3、§7.5）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。2026-10-06 に改めた。プロジェクトの USB の VID:PID は `1209:4F45`
 （VID 0x1209、PID 0x4F45。registry の `usb`）で、**host はそれだけで OEP の probe を自動で見分ける**。iProduct と interface の
 class / subclass / protocol は、ほかの製品と偶然重なりうるので、見分けに使わない。参照の firmware の USB の形と、host が probe を
 見つけ、覚える方法をまとめる。プロジェクトの VID:PID の使い方の規則は oep-probe-arduino の
-[PID-USE.md](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/PID-USE.md)。英語版が正で、この日本語版はその訳。
+[PID-USE.md](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/PID-USE.md)。
 
 ## 1. 何を ID で見分けるか
 

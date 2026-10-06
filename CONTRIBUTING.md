@@ -11,8 +11,9 @@ not define it. What an implementation must do to conform, and how to check it, i
 A change to the specification is made in one of two ways: the maintainers edit this repository directly, or anyone opens a
 pull request to it. Errors can be reported as an issue or fixed in a pull request.
 
-The English text is normative and the Japanese text is a translation. A change edits both languages in the same commit. Where
-they differ, the English wins and the Japanese is corrected.
+Until the v1 freeze, the Japanese text (`.ja.md`) is the working text, and changes go into it; the English documents are not kept in
+step and are regenerated from the Japanese at the freeze. From then on the English text is normative, a change edits both languages in the
+same commit, and where they differ the English wins.
 
 ## Two kinds of change
 

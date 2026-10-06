@@ -2,6 +2,8 @@
 
 [日本語](oep-core.ja.md)
 
+Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
+
 Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). Before the freeze, revision 1 alone does not identify a form: an implementation names the specification tag it implements ([versioning](versioning.md) §6). This document defines only the protocol core of OEP. The standard interfaces
 (wire, debug, console, fixture, capture, probe settings) are defined by their own documents (§14). This document is complete in itself: where a reader needs the
 reason for a rule, it is given with the rule. The guides (§15) add practice, not rules. Where this document and a non-normative document disagree, this document is right.
@@ -38,7 +40,7 @@ Outside OEP: updating the probe's own firmware (DFU, Mass Storage, etc.), the de
 **External specifications**: the OEP protocol is defined by these documents alone. Driving a target, a bus or a transport also needs the external
 specifications that each document lists in its References section (§16 for the transports).
 
-**Language**: the English text of this specification is normative. The Japanese documents are translations; where the two differ, the English text is right.
+**Language**: until the v1 freeze, the Japanese text (`.ja.md`) is the working text, where the rules are decided. At the freeze the English documents are regenerated from it, and from then on the English text is normative. Until then an English document may be out of date.
 
 ## 1. Terms
 

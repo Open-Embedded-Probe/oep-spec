@@ -2,6 +2,8 @@
 
 [日本語](versioning.ja.md)
 
+Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
+
 Status: **guide** (not normative). The promise of what stays stable, gathered from core §2.7 and the
 scope of the freeze agreed on 2026-10-02. The rules themselves are in [OEP core](oep-core.md) (§2.3, §2.5, §2.7, §7.1, §13) and at the top of
 core and `registry/oep-v1.toml`; where this page and they differ, they are right. The release tagging in §6 is decided. This English text is

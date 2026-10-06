@@ -2,6 +2,8 @@
 
 [日本語](project-concept.ja.md)
 
+Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
+
 Status: **guide** (not normative). The project's purpose and scope, agreed upstream: the project name, the purpose centred on interoperability, the principle that every communication path a function needs is either an OEP native path or an explicit external binding, and the principle that incompatible derivatives are not identified as OEP. This document does not prescribe a protocol structure or technical solution; the v1 specification does that ([OEP core](oep-core.md) and the standard interfaces).
 
 ## Background

@@ -2,6 +2,8 @@
 
 [日本語](usb-identity.ja.md)
 
+Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
+
 Status: **guide** (not normative; the rules are core §3.3 and §7.5). Revised 2026-10-06. The project's USB VID:PID is `1209:4F45`
 (VID 0x1209, PID 0x4F45; the registry's `usb`), and **a host identifies an OEP probe automatically only by it**; iProduct and the interface
 class / subclass / protocol are not used for identification, since they can match other products by chance. This page describes the reference

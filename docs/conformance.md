@@ -2,6 +2,8 @@
 
 [日本語](conformance.ja.md)
 
+Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
+
 Status: **guide** (not normative). It adds no rule: every line points to the normative text that holds the rule, and where this
 document and the normative text differ, the normative text is right. It answers one question: what a probe, and a host, must do to
 conform to OEP v1, and how an implementer checks it. The conformance clause itself is [core](oep-core.md) §1.2.

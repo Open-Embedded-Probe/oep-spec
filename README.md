@@ -14,8 +14,9 @@ decided), and the reference implementations follow them and are tested on hardwa
 in without raising the revision; what the freeze stops and what stays free is in
 [versioning](docs/versioning.md), and the changes are in [CHANGELOG](CHANGELOG.md).
 
-**Language**: the English text is normative. The Japanese documents (`.ja.md`) are translations; where the two differ,
-the English text is right. Every normative document and every guide has an English version; many records exist only in Japanese.
+**Language**: until the v1 freeze, the Japanese documents (`.ja.md`) are the working text, where the rules are decided. At the freeze
+the English documents are regenerated from them, and from then on the English text is normative. Until then an English document may be
+out of date (each says so at its top), and new documents (such as `oep-transports`) exist only in Japanese. Many records exist only in Japanese.
 
 ## Map of the documents
 

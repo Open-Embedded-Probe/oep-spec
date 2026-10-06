@@ -2,6 +2,8 @@
 
 [日本語](release-testing.ja.md)
 
+Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
+
 Status: **guide** (not normative), **project-internal process**: how the OEP project's own repositories test a release on real hardware.
 Someone implementing a probe or a host does not need it; what an implementation must do is in [conformance](conformance.md). Adopted by
 the maintainers on 2026-10-01; the tests live in oep-client-python `tests/hw/`; facts found on real hardware added on 2026-10-02. This

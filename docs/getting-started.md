@@ -2,6 +2,8 @@
 
 [日本語](getting-started.ja.md)
 
+Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
+
 Status: **guide** (not normative). It adds no rule; every step points to the normative text, and where this guide and the normative text
 differ, the normative text is right. This English text is authoritative; the Japanese version is its translation.
 

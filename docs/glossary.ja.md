@@ -2,8 +2,8 @@
 
 [English](glossary.md)
 
-状態: **ガイド**（規範ではない）。仕様が定める用語と、決まった意味で使う用語を、定めた節と、英語と日本語の対応と一緒に並べる。
-ここの意味は短いまとめで、定義はリンク先の節。食い違えば規範が正しい。英語版が正で、この日本語版はその訳。
+状態: **ガイド**（規範ではない）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。仕様が定める用語と、決まった意味で使う用語を、定めた節と、英語と日本語の対応と一緒に並べる。
+ここの意味は短いまとめで、定義はリンク先の節。食い違えば規範が正しい。
 
 文書: core = [OEP core](oep-core.ja.md)、common = [共通部品](oep-if-common.ja.md)、debug = [線とデバッグ](oep-if-debug.ja.md)、
 console = [コンソール](oep-if-console.ja.md)、dmseq = [dmseq](target-console-dmseq.ja.md)、fixture = [fixture](oep-if-fixture.ja.md)、

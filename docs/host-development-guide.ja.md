@@ -2,9 +2,9 @@
 
 [English](host-development-guide.md)
 
-状態: **ガイド**（規範ではない。2026-10-06 にその日の規範の文に合わせて更新）。host を書く人のために、[OEP core](oep-core.ja.md) と
-`oep-if-*.ja.md` が求めることを満たす実務のやり方と、実際に踏んだ罠をまとめる。規範と食い違えば規範が正しい。英語版が正で、この
-日本語版はその訳。最初の一歩（いちばん小さい host とバイト列）は [はじめに](getting-started.ja.md)、host がしなければならないことの
+状態: **ガイド**（規範ではない。2026-10-06 にその日の規範の文に合わせて更新）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。host を書く人のために、[OEP core](oep-core.ja.md) と
+`oep-if-*.ja.md` が求めることを満たす実務のやり方と、実際に踏んだ罠をまとめる。規範と食い違えば規範が正しい。
+最初の一歩（いちばん小さい host とバイト列）は [はじめに](getting-started.ja.md)、host がしなければならないことの
 チェックリストは [適合](conformance.ja.md) §2。probe の側は、参照のライブラリにも案内がある:
 [getting started](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/getting-started.ja.md) と
 [writing a probe](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.ja.md)（oep-probe-arduino）。

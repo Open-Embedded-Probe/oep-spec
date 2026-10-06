@@ -70,6 +70,11 @@ Text only, no wire change:
   obligation 7 is gone from the list (obligation 8 is now 7). Registry: fn 0 loses ops 0x14, 0x40 and 0x41 (fn 0 ops 0x40 to 0xEF are reserved),
   `port_speed_step` moves to `oep.link`; the timing comments point to oep-if-link.
 
+**Working language until the freeze** (user decision, 2026-10-06): until the v1 freeze the Japanese documents (`.ja.md`) are the working
+text; the English documents are marked out of date and are regenerated from the Japanese at the freeze, when English becomes authoritative.
+New documents (oep-transports) are Japanese only until then (core §0, README, CONTRIBUTING). 凍結までは日本語の文書が作業の文で、英語は凍結のときに
+作り直して正とする。
+
 ### Rule changes: core and registry
 
 - TLV tags: the tag number is the low 7 bits and bit 7 is the critical mark (role_assignment is 0x10, sent as 0x90); values a later revision may

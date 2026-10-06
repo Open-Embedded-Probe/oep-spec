@@ -2,6 +2,8 @@
 
 [日本語](review-guide.ja.md)
 
+Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
+
 Status: **guide** (not normative). A map as of 2026-10-06 (before the v1 freeze. After the decisions before the freeze and the zero-base re-examination were put into the normative text, and the remaining numbers were filled in). For someone who does not yet know OEP
 and reviews the v1 freeze, this summarises where to start reading, what is at which PATH, and what we would like looked at. PATHs are relative to the root of each repository.
 

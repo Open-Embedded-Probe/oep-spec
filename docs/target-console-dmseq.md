@@ -2,6 +2,8 @@
 
 [日本語](target-console-dmseq.ja.md)
 
+Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
+
 Status: **normative** (v1, before the freeze: until the v1 freeze a rule or a number may still change). Before the freeze, revision 1 alone does not identify a form: an implementation names the specification tag it implements ([versioning](versioning.md) §6). This document defines the framing of mechanism 2 (dmseq) of `oep.target.console` ([console](oep-if-console.md) §3).
 This English version is authoritative; the Japanese version is its translation.
 

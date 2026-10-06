@@ -2,9 +2,8 @@
 
 [English](probe-development-guide.md)
 
-状態: **ガイド**（規範ではない。2026-10-06 にその日の規範の文に合わせて更新）。probe を作る人のために、[OEP core](oep-core.ja.md) と
-`oep-if-*.ja.md` が probe に求めることを満たす実務のやり方と、実際に踏んだ罠をまとめる。規範と食い違えば規範が正しい。英語版が正で、
-この日本語版はその訳。host の側は [host 開発ガイド](host-development-guide.ja.md)。
+状態: **ガイド**（規範ではない。2026-10-06 にその日の規範の文に合わせて更新）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。probe を作る人のために、[OEP core](oep-core.ja.md) と
+`oep-if-*.ja.md` が probe に求めることを満たす実務のやり方と、実際に踏んだ罠をまとめる。規範と食い違えば規範が正しい。host の側は [host 開発ガイド](host-development-guide.ja.md)。
 
 - 最初の一歩（confirm、list、describe に答えるいちばん小さい probe とバイト列）は [はじめに](getting-started.ja.md)、probe が
   しなければならないことのチェックリストは [適合](conformance.ja.md) §1。

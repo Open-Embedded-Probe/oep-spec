@@ -2,6 +2,8 @@
 
 [日本語](host-development-guide.ja.md)
 
+Status: out of date. Until the v1 freeze the Japanese text (.ja.md) is the working text; this English version will be regenerated from it at the freeze and becomes authoritative then.
+
 Status: **guide** (not normative; updated 2026-10-06 to the normative text of that date). How to write a host: practical
 ways to meet what [OEP core](oep-core.md) and the `oep-if-*.md` documents require, and the traps found in practice. Where this
 guide and the normative text differ, the normative text is right. This English text is authoritative; the Japanese
