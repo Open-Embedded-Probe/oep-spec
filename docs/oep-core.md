@@ -64,7 +64,7 @@ A probe MUST implement:
 - at least one transport of §3, with its frame;
 - §4 to §6;
 - fn 0 confirm, list, describe, open, end, keepalive, lock_state, subscribe and unsubscribe, link_source and link_sink;
-- in describe of fn 0, unit_id, transport and max_op_ms.
+- in describe of fn 0, unit_id, transport, max_op_ms and discoverable (§7.5; 0 for a probe that does not enumerate with the project's USB VID:PID).
 
 plan_apply and plan_release are required when any of its interfaces has plan roles (roles that the interface's document assigns through the plan, §8; the pin roles that a wire's attach selects by argument are not plan roles). A probe none of whose interfaces has plan roles answers them with unknown_operation. Optional: port_speed (§3.5), notifications other than fn 0's heartbeat, and every interface.
 

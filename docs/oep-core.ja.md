@@ -64,7 +64,7 @@ probe が実装しなければならない（MUST）もの:
 - §3 の経路の少なくとも 1 つと、そのフレーム;
 - §4〜§6;
 - fn 0 の confirm、list、describe、open、end、keepalive、lock_state、subscribe と unsubscribe、link_source と link_sink;
-- fn 0 の describe の unit_id、transport、max_op_ms。
+- fn 0 の describe の unit_id、transport、max_op_ms、discoverable（§7.5。プロジェクトの USB の VID:PID で列挙しない probe は 0）。
 
 plan_apply と plan_release は、どれかのインターフェースが plan の role（インターフェースの文書が plan を通して割り当てる role、§8。wire の attach が引数で選ぶピンの role は plan の role ではない）を持つときに要る。plan の role を持つインターフェースが 1 つも無い probe は、それらに unknown_operation で答える。任意: port_speed（§3.5）、fn 0 のハートビート以外の通知、すべてのインターフェース。
 
