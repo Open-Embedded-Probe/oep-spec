@@ -127,6 +127,9 @@ endpoint）は、組をちょうど 1 つ、endpoint が使う組だけ持つ:
   pins（組を選ぶ）、reset（1 回の動作）、swd の targetsel（connection の同一性、§5）は、ここでいう設定ではない。
 - （参考）スロットやほかのセッションの connection にただ加わるだけの tool が、線の休み方を変えてはならないからである。target によっては、
   2 本の線がどちらも high で休むと debug の論理を reset する。
+- **失敗した attach は、使っているものを増やさない**: completed failed で答えた attach は、そのセッションを connection の使っているもの
+  （[共通部品](oep-if-common.ja.md) §2）に加えない。生きている組に reset TLV を付けた attach が失敗して、その connection が保たれるとき（§3）も
+  同じである。そのセッションがすでにその connection の使っているものなら、その分はそのまま残る。
 - `speed_hz` は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。
 - max_speed（TLV 0x01、u32 Hz）: probe はこれを超える速さを選ばない。**attach では必須**（無ければ rejected malformed）、critical で
   送る。probe の min_clock_hz より小さければ rejected unsupported（tag 0x01）。scan にも付けられる（無ければ probe の最も遅い速さで
