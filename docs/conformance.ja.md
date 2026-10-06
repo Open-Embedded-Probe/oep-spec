@@ -55,7 +55,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - list: fn 0 を載せない、ラベル境界での一致、instance の番号、boot_id が同じ間は答えが変わらない、first が一致の数以上なら total と count 0
   （§7.2）。
 - describe: ページ送り、宣言だけで boot_id が同じ間は変わらない、要求に TLV を置かない（§7.3）。
-- clock: boot_id と uptime_ns（答えを作る直前に読んだ時計）。ロック不要で、session_id 0 ならセッションが無くても、ほかのセッションが
+- clock: boot_id と uptime_ns（要求を受けてから応答を送るまでの間に読んだ時計）。ロック不要で、session_id 0 ならセッションが無くても、ほかのセッションが
   ロックを持っていても答え、セッション、ロック、lease に触れない。中継のブローカーは自分で答えず中継する（§7.7、transports §1）。
 - fn 0 の describe の必須の tag: unit_id、transport（transport ごとに一つ、interface の欄は §7.5 のとおり）、max_op_ms（1〜
   `max_op_ms_max`）（§1.2、§7.5）。
@@ -87,7 +87,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - **セッション**: 0 でない乱数の session_id（§6.1）。答えの lease_ms が正で、keepalive が延ばす（§6.4）。no_session /
   locked への対応（§4.3、§6.2）。no_session の後は新しいセッションを開いて設定し直す。boot_id が（confirm でも open でも）変われば自分の状態は無効で、
   list し直す（§6.5）。一つのセッションの要求は一つの transport で（transports §3）。セッションの要らないロック不要の要求は session_id 0 で（§4.1）。
-- **probe の時刻**: probe の時刻を自分の時刻に写すときは clock で読み、送った時と受けた時の中点に当て、不確かさを往復の半分とする（§7.7）。
+- **probe の時刻**: probe の時刻を自分の時刻に写すときは clock で読み、送った時と受けた時の中点に当て、不確かさを往復の半分とする（[host 開発ガイド](host-development-guide.ja.md) §12）。
 - **ops**: §7.4 の符号を満たさない ops を受けたら、その fn を使わない（fn 0 の ops なら、その probe を使わない）。
 - **答えの読み方**: role が要求の role のメッセージは捨てる。5 バイトより短い答えと、ヘッダより短い出来事やデータのフレームは
   壊れたフレーム（§2.4）。知らない TLV と tag を飛ばす、繰り返された tag は最初を使う、0 でない真偽値は真と読む（§2.1、§2.3）。知らない

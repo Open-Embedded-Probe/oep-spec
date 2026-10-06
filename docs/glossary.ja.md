@@ -114,7 +114,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 |---|---|---|---|
 | confirm | confirm | 最初の要求: `OEP?` / `OEP!`、revision、上限、boot_id | core §7.1 |
 | clock（op） | clock (op) | fn 0 の op 0x04。必須、ロック不要、session_id 0 で送れる。応答は boot_id と uptime_ns。中継のブローカーも probe に中継する | core §7.7、transports §1 |
-| uptime_ns | uptime_ns | clock の応答の probe の今の時刻（起動からの ns）。応答を作る直前に読み、host が送ってから受けるまでの間の値 | core §2.6a、§7.7 |
+| uptime_ns | uptime_ns | clock の応答の probe の今の時刻（起動からの ns）。probe が要求を受けてから応答を送るまでの間に読んだ値 | core §2.6a、§7.7 |
 | list | list | 名前ごとのインターフェースと、その fn、instance、revision | core §7.2 |
 | describe | describe | インターフェースの、または（fn 0 で）probe 全体の宣言 | core §7.3 |
 | 宣言 | declaration | describe が返すもの。boot_id が同じ間変わらない | core §7.3 |

@@ -43,11 +43,11 @@ external re-review of the same day (its §3.2 and §3.3). Japanese only while Ja
   §1.2, §2.5, §11, §12). Logic, analog and capture-group get subscribe / unsubscribe (optional, in ops; streaming needs them) and lose
   features bit2 (notify); console and the fixtures say they have neither.
 - **Breaking**: the probe's time is read with the new mandatory fn 0 op `clock` (0x04): no request fields, answer boot_id(u32)
-  uptime_ns(u64) [TLV], the clock (core §2.6a) read just before the answer is built. Lock-free; with session_id 0 it needs no session
-  and touches no session, lock or lease. The value is the probe's own clock, read between the host sending clock and receiving the
-  answer: a host takes the midpoint of its send and receive times, uncertain by half the round trip, and may keep the shortest of
-  several reads (core §1.2, §6.3, §7.7, §12). A relaying broker answers only the session ops (confirm, open, end, keepalive,
-  lock_state) itself and relays clock like any other request with the ordinary wait (transports §1), so the guarantee holds through it.
+  uptime_ns(u64) [TLV]; uptime_ns is the probe's own clock (core §2.6a), read after the request arrives and before the answer is
+  sent (never an earlier or estimated value). Lock-free; with session_id 0 it needs no session and touches no session, lock or lease
+  (core §1.2, §6.3, §7.7, §12). A relaying broker answers only the session ops (confirm, open, end, keepalive, lock_state) itself and
+  relays clock like any other request with the ordinary wait (transports §1). How a host maps the value to its own time (midpoint of
+  send and receive, half the round trip, the shortest of several reads, drift) is in the host guide §12, not in the core.
   confirm's answer is unchanged (TLV 0x01 transport only; 45 bytes with the room for ignored, core §7.1). Registry, generated code,
   vectors (discovery's fn 0 ops include 0x04; sessions.json has clock with session_id 0, with and without a session open, and with the
   session's own id) and tests follow.
