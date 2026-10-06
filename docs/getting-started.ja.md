@@ -22,7 +22,7 @@ describe を読むいちばん小さい host を、線の上のすべてのバ�
 - **応答**: `role(0x02) corr(u16) resolution(u8) detail(u8) payload`（見出し 5 byte）。resolution 0x01 completed なら detail は outcome
   （0 success）、0x00 rejected なら detail は断りの理由（core §4.2、§4.3）。
 - **TLV**: `tag(u8) len(u16) value`。長さによらず形は一つ（core §2.2）。
-- **fn 0** は `oep.core`。op は confirm 0x01、list 0x02、describe 0x03（core §12）。
+- **fn 0** は本体（core）で、名前を持たず list に載らない。op は confirm 0x01、list 0x02、describe 0x03（core §12）。
 
 ## 2. 例
 
@@ -86,12 +86,12 @@ serial frame 00 03 01 02 01 01 02 02 01 01 01 01 01 01 01 03 aa 9e 00
 ```
 
 応答: `total(u16) count(u8)`、続いて項を前に長さを置かずに並べる: `fn(u16) instance(u16) revision(u8) flags(u8)
-name_len(u8) name`（core §2.3）。いちばん小さい probe には `oep.core`（fn 0、instance 0、revision 1）しか無い。list はそれをいつも最初の項として数える。
+name_len(u8) name`（core §2.3）。fn 0 の本体は名前を持たず list に載らないので、インターフェースを持たないいちばん小さい probe の list は空である。
 
 ```text
-message      02 0200 01 00 | 0100 | 01 | 0000 | 0000 | 01 | 00 | 08 | 6f 65 70 2e 63 6f 72 65
-               completed success | total 1 | count 1 | fn 0 | instance 0 | rev 1 | flags | name_len 8 | "oep.core"
-serial frame 00 03 02 02 02 01 02 01 02 01 01 01 01 02 01 0c 08 6f 65 70 2e 63 6f 72 65 cb 70 00
+message      02 0200 01 00 | 0000 | 00
+               completed success | total 0 | count 0
+serial frame 00 03 02 02 02 01 01 01 01 03 2a 74 00
 ```
 
 ### 3.3 describe（core §7.3、§7.5）
@@ -106,7 +106,7 @@ serial frame 00 03 01 03 01 01 02 03 01 01 01 01 01 01 01 03 ea 30 00
 
 応答: `more(u8)`、続いて宣言の TLV。fn 0 でどの probe も出す 5 つ: ops（この fn が持つ op を base 0x01 と bitmap で示す、
 core §7.4。ここでは core §1.2 が fn 0 に求める 9 つ: confirm、list、describe、open、end、keepalive、lock_state、subscribe、unsubscribe。
-この probe は plan の role を持たないので plan_apply と plan_release は無い）、unit_id、transport（経路ごとに 1 つ）、max_op_ms（core §1.2）と discoverable（core §7.5。UART bridge は
+）、unit_id、transport（経路ごとに 1 つ）、max_op_ms（core §1.2）と discoverable（core §7.5。UART bridge は
 プロジェクトの USB の VID:PID で列挙しないので、ここでは 0）。
 
 ```text
@@ -146,7 +146,7 @@ probe がすることを順に（参照の先が規則）:
    （unknown_operation）、固定部分の長さ（malformed）を見る。
 3. **confirm**（payload は `OEP?` min_rev max_rev）: `min_rev > max_rev` は malformed。1 が [min_rev, max_rev] にあれば §3.1 のとおり答え、
    無ければ §3.1 のとおり断る。どの confirm の応答にも transport の TLV を付ける。flags は 0。
-4. **list**: 名前をラベルの境で照らし（`oep` は `oep.core` に合う。空の prefix はすべてに合う）、`first` から 1 つのフレームに入るだけ
+4. **list**: 名前をラベルの境で照らし（`oep` は `oep.fixture.gpio` に合う。空の prefix はすべてに合う。fn 0 は載せない）、`first` から 1 つのフレームに入るだけ
    項を入れる。total は合うものの総数。flags の bit 1〜7 が立った要求は unsupported（core §7.2）。
 5. **describe**: fn 0 なら `first` からの TLV（少なくとも ops、unit_id、transport、discoverable、max_op_ms。§3.3）を返す。入りきらなければ
    more = 1。`first` が数以上なら more 0 で TLV なし。要求に TLV があれば malformed。boot_id が同じ間、値は変わらない（core §7.3）。
@@ -198,8 +198,8 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 2. core §5.2 の送り直しの表（少なくとも max_inflight 個、断りの応答も含め、成功した open のたびに捨てる）。
 3. core §4.3 の断り方の順のすべてと、core §2.3 の TLV の規則（critical、ignored、繰り返し、短い TLV と長すぎる TLV）。
 4. subscribe / unsubscribe と fn 0 のハートビート（core §11）。
-5. plan の role を持つインターフェースがあれば plan_apply / plan_release（core §8）と、欲しいインターフェース（[適合](conformance.ja.md) §3）。
-6. 任意: `oep.link`（線の試験と、UART bridge の port_speed。[リンク](../interfaces/oep-if-link.ja.md)）、probe の設定（[probe の設定](../interfaces/oep-if-probe-config.ja.md)）、ほかの経路。
+5. 欲しいインターフェース（[適合](conformance.ja.md) §3）。plan の role を持つインターフェースがあれば `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)）も。
+6. 任意: `oep.probe.link`（線の試験と、UART bridge の port_speed。[リンク](../interfaces/oep-if-link.ja.md)）、`oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)）、probe の設定（[probe の設定](../interfaces/oep-if-probe-config.ja.md)）、ほかの経路。
 
 **host**（[適合](conformance.ja.md) §2）:
 

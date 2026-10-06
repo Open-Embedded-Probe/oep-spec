@@ -42,7 +42,7 @@
 - **vendor bulk の OUT は packet ごとに受ける**。ZLP で終わる大きな転送として受けない: host は wMaxPacketSize の倍数の書き込みの後に
   長さ 0 の転送を続ける（transports §1）ので、ちょうど packet の境で終わる要求が次の OUT まで待たされることがある。長さ 0 の完了は
   読み飛ばす。
-- 線の速さは `oep.link` の source / sink の op（[リンク](../interfaces/oep-if-link.ja.md) §2）で測る。受信・送信の経路を変えたら測り直す。
+- 線の速さは `oep.probe.link` の source / sink の op（[リンク](../interfaces/oep-if-link.ja.md) §2）で測る。受信・送信の経路を変えたら測り直す。
 
 ## 3. OEP の口にほかのものを出さない・誰も読まない口で止まらない
 
@@ -64,7 +64,7 @@
 
 - UART bridge の probe は、いつも `uart_bridge_boot_baud`（115200 bps）8N1、流れの制御なしで起動する（transports §4）。起動時の速さを
   設定にしない: 設定を忘れると入れなくなり、生のバイトと OEP が混ざる口では速さの自動の検出は危うい。
-- セッションの間だけ速くするのは port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3、任意）: `oep.link` を list に出し、3 つの状態と戻る
+- セッションの間だけ速くするのは port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3、任意）: `oep.probe.link` を list に出し、3 つの状態と戻る
   条件を実装し、その describe の ops に op 0x03 を立てる。戻り先はいつも起動時の速さ。
 - USB CDC と内蔵の USB シリアルでは、線の設定は数字が渡るだけで速さに関係しない。無視する（transports §4）。
 
@@ -148,7 +148,7 @@ revision は数字に任意の `.数字` の組。revision が分からなけれ
 
 **ピン**（core §7.4）: ピンを集合のどれにでも割り当てられる機能は role_channels を、組が決まっている機能は組ごとに channel_group を
 宣言する。両方を使ってもよい。probe 自身が使う channel は `reserved`（0x44）に、配線の固定の名前は `label`（0x46）に置く。plan に
-上限があれば plan_roles を宣言する（core §8）。
+上限があれば `oep.probe.plan` の describe に plan_roles を宣言する（[plan](../interfaces/oep-if-plan.ja.md) §1）。
 
 **max_frame、window、max_inflight**（confirm、core §4.4）、経路ごと:
 

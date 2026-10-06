@@ -49,13 +49,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   1 つの probe を複数の host で使うときは、ブローカーが 1 つのセッションに束ねる（probe の規則がブローカーに何を求めるかは次の項目）。
 - **OEP の要求に自分で答える端点は probe である**。何が運び、後ろに何があるかによらない（たとえば TCP で OEP を出し、別のデバッガを動かすプログラム）。probe の規則はすべてそれに掛かる。要求を OEP の probe に中継するだけのブローカーは、その probe に対しては host である。
 - **セッションの op に自分で答える中継のブローカー**（confirm、open、end、keepalive、lock_state）で、ほかの要求をすべて 1 つの OEP の probe に中継するものは、自分の describe を持たない: それが中継する fn 0 の describe は probe のもの。confirm の transport TLV では index 0xFF（「describe に無い」）を返す。probe に対しては host である。それらのセッションの op の規則はすべて、その応答に掛かる。
-- **中継のブローカーと restart**（core §6.6）: そのブローカーは、client の restart を、ほかのロックの要る op と同じにその client のセッションで判定し（core §4.3、§6.2）、通れば自分が probe に開いたセッションで probe に中継し、応答を client に返す。completed success の応答を受けたら、ブローカーは probe が再起動しているものとして扱う:
-  1. 上げた port_speed は起動時の速さに戻す（[リンク](../interfaces/oep-if-link.ja.md) §3 の host の義務 6）。probe には confirm のほか何も送らない。
-  2. 応答を受けてから restart_max_ms（core §7.5）が過ぎるまで、probe に confirm を繰り返す（core §6.6 の host の待ち方。それぞれの confirm の応答は core §4.4 のとおり待つ）。restart の前と違う boot_id の confirm の応答が来たら、新しい id で probe にセッションを開き、client の要求の中継に戻る。
-  3. client のセッションはすべて、probe の再起動で終わったものとし（core §9 の「probe の再起動」の行）、ブローカーのロックは空く: それらの id の open でない要求は no_session で断る（core §6.2）。client は新しいセッションを開く。
-  4. 1〜2 のあいだに client から来た要求は probe に送らず、実行せずに答える: open でない session_id ≠ 0 の要求は rejected no_session、ほかの要求（open と、confirm を含む session_id 0 の要求）は rejected result_lost。
-  5. restart_max_ms のうちに新しい boot_id の confirm の応答が無いか、そのあいだに probe への経路が無くなれば、ブローカーは probe を無くなったものとして扱い、次の項目と同じに終わる。
-- **中継のブローカーの probe への経路が無くなったとき**（restart の後に限らない。USB で device が bus から外れた、TCP の接続が閉じた）: ブローカーは終わる: client の接続をすべて閉じる。client は、経路が閉じたときと同じに、新しく開くのと同じやり方でやり直す。
+- **中継のブローカーの probe への経路が無くなったとき**（USB で device が bus から外れた、TCP の接続が閉じた、ブローカーが probe への経路を閉じた）: ブローカーは終わる: client の接続をすべて閉じる。client は、経路が閉じたときと同じに、新しく開くのと同じやり方でやり直す。
 - **TCP の経路**: TCP で待ち受ける probe は、待ち受けの socket 1 つを fn 0 の describe の経路 1 つとして並べる（kind 6、interface 0xFF）。その socket で受けた接続はどれも、confirm の transport TLV でその index を返す。§3、core §4.4、core §7.1、core §11.4 が経路ごとに掛ける規則（セッションの要求は 1 つの経路で、max_frame / window / max_inflight、使っている revision、通知の送り先）は、受けた接続ごとに別々に掛かる。
   probe が待ち受ける TCP の port と、host が TCP の probe を見つける方法は、この仕様の外である。
 

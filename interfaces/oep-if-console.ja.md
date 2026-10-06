@@ -5,9 +5,9 @@
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。本体は [OEP core](../docs/oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
 ストリーム、§2 debug の connection）。番号の唯一の定義は `registry/oep-v1.toml`。
 
-| 名前 | revision | 役割 |
-|---|---:|---|
-| `oep.target.console` | 1 | target のコンソール（debug の connection の上のストリーム） |
+| 名前 | revision | 役割 | 対象の系統 |
+|---|---:|---|---|
+| `oep.target.console` | 1 | target のコンソール（debug の connection の上のストリーム） | どの系統にも使う（方式ごとに、その方式を持つ target） |
 
 UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で、同じストリームの形を使う。
 

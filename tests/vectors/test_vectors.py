@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 REG = tomllib.loads((ROOT / "registry" / "oep-v1.toml").read_text(encoding="utf-8"))
+CORE = REG["core"]                  # fn 0: the core has no name and is not in list (core §0)
 
 
 def load(name: str) -> dict:
@@ -146,7 +147,7 @@ def test_headers_parse_to_their_fields():
 
 
 def test_confirm_exchanges():
-    confirm_op = next(o["code"] for o in REG["interface"][0]["op"] if o["name"] == "confirm")
+    confirm_op = next(o["code"] for o in CORE["op"] if o["name"] == "confirm")
     ok, refused = load("confirm.json")["exchanges"]
     req = bytes.fromhex(ok["request_hex"])
     assert struct.unpack_from("<BHHBI", req) == (0x01, ok["request"]["corr"], 0, confirm_op, 0)
@@ -216,7 +217,7 @@ def test_refusals_answer_their_requests():
 
 def test_discovery_exchanges():
     """list (core §7.2), describe (core §7.3, §7.5) and the header refusals (core §4.3 order 1) of the example probe."""
-    core = REG["interface"][0]
+    core = CORE
     ops = {o["name"]: o["code"] for o in core["op"]}
     v = load("discovery.json")
     lst, desc, past = v["exchanges"]
@@ -241,7 +242,7 @@ def test_discovery_exchanges():
                         "name": ans[i + 7:i + 7 + nlen].decode()})
         i += 7 + nlen
     assert i == len(ans) and total == len(entries) and entries == lst["answer"]["entries"]
-    assert entries[0] == {"fn": 0, "instance": 0, "revision": core["revision"], "flags": 0, "name": "oep.core"}
+    assert entries == [] and total == 0                                                        # fn 0 is never listed (core §7.2)
 
     req, ans = bytes.fromhex(desc["request_hex"]), bytes.fromhex(desc["answer_hex"])
     assert struct.unpack_from("<HB", req, 3) == (0, ops["describe"]) and struct.unpack_from("<HH", req, 10) == (0, 0)
@@ -284,7 +285,7 @@ def test_example_probe_answers_carry_what_the_core_requires():
     """Every completed confirm answer of the example probe carries TLV 0x01 transport (core §7.1), and its describe of
     fn 0 carries unit_id, transport and max_op_ms (core §1.2) and discoverable (core §7.5: 0 for a probe that does not
     enumerate with the project's USB VID:PID, as a UART bridge does not), with every op core §1.2 requires of fn 0 set in ops."""
-    core = REG["interface"][0]
+    core = CORE
     t_confirm = core["tlv"]["confirm_answer"]["transport"]
     t = core["tlv"]["describe"]
     uart_bridge = core["enum"]["transport_kind"]["uart_bridge"]
@@ -319,12 +320,6 @@ def test_example_probe_answers_carry_what_the_core_requires():
                 assert dict(got)[t["discoverable"]] == b"\x00", ex["name"]
             ms = struct.unpack("<I", dict(got)[t["max_op_ms"]])[0]
             assert 1 <= ms <= REG["limits"]["max_op_ms_max"]
-            restart = next(o["code"] for o in core["op"] if o["name"] == "restart")
-            if restart in declared:                                                        # core §6.6, §7.5: required with restart
-                assert tags.count(t["restart_max_ms"]) == 1, ex["name"]
-                assert struct.unpack("<I", dict(got)[t["restart_max_ms"]])[0] >= REG["limits"]["restart_after_answer_ms"]
-            else:                                                                          # a probe without restart does not send it
-                assert t["restart_max_ms"] not in tags, ex["name"]
     assert confirms >= 1 and describes >= 1
 
 
@@ -340,7 +335,7 @@ def test_session_scenarios_follow_the_decision_table():
     """sessions.json (core §5.2, §6.2, §9): every step is one 10-byte-header request and its answer with the same corr; a resent request
     gets the same answer bytes; after end, the ended id is no_session; force hands the lock over."""
     reasons = {v: k for k, v in REG["reject_reasons"].items()}
-    ops = {o["name"]: o["code"] for o in REG["interface"][0]["op"]}
+    ops = {o["name"]: o["code"] for o in CORE["op"]}
     for sc in load("sessions.json")["scenarios"]:
         seen = {}
         ended = set()
@@ -394,13 +389,25 @@ def test_per_op_vectors_decode_exactly():
     def pay(name):
         return bytes.fromhex(by[name]["answer_hex"])[5:]
 
-    core = next(i for i in REG["interface"] if i["name"] == "oep.core")
-    restart = next(o["code"] for o in core["op"] if o["name"] == "restart")
-    for name in ("core restart: completed success, sent before the probe restarts", "core restart without a session: session_required",
-                 "core restart while no session holds the lock: no_session", "core restart not offered (not set in ops)"):
-        req = bytes.fromhex(by[name]["request_hex"])
-        assert struct.unpack_from("<HB", req, 3) == (0, restart) and len(req) == 10, name              # fn 0, no fixed part (core §6.6)
-    assert pay("core restart: completed success, sent before the probe restarts") == b""                 # completed success, no payload
+    iface = {i["name"]: i for i in REG["interface"]}
+    restart = next(o["code"] for o in iface["oep.probe.restart"]["op"] if o["name"] == "restart")
+    for c in v:
+        if c["name"].startswith("restart"):
+            req = bytes.fromhex(c["request_hex"])
+            assert c["fns"] == {"11": "oep.probe.restart"}                                             # never fn 0 (oep-if-restart)
+            assert struct.unpack_from("<HB", req, 3) == (11, restart) and len(req) == 10, c["name"]   # no fixed part (oep-if-restart §1)
+    assert pay("restart: completed success, sent before the probe restarts") == b""                      # completed success, no payload
+    plan_ops = {o["name"]: o["code"] for o in iface["oep.probe.plan"]["op"]}
+    ra = iface["oep.probe.plan"]["tlv"]["plan_apply"]["role_assignment"]
+    for c in v:
+        if c["name"].startswith("plan_"):
+            req = bytes.fromhex(c["request_hex"])
+            fn, opc = struct.unpack_from("<HB", req, 3)
+            assert fn == 10 and c["fns"]["10"] == "oep.probe.plan" and opc in plan_ops.values(), c["name"]
+            if opc == plan_ops["plan_apply"]:
+                ((tag, value),) = tlvs(req[10:])
+                assert tag == ra | 0x80 and len(value) == 5                                        # critical, fn role channel (oep-if-plan §2.1)
+    assert pay("plan_apply: gpio role 1 on channel 3") == b"" and pay("plan_release: fn 2") == b""
     p = pay("rvswd connections: one connection with a target_id")
     assert p[0] == 0 and 1 + _fixed_sequence(p[1:], lambda b, i: 18 + b[i + 17]) == len(p)        # entry 18 bytes + tid
     p = pay("rvswd scan: one combination listed and found")

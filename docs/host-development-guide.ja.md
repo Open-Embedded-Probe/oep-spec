@@ -99,10 +99,10 @@ max_frame を使う（core §4.4）。
 
 ### 5.2 probe を再起動する（restart）
 
-fn 0 の restart（core §6.6）は、口を抜き差しせずに probe を起動し直す。おかしな状態になった probe の立て直しと、host 自身の
-「probe が再起動した」ときの道筋の試験に使う。任意の op なので、fn 0 の describe の ops（op 0x14 のビット）を見てから使う。持たない
-probe は unknown_operation で答える。restart を持つ probe は、fn 0 の describe に restart_max_ms（core §7.5）を出す: 応答から
-同じ経路で confirm にまた答えるまでの最長の時間で、下の 5 の上限になる。restart の前に読んでおく。
+`oep.probe.restart` の restart（[再起動](../interfaces/oep-if-restart.ja.md)）は、口を抜き差しせずに probe を起動し直す。おかしな状態になった
+probe の立て直しと、host 自身の「probe が再起動した」ときの道筋の試験に使う。任意のインターフェースなので、list で `oep.probe.restart` を
+見つけてから使う。その describe の restart_max_ms は、応答から同じ経路で confirm にまた答えるまでの最長の時間で、下の 5 の上限になる。
+restart の前に読んでおく。
 
 1. ロックを取る（restart はロックの要る op。session_id 0 なら session_required）。保存したい設定があれば先に save する:
    保存していない設定は再起動で無くなる（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2）。
@@ -122,12 +122,12 @@ probe は unknown_operation で答える。restart を持つ probe は、fn 0 �
 7. 応答が来なかったときも 5〜6 と同じに確かめる。restart_max_ms は、restart の応答の待ちが過ぎた時から数える。restart を同じ corr で
    送り直したときは、再起動した後の probe は no_session で断る: それも再起動のしるしで、5〜6 に進む（restart_max_ms はそれを受けた時から）。
 
-ブローカーを通して使う道具も同じ手順でよい: 中継のブローカーは restart を自分のセッションで probe に送り、probe の戻りを待ち、
-そのあいだの道具の要求を no_session か result_lost で断る（transports §1）。ブローカーの probe への経路が無くなれば（USB で列挙し直した、
-TCP が閉じた）ブローカーは終わり、道具への接続も閉じる: 道具は新しく開くのと同じにやり直す。
+ブローカーを通して使う道具も同じ手順でよい: 中継のブローカーは restart をほかのロックの要る op と同じに中継し、応答を道具に返した後は
+probe への経路を閉じる（[再起動](../interfaces/oep-if-restart.ja.md) §3）。ブローカーの probe への経路が無くなれば（ブローカーが閉じた、
+USB で列挙し直した、TCP が閉じた）ブローカーは終わり、道具への接続も閉じる（transports §1）: 道具は新しく開くのと同じにやり直す。
 
 再起動の後、保存した設定はどの起動とも同じに掛かる（at boot のスロットはまた attach する）。probe は再起動の前に connection を
-閉じて線を空きの状態にするが、target は reset せず、止めていた hart は止めたまま残る（core §6.6）。
+閉じて線を空きの状態にするが、target は reset せず、止めていた hart は止めたまま残る（[再起動](../interfaces/oep-if-restart.ja.md) §2）。
 
 ## 6. 排他とロックの奪い方
 
@@ -246,7 +246,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 
 ## 13. plan とピン
 
-- plan は fn ごと（core §8）。plan_apply は名前を挙げた fn の割り当てだけを置き換え、ほかの fn の plan は残る。UART を受けた
+- plan は fn ごと（`oep.probe.plan`、[plan](../interfaces/oep-if-plan.ja.md) §2）。plan_apply は名前を挙げた fn の割り当てだけを置き換え、ほかの fn の plan は残る。UART を受けた
   まま capture を足せる。解くときは plan_release に fn を並べる（n = 0 ならすべて）。
 - ほかの fn や connection が持つピンを取ろうとすると rejected unavailable で、何も変わらない（core §8.1）。
 - 解いたピンは空きの状態になる: probe の設定の idle か、Hi-Z（core §8）。治具の配線で相手の入力が浮くピン（DUT の RX につながる
@@ -291,7 +291,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 覚えておくこと:
 
 - 既定値は無い: 設定していないことは何もしない（probe の設定の冒頭）。設定の plan はセッションではなく設定のもの: plan_release では
-  解けず、その fn への plan_apply は断られる（core §8）。
+  解けず、その fn への plan_apply は断られる（[plan](../interfaces/oep-if-plan.ja.md) §2.3）。
 - idle: 相手の入力が浮くピンには pull-up の入力の idle を、電源の channel には電源が入る level の出力の idle を置く（§18.2）。出力の idle は
   ピンが空いている間ずっと、起動時にも駆動するので、保存する前に配線を確かめる。idle の項目のある channel は、count = 0 の scan と pins
   の無い attach から外れる（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。
@@ -385,7 +385,7 @@ python -m oep_client.fake_serve --tcp 0 --framing length   # TCP の経路: leng
 
 #### 17.3.1 用途別の流し方と候補
 
-流し方 = 向き（probe → host / host → probe / 両方向）と同時数 n の組（link §3 の語）。probe → host は `oep.link` の source の op、host → probe は
+流し方 = 向き（probe → host / host → probe / 両方向）と同時数 n の組（link §3 の語）。probe → host は `oep.probe.link` の source の op、host → probe は
 その sink の op（link §2）で流す。確かめは**使う流し方だけ**でよい。
 
 | 用途 | 使う流し方 | 候補の例（実測した組合せ。規則ではない） |
@@ -407,7 +407,7 @@ python -m oep_client.fake_serve --tcp 0 --framing length   # TCP の経路: leng
 統一する。以下は失われで数える形）。**失われ** = 待ち時間に正常な応答の来なかった要求。**割合** = 失われ / (正常 + 失われ)。速さを
 切り替えた直後、新しい速さで最初の正常なフレームが来るまでの壊れは数えない。
 
-1. **前提**: 起動時の速さで confirm と describe を済ませ、port_speed を probe が持ち（`oep.link` の ops に
+1. **前提**: 起動時の速さで confirm と describe を済ませ、port_speed を probe が持ち（`oep.probe.link` の ops に
    立っている）、ロックを持っていること。要求はその口から送る（link §3 の義務 1）。
 2. **基準**（起動時の速さの壊れ方。変換チップは起動時の速さでも落とすことがあるので、絶対数では判定しない）:
    - そのセッションで起動時の速さで実際に流した分の割合。無ければ、使う流し方と同じ流し方で 60 フレーム流して測る。

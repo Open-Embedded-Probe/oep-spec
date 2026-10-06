@@ -22,10 +22,10 @@ OEP v1 は**凍結の候補**である。規範の文と registry は揃って�
 
 **規範**（仕様）:
 
-- [OEP core](docs/oep-core.ja.md): 層、メッセージ、セッション、発見、plan、資源の寿命、通知、インターフェースの書き方。
+- [OEP core](docs/oep-core.ja.md): 層、メッセージ、セッション、発見、channel と資源の寿命、通知、インターフェースの書き方。本体は名前を持たず、fn 0 で話す。
 - [OEP の経路](docs/oep-transports.ja.md): フレーム、送り方、複数の経路、USB の見分け方、シリアルの口の共用、区切りの立て直し（本体の層）。
 - [標準インターフェース](interfaces/README.ja.md)（`interfaces/`）: 共通部品、線とデバッグ、コンソール（framing の dmseq）、fixture、キャプチャ、
-  probe の設定、リンク。一覧はその README にある。
+  probe の設定、plan、再起動、リンク。一覧はその README にある。
 - [registry/oep-v1.toml](registry/oep-v1.toml): v1 の wire 上のすべての数の唯一の定義。`tools/oepgen1.py` がそこから
   `generated/oep-v1/`（C++、C、Python、JS）を作る。`python3 tools/oepgen1.py --check` で同期を確かめる。
 - [tests/vectors/](tests/vectors/): 機械で読める試験のベクタ（フレーム、ヘッダ、confirm、CRC、probe.config の hash、断り方）。

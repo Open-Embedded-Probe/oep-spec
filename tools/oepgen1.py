@@ -35,15 +35,20 @@ def check(reg: dict) -> list[str]:
     errors = []
     # The table kinds the registry header lists; anything else needs a pull request that also updates the header.
     top = {"registry", "protocol", "constants", "roles", "resolutions", "outcomes", "reject_reasons", "status", "timing",
-           "limits", "reference", "describe_common", "usb", "common", "interface"}
+           "limits", "reference", "describe_common", "usb", "common", "core", "interface"}
     if set(reg) - top:
         errors.append(f"unknown table kinds {sorted(set(reg) - top)} (registry header)")
     if set(reg.get("common", {})) - {"enum"}:
         errors.append(f"unknown common tables {sorted(set(reg['common']) - {'enum'})} (registry header)")
-    iface_keys = {"name", "revision", "fn", "op", "tlv", "enum", "event", "status", "reject_reasons", "reserved", "line_names"}
+    iface_keys = {"name", "revision", "fn", "target", "op", "tlv", "enum", "event", "status", "reject_reasons", "reserved", "line_names"}
+    core_keys = {"op", "tlv", "enum", "event", "status", "reject_reasons", "reserved"}
     for iface in reg.get("interface", []):
         if set(iface) - iface_keys:
             errors.append(f"{iface.get('name')}: unknown interface keys {sorted(set(iface) - iface_keys)} (registry header)")
+        if "target" in iface and not (isinstance(iface["target"], str) and iface["target"]):
+            errors.append(f"{iface.get('name')}: target must be a non-empty string (registry header)")
+    if set(reg.get("core", {})) - core_keys:
+        errors.append(f"core: unknown keys {sorted(set(reg['core']) - core_keys)} (registry header)")
     if reg.get("registry", {}).get("schema") != 1:
         errors.append("registry.schema must be 1")
     for name, code in reg["reject_reasons"].items():
@@ -54,8 +59,8 @@ def check(reg: dict) -> list[str]:
             errors.append(f"status {name} = {code:#x} outside the common range")
     common = reg.get("describe_common", {})
     names = set()
-    for iface in reg["interface"]:
-        n = iface["name"]
+    for iface in [reg["core"]] + reg["interface"]:
+        n = iface.get("name", "core")
         if n in names:
             errors.append(f"interface {n} listed twice")
         names.add(n)
@@ -69,11 +74,11 @@ def check(reg: dict) -> list[str]:
                 errors.append(f"{n}: op {op['name']} = {c:#x} outside 0x01-0xEF (0xF0-0xFF are experimental)")
             if set(op) - {"code", "name", "lock", "fields"}:
                 errors.append(f"{n}: op {op['name']} has unknown keys {sorted(set(op) - {'code', 'name', 'lock', 'fields'})}")
-        if n == "oep.core":
+        if iface is reg["core"]:
             ranges = [(0x01, 0x0F), (0x10, 0x1F), (0x20, 0x2F), (0x30, 0x3F)]
             for c, opname in codes.items():
                 if not any(a <= c <= b for a, b in ranges):
-                    errors.append(f"oep.core: op {opname} = {c:#x} outside the core ranges")
+                    errors.append(f"core: op {opname} = {c:#x} outside the core ranges")
         for context, tags in iface.get("tlv", {}).items():
             seen = {}
             for tag_name, tag in tags.items():
@@ -121,6 +126,11 @@ def check(reg: dict) -> list[str]:
     return errors
 
 
+def units(reg: dict) -> list[tuple[str, dict]]:
+    """The core (no name; namespace `core`) and then every interface (namespace: its name without `oep.`)."""
+    return [("core", reg["core"])] + [(iface["name"].removeprefix("oep."), iface) for iface in reg["interface"]]
+
+
 SPDX_C = "// SPDX-License-Identifier: MIT"
 SPDX_PY = "# SPDX-License-Identifier: MIT"
 
@@ -159,10 +169,11 @@ def cpp(reg: dict, digest: str) -> str:
         for k, v in values.items():
             L.append(f"constexpr uint8_t k{camel(enum)}{camel(k)} = 0x{v:02X};")
     L.append("}  // namespace common")
-    for iface in reg["interface"]:
-        ns = ident(iface["name"].removeprefix("oep."))
-        L += ["", f"namespace {ns} {{", f'constexpr const char *kName = "{iface["name"]}";',
-              f"constexpr uint8_t kRevision = {iface['revision']};"]
+    for unit, iface in units(reg):
+        ns = ident(unit)
+        L += ["", f"namespace {ns} {{"]
+        if "name" in iface:
+            L += [f'constexpr const char *kName = "{iface["name"]}";', f"constexpr uint8_t kRevision = {iface['revision']};"]
         for op in iface["op"]:
             L.append(f"constexpr uint8_t kOp{camel(op['name'])} = 0x{op['code']:02X};")
         lock = sum(1 << op["code"] for op in iface["op"] if not op.get("lock") and op["code"] < 64)
@@ -212,9 +223,11 @@ def c(reg: dict, digest: str) -> str:
     for enum, values in reg.get("common", {}).get("enum", {}).items():
         for k, v in values.items():
             L.append(d(up("OEP_V1_COMMON", enum, k), v))
-    for iface in reg["interface"]:
-        ns = up("OEP_V1", iface["name"].removeprefix("oep."))
-        L += ["", f'#define {ns}_NAME "{iface["name"]}"', f"#define {ns}_REVISION {iface['revision']}u"]
+    for unit, iface in units(reg):
+        ns = up("OEP_V1", unit)
+        L.append("")
+        if "name" in iface:
+            L += [f'#define {ns}_NAME "{iface["name"]}"', f"#define {ns}_REVISION {iface['revision']}u"]
         for op in iface["op"]:
             L.append(d(up(ns, "OP", op["name"]), op["code"]))
         lock = sum(1 << op["code"] for op in iface["op"] if not op.get("lock") and op["code"] < 64)
@@ -249,8 +262,8 @@ def py(reg: dict, digest: str) -> str:
     en = ", ".join(f'"{e}": {{' + ", ".join(f'"{k}": 0x{v:02X}' for k, v in vals.items()) + "}"
                    for e, vals in reg.get("common", {}).get("enum", {}).items())
     L += [f"COMMON = _NS(enum={{{en}}})", "", "INTERFACES = {}"]
-    for iface in reg["interface"]:
-        var = ident(iface["name"].removeprefix("oep.")).upper()
+    for unit, iface in units(reg):
+        var = ident(unit).upper()
         ops = ", ".join(f'"{o["name"]}": 0x{o["code"]:02X}' for o in iface["op"])
         free = ", ".join(f'0x{o["code"]:02X}' for o in iface["op"] if not o.get("lock"))
         tlv = ", ".join(f'"{c}": {{' + ", ".join(f'"{k}": 0x{v:02X}' for k, v in t.items()) + "}"
@@ -260,10 +273,14 @@ def py(reg: dict, digest: str) -> str:
                        for e, vals in iface.get("enum", {}).items())
         own = ", ".join(f'"{k}": 0x{v:02X}' for g in ("status", "reject_reasons") for k, v in iface.get(g, {}).items())
         lines = ", ".join(f"{k!r}: {v!r}" for k, v in iface.get("line_names", {}).items())
-        L += [f'{var} = _NS(name="{iface["name"]}", revision={iface["revision"]}, op={{{ops}}}, lock_free={{{free}}},',
+        head = (f'name="{iface["name"]}", revision={iface["revision"]}, target={json.dumps(iface.get("target")) if "target" in iface else "None"}, '
+                if "name" in iface else "")
+        lock_free = f"{{{free}}}" if free else "set()"
+        L += [f'{var} = _NS({head}op={{{ops}}}, lock_free={lock_free},',
               f"    tlv={{{tlv}}}, event={{{ev}}}, enum={{{en}}}, own={{{own}}},",
-              f"    line_names={{{lines}}})",
-              f'INTERFACES["{iface["name"]}"] = {var}']
+              f"    line_names={{{lines}}})"]
+        if "name" in iface:
+            L.append(f'INTERFACES["{iface["name"]}"] = {var}')
     return "\n".join(L) + "\n"
 
 
@@ -283,22 +300,25 @@ def js(reg: dict, digest: str) -> str:
         L.append(f"export const {group.upper()} = Object.freeze({objs(reg.get(group, {}))});")
     en = "{" + ", ".join(f"{e}: {obj(v)}" for e, v in reg.get("common", {}).get("enum", {}).items()) + "}"
     L += [f"export const COMMON = {{ enum: {en} }};", "", "/** @type {Record<string, any>} */", "export const INTERFACES = {};"]
-    for iface in reg["interface"]:
-        var = ident(iface["name"].removeprefix("oep.")).upper()
+    for unit, iface in units(reg):
+        var = ident(unit).upper()
         free = ", ".join(f"0x{o['code']:02X}" for o in iface["op"] if not o.get("lock"))
         tlv = "{" + ", ".join(f"{c}: {obj(t)}" for c, t in iface.get("tlv", {}).items()) + "}"
         en = "{" + ", ".join(f"{e}: {obj(v)}" for e, v in iface.get("enum", {}).items()) + "}"
         own = {k: v for g in ("status", "reject_reasons") for k, v in iface.get(g, {}).items()}
         ops = {o["name"]: o["code"] for o in iface["op"]}
-        L += [f"export const {var} = {{",
-              f"  name: '{iface['name']}', revision: {iface['revision']},",
+        L += [f"export const {var} = {{"]
+        if "name" in iface:
+            L.append(f"  name: '{iface['name']}', revision: {iface['revision']}, target: {json.dumps(iface.get('target'))},")
+        L += [
               f"  op: {obj(ops)},",
               f"  lock_free: new Set([{free}]),",
               f"  tlv: {tlv},",
               f"  event: {obj(iface.get('event', {}))}, enum: {en}, own: {obj(own)},",
               "  line_names: Object.freeze({" + ", ".join(f"{k}: {json.dumps(v)}" for k, v in iface.get("line_names", {}).items()) + "}),",
-              "};",
-              f"INTERFACES['{iface['name']}'] = {var};"]
+              "};"]
+        if "name" in iface:
+            L.append(f"INTERFACES['{iface['name']}'] = {var};")
     return "\n".join(L) + "\n"
 
 

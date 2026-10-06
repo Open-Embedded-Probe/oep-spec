@@ -26,10 +26,12 @@ OUT = ROOT / "tests" / "vectors"
 
 REG = tomllib.loads(REGISTRY.read_text(encoding="utf-8"))
 IFACE = {i["name"]: i for i in REG["interface"]}
+CORE = REG["core"]                  # fn 0: the core has no name and is not in list (core §0)
 
 
 def op(iface: str, name: str) -> int:
-    return next(o["code"] for o in IFACE[iface]["op"] if o["name"] == name)
+    """An op code: of the core (iface "core") or of the named interface."""
+    return next(o["code"] for o in (CORE if iface == "core" else IFACE[iface])["op"] if o["name"] == name)
 
 
 ROLE_REQUEST, ROLE_ANSWER = REG["roles"]["request"], REG["roles"]["result"]
@@ -170,7 +172,7 @@ def cobs() -> dict:
     full = bytes((i % 255) + 1 for i in range(254))
     accepted = [{"name": "the decoder also accepts the empty block after a final full block",
                  "encoded_hex": hx(cobs_encode(full) + b"\x01"), "data_hex": hx(full)}]
-    msg = request(1, 0, op("oep.core", "confirm"), b"OEP?\x01\x01")
+    msg = request(1, 0, op("core", "confirm"), b"OEP?\x01\x01")
     crc = crc16_ccitt_false(msg)
     frames = [{"name": "confirm request on a serial port", "spec": "transports §1",
                "message_hex": hx(msg), "crc16": crc, "frame_hex": hx(serial_frame(msg))}]
@@ -179,7 +181,7 @@ def cobs() -> dict:
 
 
 def headers() -> dict:
-    c = op("oep.core", "describe")
+    c = op("core", "describe")
     return {
         "about": "Message headers (core §4.1, §4.2) and the TLV form (core §2.2). All numbers little endian.",
         "requests": [
@@ -209,9 +211,9 @@ def headers() -> dict:
 
 
 def confirm() -> dict:
-    confirm_op = op("oep.core", "confirm")
-    t_transport = IFACE["oep.core"]["tlv"]["confirm_answer"]["transport"]
-    t_supported = IFACE["oep.core"]["tlv"]["unsupported_payload"]["supported"]
+    confirm_op = op("core", "confirm")
+    t_transport = CORE["tlv"]["confirm_answer"]["transport"]
+    t_supported = CORE["tlv"]["unsupported_payload"]["supported"]
     req = request(1, 0, confirm_op, b"OEP?" + bytes([1, 1]))
     fixed = b"OEP!" + struct.pack("<BBHIBI", 1, 0, 1024, 4096, 4, 0x12345678)
     ans = answer(1, COMPLETED, 0, fixed + tlv(t_transport, b"\x00"))
@@ -289,7 +291,7 @@ def refusals() -> dict:
     rv_attach = op("oep.wire.rvswd", "attach")
     uart_read = op("oep.fixture.uart", "read")
     dm_reset = op("oep.target.riscv-dm", "reset")
-    unav = IFACE["oep.core"]["tlv"]["unavailable_payload"]
+    unav = CORE["tlv"]["unavailable_payload"]
     max_speed = IFACE["oep.wire.rvswd"]["tlv"]["attach"]["max_speed"]
     ms = tlv(max_speed | CRITICAL, struct.pack("<I", 1_000_000))
     idx_tag = IFACE["oep.fixture.gpio"]["tlv"]["unavailable_payload"]["index"]
@@ -324,7 +326,7 @@ def refusals() -> dict:
     add("riscv-dm reset mode 3", "core §4.3 order 6; debug §4.3", {"6": "oep.target.riscv-dm"},
         request(0x0019, 6, dm_reset, struct.pack("<HB", 0, 3), s), "unsupported", b"\x00")
     add("confirm min_rev > max_rev", "core §7.1", {},
-        request(0x001A, 0, op("oep.core", "confirm"), b"OEP?" + bytes([2, 1])), "malformed")
+        request(0x001A, 0, op("core", "confirm"), b"OEP?" + bytes([2, 1])), "malformed")
     add("an unknown non-critical TLV is ignored and listed", "core §2.3", fns_gpio,
         request(0x001B, 2, gpio_set, bytes([1]) + struct.pack("<HB", 3, 0) + tlv(0x3E, b"\x01"), s), "",
         tlv(IGNORED, bytes([0x3E])), completed=True)
@@ -340,19 +342,17 @@ def refusals() -> dict:
 def discovery() -> dict:
     """The example probe of docs/getting-started.md §2, §3 (with fn 0's required ops, core §1.2): list (core §7.2), describe of fn 0 (core §7.3, §7.5) and the
     header refusals of core §4.3 order 1, continuing confirm.json's first exchange (corr 1)."""
-    core = IFACE["oep.core"]
-    list_op, describe_op = op("oep.core", "list"), op("oep.core", "describe")
+    core = CORE
+    list_op, describe_op = op("core", "list"), op("core", "describe")
     d = core["tlv"]["describe"]
     unit_id, max_op_ms, discoverable = "a1b2c3d4", 1000, 0   # a UART bridge: not the project's USB VID:PID, so 0 (core §7.5)
     t_index, t_kind, t_interface = 0, core["enum"]["transport_kind"]["uart_bridge"], 0xFF
 
-    name = b"oep.core"
-    entry = struct.pack("<HHBBB", 0, 0, core["revision"], 0, len(name)) + name
     list_req = request(2, 0, list_op, struct.pack("<BHB", 0, 0, 0))
-    list_ans = answer(2, COMPLETED, 0, struct.pack("<HB", 1, 1) + entry)          # count x entry, no element len (core §2.3, §7.2)
+    list_ans = answer(2, COMPLETED, 0, struct.pack("<HB", 0, 0))                  # no interface; fn 0 is never listed (core §7.2)
 
-    # core §1.2: fn 0's required ops, all set in ops; this probe has no plan role, so no plan_apply / plan_release
-    offered = [op("oep.core", n) for n in ("confirm", "list", "describe", "open", "end", "keepalive", "lock_state", "subscribe", "unsubscribe")]
+    # core §1.2: fn 0's required ops, all set in ops
+    offered = [op("core", n) for n in ("confirm", "list", "describe", "open", "end", "keepalive", "lock_state", "subscribe", "unsubscribe")]
     decl_tlvs = [tlv(REG["describe_common"]["ops"], ops_value(offered)), tlv(d["unit_id"], unit_id.encode()), tlv(d["transport"], bytes([t_index, t_kind, t_interface])),
                  tlv(d["discoverable"], bytes([discoverable])), tlv(d["max_op_ms"], struct.pack("<I", max_op_ms))]
     decl, n_decl = b"".join(decl_tlvs), len(decl_tlvs)
@@ -364,16 +364,15 @@ def discovery() -> dict:
     no_fn = request(5, 7, 0x01, b"")
     no_op = request(6, 0, 0x50, b"")
     return {
-        "about": "list, describe and the header refusals of the example probe (docs/getting-started.md §2, §3, with its §6 steps 1 and 4 done): only fn 0 (oep.core, "
-                 "instance 0, revision 1) whose ops are fn 0's required ops of core §1.2 (confirm, list, describe, open, end, keepalive, lock_state, subscribe, unsubscribe; no plan role, so no plan_apply / plan_release) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
+        "about": "list, describe and the header refusals of the example probe (docs/getting-started.md §2, §3, with its §6 steps 1 and 4 done): no interface (list is empty: "
+                 "fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, open, end, keepalive, lock_state, subscribe, unsubscribe) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. "
                  "The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. "
                  "Those values are an example probe's.",
         "exchanges": [
             {"name": "list everything from the first", "spec": "core §7.2",
              "request": {"corr": 2, "flags": 0, "first": 0, "prefix": ""},
              "request_hex": hx(list_req), "request_serial_frame_hex": hx(serial_frame(list_req)),
-             "answer": {"corr": 2, "total": 1, "entries": [{"fn": 0, "instance": 0, "revision": core["revision"], "flags": 0,
-                                                            "name": name.decode()}]},
+             "answer": {"corr": 2, "total": 0, "entries": []},
              "answer_hex": hx(list_ans), "answer_serial_frame_hex": hx(serial_frame(list_ans))},
             {"name": "describe fn 0 from the first", "spec": "core §7.3, §7.5",
              "request": {"corr": 3, "fn": 0, "first": 0},
@@ -401,10 +400,10 @@ def discovery() -> dict:
 def sessions() -> dict:
     """Scenarios of the session decision table (core §6.2), the resend table (core §5.2) and the release at end (core §9), as
     request / answer byte pairs from a stated initial state, for the example probe of confirm.json (boot_id 0x12345678)."""
-    open_op, end_op, keep_op, state_op = (op("oep.core", n) for n in ("open", "end", "keepalive", "lock_state"))
+    open_op, end_op, keep_op, state_op = (op("core", n) for n in ("open", "end", "keepalive", "lock_state"))
     boot_id, lease = 0x12345678, 2000
     S, T = 0x11223344, 0x55667788
-    owner_tag = IFACE["oep.core"]["tlv"]["lock_state_answer"]["owner"]
+    owner_tag = CORE["tlv"]["lock_state_answer"]["owner"]
 
     def opened(corr):
         return answer(corr, COMPLETED, 0, struct.pack("<II", lease, boot_id))
@@ -470,39 +469,55 @@ def ops() -> dict:
     ok = lambda corr, payload=b"": answer(corr, COMPLETED, 0, payload)
     failed = lambda corr, payload=b"": answer(corr, COMPLETED, REG["outcomes"]["failed"], payload)
     rej = lambda corr, reason, payload=b"": answer(corr, REJECTED, REASON[reason], payload)
-    unav = IFACE["oep.core"]["tlv"]["unavailable_payload"]
-    cause = IFACE["oep.core"]["enum"]["unavailable_cause"]
+    unav = CORE["tlv"]["unavailable_payload"]
+    cause = CORE["enum"]["unavailable_cause"]
 
-    # fn 0 restart (core §6.6): optional, declared in fn 0's ops; requires the lock; the answer has no payload
-    core = {"0": "oep.core"}
-    restart = op("oep.core", "restart")
-    add("core restart: completed success, sent before the probe restarts", "core §6.6", core,
-        "session S holds the lock; restart set in fn 0's ops with restart_max_ms in its describe; after this answer the probe restarts (a new boot_id, no session)",
-        request(0x10, 0, restart, b"", S), ok(0x10))
-    add("core restart without a session: session_required", "core §4.1, §4.3 order 1, §6.6", core, "restart set in fn 0's ops with restart_max_ms in its describe",
-        request(0x11, 0, restart, b""), rej(0x11, "session_required"))
-    add("core restart while no session holds the lock: no_session", "core §6.2, §6.6", core,
-        "restart set in fn 0's ops with restart_max_ms in its describe; lock free (for example: the probe has restarted since S opened)",
-        request(0x12, 0, restart, b"", S), rej(0x12, "no_session"))
-    add("core restart not offered (not set in ops)", "core §1.2, §4.3 order 1, §6.6", core, "fn 0's ops without restart",
-        request(0x13, 0, restart, b"", S), rej(0x13, "unknown_operation"))
+    # oep.probe.restart (oep-if-restart): restart requires the lock; the answer has no payload
+    rs = {"11": "oep.probe.restart"}
+    restart = op("oep.probe.restart", "restart")
+    add("restart: completed success, sent before the probe restarts", "oep-if-restart §2", rs,
+        "session S holds the lock; restart_max_ms in fn 11's describe; after this answer the probe restarts (a new boot_id, no session)",
+        request(0x10, 11, restart, b"", S), ok(0x10))
+    add("restart without a session: session_required", "core §4.1, §4.3 order 1; oep-if-restart §2", rs, "—",
+        request(0x11, 11, restart, b""), rej(0x11, "session_required"))
+    add("restart while no session holds the lock: no_session", "core §6.2; oep-if-restart §2, §3", rs,
+        "lock free (for example: the probe has restarted since S opened)",
+        request(0x12, 11, restart, b"", S), rej(0x12, "no_session"))
 
-    # oep.link (oep-if-link §1, §2)
-    link = {"1": "oep.link"}
+    # oep.probe.plan (oep-if-plan): role_assignment fn(u16) role(u8) channel(u16), always sent critical
+    pl = {"10": "oep.probe.plan", "2": "oep.fixture.gpio"}
+    ra = IFACE["oep.probe.plan"]["tlv"]["plan_apply"]["role_assignment"] | CRITICAL
+    apply_, release = op("oep.probe.plan", "plan_apply"), op("oep.probe.plan", "plan_release")
+    add("plan_apply: gpio role 1 on channel 3", "oep-if-plan §2.1", pl,
+        "session S holds the lock; channel 3 free and in gpio's role_channels for role 1; plan_roles not exceeded",
+        request(0x14, 10, apply_, tlv(ra, struct.pack("<HBH", 2, 1, 3)), S), ok(0x14))
+    add("plan_apply naming fn 0: malformed", "oep-if-plan §2.5, core §4.3 order 5", pl, "session S",
+        request(0x15, 10, apply_, tlv(ra, struct.pack("<HBH", 0, 1, 3)), S), rej(0x15, "malformed"))
+    add("plan_apply naming a fn the probe does not have: unknown_function", "oep-if-plan §2.5, core §4.3 order 5", pl, "session S; no fn 12",
+        request(0x16, 10, apply_, tlv(ra, struct.pack("<HBH", 12, 1, 3)), S), rej(0x16, "unknown_function"))
+    add("plan_release: fn 2", "oep-if-plan §2.2", pl, "session S; fn 2 has the plan above",
+        request(0x17, 10, release, bytes([1]) + struct.pack("<H", 2), S), ok(0x17))
+    add("plan_release: n = 2 with one fn", "oep-if-plan §2.5, core §4.3 order 5", pl, "session S",
+        request(0x18, 10, release, bytes([2]) + struct.pack("<H", 2), S), rej(0x18, "malformed"))
+    add("plan_apply without a session: session_required", "core §4.1, §4.3 order 1", pl, "—",
+        request(0x19, 10, apply_, tlv(ra, struct.pack("<HBH", 2, 1, 3))), rej(0x19, "session_required"))
+
+    # oep.probe.link (oep-if-link §1, §2)
+    link = {"1": "oep.probe.link"}
     add("link source: 8 bytes, byte k = k & 0xFF", "oep-if-link §2", link, "max_frame 1024",
-        request(0x20, 1, op("oep.link", "source"), struct.pack("<I", 8)), ok(0x20, struct.pack("<H", 8) + bytes(range(8))))
+        request(0x20, 1, op("oep.probe.link", "source"), struct.pack("<I", 8)), ok(0x20, struct.pack("<H", 8) + bytes(range(8))))
     most = 1024 - REG["limits"]["link_source_overhead_bytes"]          # room for ignored kept though nothing is ignored (oep-if-link §2)
     add("link source: more than fits, len = max_frame - 26", "oep-if-link §2, core §2.3", link, "max_frame 1024",
-        request(0x25, 1, op("oep.link", "source"), struct.pack("<I", 2000)),
+        request(0x25, 1, op("oep.probe.link", "source"), struct.pack("<I", 2000)),
         ok(0x25, struct.pack("<H", most) + bytes(k & 0xFF for k in range(most))))
     add("link source: length 0", "oep-if-link §2", link, "—",
-        request(0x21, 1, op("oep.link", "source"), struct.pack("<I", 0)), ok(0x21, struct.pack("<H", 0)))
+        request(0x21, 1, op("oep.probe.link", "source"), struct.pack("<I", 0)), ok(0x21, struct.pack("<H", 0)))
     add("link sink: 3 bytes, an empty answer", "oep-if-link §2", link, "—",
-        request(0x22, 1, op("oep.link", "sink"), struct.pack("<H", 3) + b"\xaa\xbb\xcc"), ok(0x22))
+        request(0x22, 1, op("oep.probe.link", "sink"), struct.pack("<H", 3) + b"\xaa\xbb\xcc"), ok(0x22))
     add("link sink: count larger than the bytes that follow", "oep-if-link §2, core §4.3 order 5", link, "—",
-        request(0x23, 1, op("oep.link", "sink"), struct.pack("<H", 5) + b"\xaa\xbb\xcc"), rej(0x23, "malformed"))
+        request(0x23, 1, op("oep.probe.link", "sink"), struct.pack("<H", 5) + b"\xaa\xbb\xcc"), rej(0x23, "malformed"))
     add("link port_speed not offered (not set in ops)", "oep-if-link §1, core §1.2", link, "ops of fn 1: source and sink only",
-        request(0x24, 1, op("oep.link", "port_speed"), struct.pack("<BIBHI", 0, 921600, 0, 2000, 3000), S), rej(0x24, "unknown_operation"))
+        request(0x24, 1, op("oep.probe.link", "port_speed"), struct.pack("<BIBHI", 0, 921600, 0, 2000, 3000), S), rej(0x24, "unknown_operation"))
 
     # oep.fixture.gpio (fixture §1)
     gpio = {"2": "oep.fixture.gpio"}

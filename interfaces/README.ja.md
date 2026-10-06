@@ -7,6 +7,8 @@
 標準インターフェースは、本体の仕組みだけで定義した、名前つきの機能である。名前は `oep.` で始まり、project が名前と番号を管理する。
 probe は持つものを list に出し、host は list で見つけて要るものだけを使う。
 
+どの target の系統のためのものかは、各文書の冒頭の表と registry の `target` にある（core §13 の規則 8）。
+
 | 文書 | インターフェース |
 |---|---|
 | [共通部品](oep-if-common.ja.md) | 位置つきのストリーム、debug の connection（インターフェースではない。使うと書いたインターフェースにだけ効く） |
@@ -15,6 +17,8 @@ probe は持つものを list に出し、host は list で見つけて要るも
 | [fixture](oep-if-fixture.ja.md) | `oep.fixture.gpio`、`oep.fixture.uart`、`oep.fixture.i2c-target`、`oep.fixture.spi-target` |
 | [キャプチャ](oep-if-capture.ja.md) | `oep.fixture.logic`、`oep.fixture.analog`、`oep.fixture.capture-group` |
 | [probe の設定](oep-if-probe-config.ja.md) | `oep.probe.config` |
-| [リンク](oep-if-link.ja.md) | `oep.link`（線の試験と port_speed） |
+| [plan](oep-if-plan.ja.md) | `oep.probe.plan`（どの役にどの channel を使うかの割り当て） |
+| [再起動](oep-if-restart.ja.md) | `oep.probe.restart`（probe 自身の再起動） |
+| [リンク](oep-if-link.ja.md) | `oep.probe.link`（線の試験と port_speed） |
 
 独自のインターフェースの書き方は core §13。

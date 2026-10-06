@@ -7,7 +7,8 @@
 
 文書: core = [OEP core](oep-core.ja.md)、common = [共通部品](../interfaces/oep-if-common.ja.md)、debug = [線とデバッグ](../interfaces/oep-if-debug.ja.md)、
 console = [コンソール](../interfaces/oep-if-console.ja.md)、dmseq = [dmseq](../interfaces/target-console-dmseq.ja.md)、fixture = [fixture](../interfaces/oep-if-fixture.ja.md)、
-capture = [キャプチャ](../interfaces/oep-if-capture.ja.md)、settings = [probe の設定](../interfaces/oep-if-probe-config.ja.md)。数は `registry/oep-v1.toml`。
+capture = [キャプチャ](../interfaces/oep-if-capture.ja.md)、settings = [probe の設定](../interfaces/oep-if-probe-config.ja.md)、plan = [plan](../interfaces/oep-if-plan.ja.md)、
+restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](../interfaces/oep-if-link.ja.md)。数は `registry/oep-v1.toml`。
 
 ## 登場するものと層
 
@@ -18,7 +19,7 @@ capture = [キャプチャ](../interfaces/oep-if-capture.ja.md)、settings = [pr
 | target | target | probe がつながる相手（開発中の MCU） | core §1 |
 | ブローカー | broker | 複数の道具を 1 つのセッションに束ねる host の側のソフトウェア。probe に対しては host | transports §1 |
 | 中継のブローカー | relaying broker | セッションの op に自分で答え、ほかを 1 つの probe に中継するブローカー | transports §1、core §5.2 |
-| core（本体） | core | どの probe と host も実装するもの。`oep.core`、fn 0 | core §0 |
+| core（本体） | core | どの probe と host も実装するもの。名前を持たず fn 0 で話し、list に載らない。版はプロトコルの revision | core §0 |
 | 標準インターフェース | standard interface | `oep.` の名前で、番号がプロジェクトの registry にあるインターフェース | core §0、§13 |
 | 独立したインターフェース、拡張 | independent interface, extension | 逆 DNS の名前で、自分の文書が定めるインターフェース | core §0、§13 |
 | 規範の語 | normative words | RFC 2119 / 8174 の MUST / MUST NOT / SHOULD / MAY。日本語は する / しない / できれば / してよい | core §1.1 |
@@ -62,7 +63,7 @@ capture = [キャプチャ](../interfaces/oep-if-capture.ja.md)、settings = [pr
 | 出来事 | event | kind と固定部分を持つ通知 | core §11.2 |
 | データ | data | 位置つきでストリームのバイトを運ぶ通知 | core §11.2 |
 | corr | corr | host が要求に付ける u16 の番号。1 ずつ進め、0 は使わない。応答が同じ値を持つ | core §4.1 |
-| fn | fn | セッションの間、インターフェースを指す u16。fn 0 は `oep.core` | core §1、§7.2 |
+| fn | fn | セッションの間、インターフェースを指す u16。fn 0 は本体（list に載らない） | core §1、§7.2 |
 | op | op | インターフェースの中の操作の u8 の番号 | core §1、§2.5 |
 | resolution | resolution | completed（0x01）か rejected（0x00）。0x02 は予約 | core §4.2 |
 | outcome | outcome | completed の success 0、failed 1、partial 2 | core §4.2 |
@@ -127,19 +128,20 @@ capture = [キャプチャ](../interfaces/oep-if-capture.ja.md)、settings = [pr
 | max_op_ms | max_op_ms | probe が 1 つの要求にかける最長の時間 | core §7.5 |
 | reserved、label | reserved (channels), label (firmware) | probe 自身が使う channel。firmware の固定の channel の名前 | core §7.5 |
 | アドレス | address | `oep://<unit_id>[/<スロットの name>]` | core §7.6 |
-| 線の試験 | link test | `oep.link` の source と sink の op。経路を測る | link §2 |
+| 線の試験 | link test | `oep.probe.link` の source と sink の op。経路を測る | link §2 |
+| restart | restart | `oep.probe.restart` の op: 応答を先に送り、probe が起動し直す。restart_max_ms のうちに confirm にまた答える | restart §2、§3 |
 
 ## plan とピン
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
 | channel | channel | probe のピンの u16 の番号 | core §1 |
-| plan | plan | どの fn のどの役にどの channel を使うか。fn ごとに持つ | core §1、§8 |
-| 役（role） | role (of a plan) | インターフェースの中のピンの働き（RX、SWDIO…） | core §8、§13 |
-| role_assignment | role_assignment | plan_apply の TLV: fn、role、channel | core §8 |
-| plan_roles | plan_roles | plan が一度に持てる割り当ての数 | core §7.5、§8 |
-| 設定の plan | settings plan | 設定が置いた plan。設定でしか変わらない | core §8、settings §1 |
-| 空きの状態 | idle state | plan も接続も持たないピンの状態: 設定の idle か Hi-Z | core §8 |
+| plan | plan | どの fn のどの役にどの channel を使うか。fn ごとに持つ。`oep.probe.plan` | plan §2 |
+| 役（role） | role (of a plan) | インターフェースの中のピンの働き（RX、SWDIO…） | core §7.4、§13、plan 冒頭 |
+| role_assignment | role_assignment | plan_apply の TLV: fn、role、channel | plan §2.1 |
+| plan_roles | plan_roles | plan が一度に持てる割り当ての数 | plan §1、§2.1 |
+| 設定の plan | settings plan | 設定が置いた plan。設定でしか変わらない | plan §2.3、settings §1 |
+| 空きの状態 | idle state | どのインターフェースも取っていないピンの状態: 保存した設定の idle か Hi-Z | core §8 |
 | 資源の取り合い | resource contention | 持たれているピンや資源を取ろうとするものを断る | core §8.1 |
 | 出力の強さ、段 | drive strength, drive_levels | mode 3 / 4 の出力の選べる強さ | fixture §1.1 |
 

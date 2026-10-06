@@ -1,5 +1,5 @@
 {
-  "about": "list, describe and the header refusals of the example probe (docs/getting-started.md §2, §3, with its §6 steps 1 and 4 done): only fn 0 (oep.core, instance 0, revision 1) whose ops are fn 0's required ops of core §1.2 (confirm, list, describe, open, end, keepalive, lock_state, subscribe, unsubscribe; no plan role, so no plan_apply / plan_release) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. Those values are an example probe's.",
+  "about": "list, describe and the header refusals of the example probe (docs/getting-started.md §2, §3, with its §6 steps 1 and 4 done): no interface (list is empty: fn 0, the core, has no name and is never listed), fn 0's ops are the required ops of core §1.2 (confirm, list, describe, open, end, keepalive, lock_state, subscribe, unsubscribe) in describe's common tag ops, one UART bridge (transport index 0, interface 0xFF), unit_id \"a1b2c3d4\", discoverable 0 (it does not enumerate with the project's USB VID:PID), max_op_ms 1000. The corrs continue confirm.json's first exchange (corr 1): list 2, describe 3, describe past the end 4, the refusals 5 and 6. Those values are an example probe's.",
   "exchanges": [
     {
       "name": "list everything from the first",
@@ -14,19 +14,11 @@
       "request_serial_frame_hex": "00030102010102020101010101010103aa9e00",
       "answer": {
         "corr": 2,
-        "total": 1,
-        "entries": [
-          {
-            "fn": 0,
-            "instance": 0,
-            "revision": 1,
-            "flags": 0,
-            "name": "oep.core"
-          }
-        ]
+        "total": 0,
+        "entries": []
       },
-      "answer_hex": "0202000100010001000000000100086f65702e636f7265",
-      "answer_serial_frame_hex": "0003020202010201020101010102010c086f65702e636f7265cb7000"
+      "answer_hex": "0202000100000000",
+      "answer_serial_frame_hex": "000302020201010101032a7400"
     },
     {
       "name": "describe fn 0 from the first",

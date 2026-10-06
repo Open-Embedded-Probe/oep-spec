@@ -5,11 +5,11 @@
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。本体は [OEP core](../docs/oep-core.ja.md)。
 番号の唯一の定義は `registry/oep-v1.toml`。基本と別の定義の線引きは §3.6。
 
-| 名前 | revision | 役割 |
-|---|---:|---|
-| `oep.fixture.logic` | 1 | ロジック（1 トラック） |
-| `oep.fixture.analog` | 1 | アナログ（1 トラック） |
-| `oep.fixture.capture-group` | 1 | 複数のトラックを一緒に始める（ミックスドシグナル、§4） |
+| 名前 | revision | 役割 | 対象の系統 |
+|---|---:|---|---|
+| `oep.fixture.logic` | 1 | ロジック（1 トラック） | どの系統にも使う |
+| `oep.fixture.analog` | 1 | アナログ（1 トラック） | どの系統にも使う |
+| `oep.fixture.capture-group` | 1 | 複数のトラックを一緒に始める（ミックスドシグナル、§4） | どの系統にも使う |
 
 logic と analog は**操作の番号と形が同じ**で、違うのは configure の中身（§3.3）、データの layout（§1）、アナログだけの
 calibration（§3.8）だけ。複数トラックの同時開始と時刻合わせは、この 2 つを広げず、トラックを束ねる別のインターフェース
@@ -218,7 +218,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | 5 止まっている | unavailable 6 | unavailable 6 | → 1 | — | 空きができれば → 3（flags bit0） | |
 | 6 エラー | → 1 | → 2 / 3（世代 +1） | → 1 | — | — | |
 
-plan_release か、セッションの終わり（end、lease の期限切れ、force、core §9）で plan が解けたら state 0 に戻り、データも区画も消える（read は空）。mode 3（ストリーミング）の
+plan_release（[plan](oep-if-plan.ja.md)）か、セッションの終わり（end、lease の期限切れ、force、core §9）で plan が解けたら state 0 に戻り、データも区画も消える（read は空）。mode 3（ストリーミング）の
 start は、その fn の購読が無ければ rejected unavailable（cause 6）。取得中に購読が消えたら取り続け、送れない分は捨てる（position が飛ぶ）。
 configure の応答の blocking_ms が core の max_op_ms を超える構成は、configure で rejected unsupported。
 

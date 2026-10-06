@@ -30,15 +30,42 @@ def test_no_op_has_an_open_ended_form():
     assert any("unknown keys" in e for e in gen.check(reg))
 
 
-def test_the_link_test_and_port_speed_are_oep_link():
-    """D3: fn 0 has no link ops; oep.link has source, sink and the optional port_speed (oep-if-link §1)."""
+def test_the_link_test_and_port_speed_are_oep_probe_link():
+    """D3: fn 0 has no link ops; oep.probe.link has source, sink and the optional port_speed (oep-if-link §1)."""
     reg, _ = gen.load()
-    core = next(i for i in reg["interface"] if i["name"] == "oep.core")
-    assert not {o["name"] for o in core["op"]} & {"link_source", "link_sink", "port_speed"}
-    link = next(i for i in reg["interface"] if i["name"] == "oep.link")
+    assert not {o["name"] for o in reg["core"]["op"]} & {"link_source", "link_sink", "port_speed"}
+    link = next(i for i in reg["interface"] if i["name"] == "oep.probe.link")
     assert {o["name"]: (o["code"], o["lock"]) for o in link["op"]} == {
         "source": (0x01, False), "sink": (0x02, False), "port_speed": (0x03, True)}
     assert link["enum"]["port_speed_step"] == {"try": 0, "commit": 1, "revert": 2}
+
+
+def test_the_core_has_no_name_and_keeps_only_what_is_mandatory():
+    """core §0: the core is fn 0 without a name (not an [[interface]]); plan and restart are interfaces of their own (oep-if-plan,
+    oep-if-restart), and the generated modules give the core no name."""
+    reg, digest = gen.load()
+    assert "oep.core" not in {i["name"] for i in reg["interface"]} and "name" not in reg["core"]
+    assert not {o["name"] for o in reg["core"]["op"]} & {"plan_apply", "plan_release", "restart"}
+    assert not {"plan_roles", "restart_max_ms"} & set(reg["core"]["tlv"]["describe"])
+    plan = next(i for i in reg["interface"] if i["name"] == "oep.probe.plan")
+    assert {o["name"]: (o["code"], o["lock"]) for o in plan["op"]} == {"plan_apply": (0x01, True), "plan_release": (0x02, True)}
+    restart = next(i for i in reg["interface"] if i["name"] == "oep.probe.restart")
+    assert {o["name"]: (o["code"], o["lock"]) for o in restart["op"]} == {"restart": (0x01, True)}
+    assert restart["tlv"]["describe"]["restart_max_ms"] == 0x40
+    ns = {}
+    exec(gen.py(reg, digest), ns)
+    assert not hasattr(ns["CORE"], "name") and "oep.core" not in ns["INTERFACES"] and ns["PROBE_PLAN"].lock_free == set()
+    reg["core"]["name"] = "oep.core"
+    assert any("core: unknown keys" in e for e in gen.check(reg))
+
+
+def test_target_family_is_a_string_when_present():
+    """core §13 rule 8: the target family is in the registry, not in the name."""
+    reg, _ = gen.load()
+    assert next(i for i in reg["interface"] if i["name"] == "oep.wire.rvswd")["target"]
+    assert "target" not in next(i for i in reg["interface"] if i["name"] == "oep.fixture.gpio")
+    reg["interface"][0]["target"] = ""
+    assert any("target must be" in e for e in gen.check(reg))
 
 
 def test_one_request_header_and_one_tlv_header():

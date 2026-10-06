@@ -27,8 +27,11 @@
 #   [usb]              name = integer: a USB descriptor value (the project's VID / PID u16, class / subclass / protocol u8,
 #                      HID usage page / usage u16).
 #   [common.enum.<enum>]  name = integer: one value space shared by every interface (u8 unless the enum's comment says otherwise).
+#   [core]             the core's own numbers (fn 0; the core has no name and is not in list, core §0): the keys and sub-tables of
+#                      [[interface]] below except name, revision, fn, target and line_names.
 #   [[interface]]      one per interface, with these keys and sub-tables only:
-#     name = string, revision = integer, fn = integer (u16; only where the fn is fixed, oep.core = 0),
+#     name = string, revision = integer, fn = integer (u16; only where the fn is fixed: none in v1),
+#     target = string (optional: the target family the interface is for, core §13 rule 8; absent = any family),
 #     op = array of inline tables { code = integer (u8), name = string, lock = bool } (`fields` is reserved on ops);
 #     [interface.tlv.<context>]   name = integer: a TLV tag (u8, low 7 bits) in that op, answer, payload or declaration;
 #     [interface.enum.<enum>]     name = integer: a value of a field, or a bit mask for a bit set (the width is the field's);
@@ -158,7 +161,7 @@ attach_budget_ms = 1000         # wire: one attach answer at most, speed search 
 scan_budget_ms = 500            # wire: no scan combination starts later than this after the request arrived (oep-if-debug §1, core §4.4)
 scan_tried_max = 255            # wire: combinations one scan request tries at most (tried is u8; oep-if-debug §1)
 block_frame_overhead_bytes = 24 # read_block / write_block: max_length is at most max_frame minus this (oep-if-debug §4.5, §6)
-link_source_overhead_bytes = 26 # oep.link source: len is at most max_frame minus this (header 5, len 2, room for ignored 19, kept even with no ignored TLV) (oep-if-link §2)
+link_source_overhead_bytes = 26 # oep.probe.link source: len is at most max_frame minus this (header 5, len 2, room for ignored 19, kept even with no ignored TLV) (oep-if-link §2)
 tar_rewrite_bytes = 1024        # arm-adi read_block / write_block: the probe rewrites TAR at every boundary of this many bytes (oep-if-debug §6)
 console_dmstatus_poll_ms = 20   # console: while reading, the probe checks DMSTATUS at least this often (oep-if-console §3)
 console_send_queue_min_bytes = 64  # console: describe send_queue is at least this (oep-if-console §1, §2)
@@ -166,7 +169,7 @@ uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than t
 uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)
 fixture_count_max = 255         # i2c-target / spi-target: u8 counts (pending, queued) stop at this (oep-if-fixture §3, §4)
 max_op_ms_max = 600000          # fn 0 describe max_op_ms is 1 to this (10 minutes); a host that reads 0 or more than this does not use the probe (core §7.5, §4.4)
-restart_after_answer_ms = 100   # fn 0 restart: the probe begins its restart at most this long after its answer has left the transport (core §6.6)
+restart_after_answer_ms = 100   # oep.probe.restart: the probe begins its restart at most this long after its answer has left the transport (oep-if-restart §2)
 
 [reference]                     # values that are not the specification's, outside the freeze (core, top)
 max_op_ms = 10000               # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
@@ -215,46 +218,38 @@ connection_closed = 4
 
 # ---- interfaces ------------------------------------------------------------------------------------------------
 
-[[interface]]
-name = "oep.core"
-fn = 0
-revision = 1
+[core]                          # fn 0: the core itself (oep-core); no name, not in list, its version is confirm's protocol revision
 op = [
   { code = 0x01, name = "confirm", lock = false },     # answer carries boot_id (core §7.1)
   { code = 0x02, name = "list", lock = false },
   { code = 0x03, name = "describe", lock = false },
-  { code = 0x04, name = "plan_apply", lock = true },
-  { code = 0x05, name = "plan_release", lock = true },
   { code = 0x10, name = "open", lock = false },
   { code = 0x11, name = "end", lock = true },
   { code = 0x12, name = "keepalive", lock = true },
   { code = 0x13, name = "lock_state", lock = false },
-  { code = 0x14, name = "restart", lock = true },       # optional, declared in ops: answers, then the probe restarts as from power-on (core §6.6)
   { code = 0x30, name = "subscribe", lock = true },
   { code = 0x32, name = "unsubscribe", lock = true },
 ]
-[interface.tlv.plan_apply]
-role_assignment = 0x10          # repeats; always sent critical (0x90): fn(u16) role(u8) channel(u16); one assignment is identified by all three (core §8)
-[interface.tlv.confirm_answer]
+[core.tlv.confirm_answer]
 transport = 0x01                # u8: the index of the transport this confirm came on (0xFF: a relaying broker); always sent (core §7.1)
-[interface.tlv.open]
+[core.tlv.open]
 owner = 0x01                    # text (1-32 bytes): who holds the lock, for display (core §6.4)
-[interface.tlv.lock_state_answer]
+[core.tlv.lock_state_answer]
 owner = 0x01                    # the lock holder's owner text, when its open gave one
-[interface.tlv.locked_payload]  # the rejected locked payload's tail, after remaining_ms(u32)
+[core.tlv.locked_payload]  # the rejected locked payload's tail, after remaining_ms(u32)
 owner = 0x01
-[interface.tlv.unavailable_payload]   # the rejected unavailable payload (core §4.3), every fn; 0x40+ per interface
+[core.tlv.unavailable_payload]   # the rejected unavailable payload (core §4.3), every fn; 0x40+ per interface
 cause = 0x01                    # u8, enum unavailable_cause
 channel = 0x02                  # u16; repeats
 holder_fn = 0x03                # u16
 holder_kind = 0x04              # u8, enum holder_kind
 fn = 0x05                       # u16: the fn the refusal is about (a track in capture-group's bind or start)
-[interface.tlv.unsupported_payload]   # the rejected unsupported payload after tag(u8) (0x00 = a fixed-part value), every fn (core §4.3)
+[core.tlv.unsupported_payload]   # the rejected unsupported payload after tag(u8) (0x00 = a fixed-part value), every fn (core §4.3)
 supported = 0x01                # confirm only: min(u8) max(u8), the protocol revisions the probe handles (core §7.1)
 channel = 0x02                  # u16
 fn = 0x05                       # u16: the fn the refusal is about (a track not in capture-group's tracks)
 index = 0x40                    # u8: the position in the request's list (gpio set, wire scan)
-[interface.tlv.describe]        # the probe itself (fn 0); declarations only (core §7.3)
+[core.tlv.describe]             # the probe itself (fn 0); declarations only (core §7.3)
 firmware = 0x40
 model = 0x41
 unit_id = 0x42
@@ -265,18 +260,16 @@ label = 0x46                    # repeats, one per channel: channel(u16) text: t
 resets_on_open = 0x47
 transport = 0x49                # repeats, one per transport: index(u8) kind(u8) interface(u8, 0xFF not USB); required (0x48 reserved)
 discoverable = 0x4A             # u8: 1 = the probe also enumerates with the project's USB VID:PID ([usb] project_vid / project_pid; transports §3, core §7.5)
-plan_roles = 0x4B               # u32: the most role assignments the plan holds at once, every fn together (core §8)
 chip = 0x4C                     # text: the probe MCU's part and revision (optional)
 max_op_ms = 0x4D                # u32: the longest one request may take; required (core §7.5)
-restart_max_ms = 0x4F           # u32: the longest from restart's answer until the probe answers confirm again on the same transport; required when restart is in ops, at least restart_after_answer_ms (core §6.6, §7.5)
-[interface.enum.unavailable_cause]
+[core.enum.unavailable_cause]
 pin_in_use = 1
 limit = 2
 storage_full = 3
 bound_in_group = 4
 held_by_settings = 5
 wrong_state = 6
-[interface.enum.holder_kind]
+[core.enum.holder_kind]
 plan = 1
 connection = 2
 slot = 3
@@ -284,21 +277,42 @@ bind = 4
 settings_plan = 5
 disabled = 6                    # a channel the settings' disable item takes out (oep-if-probe-config §1)
 settings_idle = 7               # a channel the settings' idle item takes charge of: output idles refused when named, every idle left out of count = 0 (oep-if-debug §1, oep-if-capture §1.2)
-[interface.enum.transport_kind] # describe transport (core §7.5); 1-3 are serial ports (transports §4)
+[core.enum.transport_kind] # describe transport (core §7.5); 1-3 are serial ports (transports §4)
 uart_bridge = 1
 usb_cdc = 2
 usb_serial_jtag = 3             # built-in USB serial: the MCU hardware's USB serial port, whose descriptors the probe cannot choose (core §7.5)
 vendor_bulk = 4
 hid = 5
 tcp = 6
-[interface.event]
+[core.event]
 heartbeat = 0x01                # boot_id(u32), uptime_ns(u64)
-[interface.reserved]
+[core.reserved]
 op = [[0x20, 0x2F]]             # the long operations (core §10)
 "tlv.describe" = [[0x48, 0x48], [0x4E, 0x4E], [0x3F, 0x3F]]
 
 [[interface]]
-name = "oep.link"                      # optional: the link test and a UART bridge's speed for a session (oep-if-link)
+name = "oep.probe.plan"                # which channel each role of an interface uses (oep-if-plan); listed when an interface has plan roles
+revision = 1
+op = [
+  { code = 0x01, name = "plan_apply", lock = true },
+  { code = 0x02, name = "plan_release", lock = true },  # n(u8) n x fn(u16); n = 0: every fn
+]
+[interface.tlv.plan_apply]
+role_assignment = 0x10          # repeats; always sent critical (0x90): fn(u16) role(u8) channel(u16); one assignment is identified by all three (oep-if-plan §2.1)
+[interface.tlv.describe]
+plan_roles = 0x40               # u32: the most role assignments the plan holds at once, every fn together, settings' plan included (oep-if-plan §1)
+
+[[interface]]
+name = "oep.probe.restart"             # optional: the probe restarts itself (oep-if-restart)
+revision = 1
+op = [
+  { code = 0x01, name = "restart", lock = true },       # answers, then the probe restarts as from power-on (oep-if-restart §2)
+]
+[interface.tlv.describe]
+restart_max_ms = 0x40           # u32, required: the longest from restart's answer until the probe answers confirm again on the same transport, at least restart_after_answer_ms (oep-if-restart §1)
+
+[[interface]]
+name = "oep.probe.link"                # optional: the link test and a UART bridge's speed for a session (oep-if-link)
 revision = 1
 op = [
   { code = 0x01, name = "source", lock = false },     # length(u32) -> len(u16) data: byte k = k & 0xFF
@@ -313,6 +327,7 @@ revert = 2
 [[interface]]
 name = "oep.wire.rvswd"
 revision = 1
+target = "RISC-V targets whose debug module is reached over the two-wire RVSWD line"
 op = [
   { code = 0x01, name = "scan", lock = true },
   { code = 0x02, name = "attach", lock = true },
@@ -364,6 +379,7 @@ low = 1
 [[interface]]
 name = "oep.wire.swio"
 revision = 1
+target = "RISC-V targets whose debug module is reached over the one-wire SWIO line"
 op = [
   { code = 0x01, name = "scan", lock = true },
   { code = 0x02, name = "attach", lock = true },
@@ -409,6 +425,7 @@ reset = 3
 [[interface]]
 name = "oep.wire.swd"
 revision = 1
+target = "ARM targets with an SWD debug port"
 op = [
   { code = 0x01, name = "scan", lock = true },
   { code = 0x02, name = "attach", lock = true },
@@ -457,6 +474,7 @@ reset = 3
 [[interface]]
 name = "oep.target.riscv-dm"
 revision = 1
+target = "RISC-V targets with a RISC-V Debug Module"
 op = [
   { code = 0x01, name = "dmi", lock = true },
   { code = 0x02, name = "halt", lock = true },
@@ -505,6 +523,7 @@ system_reset = 2                # reserved: no common procedure (oep-if-debug §
 [[interface]]
 name = "oep.target.arm-adi"
 revision = 1
+target = "ARM targets with an ADI debug interface"
 op = [
   { code = 0x01, name = "transfer", lock = true },
   { code = 0x02, name = "read_block", lock = true },

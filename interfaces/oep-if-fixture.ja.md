@@ -5,14 +5,14 @@
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。本体は [OEP core](../docs/oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
 ストリーム）。番号の唯一の定義は `registry/oep-v1.toml`。キャプチャは [キャプチャ](oep-if-capture.ja.md)。
 
-| 名前 | revision | 役割 | plan の role |
-|---|---:|---|---|
-| `oep.fixture.gpio` | 1 | ピンを駆動し、読む | 1 = 線 |
-| `oep.fixture.uart` | 1 | UART の送受信 | 1 = RX、2 = TX |
-| `oep.fixture.i2c-target` | 1 | I2C の target（被制御側）。DUT の I2C controller を試す | 1 = SDA、2 = SCL |
-| `oep.fixture.spi-target` | 1 | SPI の target。DUT の SPI controller を試す | 1 = SCK、2 = MOSI、3 = MISO、4 = CS |
+| 名前 | revision | 役割 | plan の role | 対象の系統 |
+|---|---:|---|---|---|
+| `oep.fixture.gpio` | 1 | ピンを駆動し、読む | 1 = 線 | どの系統にも使う |
+| `oep.fixture.uart` | 1 | UART の送受信 | 1 = RX、2 = TX | どの系統にも使う |
+| `oep.fixture.i2c-target` | 1 | I2C の target（被制御側）。DUT の I2C controller を試す | 1 = SDA、2 = SCL | どの系統にも使う |
+| `oep.fixture.spi-target` | 1 | SPI の target。DUT の SPI controller を試す | 1 = SCK、2 = MOSI、3 = MISO、4 = CS | どの系統にも使う |
 
-どれも plan（core §8）で割り当てたチャンネルだけを扱う。下の表の op は、その節が任意と書かない限り、すべて必須（core §1.2）。
+どれも plan（[plan](oep-if-plan.ja.md)）で割り当てたチャンネルだけを扱う。下の表の op は、その節が任意と書かない限り、すべて必須（core §1.2）。
 
 ## 1. `oep.fixture.gpio`
 

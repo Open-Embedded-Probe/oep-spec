@@ -5,13 +5,13 @@
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。本体は [OEP core](../docs/oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§2 debug の
 connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`。
 
-| 名前 | revision | 役割 |
-|---|---:|---|
-| `oep.wire.rvswd` | 1 | 2 線の RVSWD で RISC-V の DM につなぐ |
-| `oep.wire.swio` | 1 | 1 線の SWIO で RISC-V の DM につなぐ |
-| `oep.wire.swd` | 1 | ARM の SWD で ADI につなぐ |
-| `oep.target.riscv-dm` | 1 | RISC-V Debug Module の操作 |
-| `oep.target.arm-adi` | 1 | ARM ADI（DP / AP）の操作 |
+| 名前 | revision | 役割 | 対象の系統 |
+|---|---:|---|---|
+| `oep.wire.rvswd` | 1 | 2 線の RVSWD で RISC-V の DM につなぐ | DM に 2 線の RVSWD で届く RISC-V の target |
+| `oep.wire.swio` | 1 | 1 線の SWIO で RISC-V の DM につなぐ | DM に 1 線の SWIO で届く RISC-V の target |
+| `oep.wire.swd` | 1 | ARM の SWD で ADI につなぐ | SWD の DP を持つ ARM の target |
+| `oep.target.riscv-dm` | 1 | RISC-V Debug Module の操作 | RISC-V Debug Module を持つ RISC-V の target |
+| `oep.target.arm-adi` | 1 | ARM ADI（DP / AP）の操作 | ADI を持つ ARM の target |
 
 - `oep.wire.*` は connection を作り、`oep.target.*` は connection の上で target を操作する。target を扱うインターフェースは
   attach の前から list に出し、connection の無い要求は rejected no_connection。
@@ -438,6 +438,7 @@ malformed。dmi の max_reads / max_us = 0 は 1 回読む。run の timeout_ms 
   `nvals` は応答に入っている値の数（最初の done 個の手順のうち値を足す手順の数に、失敗した手順が 0x03 / 0x05 で待ち切れた
   （status timeout）なら 1 を足したもの）。線の不良などで読めずに失敗した手順は値を足さない。
 - 0x04 の手順の wait_us と 0x05 の手順の max_us の和は max_op_ms を超えてはならない（rejected unsupported）。0x03 の手順は時間ではなく回数で抑える。
+  host の待ちは、この和を引数の時間として数える（core §4.4）。
   走っている間に要求が max_op_ms に達したら、probe はその手順で要求を終え、status timeout で答える（done = その手順の番号）。
 - 1 つの要求は 1 つの hart の操作。タイミングと線の立て直しが要るもの（リセット、回復）は部品の op にする。
 - **host は抽象コマンドの一連（data1 / data0 の書き込み、command、data0 の読み）を 1 つの dmi 要求に入れる**（probe が
@@ -499,7 +500,7 @@ TLV 0x01 method（u8）: 0 probe の既定、revision 1 では ndmreset。1 ndmr
 - host のローダーを呼ぶためのもの。probe は dcsr の ebreakm と prv = M を立て、pc から走らせ、止まるのを待つ。**probe は run を
   出し直さない**（止まった位置が開始位置のままでも、走って戻った場合と区別できない）。走らなかったかどうかは host が dpc で
   判断し、ローダーを二度走らせてよいときだけやり直す。**デバッガの continue には使わない**（prv と ebreakm を変える）。
-- timeout_ms は 1〜core の max_op_ms（0 は rejected malformed、超えれば rejected unsupported）。run の応答を返すまで、probe はこの
+- timeout_ms は 1〜core の max_op_ms（0 は rejected malformed、超えれば rejected unsupported）。host の待ちは timeout_ms を引数の時間として数える（core §4.4）。run の応答を返すまで、probe はこの
   connection のほかの要求に答えない（実行中は lease を数えない、core §6.1。ほかの connection のコンソールの読みは続ける）。
   止まったら stopped = 1（success）。上限に達したら probe は hart を止めてから dpc と値を読み、stopped = 0、status timeout、outcome
   failed で返す（dpc と値はすべて有効）。止められなければ stopped = 2、status timeout、outcome failed、nvals = 0（dpc は無効）。

@@ -19,6 +19,22 @@ external re-review of the same day (its §3.2 and §3.3). Japanese only while Ja
 - Documents: `docs/` keeps the core (oep-core, oep-transports), the guides and the records; the standard interface documents
   (`oep-if-*`, `target-console-dmseq`, both languages) move to `interfaces/`, with an index `interfaces/README.ja.md`. Core §14 (the list
   of standard interface documents) goes and the guides' section becomes §14; every relative link follows. A move of text: no rule changes.
+- **Breaking**: the core has no name. `oep.core` is gone: fn 0 is the core, list never returns it (an example probe without
+  interfaces lists nothing), and the core's version is confirm's protocol revision only; core §0 rule 3 has no exception and every
+  optional feature is a named interface (core §0, §1, §1.2, §7.2). The core keeps only what every probe implements: plan_apply /
+  plan_release and describe plan_roles move to the new interface `oep.probe.plan` (ops 0x01 / 0x02, describe 0x40; listed when an
+  interface has plan roles; oep-if-plan); restart and restart_max_ms move to the new optional interface `oep.probe.restart` (op 0x01,
+  describe 0x40; answer first, the restart after the answer, the host's wait; a relaying host forwards restart as any locking op, then
+  closes its transport to the probe; oep-if-restart); `oep.link` is renamed `oep.probe.link`. Core §8 becomes the channels' free state
+  (start-up, release, taking a pin changes nothing); transports §1 loses the broker's restart rules (a broker whose transport to the probe
+  is gone, closed by itself included, ends) and result_lost loses its broker meaning; link §3 host obligation 6 returns to the boot speed
+  after the answer of any op after which the probe restarts. Core normative text names no interface: saved settings are "settings an
+  interface defines", §4.4's argument times and §7.5's max_op_ms are defined per op by the interface documents (debug: dmi, run; settings:
+  save), §4.4's link wording is general. Core §13: `oep.<layer>.<name>` with the layers probe, wire, target and fixture; rule 8 keeps
+  chip-specific procedures out of interfaces for any family and puts the family in the document header and the registry (`target`),
+  not in the name; every interface document's header table has the family column. Registry: `[core]` replaces the `oep.core` interface
+  (generated: namespace `core`, no name; Python `CORE`, not in `INTERFACES`), `target` on the wire and target interfaces. Vectors:
+  discovery.json's list is empty; ops.json's restart cases are on fn 11 (`oep.probe.restart`) and new plan cases on fn 10.
 
 ### Simplification after the external review (2026-10-06)
 

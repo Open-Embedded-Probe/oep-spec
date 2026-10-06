@@ -24,7 +24,7 @@ probe は:
 - 動く前にすべての要求の長さと符号化を確かめ、malformed で断る（core §4.3 の順 5）: 合わない数、TLV の符号化の誤り、len が終わりを越える TLV
   （core §2.2）、tag 0x7F / 0xFF（core §2.3）、0 / 1 以外の真偽値、正しい UTF-8 でないか制御文字を含む文字列（core §2.1）;
 - 実行の前に断る: 要求は core §4.3 の順で確かめ、すべてを通るまで何も動かさない（plan_apply と probe の設定の set は、全部が受け
-  付けられなければ何も変えない: core §8、probe の設定 §2）;
+  付けられなければ何も変えない: [plan](../interfaces/oep-if-plan.ja.md) §2.1、probe の設定 §2）;
 - max_frame を超える長さのフレームは、次の途切れまでの入力と一緒に捨てる。TCP では接続を閉じる（transports §1）;
 - フレームの途中で `probe_frame_gap_ms` 途切れたら、TCP 以外のどの経路でも読み直す（transports §2）;
 - report が運べるより大きい count の HID の report は、次の途切れまでの流れの入力と一緒に捨て、report の詰め物は無視する（transports §1）;
@@ -72,10 +72,10 @@ host は:
 - force はロックを取り、前のセッションの資源をその終わりと同じに解放する（core §6.4、§9）。セッションが作ったものは次のセッションに
   渡らないので、落ちた host の plan や接続がほかの host のものになることはない（core §9）。host がいつ使うか: host ガイド §6（利用者が
   頼んだときだけ。排他で開いたシリアルの口が唯一の経路の probe は別）。
-- **ロックを持つ host は probe を再起動できる**（fn 0 の restart、任意で ops に宣言する、core §6.6）。ロックの持ち主はもともと線を駆動し
+- **ロックを持つ host は probe を再起動できる**（任意のインターフェース `oep.probe.restart` の restart、[再起動](../interfaces/oep-if-restart.ja.md)）。ロックの持ち主はもともと線を駆動し
   設定を変えられるので、再起動も持ち主を信頼することの中にある。ロックの無い要求では再起動しない（session_required、no_session、locked）。再起動はすべての経路の、
   ほかの host のロック不要の読みも含めて途切れさせ、保存していない設定を捨て、connection を閉じる。probe は応答を先に送り、再起動の前に
-  線を空きの状態にする（target は reset しない。止めていた hart は止めたまま）。restart を持たない probe は unknown_operation で答える。
+  線を空きの状態にする（target は reset しない。止めていた hart は止めたまま）。`oep.probe.restart` を出さない probe は再起動しない。
 
 ## 5. target の出力で偽れるロック不要の応答
 
