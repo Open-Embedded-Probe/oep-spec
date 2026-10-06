@@ -97,7 +97,7 @@ probe は、自分が出す transport とインターフェースについてこ
   大文字小文字を区別せず比べる（transports §3）。`x-` の unit_id でまとめたり、名指したり、何かを覚えるキーにしたりしない（§7.5）。iProduct と
   インターフェースの文字列は表示だけ（transports §3）。`name#instance` と `oep://` のアドレス（§7.2、§7.6）。
 - **restart**（`oep.probe.restart`）: 使うときは、答え（または答えが来なかったとき）の後にその probe に何も送らずに閉じ、`restart_after_answer_ms` 以上待ってから新しく開くのと同じに開き直し（最初は confirm、UART bridge では起動時の速さ、USB では列挙し直すのを待つ）、答えを受けてから（答えが来なかったときはその待ちが過ぎてから）describe の restart_max_ms まで開き直しと confirm を繰り返し、正しい答えが無ければその probe を無くなったものとして扱う。confirm の boot_id が変わったことを確かめて覚えた状態を捨てる（[再起動](../interfaces/oep-if-restart.ja.md) §3、[リンク](../interfaces/oep-if-link.ja.md) §3 の host の義務 6）。
-- **port_speed**: host が使うときは [リンク](../interfaces/oep-if-link.ja.md) §3 の host の義務 1〜7。UART bridge のどの口でも、上げた速さの後に confirm を繰り返す（transports §4）。
+- **port_speed**: host が使うときは [リンク](../interfaces/oep-if-link.ja.md) §3 の host の義務 1〜8（既定では 500000 bps より速い速さを試さず、それより速い速さは利用者が選んだときだけ、両方向それぞれ 1 秒以上の確かめの後に使う: 義務 7）。UART bridge のどの口でも、上げた速さの後に confirm を繰り返す（transports §4）。
 - **アナログのキャプチャ**: host が電圧を示すときは、値 0 と 2^b − 1 を電圧ではなく振り切れ（低い端以下、高い端以上）として示す
   （[キャプチャ](../interfaces/oep-if-capture.ja.md) §1.2 規則 6）。
 

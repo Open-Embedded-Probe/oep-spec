@@ -233,6 +233,17 @@ New documents (oep-transports) are Japanese only until then (core §0, README, C
   change the settings, under their existing rules. The values for an absent TLV (idle_clock 0 = high) apply to a new connection only. A scan
   does not change a live connection's settings. Informative reason: a tool that only joins a slot's connection must not change how the line
   rests (debug §1, §3; probe-config §1.1; conformance and the host guide follow).
+- port_speed's default ceiling (ja, user decision agreed with ch32rv): by default a host does not try rates above 500000 bps; a faster
+  rate is tried only when the user explicitly chose it (a command argument, a setting), and is committed only after, in the try state,
+  oep.probe.link source (length ≥ max_frame − 26) and sink (count max_frame − 26) each ran for at least 1 s at the in-flight count the
+  host will use, back to back; verify_ms covers that verify; once committed, the in-use rule that drops a rate that breaks still applies
+  (link §3 host obligation 7; the old obligation 7 is 8; the terms no longer say the specification sets no default). No probe change.
+  Reason (host guide §17.5, record uart-speed-negotiation §12): on one bridge, 921600 passed a full-frame verify (16 frames each of in,
+  out and both at once, at most 5 % broken) and still broke 1-4 max_frame answers in every 9 KiB upload, once falling back to the boot
+  speed mid-upload; 500000 was clean on both bridges measured. Host guide §17: the default candidate is 500000 for every use (the table
+  in §17.3.1), the minimal form is for rates up to 500000 only, new §17.3.3 gives the 1 s verify (verify_ms 4000 for in and out, 6000
+  with both at once, lease − 1000 or less), a record never adds a faster rate the user did not choose and never skips the 1 s verify,
+  §17.5 names no chips; conformance's host checklist follows.
 
 ### Tools and test vectors
 
