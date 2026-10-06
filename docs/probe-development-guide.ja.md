@@ -26,7 +26,7 @@
 - **起動したら、答える前にピンをしまう。** 最初の応答の前に、`reserved` でないすべての channel を空きの状態にする: 設定が idle を
   定めればその idle、そうでなければ Hi-Z（入力、プルなし）（core §8）。MCU の起動のコードや周辺回路のドライバが残したままにしない。
   firmware が動くまで、ピンは MCU のリセットの状態で、どの firmware も変えられない。誤った水準が害になる線には外付けのプルが要る
-  と利用者に伝える（probe の設定 §5）。
+  と利用者に伝える（[安全とセキュリティ](security.ja.md) §6）。
 - 開くとどうしてもリセットされる probe は、fn 0 の describe で `resets_on_open` を宣言する（core §7.5）。
 
 ## 2. 送受信のバッファ
@@ -149,6 +149,9 @@ revision は数字に任意の `.数字` の組。revision が分からなけれ
 **ピン**（core §7.4）: ピンを集合のどれにでも割り当てられる機能は role_channels を、組が決まっている機能は組ごとに channel_group を
 宣言する。両方を使ってもよい。probe 自身が使う channel は `reserved`（0x44）に、配線の固定の名前は `label`（0x46）に置く。plan に
 上限があれば `oep.probe.plan` の describe に plan_roles を宣言する（[plan](../interfaces/oep-if-plan.ja.md) §1）。
+片方向だけの UART（RX だけ、TX だけ）は、host が `oep.fixture.uart` の plan で片方の role だけを割り当てて使う。ピンの組が決まっている
+probe は、RX と TX の組のほかに、RX だけの組と TX だけの組も channel_group に別々に書く（channel_group は完全一致なので、書かないと片方だけの
+plan を受けられない）（[fixture](../interfaces/oep-if-fixture.ja.md) §2）。
 
 **max_frame、window、max_inflight**（confirm、core §4.4）、経路ごと:
 
@@ -193,10 +196,10 @@ clock（core §7.7）の応答の uptime_ns は、その要求を処理する中
 - **起動の順**: 保存を今の設定にし、disable、idle（出力は強さと一緒に）、plan、uart を掛けてから、at boot の attach を始め、bind を
   つなぐ（probe の設定 §2、§3.1）。
 - **max_bytes**（describe 0x40）は、いつでも保存できる正規形の長さ。識別子の表に要る分を引いて宣言する。
-- **安全**: 保存した設定は、起動のたびに host なしで線を駆動する。掛かる前のピンは MCU のリセットの状態にある（probe の設定 §5）。
+- **安全**: 保存した設定は、起動のたびに host なしで線を駆動する。掛かる前のピンは MCU のリセットの状態にある（[安全とセキュリティ](security.ja.md) §6）。
   レベルを誤ると害のある線には、それだけで安全な level を保つ外付けの pull が要ることを利用者に伝える。
 - **boot_reset の保持の時間**は `slot_retry_reset_hold_ms`（20 ms）に決まっている。もっと長い保持の要るボードのために後から足すなら、
-  slot をキーにした新しい項目の tag にする（core §2.3: 新しい項目の tag は OEP の伸び方の一つ）。revision は変わらない。
+  slot をキーにした新しい項目の tag にする（core §13.1: 新しい項目の tag は OEP の伸び方の一つ）。revision は変わらない。
 
 ## 12. target を扱う部品
 

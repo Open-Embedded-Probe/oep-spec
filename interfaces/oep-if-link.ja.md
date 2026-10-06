@@ -57,8 +57,6 @@ fixture UART の速さは別（そのインターフェースの configure と�
 - port: この要求の来た経路の index（core §7.5）（confirm の応答の transport TLV、core §7.1）。
 - 断り: port がこの要求の来た口でない → rejected unavailable（cause 6）。UART が作れる最も近い速さが要求と 2 % より大きく違えば rejected unsupported。応答の baud は実際に掛けた速さ。
   step 0（試す）の verify_ms 0 は rejected malformed。step 1（決める）と step 2（戻す）では verify_ms に意味は無く、どの値も受ける。
-  step が 3 以上なら rejected unsupported（payload の tag 0x00、core §2.5）。
-  ロックが無い・違うときの断りは core §4.3 の順（session_required、no_session、locked）。
 - 状態は口ごとに **起動時 / 試し / 決めた** の 3 つ。
   - **試す**（step 0、起動時の状態で受ける）: 応答を今の速さで送り終えてから、応答の baud に切り替えて**試し**になる。verify_ms を
     この要求の値で始める。

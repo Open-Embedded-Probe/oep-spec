@@ -30,7 +30,9 @@
   フレームの形は経路の種類で決まり、VID:PID では選ばない。
 - 口の上には、OEP の応答と一緒に生のバイト（target のコンソールなど）が流れてくる（transports §4）。フレームにならないバイト、
   CRC の合わない候補、待っていない corr の応答は雑音として捨てる。**雑音を見ても送り直さない**。応答が来ないことは待ち時間だけで
-  判断し（transports §1、core §4.4）、送り直しは core §5.2 の 1 回（`resend_max`）。
+  判断し（core §4.4）、送り直しは core §5.2 の 1 回（`resend_max`）。
+- 正しい COBS のフレームは、2 つの 0x00 の間に 65796 byte（registry の `cobs_frame_max_bytes`: 65535 byte の message とその CRC-16、
+  254 byte ごとに COBS の code の 1 byte）より多くを持たない。それより長くなった候補は、閉じの 0x00 を待たずに雑音として捨ててよい。
 - 送るフレームは必ず前後を 0x00 で囲む。前の 0x00 が無いと、probe はフレームの頭を生のバイトとして流してしまう。
 - 自分のセッションが口を持っている間、その口の生の転送は止まる（transports §4）。コンソールは OEP の read で読む。
 
@@ -220,7 +222,7 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
 
 - **v1 に長い操作は無い**（core §10 は予約）。どの op も 1 つの応答で終わる。時間のかかる op（run、キャプチャの configure、save、
   attach）は、応答が来るまで待つ。待ち時間は op の引数で決まる（core §4.4）。
-- run の間、probe はほかの要求に答えない（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.4）。timeout は lease と応答の待ち時間より十分短くする。
+- run の間、probe はほかの要求に答えない（[OEP core](oep-core.ja.md) §4.4）。timeout は lease と応答の待ち時間より十分短くする。
 - 書き込みのように多くの要求を送る処理は、lease が切れないよう、普段の要求か keepalive でロックを保つ。
 
 ## 12. 通知
@@ -273,6 +275,10 @@ core §4.3 の順で最初に当たる理由を返すので、理由は最初に
   1 行のコマンドは、send_queue 以下なら 1 回の write で送れる。accepted が count より少なければ、残りを少し待ってから送る（列は target が
   受け取った分だけ空く。dmseq では target の 1 つのフレームへの答えにつき 2 byte、DMDATA では 1 つの枠への答えにつき 3 byte）。accepted は target が受け取ったことでは
   ない: 届いたかはコンソールの出力（エコーなど）で見る。
+- **dmseq のコンソールが答えているか**: 出力するか入力を見に行く target は、少なくとも長い待ちに短い待ちを足した時間
+  （[dmseq](../interfaces/target-console-dmseq.ja.md) の「タイムアウト」）に 1 回フレームを出す。未同期のまま 3 s の間有効なフレームを
+  読まなかったら、dmseq のコンソールが答えていないと利用者に伝えてよい。出力も入力の読みもしない target は何も出さないので、これは
+  コンソールが無いことの証拠ではない。
 
 ## 15. probe の設定（`oep.probe.config`）の使い方
 
@@ -745,3 +751,40 @@ probe は target を知らず、host が知っている（core §13 の規則 8�
 - **debug のピンを GPIO にしてしまった firmware からの回復**: まず probe の、reset TLV を付けた attach を使う。持たない probe
   （unsupported）では、`oep.fixture.gpio` の解放と attach を 1 回の書き込みにまとめて送り、再試行する: 窓が短く、解放の応答を
   待ってから attach を送ると間に合わないことがある。
+
+## 22. キャプチャの使い方の例
+
+[キャプチャ](../interfaces/oep-if-capture.ja.md) の op の並べ方の例。値は例で、実際のレートと layout は configure の応答で決まる。
+
+```text
+ワンショット（ロジック 2 本、20 MHz、テストの自動判定）
+  plan_apply(logic: role0 = GPIO20, role1 = GPIO21)
+  configure(mode=1, rate=20 MHz, samples=200000)
+    → actual_rate 20000000/1, layout w=2 pos=[0,1], blocking_ms 0
+  subscribe(logic)                      （完了の通知を待つ。購読しないなら status をポーリング）
+  start → generation g → 出来事 segment（serial 0）→ read(g, 0, 65536) を何本か同時に出して最後まで読む
+
+ワンショット、エッジで開始（role1 の最初の立ち下がりの 1000 サンプル前から）
+  configure(mode=1, rate=20 MHz, samples=200000, trigger(edge, role1, fall), pretrigger=1000)
+  start → 出来事 triggered → segment → read
+
+リピート（長い時間を切れ目なく、host のペースで）
+  configure(mode=2, rate=4 MHz, samples=65536, segments=8)
+  subscribe → start → 出来事 segment ごとに read → release(g, serial)
+  release が遅れると取得が止まり（state 5）、release で空きができれば自動で再開し、次の区画の flags bit0 が立つ
+
+ストリーミング（アナログ 1 チャネル、44.1 kHz）
+  plan_apply(analog: role0 = GPIO16)
+  configure(mode=3, rate=44100, frontend(role 0, 番号 2))
+    → actual_rate 44642/1 など（要求どおりにはならない: 変換器のクロックの分周で近いレートになる）、layout s=16 o=0 b=12
+  subscribe(analog, min_bytes=1024, max_delay_ms=20) → start → データが届く
+
+capture-group: ロジック 2 本（20 MHz）とアナログ 1 本（48 kHz）を一緒に、ロジックの ch1 の立ち下がりで（1000 サンプル前から）
+  plan_apply(logic: role0 = GPIO20, role1 = GPIO21; analog: role0 = GPIO16)
+  logic.configure(mode=1, rate=20 MHz, samples=200000, trigger(edge, role1, fall), pretrigger=1000)
+  analog.configure(mode=1, rate=48000, samples=4800, pretrigger=48)
+  group.bind(logic, analog, trigger_track=logic)
+  group.start → start_ns
+  出来事 triggered(logic, trigger_ns) → 各トラックの segment（trigger_index はどちらも trigger_ns の位置）
+  各トラックを read → host は start_ns の差と trigger_index で並べる
+```

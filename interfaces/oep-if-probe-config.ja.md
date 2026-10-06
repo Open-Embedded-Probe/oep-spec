@@ -30,7 +30,7 @@
 | 0x07 | disable | channel(u16) | channel |
 
 - どの項目もすぐ効く。扱う項目は describe の items で宣言し、宣言していない項目の set は rejected unsupported（payload の tag は受け取ったままの項目の tag、core §4.3）。tag 0x7E は応答の
-  メタ情報のために予約。
+  メタ情報のために予約し、v1 の probe は置かない。
 - **定義より長い項目の値**: 項目の値は後ろに伸ばさない（core §2.3: 新しいフィールドは新しい項目の tag に置く）。probe が扱う項目で、値が
   定義の長さ（可変の部分を持つ項目は、その数と長さが決める長さ）より長いものは、core §2.3 の、知っている長さより長い要求の TLV と同じに扱う:
   critical の bit が立っていれば要求全体を rejected unsupported（受け取ったままの項目の tag）。立っていなければ、その項目を適用せず
@@ -42,9 +42,8 @@
 - **uart**: その fn（`oep.fixture.uart`）の plan に RX か TX が付いた時点（設定の plan でも、セッションの plan_apply でも）で、
   configure 相当を掛ける。plan が無くても set は通る（掛かるのは plan が付いたとき）。セッションの configure は、plan を解くか
   probe が再起動するまで、この項目より勝つ。baud は set のときに実現できる値を確かめ、±5%（registry の `uart_baud_tolerance_pct`）を超えて外れれば rejected unsupported。
-  format は configure の TLV format と同じ値（使っていない値と予約のビットは rejected unsupported、core §2.5）。ピンの無い fn の configure は今どおり
-  rejected unavailable（項目があっても変わらない）。CDC の口の line coding は fixture UART に写さない（OEP の configure とこの項目
-  だけが効く）。
+  format は configure の TLV format と同じ値。ピンの無い fn の configure は今どおり
+  rejected unavailable（項目があっても変わらない）。
 - **disable**: その channel を probe が**一切使わない**ようにする（ボードに出ていないピン、ほかの部品につながっているピン）。利用者が
   自分のボードに合わせて明示する。firmware が使えると宣言した channel（describe の role_channels など）を減らすだけで、firmware が
   使えないとしたピンを使えるようにはできない（それは自前のビルドで行う）。
@@ -63,12 +62,11 @@
   mode 3 / 4 では、そのピンが空きの間ずっと、probe がその level で駆動する。idle が無いピンは Hi-Z。治具の配線で相手の入力が浮くピン（相手の RX につながる TX など）は、host が idle で明示し、保存する。
   出力の mode は、plan が持っていない間もある level を保たなければならない channel（target の電源のスイッチなど）のためにある。
   idle の項目の変更（set / unset）は、空いている channel にはすぐ効き、plan や接続が持つ channel には、次に空きになったときに効く。
-  その channel を出力として駆動できない probe では、mode 3 / 4 の idle は rejected unsupported。そのプルを持たない channel では、mode 1 か 2 の idle は rejected unsupported（受け取ったままの項目の tag）。（参考）`oep.fixture.gpio` の無い probe では、どの channel がプルや出力を持つかを host が前もって知る方法は無い。mode が 5 以上なら rejected unsupported（受け取ったままの項目の tag、core §2.5）。
+  その channel を出力として駆動できない probe では、mode 3 / 4 の idle は rejected unsupported。そのプルを持たない channel では、mode 1 か 2 の idle は rejected unsupported（受け取ったままの項目の tag）。（参考）`oep.fixture.gpio` の無い probe では、どの channel がプルや出力を持つかを host が前もって知る方法は無い。
   （参考）出力の idle が target の出力とぶつからないようにするのは、配線の責任である。
   - **強さ**: drive_kind(u8)、drive_value(u16)（[fixture](oep-if-fixture.ja.md) §1.1 の強さの指定と同じ kind と value: 0 段の番号、
-    1 mA の上限、2 既定の段で drive_value は 0）。mode 0〜2 は drive_kind 2 と drive_value 0 を持ち、mode 0〜2 でそれ以外なら rejected malformed
-    （mode が 5 以上なら mode について rejected unsupported、core §4.3）。drive_kind 2 で drive_value が 0 でなければ rejected malformed。値が
-    6 byte より短ければ rejected malformed。未定義の drive_kind（3 以上）は rejected unsupported（受け取ったままの項目の tag。後の revision が定めうる、core §2.5）。`oep.fixture.gpio` の describe が drive_levels を宣言する probe では、
+    1 mA の上限、2 既定の段で drive_value は 0）。mode 0〜2 は drive_kind 2 と drive_value 0 を持ち、mode 0〜2 でそれ以外なら rejected malformed。drive_kind 2 で drive_value が 0 でなければ rejected malformed。値が
+    6 byte より短ければ rejected malformed。未定義の drive_kind（3 以上）は rejected unsupported（受け取ったままの項目の tag）。`oep.fixture.gpio` の describe が drive_levels を宣言する probe では、
     kind 0 で drive_value が段の数以上なら rejected unsupported。drive_levels を宣言しない probe（`oep.fixture.gpio` の無い probe を
     含む）は、このフィールドを持つが効かせない（強さは既定のまま）。
     （参考）gpio の set の drive の TLV が範囲外の段を無視するのと違い、ここで断るのは、保存して起動のたびに使う設定の誤りを、書いたときに
@@ -92,18 +90,18 @@ lock_len は錠の部分（lock_scheme から lock_value まで）の長さ。0 
 | slot | スロットの番号（キー）。0 から、describe の slots_max 未満 |
 | wire_fn | 線のインターフェースの fn。**target_id の scheme を持つ線**（`oep.wire.rvswd` / `oep.wire.swio`）だけ。ほか（`oep.wire.swd`）は rejected unsupported |
 | swdio、swclk | ピンの組。attach の pins と同じ（1 本の線は swclk = 0xFFFF）。その線が許す組でなければ rejected unsupported |
-| attach | attach の方針: 0 host、1 at boot（§3.1）。2 以上は rejected unsupported（core §2.5） |
+| attach | attach の方針: 0 host、1 at boot（§3.1） |
 | boot_reset | 起動時の自動の attach に線の応答が無かったとき、リセットの線を使ってもう 1 回 attach するか（§3.1）。真偽値: 0 しない、1 する。2 以上は rejected malformed（どの revision でも除かれる値で、core §4.3、使われていない値ではない）。at boot でないスロットで 1 は rejected malformed |
 | retry_ms | at boot のスロットで、いないときに attach をやり直す間隔（ms）。0 はやり直さない。at boot でなければ 0（ほかは rejected malformed） |
 | max_speed_hz | そのスロットの attach に渡す線の速さの上限（Hz、attach の max_speed と同じ）。0 は上限なし。その線が守れない上限（決まった速さがそれより速い、min_clock_hz より遅い）は rejected unsupported |
-| idle_clock | そのスロットの attach に渡す線の休ませ方（attach の idle_clock と同じ: 0 = high、1 = low）。`oep.wire.rvswd` だけが 1 を持てる（ほかの線で 1 は rejected unsupported。attach と同じ）。2 以上は rejected unsupported（core §2.5） |
+| idle_clock | そのスロットの attach に渡す線の休ませ方（attach の idle_clock と同じ: 0 = high、1 = low）。`oep.wire.rvswd` だけが 1 を持てる（ほかの線で 1 は rejected unsupported。attach と同じ） |
 | mechanism | コンソールの方式（`oep.target.console` の mechanism）、または **0xFF = コンソールなし**（bind に載せない、console を持たない probe）。その probe の console が宣言しない方式は rejected unsupported |
 | name | スロットの名前。1〜32 byte で、使える文字は `a-z 0-9 - _` だけ（ほかは rejected malformed）。probe の中で重ならない（重なれば rejected malformed）。host がスロットを名指すのに使い（IDE の address `oep://<unit_id>/<name>` にそのまま入る。unit_id は core §7.5。どちらも URL の中で encode が要らない文字だけ）、mixed の行の印（§1.2）にも使う |
 | lock_len | 錠の部分の長さ。0（錠なし）か 1 + 2n（n ≥ 1）。ほかは rejected malformed |
 | lock_scheme | 錠があるときだけ。target_id の scheme（[線とデバッグ](oep-if-debug.ja.md) §1）。0 は置かない（錠なしは lock_len 0）。その線が持たない scheme は、定義にあってもなくても（core §2.5）rejected unsupported |
 | lock_mask、lock_value | 錠があるときだけ。同じ長さ n = (lock_len − 1) / 2。**n はその scheme の値の長さと同じ**（scheme 1 は 4。違えば rejected malformed。長さは registry の `[common.enum.target_id_len]`）。バイトの並びは attach の応答の target_id の値と同じ（scheme 1 なら u32 の little endian） |
 
-- max_speed と idle_clock は target の性質で（[線とデバッグ](oep-if-debug.ja.md) §3）、probe が自分でスロットを attach するとき
+- max_speed と idle_clock（[線とデバッグ](oep-if-debug.ja.md) §3 の attach の TLV と同じ）は target の性質で、probe が自分でスロットを attach するとき
   （at boot、やり直し）に使う。host の attach はそれぞれの TLV で自分の値を渡す（スロットの項目を既定には使わない）。host の attach が
   渡さない設定は、新しい connection では TLV の無いときの値、スロットの接続など既存の connection に加わるなら、その connection の今の
   設定のまま（[線とデバッグ](oep-if-debug.ja.md) §1）。
@@ -131,7 +129,7 @@ port(u8)、mode(u8)、selected(u8)、n(u8)、n × (kind(u8)、id(u16))
 | port | シリアルの口の番号（core の describe の transport の index）。シリアルの口でなければ rejected unsupported。index は firmware の版を越えて変わらない（core §7.5） |
 | mode | 0 last-reset、1 manual、2 mixed（下）。describe の bind_modes に無い mode は rejected unsupported |
 | selected | manual の選択（並びの中の番号、n 未満。外れていれば rejected malformed）。last-reset と mixed では 0 を送り、probe は見ない |
-| n、並び | 流すストリーム（n ≥ 1）。各要素は 3 byte（core §2.3）。kind 1 = スロットのコンソール（id = slot）、kind 2 = fixture UART の受信（id = `oep.fixture.uart` の fn）。ほかの kind は rejected unsupported（core §2.5）。無いスロットを指せば rejected malformed（設定どうしの矛盾）、fn が無ければ unknown_function、fn が `oep.fixture.uart` でなければ rejected unsupported。mechanism 0xFF のスロットは載せられない（rejected malformed） |
+| n、並び | 流すストリーム（n ≥ 1）。各要素は 3 byte（core §2.3）。kind 1 = スロットのコンソール（id = slot）、kind 2 = fixture UART の受信（id = `oep.fixture.uart` の fn）。無いスロットを指せば rejected malformed（設定どうしの矛盾）、fn が無ければ unknown_function、fn が `oep.fixture.uart` でなければ rejected unsupported。mechanism 0xFF のスロットは載せられない（rejected malformed） |
 
 | mode | 口に流すもの | 口から来た生のバイト |
 |---|---|---|
@@ -194,7 +192,7 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 | 0x05 | unset | n(u8)、n × (len(u8)、tag(u8)、key) | hash(u32)、[TLV] | 必要 |
 | 0x06 | state | first_slot(u8)、first_bind(u8) | §3.3（今の状態）、ロック不要 | 不要 |
 
-- **get**: 応答の項目は payload の終わりまで続く。tag 0x7E は応答のメタ情報のために予約し、v1 の probe は置かない。get は TLV を取らない（あれば rejected malformed、core §7.3）。
+- **get**: 応答の項目は payload の終わりまで続く。
 - **set は、要求に含まれる項目のキーごとに置き換える**（含まれないキーはそのまま。何回かの set に分けて積み上げられる）。
   plan の項目は fn ごとにまとめて、その fn の plan を置き換える。項目の順は意味を持たない。
 - **unset はキーの項目を消す**（key は tag ごと: plan は fn(u16)（その fn の plan 全部）、label と idle は channel(u16)、slot は slot(u8)、
@@ -247,10 +245,8 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 | 0 host | probe は自分から attach しない。host の attach でスロットの接続ができたら、bind はそれに乗る |
 | 1 at boot | 起動時と、そのスロットの項目を set した直後。いなければ retry_ms ごとにやり直す（0 ならやり直さない） |
 
-- 起動時の自動の attach は、すべての idle（mode 3 / 4 の出力の駆動を、その強さと一緒に含む）を掛けた後に始める（§2 の起動の順）。
 - **自動の attach（at boot）は止めない attach（method 0）だけ**で、スロットのピンの組で、[線とデバッグ](oep-if-debug.ja.md)
   §1 の規則どおりに行う。錠が合わなければ、コンソールを開かずに自分の分を外す（状態は錠に不一致）。
-- 自動の attach は、接続に時間のかかる場合を先に払っておくもの。外れていれば、host は使うときに自分で attach する。
 - 席が埋まっていて host の attach がスロットの接続を閉じた（[線とデバッグ](oep-if-debug.ja.md) §1）とき、そのスロットはそのままに
   する（at boot でもやり直さない）。次の接続は、次の起動、そのスロットの set、または host の attach でできる。
 - 接続が切れた（線が落ちた）スロットは、at boot なら retry_ms ごとにやり直す。
@@ -317,13 +313,4 @@ describe は宣言だけ（core §7.3）。状態は state（§3.3）。
 
 ## 5. 安全（参考）
 
-この節は規則を足さない。上の規則が、probe の駆動する線にとって何を意味するかをまとめる。
-
-- **保存した設定は、host が居なくても線を駆動する。** 起動のたびに、probe は保存した idle（mode 3 / 4 は出力を駆動する）、plan、at boot の attach と
-  その boot_reset（§2、§3.1）を、host が居ても居なくても掛ける。
-- **設定を掛ける前は、ピンは MCU のリセットの状態にある。** 電源投入やリセットから firmware が idle を掛けるまで、firmware を更新している間、
-  firmware が壊れたときは、probe は設定が定めるものを何も駆動しない。間違った level が害になる線（たとえば target の電源を切り替える線）には、
-  それだけで安全な level に保つ外付けの pull-up か pull-down が要る。
-- **disable は利用者の宣言であって、保護ではない。** ロックを持つ host は unset で外せ（§2）、その後その channel を使える。
-- **設定には認証が無い。** ロックを取ったどの host も、force を含めて（core §6.4）変えて保存できる。TCP では、信頼できる接続についての core の規則が
-  掛かる（transports §1）。
+設定が probe の駆動する線にとって何を意味するかは [安全とセキュリティ](../docs/security.ja.md) §6 にまとめる。

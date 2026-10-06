@@ -36,11 +36,9 @@
   set は失敗しない（success）。
 - 割り当てていないチャンネル（set、read）は、何もせず rejected unavailable（payload は core §4.3 の TLV: channel 0x02 と、並びの位置
   tag 0x40 index（u8））。扱えない mode（宣言に無い）は rejected unsupported（payload `0x00`、後ろに同じ channel / index の TLV）。
-  未定義の mode（8 以上）も同じく断る（後の revision が定めうる、core §2.5）。
 - 扱える mode は describe の modes（tag 0x40、u32 のビット集合、bit n = mode n）で宣言する。0（入力）は必須。
 - **plan で取ったチャンネルは、最初の set までそれまでの状態を保つ**（空きの状態のまま。出力の idle なら、その level の駆動を続ける）。
   取ったことで level は変わらない。
-- plan を解いたら、そのチャンネルは core §8 の空きの状態に戻る。
 
 ### 1.1 出力の強さ（任意）
 
@@ -56,7 +54,7 @@
 - **set の TLV 0x01 drive**（非 critical。host は critical の bit を付けずに送る）: index(u8: 要求の並びの位置)、kind(u8)、value(u16)。
   1 つの TLV が並びの要素 1 つに効き、繰り返して複数の要素に付ける（要素ごとに強さが違ってよいため。電源の線と信号の線を 1 要求で
   動かせる）。index が n 以上、同じ index が 2 回、指す要素の mode が 3 / 4 でない のどれかなら、要求全体を
-  rejected malformed。0 以外の value を持つ kind 2 も同じ。未定義の kind（3 以上。後の revision が定めうる、core §2.5）と、段の数以上の kind 0 の value は、この probe が扱えない値であり、その TLV を無視する。drive_levels を宣言しない probe は、drive の TLV を
+  rejected malformed。0 以外の value を持つ kind 2 も同じ。未定義の kind（3 以上）と、段の数以上の kind 0 の value は、この probe が扱えない値であり、その TLV を無視する。drive_levels を宣言しない probe は、drive の TLV を
   形を確かめずにすべて無視する（drive の TLV で rejected malformed にしない）。無視した drive は応答の ignored（core §2.3）に載せる。
   ignored は tag だけを並べるので、どの要素の drive を無視したかは示さない。host は効いた段を read の応答の TLV drive で知る。
   critical の bit を付けた drive の TLV は core §2.3 に従う: 無視するはずの場合は、無視せずに要求を rejected unsupported で断る。
@@ -83,8 +81,7 @@
 
 - op 0x02〜0x06 は [共通部品](oep-if-common.ja.md) §1 の形（stream の byte なし）で、`oep.target.console` と同じ番号。
 - configure の TLV 0x01 format（u8）: bit0-1 データ長（0 = 8、1 = 7）、bit2-3 パリティ（0 なし、1 偶数、2 奇数）、bit4 ストップ
-  ビット（0 = 1、1 = 2）。無ければ 8N1。未定義の値（bit0-1 の 2 / 3、bit2-3 の 3、bit5-7。後の revision が定めうる、core §2.5）と、宣言（formats）に
-  無い値は rejected unsupported（受け取ったままの tag）。host は critical で送る（黙って 8N1 にならないため）。baud は実現できる値を返し、要求から
+  ビット（0 = 1、1 = 2）。無ければ 8N1。宣言（formats）に無い値は rejected unsupported（受け取ったままの tag）。host は critical で送る（黙って 8N1 にならないため）。baud は実現できる値を返し、要求から
   ±5%（registry の `uart_baud_tolerance_pct`）を超えて外れれば rejected unsupported（payload `0x00`）。ピンの無い fn（plan に RX も TX も無い）の configure は rejected
   unavailable（cause 6）。
 - **status**（ロック不要）: 何が掛かっているか（`uart_configured`）と実際の baud / format。読むだけの host が知るため。uart 項目の
@@ -99,9 +96,6 @@
   そのピンをプルアップの入力に決めて保存する。
 - plan に TX の無い fn への write は rejected unavailable（cause 6）。
 - 扱える format は describe の formats（tag 0x40、n(u8)、n × u8。configure の TLV 0x01 の値）で宣言する。8N1（0）は必須。
-- 片方向だけの UART（RX だけ、TX だけ）は、plan で片方の role だけを割り当てる。ピンの組が決まっている probe は、RX だけの組と
-  TX だけの組も channel_group に別々に書く（channel_group は完全一致なので）。
-- revision 1 は通知を送らない（subscribe と unsubscribe を持たず、ops に立てない。core §11.3）。後から足すときは、データの payload を core §11.2 の形にする。
 
 ## 3. `oep.fixture.i2c-target`
 
@@ -129,8 +123,8 @@ read_rx で取り出す。
   tag 0x42 pullup_ohms（u32、おおよその値）でそれを宣言する。宣言しない probe はプルアップを入れない。v1 にはそれを切り替える要求は無い。
 - state 0 では probe はどのアドレスにも ACK せず、両方の線を離しておく（low に引かず、プルアップも入れない。configure までは channel は core §8 の空きの状態のまま）。
 - configure は target を作り直す（積んだフレーム、待ち、置き場、rx_frames と errors は消える。stretch の値は保つ）。この fn の plan が
-  無いときは rejected unavailable（cause 6）。address が 0x7F を超えるなら rejected malformed。0x00〜0x07 と 0x78〜0x7F のアドレス（I2C の仕様が予約するもの: general call、start byte、10 bit の前置きなど）は rejected unsupported（payload `0x00`）。未定義の mode（0、4 以上。後の revision が定めうる、core §2.5）と、定義にあるが
-  宣言に無い mode は rejected unsupported（payload `0x00`）。
+  無いときは rejected unavailable（cause 6）。address が 0x7F を超えるなら rejected malformed。0x00〜0x07 と 0x78〜0x7F のアドレス（I2C の仕様が予約するもの: general call、start byte、10 bit の前置きなど）は rejected unsupported（payload `0x00`）。定義にあるが宣言に無い mode は
+  rejected unsupported（payload `0x00`）。
 - arm_rx は mode 1 だけ（ほかは rejected unavailable cause 6）。length は 1〜describe の max_length（0 は malformed、max_length 超は
   unsupported）。すでに待っていれば、今の待ちを捨てて新しい length で待つ。待ちはフレームを受けても終わらず、次の arm_rx、reset、
   configure、plan を解くまで同じ length で受け続ける（armed は 1 のまま）。**arm していないときの controller の書き込みは ACK して捨て、
@@ -158,7 +152,6 @@ read_rx で取り出す。
   bit1 予約（0）、bit2 内部プルアップ。mode 1 と 2 は必須）、queue_depth（tag 0x40、u8: 積めるフレームの数。mode 3 では未読の置き場の数の上限）、
   max_stretch_us（tag 0x41、u32: stretch が受ける最大の µs。1 以上。stretch を持つ probe は必ず載せる）、
   pullup_ohms（tag 0x42、u32: 内部プルアップのおおよその抵抗値。features の bit2 を宣言する probe は必ず載せる）。
-- 通知は送らない（subscribe と unsubscribe を持たず、ops に立てない。core §11.3）。
 
 ## 4. `oep.fixture.spi-target`
 
@@ -205,7 +198,6 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   同じ時間のうちに MISO は駆動されなくなる。CS が有効になったらすぐ最初のビットで MISO を駆動する probe は、この tag を付けないか 0 を宣言する。CS が有効に
   なったのを見てからソフトウェアで MISO を駆動し始める probe は、これを宣言する。host はこの値を利用者に見せる。CS が有効になってから cs_setup_ns より
   早く SCK を始める master は、最初のビットに頼れない。
-- 通知は送らない（subscribe と unsubscribe を持たず、ops に立てない。core §11.3）。
 
 ## 5. 参照する仕様
 

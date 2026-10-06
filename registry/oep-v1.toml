@@ -6,7 +6,7 @@
 # Per op: `lock` = needs the session lock. The key `fields` is reserved on ops for
 # payload layouts later (encoders / decoders generated from here). Shared enums live under [common.enum.*]; USB
 # descriptor constants under [usb]; text and value limits the spec states under [limits] (2026-10-01); values that are
-# not the specification's under [reference]. After the freeze keys are never renamed, only added (core, top);
+# not the specification's under [reference]. After the freeze keys are never renamed, only added (versioning §5);
 # the hash tells only whether generated code matches this file, nothing about wire compatibility.
 # The hash embedded in the generated files is the sha256 of this file with line endings normalized to LF.
 # Per interface: `reserved.<enum or "op">` = ranges [[lo, hi]] no value may use; `status` / `reject_reasons` = the
@@ -146,7 +146,7 @@ resend_max = 1                  # host: resends of one request with the same cor
 port_speed_broken_max = 3       # probe: broken candidates in a row with no valid frame, after commit, that return a raised port to the boot speed (oep-if-link §3 return condition 4)
 host_serial_inflight_max_bytes = 6144  # host: on a serial port, the expected volume of answers to outstanding requests (concurrency x frame limit) at most this (transports §4)
 host_serial_min_bytes_max = 2048  # host: on a serial port, subscribe's min_bytes at most this (transports §4)
-cobs_frame_max_bytes = 65796    # the most bytes between the two 0x00 of a valid COBS frame: a 65535-byte message, its CRC-16, one code byte per 254 (transports §1)
+cobs_frame_max_bytes = 65796    # the most bytes between the two 0x00 of a valid COBS frame: a 65535-byte message, its CRC-16, one code byte per 254 (host guide §2)
 ignored_max_entries = 16        # entries of the ignored TLV; 0x00 as the 16th = more were ignored (core §2.3)
 resource_reuse_distance = 1024  # a closed resource number is not reused among the most recently closed this many (core §9)
 dm_wait_ms = 100                # riscv-dm: one wait for a DM state inside a high-level op (oep-if-debug §4)
@@ -171,7 +171,7 @@ fixture_count_max = 255         # i2c-target / spi-target: u8 counts (pending, q
 max_op_ms_max = 600000          # fn 0 describe max_op_ms is 1 to this (10 minutes); a host that reads 0 or more than this does not use the probe (core §7.5, §4.4)
 restart_after_answer_ms = 100   # oep.probe.restart: the probe begins its restart at most this long after its answer has left the transport (oep-if-restart §2)
 
-[reference]                     # values that are not the specification's, outside the freeze (core, top)
+[reference]                     # values that are not the specification's, outside the freeze (versioning §3)
 max_op_ms = 10000               # what the reference firmware declares (core §7.5 max_op_ms has no normative default)
 
 [common.enum.target_id_scheme]  # one space for the whole probe; each wire states which it uses (oep-if-debug §1)

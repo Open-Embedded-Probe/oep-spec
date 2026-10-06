@@ -59,7 +59,7 @@ plan_release はその fn を解かずに無視し（n = 0 でも）、plan_appl
   インターフェースは、解いた後もピンを自分の駆動のまま残してはならない。
 - plan を取ってもピンの電気の状態は変わらない（core §8）。ピンは、それを持つインターフェースが使い始めるまで空きの状態を保つ。どの操作で使い始める
   かは、各インターフェースの文書が定める（plan そのもので使い始めるインターフェースもある）。
-- idle が出力（mode 3 / 4）の channel への plan をインターフェースの文書が断るとき、その断りは unavailable（cause 5、holder_kind 7）である（core §8）。
+- idle が出力（mode 3 / 4）の channel への plan をインターフェースの文書が断るときの断り方は core §8。
 - セッションの終わりで plan が外れると、ピンは plan_release と同じく空きの状態になる。target の線を plan で保っていた場合、target の状態が変わりうる。
 
 ### 2.5 断り方
@@ -74,5 +74,3 @@ plan_apply（core §4.3 の順）:
 | plan_roles を超える、ピンや資源の取り合い（core §8.1）、設定の plan の fn、インターフェースが断る出力の idle | unavailable（cause 2 / 1 / 5） |
 
 plan_release: 形の誤り（n と後ろの fn の数が合わない）は malformed。
-
-ロックが無い・違うときの断りは core §4.3 の順（session_required、no_session、locked）。

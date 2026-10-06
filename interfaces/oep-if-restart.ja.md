@@ -23,8 +23,7 @@ describe（core §7.4 の共通の tag のほか）:
 
 ## 2. restart
 
-- **ロックが要る**（core §6.3）。断り方はロックの要るほかの op と同じ（core §4.3）: session_id 0 は session_required、ロックが空いていれば
-  no_session、別のセッションが持てば locked。restart は要求の TLV を定めない: 要求の TLV は core §2.3 のとおり（critical なら rejected unsupported、
+- **ロックが要る**（core §6.3）。restart は要求の TLV を定めない: 要求の TLV は core §2.3 のとおり（critical なら rejected unsupported、
   そうでなければ無視して ignored に載せる）。
 - **応答が先**: 受け付けた restart に、probe は completed success で答える（payload は無い。ignored が要れば付ける）。restart は completed failed /
   partial を返さない。

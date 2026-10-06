@@ -37,7 +37,7 @@ host は:
   応答は壊れたものとし、知らない tag は読み飛ばし、長さが定義と違う TLV の値は壊れたものとし、知らない status と reason は失敗とする（core §2.3、§2.4）;
 - 送り直しにも答えが無ければ、その経路は失敗したとし、そこで何かを送る前に confirm で立て直す（か開き直す）（core §5.2）;
 - 65535 byte までのメッセージを受けられる。正しい COBS のフレームは、2 つの 0x00 の間が `cobs_frame_max_bytes` より長くならない
-  （transports §1、§3）;
+  （transports §3、host 開発ガイド §2）;
 - 応答の文字列は、見せる前に制御文字と不正な UTF-8 を置き換える（core §2.1）。
 
 ## 3. 資源を使い尽くさせないこと
@@ -97,8 +97,11 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
   channel は count = 0 の scan と pins の無い attach から外れ、idle が出力の channel を名指せば unavailable cause 5、holder_kind 7
   （[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。
 - **保存した設定と起動**: 起動したら、probe は最初の応答の前に、reserved でないすべての channel を空きの状態にする（core §8）。
-  保存した設定は起動のたびに host なしで線を駆動する。firmware が動いて設定が掛かる前のピンは MCU のリセットの状態なので、level を
-  誤ると害のある線にはそれだけで保つ外付けの pull が要る。disable は宣言で、守りではない。設定に認証は無い（probe の設定 §5）。
+  保存した設定（idle、plan、at boot の attach とその boot_reset）は起動のたびに host が居ても居なくても線を駆動する（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2、§3.1）。
+  電源投入やリセットから firmware が設定を掛けるまで、firmware を更新している間、firmware が壊れたときは、ピンは MCU のリセットの状態で、
+  設定が定めるものは何も駆動されない。level を誤ると害のある線（target の電源を切り替える線など）にはそれだけで安全な level に保つ外付けの pull が要る。
+  disable は利用者の宣言で、守りではない: ロックを持つ host は unset で外し、その channel を使える。設定に認証は無い: ロックを取ったどの host も、
+  force を含めて変えて保存できる（§1）。
 - **逆給電**: やり取りが失敗してから、成功するか接続を失うまで、probe は線を駆動せずに休ませ、やり取りの最中だけ駆動する。電源の
   落ちた target をピンの保護ダイオード経由で給電しないため（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）。接続が閉じたら、そのピンは空きの
   状態に戻る（debug §2）。

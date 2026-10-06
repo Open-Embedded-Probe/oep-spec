@@ -37,9 +37,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   付いた形も付かない形も受ける。空のフレーム（0x00 の連続）は読み飛ばす。
 - **host の受け方（COBS）**: 口を開いた直後から最初の 0x00 までと、0x00 から次の 0x00 までを、どちらもフレームの候補として解く
   （開く前に送られたバイトや、開いた直後に落ちたバイトで前の 0x00 が届かないことがある）。解けない候補、CRC の合わない候補、
-  role か corr の合わないフレーム（core §11.1）は、シリアルの生のバイト（雑音）として捨てる。応答が来ないことは時間切れだけで判断する。
-  （参考）正しい COBS のフレームは、2 つの 0x00 の間に 65796 byte より多くを持たない（registry の `cobs_frame_max_bytes`: 65535 byte の message とその CRC-16、
-  254 byte ごとに COBS の code の 1 byte）。だから、それより長くなった候補は、閉じの 0x00 を待たずに生のバイトとして捨ててよい。
+  role か corr の合わないフレーム（core §11.1）は、シリアルの生のバイト（雑音）として捨てる。
 - **USB の束ね方**（vendor bulk）: host は、書き込みの長さが wMaxPacketSize の倍数なら長さ 0 の転送を続ける。probe は、送り
   終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか最後の 1 byte を別の転送に分ける。
   続きがすぐ来るときは倍数のままでよい。
@@ -95,7 +93,6 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **USB の serial number は unit_id**（core §7.5）: probe が serial を選べる口（CDC、vendor bulk、HID を自分で出す device）では、serial number を
   unit_id そのものにする（core §7.5 の不変性）。host は開かずに個体を見分けられ（名指した probe を探せる）、どの経路の describe とも同じ値に
   なる。serial を選べない口（内蔵の USB シリアル、USB-UART の変換チップ）は、host が経路を外から指定し、describe で unit_id を確かめる。
-  confirm と describe は口を開いた後にしか使えないので、口の選び方はこの規則による。
 - **max_frame は両方向の上限**: probe は max_frame を超える message を送らず、host は max_frame を超える message を送らない。
 - **confirm の前**: どの probe も 64 byte（registry の `min_max_frame`）までの message を受ける（confirm の max_frame は 64 以上）。
   host は confirm の応答を受けるまで、64 byte を超える message を送らない。host は probe から長さ 65535 byte までの message を
@@ -114,7 +111,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   あきらめる前にそこで port_speed_idle_max_ms + 1000 ms（`port_speed_confirm_extra_ms`）の間 confirm を繰り返す（前の host が上げた速さは
   それまでに起動時の速さに戻る、[リンク](../interfaces/oep-if-link.ja.md) §3）。
 - **USB のシリアルの口**（USB CDC、内蔵の USB シリアル）: probe は、host がどんな line coding を設定しても OEP を受けて送り、line coding を何にも掛けない。
-- **制御線**: probe は、OEP を受けるか送るかを DTR、RTS、回線の状態で決めない。host は口を開いている間 DTR と RTS を立てておく（UART bridge はそれを probe のリセットにつないでいることがある）。host が DTR を落としている間の probe の動きは定めない。
+- **制御線**: probe は、OEP を受けるか送るかを DTR、RTS、回線の状態で決めない。host は口を開いている間 DTR と RTS を立てておく（UART bridge はそれを probe のリセットにつないでいることがある）。
 - **probe の受け方**: 0x00 が来たら次の 0x00 までためて解く。解けて CRC が合えば OEP の要求。解けない、CRC が合わない、または
   次の 0x00 の前に 200 ms 途切れた（§2）ときは、ためた分（前の 0x00 を含む）を生のバイトとして扱う。候補を閉じた 0x00 は
   次の候補の始まりになる。**0x00 だけで中身の無い候補**（フレームの閉じの 0x00 の後に何も来ないとき、0x00 の連続）は区切りで
@@ -126,8 +123,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   ない（フレームは生のバイトより先に出してよく、生のバイトどうしの順は保つ）。
 - **生の転送を止める口**: ロックを持つセッションの要求（その session_id を持つ要求。ロックを取った open も含む）が 1 つでも
   来た口では、そのセッションが終わる（end、lease の期限切れ、force で奪われる）まで、probe は生のバイトを送らず、口から来た
-  生のバイトを捨てる。ロックの要らない要求だけが来た口と、ほかの経路でセッションが動いている口は止めない。セッションが終わった
-  後、どこから生の転送を再開するかは、口に結んだ流れを定める設定が決める。
+  生のバイトを捨てる。ロックの要らない要求だけが来た口と、ほかの経路でセッションが動いている口は止めない。
 - host は、生のバイトの中に正しいフレームに見えるものが偶然現れても、role と corr の照合（core §11.1）で捨てる。
   （参考）この照合は、わざと作ったフレームは止めない。生の転送が止まっていない口では、target の出力が、CRC の合ったフレームで、
   未解決のロックなしの要求の corr を持つものを含みうる（corr は 1 ずつ進むので予測できる）。host はそれを応答として受ける。応答の中身を信じる必要のある host は、
@@ -143,7 +139,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 
 長さつきのフレーム（vendor bulk、HID、TCP）で、host は、corr の合わない応答、あり得ない長さ（max_frame を超える）、途中で
 止まったフレーム（続きが 200 ms 来ない。TCP を除く: TCP ではフレームの途中の休みは普通のことで、host はそのフレームを読み続ける、§2）を見たら、入力が 50 ms（`resync_quiet_ms`）静かになるまで読み捨て、confirm を送って自分の corr の応答が返ることを
-確かめてから再開する。応答の末尾の TLV が途中で切れていたら、その応答は壊れている。通知が流れ続けて入力が静かにならないときは、
+確かめてから再開する。通知が流れ続けて入力が静かにならないときは、
 unsubscribe と end を確かめずに送ってよい（二度実行しても害がない）。COBS のフレームは CRC で壊れたものを捨てられるので、
 この手順は要らない。
 

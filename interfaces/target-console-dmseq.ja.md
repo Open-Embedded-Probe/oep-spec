@@ -8,7 +8,6 @@
 
 dmseq は両方向に 1 bit の通し番号と CRC-8 を持たせる。
 これにより host は、もう一度読んだフレーム（**重複**）と、同じ内容の新しいフレームを区別でき、二重に渡すことも欠落もしない。
-CRC は必須である: CRC が無いと、別の debugger や attach が DATA0 に残した語が、有効な答えに見えうる。
 
 名前: framing 名は **dmseq**（`registry/oep-v1.toml`: `oep.target.console` の `[interface.enum.mechanism]`、`dmseq = 2`）。
 
@@ -43,7 +42,6 @@ debug module の DATA0 と DATA1（[コンソール](oep-if-console.ja.md) §3�
   で、payload の byte 3+k を運ぶ。例: S = 0、A = 1 の空の SYN フレームは byte0 が 0x98、CRC が 0x32 なので DATA0 = 0x00003298。
   K = 0、H = 0、M = 0 の host の答えは DATA0 = 0x0000F300。
 - **begin() のとき** target は SYN を立て、DATA0 に 0 を書いてよい。S と A はどの値から始めてもよい。host は SYN で再同期する（host の規則 3）。
-  （参考）参照の target は S = 0、A = 1 で始め、DATA0 = 0 を書く。
 
 ## host の答え（host → target）
 
@@ -56,9 +54,6 @@ debug module の DATA0 と DATA1（[コンソール](oep-if-console.ja.md) §3�
 ## CRC-8
 
 poly 0x07、init 0xFF、反転なし、最終 XOR なし。byte0 と payload（1+N または 1+M byte）にかけ、その直後に置く。
-init 0xFF により全 0 の word は常に無効になるので、値を保持しないレジスタ（0 と読める）や、host が mailbox を 0 で
-消した状態を、フレームや答えと取り違えない。CRC は DATA1 の byte も覆うので、target の書き直しをまたいで読んだ
-DATA0/DATA1 の組は通らない。
 
 計算方法は問わない（同じ値が出れば適合）。
 検査値: ASCII の 9 byte "123456789" → 0xFB。1 byte の 0x00 → 0xF3。
@@ -123,8 +118,7 @@ bit 7 が 0 を読んだとき:
 **待ち時間.** target は答えを有限時間だけ待つ。begin() 以後（または直前のタイムアウト以後）host が一度も答えていない間は**短い待ち**、
 一度答えた後は**長い待ち**。短い待ちは実時間で**少なくとも 20 ms**、長い待ちは**少なくとも 1 s** 続く。
 target は、割込み禁止中でも終わるやり方でそれを測る。「短い待ちごと」（フレームを出したままにする間と、DATA0 が 0 と読める間）も
-同じ測り方を使う。（参考）DATA0 を読んだ回数で数える参照の target は、1 ms あたり F_CPU（CPU のクロック、Hz）/ 8000 回の読みを使う。1 回の読みのループが
-少なくとも 8 cycle かかると仮定している。
+同じ測り方を使う。
 
 **host への含意.** 同期した host が 1 秒に 1 回以上 poll すれば出力は失われない。後から attach した host は、
 タイムアウトしたフレームと、自分が答えた後に書かれた分を受け取る。その間の書込みは捨てられている。
@@ -142,9 +136,5 @@ target は、割込み禁止中でも終わるやり方でそれを測る。「�
 - host（debugger、hart を止める側）: 止めている間に abstract command で DATA0 / DATA1 を使ったら、走らせる前に、止めたときの DATA1、
   DATA0 を書き戻す。書き戻さないと、target の出していたフレーム（または host の答え）が消え、
   target は自分の規則でそれを出し直さなければならない。OEP の probe は、DATA0 / DATA1 を使う op の答えの前にそれらを書き戻す
-  （[線とデバッグ](oep-if-debug.ja.md) §4.2）。
+  （[線とデバッグ](oep-if-debug.ja.md) §4 の表）。
 - host: TO フレームは普通のフレームとして扱う（規則 2 と 4 が適用される）。再同期の理由にはしない。
-  host は「誰も答えていない間に書かれた出力は捨てられた」と利用者に伝えてよい。
-- （参考）出力するか入力を見に行く target は、少なくとも長い待ちに短い待ちを足した時間に 1 回フレームを出す。未同期のまま 3 s の間有効な
-  フレームを読まなかった host は、dmseq のコンソールが答えていないと利用者に伝えてよい。出力も入力の読みもしない target は何も出さないので、これは
-  コンソールが無いことの証拠ではない。

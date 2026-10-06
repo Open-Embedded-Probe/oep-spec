@@ -21,7 +21,6 @@
   2. host の明示の消去（clear）。
   3. probe の再起動（位置も 0 から。boot_id が変わる）。
 - target のリセットでは捨てない（リセット直前の出力が最も見たいことが多い）。代わりにマークを付ける（§1.3）。
-- 応答が失われても、同じ位置でもう一度読めば同じデータが返る。
 
 ### 1.2 read
 
@@ -42,8 +41,6 @@
 - len は max 以下で、かつ max_frame の中で応答に収まる分以下。バイトが残っていれば `more` を立てる: この応答の後ろにまだ読めるバイトがあり、
   host はすぐ次を読んでよい。
 - from 3 で arg > 0xFF は rejected malformed（マークの kind は u8）。
-- 4 以上の from は rejected unsupported（payload `0x00`。後の revision が定めうる、core §2.5）。
-- `max` = 0 は空の成功（len 0）。
 - **read はロックなしで使える**（読んでも状態は変わらず、probe は読み手ごとの状態を持たない）。
 
 ### 1.3 マーク
@@ -107,8 +104,7 @@ marks はロックなしで使える。
 - connection は、**使っているもの**が 1 つでもある間は開いている。使っているもの:
   - attach した host のセッション（セッションごとに 1 つ）
   - スロット（`oep.probe.config` §1.1。probe の自動の attach と、bind が開いたコンソール）
-- セッションの分は core §9 の寿命に従う: セッションのロックが終わるとき（end、lease の期限切れ、force で奪われる）に外れる。後のセッションの
-  attach がその connection に加わるのは、ほかに使うもの（スロット）が connection を開いたままにしている間だけ。
+- セッションの分は core §9 の寿命に従う: セッションのロックが終わるとき（end、lease の期限切れ、force で奪われる）に外れる。
 - 閉じるのは、使っているものが無くなったとき、force の detach、線が本当に切れたとき（インターフェースの文書が決める）だけ。
 - connection に載っている資源（コンソールのストリームなど）は、connection が閉じたら閉じる（何を残すかはそのインター
   フェースが決める）。
@@ -117,18 +113,17 @@ marks はロックなしで使える。
 
 使うもの: `oep.wire.*`、`oep.target.*`。
 
-| 値 | 名前 | 意味 | host の判断の目安 |
-|---:|---|---|---|
-| 0 | ok | 最後まで進んだ | — |
-| 1 | wait | target が「待て」を返し続けた（DMI の busy、SWD の WAIT）。probe の中の再試行を使い切った | 間を置いて続きから |
-| 2 | line | 線の応答が無い、パリティの誤り | 速さを下げて attach し直す |
-| 3 | fault | target が拒否した（DMI の op の失敗、SWD の FAULT、抽象コマンドの cmderr） | 原因を読んで消す |
-| 4 | timeout | 待つ手順や run の上限に達した | 上限を見直す |
-| 5 | state | 前提の状態でない（止まっていない hart に止まっている前提の操作など） | 状態を整えてから |
+| 値 | 名前 | 意味 |
+|---:|---|---|
+| 0 | ok | 最後まで進んだ |
+| 1 | wait | target が「待て」を返し続けた（DMI の busy、SWD の WAIT）。probe の中の再試行を使い切った |
+| 2 | line | 線の応答が無い、パリティの誤り |
+| 3 | fault | target が拒否した（DMI の op の失敗、SWD の FAULT、抽象コマンドの cmderr） |
+| 4 | timeout | 待つ手順や run の上限に達した |
+| 5 | state | 前提の状態でない（止まっていない hart に止まっている前提の操作など） |
 
 - 0x06〜0x3F は共通の値として予約、0x40〜0x7F はインターフェースが決める。知らない値は失敗として扱う。
 - **失敗は completed で返す**（core §4.2）。何も進まなければ failed、途中まで進めば partial。payload の形は成功のときと同じで、
   `done`（進んだ手順・語の数）と `status` で分かる。書式の誤りは rejected malformed。
 - 成功の形に done / status が無い op（scan、attach、detach）の失敗は、completed failed と payload `status(u8)、[TLV]`（core §2.3:
   固定部分は (op, resolution, outcome) ごとに定める）。
-- reset の線を使う op の失敗の status: 止まらない / 走らない = timeout、DM が応えない = line、cmderr = fault。

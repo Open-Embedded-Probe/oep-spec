@@ -18,7 +18,7 @@ calibration（§3.8）だけ。複数トラックの同時開始と時刻合わ�
 **時刻**: どのトラックの時刻も、probe の 1 本の時計（起動からの ns、u64 で一周しない）で表す。インターフェースが違っても同じ
 時計なので、host は時刻の引き算でトラックを並べられる。時刻は**推定値と不確かさ**で返す。probe は知っている補正（ドライバが最初の
 変換フレームを捨てる、など）を済ませた値を返し、それ以上の精度は約束しない。最後の合わせ込み（トラック間のオフセットと時間の
-倍率）は host の分析の仕事（同じ信号を 2 つのトラックで取る、目印のパルスを全部のトラックで取る、など）。
+倍率）は host の分析の仕事。
 時計は起動から数えるので、比べられるのは同じ起動の中だけ。host は confirm、clock、open の応答の boot_id（core §6.5）が同じかで、同じ
 時計かを判断する。probe の時計と host の時計の対応は clock（core §7.7）で取る。
 
@@ -27,9 +27,7 @@ calibration（§3.8）だけ。複数トラックの同時開始と時刻合わ�
 status、区画の情報、ストリーミングのデータの TLV で分かる。
 
 キャプチャは位置つきのストリームの形（[共通部品](oep-if-common.ja.md) §1）を使わない（from とマークが無く、区画と世代を持つ）。
-モード（ワンショット、リピート、ストリーミング）は §2.1。3 つを持つのは目的が違うから: ワンショットは線が運べるより速く取れ、
-リピートは隙間なく取って host が自分のペースで読め、ストリーミングはリピートで運べる速さを超えて隙間なく取れるが、host が時期を決められない線の帯域と
-probe の時間を使う。レートは probe が刻む。宣言は目安で、configure の応答が正（§3.5）。
+モード（ワンショット、リピート、ストリーミング）は §2.1。レートは probe が刻む。宣言は目安で、configure の応答が正（§3.5）。
 
 ## 1. データの形
 
@@ -66,8 +64,6 @@ configure の応答で probe が返す値:
 | 4 ビット単位で詰める probe、**3 本** | 4 | [0, 1, 2] | ビット 0〜2 = サンプル 2m の ch0〜2、ビット 3 未定義、ビット 4〜6 = サンプル 2m+1 の ch0〜2、ビット 7 未定義 |
 | 1 バイト 1 サンプルの probe、**3 本** | 8 | [0, 1, 2] | 1 バイト 1 サンプル、ビット 3〜7 未定義 |
 | 16 ビット単位で詰める probe、9 本 | 16 | [0 … 8] | 2 バイトで 1 サンプル（little endian）、ビット 9〜15 未定義 |
-
-この規則に入らない取り方（32 ビットの語にサンプルを左詰めするペリフェラル）は、probe が詰め直すか、別の定義の形式を使う。
 
 ### 1.2 アナログ
 
@@ -109,7 +105,6 @@ configure の応答で probe が返す値:
 - アナログのチャネルを、ほかの fn の plan（ロジックのキャプチャを含む）、線の接続、設定が使うピンと共有できるかは probe が
   決める。**共有できない組み合わせは、plan_apply（と線の attach、設定の set）を rejected unavailable で断る**。どちらが後から
   来ても断る。黙ってほかの機能の読み書きを壊してはならない。
-- 共有を許す probe は、アナログが動いている間もそのピンのデジタルの入力（と、ほかの機能の出力）が変わらないときだけ許す。
 - **plan を取ってもピンの電気的な状態は変わらない**（core §8）。ロジックのキャプチャは決してそれを変えない: 聞くだけである。出力を止めず、
   ほかの機能や idle の出力が駆動しているピンのプルや向きも変えない。アナログのチャネルは start で空きの状態を離れる（pad がデジタルの機能を離れる）。
 - idle が出力（mode 3 / 4）の channel へのアナログの plan は rejected unavailable（cause 5、holder_kind 7）。
@@ -134,7 +129,6 @@ configure の応答で probe が返す値:
 2. stop の後も、probe は stop の前に取った分を送る。受け取った position の末尾が、stop の後の status の write_pos に等しくなれば、host はすべて受け取っている。
 3. ストリーミングでは区画の出来事を送らない（stopped は送る）。
 4. 通知で送ったデータは read で読めないことがある（読めない位置は gap 付きの空の応答を返す）。
-5. 購読はロックとともに終わる（core §11.3）。受けている host はロックを保つ。
 
 ### 2.2 区画
 
@@ -163,17 +157,15 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 
 - 区画の中は連続を約束する。リピートとストリーミングでは、flags bit0 が立っていない限り、区画は前の区画の直後から続く。
 - flags bit2 は、probe が自分で遅れを見つけられるときに立てる（ソフトウェアの歩調なら、予定の時刻を 1 サンプル周期以上過ぎて取った
-  サンプルがあったとき）。立った区画の時間軸は一様でない。host はその区画で時間を測らないか、測った値を疑う。
+  サンプルがあったとき）。
 - 区画の情報は本文とは別の小さなリングにためる（上限は宣言する）。
 
 ## 3. 操作
 
 ### 3.1 役割（plan）
 
-- 役割 k = チャネル k（ロジックは 0〜127、アナログは 0〜63）。チャネルの順は役割の番号の小さい順。チャネル数の値（C、channels の
-  max など）が u8 なのは、役割が u8 だから（意図的）。
+- 役割 k = チャネル k（ロジックは 0〜127、アナログは 0〜63）。チャネルの順は役割の番号の小さい順。
 - ADC のチャネルを持たないピンは、アナログの plan で拒否する。
-- 外部クロック、トリガの入力と出力のピンは基本に入れない（別の定義）。
 
 ### 3.2 操作
 
@@ -204,8 +196,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
   まだ取れていない位置なら、あるところまで返す（何もなければ空。max = 0 も空の成功）。
 - release はリピートだけ（ワンショットとストリーミングでは何もせず成功）。serial **以下**（inclusive）を解放する。state 5 で空きが
   できれば probe は自動で取得を再開し（state 3）、再開した最初の区画に flags bit0 を立てる。stopped reason 2 は送らない（予約）。
-- read の max は u32（1 回の要求で大きく読めるように: 同時に複数の要求を出し、応答が 16 KiB 以上なら、要求で読む速さは
-  連続のストリームに近づく）。実際に返す量は、probe の frame と `max_read`（宣言）で決まる。
+- read が実際に返す量は、probe の frame と `max_read`（宣言）で決まる。
 - segments の more は、まだ返していない区画があること。from_serial が serial_done より先なら空の成功。
 
 **状態の遷移**（行 = 今の state、列 = 契機。「—」は何もせず成功。force の列は force を持つ probe に当てはまる）:
@@ -248,7 +239,6 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 - trigger の type: 0 即時（省略時）、1 レベル（value 0 / 1）、2 エッジ（value 0 立ち上がり / 1 立ち下がり / 2 両方）、
   3 しきい値を上向きに横切る、4 下向きに横切る（value は o / b で切り出した後の ADC の値）。1〜2 はロジック、3〜4 はアナログ。
   宣言に無い type は rejected unsupported。
-- トリガは開始の条件だけ。リピートとストリーミングでも、効くのは最初だけ（§2.1）。
 - **samples は区画の総数**（pretrigger を含む）。トリガが早く立ってプリトリガの分が足りなければ、区画は短く、trigger_index はそのまま
   小さい。force で始めたときは trigger_index = その瞬間のサンプルで triggered を送る。type 0（即時）では triggered を送らない。
 - **critical で送るもの**: host は mode、rate、trigger、pretrigger、frontend を critical の bit を立てて送らなければならない（MUST）。probe は、bit が立っていても
@@ -289,8 +279,6 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 | データ（role 0x06） | ストリーミングの間だけ | core §11.2 の形（position、len、data、TLV）。read と同じ位置の空間。**TLV 0x01 generation(u32) を必ず付ける**（start の応答の後に前の世代の送り残しが届きうるため） |
 
 - ストリーミングは subscribe が前提（データは probe が送る。ストリーミングの mode を宣言する fn は subscribe と unsubscribe を ops に立てる）。
-  データをまとめて送る条件（min_bytes、max_delay_ms）は subscribe で指定する。出来事はまとめず、先に送る応答を送り終えたらすぐ送る（core §11.3）。
-- ワンショットとリピートでは、データは host が read で読む。通知は完了を待つためのもの。
 
 ### 3.5 describe で宣言するもの
 
@@ -324,29 +312,7 @@ rejected unsupported（0x0B、payload に tag）で断り、critical でなけ�
 
 ### 3.7 使い方の例
 
-```text
-ワンショット（ロジック 2 本、20 MHz、テストの自動判定）
-  plan_apply(logic: role0 = GPIO20, role1 = GPIO21)
-  configure(mode=1, rate=20 MHz, samples=200000)
-    → actual_rate 20000000/1, layout w=2 pos=[0,1], blocking_ms 0
-  subscribe(logic)                      （完了の通知を待つ。購読しないなら status をポーリング）
-  start → generation g → 出来事 segment（serial 0）→ read(g, 0, 65536) を何本か同時に出して最後まで読む
-
-ワンショット、エッジで開始（SWCLK の最初の立ち下がりの 1000 サンプル前から）
-  configure(mode=1, rate=20 MHz, samples=200000, trigger(edge, role1, fall), pretrigger=1000)
-  start → 出来事 triggered → segment → read
-
-リピート（長い時間を切れ目なく、host のペースで）
-  configure(mode=2, rate=4 MHz, samples=65536, segments=8)
-  subscribe → start → 出来事 segment ごとに read → release(g, serial)
-  release が遅れると取得が止まり（state 5）、release で空きができれば自動で再開し、次の区画の flags bit0 が立つ
-
-ストリーミング（アナログ 1 チャネル、44.1 kHz）
-  plan_apply(analog: role0 = GPIO16)
-  configure(mode=3, rate=44100, frontend(role 0, 番号 2))
-    → actual_rate 44642/1 など（要求どおりにはならない: 変換器のクロックの分周で近いレートになる）、layout s=16 o=0 b=12
-  subscribe(analog, min_bytes=1024, max_delay_ms=20) → start → データが届く
-```
+使い方の例は [host 開発ガイド](../docs/host-development-guide.ja.md) §22。
 
 ### 3.8 calibration（アナログ）
 
@@ -364,10 +330,7 @@ ADC の値を電圧に換算するための、probe が持っている情報を*
 
 ## 4. `oep.fixture.capture-group`（複数のトラックを一緒に始める）
 
-ロジックとアナログ、アナログ同士（2 つの ADC）など、**別々のインターフェースのトラックを、1 回のキャプチャとして一緒に始める**。
-各トラックは今までどおり自分の configure を持ち、データも自分で読む（read、segments、release、status）。組が持つのは、どの
-トラックを束ねるか、どのトラックのトリガで始めるか、組の開始と停止だけ。時刻はどのトラックも probe の 1 本の時計（冒頭の「時刻」）
-なので、組の開始（start_ns）と各トラックの区画の start_ns の差が、そのトラックのずれになる。
+**別々のインターフェースのトラック（ロジックとアナログ、2 つの ADC など）を束ね、1 回のキャプチャとして一緒に始める**（各トラックは自分の configure を持ち、データも自分で読む）。
 
 ### 4.1 操作
 
@@ -401,9 +364,8 @@ bind の TLV:
 - **start** は、どのトラックを始めるよりも前に全トラックの前提を確かめ（ストリーミングで購読の無いトラックがあれば、start は TLV fn（0x05）=
   そのトラックを付けて rejected unavailable cause 6）、それから束ねたトラックをできるだけ同時に始め、組の開始の時刻 start_ns（probe の時計）と、
   各トラックの新しい世代を返す（各トラックの start と同じく generation を +1）。始めた後にトラックが失敗したら、組は state 6、
-  stopped reason 3 で、ほかのトラックも止める。**start_ns は取得（pretrigger のリングを含む）を始めた時刻**。トラック k の最初の
-  区画の start_ns − 組の start_ns がそのトラックのずれ（推定値。即時トリガのときだけ成り立つ。トリガ付きは trigger_ns と各トラックの
-  trigger_index で合わせる）。start 前の status の start_ns と trigger_ns は全ビット 1。
+  stopped reason 3 で、ほかのトラックも止める。**start_ns は取得（pretrigger のリングを含む）を始めた時刻**。即時トリガのとき、トラックの
+  ずれは、その最初の区画の start_ns − 組の start_ns（推定値）。start 前の status の start_ns と trigger_ns は全ビット 1。
 - **トリガ**: trigger_track の条件が立つと、組の全トラックが取得を始める（各トラックの pretrigger は、そのトラック自身の
   サンプル数で残す）。立った時刻 trigger_ns は status と出来事 triggered で返し、**全トラックの、その時刻を含む区画の
   trigger_index を、そのトラックでその時刻に最も近いサンプルにする**（probe が各トラックの時間軸に写す）。host はどのトラックでも
@@ -442,14 +404,4 @@ kind の番号はトラック（§3.4）と揃える（triggered 3、stopped 2�
 
 ### 4.4 使い方の例
 
-```text
-ロジック 2 本（20 MHz）とアナログ 1 本（48 kHz）を一緒に、ロジックの ch1 の立ち下がりで（1000 サンプル前から）
-  plan_apply(logic: role0 = GPIO20, role1 = GPIO21; analog: role0 = GPIO16)
-  logic.configure(mode=1, rate=20 MHz, samples=200000, trigger(edge, role1, fall), pretrigger=1000)
-  analog.configure(mode=1, rate=48000, samples=4800, pretrigger=48)
-  group.bind(logic, analog, trigger_track=logic)
-  group.start → start_ns
-  出来事 triggered(logic, trigger_ns) → 各トラックの segment（trigger_index はどちらも trigger_ns の位置）
-  各トラックを read → host は start_ns の差と trigger_index で並べる
-```
-
+使い方の例は [host 開発ガイド](../docs/host-development-guide.ja.md) §22。
