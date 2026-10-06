@@ -17,17 +17,17 @@
       "fns": {
         "3": "oep.fixture.i2c-target"
       },
-      "request_hex": "011100030001443322118001",
+      "request_hex": "0111000300014433221180",
       "answer": "malformed",
       "answer_hex": "0211000003"
     },
     {
-      "name": "i2c-target mode 4 (a value a later revision may define)",
+      "name": "i2c-target address 0x03 (reserved by the I2C specification)",
       "spec": "core §4.3; fixture §3",
       "fns": {
         "3": "oep.fixture.i2c-target"
       },
-      "request_hex": "011200030001443322115004",
+      "request_hex": "0112000300014433221103",
       "answer": "unsupported",
       "answer_hex": "021200000b00"
     },

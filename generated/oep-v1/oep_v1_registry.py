@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "09053b2745a23afa"
+REGISTRY_HASH = "8c271a02139fcf94"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -21,7 +21,7 @@ STATUS = {"ok": 0x00, "wait": 0x01, "line": 0x02, "fault": 0x03, "timeout": 0x04
 DESCRIBE_COMMON = {"role_channels": 0x01, "max_clock_hz": 0x02, "max_length": 0x03, "min_clock_hz": 0x05, "features": 0x06, "channel_group": 0x08, "ops": 0x09}
 TIMING = {"probe_frame_gap_ms": 0xC8, "uart_bridge_boot_baud": 0x1C200, "port_speed_idle_max_ms": 0xBB8, "host_wait_add_ms": 0x3E8, "notify_pending_max_frames": 0x02, "slot_retry_reset_hold_ms": 0x14, "port_speed_switch_wait_ms": 0x14}
 USB = {"project_vid": 0x1209, "project_pid": 0x4F45, "vendor_bulk_class": 0xFF, "vendor_bulk_subclass": 0x4F, "vendor_bulk_protocol": 0x45, "hid_usage_page": 0xFF4F, "hid_usage": 0x45}
-LIMITS = {"lease_min_ms": 0x3E8, "lease_max_ms": 0xEA60, "owner_max_bytes": 0x20, "unit_id_max_bytes": 0x20, "slot_name_max_bytes": 0x20, "label_max_bytes": 0x20, "interface_name_max_bytes": 0x40, "resend_max": 0x01, "port_speed_broken_max": 0x03, "uart_baud_tolerance_pct": 0x05, "uart_default_baud": 0x1C200, "fixture_count_max": 0xFF, "max_op_ms_max": 0x927C0, "restart_after_answer_ms": 0x64}
+LIMITS = {"lease_min_ms": 0x3E8, "lease_max_ms": 0xEA60, "owner_max_bytes": 0x20, "unit_id_max_bytes": 0x20, "slot_name_max_bytes": 0x20, "label_max_bytes": 0x20, "interface_name_max_bytes": 0x40, "resend_max": 0x01, "port_speed_broken_max": 0x03, "uart_baud_tolerance_pct": 0x05, "uart_default_baud": 0x1C200, "max_op_ms_max": 0x927C0, "restart_after_answer_ms": 0x64}
 COMMON = _NS(enum={"target_id_scheme": {"dmi_7f": 0x01, "targetsel": 0x02}, "target_id_len": {"dmi_7f": 0x04, "targetsel": 0x04}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "read_flags": {"more": 0x01, "gap": 0x02}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08, "closed": 0x09}, "mark_detail_reset": {"ndmreset": 0x01, "attach_reset": 0x03}, "mark_detail_restart": {"havereset": 0x01, "resync": 0x02}, "mark_detail_lost": {"overflow": 0x01, "framing": 0x02, "parity": 0x03, "target_timeout": 0x04}, "mark_detail_closed": {"all_released": 0x01, "session_ended": 0x02, "slot_changed": 0x03, "connection_closed": 0x04}})
 
 INTERFACES = {}
@@ -65,18 +65,18 @@ TARGET_CONSOLE = _NS(name="oep.target.console", revision=1, target=None, op={"op
     line_names={})
 INTERFACES["oep.target.console"] = TARGET_CONSOLE
 FIXTURE_GPIO = _NS(name="oep.fixture.gpio", revision=1, target=None, op={"set": 0x01, "read": 0x02}, lock_free={0x02},
-    tlv={"describe": {"modes": 0x40, "drive_levels": 0x41}, "set": {"drive": 0x01}, "read_answer": {"drive": 0x01}, "unavailable_payload": {"index": 0x40}}, event={}, enum={"role": {"line": 0x01}, "mode": {"input": 0x00, "input_pullup": 0x01, "input_pulldown": 0x02, "output_low": 0x03, "output_high": 0x04, "open_drain_low": 0x05, "open_drain_release": 0x06, "input_pullup_pulldown": 0x07}, "drive_kind": {"level": 0x00, "max_ma": 0x01, "default": 0x02}, "drive_read": {"not_driven": 0xFF}}, own={},
+    tlv={"describe": {"modes": 0x40, "drive_levels": 0x41}, "set": {"drive": 0x01}, "unavailable_payload": {"index": 0x40}}, event={}, enum={"role": {"line": 0x01}, "mode": {"input": 0x00, "input_pullup": 0x01, "input_pulldown": 0x02, "output_low": 0x03, "output_high": 0x04, "open_drain_low": 0x05, "open_drain_release": 0x06}, "drive_level": {"default": 0xFF}}, own={},
     line_names={})
 INTERFACES["oep.fixture.gpio"] = FIXTURE_GPIO
 FIXTURE_UART = _NS(name="oep.fixture.uart", revision=1, target=None, op={"configure": 0x01, "read": 0x02, "marks": 0x03, "clear": 0x04, "mark": 0x05, "write": 0x06, "status": 0x07}, lock_free={0x02, 0x03, 0x07},
-    tlv={"configure": {"format": 0x01}, "describe": {"formats": 0x40}}, event={}, enum={"role": {"rx": 0x01, "tx": 0x02}, "uart_configured": {"default": 0x00, "session": 0x01, "item": 0x02, "item_fallback": 0x03}, "format_field": {"data_bits_mask": 0x03, "parity_mask": 0x0C, "parity_even": 0x04, "parity_odd": 0x08, "stop_bits_2": 0x10}}, own={},
+    tlv={"configure": {"format": 0x01}, "describe": {"formats": 0x40}}, event={}, enum={"role": {"rx": 0x01, "tx": 0x02}, "format_field": {"data_bits_mask": 0x03, "parity_mask": 0x0C, "parity_even": 0x04, "parity_odd": 0x08, "stop_bits_2": 0x10}}, own={},
     line_names={})
 INTERFACES["oep.fixture.uart"] = FIXTURE_UART
-FIXTURE_I2C_TARGET = _NS(name="oep.fixture.i2c-target", revision=1, target=None, op={"configure": 0x01, "arm_rx": 0x02, "read_rx": 0x03, "preload_tx": 0x04, "status": 0x05, "reset": 0x06, "stretch": 0x07}, lock_free={0x05},
-    tlv={"describe": {"queue_depth": 0x40, "max_stretch_us": 0x41, "pullup_ohms": 0x42}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sda": 0x01, "scl": 0x02}, "mode": {"fixed_rx": 0x01, "framed_rx": 0x02, "preloaded_tx": 0x03}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"preloaded_tx": 0x01, "internal_pullups": 0x04}}, own={},
+FIXTURE_I2C_TARGET = _NS(name="oep.fixture.i2c-target", revision=1, target=None, op={"configure": 0x01, "read_rx": 0x03, "preload_tx": 0x04, "status": 0x05, "stretch": 0x07}, lock_free={0x05},
+    tlv={"describe": {"queue_depth": 0x40, "max_stretch_us": 0x41}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sda": 0x01, "scl": 0x02}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"internal_pullups": 0x04}}, own={},
     line_names={})
 INTERFACES["oep.fixture.i2c-target"] = FIXTURE_I2C_TARGET
-FIXTURE_SPI_TARGET = _NS(name="oep.fixture.spi-target", revision=1, target=None, op={"configure": 0x01, "arm": 0x02, "read_rx": 0x03, "status": 0x04, "reset": 0x05}, lock_free={0x04},
+FIXTURE_SPI_TARGET = _NS(name="oep.fixture.spi-target", revision=1, target=None, op={"configure": 0x01, "arm": 0x02, "read_rx": 0x03, "status": 0x04}, lock_free={0x04},
     tlv={"describe": {"queue_depth": 0x40, "cs_setup_ns": 0x43}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sck": 0x01, "mosi": 0x02, "miso": 0x03, "cs": 0x04}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"lsb_first": 0x01}}, own={},
     line_names={})
 INTERFACES["oep.fixture.spi-target"] = FIXTURE_SPI_TARGET

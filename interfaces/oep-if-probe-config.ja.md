@@ -23,7 +23,7 @@
 |---:|---|---|---|
 | 0x01 | plan | fn(u16)、role(u8)、channel(u16)（1 項目 1 割り当て） | (fn, role, channel)（同じ fn の項目で、その fn の plan になる） |
 | 0x02 | label | channel(u16)、text | channel |
-| 0x03 | idle | channel(u16)、mode(u8: 0 Hi-Z、1 プルアップの入力、2 プルダウンの入力、3 出力 low、4 出力 high)、drive_kind(u8)、drive_value(u16)（6 byte） | channel |
+| 0x03 | idle | channel(u16)、mode(u8: 0 Hi-Z、1 プルアップの入力、2 プルダウンの入力、3 出力 low、4 出力 high)、drive(u8)（4 byte） | channel |
 | 0x04 | slot | §1.1 | slot |
 | 0x05 | bind | §1.2 | port |
 | 0x06 | uart | fn(u16)、baud(u32)、format(u8)（`oep.fixture.uart` の configure と同じ値） | fn |
@@ -62,13 +62,9 @@
   idle の項目の変更（set / unset）は、空いている channel にはすぐ効き、plan や接続が持つ channel には、次に空きになったときに効く。
   その channel を出力として駆動できない probe では、mode 3 / 4 の idle は rejected unsupported。そのプルを持たない channel では、mode 1 か 2 の idle は rejected unsupported（受け取ったままの項目の tag）。（参考）`oep.fixture.gpio` の無い probe では、どの channel がプルや出力を持つかを host が前もって知る方法は無い。
   （参考）出力の idle が target の出力とぶつからないようにするのは、配線の責任である。
-  - **強さ**: drive_kind(u8)、drive_value(u16)（[fixture](oep-if-fixture.ja.md) §1.1 の強さの指定と同じ kind と value: 0 段の番号、
-    1 mA の上限、2 既定の段で drive_value は 0）。mode 0〜2 は drive_kind 2 と drive_value 0 を持ち、mode 0〜2 でそれ以外なら rejected malformed。drive_kind 2 で drive_value が 0 でなければ rejected malformed。値が
-    6 byte より短ければ rejected malformed。未定義の drive_kind（3 以上）は rejected unsupported（受け取ったままの項目の tag）。`oep.fixture.gpio` の describe が drive_levels を宣言する probe では、
-    kind 0 で drive_value が段の数以上なら rejected unsupported。drive_levels を宣言しない probe（`oep.fixture.gpio` の無い probe を
-    含む）は、このフィールドを持つが効かせない（強さは既定のまま）。
-    （参考）gpio の set の drive の TLV が範囲外の段を無視するのと違い、ここで断るのは、保存して起動のたびに使う設定の誤りを、書いたときに
-    知らせるためである。
+  - **強さ**: drive（[fixture](oep-if-fixture.ja.md) §1.1 の強さの指定と同じ: 段の番号、0xFF は既定の段）。効くのは mode 3 / 4 だけで、mode 0〜2 では
+    probe は drive を見ない。mode 3 / 4 で、段の数以上の drive（0xFF を除く）は rejected unsupported（受け取ったままの項目の tag）。drive_levels を宣言しない
+    probe（`oep.fixture.gpio` の無い probe を含む）では、0xFF 以外の drive は rejected unsupported。
   - mode 3 / 4 の idle は、その level と強さを一緒に掛ける（起動時も解放のときも）。
 
 ### 1.1 slot（スロット）
@@ -227,9 +223,9 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 
 | 状況 | reason |
 |---|---|
-| 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset が 2 以上（真偽値）と host のスロットの boot_reset 1、drive が kind 2 で value 0 でない mode 0〜2 の idle、0 以外の value の drive_kind 2、6 byte より短い idle の値、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
+| 形の誤り、同じキーが 2 回、name の文字、label の text の長さと文字、selected の範囲、retry_ms が host のスロットで 0 でない、lock の長さ、boot_reset が 2 以上（真偽値）と host のスロットの boot_reset 1、mechanism 0xFF のスロットを bind に載せる、無いスロットを bind が指す、同じ wire_fn と同じピンのスロットが 2 つ、name の重複 | malformed |
 | 指す fn が無い（plan、slot の wire_fn、bind の kind 2、uart） | unknown_function |
-| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か probe が自分で使う label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、idle の未定義の drive_kind（3 以上）、2 以上の slot の attach、2 以上の slot の idle_clock、1 / 2 以外の bind のストリームの kind、その線が持たない lock_scheme（定義にあってもなくても） | unsupported |
+| 宣言していない項目、その線が許さないピンの組、wire_fn が錠を持てない線、console が宣言しない mechanism、出力として駆動できない channel への mode 3 / 4 の idle、段の数以上の idle の段の番号と drive_levels の無い probe への 0xFF 以外の drive、idle_clock 1 を rvswd 以外、守れない max_speed_hz、そのプルの無い channel への mode 1 / 2 の idle、channels 以上か probe が自分で使う label / idle / disable の channel、bind_modes に無い mode、シリアルの口でない port、uart でない fn、実現できない baud / format、format の使っていない値と予約のビット、5 以上の idle の mode、2 以上の slot の attach、2 以上の slot の idle_clock、1 / 2 以外の bind のストリームの kind、その線が持たない lock_scheme（定義にあってもなくても） | unsupported |
 | plan_roles（[plan](oep-if-plan.ja.md) §1）超え、ピンや資源の取り合い、at boot のスロットが max_connections を超える、保存先が足りない | unavailable（cause 2 / 1 / 2 / 3） |
 
 ## 3. スロットの接続と状態

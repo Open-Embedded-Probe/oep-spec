@@ -256,9 +256,9 @@ def refusals() -> dict:
         request(0x0010, 2, gpio_set, bytes([1]) + struct.pack("<HB", 3, 8), s), "unsupported",
         b"\x00" + tlv(unav["channel"], struct.pack("<H", 3)) + tlv(idx_tag, b"\x00"))
     add("i2c-target address above 0x7F (excluded by the definition)", "core §4.3; fixture §3",
-        {"3": "oep.fixture.i2c-target"}, request(0x0011, 3, i2c_conf, bytes([0x80, 1]), s), "malformed")
-    add("i2c-target mode 4 (a value a later revision may define)", "core §4.3; fixture §3",
-        {"3": "oep.fixture.i2c-target"}, request(0x0012, 3, i2c_conf, bytes([0x50, 4]), s), "unsupported", b"\x00")
+        {"3": "oep.fixture.i2c-target"}, request(0x0011, 3, i2c_conf, bytes([0x80]), s), "malformed")
+    add("i2c-target address 0x03 (reserved by the I2C specification)", "core §4.3; fixture §3",
+        {"3": "oep.fixture.i2c-target"}, request(0x0012, 3, i2c_conf, bytes([0x03]), s), "unsupported", b"\x00")
     add("attach method 2", "core §4.3; debug §3", {"4": "oep.wire.rvswd"},
         request(0x0013, 4, rv_attach, bytes([2]) + ms, s), "unsupported", b"\x00")
     add("attach without max_speed (a mandatory TLV)", "debug §1", {"4": "oep.wire.rvswd"},
@@ -598,8 +598,8 @@ def ops() -> dict:
     add("probe.config save not offered", "probe settings §2, core §1.2", pc, "ops without save and erase; no storage tag",
         request(0x71, 8, op("oep.probe.config", "save"), b"", S), rej(0x71, "unknown_operation"))
     idle_tag = IFACE["oep.probe.config"]["tlv"]["item"]["idle"]
-    add("probe.config set: an input idle with a drive other than kind 2 value 0", "probe settings §1", pc, "session S",
-        request(0x72, 8, op("oep.probe.config", "set"), tlv(idle_tag | CRITICAL, struct.pack("<HBBH", 4, 0, 0, 1)), S), rej(0x72, "malformed"))
+    add("probe.config set: an idle value of 6 bytes (longer than its 4)", "probe settings §1, core §2.3", pc, "session S",
+        request(0x72, 8, op("oep.probe.config", "set"), tlv(idle_tag, struct.pack("<HBBH", 4, 3, 0, 0)), S), rej(0x72, "malformed"))
     add("probe.config set: an idle value of 3 bytes", "probe settings §1, core §2.3", pc, "session S",
         request(0x73, 8, op("oep.probe.config", "set"), tlv(idle_tag | CRITICAL, struct.pack("<HB", 4, 0)), S), rej(0x73, "malformed"))
 

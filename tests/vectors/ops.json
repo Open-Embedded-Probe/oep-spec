@@ -388,13 +388,13 @@
       "answer_hex": "0271000002"
     },
     {
-      "name": "probe.config set: an input idle with a drive other than kind 2 value 0",
-      "spec": "probe settings §1",
+      "name": "probe.config set: an idle value of 6 bytes (longer than its 4)",
+      "spec": "probe settings §1, core §2.3",
       "fns": {
         "8": "oep.probe.config"
       },
       "state": "session S",
-      "request_hex": "01720008000244332211830600040000000100",
+      "request_hex": "01720008000244332211030600040003000000",
       "answer_hex": "0272000003"
     },
     {

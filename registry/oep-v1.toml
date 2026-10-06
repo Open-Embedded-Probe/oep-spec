@@ -137,7 +137,6 @@ resend_max = 1                  # host: resends of one request with the same cor
 port_speed_broken_max = 3       # probe: broken candidates in a row with no valid frame, after commit, that return a raised port to the boot speed (oep-if-link §3 return condition 4)
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused or not used (oep-if-fixture §2, oep-if-probe-config §1)
 uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)
-fixture_count_max = 255         # i2c-target / spi-target: u8 counts (pending, queued) stop at this (oep-if-fixture §3, §4)
 max_op_ms_max = 600000          # fn 0 describe max_op_ms is 1 to this (10 minutes) (core §7.5)
 restart_after_answer_ms = 100   # oep.probe.restart: the probe begins its restart at most this long after its answer has left the transport (oep-if-restart §2)
 
@@ -517,9 +516,7 @@ op = [
 modes = 0x40                    # u32 bit set: bit n = mode n is supported (0 input required)
 drive_levels = 0x41             # default(u8) n(u8) n x ma(u16 ascending): selectable output strengths (oep-if-fixture §1.1); absent = not switchable
 [interface.tlv.set]
-drive = 0x01                    # repeats; non-critical: index(u8) kind(u8) value(u16): the strength of one mode 3 / 4 element
-[interface.tlv.read_answer]
-drive = 0x01                    # n x u8: the level each channel is driven at in mode 3 / 4, 0xFF when not; only with drive_levels
+drive = 0x01                    # repeats: index(u8) level(u8, 0xFF = the default level): the strength of one mode 3 / 4 element (oep-if-fixture §1.1)
 [interface.tlv.unavailable_payload]   # set / read refusal, after the core TLVs (core §4.3); unsupported uses the same index tag
 index = 0x40                    # u8: the position in the request's list
 [interface.enum.role]
@@ -532,13 +529,11 @@ output_low = 3
 output_high = 4
 open_drain_low = 5
 open_drain_release = 6
-input_pullup_pulldown = 7        # both pulls at once: a weak mid level (a rough ADC reference on an unwired line)
-[interface.enum.drive_kind]     # the strength specification (gpio set's drive, probe.config idle's drive_kind)
-level = 0                       # value is a level number
-max_ma = 1                      # the strongest level whose approximate mA is value or less (level 0 when none)
-default = 2                     # the default level of drive_levels; value 0 (the only kind an idle with mode 0 to 2 carries)
-[interface.enum.drive_read]     # read's drive TLV
-not_driven = 0xFF               # the channel is not driven in mode 3 / 4
+[interface.enum.drive_level]    # the strength specification (gpio set's drive, probe.config idle's drive): a level number, or
+default = 0xFF                  # the default level of drive_levels
+[interface.reserved]
+mode = [[7, 7]]                 # was input_pullup_pulldown
+"tlv.read_answer" = [[0x01, 0x01]]   # was drive
 
 [[interface]]
 name = "oep.fixture.uart"
@@ -559,11 +554,6 @@ formats = 0x40                  # n(u8) n x u8: configure format values supporte
 [interface.enum.role]
 rx = 1
 tx = 2
-[interface.enum.uart_configured]  # status's configured byte (oep-if-fixture §2)
-default = 0
-session = 1
-item = 2
-item_fallback = 3               # the settings item's baud could not be made; the default applies
 [interface.enum.format_field]   # masks and values of the format byte (oep-if-fixture §2)
 data_bits_mask = 0x03           # 0 = 8 bits, 1 = 7 bits
 parity_mask = 0x0C
@@ -575,35 +565,29 @@ stop_bits_2 = 0x10
 name = "oep.fixture.i2c-target"
 revision = 1
 op = [
-  { code = 0x01, name = "configure", lock = true },
-  { code = 0x02, name = "arm_rx", lock = true },
+  { code = 0x01, name = "configure", lock = true },      # address(u8): one form, a write with data = one frame, reads answered from preload_tx
   { code = 0x03, name = "read_rx", lock = true },
   { code = 0x04, name = "preload_tx", lock = true },
   { code = 0x05, name = "status", lock = false },
-  { code = 0x06, name = "reset", lock = true },
-  { code = 0x07, name = "stretch", lock = true },
+  { code = 0x07, name = "stretch", lock = true },       # optional (ops)
 ]
 [interface.tlv.describe]
-queue_depth = 0x40              # u8: frames the queue holds; in mode 3 also the most unread preload_tx slots
+queue_depth = 0x40              # u8: frames the queue holds, and the most unread preload_tx slots
 max_stretch_us = 0x41           # u32: the largest stretch_us the stretch op accepts (required when ops offers stretch; oep-if-fixture §3)
-pullup_ohms = 0x42              # u32, approximate: the internal pull-ups the probe enables on SDA / SCL while configured; required with features bit2 (oep-if-fixture §3)
 [interface.tlv.read_rx_answer]
 ns = 0x01                       # u64: when the frame was received (probe clock; optional)
 [interface.enum.role]
 sda = 1
 scl = 2
-[interface.enum.mode]
-fixed_rx = 1
-framed_rx = 2
-preloaded_tx = 3
 [interface.enum.state]
 unconfigured = 0
 running = 1
-[interface.enum.features]       # bit 0x02 reserved (stretch is declared by ops)
-preloaded_tx = 0x01
-internal_pullups = 0x04
+[interface.enum.features]
+internal_pullups = 0x04         # the probe enables pull-ups of its own on SDA / SCL while configured (oep-if-fixture §3)
 [interface.reserved]
-features = [[0x02, 0x02]]         # the probe enables pull-ups of its own on SDA / SCL while configured (oep-if-fixture §3)
+op = [[0x02, 0x02], [0x06, 0x06]]   # were arm_rx, reset
+features = [[0x01, 0x02]]       # were preloaded_tx and a stretch bit
+"tlv.describe" = [[0x42, 0x42]] # was pullup_ohms
 
 [[interface]]
 name = "oep.fixture.spi-target"
@@ -613,7 +597,6 @@ op = [
   { code = 0x02, name = "arm", lock = true },
   { code = 0x03, name = "read_rx", lock = true },
   { code = 0x04, name = "status", lock = false },
-  { code = 0x05, name = "reset", lock = true },
 ]
 [interface.tlv.describe]
 queue_depth = 0x40              # u8: transactions the queue holds
@@ -630,6 +613,8 @@ unconfigured = 0
 running = 1
 [interface.enum.features]
 lsb_first = 0x01
+[interface.reserved]
+op = [[0x05, 0x05]]             # was reset
 
 [[interface]]
 name = "oep.fixture.logic"
@@ -861,7 +846,7 @@ op = [
 [interface.tlv.item]            # the items of the configuration (get / set / unset); every item repeats, one per key (the same key twice is malformed, oep-if-probe-config §2); 0x7E reserved for response meta
 plan = 0x01                     # fn(u16) role(u8) channel(u16); key (fn, role, channel)
 label = 0x02                    # channel(u16) text
-idle = 0x03                     # channel(u16) mode(u8) drive_kind(u8) drive_value(u16): the state of a free pin (6 bytes)
+idle = 0x03                     # channel(u16) mode(u8) drive(u8, gpio's drive_level): the state of a free pin (4 bytes)
 slot = 0x04                     # a place a target is wired to (oep-if-probe-config §1.1)
 bind = 0x05                     # what a serial port carries (oep-if-probe-config §1.2)
 uart = 0x06                     # fn(u16) baud(u32) format(u8): a fixture UART's settings, applied when its plan is set
