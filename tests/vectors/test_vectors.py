@@ -91,6 +91,49 @@ def test_ops_examples_of_the_text():
     assert ops_set(tlvs(bytes.fromhex("0902000107"))[0][1]) == {1, 2, 3}
 
 
+def canonical_ops(value: bytes) -> bool:
+    """core §7.4, written out separately from the tool: the length, the 0xFF bound, bit 0 and the last byte."""
+    if len(value) < 2 or len(value) > 33:
+        return False
+    nbytes = len(value) - 1
+    return value[0] + 8 * nbytes <= 0x100 and value[1] & 0x01 == 0x01 and value[len(value) - 1] != 0
+
+
+def test_ops_encoding_boundaries():
+    """ops_encoding.json: valid values decode to their set and re-encode to the same bytes (one encoding per set); invalid ones are
+    rejected for the reason the text gives (core §7.4)."""
+    cases = load("ops_encoding.json")["cases"]
+    assert {c["valid"] for c in cases} == {True, False}
+    for c in cases:
+        v = bytes.fromhex(c["value_hex"])
+        assert canonical_ops(v) == c["valid"], c["name"]
+        if not c["valid"]:
+            assert c["ops"] is None
+            continue
+        got = sorted(ops_set(v))
+        assert got == c["ops"], c["name"]
+        base = min(got)
+        bits = bytearray((max(got) - base) // 8 + 1)
+        for op in got:
+            bits[(op - base) // 8] |= 1 << ((op - base) % 8)
+        assert bytes([base]) + bytes(bits) == v, c["name"]                                       # the one encoding of that set
+    lengths = {len(bytes.fromhex(c["value_hex"])) for c in cases}
+    assert {2, 33, 1, 34} <= lengths                                                             # both ends of 2-33 and just outside
+    assert any(c["valid"] and int(c["value_hex"][:2], 16) + 8 * (len(c["value_hex"]) // 2 - 1) == 256 for c in cases)
+
+
+def test_every_ops_in_the_vectors_is_canonical():
+    """Every describe in the vectors carries a canonical ops (core §7.4)."""
+    ops_tag = REG["describe_common"]["ops"]
+    for name in ("discovery.json",):
+        for ex in load(name)["exchanges"]:
+            req, ans = bytes.fromhex(ex["request_hex"]), bytes.fromhex(ex["answer_hex"])
+            if struct.unpack_from("<B", req, 5)[0] == next(o["code"] for o in CORE["op"] if o["name"] == "describe") and len(ans) > 6:
+                for tag, value in tlvs(ans[6:]):
+                    if tag == ops_tag:
+                        assert canonical_ops(value), ex["name"]
+
+
 def test_crc_check_values_match_the_text():
     cases = {c["name"]: c for c in load("checks.json")["cases"]}
     digits = b"123456789"

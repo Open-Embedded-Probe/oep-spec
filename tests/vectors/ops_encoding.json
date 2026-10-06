@@ -1,0 +1,119 @@
+{
+  "about": "The value of describe's common tag ops (core §7.4): base(u8), bitmap; 2-33 bytes, base + 8 x bitmap bytes <= 256, bit 0 set, the last byte non-zero, so one op set has one encoding. `valid` false: a host that receives it does not use that fn (fn 0: the probe). `ops` is the decoded set of a valid value.",
+  "cases": [
+    {
+      "name": "the shortest: one op",
+      "note": "the smallest value, 2 bytes",
+      "value_hex": "0101",
+      "valid": true,
+      "ops": [
+        1
+      ]
+    },
+    {
+      "name": "riscv-dm with ops 0x01-0x08 (the core's example)",
+      "note": "core §7.4 example",
+      "value_hex": "01ff",
+      "valid": true,
+      "ops": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "name": "dmi, halt and resume only (the core's example)",
+      "note": "core §7.4 example",
+      "value_hex": "0107",
+      "valid": true,
+      "ops": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "name": "ops 0x01 and 0xEF: the widest set of defined ops, a 30-byte bitmap",
+      "note": "base 0x01, highest 0xEF",
+      "value_hex": "01010000000000000000000000000000000000000000000000000000000040",
+      "valid": true,
+      "ops": [
+        1,
+        239
+      ]
+    },
+    {
+      "name": "the longest value: 33 bytes, base 0 and a 32-byte bitmap",
+      "note": "base + 8 x 32 = 256: the decoder limit only (op 0x00 and 0xF0-0xFF are never set by a shipping probe, core §1.2, §2.5)",
+      "value_hex": "000100000000000000000000000000000000000000000000000000000000000080",
+      "valid": true,
+      "ops": [
+        0,
+        255
+      ]
+    },
+    {
+      "name": "base + 8 x n = 256 exactly",
+      "note": "the decoder limit only: 0xF8 is experimental (core §2.5)",
+      "value_hex": "f801",
+      "valid": true,
+      "ops": [
+        248
+      ]
+    },
+    {
+      "name": "no bitmap: 1 byte",
+      "note": "invalid length",
+      "value_hex": "01",
+      "valid": false,
+      "ops": null
+    },
+    {
+      "name": "34 bytes",
+      "note": "invalid length",
+      "value_hex": "00010000000000000000000000000000000000000000000000000000000000000001",
+      "valid": false,
+      "ops": null
+    },
+    {
+      "name": "past op 0xFF: base 0xF9 with a 1-byte bitmap",
+      "note": "base + 8 x n > 256",
+      "value_hex": "f901",
+      "valid": false,
+      "ops": null
+    },
+    {
+      "name": "past op 0xFF: base 0xF0 with a 3-byte bitmap",
+      "note": "base + 8 x n > 256",
+      "value_hex": "f0010001",
+      "valid": false,
+      "ops": null
+    },
+    {
+      "name": "bit 0 clear: base is not the lowest op",
+      "note": "non-canonical (the same set is 01 01)",
+      "value_hex": "0002",
+      "valid": false,
+      "ops": null
+    },
+    {
+      "name": "a trailing zero byte",
+      "note": "non-canonical (the same set is 01 01)",
+      "value_hex": "010100",
+      "valid": false,
+      "ops": null
+    },
+    {
+      "name": "an empty set",
+      "note": "bit 0 clear, last byte zero",
+      "value_hex": "0100",
+      "valid": false,
+      "ops": null
+    }
+  ]
+}

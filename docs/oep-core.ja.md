@@ -478,7 +478,15 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 
 0x04 は予約。role の番号はインターフェースが定める。これらの値は固定の形で、足す情報は新しい tag にする（§2.3）。
 
+- **ops の符号**: 1 つの op の集合に符号は 1 つだけである。
+  1. 値は 2〜33 byte（base が 1 byte、bitmap が 1〜32 byte）。
+  2. `base + 8 × bitmap の byte 数 ≤ 256`（bitmap は op 0xFF を越えない）。
+  3. base は宣言する op のうち最も小さいもの: bitmap の bit 0 は立っている。
+  4. bitmap の最後の byte は 0 でない。
+
+  これを満たさない ops を受けた host は、その fn を使わない（fn 0 の ops なら、その probe を使わない）。
 - **ops** の例: op 0x01〜0x08 をすべて持つ riscv-dm の fn は `09 02 00 01 FF` を送る。dmi、halt、resume だけ（0x01〜0x03）を持つものは `09 02 00 01 07` を送る。
+  `01 01 00`（最後の byte が 0）、`00 02`（bit 0 が立っていない）、`F9 01`（op 0xFF を越える）は正しくない。
   host は op があるかを知るのに、features ではなく bitmap を読む。
 
 - どのピンにも割り当てられる機能は role_channels に候補を並べ、ピンの組が決まっている機能は channel_group を組の数だけ書く。

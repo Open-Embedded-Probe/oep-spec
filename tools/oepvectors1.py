@@ -125,6 +125,15 @@ def ops_value(codes: list[int]) -> bytes:
     return bytes([base]) + bytes(bits)
 
 
+def ops_decode(value: bytes) -> list[int] | None:
+    """The op set of an ops value, or None when the value is not the one canonical encoding (core §7.4): 2-33 bytes,
+    base + 8 x bitmap bytes <= 256, bit 0 set, last bitmap byte non-zero."""
+    n = len(value) - 1
+    if not 1 <= n <= 32 or value[0] + 8 * n > 256 or not value[1] & 1 or value[-1] == 0:
+        return None
+    return [value[0] + i for i in range(8 * n) if value[1 + i // 8] >> (i % 8) & 1]
+
+
 def hx(b: bytes) -> str:
     return b.hex()
 
@@ -399,6 +408,35 @@ def discovery() -> dict:
 
 
 
+def ops_encoding() -> dict:
+    """The value of the common describe tag ops (core §7.4) at its boundaries: valid values decode to their op set, invalid ones make
+    the host leave that fn unused (fn 0: the probe)."""
+    widest = ops_value([0x01, 0xEF])                       # the lowest and the highest op an interface may define (core §2.5)
+    longest = bytes([0x00]) + bytes([0x01]) + bytes(30) + bytes([0x80])     # 33 bytes: base 0, bitmap 32 bytes (bits 0 and 255)
+    cases = [
+        ("the shortest: one op", bytes([0x01, 0x01]), "the smallest value, 2 bytes"),
+        ("riscv-dm with ops 0x01-0x08 (the core's example)", bytes([0x01, 0xFF]), "core §7.4 example"),
+        ("dmi, halt and resume only (the core's example)", bytes([0x01, 0x07]), "core §7.4 example"),
+        ("ops 0x01 and 0xEF: the widest set of defined ops, a 30-byte bitmap", widest, "base 0x01, highest 0xEF"),
+        ("the longest value: 33 bytes, base 0 and a 32-byte bitmap", longest, "base + 8 x 32 = 256: the decoder limit only (op 0x00 and 0xF0-0xFF are never set by a shipping probe, core §1.2, §2.5)"),
+        ("base + 8 x n = 256 exactly", bytes([0xF8, 0x01]), "the decoder limit only: 0xF8 is experimental (core §2.5)"),
+        ("no bitmap: 1 byte", bytes([0x01]), "invalid length"),
+        ("34 bytes", bytes([0x00, 0x01]) + bytes(31) + bytes([0x01]), "invalid length"),
+        ("past op 0xFF: base 0xF9 with a 1-byte bitmap", bytes([0xF9, 0x01]), "base + 8 x n > 256"),
+        ("past op 0xFF: base 0xF0 with a 3-byte bitmap", bytes([0xF0, 0x01, 0x00, 0x01]), "base + 8 x n > 256"),
+        ("bit 0 clear: base is not the lowest op", bytes([0x00, 0x02]), "non-canonical (the same set is 01 01)"),
+        ("a trailing zero byte", bytes([0x01, 0x01, 0x00]), "non-canonical (the same set is 01 01)"),
+        ("an empty set", bytes([0x01, 0x00]), "bit 0 clear, last byte zero"),
+    ]
+    return {
+        "about": "The value of describe's common tag ops (core §7.4): base(u8), bitmap; 2-33 bytes, base + 8 x bitmap bytes <= 256, bit 0 set, the "
+                 "last byte non-zero, so one op set has one encoding. `valid` false: a host that receives it does not use that fn (fn 0: the probe). "
+                 "`ops` is the decoded set of a valid value.",
+        "cases": [{"name": n, "note": note, "value_hex": hx(v), "valid": ops_decode(v) is not None, "ops": ops_decode(v)}
+                  for n, v, note in cases],
+    }
+
+
 def sessions() -> dict:
     """Scenarios of the session decision table (core §6.2), the resend table (core §5.2) and the release at end (core §9), as
     request / answer byte pairs from a stated initial state, for the example probe of confirm.json (boot_id 0x12345678)."""
@@ -642,7 +680,7 @@ def ops() -> dict:
 
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
          "probe_config_hash.json": probe_config_hash, "refusals.json": refusals,
-         "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops}
+         "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding}
 
 
 def render(build) -> str:

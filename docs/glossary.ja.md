@@ -122,7 +122,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | instance、`name#instance` | instance | 同じ (name, revision) のインターフェースの中の番号 | core §7.2 |
 | role_channels、channel_group | role_channels, channel_group | 役が使える channel、決まった組 | core §7.4 |
 | features | features | インターフェースの、op でない任意の機能の u32 の bit（モード、format、通知） | core §7.4 |
-| ops | ops | すべての fn が持つ op を宣言する、describe の共通の tag 0x09（base + bitmap） | core §1.2、§7.4 |
+| ops | ops | すべての fn が持つ op を宣言する、describe の共通の tag 0x09（base + bitmap）。1 つの op の集合に符号は 1 つ。正しくない ops の fn は使わない | core §1.2、§7.4 |
 | unit_id | unit_id | 個体の識別子。`a-z 0-9 -` の 1〜32、USB の serial number と等しい | core §7.5 |
 | `x-` の unit_id | `x-` unit_id | 一意でない unit_id。まとめにも名指しにも使わない | core §7.5 |
 | model、chip、firmware | model, chip, firmware | probe の種類、その MCU、firmware の文字列 | core §7.5 |

@@ -46,6 +46,10 @@ external re-review of the same day (its §3.2 and §3.3). Japanese only while Ja
   confirm may be sent at any time, mid-session too, and touches no session, lock, lease, table or subscription; the answer still fits in
   64 bytes with the room for ignored (core §2.6a, §7.1). A relaying broker that answers confirm itself may give its last upstream
   confirm's value plus the time since; for the probe's own time the host talks to the probe or the broker relays confirm (transports §1).
+- The ops encoding (re-review §3.2): the value is 2-33 bytes (a 1-32 byte bitmap), base + 8 × bitmap bytes ≤ 256, bit 0 is set (base is the
+  lowest declared op) and the last byte is non-zero, so one op set has one encoding; a host that gets an ops breaking this does not use that
+  fn (fn 0: the probe) (core §7.4). New vectors ops_encoding.json (shortest, longest, wrong lengths, the 0xFF bound, non-canonical) with
+  an independent decoder in the tests; every ops in the vectors is canonical.
 
 ### Simplification after the external review (2026-10-06)
 

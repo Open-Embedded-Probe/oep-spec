@@ -30,6 +30,7 @@ probe は、自分が出す transport とインターフェースについてこ
   指す fn は順 5 の終わりで確かめる（§4.3）。
 - role が要求の role でないメッセージと、10 バイトのヘッダより短い要求は、答えずに捨てる（§2.4）。ロックが要る op で session_id 0: session_required（§4.1）。
 - fn 0 とすべての fn の describe は ops（0x09）を載せる: 必須の op はすべて立て、任意の op は持つときに限り立て、実験用の op は立てない（§1.2、§7.4）。ops に立っていない op は unknown_operation、probe が持つ op の任意の機能は unsupported（§1.2）。インターフェースの表の op は、文書が任意と書かない限り必須。
+- ops の値は 1 つの符号だけ: 2〜33 byte、`base + 8 × bitmap の byte 数 ≤ 256`、base は最も小さい op（bit 0 が立つ）、最後の byte は 0 でない（§7.4）。
 - 要求の TLV: critical の印、知らない critical TLV は unsupported、知らない非 critical TLV は ignored、知っているより長い TLV、短い TLV、
   繰り返さない TLV の繰り返し、tag 0x7F / 0xFF（§2.2、§2.3）。
 - ignored（tag 0x7F）を、それが要る completed の答えすべてに、要求の順で、最大 16 項目、16 番目は 0x00、置き場を必ず残して（§2.3）。
@@ -85,6 +86,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - **セッション**: 0 でない乱数の session_id（§6.1）。答えの lease_ms が正で、keepalive が延ばす（§6.4）。no_session /
   locked への対応（§4.3、§6.2）。no_session の後は新しいセッションを開いて設定し直す。boot_id が（confirm でも open でも）変われば自分の状態は無効で、
   list し直す（§6.5）。一つのセッションの要求は一つの transport で（transports §3）。セッションの要らないロック不要の要求は session_id 0 で（§4.1）。
+- **ops**: §7.4 の符号を満たさない ops を受けたら、その fn を使わない（fn 0 の ops なら、その probe を使わない）。
 - **答えの読み方**: role が要求の role のメッセージは捨てる。5 バイトより短い答えと、ヘッダより短い出来事やデータのフレームは
   壊れたフレーム（§2.4）。知らない TLV と tag を飛ばす、繰り返された tag は最初を使う、0 でない真偽値は真と読む（§2.1、§2.3）。知らない
   値は §2.4 のとおり。ignored とその 0x00 の項目を読む（§2.3）。role と corr で振り分ける（§11.1）。TLV が効かなければ意味のない要求では
@@ -134,6 +136,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `probe_config_hash.json` | probe.config の正規形と hash（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2） |
 | `refusals.json` | §4.3 の断り方と §2.3 の ignored の一覧について、要求とそのとおりの答え |
 | `sessions.json` | セッションの場面: 判定の表（§6.2）、送り直しの表（§5.2。送り直した end）、end での解放と no_session（§9）、force、session_id 0（§4.1）。決めた初めの状態から順に送る要求と答え |
+| `ops_encoding.json` | describe の共通の tag ops の値の境（最短、最長、長さの誤り、op 0xFF の境、正規でない符号）と、正しい値が表す op の集合（§7.4） |
 | `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console、probe.config、logic の一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
 
 実装は JSON を読み、自分の符号器、復号器、答えをバイト単位で比べる。ベクタが文書と registry に合っているかを確かめるには:
