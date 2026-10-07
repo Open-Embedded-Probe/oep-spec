@@ -712,6 +712,20 @@ def ops() -> dict:
                 + tlv(lt["configure"]["samples"], struct.pack("<I", 1000))),
         rej(0x8A, "unsupported", bytes([lt["configure"]["samples"]])))
 
+    # capture §2.2: a segment the probe could not keep seamless is not handed out; the track stops in error
+    lst = IFACE["oep.fixture.logic"]["enum"]
+    drop = ("repeat, 1 channel w 1, samples 8000 (1000 bytes a segment), generation 1: serials 0 and 1 done, then the capture ring "
+            "overflowed inside serial 2")
+    segs = [struct.pack("<IQIQIIBI", k, 1000 * k, 8000, 5_000_000 + 8_000_000 * k, 50, 0xFFFFFFFF, 0, 1) for k in (0, 1)]
+    add("logic status: data dropped inside a segment, state 6 and error 2", "capture §2.2, §3.2", lg, drop,
+        request(0x90, 9, op("oep.fixture.logic", "status"), b""),
+        ok(0x90, struct.pack("<BIQBI", lst["state"]["error"], 2, 2000, lst["status_flag"]["dropped"], 1)
+           + tlv(lt["status_answer"]["error"], bytes([lst["error"]["storage"]]))))
+    add("logic segments: the dropped segment is not handed out", "capture §2.2, common §1.3", lg, drop,
+        request(0x91, 9, op("oep.fixture.logic", "segments"), struct.pack("<I", 0)), ok(0x91, bytes([0, 2]) + b"".join(segs)))
+    add("logic read: nothing of the dropped segment", "capture §2.2, §3.2", lg, drop + "; write_pos 2000",
+        request(0x92, 9, op("oep.fixture.logic", "read"), struct.pack("<IQI", 1, 2000, 64)), ok(0x92, struct.pack("<QBI", 2000, 0, 0)))
+
     # oep.fixture.capture-group (capture §4): the group's generation, then n x (fn, generation) in bind order, in the fixed part
     grp = {"12": "oep.fixture.capture-group", "9": "oep.fixture.logic", "13": "oep.fixture.analog"}
     add("capture-group start: the group's and each track's new generation", "capture §4.1", grp,
@@ -750,6 +764,9 @@ def ops() -> dict:
           struct.pack("<BBI", reason["host"], 0, 3), 3)
     event("logic triggered of the new generation", "capture §3.4", lg, after + "; the edge at sample 1000 of serial 0, at 7.05 ms", 9, 8,
           le["triggered"], struct.pack("<IIQI", 0, 1000, 7_050_000, 4), 4)
+    event("logic stopped: data dropped inside a segment, error 2", "capture §2.2, §3.4", lg,
+          "fn 9 subscribed; generation 1; the capture ring overflowed inside serial 2", 9, 9, le["stopped"],
+          struct.pack("<BBI", reason["error"], IFACE["oep.fixture.logic"]["enum"]["error"]["storage"], 1), 1)
     event("capture-group triggered: the group's generation", "capture §4.2", grp, "fn 12 subscribed; group generation 5; fn 9's trigger at 7.05 ms",
           12, 0, ge["triggered"], struct.pack("<HQI", 9, 7_050_000, 5), 5)
     event("capture-group stopped: the group's generation", "capture §4.2", grp, "as above; every track done", 12, 1, ge["stopped"],

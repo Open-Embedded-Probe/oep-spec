@@ -20,6 +20,11 @@ example byte reproduced independently). Japanese only while Japanese is the work
   that a w that is a multiple of 8 gives `w/8`-byte little endian samples, a consequence of the bit definition. With other w a sample may
   cross a byte boundary (w = 3: 8 samples in 3 bytes); the "8/w samples per byte" sentence is gone. New example row (w 3, three channels).
   Registry comment, vectors (`logic_layout.json`: w 3 → `59 84 80`), tests, conformance (a host reads every w) and host guide follow.
+- Capture §2.2: a probe that cannot keep a segment seamless (it dropped data inside it) does not hand that segment out (not in
+  segments, no segment event, its bytes neither read nor streamed; status's write_pos stays at its start) and the track stops in error:
+  state 6, stopped reason 3, error 2 (storage) for a capture queue or ring overflow, 1 for a DMA or peripheral failure; status flags bit0
+  is set. Data discarded in streaming for want of room to send (§2.1 rule 1) is not this: whole segments, flagged on the next. Vectors
+  (status, segments, read, the stopped event), tests and conformance follow.
 
 ### Wi-Fi settings and TCP discovery (2026-10-07)
 

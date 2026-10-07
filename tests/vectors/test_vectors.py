@@ -540,3 +540,24 @@ def test_logic_layout_streams_decode_back():
         assert len(stream) == (n * w + 7) // 8, c["name"]
         assert unpack_samples(stream, w, c["pos"], n) == c["channels"], c["name"]
     assert next(c for c in cases if c["w"] == 3)["stream_hex"] == "598480"                    # capture §1.1, the w = 3 example
+
+
+def test_a_segment_with_dropped_data_is_not_handed_out():
+    """capture §2.2: status says state 6, flags bit0, error 2 (storage) and write_pos at the dropped segment's start; segments and read
+    give nothing of it; the stopped event has reason 3, error 2."""
+    logic = next(i for i in REG["interface"] if i["name"] == "oep.fixture.logic")
+    e = logic["enum"]
+    by = {c["name"]: bytes.fromhex(c["answer_hex"])[5:] for c in load("ops.json")["cases"]}
+    p = by["logic status: data dropped inside a segment, state 6 and error 2"]
+    state, serial_done, write_pos, flags, generation = struct.unpack_from("<BIQBI", p)
+    assert (state, flags & e["status_flag"]["dropped"]) == (e["state"]["error"], e["status_flag"]["dropped"])
+    assert tlvs(p[18:]) == [(logic["tlv"]["status_answer"]["error"], bytes([e["error"]["storage"]]))]
+    p = by["logic segments: the dropped segment is not handed out"]
+    assert p[0] == 0 and len(p) == 2 + 37 * p[1]
+    kept = [struct.unpack_from("<IQI", p, 2 + 37 * k) for k in range(p[1])]
+    assert serial_done not in [s for s, _, _ in kept]                                          # the dropped serial is not listed
+    assert max(pos + n // 8 for _, pos, n in kept) == write_pos                                 # w 1: write_pos is the dropped one's start
+    assert by["logic read: nothing of the dropped segment"] == struct.pack("<QBI", write_pos, 0, 0)
+    (ev,) = [x for x in load("ops.json")["events"] if x["name"].startswith("logic stopped: data dropped")]
+    f = bytes.fromhex(ev["event_hex"])
+    assert struct.unpack_from("<BBI", f, 6) == (e["stopped_reason"]["error"], e["error"]["storage"], generation)
