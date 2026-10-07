@@ -56,6 +56,9 @@ From the re-re-check of 764b110 in `docs/external-spec-review-2026-10-06.ja.md`;
   network without multicast) needs no mDNS responder. Host guide §4.1 (the reference probe advertises), conformance and glossary
   follow; release testing item 12 checks an advertising probe (found, SRV port, TXT unit_id = describe's, found again after a Wi-Fi
   reconnect and a restart).
+- Transports §7: RFC 6762 (queries and answers on `.local`, probing and announcing on a name conflict, announcing again when the
+  address changes) and RFC 6763 (instance names, PTR / SRV / TXT, TXT `key=value`) join the referenced specifications, for a probe that
+  advertises and a host that browses.
 
 ### External review re-check (2026-10-07)
 

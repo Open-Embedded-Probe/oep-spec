@@ -150,7 +150,7 @@ host が応答を待つ時間（core §4.4）には、次の転送の時間を�
 
 ## 7. 参照する仕様
 
-OEP のフレームと message は、この文だけで定まる。USB の経路を出す probe は、次にも従う:
+OEP のフレームと message は、この文だけで定まる。USB の経路を出す probe は次の USB の仕様にも従い、§3 の広告をする probe と、それで探す host は次の RFC にも従う:
 
 | 仕様 | 使う部分 |
 |---|---|
@@ -158,3 +158,5 @@ OEP のフレームと message は、この文だけで定まる。USB の経路
 | USB Class Definitions for Communications Devices 1.2 とその PSTN subclass（CDC ACM） | USB CDC のシリアルの口の CDC ACM の機能: その interface、line coding、制御線（§3、§4） |
 | Device Class Definition for HID 1.11 | vendor 定義の input と output の report、report ID、SET_REPORT（§1、§3） |
 | Microsoft OS 2.0 Descriptors Specification | vendor bulk の interface の compatible ID `WINUSB`（§3） |
+| RFC 6762 Multicast DNS | `.local` の問い合わせと応答、名前の確かめと衝突のときの付け直し（probing、announcing）、アドレスが変わったときの広告し直し（§3） |
+| RFC 6763 DNS-Based Service Discovery | service の instance の名前、PTR / SRV / TXT の record、TXT の `key=value` の形（§3） |
