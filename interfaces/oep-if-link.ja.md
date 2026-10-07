@@ -28,7 +28,7 @@ source と sink は経路の速さを測るためのもの。状態を変えな�
 
 - **source**: data は len バイトで、k バイト目（k は 0 から）は k & 0xFF。len は length と、要求の来た経路の max_frame（core §4.4）から 7
   （応答の見出し 5 と len 2）を引いた値の、小さいほう。length 0 なら len 0。
-- **sink**: count の後ろに、値が任意の count バイトが続く。count が後ろに続くバイトより大きければ rejected malformed。応答は completed success で、
+- **sink**: count の後ろに、値が任意の count バイトが続く。count が後ろに続くバイトより大きければ rejected malformed。要求は max_frame に収まるので、count は多くても max_frame − 12（要求の見出し 10 と count 2）。応答は completed success で、
   payload は空。
 - host はその応答を、ほかの要求と同じように待つ（core §4.4）。confirm のようには繰り返さない。
 

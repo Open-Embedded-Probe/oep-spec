@@ -38,6 +38,8 @@ Japanese only while Japanese is the working text.
   and when is the host's choice (host guide §8: once after the wait when nothing came, at once up to a few times after a broken frame on a
   held serial port). The transport has failed when the wait of the last thing sent passes with no answer and the host resends no more.
   Registry `resend_max` goes; the probing rule of transports §3 says "a confirm and its resends".
+- link sink: the largest count that fits is max_frame − 12 (request header 10 and count 2); the host guide's speed checks used
+  max_frame − 7, 5 bytes over max_frame (source stays max_frame − 7: answer header 5 and len 2).
 
 ### Rule review (2026-10-07)
 
