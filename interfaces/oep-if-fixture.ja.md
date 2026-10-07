@@ -119,6 +119,7 @@ read_rx で取り出す。
 - **読み出し**: controller の読み出しには、preload_tx で置いた順に、置き場から答える。count は 1〜max_length（0 は malformed）。未読の置き場は
   queue_depth 個まで。すべて埋まっているときの preload_tx は何も置かずに rejected unavailable（cause 2）。state 0 では rejected unavailable（cause 6）。controller が
   読んだバイト数が置いた長さと違っても、次の読み出しは次の置き場から答える。**置き場が空のときは 0xFF を出す**。
+- preload_tx の success は、置いたデータがその後に始まる controller の読み出しで使える状態になってから返す。
 - status: state 0 未設定、1 動いている。queued は積んだフレームの数（255 で止める）。rx_frames は列に積んだフレームの累計（あふれて捨てたものは
   数えない）、tx_slots は preload_tx で置いて未読の置き場の数、errors はあふれか max_length 超過のあった書き込みの数の累計（u32）。
 - stretch は、受けたデータの byte ごとに、8 bit 目の後、ACK を出した状態で ACK の clock の前に SCL を low に保つ時間（µs、0 = しない）。
@@ -154,6 +155,8 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   出すバイト（count ≤ length。count > length は rejected malformed。足りない分は 0）。待っている間の arm は rejected unavailable（1 回に 1 つ）。**arm していない間の転送は
   MOSI を捨て、transactions と errors を数える**。**MISO は tx の外（未 arm、tx を使い切った後）では 0**。CS が有効になってから SCK が
   1 回も来ずに無効に戻ったもの（0 ビット）は転送とみなさない: 何も積まず、transactions も errors も数えず、arm は待ち続ける。
+- arm の success は、次の転送に tx を出せる状態になってから返す。その後に始まる転送（cs_setup_ns を守るもの）は、この arm で答えられる。
+  その状態にできなければ何も arm せずに completed failed で答える。
 - **configure から plan を解くまで、probe は CS が有効な間だけ MISO を駆動する。** CS が無効な間は MISO を駆動しない（プルの無い入力）。
   ただし CS が無効になってから cs_setup_ns の間は除く（下）。
   「MISO は tx の外では 0」は、CS が有効な間の転送のビットのことである。SCK、MOSI、CS は常に入力。configure の前は channel は空きの状態のまま（core §8）。
