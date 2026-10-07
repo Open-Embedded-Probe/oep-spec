@@ -170,8 +170,8 @@ index(u8)、ssid_len(u8)、ssid、pass_len(u8)、passphrase
   - probe は passphrase を、どの応答、出来事、データにも載せず、ログ（シリアルの口の生のバイトを含む）にも出さない。hash（§2）を
     passphrase の byte から作らない（ロック不要の get から passphrase を確かめられないため）。passphrase が変われば、ほかの変更と同じく hash は変わる。
   - host は passphrase を表示せず、ログに書かない。
-- **つなぎ方**: probe は entry を index の順に試し、最初につながった（IPv4 のアドレスを得た）entry を使う。scan で ssid が見えなかった
-  entry は飛ばしてよい。どれもつながらなければ、probe が決める時間だけ待って、初めからやり直す。つながりを失ったら、初めからやり直す。
+- **つなぎ方**: probe は entry を index の順に試し、最初につながった（IPv4 のアドレスを得た）entry を使う。つながらないとき、
+  つながりを失ったときは、また試す（間隔は probe が決める）。
 - wifi の項目が 1 つも無ければ、probe は Wi-Fi を使わない（state 0）。
 - set / unset が、使っている entry の項目を変えるか消したら、probe はその応答を送ってから、つながりを切り、新しい並びで初めからやり直す。
   ほかの変更ではつながりを保つ（新しい並びは次にやり直すときに使う）。
