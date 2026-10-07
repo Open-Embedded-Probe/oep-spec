@@ -70,7 +70,7 @@ probe は、自分が出す transport とインターフェースについてこ
 
 ## 2. host のチェックリスト
 
-- **フレーム**: 1 フレームを 1 回の write で送り、途中で `probe_frame_gap_ms` 止まらない（transports §2）。COBS の受け方（transports §1）。confirm の答えの前は
+- **フレーム**: フレームは何回の書き込みに分けても、ほかのフレームとまとめてもよく、受ける側はその区切りに頼らない。TCP 以外では、送るフレームの途中で `probe_frame_gap_ms` 止めない（transports §2）。COBS の受け方（transports §1）。confirm の答えの前は
   64 バイトを超えて送らず、後は max_frame を超えて送らず、65535 バイトまで受けられる（transports §3）。vendor bulk の長さ 0 の転送（transports §1）。
 - **見つけ方**: USB の自動識別は project の VID:PID `1209:4F45` だけ、名指しの probe は unit_id で、それ以外は
   利用者が選ぶ（transports §3）。TCP の接続先は `_oep._tcp` で見つけたものか利用者が明示したものだけで、TXT の unit_id は describe で確かめる（transports §3）。試し方の規則: confirm だけを送り、正しい答えがなければ閉じる（transports §3）。OEP の probe と分かった機器の中の口の選び方（transports §3）。
