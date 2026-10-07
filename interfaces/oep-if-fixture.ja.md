@@ -114,12 +114,13 @@ read_rx で取り出す。
   データの無い書き込み（アドレスの byte だけのもの）は何も積まず、何も数えない。
 - read_rx は、いちばん古いフレームを取り出して返す（無ければ count 0）。state 0 では rejected unavailable（cause 6）。pending は、
   取り出した後に残っている数（255 で止める）。列に queue_depth 個あるときに次のフレームが来たら、その新しいフレームを捨て、errors を
-  1 増やす（rx_frames には数えない）。列の深さは describe の queue_depth。
+  1 増やす（rx_frames には数えない）。列の深さは describe の queue_depth。errors は書き込み 1 回につき多くても 1 増える（max_length を超え、
+  列もあふれた書き込みも 1）。
 - **読み出し**: controller の読み出しには、preload_tx で置いた順に、置き場から答える。count は 1〜max_length（0 は malformed）。未読の置き場は
   queue_depth 個まで。すべて埋まっているときの preload_tx は何も置かずに rejected unavailable（cause 2）。state 0 では rejected unavailable（cause 6）。controller が
   読んだバイト数が置いた長さと違っても、次の読み出しは次の置き場から答える。**置き場が空のときは 0xFF を出す**。
 - status: state 0 未設定、1 動いている。queued は積んだフレームの数（255 で止める）。rx_frames は列に積んだフレームの累計（あふれて捨てたものは
-  数えない）、tx_slots は preload_tx で置いて未読の置き場の数、errors はあふれと max_length を超えた書き込みの累計（u32）。
+  数えない）、tx_slots は preload_tx で置いて未読の置き場の数、errors はあふれか max_length 超過のあった書き込みの数の累計（u32）。
 - stretch は、受けたデータの byte ごとに、8 bit 目の後、ACK を出した状態で ACK の clock の前に SCL を low に保つ時間（µs、0 = しない）。
   read では、アドレスが一致した後に同じだけ保つ。write のアドレスの byte では保たない。stretch は任意で、describe の ops で宣言する
   （core §1.2）。持たない probe は unknown_operation で答える。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け

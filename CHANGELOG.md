@@ -40,6 +40,8 @@ Japanese only while Japanese is the working text.
   Registry `resend_max` goes; the probing rule of transports §3 says "a confirm and its resends".
 - link sink: the largest count that fits is max_frame − 12 (request header 10 and count 2); the host guide's speed checks used
   max_frame − 7, 5 bytes over max_frame (source stays max_frame − 7: answer header 5 and len 2).
+- fixture i2c-target: errors grows by at most 1 per write (a write over max_length into a full queue counts 1), as spi-target already
+  says per transfer.
 
 ### Rule review (2026-10-07)
 
