@@ -123,3 +123,10 @@ def test_a_private_line_name_in_the_registry_is_reported():
     reg, _ = gen.load()
     next(i for i in reg["interface"] if i["name"] == "oep.probe.config")["line_names"]["x-acme"] = "private"
     assert any("not a standard name" in e for e in gen.check(reg))
+
+
+def test_the_longest_wifi_set_is_wifi_min_max_frame():
+    """oep-if-probe-config §1.4: request header 10 + TLV header 3 + index, ssid_len, pass_len + 32-byte ssid + 64 hex digits."""
+    reg, _ = gen.load()
+    lim = reg["limits"]
+    assert 10 + 3 + 3 + lim["wifi_ssid_max_bytes"] + lim["wifi_psk_hex_digits"] == lim["wifi_min_max_frame"]

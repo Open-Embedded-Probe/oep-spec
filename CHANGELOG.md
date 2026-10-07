@@ -40,6 +40,18 @@ Japanese is the working text.
   §15.1: setting Wi-Fi (prompt for the passphrase, never print or log it, compare entries without it, 0xFF keeps it only at the same
   index, changing the entry in use drops a TCP link). Conformance and glossary follow.
 
+### External review re-re-check (2026-10-07, 764b110)
+
+From the re-re-check of 764b110 in `docs/external-spec-review-2026-10-06.ja.md`; verdicts in
+`docs/external-spec-review-2026-10-07-response.ja.md`. Japanese only while Japanese is the working text.
+
+- probe.config §1.4: a probe whose items has wifi answers confirm with max_frame 112 or more on every transport (limit
+  `wifi_min_max_frame`): a set of the longest wifi item (32-byte ssid, 64 hex digits) is 10 + 3 + 99 = 112 bytes, and the protocol's
+  floor of 64 could not carry it. Vector: that 112-byte set. Registry test: the limit is that sum. Release testing item 11; conformance
+  follows.
+- Conformance host checklist: the removed "one frame in one write" is gone; a frame may be split or joined, the receiver does not rely
+  on the boundaries, and except on TCP a sender does not pause `probe_frame_gap_ms` inside a frame (transports §2).
+
 ### External review re-check (2026-10-07)
 
 From the re-check of 3bca24c in `docs/external-spec-review-2026-10-06.ja.md`; verdicts in

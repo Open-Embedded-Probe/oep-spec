@@ -64,6 +64,8 @@ picotool / uf2、oep_client）でできる。firmware のリポジトリは Ardu
     1 回にまとめた書き込みに正しく答える。2 つの接続から開き、ロックの取り合い（locked）と接続ごとの confirm（revision、max_frame）を確かめる。
     セッションを持つ接続を閉じて開き直し、同じ id の open と送り直し（覚えた応答）でセッションが続く。Wi-Fi などの経路が切れた後と
     probe の再起動の後に開き直し、boot_id と no_session を確かめる。
+11. wifi の項目（items に wifi がある probe だけ）: どの経路でも confirm の max_frame が 112 以上で、いちばん長い wifi の set（32 byte の ssid と
+    64 文字の鍵、112 byte）が成功する（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.4）。
 
 結果は JSON で `tests/hw/results/<board>-<firmware>-<client>.json` に残し、リリースノートから参照する。
 

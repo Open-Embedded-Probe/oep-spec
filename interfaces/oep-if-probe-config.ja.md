@@ -163,6 +163,9 @@ index(u8)、ssid_len(u8)、ssid、pass_len(u8)、passphrase
 | pass_len、passphrase | pass_len 0 は passphrase なし（開いたネットワーク）。8〜63 は 0x20〜0x7E の byte の passphrase。64 は 16 進の数字（`0-9 a-f A-F`）64 文字の鍵。0xFF は下の「書くだけ」で、後ろに何も付けない。ほかの長さと byte は rejected malformed |
 
 - 値の長さは 3 + ssid_len + passphrase の長さ（pass_len 0xFF では 0）。保存の max_bytes（§2、§4）は passphrase を含む形で数える。
+- **max_frame**: items に wifi を宣言する probe は、どの経路でも confirm の max_frame を 112 以上にする（registry の `limits.wifi_min_max_frame`）。
+  いちばん長い wifi の項目（32 byte の ssid と 64 文字の鍵）1 つの set が、要求の見出し 10 + 項目の TLV の見出し 3 + 値 99 = 112 byte で、
+  これでどの有効な項目も 1 つの set で送れる。
 - **passphrase は書くだけ**:
   - get は wifi の項目を passphrase なしで返す: pass_len は、passphrase があれば 0xFF、無ければ 0 で、後ろに何も付けない。
   - set の pass_len 0xFF は、その index の今の passphrase（無しを含む）を保つ。その index の項目が無ければ rejected malformed。だから get の

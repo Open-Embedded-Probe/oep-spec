@@ -627,6 +627,12 @@ def ops() -> dict:
         request(0x78, 8, pc_set, wifi_item(1, b"field", 7, b"secret7"), S), rej(0x78, "malformed"))
     add("probe.config set: wifi index at wifi_max", "probe settings §1.4, core §4.3", pc, wifi_state + "session S",
         request(0x79, 8, pc_set, wifi_item(4, b"field", 0), S), rej(0x79, "unsupported", bytes([wifi_tag])))
+    longest = request(0x7C, 8, pc_set, wifi_item(0, b"s" * REG["limits"]["wifi_ssid_max_bytes"], REG["limits"]["wifi_psk_hex_digits"],
+                                                 b"0123456789abcdef" * 4), S)
+    assert len(longest) == REG["limits"]["wifi_min_max_frame"]
+    add("probe.config set: the longest wifi item (32-byte ssid, 64 hex digits), a 112-byte request", "probe settings §1.4", pc,
+        wifi_state + "session S; no settings; max_frame 112 or more on this transport; the probe's hash for the new settings is 0x5A5A0003",
+        longest, ok(0x7C, struct.pack("<I", 0x5A5A0003)))
     ws = pce["wifi_state"]
     add("probe.config state: wifi connected on entry 0", "probe settings §3.3", pc,
         wifi_state + "no save, no slots, no binds; connected through entry 0 at -52 dBm, address 192.168.1.23",

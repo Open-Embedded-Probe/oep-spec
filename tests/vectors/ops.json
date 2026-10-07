@@ -468,6 +468,16 @@
       "answer_hex": "027900000b08"
     },
     {
+      "name": "probe.config set: the longest wifi item (32-byte ssid, 64 hex digits), a 112-byte request",
+      "spec": "probe settings §1.4",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi, wifi_max 4; session S; no settings; max_frame 112 or more on this transport; the probe's hash for the new settings is 0x5A5A0003",
+      "request_hex": "017c0008000244332211086300002073737373737373737373737373737373737373737373737373737373737373734030313233343536373839616263646566303132333435363738396162636465663031323334353637383961626364656630313233343536373839616263646566",
+      "answer_hex": "027c00010003005a5a"
+    },
+    {
       "name": "probe.config state: wifi connected on entry 0",
       "spec": "probe settings §3.3",
       "fns": {

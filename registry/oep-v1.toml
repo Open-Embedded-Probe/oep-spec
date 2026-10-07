@@ -134,6 +134,7 @@ wifi_ssid_max_bytes = 32        # probe.config wifi: ssid 1 to this (oep-if-prob
 wifi_passphrase_min_bytes = 8   # probe.config wifi: a passphrase is 8 to 63 bytes of 0x20-0x7E, or 64 hex digits
 wifi_passphrase_max_bytes = 63
 wifi_psk_hex_digits = 64
+wifi_min_max_frame = 112        # a probe whose items has wifi answers confirm with max_frame at least this on every transport: a set of the longest wifi item is 10 + 3 + (3 + 32 + 64) bytes (oep-if-probe-config §1.4)
 label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
 interface_name_max_bytes = 48   # a list answer with one entry is 5 + 3 + 7 + 48 = 63 bytes, within min_max_frame (core §7.2, §13)
 port_speed_tolerance_pct = 2    # port_speed: the nearest speed the UART can make may differ from the request by at most this percent (oep-if-link §3)
