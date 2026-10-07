@@ -46,6 +46,8 @@ Japanese only while Japanese is the working text.
   no longer names the bare tag (0x42, 0x01, 0x04), which read as if bit 7 were dropped.
 - Core: interface names are 1 to 48 bytes (registry `interface_name_max_bytes` 64 → 48), so a list answer with one entry (5 + 3 + 7 +
   name) fits the smallest max_frame (64); with 64 it was 79 bytes. The longest standard name is 25 bytes.
+- Host guide §5 (advice): a host that may stop and run again (a CLI, a broker) keeps its session_id per probe and, on the next run,
+  opens and ends that session first to release what it held, since a closed transport does not end a session (transports §3).
 
 ### Rule review (2026-10-07)
 
