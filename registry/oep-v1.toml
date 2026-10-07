@@ -131,7 +131,7 @@ owner_max_bytes = 32
 unit_id_max_bytes = 32
 slot_name_max_bytes = 32
 label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
-interface_name_max_bytes = 64
+interface_name_max_bytes = 48   # a list answer with one entry is 5 + 3 + 7 + 48 = 63 bytes, within min_max_frame (core §7.2, §13)
 port_speed_tolerance_pct = 2    # port_speed: the nearest speed the UART can make may differ from the request by at most this percent (oep-if-link §3)
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused or not used (oep-if-fixture §2, oep-if-probe-config §1)
 uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)

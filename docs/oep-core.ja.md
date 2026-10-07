@@ -363,7 +363,7 @@ entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
 
 - probe のインターフェースを、first 番目から 1 フレームに入る分だけ返す。total はインターフェースの数。本体（fn 0）は名前を持たないので
   list に載らない: entry の fn は 0 でない。
-- 名前は 1〜64 byte、使える文字は `a-z 0-9 - .`（§13）。
+- 名前は 1〜48 byte、使える文字は `a-z 0-9 - .`（§13）。項目 1 つの応答は、名前が 48 byte でも 63 byte（見出し 5、total と count 3、項目の固定部分 7、名前 48）で、どの max_frame（64 以上）にも収まる。
 - instance は、同じ名前のインターフェースが複数あるときの見分け。**同じ (名前, revision) のインターフェースを fn の昇順に 0 から振る**。probe は同じ名前のインターフェースの
   順を firmware の版を越えて保つ（保存した設定が (name, instance, revision) でインターフェースを指すため）。flags は予約（0）。
 - list の応答（どのインターフェースがあるか、その fn、instance、revision、名前）は、同じ boot_id の間変わらない。インターフェースが増えたり減ったりする probe は再起動する（新しい boot_id）。host は boot_id が同じ間、名前から fn への対応を覚えてよい。
@@ -570,7 +570,7 @@ subscribe と unsubscribe は、通知を送り出すインターフェース自
    例外は project 自身のインターフェースだけで、逆 DNS の名前の代わりに、予約した短い接頭辞 `oep.` を使う: `oep.<層>.<名前>`、層は `probe`（probe 自身）、
    `wire`（線と connection）、`target`（connection の上の target の操作）、`fixture`（治具の機能）。この短い名前のほかに、それらに特別なものは無い。
    `oep.` で始まる名前は project だけが付ける。名前は host が何に使うかで切る（probe のペリフェラルの名前にしない）。汎用か 1 つの系統のためのものかは
-   名前に入れない（規則 8）。**1〜64 byte、使える文字は `a-z 0-9 - .`**（registry の `limits`）。
+   名前に入れない（規則 8）。**1〜48 byte、使える文字は `a-z 0-9 - .`**（registry の `limits`。list の項目が 1 フレームに収まる長さ、§7.2）。
    名前の label はそれぞれ `a-z 0-9 -` の 1 文字以上で、`-` で始まらず `-` で終わらない。名前は label を 2 つ以上持つ。
 2. **定義が決めるもの**: インターフェースの文書はどれも、次のチェックリストを埋める。
    - 名前と revision。
