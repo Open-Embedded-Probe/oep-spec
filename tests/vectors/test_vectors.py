@@ -631,7 +631,7 @@ def test_multirate_ops():
     by = {c["name"]: c for c in cases}
     pay = lambda name: bytes.fromhex(by[name]["answer_hex"])[5:]
     got = dict(tlvs(pay("logic describe: multirate declared")[1:]))
-    assert struct.unpack("<IIIB", got[t["describe"]["multirate"]]) == (7, 1, 128, 1)
+    assert struct.unpack("<IIIB", got[t["describe"]["multirate"]]) == (7, 2, 128, 1)
     for c in cases:
         req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
         if struct.unpack_from("<HB", req, 3) not in ((9, 1), (9, 9), (16, 1)):                  # configure / query of a logic fn

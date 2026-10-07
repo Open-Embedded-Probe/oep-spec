@@ -44,6 +44,7 @@ example byte reproduced independently). Japanese only while Japanese is the work
 - Registry (TLVs, enum), generated code, vectors (`multirate.json`: the §5.7 examples and the edge cases; `ops.json`: describe,
   configure / query, refusals, rounding, a lowered rate, a short segment's trigger_index, capture-group bind), tests, conformance,
   glossary and host guide follow.
+- Capture §5.1: d = 1 sample (an unreduced channel) is always accepted; min_d / max_d bound only d ≥ 2 (2 ≤ min_d ≤ max_d), so a probe never refuses a plan for its raw channels. The describe vector declares min_d 2.
 
 ### Wi-Fi settings and TCP discovery (2026-10-07)
 

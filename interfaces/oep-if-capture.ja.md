@@ -436,7 +436,8 @@ sample 周期以上過ぎて取った base sample があることを表す。
 | 0x60 | multirate | policies(u32)、min_d(u32)、max_d(u32)、pow2(u8) |
 
 - policies: bit p が立っていれば方針 p（§5.4）を扱う。bit 0（sample）はいつも立つ。
-- 扱う d は `min_d ≤ d ≤ max_d`（1 ≤ min_d ≤ max_d）の整数で、pow2 = 1 ならそのうち 2 の冪だけ、pow2 = 0 ならその全部。
+- d = 1 の sample（縮約しないチャネル）はいつも扱う。d ≥ 2 で扱うのは `min_d ≤ d ≤ max_d`（2 ≤ min_d ≤ max_d）の整数で、pow2 = 1 ならそのうち
+  2 の冪だけ、pow2 = 0 ならその全部。
 - rate_range、channels、trigger（§3.5）は base rate と base sample で読む。mode（0x40）の max_samples は §1.1 の layout での上限で、
   multirate の設定で持てる量は応答の actual_samples で知る（宣言は目安、§3.5）。
 - 処理量の上限は宣言しない。host が設定を選ぶ目安は、1 つの block（§5.5）のバイト数 `B = ceil(L·w / 8) + ceil(R / 8)`（D = 1 の
