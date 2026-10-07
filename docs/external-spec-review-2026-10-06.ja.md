@@ -1,43 +1,38 @@
-# OEP v1 外部公開仕様レビュー（2026-10-07 再々確認）
+# OEP v1 外部公開仕様レビュー（2026-10-07 最終再確認）
 
 Status: **record**（非規範）。OEP v1 freeze 前の仕様を、第三者による相互運用実装、曖昧さ、独自拡張、単純性の観点からレビューした記録。
 
-この版は、前回レビューへの対応と、その後の TCP discovery / Wi-Fi 設定の追加を含む `764b110` を対象とする。日本語版が freeze 前の作業上の規範であるため、日本語版を基準にした。
+この版は、前回の再々確認への対応を含む `9118dc0` を対象とする。freeze 前は日本語版が作業上の規範であるため、日本語版を基準にした。
 
 ## 1. 結論
 
-前回指摘した core と transport の規範上の問題は、すべて実質的に解消された。
+前回までに指摘した protocol 上の問題はすべて解消された。今回、新しい wire-level の矛盾、独立実装を妨げる曖昧さ、core の過剰な必須機能は見つからなかった。
 
-- frame は write、USB transfer、HID report、TCP segment の境界と無関係な byte stream として扱うようになった。
-- `max_length` と describe の各 TLV は、probe のすべての経路の `max_frame` に収まることになった。
-- broker 経由の restart では `restart_max_ms` が client に掛からないと明記された。
-- fn 0 の固定形式は protocol revision で決まると明記された。
-- channel の有無、数、番号の範囲と、channel 規則の適用条件が明確になった。
-- 接続が閉じても session、lock、subscription、resend table が lease 等まで残ることが明記された。
+- wifi itemを広告するprobeは、すべての経路で`max_frame >= 112`を返すことになった。
+- 32 byte SSIDと64桁PSKを載せた112 byteの最大request vectorが追加された。
+- mDNS / DNS-SD advertisementは任意になり、TCP framingだけのprobeも適合できる。
+- advertisementを行う場合の唯一の形は `_oep._tcp`、SRVのport、TXTの`unit_id`に決まっている。
+- RFC 6762 / 6763と使用部分がtransportsの参照一覧に追加された。
+- conformance checklistに残っていた「1 frameを1回のwrite」が削除された。
 
-core は fn 0 の8操作と、message、session、discovery、通知、共通資源規則に絞られており、「小さく単純だが拡張可能」という目標にかなり近い。現在の core 自体に freeze を妨げる大きな未解決事項は見つからなかった。`clock` を必須に残す判断も、共通 timebase を使う interface の条件分岐を増やさないという理由があり、妥当である。
+coreはfn 0の8操作と、message、session、discovery、通知、共通資源規則に絞られている。`plan`、`restart`、`link`、probe configurationは名前付きの任意interfaceであり、通知とchannelの規則も、それらを使うprobeにだけ適用される。「小さく単純だが拡張可能」という目標を満たしている。
 
-一方、前回レビュー後に追加されたネットワーク機能には、新しい重要課題がある。
+現在残る仕様公開前の指摘は、DNS-SD service name `oep` のIANA登録確認だけである。これは現在のローカル実装を妨げるwire上の欠陥ではないが、公開されたservice nameの衝突を防ぐため、freeze前に処理すべきgovernance項目である。
 
-1. Wi-Fi の最大資格情報を載せた `set` は112 byteになり、仕様が許す `max_frame = 64` の経路では送れない。
-2. TCP probe すべてに mDNS / DNS-SD を必須にしたことで、TCP framing だけを実装する最小 probe の範囲が大きくなった。
-3. mDNS / DNS-SD を規範にしたが、transports の「参照する仕様」に RFC 6762 / 6763 が載っていない。
-4. 非規範の conformance checklist に、削除済みの「1 frameを1回のwriteで送る」が残っている。
-
-通常の serial / USB / TCP protocol は、規範文書だけから第三者が互換実装できる。上の1は実際に適合 probe を作れなくする組合せなので、freeze 前に必ず直すべきである。2は仕様の線引きの判断だが、小さい core を優先するなら mDNS discovery は TCP framing から分離した方がよい。
+仕様書だけから互換host / probeを実装できる水準に達している。ただし、ESP32 Wi-Fiの参照実装と独立hostによる実機試験結果は、仕様の明確さとは別のfreeze条件として残る。
 
 ## 2. レビュー範囲
 
 主に次を確認した。
 
-- 公開された規範文書だけから、第三者が互換 host / probe を実装できるか。
+- 公開された規範文書だけから、第三者が互換host / probeを実装できるか。
 - wire encoding、状態遷移、拒否理由が十分に一意か。
-- core がすべての probe に必要な機能だけに絞られているか。
-- serial、USB、TCP の違いをまたいでも同じ interface declaration が成立するか。
-- 未知の TLV、enum、op、event、interface を安全に扱えるか。
-- reverse-DNS interface による第三者拡張が既存実装と共存できるか。
-- ESP32 Wi-Fi の実装で必要になる discovery、credentials、切断復帰が完結しているか。
-- registry、生成物、test vector が文書と一致しているか。
+- coreがすべてのprobeに必要な機能だけに絞られているか。
+- serial、USB、TCPの違いをまたいでも同じinterface declarationが成立するか。
+- 未知のTLV、enum、op、event、interfaceを安全に扱えるか。
+- reverse-DNS interfaceによる第三者拡張が既存実装と共存できるか。
+- ESP32 Wi-Fiに必要なframing、discovery、credentials、切断復帰が完結しているか。
+- registry、生成物、test vectorが文書と一致しているか。
 
 対象は主に次である。
 
@@ -52,98 +47,43 @@ core は fn 0 の8操作と、message、session、discovery、通知、共通資
 - [security](security.ja.md)
 - [v1 registry](../registry/oep-v1.toml)
 
-## 3. 新たに見つかった指摘
+## 3. 現在残る指摘
 
-### 3.1 High: Wi-Fi の有効な最大 `set` が `max_frame = 64` に収まらない
+### 3.1 Medium / Governance: DNS-SD service name `oep` を公開前に登録する
 
-`oep.probe.config` の wifi item は、最大で次の値を持つ。
+OEPはDNS-SDのservice typeとして`_oep._tcp`を定義している。RFC 6763 §7と§16ではservice nameをIANA管理の名前空間として扱い、RFC 6335がservice nameの登録手順を定めている。
 
-```text
-index              1 byte
-ssid_len           1 byte
-ssid              32 byte
-pass_len           1 byte
-hex PSK           64 byte
--------------------------
-item value        99 byte
-```
+2026-10-07時点の[IANA Service Name and Transport Protocol Port Number Registry](https://www.iana.org/assignments/service-names-port-numbers/)には、`oep`のentryがない。service nameはfirst-come, first-servedであり、未登録のまま外部公開すると、別用途による先行登録または同名利用との衝突リスクが残る。
 
-これに item TLV の3 byteと request headerの10 byteを加えると、messageは112 byteになる。
+推奨する対応は次である。
 
-```text
-10 + 3 + 99 = 112 byte
-```
+1. freeze前にservice name `oep`をIANAへ申請する。
+2. 固定portは仕様で使わないため、service nameだけを申請する。
+3. descriptionにOpen Embedded Probe protocolを示す。
+4. DNS-SD TXT keyとして`unit_id`を使用することをassignment notesまたは公開仕様で関連づける。
+5. 登録が完了する前に名前をfreezeする場合は、登録未完了であることと変更可能性をrelease blockerとして明記する。
 
-しかし protocol 全体では `max_frame >= 64` しか要求していない。wifi item を広告する probe が、ある経路で `max_frame = 64` を返すことも現在の文面では適合である。その経路では、仕様上有効な32 byte SSIDと64桁PSKを一つの原子的な `set` に載せられない。
+RFC 6335は、DNS SRV等のためにport番号を伴わないservice nameだけを申請できるとしている。したがって、現在の「portはSRVで決まり、固定portは無い」という設計を変える必要はない。
 
-item を分割する規則はなく、分割すると SSID と secret の原子性や write-only の扱いが増える。最も小さい修正は次である。
-
-> wifi item を `items` に広告する probe は、すべての経路で `max_frame >= 112` を返す。
-
-この条件を probe.config §1.4、conformance、registry の limit または comment に置き、32 byte SSID + 64桁PSKの最大 request vectorも追加することを推奨する。
-
-将来、wifi item にフィールドを足す場合は固定形式を伸ばせないため、新しい item tag または interface revision が必要である。この点は現在の拡張規則で問題ない。
-
-### 3.2 Design: mDNS / DNS-SD を全 TCP probe の必須機能にすると core transport が重くなる
-
-現在の transports §3 は、TCP で待ち受けるすべての probe に `_oep._tcp` の DNS-SD instanceをmDNSで広告することを要求している。自動発見はESP32 Wi-Fiでは有用だが、TCP framingの成立には必要ない。
-
-必須にすると、次の実装もmDNS responder、DNS-SD record、multicast interface、名前衝突処理を持たなければTCP適合にならない。
-
-- addressとportを手動設定する小さな組込みprobe。
-- 認証済みtunnelの内側だけで使うprobe。
-- multicastを通さないVLAN、VPN、container、cloud network上のprobe。
-- brokerが発見を担当し、upstreamはTCPだけを話す構成。
-
-hostはすでに利用者が明示したaddress / portを使える。そのため、coreを小さく保つなら次の分離を推奨する。
-
-- TCP transportの必須部分は `length(u16), message`、接続、session、切断復帰だけにする。
-- mDNS / DNS-SD advertisementは任意の「local discovery profile」にする。
-- local discovery対応probeは `_oep._tcp`、SRV、TXTの規則に従う。
-- hostはmDNS discoveryを実装しなくても、明示endpointでTCP適合になれる。
-- projectのESP32参照profileやrelease基準では、利便性のためlocal discoveryを必須にしてよい。
-
-wire上のcapabilityを追加する必要はない。mDNS広告が存在すればhostは発見でき、無ければ明示endpointを使うだけである。
-
-自動発見をOEP TCPの必須要件として残す判断も可能だが、その場合は「小さいTCP probe」ではなく「local networkでゼロ設定利用できるTCP probe」を最低適合単位にしたことを明示すべきである。
-
-### 3.3 Medium: mDNS / DNS-SD の外部仕様が参照一覧に無い
-
-transports §3 は RFC 6762 と RFC 6763 を規範的に使うようになったが、transports §7 の「参照する仕様」はUSB仕様だけを列挙している。
-
-core §13は、interfaceが依存する外部仕様の版と利用部分を列挙することを要求している。同じ原則をtransportにも適用し、少なくとも次を§7へ追加するとよい。
-
-- RFC 6762: mDNS query / response、multicast interface、名前衝突と再広告。
-- RFC 6763: service instance、PTR / SRV / TXT、service type、TXT keyの扱い。
-
-RFC番号だけでも文書は特定できるが、どの部分がOEP適合に必要かを一覧に置くことで、第三者実装の範囲が明確になる。
-
-### 3.4 Medium: conformance checklist に旧「1回のwrite」規則が残っている
-
-規範の transports §2 は正しく、frameを任意に分割・結合でき、receiverはwrite等の境界に頼らないとしている。
-
-一方、非規範の [conformance](conformance.ja.md) のhost checklistには、まだ次の旧規則がある。
-
-> 1フレームを1回のwriteで送り
-
-同じ文書のprobe checklistは新しい規則になっているため、第三者がhost側だけを実装すると解釈を誤る。次へ置き換えるべきである。
-
-> frameは何回のwriteに分けても、複数frameを一回にまとめてもよい。receiverはその境界に頼らない。TCP以外ではframe途中に `probe_frame_gap_ms` 以上の間を置かない。
-
-これは非規範文書の不整合でwire規則自体の欠陥ではないが、外部実装者向けchecklistなのでfreeze前に直す価値が高い。
+これはprotocol framingやESP32実装のblockerではない。しかし、`_oep._tcp`を外部の独立実装が永続的な識別子として使い始める前に確定すべきである。
 
 ## 4. 前回指摘の反映確認
 
-| 前回の指摘 | 現在の状態 |
+| 指摘 | 現在の状態 |
 |---|---|
-| frameの分割許可と1回のwriteの矛盾 | 規範は解決。conformance guideに旧文言が1か所残る |
+| frameの分割許可と1回のwriteの矛盾 | 解決。任意に分割・結合でき、receiverは境界に頼らない |
+| conformance guideに残った旧write規則 | 解決。transports §2と同じ文へ更新 |
 | `max_length` と経路ごとの `max_frame` | 解決。describeは経路共通で、すべての経路に収める |
-| brokerとrestartのend-to-end保証 | 解決。broker clientには `restart_max_ms` が掛からない |
+| wifi最大requestが`max_frame = 64`に収まらない | 解決。wifi対応probeは全経路で112以上 |
+| 最大wifi requestのvectorが無い | 解決。112 byte vectorとregistry計算試験を追加 |
+| mDNSが全TCP probeに必須 | 解決。advertisementはprobeが選び、明示endpointだけでも適合 |
+| mDNS / DNS-SDの外部仕様が参照一覧に無い | 解決。RFC 6762 / 6763と使用部分を追加 |
+| brokerとrestartのend-to-end保証 | 解決。broker clientには`restart_max_ms`が掛からない |
 | fn 0と固定形式の識別 | 解決。fn 0はprotocol revisionで決まる |
 | channelの存在と番号範囲 | 解決。無ければ0個、持つprobeはtag必須、番号範囲も定義 |
 | channel規則がchannel無しprobeにも見える | 解決。適合条件がchannelを持つprobeだけになった |
 | 接続切断時のsession state | 解決。session、lock、subscription、resend tableは残る |
-| TCP / ESP32実機検証 | release testingへ試験項目を追加。実際の実装結果はfreeze前に確認が必要 |
+| TCP / ESP32実機検証 | release testing §3の10〜12へ記載。実行結果は別途必要 |
 
 ## 5. core の入念な再評価
 
@@ -160,7 +100,9 @@ fn 0は名前を持たず、listに載らない。必須操作は次の8つだ�
 - `keepalive`
 - `lock_state`
 
-`plan`、`restart`、`link`、probe configurationは名前付きの任意interfaceである。通知も通知を出すinterfaceだけが実装する。GPIOだけのprobe、debugだけのprobe、TCPだけのprobeなどが、不要な機能interfaceを持たずに適合できる。
+`plan`、`restart`、`link`、probe configurationは名前付きの任意interfaceである。通知を使わないprobeはsubscriptionを実装せず、channelを持たないprobeにはchannelの電気規則を要求しない。
+
+GPIOだけのprobe、debugだけのprobe、TCP framingだけのprobeも、不要なinterfaceやmDNS responderを持たずに適合できる。
 
 ### 5.2 coreに残る共通規則
 
@@ -171,81 +113,85 @@ fn 0は名前を持たず、listに載らない。必須操作は次の8つだ�
 - session、lock、lease、deduplication、resource lifetime。
 - channelを持つprobeにだけ適用されるchannel / electrical safetyの共通規則。
 - 通知を出すinterfaceにだけ適用されるsubscriptionとdeliveryの共通規則。
-- `boot_id` と共通timebase。
+- `boot_id`と共通timebase。
 
-`clock` は最小probeに数行の実装を要求するが、任意化するとtimestampを使う各interfaceに依存条件とhost分岐が増える。実際にclockを持てないprobeの例がない限り、必須のままの方が全体は単純である。
+`clock`は最小probeにも必要だが、任意化するとtimestampを使う各interfaceに依存条件とhost分岐が増える。clockを実装できない具体的なprobeがない限り、必須のままの方が仕様全体は小さい。
 
-### 5.3 状態の所有範囲
+### 5.3 TCP接続と状態の所有範囲
 
-TCP接続が増えても、現在の規則から次を実装できる。
+複数TCP接続とWi-Fi再接続について、現在の規則から次を一意に実装できる。
 
 - session、lock、resource、resend tableはprobe全体で共有する。
 - revision、`max_frame`、window、`max_inflight`、notification destinationは接続ごと。
-- 接続が閉じてもsession等はleaseやendまで残る。
+- 接続が閉じてもsession等はlease、end、force、rebootまで残る。
 - 同じsession IDのopenを新しい接続から送るとleaseを再開し、notification destinationを移す。
 - 閉じた接続へ送るはずだったresponse / notificationは捨てる。
+- reboot後は`boot_id`が変わり、以前のsessionとresourceは失われる。
 
-これはESP32 Wi-Fiの瞬断・再接続にも必要な規則であり、前版より実装可能性が上がった。
+TCPのwrite、segment、`recv`境界には意味がなく、lengthとmessageを任意位置で分割できる。TCPには`probe_frame_gap_ms`を適用しない。第三者は一般的なstream parserとして実装できる。
 
-## 6. 拡張性
+## 6. 互換実装可能性
 
-拡張モデルは引き続き良い。
+現在の日本語規範文書から、次を独立実装できる。
+
+- serial / vendor bulk / HID / TCPのframing。
+- request、response、event、data headerとTLV。
+- confirm、list、describeによるdiscovery。
+- session、lock、lease、resend、deduplication、resource lifetime。
+- interfaceごとのoptional opとnotification capabilityの発見。
+- 標準interfaceのrequest / responseと状態遷移。
+- reverse-DNS名を使った独自interface。
+- 手動endpointによる最小TCP probe。
+- 任意のmDNS advertisementを持つlocal-network TCP probe。
+- wifi credentialsの設定、write-only secret、接続状態の取得。
+
+USB、mDNS / DNS-SD、SWD、ADI、RISC-V DM、I2C等は、規範文書に列挙された外部仕様も必要である。依存する仕様と使用部分が明示されており、OEP側の不足ではない。
+
+freeze前は日本語版だけが最新の規範である。正式なv1 releaseでは英語版を同期し、同じrelease tagへ含める必要がある。
+
+## 7. 拡張性
+
+拡張モデルは単純で、第三者による追加にも適している。
 
 1. 互換な追加情報はTLVに置く。
 2. 任意操作は`ops`で宣言する。
-3. 固定形式を変えるときはinterface revisionを上げる。
-4. 意味が違う機能は新しいinterface nameにする。
-5. 第三者はreverse-DNS nameを登録なしで使う。
+3. 安全に無視できるevent、enum、bitは規定された条件で追加する。
+4. 固定形式を変えるときはinterface revisionを上げる。
+5. 意味が違う機能は新しいinterface nameにする。
+6. 第三者はreverse-DNS nameを登録なしで使う。
 
-Wi-Fi設定も、既存のstate responseのTLV tailと、新しいconfig item tagを使って追加されている。既存readerは未知tagを安全に無視できるため、追加方法自体は拡張規則に沿っている。
+Wi-Fi設定は既存state responseのTLV tailと、新しいconfig item tagで追加された。既存readerは未知tagを安全に無視できる。TCP discoveryもframingの必須機能ではなくなり、advertisementを持たない小さな実装を保てる。
 
-ただし、transport discoveryはwire上のinterface extensionではない。mDNSを必須にするかoptional profileにするかを明示しないと、TCP適合の最小境界が不必要に大きくなる。
-
-設計原則は次でよい。
+設計原則は次の一文で説明できる。
 
 > 固定形式はrevisionで守り、互換追加はTLV、操作の有無はops、意味が違うものは別interface。
 
-これに、transportについて次を加えると境界が明確になる。
+## 8. TCP/IP と ESP32 Wi-Fiによる検証
 
-> framingと接続の規則をtransport coreに置き、自動発見は独立したprofileに置く。
+[release testing](release-testing.ja.md)には、次が追加されている。
 
-## 7. TCP/IP と ESP32 Wi-Fi で確認すべきこと
+- TCP lengthとmessageの任意分割、複数frameの結合。
+- 2接続によるlock競合と接続ごとのconfirm。
+- 同じsession IDでの再接続とresend table。
+- Wi-Fi loss後とreboot後の再接続。
+- 全経路の`max_frame >= 112`と最大wifi item。
+- advertisementを行うprobeのSRV port、TXT / describeの`unit_id`一致。
+- Wi-Fi再接続とreboot後の再広告。
 
-[release testing](release-testing.ja.md) にTCPの分割・結合、2接続、session再接続、Wi-Fi loss、rebootが追加されたのはよい。文書上の計画だけでは仕様検証が完了したことにはならないため、freeze条件として実際のESP32結果を残すべきである。
+これは前回提言の主要部分を覆う。freeze前には、ESP32 Wi-Fi probeと独立したhostで実際に実行し、結果JSONをrelease noteから参照できるようにする必要がある。
 
-### 7.1 framingと接続
+追加で実装側が確認するとよい項目は次である。
 
-- lengthの2 byteを別々の`recv`に分ける。
-- messageを1 byte単位を含む任意位置で分ける。
-- 複数frameを一回のwrite / segment / `recv`にまとめる。
-- TCPでは`probe_frame_gap_ms`で受信途中を破棄しない。
-- `max_frame`を超えるlengthで接続を閉じる。
-- 2 clientでglobal session / lockとconnectionごとのlimitを確認する。
-- 正常close、abrupt close、half-open、Wi-Fi loss、再associationを試す。
-- 同じsession IDで再openし、lease、subscription destination、resend tableを確認する。
-- reboot後は`boot_id`が変わり、sessionが`no_session`になることを確認する。
+- open network、8 byte、63 byte、64桁hexの各credential。
+- getがsecretを返さず、`pass_len = 0xFF`のround-tripでsecretを保持すること。
+- 使用中entryの変更ではset responseが届いてから接続が切れること。
+- abrupt close、half-open、Wi-Fi再association。
+- mDNS名の衝突、IP変更後の古いrecordの消去、複数network interface。
+- 誤った資格情報でTCP到達不能になった場合のUSB / serialからの復旧。
 
-### 7.2 Wi-Fi設定
+これらは新しいwire規則を要求するものではなく、規範どおりの実装であることを確かめる試験である。
 
-- open network、8 byte passphrase、63 byte passphrase、64桁hex PSKを試す。
-- 32 byte SSID + 64桁PSKの112 byte requestを各transportで送る。
-- getがsecretを返さず、`pass_len = 0xFF`をsetへ戻すとsecretを保持することを確認する。
-- 使用中entryのset / unsetではresponseを先に受け、その後接続が切れることを確認する。
-- 誤った資格情報で到達不能になった場合の物理的な復旧手順を参照実装に用意する。
-- save、reboot、再接続後もsecret自体をログやresponseへ出さないことを確認する。
-
-### 7.3 mDNSを採用する場合
-
-- `_oep._tcp.local.` のbrowseでPTR、SRV、TXT、addressを解決する。
-- TXTの`unit_id`とOEP describeの`unit_id`を照合する。
-- host名またはinstance名の衝突時にRFCどおりrename / reannounceする。
-- Wi-Fi再接続やIP変更後に古いrecordを残さず再広告する。
-- 複数IPv4 interfaceからqueryし、IPv6対応を主張するならIPv6 interfaceでも試す。
-- mDNSが届かないnetworkでは明示address / portで接続できることを確認する。
-
-実機結果は `release-testing.ja.md` が定めるJSONに残し、使用firmware、client、board、transport、失敗条件をrelease noteから参照できるようにする。
-
-## 8. 機械検証
+## 9. 機械検証
 
 次を再実行した。
 
@@ -255,42 +201,33 @@ python3 tools/oepvectors1.py --check
 cd tests && uv run pytest registry_v1 vectors
 ```
 
-結果は27件すべて成功した。registry、生成物、既存vectorの不一致は見つからなかった。
+結果は28件すべて成功した。registry、生成物、既存vectorの不一致は見つからなかった。
 
-現在のvectorにはwifiのset / get / write-only round-trip / refusal / state / unsetが追加されている。ただし、32 byte SSID + 64桁PSKの最大request、mDNS packet、実際のTCP stream分割、複数connectionは共有vectorでは扱っていない。
+vectorにはwifiのset / get / write-only round-trip / refusal / state / unsetと、32 byte SSID + 64桁PSKの112 byte最大requestが含まれる。TCP streamの分割、複数connection、mDNS packetは実装と結合試験の範囲として明示されている。
 
-## 9. Freeze 前の推奨変更
+## 10. Freeze 前の残作業
 
-### 必須
+### 仕様・名前管理
 
-1. wifiを広告するprobeの全経路に`max_frame >= 112`を要求するか、最大資格情報を運べる別の分割形式を定義する。単純さのため前者を推奨する。
-2. conformance checklistに残る「1 frameを1回のwrite」を削除する。
-3. mDNSを規範に残すなら、RFC 6762 / 6763と使用部分をtransportsの参照一覧へ追加する。
+1. DNS-SD service name `oep`をIANAへ申請するか、登録完了前は名前をfreezeしない。
 
-### core / transportを小さく保つための推奨
-
-1. TCP framingとmDNS local discoveryを分離する。
-2. 明示address / portだけでTCP適合になれるようにする。
-3. ESP32参照profileではmDNSを要求し、使いやすさを保つ。
-
-### Freeze判定の実装条件
+### 実装によるFreeze判定
 
 1. ESP32 Wi-FiのTCP probeを独立hostから操作する。
-2. 最大wifi itemを含む全credential vectorを通す。
-3. TCP分割・結合、2 client、切断、再接続、rebootを通す。
-4. mDNSを採用するなら、広告、衝突、再広告、複数interfaceを通す。
-5. 実機結果を保存し、仕様の各規則へ対応づける。
+2. release testing §3の10〜12を実行する。
+3. credential、切断、再接続、reboot、advertisementの結果を保存する。
+4. 実機で見つかった規範不足があれば、破壊的変更が可能な間に仕様へ戻す。
 
 ### Release前
 
 1. 日本語の規範文書から英語版を同期する。
 2. 節番号の欠番を整理する。
-3. 規範文書、registry、生成物、vectorを同じimmutable release tagに含める。
+3. 規範文書、registry、生成物、vectorを同じimmutable release tagへ含める。
 
-## 10. 最終評価
+## 11. 最終評価
 
-coreの縮小と前回指摘への対応は良好である。fn 0は小さく、optional interfaceとreverse-DNS extensionの境界も明確で、第三者が独自機能を追加できる。通常のprotocol pathは仕様書だけから互換実装できる水準にある。
+coreは十分小さく、状態と拡張の規則も一貫している。通常のprotocol path、最小TCP path、mDNSを使うlocal discovery、ESP32 Wi-Fi設定を、現在の日本語仕様だけから第三者が実装できる。
 
-今回の最大の規範上の問題は、wifiの最大有効requestと`max_frame=64`の不整合である。これはESP32実装を行えば早い段階で見つかる種類の問題であり、「実装しないと仕様上の不備を見つけにくい」という判断を裏づける。
+独自拡張はreverse-DNS interface、TLV、`ops`、revisionによって既存実装から分離できる。未知値の扱いも定義されており、拡張性は担保されている。
 
-mDNS / DNS-SDは実用上有益だが、全TCP probeの必須機能にするかはcoreの小ささに直接影響する。TCP transportとlocal discovery profileを分け、ESP32参照実装では両方を実装する構成が、単純性、拡張性、実用性のバランスが最もよい。
+現時点で仕様内容そのものにfreeze blockerは見つからない。残るのは、DNS-SD service nameの登録、ESP32と独立hostによる実装検証、英語版同期とrelease作業である。特にESP32実装は、文書レビューでは見えないstream分割、複数connection、Wi-Fi切断、credential最大長を検証するため、freeze前に完了すべきである。
