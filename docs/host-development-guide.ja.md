@@ -67,6 +67,7 @@ max_frame を使う（core §4.4）。
 TCP で待ち受ける probe が自分を広告するときは、DNS-SD の service `_oep._tcp` を mDNS で広告する（transports §3。広告は probe が選ぶ。参照の probe は広告する）。
 
 - `_oep._tcp.local.` を browse し、instance ごとに SRV（host の名前と port）、アドレス、TXT の `unit_id` を読む。port はいつも SRV の値を使う。
+- service の名前 `oep` は IANA に登録した名前ではない。同じ名前で別のサービスが広告されうるので、見つけたものはどれも、confirm（`OEP!` の答え）と describe の unit_id で確かめてから使い、確かめられないものは候補から外す（transports §3 の探りの規則どおり）。
   例: 参照の probe（oep-probe-arduino）は port 7450 で待ち受けるが、仕様は port を決めない。
 - 開いたら transports §3 の探りの規則のとおり、最初は confirm だけを送る。fn 0 の describe の unit_id で確かめ、TXT と違えば閉じる。
 - **どれを使うか**は host が決める。目安: 利用者が unit_id で名指したら、TXT の unit_id が同じ instance を開く。名指しが無く 1 つも
