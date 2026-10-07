@@ -240,7 +240,7 @@ configure の応答の blocking_ms が core の max_op_ms を超える構成は�
 - **samples は区画の総数**（pretrigger を含む）。トリガが早く立ってプリトリガの分が足りなければ、区画は短く、trigger_index はそのまま
   小さい。force で始めたときは trigger_index = その瞬間のサンプルで triggered を送る。type 0（即時）では triggered を送らない。
 - **rate**: probe は宣言した rate_range の中で実現できる最も近い値を使う（向きは問わない。どれかは actual_rate
-  で分かる）。範囲の外の rate は rejected unsupported（tag 0x42）。
+  で分かる）。範囲の外の rate は rejected unsupported（受け取ったままの tag、core §2.3）。
 - probe が持てる量を超える samples は、その上限に切り下げ、応答の actual_samples（0x52）
   が正である。host は送った値を仮定せず、actual_samples と actual_segments を読む。
 

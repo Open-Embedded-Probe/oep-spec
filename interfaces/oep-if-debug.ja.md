@@ -110,7 +110,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   同じである。そのセッションがすでにその connection の使っているものなら、その分はそのまま残る。
 - `speed_hz` は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。
 - max_speed（TLV 0x01、u32 Hz）: probe はこれを超える速さを選ばない。**attach では必須**（無ければ rejected malformed）、critical で
-  送る。probe の min_clock_hz より小さければ rejected unsupported（tag 0x01）。scan にも付けられる（下）。pins と idle_clock は任意で、送るときは critical。
+  送る。probe の min_clock_hz より小さければ rejected unsupported（受け取ったままの tag、core §2.3）。scan にも付けられる（下）。pins と idle_clock は任意で、送るときは critical。
 - **scan が書くもの**: 「速さを確かめる前の書き込み」の 1 と 2 だけで、「見つかった」の識別子を読むためである。scan は書き込みの道を
   確かめず、scratch のレジスタに書かない。max_speed の無い scan は、その wire の最も遅い速さで試す。max_speed のある scan は、attach と同じく
   max_speed 以下で読むことで速さを選んでよい。dmactive は立てたまま残す。「見つかった」は DMSTATUS.version が 2 以上で 15 でないこと（0 = DM が無い、1 = このインターフェースが
@@ -229,7 +229,7 @@ TLV:
 | scan（rvswd だけ） | 0x04 | idle_clock | u8。scan の間の休ませ方（下） |
 | attach | 0x01 | max_speed | u32 Hz。**必須**、critical |
 | attach | 0x03 | pins | swdio(u16)、swclk(u16)。critical |
-| attach（rvswd だけ） | 0x04 | idle_clock | u8。線を休ませる間の SWCLK: 0 = high（新しい connection で無いときと同じ。既存の connection に加わる attach で無ければ、その connection の今の休ませ方、§1）、1 = low。critical。rvswd 以外に 1 を送れば rejected unsupported（tag 0x04） |
+| attach（rvswd だけ） | 0x04 | idle_clock | u8。線を休ませる間の SWCLK: 0 = high（新しい connection で無いときと同じ。既存の connection に加わる attach で無ければ、その connection の今の休ませ方、§1）、1 = low。critical。rvswd 以外に 1 を送れば rejected unsupported（受け取ったままの tag、core §2.3） |
 | attach | 0x05 | reset | channel(u16)、hold_ms(u16)。critical。上 |
 | detach | 0x01 | force | 長さ 0。critical |
 | attach の応答 | 0x10 | target_id | scheme(u8)、値 |

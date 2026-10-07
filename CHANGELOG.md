@@ -42,6 +42,8 @@ Japanese only while Japanese is the working text.
   max_frame − 7, 5 bytes over max_frame (source stays max_frame − 7: answer header 5 and len 2).
 - fixture i2c-target: errors grows by at most 1 per write (a write over max_length into a full queue counts 1), as spi-target already
   says per transfer.
+- capture rate, debug max_speed and idle_clock: refused with rejected unsupported carrying the tag as received (core §2.3); the text
+  no longer names the bare tag (0x42, 0x01, 0x04), which read as if bit 7 were dropped.
 
 ### Rule review (2026-10-07)
 
