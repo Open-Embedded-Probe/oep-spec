@@ -134,9 +134,11 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   §4.6 など、target を扱うインターフェースの節）。
 - **1 つの要求の中の再試行**: probe は 1 つの要求の中で線を再試行してよい（どれだけ続けるかは probe が決め、遅い速さでの再試行を含む）。
   諦めたら、その要求を status line で終える。それだけでは線切れと決めない。再試行の間の遅い速さは一時的で、connection の speed_hz は変えない。
-- **書き込みを繰り返さない**: probe の線の再試行は、target に届いたかもしれない書き込みを繰り返さない（target が受けなかったと答えたもの、DMI の
-  busy と SWD の WAIT は繰り返してよい）。そういう失敗の要求は completed failed / partial で答え、done はそれより前に済んだ手順か語の数にする。
-  読み出しは繰り返すことがある。
+- **書き込みを繰り返さない**: target のメモリへの store（store を起こす書き込みを含む）と host の dmi の要求の手順は、target に届いたかもしれない後には、
+  probe の線の再試行で繰り返さない（target が受けなかったと答えたもの、DMI の busy と SWD の WAIT は繰り返してよい）。probe 自身が debug module と
+  レジスタに値を置く書き込み（同じ値をもう一度書いても何も起こらないもの: program buffer、abstractauto、GPR、dcsr、戻す DATA0 / DATA1）は繰り返してよく、
+  ほかの書き込み（hart を走らせる resumereq など）は store と同じく繰り返さない。繰り返さない書き込みで失敗した要求は completed failed / partial で答え、
+  done はそれより前に済んだ手順か語の数にする。probe 自身の読み出しは繰り返すことがある。
 - **target の状態を変えない**: connection がある間、probe が自分の判断で行う線の再試行と同期の取り直しは、target の状態を変えない。wake / 設定の手順が
   target をリセットしうる wire では、connection の上でそれを送るのは attach と、reset（attach の reset TLV、riscv-dm の reset の op）の中だけである。
 - **線切れ**: ある connection の操作が線からの応答無しで失敗し続け（status line。要求の中でもコンソールの読みの中でも）、その間にその connection で

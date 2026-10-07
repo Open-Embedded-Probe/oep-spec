@@ -745,9 +745,9 @@ probe は target を知らず、host が知っている（core §13 の規則 8�
   レジスタの止め方はリセットを越えて残り、次の firmware が割り込みなしで走ることがある。
 - **attach の応答に target_id があれば、それで target を識別する**（core は解釈しない。ビットの意味は host が知っている）。無ければ、
   target の系統が定める識別のレジスタを読む。
-- **読むと状態が変わるレジスタ**（読むと消えるフラグ、FIFO）: probe の線の再試行は読み出しを繰り返すことがある（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2。
-  dmi でも同じ）。そういうレジスタは、1 回の読みが失われうるか重なりうるものとして host が組む。書き込みは繰り返されない（失敗は failed /
-  partial と done で分かる）。
+- **読むと状態が変わるレジスタ**（読むと消えるフラグ、FIFO）: probe の線の再試行は、probe 自身の読み出し（read_block など）を繰り返すことがある
+  （[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）。そういうレジスタを read_block で読むなら、1 回の読みが失われうるか重なりうるものとして host が組む。
+  target のメモリへの store と host の dmi の手順は、target に届いたかもしれない後には繰り返されない（失敗は failed / partial と done で分かる）。
 - **run の準備の失敗**: run が stopped 3（走らせなかった）で答えたら、hart は止まったまま、ローダーは走っていない（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.4）。
 - **probe は run と resume を出し直さない**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.2、§4.4）。止まった dpc が開始位置のままなら
   走っていない。二度走らせてよい操作（消去、同じページの書き込み）だけやり直す。target の resume の癖（resumereq が 2 回要る、

@@ -226,8 +226,9 @@ clock（core §7.7）の応答の uptime_ns は、その要求を処理する中
   （max_frame から write の要求の見出しと固定部分を引いた分より大きくしても、1 回の write には入らない）。
 - **リセットを解いた後の待ち**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §3、§4.3）: ndmreset やリセットの線を解いた後に DM が答えない間は、
   DMSTATUS を読み直して待つ（多くても max_op_ms）。この間の失敗を、線の再試行にも線切れにも数えない。
-- **線の再試行は書き込みを繰り返さない**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）: 書いた後の確かめで線の失敗が分かったら、書き込みを
-  やり直さずに failed / partial で答え、done は失敗より前に済んだ数にする（target が受けなかったと答えた DMI の busy と SWD の WAIT は除く）。
+- **線の再試行は書き込みを繰り返さない**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）: target のメモリへの store と host の dmi の手順を書いた後の
+  確かめで線の失敗が分かったら、やり直さずに failed / partial で答え、done は失敗より前に済んだ数にする（target が受けなかったと答えた DMI の busy と
+  SWD の WAIT は除く）。自分が DM とレジスタに値を置く書き込み（program buffer、abstractauto、GPR、dcsr、戻す DATA0 / DATA1）は繰り返してよい。
   connection の上の再試行と同期の取り直しでは、target をリセットしうる wake を送らない。
 - **コンソールの読みの順**（[コンソール](../interfaces/oep-if-console.ja.md) §3）: その connection の riscv-dm の要求に答えた後は、次にコンソールのために DATA0 を
   読む前に DMSTATUS を読み、hart が止まっていれば読まない。

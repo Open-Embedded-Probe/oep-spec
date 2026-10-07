@@ -106,7 +106,7 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
   状態に戻る（debug §2）。
 - **速さを確かめる前の target への書き込み**は、wake / 設定の手順と dmactive だけ。書き込みの確かめはスクラッチのレジスタだけを使い、
   元に戻す（debug §1）。
-- **線の再試行**: probe の線の再試行は、target に届いたかもしれない書き込みを繰り返さず（失敗は failed / partial で見える）、connection がある間は
+- **線の再試行**: probe の線の再試行は、target に届いたかもしれない target のメモリへの store と host の dmi の手順を繰り返さず（失敗は failed / partial で見える）、connection がある間は
   target の状態を変えない（target をリセットしうる wake は attach と reset の中だけ）（debug §2）。
 - **count = 0 の scan** は空いている候補のピンを順に駆動する。配線の分からない治具に、利用者の同意なしに送らない（debug §1、参考）。
 - **治具の線**: spi-target は CS が有効な間だけ MISO を駆動し（cs_setup_ns を除く）、ソフトウェアで MISO を出し始めるなら cs_setup_ns を
