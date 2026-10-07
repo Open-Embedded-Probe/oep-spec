@@ -77,3 +77,30 @@
   browse と、利用者の明示したアドレスと port の両方を持つ（今までどおり）。参照の probe（ESP32）は広告を続ける。
 - **transports §7**: 広告する probe と browse する host は RFC 6762 / 6763 に従う（衝突のときの名前の付け直し、アドレスが変わったときの広告し直し）。
 - ch32rv: wifi を宣言しないなら変更なし。
+
+## core 再確認（0991759）への回答
+
+[外部仕様レビュー](external-spec-review-2026-10-06.ja.md) の 0991759 の core 再確認（d8b4d9e）。判断の基準は上と同じ。日本語の作業の文だけを直した。
+どれも今の意図を 1〜2 文で固定するもので、byte の並びは変わらない。
+
+| 指摘 | 判断 | 理由 | commit |
+|---|---|---|---|
+| 1 結論 | — | 指摘ではない | — |
+| 3.1 describe の 1 TLV が収まる条件に応答の見出しと more を含める | 採る | 経路の max_frame は message 全体の上限（§4.4）なので、TLV だけを比べると応答が 6 byte 超えうる。core §7.3 を「応答の見出し 5 byte と more 1 byte を足しても収まる（値は最小の max_frame − 9 byte まで）」にした。適合の一覧と registry の describe の注も同じ。同じ仕組みのほかの所: confirm（64 byte）、list（見出し込みで 63）、max_length（要求と応答の全体、§7.4）、debug の read_block / write_block（見出し 5 / 10 を数える）、common の read、capture の read、link の source / sink（見出し込み）、probe.config の wifi（見出し 10 込みで 112）、release testing 9、host ガイドの sink はどれも見出しを含んでいて変更なし。probe.config の get は項目ごとの上限を言わないが、その答えの見出し（5 + more 1 + hash 4 = 10）は set の要求の見出しと同じなので、set で送れた項目はどれも get の 1 ページに収まる | cbdea59 |
+| 3.2 ページングの終わりの count 0 を「要素 0 個」に | 採る | describe と get は count の欄を持たない。core §7.3 を「要素を 0 個、more 0（要素の数の欄を持つ応答では、その欄は 0）」にした。答えの形ごとの確かめ: describe は more 0 だけ（既存のベクタ "describe fn 0 from beyond the last"、getting-started も同じ）、probe.config の get は more 0 と hash で項目なし、state は n_slots / n_binds が 0（wifi の TLV はどのページにも載る）、debug の connections と console の streams は more 0 と count 0（既存のベクタ "rvswd connections: first beyond the count"）、capture の segments は空の成功、list は more を持たず total と count 0（§7.2）。適合の一覧と用語集も同じ | cbdea59 |
+| 3.3 資源の番号の 0 を割り当てないと明記 | 採る | 意図は「1 から、65535 の次は 1」で、console は「1 から進める」、probe.config の slot_state の connection は 0 を「無し」に使う。core §9 に「1〜65535、起動後の最初は 1、0 は割り当てない（インターフェースは 0 を無しに使える）」、§2.5 の表にも範囲を足した。0 を「無し」に使う資源の欄は slot_state の connection だけで、これと合う。console §1（1 から）はもう合っていた。共通部品 §2 の connection の番号、適合の一覧、用語集に「1 から、0 は割り当てない」を足した | cbdea59 |
+| 3.4 editorial（fn の期間、§4.4 の「両方」、boot_id の定義） | 採る | fn は「同じ boot_id の間」（§7.2 と同じ）、§4.4 は「これらの上限」、§6.5 は「起動ごとに変わるように選ぶ値」にした。用語集と適合の一覧の同じ言い回しも直した | cbdea59 |
+| 3.5 DNS-SD の service name `oep` は未登録 | — | 確認だけ。0991759 で済み | 0991759 |
+| 4〜8 反映の確認、core の再評価、互換実装、拡張性、TCP / ESP32 | — | 同意。ESP32 の結果は実装と結合試験の仕事（前回と同じ） | — |
+| 9 機械検証（3 点の例を足す） | 足さない | byte の並びは変わらない。範囲を越えた describe と connections の終わりはもうベクタがあり、最初の資源の番号 1 はベクタの connection 1 と合う。55 byte の値の TLV は probe の宣言の作り方で、決まった要求と応答の組ではない | — |
+| 10 残作業: 仕様 1〜4 | 3.1〜3.4 のとおり | — | cbdea59 |
+| 10 残作業: 仕様 5、実装、リリース前 | もう済み / 実装と結合試験の仕事 / 凍結のときに | 前回と同じ | — |
+| 11 最終評価 | — | 同意 | — |
+
+### 実装が追う変更（この回）
+
+- **core §7.3**（probe）: describe の各 TLV は、応答の見出し 5 byte と more 1 byte を足しても、probe のどの経路の max_frame にも収まる大きさにする（値は最小の
+  max_frame − 9 byte まで。max_frame 64 なら 55 byte）。長い text（firmware、model、chip、label）を出す probe は確かめる。
+- **core §7.3**（probe）: 範囲を越えた first には要素 0 個と more 0。describe は more 0 の 1 byte だけで、余分な count の 0 を付けない。get は more 0 と hash だけ。
+- **core §9**（probe）: 資源の番号は起動後の最初が 1 で、0 を割り当てない（65535 の次は 1）。0 から振る実装は直す。host は 0 を「無し」として読んでよい（slot_state の connection）。
+- 文の言い回しだけの 3.4 には、実装の変更は無い。
