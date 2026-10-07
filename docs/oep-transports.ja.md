@@ -92,11 +92,12 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **USB の serial number は unit_id**（core §7.5）: probe が serial を選べる口（CDC、vendor bulk、HID を自分で出す device）では、serial number を
   unit_id そのものにする（core §7.5 の不変性）。host は開かずに個体を見分けられ（名指した probe を探せる）、どの経路の describe とも同じ値に
   なる。serial を選べない口（内蔵の USB シリアル、USB-UART の変換チップ）は、host が経路を外から指定し、describe で unit_id を確かめる。
-- **TCP の probe の見つけ方**: TCP で待ち受ける probe は、待ち受けている間、DNS-SD（RFC 6763）の service `_oep._tcp` の instance を
+- **TCP の probe の見つけ方**: TCP で待ち受ける probe が自分を広告するときは、待ち受けている間、DNS-SD（RFC 6763）の service `_oep._tcp` の instance を
   mDNS（RFC 6762）で広告する。port は SRV の record のもので、決まった port は無い。TXT の record は `unit_id=<unit_id>`（fn 0 の describe の
   unit_id）を持つ。probe はほかの key を足してよく、host は知らない key を無視する。instance の名前と host の名前は probe が決める。
   host が開く TCP の接続先は、`_oep._tcp` で見つけたものか、利用者が明示したもの（アドレスと port）だけで、どちらも上の探りの規則に従う。
   名指した probe は TXT の unit_id で選んでよいが、使うのは describe の unit_id が名指した値と同じときだけ（違えば閉じる。比べ方は上の名指した probe と同じ）。
+  広告しない probe は、利用者が明示したアドレスと port で使う。
 - **max_frame は両方向の上限**: probe は max_frame を超える message を送らず、host は max_frame を超える message を送らない。
 - **confirm の前**: どの probe も 64 byte（registry の `min_max_frame`）までの message を受ける（confirm の max_frame は 64 以上）。
   host は confirm の応答を受けるまで、64 byte を超える message を送らない。host は probe から長さ 65535 byte までの message を

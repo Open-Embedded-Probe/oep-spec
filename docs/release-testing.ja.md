@@ -66,6 +66,8 @@ picotool / uf2、oep_client）でできる。firmware のリポジトリは Ardu
     probe の再起動の後に開き直し、boot_id と no_session を確かめる。
 11. wifi の項目（items に wifi がある probe だけ）: どの経路でも confirm の max_frame が 112 以上で、いちばん長い wifi の set（32 byte の ssid と
     64 文字の鍵、112 byte）が成功する（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.4）。
+12. TCP の広告（`_oep._tcp` を広告する probe だけ）: browse で見つかり、SRV の port で開け、TXT の unit_id が describe の unit_id と同じ。
+    Wi-Fi のつなぎ直しと probe の再起動の後に、今のアドレスで見つかる（transports §3）。
 
 結果は JSON で `tests/hw/results/<board>-<firmware>-<client>.json` に残し、リリースノートから参照する。
 

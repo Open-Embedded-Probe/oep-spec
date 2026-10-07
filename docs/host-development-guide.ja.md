@@ -64,7 +64,7 @@ max_frame を使う（core §4.4）。
 
 ### 4.1 TCP の probe の見つけ方
 
-TCP で待ち受ける probe は、DNS-SD の service `_oep._tcp` を mDNS で広告する（transports §3）。
+TCP で待ち受ける probe が自分を広告するときは、DNS-SD の service `_oep._tcp` を mDNS で広告する（transports §3。広告は probe が選ぶ。参照の probe は広告する）。
 
 - `_oep._tcp.local.` を browse し、instance ごとに SRV（host の名前と port）、アドレス、TXT の `unit_id` を読む。port はいつも SRV の値を使う。
   例: 参照の probe（oep-probe-arduino）は port 7450 で待ち受けるが、仕様は port を決めない。
@@ -75,7 +75,7 @@ TCP で待ち受ける probe は、DNS-SD の service `_oep._tcp` を mDNS で�
 - 再起動の後や Wi-Fi のつなぎ直しの後は、アドレスが変わりうる: unit_id で browse し直す（§5.2 の 5）。
 - 問い合わせは、すべての IPv4 のネットワーク接続から送る（接続ごとに送り出す口を選ぶ）。アドレス 0.0.0.0 の socket から 1 回だけ送ると、
   OS が選んだ 1 つの接続（仮想の接続のことがある）からしか出ず、ほかの接続の先の probe を見落とす。
-- mDNS が届かない所（ルーターの向こう、VPN、NAT の内側の仮想マシン）では、利用者がアドレスと port を明示する。
+- 広告しない probe と、mDNS が届かない所（ルーターの向こう、VPN、NAT の内側の仮想マシン）では、利用者がアドレスと port を明示する。
 - 広告は同じネットワークの誰でも出せ、describe の unit_id も偽れる。TCP は信頼できるネットワークか、認証したトンネルの中でだけ使う
   （transports §1）。
 

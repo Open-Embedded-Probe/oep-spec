@@ -51,6 +51,11 @@ From the re-re-check of 764b110 in `docs/external-spec-review-2026-10-06.ja.md`;
   follows.
 - Conformance host checklist: the removed "one frame in one write" is gone; a frame may be split or joined, the receiver does not rely
   on the boundaries, and except on TCP a sender does not pause `probe_frame_gap_ms` inside a frame (transports §2).
+- Transports §3: advertising is the probe's choice. A TCP probe that advertises itself does so as `_oep._tcp` over mDNS as before; one
+  that does not is used at an address and port the user gives. A probe that only speaks TCP framing (a tunnel, a broker's upstream, a
+  network without multicast) needs no mDNS responder. Host guide §4.1 (the reference probe advertises), conformance and glossary
+  follow; release testing item 12 checks an advertising probe (found, SRV port, TXT unit_id = describe's, found again after a Wi-Fi
+  reconnect and a restart).
 
 ### External review re-check (2026-10-07)
 
