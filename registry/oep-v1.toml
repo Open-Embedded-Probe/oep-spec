@@ -640,7 +640,7 @@ trigger = 0x45                  # type(u8) role(u8) value(u32)
 pretrigger = 0x46
 [interface.tlv.configure_answer]  # the answer of configure and query
 actual_rate = 0x50
-layout = 0x51                   # w(u8) C(u8) pos[C](u8)
+layout = 0x51                   # w(u8, 1-128, any integer) C(u8) pos[C](u8)
 actual_samples = 0x52
 actual_segments = 0x53
 blocking_ms = 0x56

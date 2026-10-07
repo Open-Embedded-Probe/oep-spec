@@ -815,7 +815,8 @@ probe は target を知らず、host が知っている（core §13 の規則 8�
 
 ## 22. キャプチャの使い方の例
 
-[キャプチャ](../interfaces/oep-if-capture.ja.md) の op の並べ方の例。値は例で、実際のレートと layout は configure の応答で決まる。
+[キャプチャ](../interfaces/oep-if-capture.ja.md) の op の並べ方の例。値は例で、実際のレートと layout は configure の応答で決まる。layout の w は 1〜128 のどの整数もありうる（3 本を w = 3 で詰める probe もある）。
+host は w を 2 の冪と仮定せず、§1.1 のビットの定義どおりに切り出す（サンプルはバイトの境目をまたぎうる）。
 
 ```text
 ワンショット（ロジック 2 本、20 MHz、テストの自動判定）

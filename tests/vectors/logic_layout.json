@@ -1,0 +1,22 @@
+{
+  "about": "Logic capture streams (capture §1.1): the configure answer's layout (w, pos), the channels' levels (`channels[k]`, character i = the level of channel k in sample i, channels in role order) and the segment's stream. Bits no pos names and the bits of the last byte past N*w are undefined (any value; 0 here); a host ignores them.",
+  "cases": [
+    {
+      "name": "w 3, three channels: samples cross byte boundaries",
+      "spec": "capture §1.1 rules 1-4, the w = 3 example",
+      "w": 3,
+      "pos": [
+        0,
+        1,
+        2
+      ],
+      "samples": 8,
+      "channels": [
+        "11100100",
+        "01010000",
+        "00000001"
+      ],
+      "stream_hex": "598480"
+    }
+  ]
+}

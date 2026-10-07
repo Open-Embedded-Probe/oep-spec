@@ -96,6 +96,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - **restart**（`oep.probe.restart`）: 答えの後は、probe が新しい起動で confirm に答えるまで何も答えないものとして扱い、新しく開くのと同じに開き直して boot_id で確かめる（[再起動](../interfaces/oep-if-restart.ja.md) §2。手順は [host 開発ガイド](host-development-guide.ja.md) §5.2）。UART bridge では起動時の速さに戻す（[リンク](../interfaces/oep-if-link.ja.md) §3 の host 2）。
 - **port_speed**: host が使うときは [リンク](../interfaces/oep-if-link.ja.md) §3 の host 1 と 2（試すの答えの後 `port_speed_switch_wait_ms` 以上待ってから新しい速さで送る、戻す・end・再起動する op の答えで起動時の速さに戻る）。UART bridge のどの口でも、上げた速さの後に confirm を繰り返す（transports §4）。
 - **Wi-Fi の passphrase**: 表示せず、ログに書かない。get の pass_len 0xFF は「ある」の印で、送り返せば今のものを保つ（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.4）。
+- **ロジックのキャプチャ**: layout の w は 1〜128 のどの整数も読む。w が 8 の倍数でなければサンプルはバイトの境目をまたぐ（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1.1）。
 - **アナログのキャプチャ**: host が電圧を示すときは、値 0 と 2^b − 1 を電圧ではなく振り切れ（低い端以下、高い端以上）として示す
   （[キャプチャ](../interfaces/oep-if-capture.ja.md) §1.2 規則 6）。
 
@@ -137,6 +138,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `sessions.json` | セッションの場面: 判定の表（§6.2）、送り直しの表（§5.2。送り直した end）、end での解放と no_session（§9）、force、session_id 0（§4.1）、セッションが無いときと開いているときの clock（§7.7）。決めた初めの状態から順に送る要求と答え |
 | `ops_encoding.json` | describe の共通の tag ops の値の境（最短、最長、長さの誤り、op 0xFF の境、同じ集合の別の符号）と、正しい値が表す op の集合（§7.4） |
 | `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console（marks の通し番号のページング、streams の最後のページ）、logic（configure の契約、segments の空のページ）、riscv-dm の失敗した step、arm-adi の n = 0 の transfer、spi-target の部分の byte（MSB / LSB が先）、capture-group の start、キャプチャの出来事のフレーム（`events`、世代）、probe.config（wifi の set（いちばん長い 112 byte のものを含む）/ get / unset と state を含む）、logic のほかの一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
+| `logic_layout.json` | ロジックのキャプチャのストリーム（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1.1）: layout の w と pos、チャネルのレベル、区画のバイト列。2 の冪でない w（w = 3、サンプルがバイトをまたぐ） |
 
 実装は JSON を読み、自分の符号器、復号器、答えをバイト単位で比べる。ベクタが文書と registry に合っているかを確かめるには:
 

@@ -762,9 +762,47 @@ def ops() -> dict:
         "events": events,
     }
 
+
+# ---- capture data (capture §1.1) -----------------------------------------------------------------------------
+
+def levels(n: int, ones) -> str:
+    """A channel's levels as text, character i = the level of sample i."""
+    ones = set(ones)
+    return "".join("1" if i in ones else "0" for i in range(n))
+
+
+def pack_samples(chans: list[str], w: int, pos: list[int], first: int, count: int) -> bytes:
+    """capture §1.1 rules 1-4: sample i at stream bits i*w .. i*w + w - 1, channel k at bit i*w + pos[k]; ceil(count*w / 8) bytes.
+    The bits no pos names (undefined) are 0 here."""
+    bits = 0
+    for i in range(count):
+        for k, ch in enumerate(chans):
+            bits |= int(ch[first + i]) << (i * w + pos[k])
+    return bits.to_bytes((count * w + 7) // 8, "little")
+
+
+def logic_layout() -> dict:
+    cases = []
+
+    def add(name, spec, w, pos, chans):
+        n = len(chans[0])
+        cases.append({"name": name, "spec": spec, "w": w, "pos": pos, "samples": n, "channels": chans,
+                      "stream_hex": hx(pack_samples(chans, w, pos, 0, n))})
+
+    add("w 3, three channels: samples cross byte boundaries", "capture §1.1 rules 1-4, the w = 3 example", 3, [0, 1, 2],
+        [levels(8, (0, 1, 2, 5)), levels(8, (1, 3)), levels(8, (7,))])
+    return {
+        "about": "Logic capture streams (capture §1.1): the configure answer's layout (w, pos), the channels' levels (`channels[k]`, character i = "
+                 "the level of channel k in sample i, channels in role order) and the segment's stream. Bits no pos names and the bits of the last "
+                 "byte past N*w are undefined (any value; 0 here); a host ignores them.",
+        "cases": cases,
+    }
+
+
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
          "refusals.json": refusals,
-         "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding}
+         "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding,
+         "logic_layout.json": logic_layout}
 
 
 def render(build) -> str:

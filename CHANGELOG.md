@@ -11,6 +11,16 @@ v1 candidate. Changes since the last pushed state (ad9f8be). Most rule changes c
 [2026-10-06 rule-change proposal](docs/v1-rule-change-proposal-2026-10-06.md), reviewed by the implementers (ch32rv, WireSkein, bench),
 and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.md).
 
+### Logic capture: any sample width, seamless segments, multirate (2026-10-07)
+
+From the [multirate capture proposal](docs/v1-multirate-capture-proposal-2026-10-07.ja.md), reviewed and approved by WireSkein (every
+example byte reproduced independently). Japanese only while Japanese is the working text.
+
+- Capture §1.1: the logic layout's **w is any integer 1 to 128** (was a power of 2). Rules 1 to 4 are unchanged; rule 5 now only notes
+  that a w that is a multiple of 8 gives `w/8`-byte little endian samples, a consequence of the bit definition. With other w a sample may
+  cross a byte boundary (w = 3: 8 samples in 3 bytes); the "8/w samples per byte" sentence is gone. New example row (w 3, three channels).
+  Registry comment, vectors (`logic_layout.json`: w 3 → `59 84 80`), tests, conformance (a host reads every w) and host guide follow.
+
 ### Wi-Fi settings and TCP discovery (2026-10-07)
 
 A probe that speaks OEP over TCP on Wi-Fi needs its network credentials set by any host, and found on the network. Japanese only while

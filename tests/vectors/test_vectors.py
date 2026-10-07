@@ -522,3 +522,21 @@ def test_capture_events_carry_their_generation():
         (ev,) = [k for k, v in iface[name]["event"].items() if v == kind]
         assert role == REG["roles"]["event"] and len(f) == 6 + fixed[(name, ev)], e["name"]   # no TLV in these
         assert struct.unpack_from("<I", f, len(f) - 4)[0] == e["generation"], e["name"]
+
+
+def unpack_samples(stream: bytes, w: int, pos: list[int], count: int) -> list[str]:
+    """capture §1.1, read the other way round: channel k of sample i is stream bit i*w + pos[k] (bit j = byte j // 8, bit j % 8)."""
+    bit = lambda j: stream[j >> 3] >> (j & 7) & 1
+    return ["".join(str(bit(i * w + p)) for i in range(count)) for p in pos]
+
+
+def test_logic_layout_streams_decode_back():
+    """logic_layout.json: the stream is ceil(N*w / 8) bytes and gives back every channel's levels (capture §1.1)."""
+    cases = load("logic_layout.json")["cases"]
+    assert any(c["w"] % 8 and 8 % c["w"] for c in cases)                                      # a w that is not a power of 2
+    for c in cases:
+        stream, w, n = bytes.fromhex(c["stream_hex"]), c["w"], c["samples"]
+        assert 1 <= w <= 128 and len(set(c["pos"])) == len(c["pos"]) and all(p < w for p in c["pos"]), c["name"]
+        assert len(stream) == (n * w + 7) // 8, c["name"]
+        assert unpack_samples(stream, w, c["pos"], n) == c["channels"], c["name"]
+    assert next(c for c in cases if c["w"] == 3)["stream_hex"] == "598480"                    # capture §1.1, the w = 3 example
