@@ -94,6 +94,7 @@ probe は、自分が出す transport とインターフェースについてこ
   インターフェースの文字列は表示だけ（transports §3）。
 - **restart**（`oep.probe.restart`）: 答えの後は、probe が新しい起動で confirm に答えるまで何も答えないものとして扱い、新しく開くのと同じに開き直して boot_id で確かめる（[再起動](../interfaces/oep-if-restart.ja.md) §2。手順は [host 開発ガイド](host-development-guide.ja.md) §5.2）。UART bridge では起動時の速さに戻す（[リンク](../interfaces/oep-if-link.ja.md) §3 の host 2）。
 - **port_speed**: host が使うときは [リンク](../interfaces/oep-if-link.ja.md) §3 の host 1 と 2（試すの答えの後 `port_speed_switch_wait_ms` 以上待ってから新しい速さで送る、戻す・end・再起動する op の答えで起動時の速さに戻る）。UART bridge のどの口でも、上げた速さの後に confirm を繰り返す（transports §4）。
+- **Wi-Fi の passphrase**: 表示せず、ログに書かない。get の pass_len 0xFF は「ある」の印で、送り返せば今のものを保つ（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.4）。
 - **アナログのキャプチャ**: host が電圧を示すときは、値 0 と 2^b − 1 を電圧ではなく振り切れ（低い端以下、高い端以上）として示す
   （[キャプチャ](../interfaces/oep-if-capture.ja.md) §1.2 規則 6）。
 
@@ -117,7 +118,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)） | plan の役割を持つインターフェースがあれば list に出す。plan_apply（fn ごとに不可分）、plan_release、§2.5 の断り方、設定の plan。上限があれば describe の plan_roles | — |
 | `oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)） | restart。describe の restart_max_ms。ロックの要る op として断る。答えは completed success で、それを先に送る。答えの後は再起動するまでどの transport の要求にも答えず、target を reset しない。再起動の後は電源を入れたときと同じ（新しい boot_id、保存した設定だけが残る）。答えが transport を出てから restart_max_ms のうちに、同じ transport で confirm にまた答える | — |
 | `oep.probe.link`（[リンク](../interfaces/oep-if-link.ja.md)） | source、sink | port_speed（ops）: その状態と戻る条件（§3） |
-| `oep.probe.config`（[probe の設定](../interfaces/oep-if-probe-config.ja.md)） | 設定を扱う probe だけが list に出す。get、set、unset、state。設定が変われば変わる hash。起動時に disable と idle を先に掛ける。§4 の describe | save / erase（ops、storage の tag とともに。無ければ unknown_operation）。slot。bind |
+| `oep.probe.config`（[probe の設定](../interfaces/oep-if-probe-config.ja.md)） | 設定を扱う probe だけが list に出す。get、set、unset、state。設定が変われば変わる hash。起動時に disable と idle を先に掛ける。§4 の describe | save / erase（ops、storage の tag とともに。無ければ unknown_operation）。slot。bind。wifi（describe の wifi_max、state の wifi の TLV、index の順に試す、passphrase は書くだけで hash もそれから作らない、§1.4） |
 
 ## 4. 確かめ方
 
@@ -134,7 +135,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `refusals.json` | §2.3 と §4.3 の断り方（理由が 1 つだけ当たる状態）と、無視される知らない TLV について、要求とそのとおりの答え。§4.3 の順 4 で理由が 2 つ以上当たる要求は、どれで断ってもよいので（意図した単純化）、ベクタは持たず、試験はどれか 1 つを受ける |
 | `sessions.json` | セッションの場面: 判定の表（§6.2）、送り直しの表（§5.2。送り直した end）、end での解放と no_session（§9）、force、session_id 0（§4.1）、セッションが無いときと開いているときの clock（§7.7）。決めた初めの状態から順に送る要求と答え |
 | `ops_encoding.json` | describe の共通の tag ops の値の境（最短、最長、長さの誤り、op 0xFF の境、同じ集合の別の符号）と、正しい値が表す op の集合（§7.4） |
-| `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console、probe.config、logic の一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
+| `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console、probe.config（wifi の set / get / unset と state を含む）、logic の一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
 
 実装は JSON を読み、自分の符号器、復号器、答えをバイト単位で比べる。ベクタが文書と registry に合っているかを確かめるには:
 

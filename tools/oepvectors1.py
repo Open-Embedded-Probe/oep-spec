@@ -602,6 +602,41 @@ def ops() -> dict:
         request(0x72, 8, op("oep.probe.config", "set"), tlv(idle_tag, struct.pack("<HBBH", 4, 3, 0, 0)), S), rej(0x72, "malformed"))
     add("probe.config set: an idle value of 3 bytes", "probe settings §1, core §2.3", pc, "session S",
         request(0x73, 8, op("oep.probe.config", "set"), tlv(idle_tag | CRITICAL, struct.pack("<HB", 4, 0)), S), rej(0x73, "malformed"))
+    # the wifi item (probe settings §1.4): the passphrase is write-only
+    wifi_tag = IFACE["oep.probe.config"]["tlv"]["item"]["wifi"]
+    hidden = pce["wifi_pass_len"]["hidden"]
+    pc_set, pc_get, pc_unset = (op("oep.probe.config", n) for n in ("set", "get", "unset"))
+    wifi_state = "items has wifi, wifi_max 4; "
+
+    def wifi_item(index: int, ssid: bytes, pass_len: int, passphrase: bytes = b"") -> bytes:
+        return tlv(wifi_tag, bytes([index, len(ssid)]) + ssid + bytes([pass_len]) + passphrase)
+
+    add("probe.config set: wifi entry 0 with a passphrase", "probe settings §1.4, §2", pc,
+        wifi_state + "session S; no settings; the probe's hash for the new settings is 0x5A5A0001",
+        request(0x74, 8, pc_set, wifi_item(0, b"lab", 9, b"password1"), S), ok(0x74, struct.pack("<I", 0x5A5A0001)))
+    add("probe.config get: the wifi entry without its passphrase", "probe settings §1.4, §2", pc,
+        wifi_state + "settings: the wifi entry of the case above, hash 0x5A5A0001",
+        request(0x75, 8, pc_get, struct.pack("<H", 0)), ok(0x75, struct.pack("<BI", 0, 0x5A5A0001) + wifi_item(0, b"lab", hidden)))
+    add("probe.config set: get's wifi item sent back keeps the passphrase", "probe settings §1.4", pc,
+        wifi_state + "session S; settings as above, hash 0x5A5A0001; nothing changes, so neither does the hash",
+        request(0x76, 8, pc_set, wifi_item(0, b"lab", hidden), S), ok(0x76, struct.pack("<I", 0x5A5A0001)))
+    add("probe.config set: pass_len 0xFF for an index with no entry", "probe settings §1.4", pc,
+        wifi_state + "session S; settings as above (no entry 1)",
+        request(0x77, 8, pc_set, wifi_item(1, b"field", hidden), S), rej(0x77, "malformed"))
+    add("probe.config set: a 7-byte passphrase", "probe settings §1.4", pc, wifi_state + "session S",
+        request(0x78, 8, pc_set, wifi_item(1, b"field", 7, b"secret7"), S), rej(0x78, "malformed"))
+    add("probe.config set: wifi index at wifi_max", "probe settings §1.4, core §4.3", pc, wifi_state + "session S",
+        request(0x79, 8, pc_set, wifi_item(4, b"field", 0), S), rej(0x79, "unsupported", bytes([wifi_tag])))
+    ws = pce["wifi_state"]
+    add("probe.config state: wifi connected on entry 0", "probe settings §3.3", pc,
+        wifi_state + "no save, no slots, no binds; connected through entry 0 at -52 dBm, address 192.168.1.23",
+        request(0x7A, 8, op("oep.probe.config", "state"), bytes([0, 0])),
+        ok(0x7A, struct.pack("<BBIB", 0, pce["storage_state"]["none"], 0, 0) + bytes([0, 0])
+           + tlv(IFACE["oep.probe.config"]["tlv"]["state_answer"]["wifi"],
+                 struct.pack("<BBBb", ws["connected"], 0, pce["wifi_reason"]["none"], -52) + bytes([192, 168, 1, 23]))))
+    add("probe.config unset: wifi entry 0", "probe settings §1.4, §2", pc,
+        wifi_state + "session S; settings as above; the probe's hash for the empty settings is 0x5A5A0002",
+        request(0x7B, 8, pc_unset, bytes([1, 1, wifi_tag, 0]), S), ok(0x7B, struct.pack("<I", 0x5A5A0002)))
 
     # subscribe / unsubscribe (core §11.3): ops of the interface that sends notifications, 0x30 / 0x32 in every op space, no target fn
     sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]

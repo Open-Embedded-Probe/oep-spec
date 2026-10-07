@@ -130,6 +130,10 @@ lease_max_ms = 60000
 owner_max_bytes = 32
 unit_id_max_bytes = 32
 slot_name_max_bytes = 32
+wifi_ssid_max_bytes = 32        # probe.config wifi: ssid 1 to this (oep-if-probe-config §1.4)
+wifi_passphrase_min_bytes = 8   # probe.config wifi: a passphrase is 8 to 63 bytes of 0x20-0x7E, or 64 hex digits
+wifi_passphrase_max_bytes = 63
+wifi_psk_hex_digits = 64
 label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
 interface_name_max_bytes = 48   # a list answer with one entry is 5 + 3 + 7 + 48 = 63 bytes, within min_max_frame (core §7.2, §13)
 port_speed_tolerance_pct = 2    # port_speed: the nearest speed the UART can make may differ from the request by at most this percent (oep-if-link §3)
@@ -845,10 +849,14 @@ slot = 0x04                     # a place a target is wired to (oep-if-probe-con
 bind = 0x05                     # port(u8) kind(u8) id(u16): the stream a serial port carries (oep-if-probe-config §1.2)
 uart = 0x06                     # fn(u16) baud(u32) format(u8): a fixture UART's settings, applied when its plan is set
 disable = 0x07                  # channel(u16): a channel the probe never uses or touches (not on this board)
+wifi = 0x08                     # index(u8) ssid_len(u8) ssid pass_len(u8) passphrase; key index; the passphrase is write-only (oep-if-probe-config §1.4)
 [interface.tlv.describe]        # declarations only; the state is op 0x06 (oep-if-probe-config §3.3)
 storage = 0x40                  # max_bytes(u32, 1 or more): the item TLV bytes it can always save; present exactly when ops offers save and erase
 items = 0x41                    # u8 list: the item tags this probe takes
 slots_max = 0x42                # u8
+wifi_max = 0x46                 # u8, 1 or more: wifi entries (index 0 .. wifi_max - 1); present exactly when items has wifi
+[interface.tlv.state_answer]    # the state answer's TLV tail (oep-if-probe-config §3.3)
+wifi = 0x01                     # state(u8) entry(u8) reason(u8) rssi(i8) ipv4(4 bytes); on every page when items has wifi
 [interface.reserved]
 "tlv.describe" = [[0x43, 0x45]] # were bind_modes, slot_state, bind_state
 "tlv.item" = [[0x7E, 0x7E]]
@@ -884,3 +892,19 @@ unreadable = 2
 form = 1                        # not readable (damaged, another firmware's form)
 interface = 2                   # an interface they name is gone or of another revision, or a bind's port is not a serial port
 refused = 3                     # applying them was refused (resources clash)
+[interface.enum.wifi_pass_len]  # the wifi item's pass_len besides 8-64 (oep-if-probe-config §1.4)
+none = 0                        # no passphrase (an open network)
+hidden = 0xFF                   # get: the entry has a passphrase, none follows; set: keep the entry's current passphrase
+[interface.enum.wifi_state]     # the state answer's wifi TLV
+off = 0                         # no wifi entries: Wi-Fi not used
+connecting = 1
+connected = 2
+waiting = 3                     # every entry failed; the probe waits, then tries again
+[interface.enum.wifi_entry]
+none = 0xFF                     # the state answer's entry when no entry is being tried or used
+[interface.enum.wifi_reason]    # the last failure; 0 after a connection
+none = 0
+not_found = 1
+auth = 2
+no_address = 3
+other = 4

@@ -11,6 +11,27 @@ v1 candidate. Changes since the last pushed state (ad9f8be). Most rule changes c
 [2026-10-06 rule-change proposal](docs/v1-rule-change-proposal-2026-10-06.md), reviewed by the implementers (ch32rv, WireSkein, bench),
 and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.md).
 
+### Wi-Fi settings and TCP discovery (2026-10-07)
+
+A probe that speaks OEP over TCP on Wi-Fi needs its network credentials set by any host, and found on the network. Japanese only while
+Japanese is the working text.
+
+- probe.config: item 0x08 `wifi` = index(u8) ssid_len(u8) ssid pass_len(u8) passphrase, key index; ssid 1 to 32 bytes; the passphrase is
+  none (pass_len 0), 8 to 63 bytes of 0x20-0x7E, or 64 hex digits. The probe tries the entries in index order (it may skip those a scan
+  did not see), uses the first that connects, waits and starts over when all fail, starts over after a loss; no entries = Wi-Fi off. A
+  set or unset that changes or removes the entry in use is answered before the link is dropped.
+- probe.config: the passphrase is write-only. get answers pass_len 0xFF (set) or 0 (none) with nothing after it; a set with pass_len
+  0xFF keeps that index's passphrase (malformed without an entry at that index), so get's item sent back changes nothing. The probe puts
+  it in no answer and no log, and does not compute the hash from it; a host neither shows nor logs it.
+- probe.config: describe 0x46 `wifi_max` (u8, 1 or more; with the item); the state answer carries TLV 0x01 `wifi` on every page:
+  state (0 off, 1 connecting, 2 connected, 3 all failed, waiting), entry (0xFF none), reason (0 none, 1 not found, 2 auth, 3 no address,
+  4 other), rssi (i8 dBm), ipv4 (4 bytes); rssi and ipv4 are 0 unless connected.
+- Registry: the item, the describe and state-answer tags, enums `wifi_pass_len`, `wifi_state`, `wifi_entry`, `wifi_reason`, limits
+  `wifi_ssid_max_bytes`, `wifi_passphrase_min_bytes`, `wifi_passphrase_max_bytes`, `wifi_psk_hex_digits`; generated code follows.
+- Vectors: probe.config wifi set, get (pass_len 0xFF), get's item sent back, refusals (0xFF with no entry, a 7-byte passphrase, index at
+  wifi_max), state with the wifi TLV, unset. Security guide: the passphrase crosses OEP unencrypted, so send it over a trusted transport;
+  it is write-only. Conformance and glossary follow.
+
 ### External review re-check (2026-10-07)
 
 From the re-check of 3bca24c in `docs/external-spec-review-2026-10-06.ja.md`; verdicts in

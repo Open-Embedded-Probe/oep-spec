@@ -6,7 +6,7 @@
 
 | 名前 | revision | 役割 | 対象の系統 |
 |---|---:|---|---|
-| `oep.probe.config` | 1 | probe の設定（plan、ラベル、空きのピン、スロット、シリアルの口に流すもの）と、その保存 | どの系統にも使う |
+| `oep.probe.config` | 1 | probe の設定（plan、ラベル、空きのピン、スロット、シリアルの口に流すもの、Wi-Fi のネットワーク）と、その保存 | どの系統にも使う |
 
 - **既定の値は持たない。** 項目はすべて host が設定し、probe は設定されたとおりに動く。設定されていない項目については何もしない。
 - 設定を扱わない probe は、このインターフェースを list に出さない。
@@ -28,6 +28,7 @@
 | 0x05 | bind | §1.2 | port |
 | 0x06 | uart | fn(u16)、baud(u32)、format(u8)（`oep.fixture.uart` の configure と同じ値） | fn |
 | 0x07 | disable | channel(u16) | channel |
+| 0x08 | wifi | §1.4 | index |
 
 - どの項目もすぐ効く。扱う項目は describe の items で宣言し、宣言していない項目の set は rejected unsupported（payload の tag は受け取ったままの項目の tag、core §4.3）。
   項目についての rejected unsupported は、payload にその項目の受け取ったままの tag を載せる。
@@ -147,6 +148,37 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 - 表に無い label の text は、役目を表さない（名前でしかない）。標準の名前は registry（`oep.probe.config` の `[line_names]`）に並べる。足しても revision は変わらない（core §2.7）。標準でない役目の名前は `x-` で始める（例 `x-acme-boot0`）。標準の名前は `x-` で始まらず、どの名前も `.` を含まない（`S.N` が使う）。
 - probe はこれらの名前で線を自分から動かさない。host はこの探し方で線を見つける。
 
+### 1.4 wifi（Wi-Fi のネットワーク）
+
+probe が Wi-Fi でつなぐネットワークの並び。probe は動く場所によって違うネットワークに会うので、entry を複数持ち、順に試す。
+
+```text
+index(u8)、ssid_len(u8)、ssid、pass_len(u8)、passphrase
+```
+
+| フィールド | 意味 |
+|---|---|
+| index | entry の番号（キー）で、試す順。0 から、describe の wifi_max 未満（ほかは rejected unsupported、受け取ったままの項目の tag） |
+| ssid | ネットワークの名前。1〜32 byte（registry の `limits.wifi_ssid_max_bytes`。ほかは rejected malformed）。probe が扱えない ssid は rejected unsupported（受け取ったままの項目の tag） |
+| pass_len、passphrase | pass_len 0 は passphrase なし（開いたネットワーク）。8〜63 は 0x20〜0x7E の byte の passphrase。64 は 16 進の数字（`0-9 a-f A-F`）64 文字の鍵。0xFF は下の「書くだけ」で、後ろに何も付けない。ほかの長さと byte は rejected malformed |
+
+- 値の長さは 3 + ssid_len + passphrase の長さ（pass_len 0xFF では 0）。保存の max_bytes（§2、§4）は passphrase を含む形で数える。
+- **passphrase は書くだけ**:
+  - get は wifi の項目を passphrase なしで返す: pass_len は、passphrase があれば 0xFF、無ければ 0 で、後ろに何も付けない。
+  - set の pass_len 0xFF は、その index の今の passphrase（無しを含む）を保つ。その index の項目が無ければ rejected malformed。だから get の
+    答えの項目をそのまま set で送り返しても、何も変わらない。
+  - probe は passphrase を、どの応答、出来事、データにも載せず、ログ（シリアルの口の生のバイトを含む）にも出さない。hash（§2）を
+    passphrase の byte から作らない（ロック不要の get から passphrase を確かめられないため）。passphrase が変われば、ほかの変更と同じく hash は変わる。
+  - host は passphrase を表示せず、ログに書かない。
+- **つなぎ方**: probe は entry を index の順に試し、最初につながった（IPv4 のアドレスを得た）entry を使う。scan で ssid が見えなかった
+  entry は飛ばしてよい。どれもつながらなければ、probe が決める時間だけ待って、初めからやり直す。つながりを失ったら、初めからやり直す。
+- wifi の項目が 1 つも無ければ、probe は Wi-Fi を使わない（state 0）。
+- set / unset が、使っている entry の項目を変えるか消したら、probe はその応答を送ってから、つながりを切り、新しい並びで初めからやり直す。
+  ほかの変更ではつながりを保つ（新しい並びは次にやり直すときに使う）。
+- つながりの今の様子は state の wifi の TLV（§3.3）で分かる。
+- （参考）TCP の経路で使っている entry を変えると、その経路も切れる。応答は先に送るので set の結果は届く。host は新しいつながりで probe を
+  見つけ直す（transports §3）。
+
 ## 2. 操作
 
 | op | 名前 | 要求 | 応答 | ロック |
@@ -162,14 +194,14 @@ label（設定の label の項目、§1 と、firmware の label、core の desc
 - **set は、要求に含まれる項目のキーごとに置き換える**（含まれないキーはそのまま。何回かの set に分けて積み上げられる）。
   plan の項目は fn ごとにまとめて、その fn の plan を置き換える。項目の順は意味を持たない。
 - **unset はキーの項目を消す**（key は tag ごと: plan は fn(u16)（その fn の plan 全部）、label と idle は channel(u16)、slot は slot(u8)、
-  bind は port(u8)、uart は fn(u16)、disable は channel(u16)。要素に len を置くのはキーの長さが tag ごとに違うため）。検証と原子性は set と同じ。無いキーは
+  bind は port(u8)、uart は fn(u16)、disable は channel(u16)、wifi は index(u8)。要素に len を置くのはキーの長さが tag ごとに違うため）。検証と原子性は set と同じ。無いキーは
   何もせず成功。宣言していない項目の tag は rejected unsupported（payload の tag は受け取ったままの tag、core §4.3）。消したスロット・bind には §1.1 / §1.2 の後始末を適用する。
 - 1 つの set の中で同じキー（plan は (fn, role, channel)）が 2 回出たら、要求全体を rejected malformed。
 - set / unset の結果の設定全体が §1 の規則を満たさなければ（bind が消したスロットを指す、など）、何も変えずに rejected malformed。
 - **set の原子性は、設定の検証と資源の予約（plan の適用、ピンの取り合いの確かめ）まで**。どれかが受け入れられなければ、何も変え
   ずに rejected。自動の attach とコンソールを開くこと（外の状態を変えること）は、set が済んだ後に行い、その結果は state（op 0x06、
   §3.3）の slot_state と bind_state で分かる（巻き戻さない）。
-- **どの項目も tag ごとに形が一つ**（§1）なので、get は各項目をその形で、host が送ったとおりに、critical の bit を外して返す。
+- **どの項目も tag ごとに形が一つ**（§1）なので、get は各項目をその形で、host が送ったとおりに、critical の bit を外して返す（wifi の passphrase は返さない、§1.4）。
 - **hash** は今の設定を表す u32 で、作り方は probe が決める。今の設定が変われば hash も変わる（host は hash を計算しない）。get は項目を
   tag の昇順に、同じ tag の中はキー（plan は (fn, role, channel)）の昇順に並べ、first 番目の項目から返す。キーは数として比べ、複数のフィールドのキーは
   最初のフィールドから順に比べる。どのページも同じ hash を返す（変わっていたら host は最初から読み直す）。
@@ -227,6 +259,18 @@ slot_state: slot(u8)、state(u8、§3.2)、connection(u16、無ければ 0)、la
 bind_state: port(u8)、flow(u8: 0 流すものが無い / 1 流している / 2 セッションで止めている)
 ```
 
+- **wifi**（応答の TLV 0x01）: wifi の項目を扱う probe は、どのページにもこれを載せる。値は state(u8)、entry(u8)、reason(u8)、rssi(i8)、ipv4(4 byte)
+  の 8 byte。
+
+  | フィールド | 意味 |
+  |---|---|
+  | state | 0 切（wifi の項目が無い）、1 つなごうとしている、2 つながっている、3 どれもつながらず、やり直しを待っている |
+  | entry | state 1 では試している、state 2 では使っている entry の index。ほかは 0xFF |
+  | reason | 最後の失敗の理由: 0 なし、1 ネットワークが見つからない、2 認証の失敗、3 アドレスが来ない、4 そのほか。つながったら 0 |
+  | rssi | state 2 で、受けている電波の強さ（dBm） |
+  | ipv4 | state 2 で、probe の IPv4 のアドレス（`a.b.c.d` を a から順に） |
+
+  state 2 でないとき、rssi と ipv4 は 0。
 - storage_state: 0 保存なし、1 あり・適用済み、2 あり・読めない。storage_hash は、保存した設定を今の設定にした時（起動時の適用か save）の hash で、その後に今の設定が変わっていなければ get の hash と同じ
   （読めなければ 0）。unreadable_reason: 0 なし、1 形が読めない（壊れた、別の版の形）、2 指す interface が無い・revision が違う・bind の port がシリアルの口でない、
   3 適用が断られた（資源がぶつかる）。
@@ -243,7 +287,8 @@ describe は宣言だけ（core §7.3）。状態は state（§3.3）。
 | 0x40 | storage | max_bytes(u32、項目の TLV の byte 数の合計、1 以上)。save と erase を持つときに限り載る（ops、§2） |
 | 0x41 | items | 扱う項目の tag の並び（u8） |
 | 0x42 | slots_max | u8。登録できるスロットの数（0 はスロットを扱わない） |
+| 0x46 | wifi_max | u8、1 以上。wifi の entry の数（index は 0〜wifi_max − 1）。items が wifi（0x08）を持つときに限り載る |
 
 ## 5. 安全（参考）
 
-設定が probe の駆動する線にとって何を意味するかは [安全とセキュリティ](../docs/security.ja.md) §6 にまとめる。
+設定が probe の駆動する線にとって何を意味するかは [安全とセキュリティ](../docs/security.ja.md) §6 に、wifi の passphrase と経路の信頼は §1 と §8 にまとめる。

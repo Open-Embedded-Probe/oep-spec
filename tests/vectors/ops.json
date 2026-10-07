@@ -408,6 +408,86 @@
       "answer_hex": "0273000003"
     },
     {
+      "name": "probe.config set: wifi entry 0 with a passphrase",
+      "spec": "probe settings §1.4, §2",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi, wifi_max 4; session S; no settings; the probe's hash for the new settings is 0x5A5A0001",
+      "request_hex": "01740008000244332211080f0000036c61620970617373776f726431",
+      "answer_hex": "027400010001005a5a"
+    },
+    {
+      "name": "probe.config get: the wifi entry without its passphrase",
+      "spec": "probe settings §1.4, §2",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi, wifi_max 4; settings: the wifi entry of the case above, hash 0x5A5A0001",
+      "request_hex": "017500080001000000000000",
+      "answer_hex": "02750001000001005a5a08060000036c6162ff"
+    },
+    {
+      "name": "probe.config set: get's wifi item sent back keeps the passphrase",
+      "spec": "probe settings §1.4",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi, wifi_max 4; session S; settings as above, hash 0x5A5A0001; nothing changes, so neither does the hash",
+      "request_hex": "0176000800024433221108060000036c6162ff",
+      "answer_hex": "027600010001005a5a"
+    },
+    {
+      "name": "probe.config set: pass_len 0xFF for an index with no entry",
+      "spec": "probe settings §1.4",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi, wifi_max 4; session S; settings as above (no entry 1)",
+      "request_hex": "0177000800024433221108080001056669656c64ff",
+      "answer_hex": "0277000003"
+    },
+    {
+      "name": "probe.config set: a 7-byte passphrase",
+      "spec": "probe settings §1.4",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi, wifi_max 4; session S",
+      "request_hex": "01780008000244332211080f0001056669656c640773656372657437",
+      "answer_hex": "0278000003"
+    },
+    {
+      "name": "probe.config set: wifi index at wifi_max",
+      "spec": "probe settings §1.4, core §4.3",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi, wifi_max 4; session S",
+      "request_hex": "0179000800024433221108080004056669656c6400",
+      "answer_hex": "027900000b08"
+    },
+    {
+      "name": "probe.config state: wifi connected on entry 0",
+      "spec": "probe settings §3.3",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi, wifi_max 4; no save, no slots, no binds; connected through entry 0 at -52 dBm, address 192.168.1.23",
+      "request_hex": "017a00080006000000000000",
+      "answer_hex": "027a000100000000000000000000010800020000ccc0a80117"
+    },
+    {
+      "name": "probe.config unset: wifi entry 0",
+      "spec": "probe settings §1.4, §2",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi, wifi_max 4; session S; settings as above; the probe's hash for the empty settings is 0x5A5A0002",
+      "request_hex": "017b000800054433221101010800",
+      "answer_hex": "027b00010002005a5a"
+    },
+    {
       "name": "logic subscribe: min_bytes 1024, max_delay_ms 20",
       "spec": "core §11.3; capture §3.4",
       "fns": {

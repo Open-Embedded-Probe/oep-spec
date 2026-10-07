@@ -456,6 +456,21 @@ def test_per_op_vectors_decode_exactly():
     i += _fixed_sequence(p[i:], lambda b, j: 12)                                                  # slot_state: slot state connection last_try_at_ns
     i += _fixed_sequence(p[i:], lambda b, j: 2)                                                   # bind_state: port flow
     assert i == len(p)
+    p = pay("probe.config state: wifi connected on entry 0")
+    assert p[1:7] == bytes(6) and p[7:9] == b"\x00\x00"                                         # no save, n_slots 0, n_binds 0
+    ((tag, value),) = tlvs(p[9:])
+    assert tag == iface["oep.probe.config"]["tlv"]["state_answer"]["wifi"] and len(value) == 8   # state entry reason rssi ipv4
+    wifi = iface["oep.probe.config"]["tlv"]["item"]["wifi"]
+    ((tag, value),) = tlvs(pay("probe.config get: the wifi entry without its passphrase")[5:])
+    assert tag == wifi and value[-1] == 0xFF and len(value) == 3 + value[1]                      # pass_len 0xFF, nothing after (§1.4)
+    sent = tlvs(bytes.fromhex(by["probe.config set: wifi entry 0 with a passphrase"]["request_hex"])[10:])[0][1]
+    secret = sent[3 + sent[1]:]
+    assert len(secret) == sent[2 + sent[1]] >= 8
+    for c in v:                                                                                  # the passphrase is in no answer
+        assert secret not in bytes.fromhex(c["answer_hex"]), c["name"]
+    back = bytes.fromhex(by["probe.config set: get's wifi item sent back keeps the passphrase"]["request_hex"])[10:]
+    assert tlvs(back) == [(wifi, value)]                                                         # get's item, sent back as it is
+    assert pay("probe.config set: get's wifi item sent back keeps the passphrase") == pay("probe.config set: wifi entry 0 with a passphrase")
     p = pay("link source: 8 bytes, byte k = k & 0xFF")
     n = struct.unpack_from("<H", p)[0]
     assert p[2:2 + n] == bytes(k & 0xFF for k in range(n)) and len(p) == 2 + n

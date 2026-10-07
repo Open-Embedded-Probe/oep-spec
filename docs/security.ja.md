@@ -11,6 +11,8 @@
   ロックの force は認証ではなく、取り違えを防ぐだけ（core §6.4）。
 - USB とシリアルの経路は、PC のほかの手元の装置と同じく信頼する。**TCP は信頼できる手元の接続か、認証したトンネルの中でだけ使う**
   （transports §1）。
+- **秘密も OEP を通る**: Wi-Fi の passphrase（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.4）は set の要求に暗号なしで載る。
+  passphrase を送るのは、信頼する経路（手元の USB やシリアルの口、信頼するネットワーク、認証したトンネル）だけにする。
 - OEP の要求に自分で答える端点は、後ろに何があっても probe で、probe の規則すべてに従う。中継するだけのブローカーは probe に対して
   host（transports §1）。
 - probe 自身の firmware の更新は OEP の外（core §0）。OEP は firmware を運ばず、署名もしない。
@@ -132,5 +134,8 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
 - **owner**（open の TLV 0x01）は、lock_state と locked の断りで、どの host にも返る: 秘密を入れない（core §6.4、参考）。
 - **unit_id** はどの host も読め、USB の serial number でもある。チップの固有の番号から作れば、その番号を見せる（core §7.5。代わりの
   作り方は probe ガイド §10）。
+- **Wi-Fi の passphrase は書くだけ**: probe はどの応答にも、ログにも出さず、get は pass_len だけ（あれば 0xFF）を返し、hash を passphrase
+  から作らない。host は表示もログもしない（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.4）。保存した passphrase は probe の
+  保存の中に残る: flash を読める人から守るかは probe による。ssid、つながりの様子、アドレスは、get と state でどの host も読める。
 - describe、list、設定の get と state、connections、streams、位置つきのストリームの read はロック不要: 口を開けるプログラムは何でも
   読める（core §6.3）。

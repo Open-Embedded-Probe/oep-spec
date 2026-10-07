@@ -202,6 +202,8 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 口の位置 | position of the port | bind の口が、流すストリームのどこにいるか | settings §1.2 |
 | 線の名前 | line names | `nrst`、`power_hi`、`power_lo`。ほかは `x-` | settings §1.3 |
 | hash | hash | 今の設定を表す u32。設定が変われば変わり、作り方は probe が決める | settings §2 |
+| wifi の項目、entry | wifi item, entry | probe がつなぐ Wi-Fi のネットワーク 1 つ（index、ssid、passphrase）。index の順に試す | settings §1.4 |
+| 書くだけ（passphrase） | write-only (passphrase) | get も state もほかのどの応答も passphrase を返さない。get の pass_len 0xFF は「ある」で、set で送り返すと今のものを保つ | settings §1.4 |
 | 保存、消去 | save, erase | 保存の写しを書く / 消す | settings §2 |
 | storage_state、読めない理由 | storage_state, unreadable reason | 保存があり、掛かっているか | settings §3.3 |
 | slot_state、bind_state | slot_state, bind_state | スロットと bind の今の状態 | settings §3.2、§3.3 |
