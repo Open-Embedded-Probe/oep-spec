@@ -78,7 +78,7 @@ probe は、自分が出す transport とインターフェースについてこ
   インターフェースは使わない（§2.7）。
 - **待ち**: すべての要求に §4.4 の下限、自分のリンクの要求も含む。UART ブリッジでの転送時間、その transport での最初の confirm の
   答えまでは `min_max_frame` で（§4.4）。attach、scan、riscv-dm の reset の引数の時間は max_op_ms（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1、§4.3）。
-- **再送と回復**: 同じ corr で一度まで（§5.2）。corr は要求ごとに 1 進め、0 を飛ばす（§4.1）。長さつきフレームの再同期と、
+- **再送と回復**: 送り直しは同じ corr で（§5.2）。corr は要求ごとに 1 進め、0 を飛ばす（§4.1）。長さつきフレームの再同期と、
   最後に書いてから `probe_frame_gap_ms` より長く待つこと（transports §5）。再送にも答えが無ければその transport は失敗した: そこで何かを送る前に、どの種類のフレームでも transports §5 の
   confirm で立て直すか開き直し、状態を変える要求を繰り返す前に状態を読む（§5.2）。
 - **セッション**: 0 でない乱数の session_id（§6.1）。答えの lease_ms が正で、keepalive が延ばす（§6.4）。no_session /

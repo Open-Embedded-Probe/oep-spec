@@ -86,7 +86,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | max_frame、window、max_inflight | max_frame, window, max_inflight | 経路ごとの、メッセージの長さ、待っている byte、待っている要求の上限 | core §4.4 |
 | 待ち時間（の下限） | wait floor | host が応答を待つ最短の時間 | core §4.4 |
 | 転送の時間 | transfer time | UART bridge の線の速さのための、待ち時間の一部 | core §4.4 |
-| 送り直し | resend | 応答が壊れたか遅れたときの、同じ corr での 1 回の送り直し | core §5.2 |
+| 送り直し | resend | 応答が壊れたか遅れたときの、同じ corr での送り直し（probe は表から答える） | core §5.2 |
 | 送り直しの表 | resend table | 二重の実行を防ぐために probe が覚える最近の応答 | core §5.2 |
 
 ## セッションと資源

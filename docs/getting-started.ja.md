@@ -165,8 +165,8 @@ probe がすることを順に（参照の先が規則）:
    待つのはいつでもよい。
 4. **受ける**: 0x00 の間の候補をすべて解く。口を開いてから最初の 0x00 までのバイトも解く。解けない、CRC が合わない、role を知らない、
    待っていない corr の候補は雑音として捨てる（transports §1、core §11.1）。
-5. **応答を確かめる**: completed、同じ corr、payload が `OEP!` で始まる（transports §3）。来なければ同じ corr で 1 回だけ送り直し
-   （`resend_max`）、それでも来なければ口を閉じ、ほかに何も送らない（transports §3、core §5.2）。max_frame、window、max_inflight、boot_id、
+5. **応答を確かめる**: completed、同じ corr、payload が `OEP!` で始まる（transports §3）。来なければ同じ corr で 1 回送り直し
+   （host ガイド §8）、それでも来なければ口を閉じ、ほかに何も送らない（transports §3、core §5.2）。max_frame、window、max_inflight、boot_id、
    transport の index を取っておく。以後 max_frame より長いメッセージは送らない（transports §3）。
 6. **list**: `first` 0 から、受けた項の数を `first` に足しながら `total` まで読む。名前 → fn の対応は boot_id が同じ間覚えてよい
    （core §7.2）。
@@ -207,7 +207,7 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 
 **host**（[適合](conformance.ja.md) §2）:
 
-1. corr の振り方と 1 回の送り直し（core §4.1、§5.2）。長さつきの口での同期のし直し（transports §5）。
+1. corr の振り方と送り直し（core §4.1、§5.2、host ガイド §8）。長さつきの口での同期のし直し（transports §5）。
 2. セッション: 乱数の session_id、open の応答の lease、keepalive、断りごとにすること（host ガイド §9）。
 3. revision と知らない値（core §2.4、§2.7、host ガイド §10）。購読するなら通知（host ガイド §12）。
 4. USB の probe の発見と複数の経路（transports §3、host ガイド §4、§5）。

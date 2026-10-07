@@ -30,6 +30,15 @@ From the re-check of 3bca24c in `docs/external-spec-review-2026-10-06.ja.md`; ve
 - Core: fn 0's fixed forms are set by the protocol revision (the (name, revision) rule is for named interfaces); `features` no longer lists
   notifications among its examples (notifications are declared by subscribe / unsubscribe in ops).
 
+### Found while implementing (2026-10-07)
+
+Japanese only while Japanese is the working text.
+
+- Core: a host may resend with the same corr; the probe answers from its table, so a resend never runs a request twice. How many times
+  and when is the host's choice (host guide §8: once after the wait when nothing came, at once up to a few times after a broken frame on a
+  held serial port). The transport has failed when the wait of the last thing sent passes with no answer and the host resends no more.
+  Registry `resend_max` goes; the probing rule of transports §3 says "a confirm and its resends".
+
 ### Rule review (2026-10-07)
 
 From the v1 rule review of 2026-10-07 (`docs/v1-rule-review-2026-10-07.ja.md`): a rule stays normative only if, without it, independent
