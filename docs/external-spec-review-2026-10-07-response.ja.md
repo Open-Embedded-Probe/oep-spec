@@ -104,3 +104,60 @@
 - **core §7.3**（probe）: 範囲を越えた first には要素 0 個と more 0。describe は more 0 の 1 byte だけで、余分な count の 0 を付けない。get は more 0 と hash だけ。
 - **core §9**（probe）: 資源の番号は起動後の最初が 1 で、0 を割り当てない（65535 の次は 1）。0 から振る実装は直す。host は 0 を「無し」として読んでよい（slot_state の connection）。
 - 文の言い回しだけの 3.4 には、実装の変更は無い。
+
+## core / interface 再確認（0991759）への回答
+
+[外部仕様レビュー](external-spec-review-2026-10-06.ja.md) の 0991759 の core / interface 再確認（31e5100）。§1〜§11 は前の回（core 再確認、
+cbdea59）と同じ指摘で、その回答のとおり。ここでは新しい §12 を判断した。判断の基準は上と同じ。日本語の作業の文だけを直した。
+凍結の前なので、byte の並びを変える直しも入れた（下の「実装が追う変更」）。
+
+| 指摘 | 判断 | 理由 | commit |
+|---|---|---|---|
+| 12.1 capture の configure / query の契約 | 採る | 必須と省略の読み分けで、空や一部の configure の結果が実装ごとに変わる。TLV ごとに 1 つに決めた: mode と rate は必須（無ければ malformed）、samples は mode 1 / 2 で必須で mode 3 では送らない、segments は mode 2 だけ、pretrigger は type が 0 でない trigger とだけ。これに反する TLV は値によらず unsupported（受け取ったままの tag、core §2.3 の今の仕組み）。trigger の role が plan に無ければ unavailable 6、pretrigger が max_pretrigger を超えるか samples 以上なら unsupported。success は対象の応答の行をすべて返す（例外は mode に無い actual_samples / actual_segments と 0 の skew だけ）。actual_rate の num / den は 1 以上 | f64ce92 |
+| 12.2 capture-group の generations | 変えて採る | 必須の値を TLV に置くと「必ず付ける」規則が要る。固定部分に移した（count と要素の並び、core §2.3）: `blocking_ms、start_ns、generation、n、n × (fn、generation)`、bind の順に各 fn 1 回。TLV 0x01 は予約 | f64ce92 |
+| 12.3 世代をまたぐ古い出来事 | 採る（世代を持たせる） | 応答が通知より先に出る（core §11.4）ので、前の世代の stopped / triggered が新しい start の後に届き、host は区別できない。規則 1 つ: 出来事はどれも生まれた世代を持つ（トラックの stopped と triggered の末尾に generation、segment はもう持つ）。capture-group には組の世代（組の start ごとに 1、トラックと同じ規則）を足し、start の応答、status、組の出来事に置いた。送り残しを捨てる案は、送りかけのフレームを probe が取り消せず実装に重い。組の出来事を消す案は、ほかのトラックの止まり方の規則が別に要るので採らない | f64ce92 |
+| 12.4 marks / segments のページングと世代の一周 | 採る | 含むか、押し出されたとき、空、続き、一周が無いと host と probe が食い違う。共通部品 §1.3 に 1 つの規則を置き、segments も使う: from_serial を含む、= next なら空で more 0、ほかの残っていない番号は一番古いものから、続きは最後の serial + 1、比べ方は core §2.6。区画の serial は一周すると明記し、serial_done は次に終わる区画の serial。release は終わった区画だけを解放する（未来の serial でも、まだ終わっていない区画は守る）。世代は 0 を start の前だけに使い、0xFFFFFFFF の次は 1 | 0098b56、f64ce92 |
+| 12.5 console の streams の first | 採る（u16） | u8 では 256 個目から先を指せない。ストリームの数を制限する規則を足すより、first を u16 にする方が小さい。同じ仕組みのほかの所: debug の connections の first(u8) は max_connections(u8) で、probe.config の state の first_slot / first_bind(u8) は slots_max(u8) とポートの数で抑えられていて変更なし。describe と get の first は u16 | 0098b56 |
+| 12.6 SPI target の部分の byte、ns の基準、長い CS | 採る | 置き方が決まらないと、byte の途中で終わる転送の data が実装ごとに違う。規則 1 つ: 線の k 番目のビットは byte k / 8 の、MSB が先ならビット 7 − k mod 8、LSB が先なら k mod 8。来なかったビットは 0。bits は 0xFFFFFFFF で止める。read_rx の ns は、積む契機と同じ時点（SPI は CS が無効になったとき、I2C はフレームを終えた STOP か次の START） | 1a8ba5e |
+| 12.7 debug の固定のフィールド | 採る（短くして） | step: ok でなければ moved と dpc はどれも 0 で host は読まない（失敗の中の場合ごとの有効、無効を消した。止まっていれば host が dmi で dpc を読める）。run: elapsed_us は resumereq から止まったのを見た / 止めた / 諦めたまで、走らせなかったら 0、無効な dpc は 0。arm-adi の transfer の n = 0 は success、ack 0（dmi の n = 0 と同じ）。§4.3 の reset の重なった文は、0991759 の日本語の文には見つからない（outcome の文は 1 回だけ）ので変えない | a168c34 |
+| 12.8 logic のチャネル別の縮約（multirate） | WireSkein と設計中 | 欲しい機能で、まだ入れていないだけ。WireSkein と設計しており、レビューの点（base_rate と base sample の番号、チャネルごとの step と phase、縮約の policy（raw、点の選択、any_active、edge_latch）と active の極性、block の layout と bit の詰め方と最後の不完全な block、縮約した値の時刻の意味と不確かさ、trigger を縮約の前に評価するか、予算を前段・payload・wire・codec に分けること）を出発点のメモにする。この回では設計も追加もしない。入れ方は下 | 74cf946（余地の文言） |
+| 12.9 interface ごとの評価 | — | 表の残り（plan の「無い fn」、UART の status、scan の総候補数）は個別の指摘になっていないので、この回では変えない。実機の確認は実装と結合試験の仕事 | — |
+| 13 全体評価 | — | 同意。§12 の直しとベクタを入れた | — |
+
+### 12.8 を今のキャプチャに入れる道（確かめたこと）
+
+- **入る道: `oep.fixture.logic` の予約の TLV の範囲 0x60〜0x7F**（capture §3.6、configure の要求と応答、describe）。host は 0x60〜 の
+  critical な configure の TLV で multirate を求め、知らない probe は unsupported で断る（core §2.3: 黙って基本の形で取らない）。probe は
+  describe の 0x60〜 の TLV で宣言し、data の形は自分の応答の TLV（0x60〜）で示す。op、区画、世代、read、release、通知、capture-group は
+  そのまま使える（区画の samples と trigger_index は base sample で数えれば今の u32 のフィールドに入る）。
+- 新しいインターフェースの名前にする道もあるが、op と状態の遷移を写し、capture-group の bind（今は logic / analog の fn だけ）を広げる
+  必要がある。mode の 0x40〜 は「取り方」の番号で、チャネルごとの縮約とは直交するので合わない。
+- 確かめる中で、§3.6 の「layout の形式は 0x40 以降を別の定義に残す」が指す欄が無い（layout の値は w からで形式の番号を持たず、w は 64 と
+  128 もとる）と分かったので、その文を消し、「layout と違う data の形は別の定義が自分の応答の TLV で示す」とした（74cf946）。
+
+### 実装が追う変更（この回）
+
+byte の並びが変わるもの（probe、Python / JS host、WireSkein の該当部分）:
+
+- **console streams**: 要求の first が **u16**（2 byte）。
+- **capture のトラックの出来事**: stopped = reason、error、**generation(u32)**（6 byte）。triggered = serial、trigger_index、trigger_ns、
+  **generation(u32)**（20 byte）。
+- **capture-group**: start の応答 = blocking_ms、start_ns、**generation(u32)、n(u8)、n × (fn(u16)、generation(u32))**（bind の順）。TLV 0x01
+  generations は無くなった。status の末尾に **generation(u32)**（組の世代）。組の出来事 triggered = trigger_fn、trigger_ns、**generation**、
+  stopped = reason、error、**generation**。生成物から `start_answer.generations` が消えた。
+
+振る舞い:
+
+- **probe（capture）**: configure / query は契約どおり断る（mode か rate が無ければ malformed、mode に合わない samples / segments /
+  pretrigger は値によらず unsupported、plan に無い trigger の role は unavailable 6、pretrigger の範囲）。success は応答の行をすべて返す
+  （mode 1 / 2 の actual_samples、mode 2 の actual_segments、アナログの scale / frontend_used / reference をチャネルごとに）。世代は
+  0xFFFFFFFF の次を 1 に。区画の serial は u32 で一周させ、segments と release は common §1.3 と §3.2 のとおり（release は終わった区画だけ）。
+- **probe（marks を返すもの: console、fixture UART）**: marks を common §1.3 で返す（含む、= next は空、残っていない番号は一番古いものから）。
+- **probe（spi-target）**: data のビットの置き方と、来なかったビットを 0。bits を 0xFFFFFFFF で止める。ns を付けるなら CS が無効になった時刻
+  （i2c-target は STOP か次の START）。
+- **probe（riscv-dm / arm-adi）**: step が ok でなければ moved と dpc を 0。run の elapsed_us を resumereq から、stopped 3 では 0、無効な dpc は 0。
+  transfer の n = 0 に success（done 0、status ok、ack 0、nvals 0）。
+- **host（Python / JS / WireSkein）**: 上の形を読む。キャプチャの出来事は今の世代（組は組の世代）と違えば前の start のものとして扱う。
+  marks / segments は最後の serial + 1 で続け、more 0 で止める。configure では mode と rate を必ず送り、mode 3 に samples を付けない。
+  step が ok でないときは moved と dpc を見せない。
+- **ch32rv**: console の streams の first（u16）と marks のページング、riscv-dm の step / run の 0 の規則。キャプチャを持たなければ、それ以外の変更は無い。
