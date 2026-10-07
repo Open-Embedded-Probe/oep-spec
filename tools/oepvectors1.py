@@ -805,6 +805,16 @@ def ops() -> dict:
         request(corr, 12, op("oep.fixture.capture-group", "bind"),
                 struct.pack("<BHH", 2, 9, 13) + tlv(IFACE["oep.fixture.capture-group"]["tlv"]["bind"]["trigger_track"], struct.pack("<H", 9)), S),
         ok(corr))
+    corr += 1
+    # capture §4.1: the group's pretrigger is the trigger_track's, kept as a time by every track: P_k = ceil(P * num_k * den_t / (den_k * num_t))
+    p_k = -(-100_000 * 48_000 * 1 // (1 * 20_000_000))
+    add("capture-group bind: a track cannot keep the group's pretrigger", "capture §4.1",
+        {"12": "oep.fixture.capture-group", "9": "oep.fixture.logic", "13": "oep.fixture.analog"},
+        "session S; fn 9 configured one-shot at actual_rate 20000000/1 with an edge trigger and pretrigger 100000 (5 ms); fn 13 configured "
+        f"one-shot at actual_rate 48000/1, immediate, actual_samples 4800, max_pretrigger 128; fn 13 would keep P_k = {p_k} > 128",
+        request(corr, 12, op("oep.fixture.capture-group", "bind"),
+                struct.pack("<BHH", 2, 9, 13) + tlv(IFACE["oep.fixture.capture-group"]["tlv"]["bind"]["trigger_track"], struct.pack("<H", 9)), S),
+        rej(corr, "unavailable", tlv(unav["cause"], bytes([cause["limit"]])) + tlv(unav["fn"], struct.pack("<H", 13))))
 
     # oep.fixture.capture-group (capture §4): the group's generation, then n x (fn, generation) in bind order, in the fixed part
     grp = {"12": "oep.fixture.capture-group", "9": "oep.fixture.logic", "13": "oep.fixture.analog"}

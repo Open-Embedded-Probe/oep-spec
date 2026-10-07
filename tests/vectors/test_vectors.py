@@ -666,3 +666,17 @@ def test_an_immediate_triggers_role_is_not_looked_at():
     assert struct.unpack("<BBI", trig)[:2] == (logic["enum"]["trigger"]["immediate"], 5)           # role 5: not in the plan (0, 1)
     plain = bytes.fromhex(by["logic configure: one-shot, the required answer set"]["answer_hex"])
     assert ans[3:] == plain[3:]                                                                     # the same success as without it
+
+
+def test_a_bound_track_keeps_the_groups_pretrigger_as_a_time():
+    """capture §4.1: P_k = ceil(P * num_k * den_t / (den_k * num_t)); bind refuses unavailable cause 2 with the track's fn when P_k does
+    not fit that track (more than max_pretrigger, or not below actual_samples)."""
+    core = REG["core"]
+    p_k = lambda p, num_k, den_k, num_t, den_t: -(-p * num_k * den_t // (den_k * num_t))
+    assert p_k(1000, 48_000, 1, 20_000_000, 1) == 3                                                # the §4.1 example: 50 us at 48 kHz
+    assert p_k(100_000, 48_000, 1, 20_000_000, 1) == 240 > 128                                     # the vector's state
+    c = next(c for c in load("ops.json")["cases"] if c["name"] == "capture-group bind: a track cannot keep the group's pretrigger")
+    ans = bytes.fromhex(c["answer_hex"])
+    assert ans[4] == REG["reject_reasons"]["unavailable"]
+    unav, cause = core["tlv"]["unavailable_payload"], core["enum"]["unavailable_cause"]
+    assert tlvs(ans[5:]) == [(unav["cause"], bytes([cause["limit"]])), (unav["fn"], struct.pack("<H", 13))]

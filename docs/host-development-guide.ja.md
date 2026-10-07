@@ -844,8 +844,9 @@ host は w を 2 の冪と仮定せず、§1.1 のビットの定義どおりに
 capture-group: ロジック 2 本（20 MHz）とアナログ 1 本（48 kHz）を一緒に、ロジックの ch1 の立ち下がりで（1000 サンプル前から）
   plan_apply(logic: role0 = GPIO20, role1 = GPIO21; analog: role0 = GPIO16)
   logic.configure(mode=1, rate=20 MHz, samples=200000, trigger(edge, role1, fall), pretrigger=1000)
-  analog.configure(mode=1, rate=48000, samples=4800, pretrigger=48)
+  analog.configure(mode=1, rate=48000, samples=4800)          （trigger も pretrigger も送らない: 即時）
   group.bind(logic, analog, trigger_track=logic)
+    → 組の pretrigger は logic の 1000 サンプル = 50 µs。analog はその時間を自分のサンプルで残す: ceil(1000 · 48000 / 20 MHz) = 3
   group.start → start_ns、組の世代、各トラックの世代（bind の順）
   出来事 triggered(logic, trigger_ns) → 各トラックの segment（trigger_index はどちらも trigger_ns の位置）
   各トラックを read → host は start_ns の差と trigger_index で並べる

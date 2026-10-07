@@ -367,7 +367,8 @@ bind の TLV:
 
 - **bind** は、configure 済みのトラック（`oep.fixture.logic` / `oep.fixture.analog` の fn）を束ねる。n = 0 で解く（state 3 のときは
   rejected unavailable cause 6。束ねていないときの n = 0 は何もせず成功）。断り方: 同じ fn の重複は malformed、宣言（tracks）に無い fn
-  は unsupported、configure していない・モードが揃っていない・trigger_track 以外が即時でないトリガを持つ・一緒に取る資源が足りない は
+  は unsupported、configure していない・モードが揃っていない・trigger_track 以外が即時でないトリガを持つ・一緒に取る資源が足りない・
+  trigger_track 以外が組の pretrigger（下のトリガ）を持てない（P_k が max_pretrigger を超えるか、mode 1 / 2 で actual_samples 以上）は
   unavailable（cause 6 / 2）。どのトラックについての断りかは payload の TLV fn（0x05、core §4.3。unsupported の payload も同じ）で返す。
   何も変えずに断る。束ねている間、各トラックの configure、start、stop、force は rejected unavailable
   （cause 4。組の op を使う。configure し直すときは、いったん n = 0 で解く）。束ねたトラックの plan の
@@ -381,8 +382,13 @@ bind の TLV:
   0 は最初の start の前。bind し直しても続きから）。始めた後にトラックが失敗したら、組は state 6、
   stopped reason 3 で、ほかのトラックも止める。**start_ns は取得（pretrigger のリングを含む）を始めた時刻**。即時トリガのとき、トラックの
   ずれは、その最初の区画の start_ns − 組の start_ns（推定値）。start 前の status の start_ns と trigger_ns は全ビット 1。
-- **トリガ**: trigger_track の条件が立つと、組の全トラックが取得を始める（各トラックの pretrigger は、そのトラック自身の
-  サンプル数で残す）。立った時刻 trigger_ns は status と出来事 triggered で返し、**全トラックの、その時刻を含む区画の
+- **トリガ**: trigger_track の条件が立つと、組の全トラックが取得を始める。
+- **組の pretrigger** は trigger_track の pretrigger（P サンプル）だけで、全トラックに**同じ時間の長さ**として及ぶ: ほかのトラック k は、
+  トリガより前の `P_k = ceil(P · num_k · den_t / (den_k · num_t))` サンプル（P · rate_k / rate_t の切り上げ。num / den は各トラックの
+  actual_rate、t は trigger_track。積は 64 ビットを超えうる）を残す。ほかのトラックは即時のトリガなので自分の pretrigger を持たない（§3.3 の契約）。トリガより前の
+  分が足りなければ、そのトラックの最初の区画は §3.3 のとおり短い。trigger_track が無い組は pretrigger を持たない。例: trigger_track が
+  20 MHz で P = 1000（50 µs）なら、48 kHz のトラックは P_k = ceil(2.4) = 3。
+- **トリガの時刻**: 立った時刻 trigger_ns は status と出来事 triggered で返し、**全トラックの、その時刻を含む区画の
   trigger_index を、そのトラックでその時刻に最も近いサンプルにする**（probe が各トラックの時間軸に写す）。host はどのトラックでも
   同じ瞬間の位置を知る。
 - **stop** は全トラックを止める。区画はトラックごとに（短い区画は flags bit1）。
@@ -540,7 +546,7 @@ sample 周期以上過ぎて取った base sample があることを表す。
 
 - 区画の情報と出来事の形と意味は §2.2、§3.4 のまま（数は base sample）。区画の中で落としたときも §2.2 のまま。
 - capture-group（§4）: multirate で configure した logic の fn も bind でき、trigger_track にできる。§4.1 の「最も近いサンプル」は、
-  このトラックでは最も近い base sample。pretrigger もこのトラックの base sample で数える。
+  このトラックでは最も近い base sample。pretrigger と §4.1 の P_k もこのトラックの base sample と base rate で数える。
 
 ### 5.7 例
 

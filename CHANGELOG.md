@@ -22,6 +22,13 @@ Ambiguities the probe implementer found in capture up to dd5a886. Japanese only 
   capacity are still clamped and rate still goes to the nearest value. When more than one refusal applies the probe answers any one of
   them (core §4.3 order 4); capture adds no order. Vector (`ops.json`: a query whose type 0 trigger names a role outside the plan
   succeeds), test and conformance follow.
+- Capture §4.1: a capture-group's **pretrigger is the trigger_track's alone, kept by every track as the same time**. Track k keeps
+  `P_k = ceil(P · num_k · den_t / (den_k · num_t))` samples before the trigger (P the trigger_track's pretrigger, num / den each track's
+  actual_rate; base samples and base rate for a multirate track, §5.6). The other tracks have immediate triggers and so no pretrigger of
+  their own, as the §3.3 contract already required; the earlier "each track keeps its own pretrigger" could not be configured. bind
+  refuses unavailable (cause 2, TLV fn) a track that cannot keep P_k (above its max_pretrigger, or in mode 1 / 2 not below its
+  actual_samples). A group without trigger_track has no pretrigger. Registry comment (trigger_track), generated code, vector (`ops.json`:
+  the bind refusal), test, conformance and the host guide example (the analog track no longer sends pretrigger) follow.
 
 ### Logic capture: any sample width, seamless segments, multirate (2026-10-07)
 

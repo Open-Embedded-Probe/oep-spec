@@ -812,7 +812,7 @@ op = [
   { code = 0x32, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
 [interface.tlv.bind]
-trigger_track = 0x01            # fn(u16): the track whose configure trigger starts the group (absent: immediate)
+trigger_track = 0x01            # fn(u16): the track whose configure trigger starts the group and whose pretrigger, as a time, every track keeps (absent: immediate, no pretrigger)
 [interface.tlv.describe]        # plus ops 0x09 and features 0x06 (enum features)
 tracks = 0x40                   # n(u8) n x fn(u16): the tracks it can bind
 [interface.event]               # numbered as the tracks' events; the group's generation (start answer, status) in each

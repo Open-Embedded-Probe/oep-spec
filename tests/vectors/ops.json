@@ -890,6 +890,18 @@
       "answer_hex": "02a3000100"
     },
     {
+      "name": "capture-group bind: a track cannot keep the group's pretrigger",
+      "spec": "capture §4.1",
+      "fns": {
+        "12": "oep.fixture.capture-group",
+        "9": "oep.fixture.logic",
+        "13": "oep.fixture.analog"
+      },
+      "state": "session S; fn 9 configured one-shot at actual_rate 20000000/1 with an edge trigger and pretrigger 100000 (5 ms); fn 13 configured one-shot at actual_rate 48000/1, immediate, actual_samples 4800, max_pretrigger 128; fn 13 would keep P_k = 240 > 128",
+      "request_hex": "01a4000c0001443322110209000d000102000900",
+      "answer_hex": "02a4000004010100020502000d00"
+    },
+    {
       "name": "capture-group start: the group's and each track's new generation",
       "spec": "capture §4.1",
       "fns": {
