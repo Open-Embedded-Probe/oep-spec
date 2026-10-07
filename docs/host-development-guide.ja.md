@@ -862,7 +862,7 @@ multirate: 速い 2 本はそのまま、遅いバスはチャネルごとに間
   ビットで詰めた値として読む。最後の block は区画の samples mod L 個の base sample（キャプチャ §5.5）
 ```
 
-multirate を扱わない probe は、critical の multirate を rejected unsupported（tag 0xE0）で断る。host はそれを見て、multirate の TLV 無しで取り直すか、
+critical で送るのは multirate だけで、mode、rate、trigger など §3.3 の表の TLV と capture-group の trigger_track は critical の bit を付けずに送る。describe の multirate が壊れていれば（min_d < 2 など、キャプチャ §5.1）、その fn は multirate を持たないものとして扱う。multirate を扱わない probe は、critical の multirate を rejected unsupported（tag 0xE0）で断る。host はそれを見て、multirate の TLV 無しで取り直すか、
 利用者に知らせる。any_active と edge_latch の値は区間の要約で、pulse の有無とレベルは分かるが、区間の中の位置と長さは分からない
 （不確かさは d base sample）。
 

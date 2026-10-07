@@ -718,6 +718,11 @@ def ops() -> dict:
         ok(0xA0, tlv(ca["actual_rate"], struct.pack("<II", 20_000_000, 1)) + tlv(ca["layout"], bytes([2, 2, 0, 1]))
            + tlv(ca["actual_samples"], struct.pack("<I", 200_000)) + tlv(ca["blocking_ms"], struct.pack("<I", 0))))
 
+    add("logic query: samples 0, a value the definition excludes: malformed", "capture §3.3 contract, core §2.3", lg, "as above",
+        request(0xA2, 9, qry, tlv(lt["configure"]["mode"], bytes([mode["one_shot"]])) + tlv(lt["configure"]["rate"], struct.pack("<I", 20_000_000))
+                + tlv(lt["configure"]["samples"], struct.pack("<I", 0))),
+        rej(0xA2, "malformed"))
+
     # capture §2.2: a segment the probe could not keep seamless is not handed out; the track stops in error
     lst = IFACE["oep.fixture.logic"]["enum"]
     drop = ("repeat, 1 channel w 1, samples 8000 (1000 bytes a segment), generation 1: serials 0 and 1 done, then the capture ring "
@@ -739,11 +744,13 @@ def ops() -> dict:
     pol = lo["enum"]["multirate_policy"]
     trig = lo["enum"]["trigger"]
     logic_ops = [o["code"] for o in lo["op"]]
-    mr_state = ("fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate "
+    mr_state = ("fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); "
+                "describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate "
                 "policies 7, d 2-128 (d 1 always), powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32")
     add("logic describe: multirate declared", "capture §3.5, §5.1; core §7.3", mrf, mr_state,
         request(0x93, 0, op("core", "describe"), struct.pack("<HH", 9, 0)),
         ok(0x93, bytes([0]) + tlv(REG["describe_common"]["ops"], ops_value(logic_ops))
+           + b"".join(tlv(REG["describe_common"]["role_channels"], struct.pack("<BH", k, 20) + bytes([0x0F])) for k in range(4))
            + tlv(ld["mode"], struct.pack("<BII", mode["one_shot"], 1_000_000, 1)) + tlv(ld["mode"], struct.pack("<BII", mode["repeat"], 1_000_000, 8))
            + tlv(ld["rate_range"], struct.pack("<IIB", 1000, 100_000_000, 1)) + tlv(ld["channels"], bytes([4]))
            + tlv(ld["trigger"], struct.pack("<II", 1 << trig["immediate"] | 1 << trig["level"] | 1 << trig["edge"], 1_000_000))

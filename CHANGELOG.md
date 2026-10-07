@@ -43,6 +43,14 @@ Ambiguities the probe implementer found in capture up to dd5a886. Japanese only 
   (state 1, short segments flags bit1, stopped reason 1, which now reads "stop", the host's or the group's).
 - Vectors (`ops.json`: a new `data` list with a streamed frame running into the lost segment, and the status after it), tests and
   conformance follow.
+- Capture §3.3, §4.1, §5.1 (client implementation questions): rate, samples and segments of 0 (the table says "1 or more") are
+  malformed, a value the definition excludes (core §2.3). In mode 3, which sends no samples, pretrigger is bounded only by
+  max_pretrigger and the probe's own limits. The §3.3 table's TLVs and capture-group's trigger_track are sent **without** the critical
+  bit, since every probe of that interface implements them (a probe treats the bit the same either way); only multirate, which a probe
+  may lack, is sent critical. A describe multirate with policies bit 0 clear, min_d < 2, min_d > max_d or pow2 other than 0 / 1 is
+  broken: the host does not use it and treats the fn as not declaring multirate. The multirate describe vector now declares
+  role_channels for the plan roles 0-3 its state names. Vectors (`ops.json`: samples 0 refused malformed), tests, conformance and host
+  guide follow.
 
 ### Logic capture: any sample width, seamless segments, multirate (2026-10-07)
 

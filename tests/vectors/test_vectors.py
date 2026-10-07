@@ -632,6 +632,8 @@ def test_multirate_ops():
     pay = lambda name: bytes.fromhex(by[name]["answer_hex"])[5:]
     got = dict(tlvs(pay("logic describe: multirate declared")[1:]))
     assert struct.unpack("<IIIB", got[t["describe"]["multirate"]]) == (7, 2, 128, 1)
+    rc = [v for tg, v in tlvs(pay("logic describe: multirate declared")[1:]) if tg == REG["describe_common"]["role_channels"]]
+    assert sorted(v[0] for v in rc) == [0, 1, 2, 3] == list(range(got[t["describe"]["channels"]][0]))  # the plan roles 0-3 the state names
     for c in cases:
         req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
         if struct.unpack_from("<HB", req, 3) not in ((9, 1), (9, 9), (16, 1)):                  # configure / query of a logic fn
@@ -700,3 +702,27 @@ def test_streamed_bytes_at_or_past_write_pos_are_dropped_after_an_error():
     assert position < write_pos < position + n                                     # the frame runs past the kept data
     kept = body[:max(0, write_pos - position)]
     assert len(kept) == d["keep"] and kept == bytes(range(24, 32))                  # serial 1's tail kept, serial 2's head dropped
+
+
+def test_capture_request_tlvs_are_plain_and_zero_counts_are_malformed():
+    """capture §3.3: the table's TLVs (and capture-group's trigger_track) are sent without the critical bit, only multirate is critical;
+    samples 0 is a value the definition excludes (malformed)."""
+    iface = {i["name"]: i for i in REG["interface"]}
+    cases = load("ops.json")["cases"]
+    plain = {("oep.fixture.logic", 0x01): set(iface["oep.fixture.logic"]["tlv"]["configure"].values()) - {0x60},
+             ("oep.fixture.logic", 0x09): set(iface["oep.fixture.logic"]["tlv"]["configure"].values()) - {0x60},
+             ("oep.fixture.capture-group", 0x01): set(iface["oep.fixture.capture-group"]["tlv"]["bind"].values())}
+    seen = 0
+    for c in cases:
+        req = bytes.fromhex(c["request_hex"])
+        fn, opc = struct.unpack_from("<HB", req, 3)
+        name = c["fns"].get(str(fn))
+        if (name, opc) not in plain:
+            continue
+        fixed = 0 if name == "oep.fixture.logic" else 1 + 2 * req[10]
+        for tg, _ in tlvs(req[10 + fixed:]):
+            seen += 1
+            assert tg in plain[(name, opc)] or tg == 0x60 | 0x80, (c["name"], hex(tg))               # no critical bit but multirate's
+    assert seen
+    c = next(c for c in cases if c["name"].startswith("logic query: samples 0"))
+    assert bytes.fromhex(c["answer_hex"])[3:5] == bytes([REG["resolutions"]["rejected"], REG["reject_reasons"]["malformed"]])

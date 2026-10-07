@@ -256,8 +256,12 @@ configure の応答の blocking_ms が core の max_op_ms を超える構成は�
 - **契約**（configure と query で同じ）: 必須の TLV が無ければ rejected malformed。表の「だけ」「送らない」に反する TLV（mode 3 の
   samples と segments、mode 1 の segments、type 0 または trigger 無しの pretrigger）は、値によらず rejected unsupported（受け取ったままの tag）。
   trigger の type が 0 でなく、その role がその fn の plan に無ければ rejected unavailable（cause 6）。type 0 の role と value は使わない:
-  host は 0 を送り、probe は見ない（plan に無い role でも断らない）。pretrigger が max_pretrigger を超えるか、samples（切り下げた
-  後）以上なら rejected unsupported（pretrigger の tag）。断るときは何も変えない。
+  host は 0 を送り、probe は見ない（plan に無い role でも断らない）。pretrigger が max_pretrigger を超えるか、mode 1 / 2 で samples（切り下げた
+  後）以上なら rejected unsupported（pretrigger の tag）。mode 3 では samples が無いので、pretrigger を縛るのは max_pretrigger と、下の
+  挙げていない断りだけ。表が「1 以上」とする値（rate、samples、segments）の 0 は rejected malformed（定義が除く値、core §2.3）。
+  断るときは何も変えない。
+- **critical の bit**: この表の TLV は、その対象の probe がどれも実装するので、host は critical の bit を付けずに送る（付いていても probe は
+  同じに扱う、core §2.3）。critical で送るのは、実装しない probe がありうる TLV（multirate、§5.2）だけ。
 - **挙げていない断り**: この節（と §5.2）が挙げる断りは全部ではない。probe は、自分が扱えないほかの値と値の組み合わせ（宣言で表せない
   probe 自身の上限。例: pretrigger と samples の差の下限）も、core §2.3 のとおり rejected unsupported で断る。tag はその値を持つ TLV の
   受け取ったままの tag で、組み合わせならそれに関わる TLV のどれか 1 つ。例外: 持てる量を超える samples は切り下げ、範囲の中の
@@ -374,7 +378,7 @@ bind の TLV:
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x01 | trigger_track | fn(u16)。組の開始の条件を持つトラック（そのトラックの configure の trigger と pretrigger）。無ければ即時 |
+| 0x01 | trigger_track | fn(u16)。組の開始の条件を持つトラック（そのトラックの configure の trigger と pretrigger）。無ければ即時。どの capture-group の probe も実装するので、host は critical の bit を付けずに送る（§3.3） |
 
 - **bind** は、configure 済みのトラック（`oep.fixture.logic` / `oep.fixture.analog` の fn）を束ねる。n = 0 で解く（state 3 のときは
   rejected unavailable cause 6。束ねていないときの n = 0 は何もせず成功）。断り方: 同じ fn の重複は malformed、宣言（tracks）に無い fn
@@ -463,6 +467,8 @@ sample 周期以上過ぎて取った base sample があることを表す。
 - policies: bit p が立っていれば方針 p（§5.4）を扱う。bit 0（sample）はいつも立つ。
 - d = 1 の sample（縮約しないチャネル）はいつも扱う。d ≥ 2 で扱うのは `min_d ≤ d ≤ max_d`（2 ≤ min_d ≤ max_d）の整数で、pow2 = 1 ならそのうち
   2 の冪だけ、pow2 = 0 ならその全部。
+- policies の bit 0 が無い、min_d < 2、min_d > max_d、pow2 が 0 / 1 でない multirate は壊れている: host はそれを使わず、その fn を multirate を
+  宣言しないものとして扱う（multirate の TLV を送らない）。
 - rate_range、channels、trigger（§3.5）は base rate と base sample で読む。mode（0x40）の max_samples は §1.1 の layout での上限で、
   multirate の設定で持てる量は応答の actual_samples で知る（宣言は目安、§3.5）。
 - 処理量の上限は宣言しない。host が設定を選ぶ目安は、1 つの block（§5.5）のバイト数 `B = ceil(L·w / 8) + ceil(R / 8)`（D = 1 の
