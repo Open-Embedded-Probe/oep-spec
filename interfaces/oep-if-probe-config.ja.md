@@ -194,7 +194,7 @@ index(u8)、ssid_len(u8)、ssid、pass_len(u8)、passphrase
 - **set は、要求に含まれる項目のキーごとに置き換える**（含まれないキーはそのまま。何回かの set に分けて積み上げられる）。
   plan の項目は fn ごとにまとめて、その fn の plan を置き換える。項目の順は意味を持たない。
 - **unset はキーの項目を消す**（key は tag ごと: plan は fn(u16)（その fn の plan 全部）、label と idle は channel(u16)、slot は slot(u8)、
-  bind は port(u8)、uart は fn(u16)、disable は channel(u16)、wifi は index(u8)。要素に len を置くのはキーの長さが tag ごとに違うため）。検証と原子性は set と同じ。無いキーは
+  bind は port(u8)、uart は fn(u16)、disable は channel(u16)、wifi は index(u8)。要素の len は key の byte 数で、tag は数えない。len を置くのはキーの長さが tag ごとに違うため）。検証と原子性は set と同じ。無いキーは
   何もせず成功。宣言していない項目の tag は rejected unsupported（payload の tag は受け取ったままの tag、core §4.3）。消したスロット・bind には §1.1 / §1.2 の後始末を適用する。
 - 1 つの set の中で同じキー（plan は (fn, role, channel)）が 2 回出たら、要求全体を rejected malformed。
 - set / unset の結果の設定全体が §1 の規則を満たさなければ（bind が消したスロットを指す、など）、何も変えずに rejected malformed。
