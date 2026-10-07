@@ -1,9 +1,11 @@
-# チャネルごとに縮約するロジックキャプチャの提案（2026-10-07）
+Status: **applied**（2026-10-07）。WireSkein が全体（§11 を含む）を確かめ、例のバイトをすべて独立に再現して承認した。規範の文は
+[capture](../interfaces/oep-if-capture.ja.md) §5（multirate、59c5459）、§1.1（w を 1〜128 の任意の整数に、66c49e7）、§2.2（区画の中で
+落としたら区画を出さない、0b9a058）。番号は `registry/oep-v1.toml` の `oep.fixture.logic`、vector は `tests/vectors/multirate.json`、
+`logic_layout.json`、`ops.json`。この文書は判断の記録として残し、規範ではない（試作の測った値は理由としてここにだけ置く）。
 
-Status: **proposal**（非規範）。利用者の確認を待つ。WireSkein と試作の作者（wch-protocols-e4）の問いは閉じた（§10）。
-採れば、規範の文は [capture](../interfaces/oep-if-capture.ja.md) に `oep.fixture.logic` の別の定義として新しい節（§5 の案）で入れ、番号は
-`registry/oep-v1.toml` の `oep.fixture.logic` に足す。core の freeze 条件ではない。logic の基本にも 2 つの変更を提案する（§11: w を 1〜128 の任意の整数に、区画の中で落としたら区画を出さない）。
-§11 は interfaces/ にまだ入れず、peers の確認の後に入れる。
+規範に入れるときに文で補ったこと: §11.2 の出さない区画では status の write_pos をその区画の先頭のままにする。rate_range の min_hz でも
+保てない multirate の設定は rejected unsupported（multirate の tag）。min_d は 1 以上の値として読む（1 ≤ min_d ≤ max_d）。
+ストリーミングの区画も、短い区画を除き L の倍数の base sample にする。
 
 入力: 外部レビュー [§12.8](external-spec-review-2026-10-06.ja.md)、capture §1〜§4（f64ce92 の configure / query の契約、74cf946 の §3.6）、
 core §13、ESP32-P4 の試作（§1）、WireSkein と wch-protocols-e4 の回答。
@@ -310,7 +312,7 @@ capture-group:
 
 残る問いは無い。
 
-## 11. 基本の logic の変更（interfaces/ にはまだ入れない。peers の確認の後）
+## 11. 基本の logic の変更（適用済み: §11.1 は 66c49e7、§11.2 は 0b9a058）
 
 ### 11.1 w を 1〜128 の任意の整数にする
 
