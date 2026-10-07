@@ -112,8 +112,8 @@ probe は、自分が出す transport とインターフェースについてこ
 | `oep.target.console`（[コンソール](../interfaces/oep-if-console.ja.md)） | §1 の op。describe の mechanisms は必ず出す。mechanism 1 か 2 を持てば write を送りの列で受ける（§2）。§3 の読みの順（要求の実行中と hart が止まっている間は読まない、要求の後は DMSTATUS を先に読む）。方式 2 の枠は [dmseq](../interfaces/target-console-dmseq.ja.md) のとおり | どの方式か（describe の mechanisms） |
 | `oep.fixture.gpio`（[fixture](../interfaces/oep-if-fixture.ja.md) §1） | set、read。describe の modes に mode 0 | 出力の強さ（§1.1） |
 | `oep.fixture.uart`（§2） | §2 の op。describe の formats に 8N1 | ほかの format |
-| `oep.fixture.i2c-target`（§3） | stretch を除く §3 の op（書き込み 1 回が 1 フレーム、読み出しは preload_tx の置き場から） | stretch（ops、max_stretch_us とともに）。プルアップ（features bit2） |
-| `oep.fixture.spi-target`（§4） | §4 の op。MISO をソフトウェアで駆動するなら cs_setup_ns | LSB first（features bit0） |
+| `oep.fixture.i2c-target`（§3） | stretch を除く §3 の op（書き込み 1 回が 1 フレーム、読み出しは preload_tx の置き場から、ns はフレームを終えた STOP か次の START の時刻） | stretch（ops、max_stretch_us とともに）。プルアップ（features bit2） |
+| `oep.fixture.spi-target`（§4） | §4 の op。data のビットの置き方（バイトの途中で終わった転送も、来なかったビットは 0）、bits は 0xFFFFFFFF で止める、ns は CS が無効になった時刻。MISO をソフトウェアで駆動するなら cs_setup_ns | LSB first（features bit0） |
 | `oep.fixture.logic`、`oep.fixture.analog`（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1〜§3） | query と force を除く §3.2 の op。§3.3 の configure と query の契約（mode と rate は必須、mode ごとに送れる TLV、応答の必須の行）。区画の通し番号のページング（[共通部品](../interfaces/oep-if-common.ja.md) §1.3）。出来事の世代、世代は 0 を飛ばして一周。§3.5 の describe。calibration はアナログだけ | query、force（ops）。通知: subscribe / unsubscribe（ops） |
 | `oep.fixture.capture-group`（§4） | force を除く §4.1 の op（start の応答は組の世代と、bind の順の各トラックの世代）。出来事の組の世代。§4.3 の describe | force（ops）。通知: subscribe / unsubscribe（ops） |
 | `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)） | plan の役割を持つインターフェースがあれば list に出す。plan_apply（fn ごとに不可分）、plan_release、§2.5 の断り方、設定の plan。上限があれば describe の plan_roles | — |
@@ -136,7 +136,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `refusals.json` | §2.3 と §4.3 の断り方（理由が 1 つだけ当たる状態）と、無視される知らない TLV について、要求とそのとおりの答え。§4.3 の順 4 で理由が 2 つ以上当たる要求は、どれで断ってもよいので（意図した単純化）、ベクタは持たず、試験はどれか 1 つを受ける |
 | `sessions.json` | セッションの場面: 判定の表（§6.2）、送り直しの表（§5.2。送り直した end）、end での解放と no_session（§9）、force、session_id 0（§4.1）、セッションが無いときと開いているときの clock（§7.7）。決めた初めの状態から順に送る要求と答え |
 | `ops_encoding.json` | describe の共通の tag ops の値の境（最短、最長、長さの誤り、op 0xFF の境、同じ集合の別の符号）と、正しい値が表す op の集合（§7.4） |
-| `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console（marks の通し番号のページング、streams の最後のページ）、logic（configure の契約、segments の空のページ）、capture-group の start、キャプチャの出来事のフレーム（`events`、世代）、probe.config（wifi の set（いちばん長い 112 byte のものを含む）/ get / unset と state を含む）、logic のほかの一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
+| `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console（marks の通し番号のページング、streams の最後のページ）、logic（configure の契約、segments の空のページ）、spi-target の部分の byte（MSB / LSB が先）、capture-group の start、キャプチャの出来事のフレーム（`events`、世代）、probe.config（wifi の set（いちばん長い 112 byte のものを含む）/ get / unset と state を含む）、logic のほかの一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
 
 実装は JSON を読み、自分の符号器、復号器、答えをバイト単位で比べる。ベクタが文書と registry に合っているかを確かめるには:
 

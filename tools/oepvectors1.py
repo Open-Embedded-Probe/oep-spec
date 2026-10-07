@@ -711,6 +711,22 @@ def ops() -> dict:
         request(0x8B, 12, op("oep.fixture.capture-group", "start"), b"", S),
         ok(0x8B, struct.pack("<IQIB", 0, 7_000_000, 5, 2) + struct.pack("<HI", 9, 4) + struct.pack("<HI", 13, 2)))
 
+    # oep.fixture.spi-target (fixture §4): wire bit k goes to byte k // 8, bit 7 - k % 8 (MSB first) or k % 8 (LSB first); missing bits 0
+    def spi_pack(wire_bits: list[int], lsb_first: bool) -> bytes:
+        out = bytearray((len(wire_bits) + 7) // 8)
+        for k, b in enumerate(wire_bits):
+            out[k // 8] |= b << (k % 8 if lsb_first else 7 - k % 8)
+        return bytes(out)
+
+    spi = {"14": "oep.fixture.spi-target"}
+    wire = [1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1]
+    for corr, lsb in ((0x8C, False), (0x8D, True)):
+        add(f"spi-target read_rx: 12 bits, {'LSB' if lsb else 'MSB'} first, a partial last byte", "fixture §4", spi,
+            f"session S; configured with bit_order {int(lsb)}; one transaction queued: CS ended after 12 MOSI bits 1 1 0 0 0 0 0 0 1 0 1 1 "
+            "(in wire order); no ns TLV",
+            request(corr, 14, op("oep.fixture.spi-target", "read_rx"), b"", S),
+            ok(corr, struct.pack("<BIH", 0, len(wire), 2) + spi_pack(wire, lsb)))
+
     # events (core §11.2): role, fn, seq, kind, the fixed part; every capture event carries its generation (capture §3.4, §4.2)
     events = []
 

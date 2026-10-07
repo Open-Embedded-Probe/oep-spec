@@ -574,7 +574,7 @@ op = [
 queue_depth = 0x40              # u8: frames the queue holds, and the most unread preload_tx slots
 max_stretch_us = 0x41           # u32: the largest stretch_us the stretch op accepts (required when ops offers stretch; oep-if-fixture §3)
 [interface.tlv.read_rx_answer]
-ns = 0x01                       # u64: when the frame was received (probe clock; optional)
+ns = 0x01                       # u64: the STOP or next START that ended the frame (probe clock; optional)
 [interface.enum.role]
 sda = 1
 scl = 2
@@ -601,7 +601,7 @@ op = [
 queue_depth = 0x40              # u8: transactions the queue holds
 cs_setup_ns = 0x43              # u32 ns: CS active to the first SCK edge with MISO driven with the first bit, worst case (oep-if-fixture §4)
 [interface.tlv.read_rx_answer]
-ns = 0x01                       # u64: when the transaction ended (probe clock; optional)
+ns = 0x01                       # u64: when CS went inactive, ending the transaction (probe clock; optional)
 [interface.enum.role]
 sck = 1
 mosi = 2

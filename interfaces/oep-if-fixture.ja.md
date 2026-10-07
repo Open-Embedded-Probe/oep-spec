@@ -95,7 +95,7 @@ read_rx で取り出す。
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
 | 0x01 | configure | address(u8、7 ビット)、[TLV] | — | 必要 |
-| 0x03 | read_rx | — | pending(u8)、count(u16)、data、[TLV ns(u64): 受けた時刻、任意] | 必要 |
+| 0x03 | read_rx | — | pending(u8)、count(u16)、data、[TLV ns(u64): そのフレームを終えた STOP か次の START の時刻、任意] | 必要 |
 | 0x04 | preload_tx | count(u16)、data | — | 必要 |
 | 0x05 | status | — | state(u8)、queued(u8)、rx_frames(u32)、tx_slots(u8)、errors(u32)、[TLV] | 不要 |
 | 0x07 | stretch | stretch_us(u32) | — | 必要 |
@@ -137,7 +137,7 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
 |---:|---|---|---|---|
 | 0x01 | configure | mode(u8: SPI の mode 0〜3)、bit_order(u8: 0 MSB が先、1 LSB が先)、[TLV] | — | 必要 |
 | 0x02 | arm | length(u16)、count(u16)、tx(count byte)、[TLV] | — | 必要 |
-| 0x03 | read_rx | — | pending(u8)、bits(u32)、count(u16)、data、[TLV ns(u64): 受けた時刻、任意] | 必要 |
+| 0x03 | read_rx | — | pending(u8)、bits(u32)、count(u16)、data、[TLV ns(u64): その転送で CS が無効になった時刻、任意] | 必要 |
 | 0x04 | status | — | state(u8)、mode(u8)、bit_order(u8)、armed(u8)、queued(u8)、transactions(u32)、errors(u32)、[TLV] | 不要 |
 
 - **SPI の mode** = CPOL × 2 + CPHA。CPOL は CS が無効な間の SCK の level（0 low、1 high）。CPHA 0 では、各ビットはそのクロック周期の最初の SCK の
@@ -157,8 +157,9 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
 - **configure から plan を解くまで、probe は CS が有効な間だけ MISO を駆動する。** CS が無効な間は MISO を駆動しない（プルの無い入力）。
   ただし CS が無効になってから cs_setup_ns の間は除く（下）。
   「MISO は tx の外では 0」は、CS が有効な間の転送のビットのことである。SCK、MOSI、CS は常に入力。configure の前は channel は空きの状態のまま（core §8）。
-- 転送が CS で終わると、MOSI のバイトと、実際に来たビット数（bits）を列に積み、transactions を 1 増やす。data の byte 数は bits を 8 で
-  割って切り上げた数で、length で止める。length を超えた分は捨て、errors を 1 増やす（その転送は、bits を実際に来た数のまま、data を
+- 転送が CS で終わると、MOSI のバイトと、実際に来たビット数（bits、0xFFFFFFFF で止める）を列に積み、transactions を 1 増やす。data の byte 数は bits を 8 で
+  割って切り上げた数で、length で止める。線の k 番目（0 から）のビットは、data の byte floor(k / 8) の、MSB が先ならビット 7 − (k mod 8)、
+  LSB が先ならビット k mod 8 に置く（バイトの途中で終わった転送も同じ）。最後の byte の、来なかったビットは 0。length を超えた分は捨て、errors を 1 増やす（その転送は、bits を実際に来た数のまま、data を
   length までにして積む）。列に queue_depth 個あるときに終わった転送は積まずに捨て、errors を 1 増やす（transactions には数える）。
   errors は転送 1 回につき多くても 1 増える。read_rx はいちばん古いものを返す（無ければ count 0）。state 0 では rejected
   unavailable（cause 6）。pending は取り出した後の残り（255 で止める）。

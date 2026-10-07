@@ -70,6 +70,10 @@ From the core / interface re-check of 0991759 in `docs/external-spec-review-2026
 - Vectors: logic configure (the one-shot answer set, no rate, streaming with samples), segments from serial_done, capture-group start,
   and a new `events` list in ops.json (logic stopped of the previous generation, triggered, the group's triggered and stopped). Registry,
   generated code, host guide §22, conformance and glossary follow.
+- SPI target §4: wire bit k (from 0) goes to data byte k / 8, bit 7 - (k mod 8) MSB first or bit k mod 8 LSB first, also in a
+  transaction that ends inside a byte; the last byte's bits that did not come are 0. bits saturates at 0xFFFFFFFF. read_rx's ns is when
+  CS went inactive; i2c-target's is the STOP or next START that ended the frame. Registry comments, vectors (12 bits, MSB and LSB
+  first) and conformance follow.
 
 ### External review core re-check (2026-10-07, 0991759)
 

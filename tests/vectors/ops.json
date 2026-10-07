@@ -668,6 +668,26 @@
       "state": "session S; fn 12 bound to fn 9 then fn 13, both one-shot with immediate triggers; generations before: group 4, fn 9 3, fn 13 1; acquisition starts at 7 ms",
       "request_hex": "018b000c000244332211",
       "answer_hex": "028b00010000000000c0cf6a000000000005000000020900040000000d0002000000"
+    },
+    {
+      "name": "spi-target read_rx: 12 bits, MSB first, a partial last byte",
+      "spec": "fixture §4",
+      "fns": {
+        "14": "oep.fixture.spi-target"
+      },
+      "state": "session S; configured with bit_order 0; one transaction queued: CS ended after 12 MOSI bits 1 1 0 0 0 0 0 0 1 0 1 1 (in wire order); no ns TLV",
+      "request_hex": "018c000e000344332211",
+      "answer_hex": "028c000100000c0000000200c0b0"
+    },
+    {
+      "name": "spi-target read_rx: 12 bits, LSB first, a partial last byte",
+      "spec": "fixture §4",
+      "fns": {
+        "14": "oep.fixture.spi-target"
+      },
+      "state": "session S; configured with bit_order 1; one transaction queued: CS ended after 12 MOSI bits 1 1 0 0 0 0 0 0 1 0 1 1 (in wire order); no ns TLV",
+      "request_hex": "018d000e000344332211",
+      "answer_hex": "028d000100000c0000000200030d"
     }
   ],
   "events": [

@@ -475,6 +475,9 @@ def test_per_op_vectors_decode_exactly():
     assert len(p) == 17 + 6 * n and n == 2
     fns = [struct.unpack_from("<H", p, 17 + 6 * k)[0] for k in range(n)]
     assert len(set(fns)) == n                                                                     # each bound fn once (§4.1)
+    for name, data in (("spi-target read_rx: 12 bits, MSB first, a partial last byte", "c0b0"),
+                       ("spi-target read_rx: 12 bits, LSB first, a partial last byte", "030d")):
+        assert pay(name) == bytes.fromhex("000c0000000200" + data), name                          # pending bits count data (fixture §4)
     assert "start_answer" not in iface["oep.fixture.capture-group"].get("tlv", {})                # no generations TLV any more
     p = pay("probe.config state: one slot and one bind")
     i = 7                                                                                         # more state hash(u32) reason
