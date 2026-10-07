@@ -248,14 +248,14 @@
       "answer_hex": "02430001000000"
     },
     {
-      "name": "rvswd scan: count > 0 with skip",
+      "name": "rvswd scan: count > 0 ignores skip",
       "spec": "debug §1",
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "state": "—",
+      "state": "as the first scan case; skip = 1 is not looked at, the listed combination is tried",
       "request_hex": "0144000400014433221101010002000202000100",
-      "answer_hex": "0244000003"
+      "answer_hex": "02440001000101010100020082034000"
     },
     {
       "name": "riscv-dm halt: halted",

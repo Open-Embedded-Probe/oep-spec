@@ -474,7 +474,7 @@ def ops() -> dict:
         "lock free (for example: the probe has restarted since S opened)",
         request(0x12, 11, restart, b"", S), rej(0x12, "no_session"))
 
-    # oep.probe.plan (oep-if-plan): role_assignment fn(u16) role(u8) channel(u16), always sent critical
+    # oep.probe.plan (oep-if-plan): role_assignment fn(u16) role(u8) channel(u16)
     pl = {"10": "oep.probe.plan", "2": "oep.fixture.gpio"}
     ra = IFACE["oep.probe.plan"]["tlv"]["plan_apply"]["role_assignment"]
     apply_, release = op("oep.probe.plan", "plan_apply"), op("oep.probe.plan", "plan_release")
@@ -542,9 +542,10 @@ def ops() -> dict:
     add("rvswd scan: count 0 with nothing left from skip", "debug §1", rv, "session S; the count = 0 sequence has 4 combinations",
         request(0x43, 4, op("oep.wire.rvswd", "scan"), bytes([0]) + tlv(IFACE["oep.wire.rvswd"]["tlv"]["scan"]["skip"], struct.pack("<H", 4)), S),
         ok(0x43, bytes([0, 0])))
-    add("rvswd scan: count > 0 with skip", "debug §1", rv, "—",
+    add("rvswd scan: count > 0 ignores skip", "debug §1", rv, "as the first scan case; skip = 1 is not looked at, the listed combination is tried",
         request(0x44, 4, op("oep.wire.rvswd", "scan"), bytes([1]) + struct.pack("<HH", 1, 2)
-                + tlv(IFACE["oep.wire.rvswd"]["tlv"]["scan"]["skip"], struct.pack("<H", 1)), S), rej(0x44, "malformed"))
+                + tlv(IFACE["oep.wire.rvswd"]["tlv"]["scan"]["skip"], struct.pack("<H", 1)), S),
+        ok(0x44, bytes([1, 1]) + struct.pack("<BHHI", kind, 1, 2, 0x00400382)))
 
     # oep.target.riscv-dm (debug §4)
     dm = {"6": "oep.target.riscv-dm"}
