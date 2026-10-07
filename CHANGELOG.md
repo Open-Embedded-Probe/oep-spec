@@ -79,6 +79,9 @@ From the core / interface re-check of 0991759 in `docs/external-spec-review-2026
   resumereq that started the hart to seeing it halted (stopped 1), halting it at the limit (0) or giving up (2); 0 for stopped 3; an
   invalid dpc is 0. arm-adi transfer n = 0 is success, done 0, status ok, ack 0 (no transfer, no ACK), nvals 0. Vectors (a failed step,
   transfer n = 0) and conformance follow.
+- Capture §3.6 wording: the reservation of "layout formats 0x40 onwards" is gone (the layout value has no format number, and w may be
+  64 or 128); 0x60-0x7F is reserved for separate definitions in configure (request and answer) and describe, and a data form other
+  than §1's layout is given by the separate definition's own answer TLV.
 
 ### External review core re-check (2026-10-07, 0991759)
 
