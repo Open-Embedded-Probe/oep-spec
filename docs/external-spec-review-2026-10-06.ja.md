@@ -1,18 +1,19 @@
-# OEP v1 外部公開仕様レビュー（2026-10-06、再レビュー）
+# OEP v1 外部公開仕様レビュー（2026-10-07 再確認）
 
-Status: **record**（非規範）。OEP v1 freeze 前の仕様を、第三者による相互運用実装、曖昧さ、独自拡張、単純性の観点から再レビューした記録。
+Status: **record**（非規範）。OEP v1 freeze 前の仕様を、第三者による相互運用実装、曖昧さ、独自拡張、単純性の観点からレビューした記録。
 
-この版は、同日に行った最初のレビュー後の変更（request / TLV / sequence の単一形式化、session の単純化、共通 `ops`、transport の分離、試験 vector の追加など）を反映した再レビューである。
+この版は、core の範囲をさらに縮小した変更後の `3bca24c` を対象とする。以前のレビュー内容を現状に合わせて更新し、特に core と TCP transport を重点的に確認した。
 
 ## 1. レビュー範囲
 
 主に次を確認した。
 
-- 規範文書だけから、第三者が互換 host / probe を実装できるか。
-- 同じ入力や状態に対して、wire encoding、応答、拒否理由が一意に決まるか。
+- 公開された規範文書だけから、第三者が互換 host / probe を実装できるか。
+- 同じ入力や状態に対して、wire encoding、応答、拒否理由が十分に一意か。
+- core が、すべての probe に本当に必要な機能だけに絞られているか。
 - 未知の TLV、enum、op、event、interface を安全に扱えるか。
 - 第三者が既存実装を変更せず、独自機能を追加できるか。
-- core が十分小さく、拡張方法と状態遷移が理解しやすいか。
+- transport ごとの差をまたいでも、同じ interface declaration が成立するか。
 - registry、生成物、test vector が一致しているか。
 
 対象は主に次の規範文書とデータである。
@@ -20,12 +21,14 @@ Status: **record**（非規範）。OEP v1 freeze 前の仕様を、第三者に
 - [OEP core](oep-core.ja.md)
 - [OEP transports](oep-transports.ja.md)
 - [standard interface common parts](../interfaces/oep-if-common.ja.md)
+- [plan](../interfaces/oep-if-plan.ja.md)
+- [restart](../interfaces/oep-if-restart.ja.md)
+- [link](../interfaces/oep-if-link.ja.md)
 - [wire and debug](../interfaces/oep-if-debug.ja.md)
 - [console](../interfaces/oep-if-console.ja.md) と [dmseq](../interfaces/target-console-dmseq.ja.md)
 - [fixture](../interfaces/oep-if-fixture.ja.md)
 - [capture](../interfaces/oep-if-capture.ja.md)
 - [probe settings](../interfaces/oep-if-probe-config.ja.md)
-- [link](../interfaces/oep-if-link.ja.md)
 - [v1 registry](../registry/oep-v1.toml)
 - [versioning](versioning.ja.md) と [conformance](conformance.ja.md)
 
@@ -33,205 +36,243 @@ freeze 前は日本語版が作業上の規範であり、英語版は古い可�
 
 ## 2. 結論
 
-仕様は最初のレビュー時点から大幅に改善された。通常の OEP frame、message、discovery、session、標準 interface は、現在の日本語の規範文書から独立実装できる水準にかなり近い。特に、wire 上の基本形式と拡張方法が少数の規則に整理され、以前より相互運用実装を作りやすい。
+core の縮小は成功している。`plan`、`restart`、`link` は名前付きの任意 interface に移され、fn 0 は名前を持たない protocol core として、次の8操作だけになった。
 
-次の大きな問題は解決済みである。
+- `confirm`
+- `list`
+- `describe`
+- `clock`
+- `open`
+- `end`
+- `keepalive`
+- `lock_state`
 
-- request header は `session_id` を常に持つ 10 byte の一形式になった。
-- TLV は `tag(u8), len(u16), value` の一形式になった。
-- sequence は一律 `count, count × element` になり、element の外側の length は無くなった。
-- 固定形式を末尾拡張せず、形を変える場合は revision を上げる規則になった。
-- optional op は全 fn 共通の `ops` tag で宣言するようになった。
-- session resume と終了後の resource 継承が無くなり、end、expiry、force で同じように解放するようになった。
-- transport が別文書になり、HID の byte stream、report ID、padding、途切れが定義された。
-- 外部仕様の文書名、版、利用範囲が列挙された。
-- SDI / DMDATA が規範として定義された。
-- session と一部の op の byte vector が追加された。
+通知も interface ごとの任意機能になり、heartbeat は削除された。data の batching と event の即時送出が分かれ、`ops` の境界と encoding も明確になった。以前の主要な指摘は解消されている。
 
-一方、freeze 前に直すべき規範上の矛盾が1件、相互運用上の曖昧さが2件ある。また、「小さく単純な core」という設計目標に対して、任意の `restart` を core に置いたことは再検討した方がよい。
+現在の日本語仕様から通常の互換実装を作れる水準には達している。ただし、異なる transport や broker を含む実装で解釈が分かれる可能性がある規範上の問題が残る。
 
-推奨する優先順位は次のとおりである。
+freeze 前の優先順位は次のとおりである。
 
-1. 通知対応が任意か必須かの矛盾を解消する。
-2. `ops` bitmap の正しい範囲と canonical encoding を定義する。
-3. 通知の `min_bytes` / `max_delay_ms` が data と event にどう適用されるかを定義する。
-4. `restart` を core ではなく任意の名前付き interface に移す。
+1. transport の「frame は複数 transfer / report にまたがってよい」と「host は一回の write で送る」の矛盾を解消する。
+2. interface の `max_length` と transport ごとの `max_frame` の関係を一意にする。
+3. broker 経由で `oep.probe.restart` を公開する場合の保証を定義するか、broker はこの interface を公開しないことにする。
+4. fn 0 を固定形式の `(name, revision)` 規則から明示的に除外する。
+5. channel 数と channel ID の有効範囲を明記する。
+6. 実際の TCP probe、特に ESP32 の Wi-Fi 実装で仕様を検証する。
 
-## 3. 現在残る指摘
+## 3. 現在残る規範上の指摘
 
-### 3.1 High: 通知対応が「任意」と「必須」の両方になっている
+### 3.1 High: transport の分割許可と「一回の write」が矛盾する
 
-core §1.2 は、すべての probe に fn 0 の `subscribe` と `unsubscribe` の実装を要求している。core §11.3 はさらに、fn 0 を購読すると heartbeat が届くと定めている。
+[OEP transports](oep-transports.ja.md) は、vendor bulk では一つの OEP frame が複数の USB transfer に、HID では複数の report にまたがってよいと定めている。一方、共通規則では host が一つの frame を一回の write で送らなければならないとしている。
 
-一方、core §11 冒頭は「probe の対応は任意」と書いている。この文だけを根拠に、通知をまったく実装しない probe も適合すると解釈できる。
+この規則は次の理由で相互運用要件として成立しにくい。
 
-互換実装を一意にするには、次のどちらかへ統一する必要がある。
+- HID API の一回の write は通常一つの report であり、それより大きい frame は一回では送れない。
+- stream / serial / TCP の write は、API が全 byte を一度に受理することを一般には保証しない。
+- OS API の write 呼び出し境界は wire 上には残らず、probe は検証できない。
 
-1. 通知機構と fn 0 heartbeat は必須で、各 interface の通知だけが任意である。
-2. `subscribe`、`unsubscribe`、heartbeat を一組の任意機能とし、fn 0 の `ops` で宣言する。
+規範は API 呼び出し回数ではなく、wire 上で観測できる条件にすべきである。次のように統一することを推奨する。
 
-小さな probe と単純な core を優先するなら2を推奨する。通知を使わない probe から、heartbeat の timer、subscription state、notification buffer を除ける。共通 `ops` がすでにあるため、host の判定に新しい仕組みは要らない。
+- 一つの frame は複数の write、USB transfer、HID report に分割してよい。
+- TCP 以外では、frame の途中に `probe_frame_gap_ms` 以上の空白を置いてはならない。
+- TCP は byte stream として length 分を受信するまで待ち、write / packet / `recv` の境界に意味を持たせない。
 
-1を選ぶ場合は、少なくとも §11 冒頭を「通知機構と fn 0 heartbeat は必須、各 interface の通知は任意」に直す。
+### 3.2 High: interface の `max_length` と transport の `max_frame` の関係が曖昧
 
-### 3.2 Medium: `ops` bitmap の正しい符号化範囲が定義されていない
+core は `max_frame` を transport ごとの値としている。一方、interface declaration の `max_length` は一つだけで、debug interface は host が `max_length` から操作量を決め、`max_frame` から再計算しないとしている。
 
-core §7.4 の `ops` は次の形である。
+例えば同じ probe が `max_frame = 1024` の USB bulk と `max_frame = 64` の UART を持つ場合、同じ `max_length` が両方で送信可能なのかが決まらない。第三者実装は次の二通りに分かれ得る。
 
-```text
-base(u8), bitmap
-```
+- `max_length` は最小の transport でも送れる値だと解釈する。
+- host が現在の transport の `max_frame` と header overhead からさらに小さくする。
 
-しかし、次が未定義である。
+最も単純な規則は次である。
 
-- bitmap は空でよいか。
-- bitmap は最大何 byte か。
-- `base + i > 0xFF` となる bit をどう扱うか。
-- 先頭または末尾の zero byte を許すか。
-- 同じ op の集合に複数の wire encoding を許すか。
-- 不正な `ops` を受けた host が、その fn、probe、transport のどれを使用不能とするか。
+> interface declaration の `max_length` と、その値で生成される最大 message は、その probe が同時に広告するすべての transport の最小 `max_frame` に収まらなければならない。
 
-例えば `base = 0xF8` の2 byte bitmapは、実装によって「0x100 以降を無視する」「u8 で一周する」「宣言全体を不正とする」に分かれ得る。
+transport ごとに性能を最大化したい場合は、declaration を transport ごとに変えるか、host が両方の値から上限を計算する規範式が必要になる。しかし cache と実装を単純に保つなら、全 transport の最小値に合わせる方がよい。
 
-単純で canonical な形として、次を推奨する。
+### 3.3 Medium: broker と `oep.probe.restart` の end-to-end 保証が一致しない
 
-- value の長さは2〜33 byte、bitmap は1〜32 byte。
-- `base + 8 × bitmap_bytes <= 256`。
-- bit 0 は立っており、最後の bitmap byte は0でない。
-- `base` は宣言する最小の op。
-- experimental op と、その interface が定義しない op の bit は立てない。
-- 条件を満たさない `ops` を受けた host は、その fn を使用しない。
+restart interface は、応答後に probe が再起動し、`restart_max_ms` 以内に同じ transport で `confirm` に応答できることを要求する。
 
-これにより、一つの op 集合に一つの encoding だけが対応し、生成、比較、適合試験が単純になる。
+一方、TCP broker は upstream transport が失われたときに client connection を閉じる。broker が upstream probe の restart interface をそのまま relay すると、client から見た「同じ transport」は broker への TCP connection だが、その connection は維持されない。`restart_max_ms` も、broker の再接続や再公開までを含む保証かどうか不明である。
 
-### 3.3 Medium: 通知のまとめ条件が data と event を区別していない
+core を小さく保つ方針に合う最小の解決は、broker が `oep.probe.restart` を client に広告しないことである。relay するなら、次を restart または transports の規範として定義する必要がある。
 
-core §11.3 は、`min_bytes` byte がたまるか、最初の byte から `max_delay_ms` が経ったら送ると定めている。しかし role 0x05 の event について、次が明確でない。
+- TCP connection が閉じられるか維持されるか。
+- client が同じ address へ再接続する時点。
+- `restart_max_ms` が upstream の復帰だけか、broker 経由の `confirm` 成功までか。
+- restart response が client へ届いた後に upstream response が失われた場合の結果。
 
-- `min_bytes` に event payload の byte も数えるか。
-- 複数の event をまとめるのか。
-- capture の `segment`、`stopped`、`triggered` を発生後すぐ送るのか。
-- `min_bytes > 0`、`max_delay_ms = 0` の購読で、event だけの fn が永久に何も送らないことがあるか。
+### 3.4 Medium: fn 0 と固定形式の識別規則が一致しない
 
-次のように役割を分けると単純である。
+core は fn 0 が名前を持たず、`list` にも現れないことを明記している。一方、固定形式は `(interface name, interface revision)` によって決まるという一般規則が fn 0 を除外していない。
 
-- `min_bytes` と `max_delay_ms` のまとめ条件は role 0x06 の data にだけ適用する。
-- role 0x05 の event は、発生後、先行する response を送り終えた時点で送る。
-- fn 0 では `max_delay_ms` を heartbeat の周期として使い、`min_bytes` は無視する。
+次のように識別規則を二つに分ければ曖昧さがなくなる。
 
-event をまとめたい場合は、複数 frame の送信開始を遅らせるのか、一つの frame に複数 event を入れるのかも明記する必要がある。現在の message 形式を変えないなら、event はすぐ送る規則が最も小さい。
+- 名前付き interface の固定形式は `(interface name, interface revision)` で決まる。
+- fn 0 の固定形式は protocol revision で決まる。
 
-### 3.4 Design: `restart` は core の線引きと合わない
+これは wire format の変更を伴わない小さな修正である。
 
-core §0 は、core に入れるのは interface 名を知る前に必要なもの、または一つの名前付き interface では定義できないものだけとし、core の仕組みだけで名前付き interface にできるものは core に入れないと定めている。
+### 3.5 Medium: channel の存在と有効範囲が完結していない
 
-`restart` は discovery 後に使う任意の操作であり、第三者も独自の interface として同じ機能を定義できる。そのため、この線引きに従えば core よりも名前付き interface に置く方が自然である。
+core は channel ごとの empty-state や電気的な共通規則を定めているが、declaration の `channels` tag は必須ではない。次が明示されていない。
 
-さらに `restart` を core に入れたことで、次の特別規則が core と transports に増えた。
+- `channels` が無い場合、channel 数は0なのか、未知なのか。
+- 有効な channel ID が `0 .. channels - 1` なのか。
+- role declaration や各 request に含まれる channel ID も同じ範囲に制限されるか。
+- channel を使用する probe / interface が `channels` を必ず返すか。
 
-- response 後の全 transport の停止。
-- USB の再列挙と TCP の再待受。
-- `restart_max_ms`。
-- response が失われた場合の特別な待ち方。
-- broker での中継と、待っている間の `result_lost`。
-- UART bridge の port speed の復旧。
+次の規則を推奨する。
 
-これは、transport の分離と `oep.link` への機能移動で得た単純さを一部失わせている。
+- `channels` が無い場合、その probe の共通 channel は0個である。
+- channel を使用する probe は `channels` を必ず返す。
+- 有効な channel ID は `0 <= channel < channels` である。
+- declaration、request、response、event に含まれるすべての channel ID にこの範囲を適用する。
 
-`restart` は `oep.probe.control` などの任意の標準 interface に移すことを推奨する。core には次だけを残せばよい。
+## 4. core の範囲と単純性
+
+### 4.1 縮小により改善した点
+
+- fn 0 は名前を持たず、名前付き interface の発見機構と二重に広告されない。
+- `plan` は `oep.probe.plan` へ移り、resource の事前確保を必要としない probe は実装しなくてよい。
+- `restart` は `oep.probe.restart` へ移り、再起動制御を持たない probe から特別な状態遷移を除ける。
+- `link` は `oep.probe.link` にあり、transport 設定が core operation に混ざらない。
+- notification は interface ごとの `ops` で宣言され、通知を使わない probe は subscription state と timer を実装しなくてよい。
+- data だけが batching 対象で、event は即時送出になった。
+- `ops` の長さ、範囲、canonical encoding、不正時の扱いが定義された。
+
+以前のレビューで提案した主要な core 縮小は反映されている。
+
+### 4.2 `clock` を必須 core に残すかは再検討の余地がある
+
+現在もすべての probe が `clock` と、非 wrap の u64 nanosecond timebase を提供する。GPIO の単純操作など、時刻を使用しない最小 probe にもこの実装が必要になる。
+
+小さな core を最優先するなら、`clock` を `oep.probe.clock` のような任意 interface に移し、timestamp を返す interface がその存在を要求する構成も可能である。core には次だけを残せる。
 
 - `boot_id` による再起動の検出。
-- probe が再起動すると session、resource、subscription、resend table が失われるという一般規則。
-- transport が失われた場合の一般的な回復規則。
+- 同じ `boot_id` 内で timestamp を比較する場合の一般規則。
 
-restart interface の文書は、response を先に送ること、再起動までの上限、復帰を待つ手順を定義できる。既存 core の安全性を失わず、restart を持たない最小 probe の core 実装を小さくできる。
+ただし、多くの interface が共通 timebase を使い、同期や cache の前提として常に必要なら、core に残す合理性もある。freeze 前に「時刻を一切使わない適合 probe を許したいか」を判断すべきである。
 
-## 4. 仕様書だけからの互換実装可能性
+### 4.3 channel の電気規則は条件付き core と明記するとよい
 
-### 4.1 実装できる範囲
+core の channel / role / empty-state / 電気的安全性は、複数の hardware interface で共有されるため core に置く価値がある。一方、channel を持たない probe にまで実装義務があるように読めると core の範囲が広く見える。
+
+別 interface に分離すると依存関係が増えるため、まずは「channel を広告する probe にだけ適用する条件付き core 規則」と明記するのが小さい変更である。
+
+## 5. 仕様書だけからの互換実装可能性
 
 現在の日本語の規範文書から、次は実装可能である。
 
-- serial / vendor bulk / HID / TCP の OEP framing。
+- serial / vendor bulk / HID / TCP の framing と frame validation。
 - request、response、event、data の header と TLV。
 - confirm、list、describe による discovery。
 - session、lock、lease、resend、deduplication と resource lifetime。
-- plan と共通の refusal order。
+- 名前付き interface の optional op と通知能力の発見。
 - 標準 interface の request / response と主な状態遷移。
-- 独自 interface の名前、revision、op、TLV の割り当て。
+- reverse-DNS 名を使った独自 interface の追加。
 
-通常の正しい message については、独立した host と probe が同じ byte layout を実装できる。
+通常の正しい message について、独立した host と probe が同じ byte layout を実装できる。残る問題は基本 encoding よりも、複数 transport、broker、channel 境界などの組合せに集中している。
 
-### 4.2 外部仕様が必要な範囲
+実際に USB、SWD、ADI、RISC-V DM、I2C などを動かすには、各 interface 文書が列挙する外部仕様も必要である。これは OEP protocol の欠落ではなく hardware backend の依存関係である。
 
-OEP の protocol 自体はこの repository の規範文書で定まる。実際に USB、SWD、ADI、RISC-V DM、I2C などを動かすには、各文書の「参照する仕様」に列挙された外部仕様も必要である。
+freeze 前は日本語版だけが最新の規範である。正式な v1 release では英語版を同期し、規範文書、registry、生成物、vector を同じ immutable release tag に含める必要がある。
 
-これは protocol の欠落ではなく、hardware backend の依存関係である。外部仕様の文書名、版、使用部分が明記されたため、最初のレビュー時点の問題は解消された。
+## 6. 拡張性
 
-### 4.3 現在の制限
+拡張モデルは単純で、第三者による追加にも適している。
 
-通知については §3.1 と §3.3 を直すまで、二つの適合実装が異なる動作をする可能性がある。`ops` も通常の宣言は実装できるが、境界値と不正な宣言の扱いは一致しない。
+1. 既存の文脈へ独立した追加情報を入れる場合は TLV を使う。
+2. 任意操作は `ops` で宣言する。
+3. 安全に無視できる event、enum、bit は、文書で定めた互換条件の範囲で追加する。
+4. 意味が異なる機能は新しい interface name にする。
+5. 固定形式を変える場合は interface revision を上げる。
 
-また、freeze 前は日本語版だけが最新の規範で、英語版は古い可能性がある。作業中の仕様としては明示されているため問題ないが、外部公開する正式な v1 release では英語版を同期し、同じ release tag に含める必要がある。
+`oep.` は project が管理し、第三者は reverse-DNS name を登録なしで使える。標準 interface と独自 interface が同じ discovery mechanism を使うため、vendor extension 専用の分岐も必要ない。
 
-## 5. 拡張性と単純性
+critical TLV、未知 op の拒否、未知 event の無視、declaration cache の範囲も定義されている。固定形式の暗黙の末尾拡張を禁止したことで、互換 reader の規則は少ない。
 
-### 5.1 良い点
+設計原則は次の一文にまとめられる。
 
-- interface を name と revision で発見する。
-- `oep.` は project が管理し、第三者は reverse-DNS name を登録なしで使える。
-- standard interface と独自 interface を同じ core mechanism で扱う。
-- request TLV の critical bit により、無視されると意味が変わる追加情報を安全に送れる。
-- 固定形式は revision 中で変えず、追加情報は TLV に置く。
-- optional op の有無を、全 interface 共通の `ops` で宣言する。
-- 未知の TLV、event、enum、status の基本的な扱いが定義されている。
-- response enum を revision なしで追加できる条件が明文化された。
-- chip 固有の手順を generic interface に混ぜず、別名の interface にする原則がある。
-- declaration と可変 state が分離され、同じ boot_id の間の cache 規則がある。
-- interface 作成の checklist に op、TLV、outcome、status、reason、resource lifetime、event、外部仕様が含まれる。
+> 固定形式は revision で守り、互換追加は TLV、操作の有無は ops、意味が違うものは別 interface。
 
-第三者は reverse-DNS interface を別の fn として追加できる。既存の標準 interface に vendor-specific field を混ぜる必要がなく、namespace collision も避けられる。
+## 7. TCP/IP と ESP32 Wi-Fi 実装による仕様検証
 
-### 5.2 現在の拡張モデル
+TCP transport は規範化されているため、IP network 上の probe は実装できる。ただし文書と byte vector だけでは、TCP 固有の分割・結合、複数 client、切断復帰の不足を見つけにくい。freeze 前に、独立した host と実際の TCP probe を作って相互接続することを強く推奨する。
 
-freeze 後の基本的な拡張方法は、次の4つに整理された。
+特に ESP32 の Wi-Fi は、安価で再現しやすく、組込み側の制約も確認できるため検証対象に適している。これは新しい「IP transport」を追加する提案ではなく、現在の TCP transport を IPv4 または IPv6 上で実装して検証する提案である。
 
-1. 既存の文脈へ独立した追加情報を入れる新しい TLV。
-2. `ops` で宣言する新しい optional op、または安全に無視できる optional event。
-3. 条件を満たす予約済み enum 値または bit の定義。
-4. 新しい意味には新しい interface name、固定形式の変更には新しい revision。
+### 7.1 最小の ESP32 検証実装
 
-固定部分、TLV value、sequence element を暗黙に末尾拡張しないため、reader が持つ前方互換規則は以前より少ない。「固定形式は revision で守り、互換追加は TLV、意味が違うものは別 interface」と説明できる状態に近づいている。
+最小実装は次を含めればよい。
 
-### 5.3 さらに小さくする余地
+- Wi-Fi 上の TCP listener。
+- `length(u16), message` の framing。
+- fn 0 の必須8操作。
+- session、lock、resend、deduplication。
+- 少なくとも一つの小さな名前付き interface、または core だけの適合構成。
+- `boot_id` を更新する実際の reboot。
 
-最も効果が大きいのは次の2点である。
+ESP-IDF、Arduino など使用 framework は仕様要件にしない。別コードベースの host から操作し、既存実装同士の自己整合だけで合格にしないことが重要である。
 
-- 通知を使わない probe では、subscribe / unsubscribe / heartbeat を一組の任意機能として省けるようにする。
-- probe 自身の restart を任意の名前付き interface に移し、core と broker の特別規則を減らす。
+### 7.2 TCP で必ず試す項目
 
-それ以外の大きな単純化案はすでに反映されている。corr を u32 にする案は採用されず u16 のままだが、再送表、再利用、wrap の規則は明文化されているため、現時点では相互運用を妨げる曖昧さではない。
+- 2 byte の length 自体を複数の `recv` に分ける。
+- payload を1 byte単位を含む任意位置で分割する。
+- 複数 frame を一回の write / TCP segment / `recv` に結合する。
+- write と TCP packet の境界に依存しないことを確認する。
+- TCP には `probe_frame_gap_ms` による途中破棄を適用しないことを確認する。
+- 同時に複数 client を接続し、global session / lock と connection ごとの状態を確認する。
+- 正常 close、突然の切断、half-open、Wi-Fi loss、再 association を試す。
+- probe reboot 後に再接続し、`boot_id`、session、resource、resend state の失効を確認する。
+- 通知を実装する場合、購読した connection だけへ event / data が届くことを確認する。
+- `oep.probe.restart` を公開する場合、response、切断、復帰、再 `confirm` の順序と時間保証を確認する。
 
-## 6. 最初のレビュー指摘への反映確認
+TCP の framing test は、ESP32 実機だけでなく、write を意図的に分割・結合する deterministic な fake client / server として CI にも入れるとよい。実機試験は release checklist に置く。
 
-| 最初の指摘 | 現在の状態 |
+### 7.3 複数 client で確認すべき状態の所有範囲
+
+実装により、少なくとも次の区別が仕様どおりか確認する。
+
+- probe 全体で共有する session、resource、lock。
+- connection ごとの negotiated revision、受信途中の frame、送信 queue。
+- transport ごとの `max_frame`、window、`max_inflight`。
+- connection 消失時に維持するものと解放するもの。
+
+ここを実装すると、単一 serial connection の試験では見えない state ownership の曖昧さを発見しやすい。
+
+### 7.4 discovery、port、security の扱い
+
+現在の TCP 規範は port 番号と network discovery を範囲外にしている。ESP32 検証では固定または手動設定した address / port を使ってよい。そのうえで、外部利用者が実際に困らないかを確認し、必要なら mDNS 等を別仕様として標準化する。参考実装だけの暗黙の discovery 手順を事実上の仕様にしてはならない。
+
+また、OEP 自体には network authentication や encryption がない。TCP probe は trusted LAN または認証された tunnel 内で使う前提を明記し、一般の Internet へ直接公開して安全だと解釈されないようにする必要がある。
+
+## 8. 以前の指摘への反映確認
+
+| 指摘 | 現在の状態 |
 |---|---|
-| answer sequence の element length が不統一 | 解決。一律 `count × element`、外側の element length なし |
-| SDI / DMDATA の規範性が不明 | 解決。規範として定義 |
-| freeze 前の revision 1 同士が非互換になり得る | 運用を明記。freeze 前は実装した spec tag を示し、release tag の規則を定義 |
-| HID stream の再構成が不足 | 解決。fragment、複数 frame、count 0、padding、report ID、途切れを定義 |
-| 外部仕様の参照が不足 | 解決。文書名、版、利用部分を列挙 |
-| response enum の追加条件が広い | 解決。安全に追加できる3条件を定義 |
-| probe.config paging の文が不完全 | 解決 |
-| scan の空候補が不明 | 解決。`tried = 0` の success を定義 |
-| fixed part の末尾拡張が多い | 解決。固定形式を revision で固定し、追加は TLV |
-| end 後の resource 継承と implicit resume | 解決。終了時に解放し、open だけが session を開始 |
-| request header が複数形式 | 解決。10 byte の一形式 |
+| request header が複数形式 | 解決。`session_id` を常に持つ10 byteの一形式 |
 | TLV header が複数形式 | 解決。固定 u16 length の一形式 |
+| sequence element の外側 length が不統一 | 解決。`count, count × element` に統一 |
+| fixed part の暗黙の末尾拡張 | 解決。固定形式は revision で固定 |
 | optional op の宣言が interface ごと | 解決。共通 `ops` tag |
-| core と transport binding が混在 | 大部分を解決。transports と `oep.link` に分離。ただし restart の broker / transport 特則が再び増えた |
+| `ops` の範囲と canonical encoding | 解決。境界 vector も追加 |
+| 通知が任意か必須か矛盾 | 解決。interface ごとの任意機能 |
+| data と event の batching が曖昧 | 解決。data は batching、event は即時 |
+| heartbeat が最小 probe に必須 | 解決。heartbeat を削除 |
+| end 後の resource 継承と implicit resume | 解決。終了時に解放し、open だけが開始 |
+| `plan` が core にある | 解決。`oep.probe.plan` へ移動 |
+| `restart` が core にある | 解決。`oep.probe.restart` へ移動 |
+| transport 設定が core に混在 | 解決。`oep.probe.link` と transports に分離 |
+| fn 0 が名前付き interface と二重に見える | 大部分を解決。名前と list entry を削除。固定形式の識別文だけ要修正 |
+| HID stream の再構成規則が不足 | 解決。fragment、複数 frame、padding、report ID、途切れを定義 |
+| 外部仕様の参照が不足 | 解決。文書名、版、利用部分を列挙 |
 
-## 7. 検証結果と不足
+## 9. 検証結果と不足
 
 次の check は成功した。
 
@@ -241,58 +282,60 @@ python3 tools/oepvectors1.py --check
 cd tests && uv run pytest registry_v1 vectors
 ```
 
-pytest は24件すべて成功した。生成物、registry、現在の vector に不一致は見つからなかった。
+pytest は27件すべて成功した。生成物、registry、現在の vector に不一致は見つからなかった。
 
-vector は以前より増え、次を含む。
+vector は CRC、COBS、header、confirm、discovery、refusal、session、`ops` と `ops` encoding の境界を含む。以前不足していた `ops` の機械検証は改善された。
 
-- CRC、COBS、header、TLV、confirm。
-- list、describe と一部の拒否。
-- probe.config の canonical hash。
-- session decision table、resend、end、force、session_id 0。
-- restart、`oep.link`、GPIO、RVSWD、RISC-V DM、console、probe.config、logic の一部の op。
+一方、共有の自動適合試験では次が十分に扱われていない。
 
-ただし、conformance 文書自身が記すとおり、次は共有の自動適合試験で十分に扱われていない。
-
+- TCP stream の任意分割と複数 frame の結合。
+- 複数 TCP client と global session / lock の競合。
+- transport ごとに異なる `max_frame` と一つの interface declaration の組合せ。
+- broker 経由の restart と upstream の切断・復帰。
 - describe と各 interface の paging の連続シナリオ。
-- plan と resource contention。
 - standard interface の多くの op と状態遷移。
-- timing、lease、max_op_ms、frame gap、port_speed の復旧。
+- timing、lease、`max_op_ms`、frame gap、port speed の復旧。
 - 電気的な規則と実機の振る舞い。
 - probe 全体を相手にする自動 conformance test。
 
-freeze 前に少なくとも次の vector を追加するとよい。
+ESP32 TCP probe と独立 host の相互接続を加えることで、上の最初の4項目と、組込み実装での resource 上限を具体的に検証できる。
 
-- `ops` の最小値、最大値、不正長、0xFF 境界、非 canonical encoding。
-- subscribe / unsubscribe、heartbeat、data、event、seq の欠落。
-- describe の複数 page と終端。
-- plan の成功、競合、release、session 終了時の解放。
-- restart の response 喪失と broker の待機状態。
-
-## 8. Freeze 前の推奨変更
+## 10. Freeze 前の推奨変更
 
 ### 必須
 
-1. core §11 の「通知対応は任意」と、必須 subscribe / heartbeat の矛盾を解消する。
-2. `ops` の長さ、範囲、overflow、canonical encoding、不正時の host 動作を定義する。
-3. notification batching が data と event にどう適用されるかを定義する。
+1. transport の一回の write 要件を削除し、wire 上の分割許可と frame gap で規定する。
+2. `max_length` と複数 transport の `max_frame` の関係を定義する。
+3. broker が restart interface を隠すか、end-to-end の復帰規則を定義する。
+4. fn 0 の固定形式は protocol revision で決まることを明記する。
+5. `channels` の欠落時の意味と channel ID の範囲を定義する。
 
-### 小さく単純な core を重視する場合
+### core をさらに小さくする場合
 
-1. subscribe / unsubscribe / heartbeat を一組の optional core capability にする。
-2. restart を `oep.probe.control` などの optional interface に移す。
+1. 時刻を使わない probe を許すなら、`clock` を任意の名前付き interface に移す。
+2. channel の共通規則は、channel を広告する probe にだけ適用すると明記する。
+
+### 実装による Freeze 判定
+
+1. ESP32 Wi-Fi 上に最小 TCP probe を実装する。
+2. 別コードベースの host から、serial と TCP の両方を同じ操作モデルで動かす。
+3. TCP の分割・結合を強制する test を CI に追加する。
+4. 2 client の session / lock 競合を試験する。
+5. Wi-Fi 切断、再接続、probe reboot、`boot_id` 変更を試験する。
+6. restart を公開するなら broker 経由でも試し、規範上の保証と一致しなければ仕様を直す。
 
 ### Release 前
 
 1. 日本語の規範文書から英語版を同期する。
-2. 規範文書、registry、生成物、vector を同じ immutable release tag に含める。
-3. conformance 文書に残る未試験範囲を release test で確認する。
+2. 節番号の欠番を整理する。
+3. `features` tag の説明に残る notification の例を、実際に表す mode に明確化するか削除する。
+4. 複数の誤りを同時に含む request で refusal reason が一意でない設計を、意図した単純化として conformance 文書に明記する。
+5. 規範文書、registry、生成物、vector を同じ immutable release tag に含める。
 
-## 9. 最終評価
+## 11. 最終評価
 
-現在の仕様は、最初のレビュー時点より明確に小さく、規則が少なく、拡張可能になった。通常の protocol path は仕様書だけから互換実装でき、独自 interface の追加にも十分な namespace と前方互換規則がある。
+現在の仕様は、以前より明確に小さく、規則が少なく、拡張可能になった。通常の protocol path は日本語の規範文書だけから互換実装でき、独自 interface の追加にも十分な namespace と前方互換規則がある。
 
-freeze を妨げる主な問題は protocol 全体の構造ではなく、通知の矛盾、`ops` の境界、event の送出条件という局所的な規範不足である。これらを直せば、外部公開 v1 として独立実装を求められる水準に達する。
+特に、`plan`、`restart`、`link`、通知を core の必須機能から外した判断はよい。残る問題は core の基本構造ではなく、transport 間の上限、TCP / broker の接続境界、名前を持たない fn 0、channel の条件付き規則に集中している。
 
-設計目標を最も簡潔に表す原則は、引き続き次である。
-
-> 固定形式は revision で守り、互換追加は TLV、操作の有無は ops、意味が違うものは別 interface。
+文書レビューだけで freeze するより、ESP32 Wi-Fi の TCP probe と独立 host を一度実装した方がよい。TCP の任意分割、複数 client、切断・再接続、reboot を通すことで、仕様だけを読んだ段階では見えない状態所有と時間保証の不備を発見できる。上記の規範修正と実装検証を終えれば、外部公開 v1 として第三者に互換実装を求められる水準に達する。
