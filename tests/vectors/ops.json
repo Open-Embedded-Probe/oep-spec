@@ -678,6 +678,16 @@
       "answer_hex": "028a00000b43"
     },
     {
+      "name": "logic query: an immediate trigger's role is not looked at",
+      "spec": "capture §3.3 contract",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "as above (roles 0 and 1 in fn 9's plan); type 0 carries role 5, not in the plan",
+      "request_hex": "01a0000900090000000040010001420400002d3101430400400d0300450600000500000000",
+      "answer_hex": "02a0000100500800002d31010100000051040002020001520400400d030056040000000000"
+    },
+    {
       "name": "logic status: data dropped inside a segment, state 6 and error 2",
       "spec": "capture §2.2, §3.2",
       "fns": {

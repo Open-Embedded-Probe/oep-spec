@@ -11,6 +11,18 @@ v1 candidate. Changes since the last pushed state (ad9f8be). Most rule changes c
 [2026-10-06 rule-change proposal](docs/v1-rule-change-proposal-2026-10-06.md), reviewed by the implementers (ch32rv, WireSkein, bench),
 and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.md).
 
+### Capture: questions from the probe implementation (2026-10-07)
+
+Ambiguities the probe implementer found in capture up to dd5a886. Japanese only while Japanese is the working text.
+
+- Capture §3.3 contract: a type 0 (immediate) trigger uses neither role nor value; the host sends 0 and the probe does not look at them,
+  so the "role not in the plan → unavailable 6" check applies only to types other than 0. The refusals listed in §3.3 and §5.2 are not
+  exhaustive: any other value or combination of values outside the probe's own limits (ones the declaration cannot express) is refused
+  unsupported by core §2.3, with the received tag of the TLV holding it (any one of those involved for a combination); samples beyond
+  capacity are still clamped and rate still goes to the nearest value. When more than one refusal applies the probe answers any one of
+  them (core §4.3 order 4); capture adds no order. Vector (`ops.json`: a query whose type 0 trigger names a role outside the plan
+  succeeds), test and conformance follow.
+
 ### Logic capture: any sample width, seamless segments, multirate (2026-10-07)
 
 From the [multirate capture proposal](docs/v1-multirate-capture-proposal-2026-10-07.ja.md), reviewed and approved by WireSkein (every

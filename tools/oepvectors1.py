@@ -711,6 +711,12 @@ def ops() -> dict:
         request(0x8A, 9, qry, tlv(lt["configure"]["mode"], bytes([mode["streaming"]])) + tlv(lt["configure"]["rate"], struct.pack("<I", 1_000_000))
                 + tlv(lt["configure"]["samples"], struct.pack("<I", 1000))),
         rej(0x8A, "unsupported", bytes([lt["configure"]["samples"]])))
+    add("logic query: an immediate trigger's role is not looked at", "capture §3.3 contract", lg,
+        "as above (roles 0 and 1 in fn 9's plan); type 0 carries role 5, not in the plan",
+        request(0xA0, 9, qry, one_shot + tlv(lt["configure"]["trigger"],
+                                            struct.pack("<BBI", IFACE["oep.fixture.logic"]["enum"]["trigger"]["immediate"], 5, 0))),
+        ok(0xA0, tlv(ca["actual_rate"], struct.pack("<II", 20_000_000, 1)) + tlv(ca["layout"], bytes([2, 2, 0, 1]))
+           + tlv(ca["actual_samples"], struct.pack("<I", 200_000)) + tlv(ca["blocking_ms"], struct.pack("<I", 0))))
 
     # capture §2.2: a segment the probe could not keep seamless is not handed out; the track stops in error
     lst = IFACE["oep.fixture.logic"]["enum"]

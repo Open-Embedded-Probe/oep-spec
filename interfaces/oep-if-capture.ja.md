@@ -244,8 +244,15 @@ configure の応答の blocking_ms が core の max_op_ms を超える構成は�
 
 - **契約**（configure と query で同じ）: 必須の TLV が無ければ rejected malformed。表の「だけ」「送らない」に反する TLV（mode 3 の
   samples と segments、mode 1 の segments、type 0 または trigger 無しの pretrigger）は、値によらず rejected unsupported（受け取ったままの tag）。
-  trigger の role がその fn の plan に無ければ rejected unavailable（cause 6）。pretrigger が max_pretrigger を超えるか、samples（切り下げた
+  trigger の type が 0 でなく、その role がその fn の plan に無ければ rejected unavailable（cause 6）。type 0 の role と value は使わない:
+  host は 0 を送り、probe は見ない（plan に無い role でも断らない）。pretrigger が max_pretrigger を超えるか、samples（切り下げた
   後）以上なら rejected unsupported（pretrigger の tag）。断るときは何も変えない。
+- **挙げていない断り**: この節（と §5.2）が挙げる断りは全部ではない。probe は、自分が扱えないほかの値と値の組み合わせ（宣言で表せない
+  probe 自身の上限。例: pretrigger と samples の差の下限）も、core §2.3 のとおり rejected unsupported で断る。tag はその値を持つ TLV の
+  受け取ったままの tag で、組み合わせならそれに関わる TLV のどれか 1 つ。例外: 持てる量を超える samples は切り下げ、範囲の中の
+  rate は最も近い値を使い（どちらも下の規則）、断らない。host は断られた組み合わせを query で確かめ直せる（§3.5）。
+- **断りが 2 つ以上当たるとき**（例: mode 1 で samples が無く、ほかの TLV の値も扱えない）、probe は当たったどれか 1 つで答える（core §4.3 の
+  順 4）。この節は順を決めない。host は理由の順に頼らない。
 - **問い合わせは別の操作（0x09）**。configure の TLV のフラグにすると、probe はロックの要否を操作の番号で決めるので、
   ロックなしの問い合わせができない。問い合わせは今の設定と取ったデータを壊さない。
 - trigger の type: 0 即時（省略時）、1 レベル（value 0 / 1）、2 エッジ（value 0 立ち上がり / 1 立ち下がり / 2 両方）、
@@ -455,7 +462,8 @@ sample 周期以上過ぎて取った base sample があることを表す。
 - param: sample では phase（0 ≤ phase < d）。any_active と edge_latch では active のレベル（0 = active-low: active は 0、1 = active-high:
   active は 1）。any_active と edge_latch の区間はいつも区画の base sample 0 から d ずつ区切る（phase を持たない）。
 - **D = 1 のチャネル**は、policy が sample で d = 1 の役割（multirate の TLV を送らない役割を含む）。それ以外は**縮約のチャネル**。
-- mode、rate、samples、segments、trigger、pretrigger の契約（§3.3）は同じ。multirate の TLV はどのモードでも送れる。
+- mode、rate、samples、segments、trigger、pretrigger の契約（§3.3。挙げていない断りと、断りが 2 つ以上当たるときを含む）は同じ。
+  multirate の TLV はどのモードでも送れる。
 - 断り（core §2.3、§4.3。要求全体を断り、何も変えない）:
 
 | 要求 | 断り |

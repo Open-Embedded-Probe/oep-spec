@@ -654,3 +654,15 @@ def test_multirate_ops():
     assert pay("logic query multirate: the same answer, nothing changed") == pay("logic configure multirate: the capture §5.7 example")
     seg = pay("logic segments multirate: a stopped segment, trigger_index in base samples on the any_active role")
     assert struct.unpack_from("<IQIQIIB", seg, 2)[2::3] == (72, 13)                               # samples, trigger_index
+
+
+def test_an_immediate_triggers_role_is_not_looked_at():
+    """capture §3.3 contract: type 0 uses neither role nor value; a role outside the plan is not refused there."""
+    logic = next(i for i in REG["interface"] if i["name"] == "oep.fixture.logic")
+    by = {c["name"]: c for c in load("ops.json")["cases"]}
+    c = by["logic query: an immediate trigger's role is not looked at"]
+    req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
+    (trig,) = [v for t, v in tlvs(req[10:]) if t == logic["tlv"]["configure"]["trigger"]]
+    assert struct.unpack("<BBI", trig)[:2] == (logic["enum"]["trigger"]["immediate"], 5)           # role 5: not in the plan (0, 1)
+    plain = bytes.fromhex(by["logic configure: one-shot, the required answer set"]["answer_hex"])
+    assert ans[3:] == plain[3:]                                                                     # the same success as without it
