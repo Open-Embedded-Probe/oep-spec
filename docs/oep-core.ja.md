@@ -55,7 +55,7 @@ probe が実装しなければならない（MUST）もの:
 - fn 0 の confirm、list、describe、clock、open、end、keepalive、lock_state;
 - fn 0 の describe の unit_id、transport、max_op_ms（§7.5）;
 - fn 0 と、list に載せるすべての fn の describe の、共通の tag ops（§7.4）;
-- §8 の channel の空きの状態;
+- channel を持つなら、fn 0 の describe の channels（§7.5）と §8 の channel の空きの状態;
 - 通知を送り出すインターフェースを持つなら、§11.3 と §11.4。
 
 任意: すべてのインターフェース。あるインターフェースを出す probe が、ほかにどのインターフェースを出さなければならないかは、そのインターフェースの文書が定める（§0）。
@@ -91,7 +91,7 @@ tag(u8) | len(u16) | value(len byte)
 
 - **容器は自分の長さを知る**: フレーム、TLV、並び、バイト列（data）のどれも、読む側が要求や外の知識なしに終わりが分かる。
   可変の部分（並び、バイト列、文字列）には前に数か長さを置く。
-- **固定の形はどれも (名前, revision) で決まる**（§2.7）: 要求、応答、出来事、データの payload の固定部分、TLV の値、並びの
+- **固定の形はどれも (名前, revision) で決まる**（fn 0 ではプロトコルの revision、§2.7）: 要求、応答、出来事、データの payload の固定部分、TLV の値、並びの
   要素、probe.config の項目。固定の形は後ろに伸ばさない。その中の可変の部分（名前、要素の中の一覧）は前に数か長さを
   置くので、固定の形も自分の長さを知る。
 - **並び**: `count、count × 要素`。要求でも応答でも同じ。要素は自分の長さを持たない。要素の形は revision で決まり、読む側は
@@ -376,7 +376,7 @@ entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
 ```
 
 fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返す。more = 1 なら続きがあり、host は first に受け取った TLV の数を
-足してもう一度聞く。probe は TLV を 1 つずつ、自分の max_frame に収まる大きさにする。fn 0 は probe 全体の宣言。
+足してもう一度聞く。probe は TLV を 1 つずつ、自分のどの経路の max_frame にも収まる大きさにする（describe は経路によらない）。fn 0 は probe 全体の宣言。
 
 **describe は宣言だけを返す**: 同じ boot_id の間、TLV の並びと値は変わらない（host は boot_id が同じ間 cache してよく、ページングは
 途中で設定が変わっても崩れない）。変わるもの（接続、保存の有無、スロットの状態、空き容量）は、インターフェースが状態を返す op
@@ -390,9 +390,9 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 |---:|---|---|
 | 0x01 | role_channels | role(u8)、base(u16)、bitmap。bit i が立っていれば channel base+i をその role に使える。同じ role を複数書いてよい（和集合） |
 | 0x02 | max_clock_hz | u32 |
-| 0x03 | max_length | u16。1 回に扱える最大の長さ。その op の要求と応答が max_frame に収まる値で宣言する（単位はインターフェースの文書が決める）。超えた要求は rejected unsupported |
+| 0x03 | max_length | u16。1 回に扱える最大の長さ。その op の要求と応答が probe のどの経路の max_frame にも収まる値で宣言する（describe は経路によらない。単位はインターフェースの文書が決める）。超えた要求は rejected unsupported |
 | 0x05 | min_clock_hz | u32 |
-| 0x06 | features | u32。op でない任意機能のビット: モード、format、通知など（意味はインターフェースが決める）。任意の op は ops で宣言し、決して features では宣言しない |
+| 0x06 | features | u32。op でない任意機能のビット: モード、format など（意味はインターフェースが決める）。任意の op は ops で宣言し、決して features では宣言しない |
 | 0x08 | channel_group | group(u8)、n(u8)、n × (role(u8)、channel(u16))。この group を使うなら、各 role はここの channel に固定される。group が 1 つ以上ある機能では、選んだピンの組はどれか 1 つの group に完全に一致しなければならない |
 | 0x09 | ops | base(u8)、bitmap。bit i が立っていれば op base + i を持つ（§1.2）。fn 0 を含むすべての fn の describe が付ける |
 
@@ -416,7 +416,7 @@ role の番号はインターフェースが定める。これらの値は固定
 | 0x40 | firmware | text |
 | 0x41 | model | text。probe の種類の名前（任意。個体では変わらない） |
 | 0x42 | unit_id | 個体の ID。**必須**。text で 1〜32 byte、使える文字は `a-z 0-9 -` だけ（チップの固有の番号を小文字の 16 進にしたもの、など）。同じ probe の経路を host がまとめるのに使うので、どの経路の describe でも同じ値を返す。USB の serial number と同じ（[経路](oep-transports.ja.md) §3）。host が probe を名指す値 |
-| 0x43 | channels | u16。channel の数 |
+| 0x43 | channels | u16。channel の数。channel の番号は 0〜channels − 1。channel を持つ probe は必ず付け、無ければ channel は 0 個 |
 | 0x46 | label | channel(u16)、text。**firmware（配線の profile）が持つ固定の** channel の名前（NRST など）。設定で付けた名前は、その設定を定めるインターフェースの op で読む（describe は宣言だけ、§7.3） |
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8): USB CDC（kind 2）は CDC の通信の interface の bInterfaceNumber（その機能の最初の interface）。内蔵の USB シリアル（kind 3）は、ハードウェアが見せるその同じ番号、probe が知れなければ 0xFF。vendor bulk と HID はその interface の番号。UART bridge（kind 1）と TCP は 0xFF。probe の経路ごとに 1 つ。**必須** |
 | 0x4C | chip | text。probe の MCU の型番とリビジョン（任意） |

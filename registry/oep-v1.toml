@@ -108,7 +108,7 @@ port_speed_switch_wait_ms = 20  # host: after the answer to try, at least this l
 [describe_common]               # declaration tags every interface's describe may use (core §7.4); 0x04, 0x07 (was implementation) and 0x3F reserved
 role_channels = 0x01            # repeats: the same role may be written several times (union; core §7.4)
 max_clock_hz = 0x02
-max_length = 0x03
+max_length = 0x03               # requests and answers at this length fit every transport's max_frame (core §7.4)
 min_clock_hz = 0x05
 features = 0x06
 channel_group = 0x08            # repeats, one per combination: group(u8) n(u8) n x (role(u8) channel(u16))
@@ -211,7 +211,7 @@ index = 0x40                    # u8: the position in the request's list (gpio s
 firmware = 0x40
 model = 0x41
 unit_id = 0x42
-channels = 0x43
+channels = 0x43                 # u16; channel numbers are 0 .. channels - 1; required when the probe has channels, absent = none (core §7.5)
 label = 0x46                    # repeats, one per channel: channel(u16) text: the firmware's fixed channel names (settings' labels: probe.config get)
 transport = 0x49                # repeats, one per transport: index(u8) kind(u8) interface(u8, 0xFF not USB); required
 chip = 0x4C                     # text: the probe MCU's part and revision (optional)

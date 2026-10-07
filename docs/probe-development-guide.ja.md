@@ -154,7 +154,7 @@ plan を受けられない）（[fixture](../interfaces/oep-if-fixture.ja.md) §
 **max_frame、window、max_inflight**（confirm、core §4.4）、経路ごと:
 
 - max_frame: `min_max_frame`（64）以上。その長さの要求が 1 つ丸ごと受信の経路に入るように選ぶ（§2）。max_length のような
-  インターフェースの上限は、要求と応答が max_frame に収まるようにする。
+  インターフェースの上限は、要求と応答がどの経路の max_frame（いちばん小さいもの）にも収まるようにする（describe は経路によらない、core §7.4）。
 - window: max_op_ms の間忙しくしている間に持てる、待っている要求の byte 数。max_frame 以上（core §7.1）。
 - max_inflight: 受け付ける待ちの要求の数、1 以上（core §7.1）。送り直しの表は応答と一緒に少なくとも max_inflight 個を持つ（core §5.2）。メモリは
   max_inflight × 覚える最大の応答。覚える応答の大きさに上限を置いてよい（それより大きい応答の送り直しは result_lost になる）。

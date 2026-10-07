@@ -23,6 +23,12 @@ From the re-check of 3bca24c in `docs/external-spec-review-2026-10-06.ja.md`; ve
   and the resend table stay until a core §9 event; answers and notifications for the closed transport are dropped.
 - restart: `restart_max_ms` does not apply to a client of a relaying broker; the probe's restart ends the broker (transports §1) and the
   client starts again as after a closed transport.
+- Core: describe is the same on every transport, so each describe TLV and the common `max_length` fit every transport's `max_frame` (the
+  smallest); debug's read_block / write_block follow.
+- Core: `channels` is required when the probe has channels and absent means none; channel numbers are 0 .. channels - 1; §1.2 requires
+  `channels` and §8 only from a probe with channels.
+- Core: fn 0's fixed forms are set by the protocol revision (the (name, revision) rule is for named interfaces); `features` no longer lists
+  notifications among its examples (notifications are declared by subscribe / unsubscribe in ops).
 
 ### Rule review (2026-10-07)
 

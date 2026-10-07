@@ -118,7 +118,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 名前、ラベル | name, label (of a name) | `a-z 0-9 - .`。`.` で区切ったラベルが 2 つ以上 | core §7.2、§13 |
 | instance、`name#instance` | instance | 同じ (name, revision) のインターフェースの中の番号。文字で書く形は host ガイド §5.3 | core §7.2 |
 | role_channels、channel_group | role_channels, channel_group | 役が使える channel、決まった組 | core §7.4 |
-| features | features | インターフェースの、op でない任意の機能の u32 の bit（モード、format、通知） | core §7.4 |
+| features | features | インターフェースの、op でない任意の機能の u32 の bit（モード、format） | core §7.4 |
 | ops | ops | すべての fn が持つ op を宣言する、describe の共通の tag 0x09（base + bitmap、op 0xFF を越えない） | core §1.2、§7.4 |
 | unit_id | unit_id | 個体の識別子。`a-z 0-9 -` の 1〜32、USB の serial number と等しい | core §7.5 |
 | `x-` の unit_id | `x-` unit_id | 一意でない unit_id。まとめにも名指しにも使わない | core §7.5 |
@@ -133,7 +133,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
-| channel | channel | probe のピンの u16 の番号 | core §1 |
+| channel | channel | probe のピンの u16 の番号。0〜channels − 1 | core §1、§7.5 |
 | plan | plan | どの fn のどの役にどの channel を使うか。fn ごとに持つ。`oep.probe.plan` | plan §2 |
 | 役（role） | role (of a plan) | インターフェースの中のピンの働き（RX、SWDIO…） | core §7.4、§13、plan 冒頭 |
 | role_assignment | role_assignment | plan_apply の TLV: fn、role、channel | plan §2.1 |
