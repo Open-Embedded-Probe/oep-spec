@@ -60,6 +60,10 @@ picotool / uf2、oep_client）でできる。firmware のリポジトリは Ardu
    （6 KiB、transports §4 の注）まで上げた `linktest` in で 1 つも失われないこと（Linux の cdc_acm の 8 KiB を踏んでいないことの確かめ）。
 9. read_block を describe の max_length ちょうどの count で 1 回（応答が max_frame に収まり、malformed にならないこと。線のある
    ボードだけ）。
+10. TCP の経路（TCP で待ち受ける probe だけ）: length の 2 byte と message を 1 byte ずつを含む任意の所で分けた書き込みと、複数のフレームを
+    1 回にまとめた書き込みに正しく答える。2 つの接続から開き、ロックの取り合い（locked）と接続ごとの confirm（revision、max_frame）を確かめる。
+    セッションを持つ接続を閉じて開き直し、同じ id の open と送り直し（覚えた応答）でセッションが続く。Wi-Fi などの経路が切れた後と
+    probe の再起動の後に開き直し、boot_id と no_session を確かめる。
 
 結果は JSON で `tests/hw/results/<board>-<firmware>-<client>.json` に残し、リリースノートから参照する。
 

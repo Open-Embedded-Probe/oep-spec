@@ -131,7 +131,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `headers.json` | 要求と答えのヘッダ、TLV の符号（§2.2、§4.1、§4.2） |
 | `confirm.json` | confirm のやりとり（§7.1） |
 | `discovery.json` | list（§7.2。fn 0 を載せないので、インターフェースの無い例の probe では空）、fn 0 の describe（§7.3、§7.5）、終わりを越えた describe、ヘッダの断り unknown_function / unknown_operation（§4.3 の順 1） |
-| `refusals.json` | §2.3 と §4.3 の断り方（理由が 1 つだけ当たる状態）と、無視される知らない TLV について、要求とそのとおりの答え |
+| `refusals.json` | §2.3 と §4.3 の断り方（理由が 1 つだけ当たる状態）と、無視される知らない TLV について、要求とそのとおりの答え。§4.3 の順 4 で理由が 2 つ以上当たる要求は、どれで断ってもよいので（意図した単純化）、ベクタは持たず、試験はどれか 1 つを受ける |
 | `sessions.json` | セッションの場面: 判定の表（§6.2）、送り直しの表（§5.2。送り直した end）、end での解放と no_session（§9）、force、session_id 0（§4.1）、セッションが無いときと開いているときの clock（§7.7）。決めた初めの状態から順に送る要求と答え |
 | `ops_encoding.json` | describe の共通の tag ops の値の境（最短、最長、長さの誤り、op 0xFF の境、同じ集合の別の符号）と、正しい値が表す op の集合（§7.4） |
 | `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console、probe.config、logic の一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
@@ -154,7 +154,7 @@ python -m oep_client.fake_serve --pty     # 最初の行が開く先。profile �
 試験も、ベクタを自分のコードと偽の probe に対して確かめる。
 
 **まだ扱っていないもの。** probe のための自動の適合試験は無い。ベクタが扱うのは符号、一部の断り方、いちばん小さな probe の発見、セッションの場面、一部の op
-で、ページ送りの続き、plan の取り合い、インターフェースの多くの op と状態の移り変わりはまだ扱わない。時間（待ち、lease、max_op_ms、フレームの途切れ、port_speed の戻る条件）は共有の道具では確かめていない。電気的な規則（idle の状態、wire が答えない間の線、cs_setup_ns）と実機での
+で、ページ送りの続き、plan の取り合い、インターフェースの多くの op と状態の移り変わりはまだ扱わない。TCP の流れを任意の所で分けたりまとめたりした受け取り、複数の TCP の接続とセッション / ロックの取り合い、経路ごとに違う max_frame、中継のブローカーを通した restart も、共有の道具では確かめていない（偽の probe と実機の試験で確かめる）。時間（待ち、lease、max_op_ms、フレームの途切れ、port_speed の戻る条件）は共有の道具では確かめていない。電気的な規則（idle の状態、wire が答えない間の線、cs_setup_ns）と実機での
 振る舞いは、実装者が自分で実機の試験をする必要がある。
 
 ## 5. 適合で名乗れること
