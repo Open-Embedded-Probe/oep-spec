@@ -849,7 +849,19 @@ capture-group: ロジック 2 本（20 MHz）とアナログ 1 本（48 kHz）�
   group.start → start_ns、組の世代、各トラックの世代（bind の順）
   出来事 triggered(logic, trigger_ns) → 各トラックの segment（trigger_index はどちらも trigger_ns の位置）
   各トラックを read → host は start_ns の差と trigger_index で並べる
+
+multirate: 速い 2 本はそのまま、遅いバスはチャネルごとに間引き、割り込みの線は区間の要約（キャプチャ §5、describe に multirate のある fn）
+  configure(mode=1, rate=max_hz, samples=96,
+            multirate(role0, any_active, d 32, active-low), multirate(role3, sample, d 4, phase 1))   （TLV 0xE0: critical）
+    → actual_rate（この組み合わせで probe が保てる最も高い base rate）、layout w=2 pos=[0,1]（D = 1 のチャネルだけ）、block L=32、actual_samples
+  start → segment → read
+  区画ごとに、position から B = ceil(L·w/8) + ceil(R/8) バイトずつ block を切り、D = 1 の部分はキャプチャ §1.1 のとおり、縮約の部分は役割の順に
+  ビットで詰めた値として読む。最後の block は区画の samples mod L 個の base sample（キャプチャ §5.5）
 ```
+
+multirate を扱わない probe は、critical の multirate を rejected unsupported（tag 0xE0）で断る。host はそれを見て、multirate の TLV 無しで取り直すか、
+利用者に知らせる。any_active と edge_latch の値は区間の要約で、pulse の有無とレベルは分かるが、区間の中の位置と長さは分からない
+（不確かさは d base sample）。
 
 出来事（トラックの segment、stopped、triggered と組の出来事）はどれも世代を持つ。start の応答の後に前の start の出来事が届くことが
 あるので、host は今の世代と違う出来事を前の start のものとして扱う（[キャプチャ](../interfaces/oep-if-capture.ja.md) §3.4、§4.2）。

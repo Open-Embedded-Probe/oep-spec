@@ -726,6 +726,80 @@ def ops() -> dict:
     add("logic read: nothing of the dropped segment", "capture §2.2, §3.2", lg, drop + "; write_pos 2000",
         request(0x92, 9, op("oep.fixture.logic", "read"), struct.pack("<IQI", 1, 2000, 64)), ok(0x92, struct.pack("<QBI", 2000, 0, 0)))
 
+    # multirate (capture §5): fn 9 declares multirate; fn 16 is a logic fn that does not
+    mrf = {"9": "oep.fixture.logic"}
+    lo = IFACE["oep.fixture.logic"]
+    ld, lc, la = lo["tlv"]["describe"], lo["tlv"]["configure"], lo["tlv"]["configure_answer"]
+    pol = lo["enum"]["multirate_policy"]
+    trig = lo["enum"]["trigger"]
+    logic_ops = [o["code"] for o in lo["op"]]
+    mr_state = ("fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate "
+                "policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32")
+    add("logic describe: multirate declared", "capture §3.5, §5.1; core §7.3", mrf, mr_state,
+        request(0x93, 0, op("core", "describe"), struct.pack("<HH", 9, 0)),
+        ok(0x93, bytes([0]) + tlv(REG["describe_common"]["ops"], ops_value(logic_ops))
+           + tlv(ld["mode"], struct.pack("<BII", mode["one_shot"], 1_000_000, 1)) + tlv(ld["mode"], struct.pack("<BII", mode["repeat"], 1_000_000, 8))
+           + tlv(ld["rate_range"], struct.pack("<IIB", 1000, 100_000_000, 1)) + tlv(ld["channels"], bytes([4]))
+           + tlv(ld["trigger"], struct.pack("<II", 1 << trig["immediate"] | 1 << trig["level"] | 1 << trig["edge"], 1_000_000))
+           + tlv(ld["multirate"], struct.pack("<IIIB", 0b111, 1, 128, 1))))
+
+    def mr(role, policy, d, param):
+        return tlv(lc["multirate"] | CRITICAL, struct.pack("<BBII", role, pol[policy], d, param))
+
+    def mr_answer(rate, w, pos, L, samples):
+        return (tlv(la["actual_rate"], struct.pack("<II", rate, 1)) + tlv(la["layout"], bytes([w, len(pos)] + pos))
+                + tlv(la["block"], struct.pack("<I", L)) + tlv(la["actual_samples"], struct.pack("<I", samples))
+                + tlv(la["blocking_ms"], struct.pack("<I", 0)))
+
+    def base(samples, rate=100_000_000, m="one_shot"):
+        return (tlv(lc["mode"], bytes([mode[m]])) + tlv(lc["rate"], struct.pack("<I", rate))
+                + tlv(lc["samples"], struct.pack("<I", samples)))
+
+    example = mr(0, "any_active", 32, 0) + mr(3, "sample", 4, 1)
+    add("logic configure multirate: the capture §5.7 example", "capture §5.2, §5.3, §5.7", mrf, mr_state + "; session S holds the lock",
+        request(0x94, 9, cfg, base(96) + example, S), ok(0x94, mr_answer(100_000_000, 2, [0, 1], 32, 96)))
+    add("logic query multirate: the same answer, nothing changed", "capture §3.3, §5.3", mrf, mr_state + "; configured as the configure vector",
+        request(0x95, 9, qry, base(96) + example), ok(0x95, mr_answer(100_000_000, 2, [0, 1], 32, 96)))
+    add("logic configure multirate: samples 72 rounded up to a multiple of L", "capture §5.2", mrf, mr_state + "; session S",
+        request(0x96, 9, cfg, base(72) + example, S), ok(0x96, mr_answer(100_000_000, 2, [0, 1], 32, 96)))
+    heavy = b"".join(mr(k, "edge_latch", 2, 1) for k in range(4))
+    add("logic query multirate: rate = max_hz on a heavy combination answers the highest rate kept", "capture §5.2", mrf, mr_state,
+        request(0x97, 9, qry, base(96) + heavy), ok(0x97, mr_answer(40_000_000, 1, [], 32, 96)))
+    corr = 0x98
+    for name, body, reason, payload in (
+        ("d 0", mr(0, "sample", 0, 0), "malformed", b""),
+        ("sample with phase = d", mr(3, "sample", 4, 4), "malformed", b""),
+        ("any_active with param 2", mr(0, "any_active", 32, 2), "malformed", b""),
+        ("edge_latch with d 1", mr(0, "edge_latch", 1, 1), "malformed", b""),
+        ("the same role twice", mr(3, "sample", 4, 1) + mr(3, "sample", 8, 0), "malformed", b""),
+        ("a reserved policy (3)", tlv(lc["multirate"] | CRITICAL, struct.pack("<BBII", 0, 3, 4, 0)), "unsupported", bytes([lc["multirate"] | CRITICAL])),
+        ("d 3 where only powers of 2 are declared", mr(3, "sample", 3, 0), "unsupported", bytes([lc["multirate"] | CRITICAL])),
+        ("d 256 above max_d", mr(3, "sample", 256, 0), "unsupported", bytes([lc["multirate"] | CRITICAL])),
+        ("a role not in the plan", mr(4, "sample", 4, 0), "unavailable", tlv(unav["cause"], bytes([cause["wrong_state"]]))),
+    ):
+        add(f"logic configure multirate: {name}, {reason}", "capture §5.2", mrf, mr_state + "; session S",
+            request(corr, 9, cfg, base(96) + body, S), rej(corr, reason, payload))
+        corr += 1
+    add("logic configure multirate on a fn that does not declare it: unsupported with the critical tag", "capture §5.2, core §2.3",
+        {"16": "oep.fixture.logic"}, "session S; fn 16 is a logic fn whose describe has no multirate; plan roles 0-3",
+        request(corr, 16, cfg, base(96) + example, S), rej(corr, "unsupported", bytes([lc["multirate"] | CRITICAL])))
+    corr += 1
+    trig_cfg = (tlv(lc["trigger"], struct.pack("<BBI", trig["edge"], 0, 1)) + tlv(lc["pretrigger"], struct.pack("<I", 13)))
+    add("logic segments multirate: a stopped segment, trigger_index in base samples on the any_active role", "capture §2.2, §5, §5.7", mrf,
+        mr_state + "; configured as the configure vector plus trigger (edge, role 0, falling) and pretrigger 13; generation 1; role 0 fell at "
+        "base sample 13 of the segment, the host stopped at base sample 72 (the §5.7 input)",
+        request(corr, 9, op("oep.fixture.logic", "segments"), struct.pack("<I", 0)),
+        ok(corr, bytes([0, 1]) + struct.pack("<IQIQIIBI", 0, 0, 72, 5_000_000, 10, 13, lo["enum"]["segment_flag"]["short"], 1)))
+    corr += 1
+    trig_note = hx(trig_cfg)
+    add("capture-group bind: a multirate logic and an analog, the logic as trigger_track", "capture §4.1, §5.6",
+        {"12": "oep.fixture.capture-group", "9": "oep.fixture.logic", "13": "oep.fixture.analog"},
+        "session S; fn 9 configured multirate one-shot (the configure vector plus the TLVs " + trig_note + ": edge, role 0, falling, pretrigger "
+        "13 base samples); fn 13 configured one-shot with an immediate trigger; fn 12's tracks list both",
+        request(corr, 12, op("oep.fixture.capture-group", "bind"),
+                struct.pack("<BHH", 2, 9, 13) + tlv(IFACE["oep.fixture.capture-group"]["tlv"]["bind"]["trigger_track"], struct.pack("<H", 9)), S),
+        ok(corr))
+
     # oep.fixture.capture-group (capture §4): the group's generation, then n x (fn, generation) in bind order, in the fixed part
     grp = {"12": "oep.fixture.capture-group", "9": "oep.fixture.logic", "13": "oep.fixture.analog"}
     add("capture-group start: the group's and each track's new generation", "capture §4.1", grp,
@@ -816,10 +890,115 @@ def logic_layout() -> dict:
     }
 
 
+# ---- multirate (capture §5) ----------------------------------------------------------------------------------
+
+MR_POLICY = IFACE["oep.fixture.logic"]["enum"]["multirate_policy"]
+
+
+def mr_value(x: str, policy: int, d: int, param: int, k: int) -> int:
+    """Value k of a reduced channel (capture §5.4); x[n] is the channel's level at base sample n."""
+    if policy == MR_POLICY["sample"]:
+        return int(x[k * d + param])
+    a, interval = param, range(k * d, (k + 1) * d)
+    if policy == MR_POLICY["any_active"]:
+        return a if any(int(x[n]) == a for n in interval) else 1 - a
+    edge = any(n >= 1 and int(x[n - 1]) != a and int(x[n]) == a for n in interval)     # from the previous base sample; none at n = 0
+    return int(x[(k + 1) * d - 1]) | edge << 1
+
+
+def mr_count(policy: int, d: int, param: int, r: int) -> int:
+    """The values a block of r base samples holds (capture §5.5): only those whose base samples are all in it."""
+    if policy == MR_POLICY["sample"]:
+        return max(0, -(-(r - param) // d))
+    return r // d
+
+
+def mr_segment(chans: list[str], desc: list, w: int, L: int) -> bytes:
+    """One segment's stream (capture §5.5). desc[c] is (policy, d, param), or None for a role sent no multirate TLV."""
+    samples = len(chans[0])
+    raw = [c for c, x in enumerate(desc) if x is None or (x[0] == MR_POLICY["sample"] and x[1] == 1)]
+    pos = list(range(len(raw)))
+    reduced = [c for c in range(len(chans)) if c not in raw]
+    out = bytearray()
+    for start in range(0, samples, L):
+        r = min(L, samples - start)
+        if raw:
+            out += pack_samples([chans[c] for c in raw], w, pos, start, r)                  # the D = 1 part, 0 to the byte boundary
+        bits = nbits = 0
+        for c in reduced:
+            policy, d, param = desc[c]
+            width = 2 if policy == MR_POLICY["edge_latch"] else 1
+            for j in range(mr_count(policy, d, param, r)):
+                bits |= mr_value(chans[c], policy, d, param, start // d + j) << nbits
+                nbits += width
+        out += bits.to_bytes((nbits + 7) // 8, "little")                                    # the reduced part, 0 to the byte boundary
+    return bytes(out)
+
+
+def multirate() -> dict:
+    cases = []
+    names = {v: k for k, v in MR_POLICY.items()}
+
+    def add(name, spec, w, L, desc, segments):
+        """segments: the channels' levels of each segment, in order; each segment starts its own block grid."""
+        raw = [c for c, x in enumerate(desc) if x is None]
+        roles = [None if x is None else {"policy": names[x[0]], "d": x[1], "param": x[2]} for x in desc]
+        cases.append({"name": name, "spec": spec, "roles": roles, "layout": {"w": w, "pos": list(range(len(raw)))}, "L": L,
+                      "segments": [{"samples": len(chs[0]), "channels": chs, "stream_hex": hx(mr_segment(chs, desc, w, L))}
+                                   for chs in segments]})
+
+    S, A, E = MR_POLICY["sample"], MR_POLICY["any_active"], MR_POLICY["edge_latch"]
+    n = 72
+    four = [
+        "".join("0" if i in (13, 70) else "1" for i in range(n)),
+        levels(n, set(range(0, 5)) | set(range(20, 24)) | set(range(32, 64, 2)) | {64, 65}),
+        levels(n, set(range(8, 12)) | {33} | set(range(66, 72))),
+        levels(n, set(range(2, 10)) | set(range(26, 64)) | set(range(68, 72))),
+    ]
+    add("four channels: any_active, two D = 1, sample d 4 phase 1; a segment stopped at 72 (r = 8)",
+        "capture §5.5, §5.7 (a reduced channel crossing a byte, the reduced part's trailing 0 bits, the values of a short last block)",
+        2, 32, [(A, 32, 0), None, None, (S, 4, 1)], [four])
+    add("L*w not a multiple of 8: the D = 1 part padded with 0", "capture §5.5, §5.7", 1, 4, [None, (S, 4, 0)],
+        [[levels(8, (0, 1, 2, 5)), levels(8, (0,))]])
+    add("w 3: three D = 1 channels and two reduced", "capture §1.1, §5.5, §5.7", 3, 4, [None, None, None, (S, 4, 0), (A, 2, 0)],
+        [[levels(8, (0, 1, 2, 5)), levels(8, (1, 3)), levels(8, (7,)), levels(8, (0, 4, 5)), "".join("0" if i == 2 else "1" for i in range(8))]])
+    add("no D = 1 channel (C = 0): the reduced part only", "capture §5.3, §5.5", 1, 8, [(S, 2, 1), (S, 8, 0)],
+        [[levels(16, (1, 3, 5, 8, 9, 15)), levels(16, (0, 9))]])
+    add("a reduced channel crossing a byte, and the reduced part's trailing 0 bits", "capture §5.5", 1, 16, [None, (S, 4, 0), (S, 2, 0)],
+        [[levels(16, (0, 15)), levels(16, (0, 8, 12)), levels(16, (0, 2, 6, 8, 14))]])
+    add("sample phase 3, a last block of r = 2: no value (ceil((r - phase) / D) = 0)", "capture §5.4, §5.5", 1, 8, [None, (S, 4, 3)],
+        [[levels(10, (0, 9)), levels(10, (3, 7, 9))]])
+    add("sample phase 3, a last block of r = 4: one value (ceil((r - phase) / D) = 1)", "capture §5.4, §5.5", 1, 8, [None, (S, 4, 3)],
+        [[levels(12, (0, 11)), levels(12, (3, 7, 11))]])
+    add("any_active, active-high, d 8", "capture §5.4", 1, 16, [(A, 8, 1)],
+        [[levels(32, (5, 16, 17, 31))]])
+    add("edge_latch, d 8, active-high: the §5.7 example", "capture §5.4, §5.7", 1, 16, [(E, 8, 1)],
+        [[levels(48, set(range(0, 3)) | set(range(8, 11)) | set(range(16, 24)) | set(range(30, 34)))]])
+    add("edge_latch: a pulse that starts at an interval's first base sample", "capture §5.4", 1, 16, [(E, 8, 1)],
+        [[levels(16, (8, 9, 10))]])
+    add("edge_latch: a pulse that covers a whole interval", "capture §5.4", 1, 16, [(E, 8, 1)],
+        [[levels(24, range(8, 16))]])
+    add("edge_latch: a pulse across a block boundary rises once", "capture §5.4", 1, 16, [(E, 8, 1)],
+        [[levels(32, range(14, 18))]])
+    add("edge_latch: base sample 0 is compared with nothing (no edge)", "capture §5.4", 1, 16, [(E, 8, 1)],
+        [[levels(16, range(0, 10))]])
+    add("repeat: a first segment short of pretrigger (r = 4), then the next segment starts its own grid",
+        "capture §3.3, §5.5", 1, 8, [None, (A, 4, 0)],
+        [[levels(12, (0, 1, 2, 9)), "".join("0" if i in (2, 9) else "1" for i in range(12))],
+         [levels(16, (3, 4, 15)), "".join("0" if i in (0, 13) else "1" for i in range(16))]])
+    return {
+        "about": "Multirate logic capture streams (capture §5). `roles[c]` is role c's multirate TLV (policy, d, param; param is phase for sample "
+                 "and the active level for any_active and edge_latch), null for a role sent none. `layout` is the answer's layout of the D = 1 "
+                 "channels (pos in role order), `L` the answer's block. Each segment gives the channels' levels by base sample (character n = "
+                 "the level at base sample n of the segment, roles in order) and its whole stream; the block grid starts at each segment's "
+                 "base sample 0. The bits of the D = 1 part no pos names are undefined (none here); the padding of both parts is 0.",
+        "cases": cases,
+    }
+
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
          "refusals.json": refusals,
          "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding,
-         "logic_layout.json": logic_layout}
+         "logic_layout.json": logic_layout, "multirate.json": multirate}
 
 
 def render(build) -> str:

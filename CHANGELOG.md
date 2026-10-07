@@ -25,6 +25,25 @@ example byte reproduced independently). Japanese only while Japanese is the work
   state 6, stopped reason 3, error 2 (storage) for a capture queue or ring overflow, 1 for a DMA or peripheral failure; status flags bit0
   is set. Data discarded in streaming for want of room to send (§2.1 rule 1) is not this: whole segments, flagged on the next. Vectors
   (status, segments, read, the stopped event), tests and conformance follow.
+- Capture §5 **multirate**, a second definition of `oep.fixture.logic` (no new interface, no revision change) on the TLVs §3.6 kept:
+  configure / query request 0x60 `multirate` = role(u8) policy(u8) d(u32) param(u32), one per role, sent critical (0xE0) so a probe
+  without it refuses unsupported instead of capturing the plain layout; answer 0x60 `block` = L(u32), with the layout (0x51) of the
+  D = 1 channels only (C may be 0); describe 0x60 `multirate` = policies(u32) min_d(u32) max_d(u32) pow2(u8). Rate, samples,
+  pretrigger, trigger_index and the segment record count base samples; the trigger is evaluated on base samples before reduction.
+- Policies (enum `multirate_policy`): 0 sample (x(kD + phase); d 1 is a D = 1 channel), 1 any_active (the active level if any base
+  sample of the interval is active), 2 edge_latch (2 bits: the interval's last level, and a change to active from the previous base
+  sample: an interval's first base sample is compared with the previous interval's last, across blocks too; base sample 0 of a segment
+  with nothing). any_active and edge_latch need d 2 or more and have no phase. A value exists only when all its base samples are in
+  the segment.
+- Block layout: block b covers base samples [bL, (b+1)L) of its segment (the grid restarts at each segment): the D = 1 part (the §1.1
+  layout, L·w bits, 0 to the byte boundary), then the reduced part (reduced channels in role order, values packed with no gap, 0 to the
+  byte boundary). The last block of a short segment holds r = samples mod L base samples and only the values that exist. Refusals:
+  malformed (d 0, phase ≥ d, d 1 or param > 1 for any_active / edge_latch, a role twice), unsupported (a reserved or undeclared policy,
+  an undeclared d, a fn that does not declare multirate), unavailable cause 6 (a role not in the plan). The probe answers the highest base
+  rate it can keep for the combination; samples are rounded to a multiple of L.
+- Registry (TLVs, enum), generated code, vectors (`multirate.json`: the §5.7 examples and the edge cases; `ops.json`: describe,
+  configure / query, refusals, rounding, a lowered rate, a short segment's trigger_index, capture-group bind), tests, conformance,
+  glossary and host guide follow.
 
 ### Wi-Fi settings and TCP discovery (2026-10-07)
 

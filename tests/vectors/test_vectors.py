@@ -561,3 +561,96 @@ def test_a_segment_with_dropped_data_is_not_handed_out():
     (ev,) = [x for x in load("ops.json")["events"] if x["name"].startswith("logic stopped: data dropped")]
     f = bytes.fromhex(ev["event_hex"])
     assert struct.unpack_from("<BBI", f, 6) == (e["stopped_reason"]["error"], e["error"]["storage"], generation)
+
+
+def _policy_values(x: list[int], policy: str, d: int, param: int, r0: int, r: int) -> list[int]:
+    """capture §5.4 written out apart from the tool: the values a block of base samples [r0, r0 + r) holds, in order."""
+    out = []
+    if policy == "sample":
+        for n in range(r0 + param, r0 + r, d):                                                   # one point per D, its point inside the block
+            out.append(x[n])
+        return out
+    for lo in range(r0, r0 + r - d + 1, d):                                                      # whole intervals only
+        seg = x[lo:lo + d]
+        if policy == "any_active":
+            out.append(param if param in seg else 1 - param)
+        else:
+            rises = [n for n in range(max(lo, 1), lo + d) if x[n] == param and x[n - 1] != param]
+            out.append(seg[-1] | (1 if rises else 0) << 1)
+    return out
+
+
+def test_multirate_streams_decode_back():
+    """multirate.json: each block is the D = 1 part (capture §1.1 rules, padded with 0) and the reduced part (role order, values packed
+    with no gap, padded with 0); every segment starts its own grid (capture §5.5)."""
+    cases = load("multirate.json")["cases"]
+    widths = {"sample": 1, "any_active": 1, "edge_latch": 2}
+    for c in cases:
+        w, L = c["layout"]["w"], c["L"]
+        raw = [k for k, role in enumerate(c["roles"]) if role is None]
+        reduced = [k for k, role in enumerate(c["roles"]) if role is not None]
+        assert c["layout"]["pos"] == list(range(len(raw))) and all(L % c["roles"][k]["d"] == 0 for k in reduced), c["name"]
+        for seg in c["segments"]:
+            stream, n = bytes.fromhex(seg["stream_hex"]), seg["samples"]
+            chans = [[int(ch) for ch in s] for s in seg["channels"]]
+            i = 0
+            for r0 in range(0, n, L):
+                r = min(L, n - r0)
+                if raw:
+                    nb = (r * w + 7) // 8
+                    part = stream[i:i + nb]
+                    got = unpack_samples(part, w, c["layout"]["pos"], r)
+                    assert got == ["".join(map(str, chans[k][r0:r0 + r])) for k in raw], (c["name"], r0)
+                    assert int.from_bytes(part, "little") >> (r * w) == 0, (c["name"], "D = 1 padding")
+                    i += nb
+                want, nbits = 0, 0
+                for k in reduced:
+                    role = c["roles"][k]
+                    for v in _policy_values(chans[k], role["policy"], role["d"], role["param"], r0, r):
+                        want |= v << nbits
+                        nbits += widths[role["policy"]]
+                nb = (nbits + 7) // 8
+                assert stream[i:i + nb] == want.to_bytes(nb, "little"), (c["name"], r0)       # the padding bits are 0 too
+                i += nb
+            assert i == len(stream), c["name"]
+    by = {c["name"]: [s["stream_hex"] for s in c["segments"]] for c in cases}
+    text = {"four channels": "5501aa00005500000c011911111111111111ff01a5aa02", "L*w not": "07010200", "w 3:": "590403080807",
+            "edge_latch, d 8, active-high: the": "080f00"}                                        # capture §5.7
+    for prefix, stream in text.items():
+        (name,) = [k for k in by if k.startswith(prefix)]
+        assert by[name] == [stream], name
+
+
+def test_multirate_ops():
+    """ops.json: describe declares multirate; configure / query answer layout and block; refusals of capture §5.2."""
+    logic = next(i for i in REG["interface"] if i["name"] == "oep.fixture.logic")
+    t = logic["tlv"]
+    tag = t["configure"]["multirate"]
+    assert tag == t["configure_answer"]["block"] == t["describe"]["multirate"] == 0x60
+    cases = [c for c in load("ops.json")["cases"] if "multirate" in c["name"]]
+    by = {c["name"]: c for c in cases}
+    pay = lambda name: bytes.fromhex(by[name]["answer_hex"])[5:]
+    got = dict(tlvs(pay("logic describe: multirate declared")[1:]))
+    assert struct.unpack("<IIIB", got[t["describe"]["multirate"]]) == (7, 1, 128, 1)
+    for c in cases:
+        req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
+        if struct.unpack_from("<HB", req, 3) not in ((9, 1), (9, 9), (16, 1)):                  # configure / query of a logic fn
+            continue
+        sent = tlvs(req[10:])
+        if any(tg & 0x7F == tag for tg, _ in sent):
+            assert all(tg == tag | 0x80 for tg, v in sent if tg & 0x7F == tag and len(v) == 10), c["name"]   # sent critical
+            if ans[3] == 0x01:
+                a = dict(tlvs(ans[5:]))
+                L = struct.unpack("<I", a[t["configure_answer"]["block"]])[0]
+                ds = [struct.unpack_from("<I", v, 2)[0] for tg, v in sent if tg & 0x7F == tag]
+                assert all(L % d == 0 for d in ds) and struct.unpack("<I", a[t["configure_answer"]["actual_samples"]])[0] % L == 0, c["name"]
+                lay = a[t["configure_answer"]["layout"]]
+                assert lay[1] == 4 - len({v[0] for tg, v in sent if tg & 0x7F == tag}) + sum(
+                    1 for tg, v in sent if tg & 0x7F == tag and v[1] == 0 and struct.unpack_from("<I", v, 2)[0] == 1), c["name"]
+            elif ans[4] == REG["reject_reasons"]["unsupported"]:
+                assert ans[5] == tag | 0x80, c["name"]                                                # the tag as received
+    assert pay("logic configure multirate: the capture §5.7 example") == bytes.fromhex(
+        "50080000e1f5050100000051040002020001600400200000005204006000000056040000000000")
+    assert pay("logic query multirate: the same answer, nothing changed") == pay("logic configure multirate: the capture §5.7 example")
+    seg = pay("logic segments multirate: a stopped segment, trigger_index in base samples on the any_active role")
+    assert struct.unpack_from("<IQIQIIB", seg, 2)[2::3] == (72, 13)                               # samples, trigger_index

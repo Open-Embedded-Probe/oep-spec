@@ -638,12 +638,14 @@ samples = 0x43
 segments = 0x44
 trigger = 0x45                  # type(u8) role(u8) value(u32)
 pretrigger = 0x46
+multirate = 0x60                # repeats, one per role: role(u8) policy(u8, enum multirate_policy) d(u32) param(u32); the host sets the critical bit (0xE0) (oep-if-capture §5.2)
 [interface.tlv.configure_answer]  # the answer of configure and query
 actual_rate = 0x50
 layout = 0x51                   # w(u8, 1-128, any integer) C(u8) pos[C](u8)
 actual_samples = 0x52
 actual_segments = 0x53
 blocking_ms = 0x56
+block = 0x60                    # L(u32): base samples per block; multirate only, with the layout of the D = 1 channels (oep-if-capture §5.3)
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error: why state is 6
 [interface.tlv.data]            # the data frame's TLV tail (core §11.2)
@@ -653,6 +655,7 @@ mode = 0x40                     # repeats, one per mode: mode(u8) max_samples(u3
 rate_range = 0x41
 channels = 0x44                 # max(u8)
 trigger = 0x45                  # types(u32 bit set) max_pretrigger(u32)
+multirate = 0x60                # policies(u32 bit set of multirate_policy) min_d(u32) max_d(u32) pow2(u8) (oep-if-capture §5.1)
 [interface.event]               # every event carries its generation (oep-if-capture §3.4)
 segment = 0x01                  # the segment record (oep-if-capture §2)
 stopped = 0x02                  # reason(u8) error(u8) generation(u32)
@@ -690,6 +693,10 @@ clock = 3
 [interface.enum.status_flag]    # status flags, reset on start
 dropped = 0x01
 slipped = 0x02
+[interface.enum.multirate_policy] # the multirate TLV's policy (oep-if-capture §5.4); 3 onwards reserved
+sample = 0                      # 1 bit: x(k*D + phase); D = 1 is a D = 1 channel
+any_active = 1                  # 1 bit: active if any base sample of the interval is active
+edge_latch = 2                  # 2 bits: bit0 the interval's last level, bit1 a change to active from the previous base sample
 [interface.enum.segment_flag]      # segment flags (oep-if-capture §2)
 gap = 0x01
 short = 0x02

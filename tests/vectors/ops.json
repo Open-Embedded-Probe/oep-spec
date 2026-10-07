@@ -708,6 +708,178 @@
       "answer_hex": "0292000100d0070000000000000000000000"
     },
     {
+      "name": "logic describe: multirate declared",
+      "spec": "capture §3.5, §5.1; core §7.3",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32",
+      "request_hex": "0193000000030000000009000000",
+      "answer_hex": "02930001000009080001ff0100000080024009000140420f00010000004009000240420f0008000000410900e803000000e1f50501440100044508000700000040420f00600d0007000000010000008000000001"
+    },
+    {
+      "name": "logic configure multirate: the capture §5.7 example",
+      "spec": "capture §5.2, §5.3, §5.7",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S holds the lock",
+      "request_hex": "019400090001443322114001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
+      "answer_hex": "029400010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
+    },
+    {
+      "name": "logic query multirate: the same answer, nothing changed",
+      "spec": "capture §3.3, §5.3",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; configured as the configure vector",
+      "request_hex": "019500090009000000004001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
+      "answer_hex": "029500010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
+    },
+    {
+      "name": "logic configure multirate: samples 72 rounded up to a multiple of L",
+      "spec": "capture §5.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
+      "request_hex": "019600090001443322114001000142040000e1f50543040048000000e00a0000012000000000000000e00a0003000400000001000000",
+      "answer_hex": "029600010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
+    },
+    {
+      "name": "logic query multirate: rate = max_hz on a heavy combination answers the highest rate kept",
+      "spec": "capture §5.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32",
+      "request_hex": "019700090009000000004001000142040000e1f50543040060000000e00a0000020200000001000000e00a0001020200000001000000e00a0002020200000001000000e00a0003020200000001000000",
+      "answer_hex": "0297000100500800005a6202010000005102000100600400200000005204006000000056040000000000"
+    },
+    {
+      "name": "logic configure multirate: d 0, malformed",
+      "spec": "capture §5.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
+      "request_hex": "019800090001443322114001000142040000e1f50543040060000000e00a0000000000000000000000",
+      "answer_hex": "0298000003"
+    },
+    {
+      "name": "logic configure multirate: sample with phase = d, malformed",
+      "spec": "capture §5.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
+      "request_hex": "019900090001443322114001000142040000e1f50543040060000000e00a0003000400000004000000",
+      "answer_hex": "0299000003"
+    },
+    {
+      "name": "logic configure multirate: any_active with param 2, malformed",
+      "spec": "capture §5.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
+      "request_hex": "019a00090001443322114001000142040000e1f50543040060000000e00a0000012000000002000000",
+      "answer_hex": "029a000003"
+    },
+    {
+      "name": "logic configure multirate: edge_latch with d 1, malformed",
+      "spec": "capture §5.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
+      "request_hex": "019b00090001443322114001000142040000e1f50543040060000000e00a0000020100000001000000",
+      "answer_hex": "029b000003"
+    },
+    {
+      "name": "logic configure multirate: the same role twice, malformed",
+      "spec": "capture §5.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
+      "request_hex": "019c00090001443322114001000142040000e1f50543040060000000e00a0003000400000001000000e00a0003000800000000000000",
+      "answer_hex": "029c000003"
+    },
+    {
+      "name": "logic configure multirate: a reserved policy (3), unsupported",
+      "spec": "capture §5.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
+      "request_hex": "019d00090001443322114001000142040000e1f50543040060000000e00a0000030400000000000000",
+      "answer_hex": "029d00000be0"
+    },
+    {
+      "name": "logic configure multirate: d 3 where only powers of 2 are declared, unsupported",
+      "spec": "capture §5.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
+      "request_hex": "019e00090001443322114001000142040000e1f50543040060000000e00a0003000300000000000000",
+      "answer_hex": "029e00000be0"
+    },
+    {
+      "name": "logic configure multirate: d 256 above max_d, unsupported",
+      "spec": "capture §5.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
+      "request_hex": "019f00090001443322114001000142040000e1f50543040060000000e00a0003000001000000000000",
+      "answer_hex": "029f00000be0"
+    },
+    {
+      "name": "logic configure multirate: a role not in the plan, unavailable",
+      "spec": "capture §5.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
+      "request_hex": "01a000090001443322114001000142040000e1f50543040060000000e00a0004000400000000000000",
+      "answer_hex": "02a000000401010006"
+    },
+    {
+      "name": "logic configure multirate on a fn that does not declare it: unsupported with the critical tag",
+      "spec": "capture §5.2, core §2.3",
+      "fns": {
+        "16": "oep.fixture.logic"
+      },
+      "state": "session S; fn 16 is a logic fn whose describe has no multirate; plan roles 0-3",
+      "request_hex": "01a100100001443322114001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
+      "answer_hex": "02a100000be0"
+    },
+    {
+      "name": "logic segments multirate: a stopped segment, trigger_index in base samples on the any_active role",
+      "spec": "capture §2.2, §5, §5.7",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "fn 9: plan roles 0-3; describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 1-128, powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; configured as the configure vector plus trigger (edge, role 0, falling) and pretrigger 13; generation 1; role 0 fell at base sample 13 of the segment, the host stopped at base sample 72 (the §5.7 input)",
+      "request_hex": "01a2000900070000000000000000",
+      "answer_hex": "02a2000100000100000000000000000000000048000000404b4c00000000000a0000000d0000000201000000"
+    },
+    {
+      "name": "capture-group bind: a multirate logic and an analog, the logic as trigger_track",
+      "spec": "capture §4.1, §5.6",
+      "fns": {
+        "12": "oep.fixture.capture-group",
+        "9": "oep.fixture.logic",
+        "13": "oep.fixture.analog"
+      },
+      "state": "session S; fn 9 configured multirate one-shot (the configure vector plus the TLVs 4506000200010000004604000d000000: edge, role 0, falling, pretrigger 13 base samples); fn 13 configured one-shot with an immediate trigger; fn 12's tracks list both",
+      "request_hex": "01a3000c0001443322110209000d000102000900",
+      "answer_hex": "02a3000100"
+    },
+    {
       "name": "capture-group start: the group's and each track's new generation",
       "spec": "capture §4.1",
       "fns": {

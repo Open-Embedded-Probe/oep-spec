@@ -13,7 +13,8 @@
 
 logic と analog は**操作の番号と形が同じ**で、違うのは configure の中身（§3.3）、データの layout（§1）、アナログだけの
 calibration（§3.8）だけ。複数トラックの同時開始と時刻合わせは、この 2 つを広げず、トラックを束ねる別のインターフェース
-（capture-group、§4）にする。外部クロック、多段トリガなどは別の定義（§3.6）。
+（capture-group、§4）にする。外部クロック、多段トリガなどは別の定義（§3.6）。チャネルごとに縮約して取るロジックは、logic の別の定義
+（multirate、§5）。
 
 **時刻**: どのトラックの時刻も、probe の 1 本の時計（起動からの ns、u64 で一周しない）で表す。インターフェースが違っても同じ
 時計なので、host は時刻の引き算でトラックを並べられる。時刻は**推定値と不確かさ**で返す。probe は知っている補正（ドライバが最初の
@@ -312,6 +313,7 @@ mode 2 だけ、skew は遅れが 0 のチャネルを省いてよい。チャ�
 - モードとトリガの type は、それぞれ 0x40 以降を別の定義に残す。
 - configure（要求と応答）と describe の TLV は 0x60〜0x7F を別の定義に残す。layout（§1）と違う data の形は、別の定義が自分の応答の TLV で示す
   （layout の値に形式の番号は無い）。
+- チャネルごとの縮約（multirate）は §5。configure の要求、応答、describe の 0x60 を使う。0x61〜0x7F は残す。
 - probe がデコードまでするもの（プロトコルアナライザ）は、このインターフェースを広げず、別のインターフェースにする。
 
 ### 3.7 使い方の例
@@ -409,3 +411,193 @@ kind の番号はトラック（§3.4）と揃える（triggered 3、stopped 2�
 ### 4.4 使い方の例
 
 使い方の例は [host 開発ガイド](../docs/host-development-guide.ja.md) §22。
+
+## 5. multirate（`oep.fixture.logic` の別の定義: チャネルごとの縮約）
+
+logic のトラックで、全チャネルを同じレートで見ながら、チャネルごとに違う間隔で値を出し、区間を要約できるようにする別の定義（§3.6）。
+インターフェースの名前と revision は `oep.fixture.logic` のままで、§3.6 が残した TLV 0x60 を使う（番号は registry の `oep.fixture.logic`）。
+describe に multirate（§5.1）を宣言する fn だけが扱う。configure か query の要求に multirate の TLV（§5.2）が 1 つでもあれば、その
+設定は multirate であり、この節がその設定の data の形と数え方を決める。無ければ §1〜§3 のまま。
+
+**base sample**: probe が全チャネルのレベルを同時に見る点。configure の rate と応答の actual_rate は base sample のレート（base rate）。
+区画の base sample を区画の先頭から 0 で数え、チャネル c の base sample n のレベルを x_c(n) と書く。
+
+**変わらないもの**: op の表と番号、ロック、状態と遷移、モード、区画の情報の形と区画の中の連続（§2.2）、世代、read、release、segments、
+出来事、ストリーミングのデータとその TLV、capture-group（§4）。query、force、subscribe / unsubscribe が任意なのも同じ。
+
+**base sample で数えるもの**: configure の samples と pretrigger、応答の actual_samples、区画の情報の samples と trigger_index、出来事
+triggered の trigger_index。区画の start_ns は base sample 0 の時刻、区画の flags bit2 と status の flags bit1 は、予定の時刻を 1 base
+sample 周期以上過ぎて取った base sample があることを表す。
+
+### 5.1 describe
+
+| tag | 名前 | 値 |
+|---|---|---|
+| 0x60 | multirate | policies(u32)、min_d(u32)、max_d(u32)、pow2(u8) |
+
+- policies: bit p が立っていれば方針 p（§5.4）を扱う。bit 0（sample）はいつも立つ。
+- 扱う d は `min_d ≤ d ≤ max_d`（1 ≤ min_d ≤ max_d）の整数で、pow2 = 1 ならそのうち 2 の冪だけ、pow2 = 0 ならその全部。
+- rate_range、channels、trigger（§3.5）は base rate と base sample で読む。mode（0x40）の max_samples は §1.1 の layout での上限で、
+  multirate の設定で持てる量は応答の actual_samples で知る（宣言は目安、§3.5）。
+- 処理量の上限は宣言しない。host が設定を選ぶ目安は、1 つの block（§5.5）のバイト数 `B = ceil(L·w / 8) + ceil(R / 8)`（D = 1 の
+  チャネルが無ければ第 1 項は 0）と、ストリーミングの payload `actual_rate · B / L` byte/s。R は §5.5。
+
+### 5.2 configure / query の要求
+
+| tag | 名前 | 値 | 送るか |
+|---|---|---|---|
+| 0x60 | multirate | role(u8)、policy(u8、§5.4)、d(u32)、param(u32)。役割ごとに 1 つ。繰り返す（core §2.3） | 任意。1 つでもあれば multirate。host は critical の bit を付けて送る（tag 0xE0） |
+
+- critical の bit を付けるのは、扱わない probe が知らない TLV として無視して §1.1 の形で取らないため。扱う probe は bit 7 によらず同じに扱う
+  （core §2.3）。
+- multirate の TLV の無い plan の役割は、policy 0（sample）、d 1、param 0 と同じ。
+- param: sample では phase（0 ≤ phase < d）。any_active と edge_latch では active のレベル（0 = active-low: active は 0、1 = active-high:
+  active は 1）。any_active と edge_latch の区間はいつも区画の base sample 0 から d ずつ区切る（phase を持たない）。
+- **D = 1 のチャネル**は、policy が sample で d = 1 の役割（multirate の TLV を送らない役割を含む）。それ以外は**縮約のチャネル**。
+- mode、rate、samples、segments、trigger、pretrigger の契約（§3.3）は同じ。multirate の TLV はどのモードでも送れる。
+- 断り（core §2.3、§4.3。要求全体を断り、何も変えない）:
+
+| 要求 | 断り |
+|---|---|
+| d = 0。sample で phase ≥ d。any_active か edge_latch で d = 1 か param > 1。同じ role に 2 つ | rejected malformed |
+| 予約の policy（3 以上）、describe の policies に無い policy、describe で扱わない d | rejected unsupported（受け取ったままの tag） |
+| fn の plan に無い role | rejected unavailable（cause 6） |
+| describe に multirate を宣言しない fn への critical の multirate | rejected unsupported（受け取ったままの tag、core §2.3） |
+
+- **トリガ**（trigger、§3.3）は、役割の方針によらず、縮約の前の base sample のレベルで評価する。
+- **rate**: probe は §3.3 のとおり rate_range の中で実現できる最も近い値を選び、それがこの設定（方針、d、チャネル数、モード）で保てなければ、
+  保てる最も高い rate を使う。保てるかの判断と余裕の取り方は probe が決める。rate_range の min_hz でも保てない設定は rejected unsupported
+  （multirate の tag）。host は rate に rate_range の max_hz を送れば、その設定で使える最も高い base rate を actual_rate で知る。
+- **samples**（mode 1 / 2）: probe は L（§5.3）の倍数に切り上げる。切り上げた値が持てる量を超えれば、持てる量以下の L の最大の倍数に
+  切り下げる。actual_samples が正（§3.3）。
+
+### 5.3 configure / query の応答
+
+| tag | 名前 | 値 |
+|---|---|---|
+| 0x51 | layout | §1.1 と同じ形 w(u8)、C(u8)、pos[C](u8)。C と pos は D = 1 のチャネルだけ（役割の番号の小さい順）。D = 1 のチャネルが無ければ C = 0、w = 1 |
+| 0x60 | block | L(u32)。1 つの block の base sample の数 |
+
+- success は §3.3 の応答の行をすべて返し、block を足す。
+- L ≥ 1 で、どのチャネルの d でも割り切れる。L の選び方は probe が決める。
+- probe は要求の policy、d、param を変えない（扱えなければ断る）ので、応答はそれを返さない。
+- multirate の設定では、§1.1 の C ≥ 1 は C ≥ 0 と読む。
+
+### 5.4 方針（registry の enum `multirate_policy`）
+
+チャネルの値 k（区画の中で 0 から数える）は、d = D、active のレベルを a として:
+
+| 値 | 名前 | ビット数 b | 値 k |
+|---:|---|---:|---|
+| 0 | sample | 1 | x(k·D + phase) |
+| 1 | any_active | 1 | 区間 `[k·D, (k+1)·D)` に x(n) = a の n が 1 つでもあれば a、無ければ 1 − a |
+| 2 | edge_latch | 2 | bit 0 = x((k+1)·D − 1)（区間の最後のレベル）。bit 1 = 区間の中に、n ≥ 1 で x(n − 1) ≠ a かつ x(n) = a の n があれば 1、無ければ 0 |
+
+- edge_latch の遷移は前の base sample からの変化: 区間の最初の base sample は前の区間の最後の base sample と比べる（block の境目をまたいでも
+  同じ）。区画の base sample 0 は何とも比べない（そこに遷移は無い）。
+- 値 k は、それが使う base sample（sample は k·D + phase の 1 点、any_active と edge_latch は区間の D 点）がすべて区画の中（区画の samples
+  未満）にあるときだけ存在する。区画の末尾の、D 点に満たない区間からは値を作らない。
+- any_active と edge_latch の値は区間の要約で、区間の中の位置と長さを表さない。不確かさは D base sample で、それを表す値は返さない。
+- 3 以上は予約。
+
+### 5.5 データの layout
+
+区画のストリーム（§1）は、区画の position から始まる block の並びである。block b（b = 0、1、…）は区画の base sample `[b·L, (b+1)·L)` を
+表す（block の格子は区画ごとに、区画の base sample 0 から始まる）。block が表す base sample の数を r と書く（区画の最後の block の
+ほかは r = L）。1 つの block は、次の 2 つの部分をこの順に並べたもの:
+
+1. **D = 1 の部分**: 応答の layout（w、C、pos）で、block の base sample を §1.1 の規則 1〜3 のとおりに置いたもの（block の最初の base sample
+   が §1.1 のサンプル 0）。r·w ビットで、次のバイトの境目まで 0 のビットで埋める。長さは
+   `ceil(r·w / 8)` バイト。C = 0 なら 0 バイト。
+2. **縮約の部分**: D = 1 の部分の直後のバイトから。縮約のチャネルを役割の番号の小さい順に並べ、各チャネルの、この block の値を値の番号の
+   小さい順に、チャネルの間を空けずにビットで詰める（ストリームのビットの定義どおり、部分の最初のバイトのビット 0 から）。値は b ビットで、
+   edge_latch は値の bit 0 が低いビット。合計 R ビットの後ろを、次のバイトの境目まで 0 のビットで埋める。長さは `ceil(R / 8)` バイト（R = 0 なら 0 バイト）。
+
+- L 個の base sample を表す block（完全な block）では、チャネル c の値は `L / D_c` 個で、block b の j 番目はチャネルの値 `b · (L / D_c) + j`。
+  `R = Σ_c (L / D_c) · b_c`（縮約のチャネルの和）。チャネル c の j 番目の値は、縮約の部分のビット `off_c + j · b_c` から b_c ビット
+  （off_c は役割の順で c より前の縮約のチャネルの `(L / D) · b` の和）。完全な block はどれも B バイト（§5.1）で、block b は区画の先頭から
+  `b · B` バイト目から始まる。
+- 0 で埋めるのは、それぞれの部分の末尾だけ。D = 1 の部分の、どの pos にも当たらないビットは §1.1 のとおり未定義。
+- **区画の最後の block**: 区画の samples が L の倍数でなければ、最後の block は `r = samples mod L` 個の base sample を表す。その D = 1 の
+  部分は r 個の base sample（`ceil(r·w / 8)` バイト）、縮約の部分は §5.4 で存在する値だけを同じ順で詰める: チャネルごとに、sample は
+  `max(0, ceil((r − phase) / D))` 個、any_active と edge_latch は `floor(r / D)` 個。
+- 区画のバイト数は `floor(samples / L) · B` に最後の block のバイト数を足したもの。
+- samples が L の倍数でない区画は、stop かエラーで短くなった区画（flags bit1）と、pretrigger が足りずに短くなった最初の区画（§3.3）だけ。
+  ストリーミングの区画もそれ以外は L の倍数の base sample にする。
+- host は segments（ストリーミングでは届いたデータの position と、stop の後の status）で区画の position と samples を知り、区画ごとに
+  先頭から復号する。
+
+### 5.6 区画、出来事、capture-group
+
+- 区画の情報と出来事の形と意味は §2.2、§3.4 のまま（数は base sample）。区画の中で落としたときも §2.2 のまま。
+- capture-group（§4）: multirate で configure した logic の fn も bind でき、trigger_track にできる。§4.1 の「最も近いサンプル」は、
+  このトラックでは最も近い base sample。pretrigger もこのトラックの base sample で数える。
+
+### 5.7 例
+
+4 チャネル、L = 32:
+
+| 役割 | 設定 | 置き場 |
+|---|---|---|
+| 0 | any_active、d 32、active-low | 縮約: 1 値（縮約の部分のビット 0） |
+| 1 | multirate の TLV を送らない | D = 1: pos 0 |
+| 2 | multirate の TLV を送らない | D = 1: pos 1 |
+| 3 | sample、d 4、phase 1 | 縮約: 8 値（縮約の部分のビット 1〜8） |
+
+configure の要求の TLV:
+
+```text
+40 01 00 01                                  mode 1
+42 04 00 00 E1 F5 05                         rate 100 000 000
+43 04 00 60 00 00 00                         samples 96
+E0 0A 00 00 01 20 00 00 00 00 00 00 00       multirate: role 0, any_active, d 32, active-low
+E0 0A 00 03 00 04 00 00 00 01 00 00 00       multirate: role 3, sample, d 4, phase 1
+```
+
+応答の TLV: `50 08 00 00 E1 F5 05 01 00 00 00`（actual_rate 100 MHz）、`51 04 00 02 02 00 01`（layout w 2、C 2、pos 0 1）、
+`60 04 00 20 00 00 00`（block L 32）、`52 04 00 60 00 00 00`（actual_samples 96）、`56 04 00 00 00 00 00`（blocking_ms 0）。
+
+D = 1 の部分は 64 ビット = 8 バイト、縮約の部分は R = 9 ビット = 2 バイト（ビット 9〜15 は 0）、B = 10。base sample 72 で stop した
+（区画の samples 72、flags bit1、最後の block の r = 8）。入力（区画の base sample n）:
+
+- 役割 0: n = 13 と 70 で 0。ほかは 1。
+- 役割 1: n = 0〜4、20〜23、32〜63 の偶数、64〜65 で 1。ほかは 0。
+- 役割 2: n = 8〜11、33、66〜71 で 1。ほかは 0。
+- 役割 3: n = 2〜9、26〜31、32〜63、68〜71 で 1。ほかは 0。
+
+| block | D = 1 の部分 | 縮約の部分 |
+|---|---|---|
+| 0（n 0〜31） | `55 01 AA 00 00 55 00 00` | `0C 01`（役割 0 の値 0 = 0、役割 3 の値 0〜7 = `0x86` を 1 ビットずらしたもの） |
+| 1（n 32〜63） | `19 11 11 11 11 11 11 11` | `FF 01`（役割 0 の値 1 = 1、役割 3 の値 8〜15 = `0xFF`） |
+| 2（r = 8） | `A5 AA` | `02`（役割 0 は値なし、役割 3 は n = 65、69 の 2 値 `0, 1`） |
+
+```text
+55 01 AA 00 00 55 00 00 0C 01  19 11 11 11 11 11 11 11 FF 01  A5 AA 02
+```
+
+区画は 23 バイト。n = 70 の役割 0 の 0 は、値を作らない区間（n 64〜71、D 点に満たない）にある。
+
+**L·w が 8 の倍数でない例**: 役割 0 は TLV なし、役割 1 は sample d 4 phase 0、L = 4、layout w 1 C 1 pos [0]。D = 1 の部分は 4 ビットと
+0 の 4 ビットで 1 バイト、縮約の部分は 1 ビットと 0 の 7 ビットで 1 バイト、B = 2。samples 8、役割 0 は n = 0〜2 と 5 で 1、役割 1 は
+n = 0 で 1: `07 01 02 00`。
+
+**w = 3 の例**: 役割 0〜2 は TLV なし（pos 0、1、2）、役割 3 は sample d 4 phase 0、役割 4 は any_active d 2 active-low、L = 4。D = 1 の
+部分は 12 ビットと 0 の 4 ビットで 2 バイト、縮約の部分は 3 ビット（役割 3 が 1 値、役割 4 が 2 値）と 0 の 5 ビットで 1 バイト、B = 3。
+samples 8。入力: 役割 0 は n = 0〜2、5 で 1。役割 1 は n = 1、3 で 1。役割 2 は n = 7 で 1。役割 3 は n = 0、4、5 で 1。役割 4 は n = 2
+だけ 0: `59 04 03  08 08 07`。
+
+**edge_latch の例**: 役割 0 だけ、edge_latch、d 8、active-high、L = 16（layout `51 02 00 01 00`: w 1、C 0）。B = 1（4 ビットと 0 の
+4 ビット）。samples 48。入力: n = 0〜2、8〜10、16〜23、30〜33 で 1。
+
+| 区間 | n | 値（bit 1 edge、bit 0 level） | 理由 |
+|---|---|---|---|
+| 0 | 0〜7 | `00` | n = 0 は何とも比べない |
+| 1 | 8〜15 | `10` | 区間の最初の n = 8 で立ち上がる（n = 7 と比べる） |
+| 2 | 16〜23 | `11` | 区間全体が 1。n = 16 は block の境目で、n = 15 と比べる |
+| 3 | 24〜31 | `11` | n = 30 で立ち上がる |
+| 4 | 32〜39 | `00` | n = 32 は block の境目をまたいだ 1 の続き（立ち上がりではない） |
+| 5 | 40〜47 | `00` | |
+
+```text
+08 0F 00
+```

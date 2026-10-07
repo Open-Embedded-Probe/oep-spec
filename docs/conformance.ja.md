@@ -97,6 +97,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - **port_speed**: host が使うときは [リンク](../interfaces/oep-if-link.ja.md) §3 の host 1 と 2（試すの答えの後 `port_speed_switch_wait_ms` 以上待ってから新しい速さで送る、戻す・end・再起動する op の答えで起動時の速さに戻る）。UART bridge のどの口でも、上げた速さの後に confirm を繰り返す（transports §4）。
 - **Wi-Fi の passphrase**: 表示せず、ログに書かない。get の pass_len 0xFF は「ある」の印で、送り返せば今のものを保つ（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.4）。
 - **ロジックのキャプチャ**: layout の w は 1〜128 のどの整数も読む。w が 8 の倍数でなければサンプルはバイトの境目をまたぐ（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1.1）。
+- **multirate**（[キャプチャ](../interfaces/oep-if-capture.ja.md) §5）: 使うときは multirate の TLV に critical の bit を付けて送り（0xE0）、応答の layout と block で区画ごとに block の格子を区画の base sample 0 から切って読む。数（samples、trigger_index など）は base sample。
 - **アナログのキャプチャ**: host が電圧を示すときは、値 0 と 2^b − 1 を電圧ではなく振り切れ（低い端以下、高い端以上）として示す
   （[キャプチャ](../interfaces/oep-if-capture.ja.md) §1.2 規則 6）。
 
@@ -115,7 +116,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `oep.fixture.uart`（§2） | §2 の op。describe の formats に 8N1 | ほかの format |
 | `oep.fixture.i2c-target`（§3） | stretch を除く §3 の op（書き込み 1 回が 1 フレーム、読み出しは preload_tx の置き場から、ns はフレームを終えた STOP か次の START の時刻） | stretch（ops、max_stretch_us とともに）。プルアップ（features bit2） |
 | `oep.fixture.spi-target`（§4） | §4 の op。data のビットの置き方（バイトの途中で終わった転送も、来なかったビットは 0）、bits は 0xFFFFFFFF で止める、ns は CS が無効になった時刻。MISO をソフトウェアで駆動するなら cs_setup_ns | LSB first（features bit0） |
-| `oep.fixture.logic`、`oep.fixture.analog`（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1〜§3） | query と force を除く §3.2 の op。§3.3 の configure と query の契約（mode と rate は必須、mode ごとに送れる TLV、応答の必須の行）。区画の通し番号のページング（[共通部品](../interfaces/oep-if-common.ja.md) §1.3）。出来事の世代、世代は 0 を飛ばして一周。区画を連続に保てなければその区画を出さず、エラーで止まる（§2.2）。§3.5 の describe。calibration はアナログだけ | query、force（ops）。通知: subscribe / unsubscribe（ops） |
+| `oep.fixture.logic`、`oep.fixture.analog`（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1〜§3） | query と force を除く §3.2 の op。§3.3 の configure と query の契約（mode と rate は必須、mode ごとに送れる TLV、応答の必須の行）。区画の通し番号のページング（[共通部品](../interfaces/oep-if-common.ja.md) §1.3）。出来事の世代、世代は 0 を飛ばして一周。区画を連続に保てなければその区画を出さず、エラーで止まる（§2.2）。§3.5 の describe。calibration はアナログだけ | query、force（ops）。通知: subscribe / unsubscribe（ops）。ロジックの multirate（§5。describe の multirate: 方針、d の範囲。宣言すれば §5 の断り、L の倍数の samples、block の layout、base sample での数え方とトリガ） |
 | `oep.fixture.capture-group`（§4） | force を除く §4.1 の op（start の応答は組の世代と、bind の順の各トラックの世代）。出来事の組の世代。§4.3 の describe | force（ops）。通知: subscribe / unsubscribe（ops） |
 | `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)） | plan の役割を持つインターフェースがあれば list に出す。plan_apply（fn ごとに不可分）、plan_release、§2.5 の断り方、設定の plan。上限があれば describe の plan_roles | — |
 | `oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)） | restart。describe の restart_max_ms。ロックの要る op として断る。答えは completed success で、それを先に送る。答えの後は再起動するまでどの transport の要求にも答えず、target を reset しない。再起動の後は電源を入れたときと同じ（新しい boot_id、保存した設定だけが残る）。答えが transport を出てから restart_max_ms のうちに、同じ transport で confirm にまた答える | — |
@@ -137,8 +138,9 @@ probe は、自分が出す transport とインターフェースについてこ
 | `refusals.json` | §2.3 と §4.3 の断り方（理由が 1 つだけ当たる状態）と、無視される知らない TLV について、要求とそのとおりの答え。§4.3 の順 4 で理由が 2 つ以上当たる要求は、どれで断ってもよいので（意図した単純化）、ベクタは持たず、試験はどれか 1 つを受ける |
 | `sessions.json` | セッションの場面: 判定の表（§6.2）、送り直しの表（§5.2。送り直した end）、end での解放と no_session（§9）、force、session_id 0（§4.1）、セッションが無いときと開いているときの clock（§7.7）。決めた初めの状態から順に送る要求と答え |
 | `ops_encoding.json` | describe の共通の tag ops の値の境（最短、最長、長さの誤り、op 0xFF の境、同じ集合の別の符号）と、正しい値が表す op の集合（§7.4） |
-| `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console（marks の通し番号のページング、streams の最後のページ）、logic（configure の契約、segments の空のページ、区画の中で落としたときの status / segments / read と stopped）、riscv-dm の失敗した step、arm-adi の n = 0 の transfer、spi-target の部分の byte（MSB / LSB が先）、capture-group の start、キャプチャの出来事のフレーム（`events`、世代）、probe.config（wifi の set（いちばん長い 112 byte のものを含む）/ get / unset と state を含む）、logic のほかの一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
+| `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console（marks の通し番号のページング、streams の最後のページ）、logic（configure の契約、segments の空のページ、区画の中で落としたときの status / segments / read と stopped、multirate の describe、configure / query と断り、segments、capture-group の bind）、riscv-dm の失敗した step、arm-adi の n = 0 の transfer、spi-target の部分の byte（MSB / LSB が先）、capture-group の start、キャプチャの出来事のフレーム（`events`、世代）、probe.config（wifi の set（いちばん長い 112 byte のものを含む）/ get / unset と state を含む）、logic のほかの一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
 | `logic_layout.json` | ロジックのキャプチャのストリーム（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1.1）: layout の w と pos、チャネルのレベル、区画のバイト列。2 の冪でない w（w = 3、サンプルがバイトをまたぐ） |
+| `multirate.json` | multirate のストリーム（[キャプチャ](../interfaces/oep-if-capture.ja.md) §5）: 役割ごとの multirate の TLV、layout と L、区画ごとの base sample のレベルとバイト列。§5.7 の例、L·w が 8 の倍数でない、w = 3、D = 1 のチャネルが無い、縮約のチャネルがバイトをまたぐ、phase のある sample の最後の block、any_active の active-high、edge_latch（区間の最初の立ち上がり、区間全体、block の境目をまたぐ、base sample 0）、pretrigger で短い最初の区画と次の区画 |
 
 実装は JSON を読み、自分の符号器、復号器、答えをバイト単位で比べる。ベクタが文書と registry に合っているかを確かめるには:
 

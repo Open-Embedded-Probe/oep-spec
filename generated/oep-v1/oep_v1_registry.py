@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "6d1972c9f66f9144"
+REGISTRY_HASH = "a64c0b8251ced1cc"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -81,7 +81,7 @@ FIXTURE_SPI_TARGET = _NS(name="oep.fixture.spi-target", revision=1, target=None,
     line_names={})
 INTERFACES["oep.fixture.spi-target"] = FIXTURE_SPI_TARGET
 FIXTURE_LOGIC = _NS(name="oep.fixture.logic", revision=1, target=None, op={"configure": 0x01, "start": 0x02, "stop": 0x03, "force": 0x04, "status": 0x05, "read": 0x06, "segments": 0x07, "release": 0x08, "query": 0x09, "subscribe": 0x30, "unsubscribe": 0x32}, lock_free={0x05, 0x06, 0x07, 0x09},
-    tlv={"configure": {"mode": 0x40, "rate": 0x42, "samples": 0x43, "segments": 0x44, "trigger": 0x45, "pretrigger": 0x46}, "configure_answer": {"actual_rate": 0x50, "layout": 0x51, "actual_samples": 0x52, "actual_segments": 0x53, "blocking_ms": 0x56}, "status_answer": {"error": 0x01}, "data": {"generation": 0x01}, "describe": {"mode": 0x40, "rate_range": 0x41, "channels": 0x44, "trigger": 0x45}}, event={"segment": 0x01, "stopped": 0x02, "triggered": 0x03}, enum={"features": {}, "mode": {"one_shot": 0x01, "repeat": 0x02, "streaming": 0x03}, "trigger": {"immediate": 0x00, "level": 0x01, "edge": 0x02}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}, "error": {"peripheral": 0x01, "storage": 0x02, "clock": 0x03}, "status_flag": {"dropped": 0x01, "slipped": 0x02}, "segment_flag": {"gap": 0x01, "short": 0x02, "slipped": 0x04}}, own={},
+    tlv={"configure": {"mode": 0x40, "rate": 0x42, "samples": 0x43, "segments": 0x44, "trigger": 0x45, "pretrigger": 0x46, "multirate": 0x60}, "configure_answer": {"actual_rate": 0x50, "layout": 0x51, "actual_samples": 0x52, "actual_segments": 0x53, "blocking_ms": 0x56, "block": 0x60}, "status_answer": {"error": 0x01}, "data": {"generation": 0x01}, "describe": {"mode": 0x40, "rate_range": 0x41, "channels": 0x44, "trigger": 0x45, "multirate": 0x60}}, event={"segment": 0x01, "stopped": 0x02, "triggered": 0x03}, enum={"features": {}, "mode": {"one_shot": 0x01, "repeat": 0x02, "streaming": 0x03}, "trigger": {"immediate": 0x00, "level": 0x01, "edge": 0x02}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}, "error": {"peripheral": 0x01, "storage": 0x02, "clock": 0x03}, "status_flag": {"dropped": 0x01, "slipped": 0x02}, "multirate_policy": {"sample": 0x00, "any_active": 0x01, "edge_latch": 0x02}, "segment_flag": {"gap": 0x01, "short": 0x02, "slipped": 0x04}}, own={},
     line_names={})
 INTERFACES["oep.fixture.logic"] = FIXTURE_LOGIC
 FIXTURE_ANALOG = _NS(name="oep.fixture.analog", revision=1, target=None, op={"configure": 0x01, "start": 0x02, "stop": 0x03, "force": 0x04, "status": 0x05, "read": 0x06, "segments": 0x07, "release": 0x08, "query": 0x09, "calibration": 0x0A, "subscribe": 0x30, "unsubscribe": 0x32}, lock_free={0x05, 0x06, 0x07, 0x09, 0x0A},

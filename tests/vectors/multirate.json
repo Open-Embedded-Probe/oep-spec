@@ -1,0 +1,424 @@
+{
+  "about": "Multirate logic capture streams (capture §5). `roles[c]` is role c's multirate TLV (policy, d, param; param is phase for sample and the active level for any_active and edge_latch), null for a role sent none. `layout` is the answer's layout of the D = 1 channels (pos in role order), `L` the answer's block. Each segment gives the channels' levels by base sample (character n = the level at base sample n of the segment, roles in order) and its whole stream; the block grid starts at each segment's base sample 0. The bits of the D = 1 part no pos names are undefined (none here); the padding of both parts is 0.",
+  "cases": [
+    {
+      "name": "four channels: any_active, two D = 1, sample d 4 phase 1; a segment stopped at 72 (r = 8)",
+      "spec": "capture §5.5, §5.7 (a reduced channel crossing a byte, the reduced part's trailing 0 bits, the values of a short last block)",
+      "roles": [
+        {
+          "policy": "any_active",
+          "d": 32,
+          "param": 0
+        },
+        null,
+        null,
+        {
+          "policy": "sample",
+          "d": 4,
+          "param": 1
+        }
+      ],
+      "layout": {
+        "w": 2,
+        "pos": [
+          0,
+          1
+        ]
+      },
+      "L": 32,
+      "segments": [
+        {
+          "samples": 72,
+          "channels": [
+            "111111111111101111111111111111111111111111111111111111111111111111111101",
+            "111110000000000000001111000000001010101010101010101010101010101011000000",
+            "000000001111000000000000000000000100000000000000000000000000000000111111",
+            "001111111100000000000000001111111111111111111111111111111111111100001111"
+          ],
+          "stream_hex": "5501aa00005500000c011911111111111111ff01a5aa02"
+        }
+      ]
+    },
+    {
+      "name": "L*w not a multiple of 8: the D = 1 part padded with 0",
+      "spec": "capture §5.5, §5.7",
+      "roles": [
+        null,
+        {
+          "policy": "sample",
+          "d": 4,
+          "param": 0
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": [
+          0
+        ]
+      },
+      "L": 4,
+      "segments": [
+        {
+          "samples": 8,
+          "channels": [
+            "11100100",
+            "10000000"
+          ],
+          "stream_hex": "07010200"
+        }
+      ]
+    },
+    {
+      "name": "w 3: three D = 1 channels and two reduced",
+      "spec": "capture §1.1, §5.5, §5.7",
+      "roles": [
+        null,
+        null,
+        null,
+        {
+          "policy": "sample",
+          "d": 4,
+          "param": 0
+        },
+        {
+          "policy": "any_active",
+          "d": 2,
+          "param": 0
+        }
+      ],
+      "layout": {
+        "w": 3,
+        "pos": [
+          0,
+          1,
+          2
+        ]
+      },
+      "L": 4,
+      "segments": [
+        {
+          "samples": 8,
+          "channels": [
+            "11100100",
+            "01010000",
+            "00000001",
+            "10001100",
+            "11011111"
+          ],
+          "stream_hex": "590403080807"
+        }
+      ]
+    },
+    {
+      "name": "no D = 1 channel (C = 0): the reduced part only",
+      "spec": "capture §5.3, §5.5",
+      "roles": [
+        {
+          "policy": "sample",
+          "d": 2,
+          "param": 1
+        },
+        {
+          "policy": "sample",
+          "d": 8,
+          "param": 0
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": []
+      },
+      "L": 8,
+      "segments": [
+        {
+          "samples": 16,
+          "channels": [
+            "0101010011000001",
+            "1000000001000000"
+          ],
+          "stream_hex": "1709"
+        }
+      ]
+    },
+    {
+      "name": "a reduced channel crossing a byte, and the reduced part's trailing 0 bits",
+      "spec": "capture §5.5",
+      "roles": [
+        null,
+        {
+          "policy": "sample",
+          "d": 4,
+          "param": 0
+        },
+        {
+          "policy": "sample",
+          "d": 2,
+          "param": 0
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": [
+          0
+        ]
+      },
+      "L": 16,
+      "segments": [
+        {
+          "samples": 16,
+          "channels": [
+            "1000000000000001",
+            "1000000010001000",
+            "1010001010000010"
+          ],
+          "stream_hex": "0180bd09"
+        }
+      ]
+    },
+    {
+      "name": "sample phase 3, a last block of r = 2: no value (ceil((r - phase) / D) = 0)",
+      "spec": "capture §5.4, §5.5",
+      "roles": [
+        null,
+        {
+          "policy": "sample",
+          "d": 4,
+          "param": 3
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": [
+          0
+        ]
+      },
+      "L": 8,
+      "segments": [
+        {
+          "samples": 10,
+          "channels": [
+            "1000000001",
+            "0001000101"
+          ],
+          "stream_hex": "010302"
+        }
+      ]
+    },
+    {
+      "name": "sample phase 3, a last block of r = 4: one value (ceil((r - phase) / D) = 1)",
+      "spec": "capture §5.4, §5.5",
+      "roles": [
+        null,
+        {
+          "policy": "sample",
+          "d": 4,
+          "param": 3
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": [
+          0
+        ]
+      },
+      "L": 8,
+      "segments": [
+        {
+          "samples": 12,
+          "channels": [
+            "100000000001",
+            "000100010001"
+          ],
+          "stream_hex": "01030801"
+        }
+      ]
+    },
+    {
+      "name": "any_active, active-high, d 8",
+      "spec": "capture §5.4",
+      "roles": [
+        {
+          "policy": "any_active",
+          "d": 8,
+          "param": 1
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": []
+      },
+      "L": 16,
+      "segments": [
+        {
+          "samples": 32,
+          "channels": [
+            "00000100000000001100000000000001"
+          ],
+          "stream_hex": "0103"
+        }
+      ]
+    },
+    {
+      "name": "edge_latch, d 8, active-high: the §5.7 example",
+      "spec": "capture §5.4, §5.7",
+      "roles": [
+        {
+          "policy": "edge_latch",
+          "d": 8,
+          "param": 1
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": []
+      },
+      "L": 16,
+      "segments": [
+        {
+          "samples": 48,
+          "channels": [
+            "111000001110000011111111000000111100000000000000"
+          ],
+          "stream_hex": "080f00"
+        }
+      ]
+    },
+    {
+      "name": "edge_latch: a pulse that starts at an interval's first base sample",
+      "spec": "capture §5.4",
+      "roles": [
+        {
+          "policy": "edge_latch",
+          "d": 8,
+          "param": 1
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": []
+      },
+      "L": 16,
+      "segments": [
+        {
+          "samples": 16,
+          "channels": [
+            "0000000011100000"
+          ],
+          "stream_hex": "08"
+        }
+      ]
+    },
+    {
+      "name": "edge_latch: a pulse that covers a whole interval",
+      "spec": "capture §5.4",
+      "roles": [
+        {
+          "policy": "edge_latch",
+          "d": 8,
+          "param": 1
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": []
+      },
+      "L": 16,
+      "segments": [
+        {
+          "samples": 24,
+          "channels": [
+            "000000001111111100000000"
+          ],
+          "stream_hex": "0c00"
+        }
+      ]
+    },
+    {
+      "name": "edge_latch: a pulse across a block boundary rises once",
+      "spec": "capture §5.4",
+      "roles": [
+        {
+          "policy": "edge_latch",
+          "d": 8,
+          "param": 1
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": []
+      },
+      "L": 16,
+      "segments": [
+        {
+          "samples": 32,
+          "channels": [
+            "00000000000000111100000000000000"
+          ],
+          "stream_hex": "0c00"
+        }
+      ]
+    },
+    {
+      "name": "edge_latch: base sample 0 is compared with nothing (no edge)",
+      "spec": "capture §5.4",
+      "roles": [
+        {
+          "policy": "edge_latch",
+          "d": 8,
+          "param": 1
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": []
+      },
+      "L": 16,
+      "segments": [
+        {
+          "samples": 16,
+          "channels": [
+            "1111111111000000"
+          ],
+          "stream_hex": "01"
+        }
+      ]
+    },
+    {
+      "name": "repeat: a first segment short of pretrigger (r = 4), then the next segment starts its own grid",
+      "spec": "capture §3.3, §5.5",
+      "roles": [
+        null,
+        {
+          "policy": "any_active",
+          "d": 4,
+          "param": 0
+        }
+      ],
+      "layout": {
+        "w": 1,
+        "pos": [
+          0
+        ]
+      },
+      "L": 8,
+      "segments": [
+        {
+          "samples": 12,
+          "channels": [
+            "111000000100",
+            "110111111011"
+          ],
+          "stream_hex": "07020200"
+        },
+        {
+          "samples": 16,
+          "channels": [
+            "0001100000000001",
+            "0111111111111011"
+          ],
+          "stream_hex": "18028001"
+        }
+      ]
+    }
+  ]
+}
