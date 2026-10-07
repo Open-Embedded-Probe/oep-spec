@@ -115,7 +115,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | list | list | 名前ごとのインターフェースと、その fn、instance、revision | core §7.2 |
 | describe | describe | インターフェースの、または（fn 0 で）probe 全体の宣言 | core §7.3 |
 | 宣言 | declaration | describe が返すもの。boot_id が同じ間変わらない | core §7.3 |
-| ページング | paging | more = 1 の間、`first` を進めて聞き直す。終わりを越えた first には要素 0 個と more 0 | core §7.3 |
+| ページング | paging | more = 1 の間、`first` を進めて聞き直す。終わりを越えた first には要素 0 個と more 0。marks と segments は from_serial（最後の serial + 1）で聞き直す | core §7.3、common §1.3 |
 | 名前、ラベル | name, label (of a name) | `a-z 0-9 - .`。`.` で区切ったラベルが 2 つ以上 | core §7.2、§13 |
 | instance、`name#instance` | instance | 同じ (name, revision) のインターフェースの中の番号。文字で書く形は host ガイド §5.3 | core §7.2 |
 | role_channels、channel_group | role_channels, channel_group | 役が使える channel、決まった組 | core §7.4 |

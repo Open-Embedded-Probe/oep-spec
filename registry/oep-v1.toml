@@ -484,7 +484,7 @@ op = [
   { code = 0x05, name = "mark", lock = true },
   { code = 0x06, name = "write", lock = true },
   { code = 0x07, name = "close", lock = true },
-  { code = 0x08, name = "streams", lock = false },      # first(u8) -> more, count x entry
+  { code = 0x08, name = "streams", lock = false },      # first(u16) -> more, count x entry
 ]
 [interface.tlv.describe]
 mechanisms = 0x40               # u8 list: the mechanisms this probe opens (required; oep-if-console §1)

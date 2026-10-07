@@ -382,8 +382,9 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 **describe は宣言だけを返す**: 同じ boot_id の間、TLV の並びと値は変わらない（host は boot_id が同じ間 cache してよく、ページングは
 途中で設定が変わっても崩れない）。変わるもの（接続、保存の有無、スロットの状態、空き容量）は、インターフェースが状態を返す op
 （ロック不要）で出す。
-- **ページングの終わり**（describe、state、connections、streams、segments、get に共通）: first が数以上なら、要素を 0 個、more 0 で
+- **ページングの終わり**（describe、state、connections、streams、get に共通）: first が数以上なら、要素を 0 個、more 0 で
   返す（要素の数の欄を持つ応答では、その欄は 0）。host は more = 0 で止める。list は more を持たず、total で終わりが分かる（§7.2）。
+  first ではなく通し番号で指す一覧（marks、segments）の規則は、それを使うインターフェースの文書が決める。
 
 ### 7.4 describe の共通タグ（0x01〜0x3F）
 

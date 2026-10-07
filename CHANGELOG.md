@@ -40,6 +40,19 @@ Japanese is the working text.
   §15.1: setting Wi-Fi (prompt for the passphrase, never print or log it, compare entries without it, 0xFF keeps it only at the same
   index, changing the entry in use drops a TCP link). Conformance and glossary follow.
 
+### External review interface re-check (2026-10-07, 0991759)
+
+From the core / interface re-check of 0991759 in `docs/external-spec-review-2026-10-06.ja.md` (§12); verdicts in
+`docs/external-spec-review-2026-10-07-response.ja.md`. Japanese only while Japanese is the working text.
+
+- Common §1.3 serial paging (marks; capture's segments use the same rule): the answer starts at from_serial inclusive; from_serial =
+  next (the serial the next one gets) answers no elements and more 0; any other serial not kept (pushed out, not yet given, an earlier
+  boot's) starts at the oldest kept; more 1 means more are kept, and the host asks again from the last serial + 1. Serials wrap and
+  compare by core §2.6. Core §7.3's end-of-paging list no longer names segments. Conformance and glossary follow.
+- Console streams: **first is u16** (was u8); the number of streams has no u8 bound. Registry comment follows.
+- Vectors: marks from_serial included with more 1, the next page from the last serial + 1, a pushed-out serial starting at the oldest,
+  from_serial = next; console streams with first(u16), and its last page.
+
 ### External review core re-check (2026-10-07, 0991759)
 
 From the core re-check of 0991759 in `docs/external-spec-review-2026-10-06.ja.md`; verdicts in

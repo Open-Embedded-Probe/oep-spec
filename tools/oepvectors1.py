@@ -576,10 +576,24 @@ def ops() -> dict:
     # connection 1 (the wire cases) and the stream share core §9's one number space: the stream opened on it is 2
     add("console marks: one attach mark", "common §1.3, console §1", con, "stream 2 with one mark (serial 0, position 0, attach at 1 ms)",
         request(0x60, 7, op("oep.target.console", "marks"), struct.pack("<HI", 2, 0)), ok(0x60, bytes([0, 1]) + mark))
+    # serial paging (common §1.3): marks 5 to 8 kept (1 to 4 pushed out), next 9; max_frame 64 fits 2 marks (5 + 2 + 2 x 22 = 51)
+    hm = lambda n: struct.pack("<IQBQB", n, 10 * n, mark_kind["host"], 1_000_000 * n, n)
+    kept = "stream 2; marks 5 to 8 kept (1 to 4 pushed out), the next mark gets serial 9; max_frame 64 (2 marks per answer)"
+    mk = op("oep.target.console", "marks")
+    add("console marks: from_serial included, more 1", "common §1.3 paging 1, 4", con, kept,
+        request(0x64, 7, mk, struct.pack("<HI", 2, 5)), ok(0x64, bytes([1, 2]) + hm(5) + hm(6)))
+    add("console marks: the next page from the last serial + 1", "common §1.3 paging 4", con, kept,
+        request(0x65, 7, mk, struct.pack("<HI", 2, 7)), ok(0x65, bytes([0, 2]) + hm(7) + hm(8)))
+    add("console marks: a pushed-out from_serial starts at the oldest kept", "common §1.3 paging 3", con, kept,
+        request(0x66, 7, mk, struct.pack("<HI", 2, 3)), ok(0x66, bytes([1, 2]) + hm(5) + hm(6)))
+    add("console marks: from_serial = next, no marks and more 0", "common §1.3 paging 2", con, kept,
+        request(0x67, 7, mk, struct.pack("<HI", 2, 9)), ok(0x67, bytes([0, 0])))
     st = IFACE["oep.target.console"]["enum"]
     sentry = struct.pack("<HHBBB", 2, 1, st["mechanism"]["dmseq"], st["stream_users"]["host_session"], st["stream_state"]["open"])
     add("console streams: one open stream", "console §1, core §9", con, "stream 2 on connection 1 (one number space: connection 1, then stream 2), dmseq, opened by the session",
-        request(0x61, 7, op("oep.target.console", "streams"), bytes([0])), ok(0x61, bytes([0, 1]) + sentry))
+        request(0x61, 7, op("oep.target.console", "streams"), struct.pack("<H", 0)), ok(0x61, bytes([0, 1]) + sentry))
+    add("console streams: first(u16) beyond the count, the last page", "console §1, core §7.3 end of paging", con, "as above (one stream)",
+        request(0x68, 7, op("oep.target.console", "streams"), struct.pack("<H", 1)), ok(0x68, bytes([0, 0])))
     add("console read: empty at the write position", "common §1.2", con, "stream 2, 5 bytes written (position 5)",
         request(0x62, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 2, 0, 5, 64)),
         ok(0x62, struct.pack("<QBH", 5, 0, 0)))

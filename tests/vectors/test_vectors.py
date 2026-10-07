@@ -449,6 +449,19 @@ def test_per_op_vectors_decode_exactly():
     assert 1 + _fixed_sequence(p[1:], lambda b, i: 22) == len(p)
     p = pay("console streams: one open stream")
     assert 1 + _fixed_sequence(p[1:], lambda b, i: 7) == len(p)
+    for c in v:
+        if c["name"].startswith("console streams"):
+            assert len(bytes.fromhex(c["request_hex"])) == 10 + 2, c["name"]                       # first(u16) (console §1)
+    serials = {}
+    for c in v:
+        if c["name"].startswith("console marks"):
+            p = pay(c["name"])
+            assert 1 + _fixed_sequence(p[1:], lambda b, i: 22) == len(p) and len(p) + 5 <= 64, c["name"]      # max_frame 64
+            serials[c["name"]] = (p[0], [struct.unpack_from("<I", p, 2 + 22 * k)[0] for k in range(p[1])])
+    first = serials["console marks: from_serial included, more 1"]
+    assert first == (1, [5, 6]) and serials["console marks: the next page from the last serial + 1"] == (0, [7, 8])   # last + 1
+    assert serials["console marks: a pushed-out from_serial starts at the oldest kept"] == first                    # paging 3
+    assert serials["console marks: from_serial = next, no marks and more 0"] == (0, [])                             # paging 2
     p = pay("logic segments: one segment")
     assert 1 + _fixed_sequence(p[1:], lambda b, i: 37) == len(p)
     p = pay("probe.config state: one slot and one bind")

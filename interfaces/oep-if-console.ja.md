@@ -24,7 +24,7 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 | 0x05 | mark | stream(u16)、value(u8) | — | 必要 |
 | 0x06 | write | stream(u16)、count(u16)、data | accepted(u16)、[TLV] | 必要 |
 | 0x07 | close | stream(u16) | — | 必要 |
-| 0x08 | streams | first(u8) | more(u8)、count(u8)、count × (stream(u16)、connection(u16)、mechanism(u8)、users(u8)、state(u8))、[TLV] | 不要 |
+| 0x08 | streams | first(u16) | more(u8)、count(u8)、count × (stream(u16)、connection(u16)、mechanism(u8)、users(u8)、state(u8))、[TLV] | 不要 |
 
 この表の op はすべて必須（core §1.2）。方式は describe の mechanisms で宣言する。
 
@@ -37,7 +37,7 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
   cause 6。arm-adi（swd）の connection への open も rejected unavailable cause 6（[線とデバッグ](oep-if-debug.ja.md) §5）。
 - ストリームの番号（u16）は core §9 の規則で振る（probe で 1 つの空間、1 から進めて一周する。同じ場所の再 open は番号を消費しない、§2）。
 - **streams** は生きているストリームと、閉じたがまだ読めるストリームの一覧（`stream_state`: 0 open、1 closed）。作られた順に first 番目から
-  1 フレームに入る分を返し、more = 1 なら続きがある（connections と同じ形）。users は bit0 host の
+  1 フレームに入る分を返し、more = 1 なら続きがある（connections と同じ形。first は u16 で、ストリームの数に u8 の上限は無い）。users は bit0 host の
   セッション、bit1 スロット（bind）。ロック無しの host（監視）が番号を得るための op。
 - 閉じたストリームへの close は何もせず成功。
 
