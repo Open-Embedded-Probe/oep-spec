@@ -17,8 +17,8 @@ A probe that speaks OEP over TCP on Wi-Fi needs its network credentials set by a
 Japanese is the working text.
 
 - probe.config: item 0x08 `wifi` = index(u8) ssid_len(u8) ssid pass_len(u8) passphrase, key index; ssid 1 to 32 bytes; the passphrase is
-  none (pass_len 0), 8 to 63 bytes of 0x20-0x7E, or 64 hex digits. The probe tries the entries in index order (it may skip those a scan
-  did not see), uses the first that connects, waits and starts over when all fail, starts over after a loss; no entries = Wi-Fi off. A
+  none (pass_len 0), 8 to 63 bytes of 0x20-0x7E, or 64 hex digits. The probe tries the entries in index order and uses the first that
+  connects; when none connects or the link is lost it tries again, at intervals it chooses; no entries = Wi-Fi off. A
   set or unset that changes or removes the entry in use is answered before the link is dropped.
 - probe.config: the passphrase is write-only. get answers pass_len 0xFF (set) or 0 (none) with nothing after it; a set with pass_len
   0xFF keeps that index's passphrase (malformed without an entry at that index), so get's item sent back changes nothing. The probe puts
