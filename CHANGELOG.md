@@ -74,6 +74,11 @@ From the core / interface re-check of 0991759 in `docs/external-spec-review-2026
   transaction that ends inside a byte; the last byte's bits that did not come are 0. bits saturates at 0xFFFFFFFF. read_rx's ns is when
   CS went inactive; i2c-target's is the STOP or next START that ended the frame. Registry comments, vectors (12 bits, MSB and LSB
   first) and conformance follow.
+- Debug §4.2, §4.4, §6: step's moved, dpc_before and dpc_after mean something only with status ok; otherwise all are 0 and the host
+  does not read them (the "dpc_after valid" case is gone; a halted hart's dpc is read with dmi). run's elapsed_us runs from the
+  resumereq that started the hart to seeing it halted (stopped 1), halting it at the limit (0) or giving up (2); 0 for stopped 3; an
+  invalid dpc is 0. arm-adi transfer n = 0 is success, done 0, status ok, ack 0 (no transfer, no ACK), nvals 0. Vectors (a failed step,
+  transfer n = 0) and conformance follow.
 
 ### External review core re-check (2026-10-07, 0991759)
 

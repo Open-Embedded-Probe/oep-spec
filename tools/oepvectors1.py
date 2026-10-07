@@ -569,6 +569,15 @@ def ops() -> dict:
     add("riscv-dm dmi: an unknown step kind", "debug §4.1, core §4.3", dm, "—",
         request(0x55, 6, rd, struct.pack("<HH", 1, 1) + bytes([0x10, 0x11]), S), rej(0x55, "malformed"))
 
+    add("riscv-dm step on a running hart: status state, moved and both dpc 0", "debug §4.2", dm,
+        "session S; connection 1; step offered in ops; the hart is running",
+        request(0x57, 6, op("oep.target.riscv-dm", "step"), struct.pack("<H", 1), S),
+        failed(0x57, struct.pack("<BBII", REG["status"]["state"], 0, 0, 0)))
+    adi = {"15": "oep.target.arm-adi"}
+    add("arm-adi transfer: n = 0", "debug §6", adi, "session S; connection 1 (swd) open",
+        request(0x58, 15, op("oep.target.arm-adi", "transfer"), struct.pack("<HH", 1, 0), S),
+        ok(0x58, struct.pack("<HBBH", 0, REG["status"]["ok"], 0, 0)))
+
     # oep.target.console (console §1, common §1)
     con = {"7": "oep.target.console"}
     mark_kind = REG["common"]["enum"]["mark_kind"]

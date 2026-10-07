@@ -328,6 +328,26 @@
       "answer_hex": "0255000003"
     },
     {
+      "name": "riscv-dm step on a running hart: status state, moved and both dpc 0",
+      "spec": "debug §4.2",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "session S; connection 1; step offered in ops; the hart is running",
+      "request_hex": "015700060008443322110100",
+      "answer_hex": "025700010105000000000000000000"
+    },
+    {
+      "name": "arm-adi transfer: n = 0",
+      "spec": "debug §6",
+      "fns": {
+        "15": "oep.target.arm-adi"
+      },
+      "state": "session S; connection 1 (swd) open",
+      "request_hex": "0158000f00014433221101000000",
+      "answer_hex": "0258000100000000000000"
+    },
+    {
       "name": "console marks: one attach mark",
       "spec": "common §1.3, console §1",
       "fns": {

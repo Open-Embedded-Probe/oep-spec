@@ -397,8 +397,10 @@ probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ�
 - **step** は dcsr.step を立てて resume を 1 回だけ出し、戻ったら dcsr.step を下ろす。dpc が動かなくても失敗にしない（status ok、moved = 0。自分自身へ
   跳ぶ命令は正しく進んでも dpc が同じなので、host が命令を読んで判断する）。prv は変えない。
   hart が debug mode に戻らなければ、probe は haltreq を立てて待つ。hart が止まれば、dcsr.step を下ろし、
-  DATA1 / DATA0 を戻し、dpc_after を有効にして status state で答える。止まらなければ、haltreq を下ろし、応答の TLV 0x01 step_left
+  DATA1 / DATA0 を戻して status state で答える。止まらなければ、haltreq を下ろし、応答の TLV 0x01 step_left
   （長さ 0）を付けて status state で答える: dcsr.step が立ったままかもしれず、hart は走っている。host はそれを止めて dcsr.step を下ろす。
+- step の moved、dpc_before、dpc_after は status ok のときだけ意味を持つ。ok でなければ、probe はどれも 0 にし、host は読まない（hart が
+  止まっていれば、host は dpc を dmi で読む）。
 
 ### 4.3 reset
 
@@ -436,6 +438,9 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
   failed で返す（dpc と値はすべて有効）。止められなければ stopped = 2、status timeout、outcome failed、nvals = 0（dpc は無効）。
   走らせる前の準備（レジスタ、dcsr、pc の設定）が失敗したら、probe は走らせずに stopped = 3（hart は止まったまま）、status はその失敗、outcome failed、
   nvals = 0（dpc は無効）で返す。応答の形はいつも同じ（`run_stopped`: 0 時間切れで止めた、1 止まった、2 止められなかった、3 走らせなかった）。
+  無効な dpc は 0。
+- **elapsed_us** は、probe が hart を走らせた書き込み（resumereq）から、止まったのを見た（stopped 1）、上限で止めた（0）、止めるのを
+  諦めた（2）ときまでの、probe が測った時間（µs）。stopped 3 では 0。
 - regno は RISC-V の抽象レジスタ番号（a0 = 0x100A）。
 
 ### 4.5 read_block、write_block
@@ -497,6 +502,7 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
 
 - ack は最後の転送の生の ACK（`swd_ack`: 線の順で bit0 が最初。OK = 1、WAIT = 2、FAULT = 4。無応答は status line）。req の bit4-7 が
   0 でなければ rejected malformed（req が転送の引数の長さを決めるので、知らない req では要求の残りを読めない。知らない dmi の kind と同じ）。nvals は読んだ値の数（最初の done 個の転送のうち読み出しの数）。
+  n = 0 は success で、done 0、status ok、ack 0（転送が 1 つも無ければ ack は 0）、nvals 0。
 - transfer は生の転送で、AP の読み出しが 1 つ遅れて返るのもそのまま（host が RDBUFF か次の AP の読み出しで受け取る）。
   WAIT は probe の中で再試行し、諦めたら status wait。FAULT で止まるので、host は ABORT で sticky を消す。
 - read_block / write_block の 1 回の長さと読みの意味は riscv-dm（§4.5）と同じ: describe の max_length（byte 数、4 の倍数、要求も応答も
