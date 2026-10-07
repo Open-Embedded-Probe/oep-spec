@@ -127,9 +127,10 @@ configure の応答で probe が返す値:
 
 **ストリーミングの規則**:
 
-1. 送る余地が無いとき、probe は**新しい**データを捨てる（すでに積んだデータは送る）。捨てた量は、次のデータのフレームの position の飛びと、
+1. 送る余地が無いとき、probe は**新しい**区画を丸ごと捨てる（すでに積んだデータは送る。§2.2）。捨てた量は、次のデータのフレームの position の飛びと、
    status の flags bit0 に現れる。
 2. stop の後も、probe は stop の前に取った分を送る。受け取った position の末尾が、stop の後の status の write_pos に等しくなれば、host はすべて受け取っている。
+   エラーで止まったとき（state 6）は、受け取ったデータのうち write_pos から先を捨てる（§2.2）。
 3. ストリーミングでは区画の出来事を送らない（stopped は送る）。
 4. 通知で送ったデータは read で読めないことがある（読めない位置は gap 付きの空の応答を返す）。
 
@@ -159,11 +160,18 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | flags | bit0 前の区画との間が空いた（リピートで空き区画がなかった、ストリーミングで押し出された）、bit1 短い（stop で終わった）、bit2 時間の基準が曲がった（予定の時刻を 1 サンプル周期以上過ぎて取ったサンプルがある） |
 
 - 区画の中は連続を約束する。リピートとストリーミングでは、flags bit0 が立っていない限り、区画は前の区画の直後から続く。
-- probe が区画を連続に保てない（区画の中のデータを落とした）とき、その区画をデータとして出さない: segments に載せず、出来事 segment を送らず、
-  read とストリーミングのデータでそのバイトを返さない。status の write_pos はその区画の先頭のまま。トラックはエラーで止まる（state 6、
-  stopped reason 3）。error は、取り込みのキューやリングがあふれて落としたなら 2（置き場）、DMA やペリフェラルの失敗で落としたなら 1。
-  status の flags bit0 も立つ。ストリーミングで送る余地が無くて捨てる分（§2.1 の規則 1）はこれに当たらない: 送れない新しい区画を丸ごと捨て、
-  次に出す区画の flags bit0 で表す。
+- **区画の隙間と、区画の中の落とし**を、落とした理由で分ける:
+  - **隙間**（flags bit0）: 置き場（リピートの空き区画、ストリーミングの送る余地）が無くて、probe が区画を丸ごと取らない（捨てる）とき
+    だけ。probe はそれを区画の始まりで決める: 区画は、その全部を置ける場所があるときだけ始める。取らなかった区画の次に取る区画に
+    flags bit0 を立て、取得は続く。
+  - **区画の中の落とし**（エラー）: それ以外の理由（取り込みのキューやリングのあふれ、DMA やペリフェラルの失敗）で落としたサンプルは、
+    区画の境目にあっても、そのサンプルを含むはずの区画の中の落としである。その区画はデータではない: segments に載せず、出来事 segment を
+    送らない。トラックはエラーで止まる（state 6、stopped reason 3）。error は、あふれなら 2（置き場）、DMA やペリフェラルの失敗なら 1。
+    status の flags bit0 も立つ。status の write_pos はその区画の先頭（その区画の分を数えない）。read は write_pos から先を返さない。
+- probe は区画が終わる前に、その区画のデータを read で返し、ストリーミングで送ってよい（取ったものをそのまま送る作りのため）。
+  区画が終わるまで、そのデータが区画として出るかは決まっていない: **トラックがエラーで止まったら、host は受け取ったデータのうち
+  write_pos から先（position が write_pos 以上のバイト）を捨てる**。区画として出た（segments に載った、出来事 segment が来た）区画の
+  データは、その後のエラーで取り消されない。
 - flags bit2 は、probe が自分で遅れを見つけられるときに立てる。
 - 区画の情報は本文とは別の小さなリングにためる（いくつ覚えるかは probe が決める）。
 
@@ -195,7 +203,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 - state: 0 未設定、1 設定済み、2 トリガ待ち、3 取得中、4 完了（ワンショット）、5 止まっている（リピートで空き区画なし）、
   6 エラー。
 - `serial_done` は次に終わる区画の serial（start から終わった区画の数を 2^32 で割った余り）、`write_pos` は取り終えたバイト位置（position の空間。**捨てた分を含む**: 次に書くバイトの位置）。
-- status の `flags`: bit0 probe の中でデータを落とした（取り込みのキューやリングがあふれた）、bit1 時間の基準が曲がった
+- status の `flags`: bit0 データを落とした（ストリーミングで丸ごと捨てた区画（§2.1 の規則 1）か、区画の中の落とし（§2.2））、bit1 時間の基準が曲がった
   （区画の flags の bit2 と同じ）。ほかのビットは予約（0）。**start で 0 に戻し、その回の累積**。state 6 のときは応答の TLV 0x01 error（u8:
   1 DMA / ペリフェラル、2 置き場、3 時計、0x40〜 probe 固有。registry の enum `error`）で理由を返す。
 - **generation**: read と release は今の世代を要求に置く。違えば rejected unavailable（cause 6）。start 前は 0。
@@ -214,11 +222,14 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 |---:|---|---|---|---|---|---|
 | 0 未設定 | → 1 | unavailable 6 | — | — | — | plan 無しの configure / query も unavailable 6 |
 | 1 設定済み | → 1 | → 2（トリガあり）/ 3。世代 +1、区画は消える | — | — | — | |
-| 2 トリガ待ち | unavailable 6 | unavailable 6 | → 1（stopped 1） | → 3 | — | トリガ → 3（triggered） |
+| 2 トリガ待ち | unavailable 6 | unavailable 6 | → 1（stopped 1） | → 3 | — | トリガ → 3（triggered）、エラー → 6（stopped 3） |
 | 3 取得中 | unavailable 6 | unavailable 6 | → 1（stopped 1、短い区画 bit1） | — | 空きを返す | 完了 → 4（stopped 0）、空き無し → 5、エラー → 6（stopped 3） |
 | 4 完了 | → 1 | → 2 / 3（世代 +1） | — | — | — | |
 | 5 止まっている | unavailable 6 | unavailable 6 | → 1 | — | 空きができれば → 3（flags bit0） | |
 | 6 エラー | → 1 | → 2 / 3（世代 +1） | → 1 | — | — | |
+
+**エラー**: トラックが state 6 に入るのは取得の失敗（§2.2 の区画の中の落としを含む）のときだけで、そのときは理由によらず必ず
+出来事 stopped を reason 3 と、status の error と同じ error で送る（購読していれば。§3.4）。
 
 plan_release（[plan](oep-if-plan.ja.md)）か、セッションの終わり（end、lease の期限切れ、force、core §9）で plan が解けたら state 0 に戻り、データも区画も消える（read は空）。mode 3（ストリーミング）の
 start は、その fn の購読が無ければ rejected unavailable（cause 6）。取得中に購読が消えたら取り続け、送れない分は捨てる（position が飛ぶ）。
@@ -288,7 +299,7 @@ mode 2 だけ、skew は遅れが 0 のチャネルを省いてよい。チャ�
 | 送るもの | いつ | 中身 |
 |---|---|---|
 | 出来事 kind 0x01 segment | 区画が終わった（ワンショットの完了も。ストリーミングでは送らない） | 区画の情報（§2）、[TLV] |
-| 出来事 kind 0x02 stopped | 取得が止まった | reason(u8: 0 完了、1 host の stop、2 予約（空き区画なしは送らない）、3 エラー)、error(u8: reason 3 の理由、status の error と同じ値)、generation(u32)、[TLV] |
+| 出来事 kind 0x02 stopped | 取得が止まった | reason(u8: 0 完了、1 stop（host の stop。組（§4）が止めたときも）、2 予約（空き区画なしは送らない）、3 エラー（state 6 に入るときは必ずこれ、§3.2）)、error(u8: reason 3 の理由、status の error と同じ値)、generation(u32)、[TLV] |
 | 出来事 kind 0x03 triggered | トリガが立った | serial(u32)、trigger_index(u32)、trigger_ns(u64: probe の時計でトリガが立った時刻の推定値)、generation(u32)、[TLV] |
 | データ（role 0x06） | ストリーミングの間だけ | core §11.2 の形（position、len、data、TLV）。read と同じ位置の空間。**TLV 0x01 generation(u32) を必ず付ける**（start の応答の後に前の世代の送り残しが届きうるため） |
 
@@ -379,8 +390,9 @@ bind の TLV:
   そのトラックを付けて rejected unavailable cause 6）、それから束ねたトラックをできるだけ同時に始め、組の開始の時刻 start_ns（probe の時計）、
   組の新しい世代、各トラックの新しい世代を返す（各トラックの start と同じく generation を +1）。n は束ねたトラックの数で、各 fn を bind の
   順に 1 回ずつ置く。**組の世代**は組の start ごとに 1 進め、規則はトラックの世代と同じ（起動後の最初の start で 1、0xFFFFFFFF の次は 1、
-  0 は最初の start の前。bind し直しても続きから）。始めた後にトラックが失敗したら、組は state 6、
-  stopped reason 3 で、ほかのトラックも止める。**start_ns は取得（pretrigger のリングを含む）を始めた時刻**。即時トリガのとき、トラックの
+  0 は最初の start の前。bind し直しても続きから）。始めた後にトラックが失敗したら（そのトラックは state 6、stopped
+  reason 3）、組は state 6 で、組の stopped は reason 3 とそのトラックの error（2 本以上なら、そのどれか 1 本の error）。ほかのトラックは
+  組の stop と同じに止める（state 1、短い区画は flags bit1、stopped reason 1）。**start_ns は取得（pretrigger のリングを含む）を始めた時刻**。即時トリガのとき、トラックの
   ずれは、その最初の区画の start_ns − 組の start_ns（推定値）。start 前の status の start_ns と trigger_ns は全ビット 1。
 - **トリガ**: trigger_track の条件が立つと、組の全トラックが取得を始める。
 - **組の pretrigger** は trigger_track の pretrigger（P サンプル）だけで、全トラックに**同じ時間の長さ**として及ぶ: ほかのトラック k は、
@@ -405,7 +417,7 @@ bind の TLV:
 | 送るもの | いつ | 中身 |
 |---|---|---|
 | 出来事 kind 0x03 triggered | trigger_track の条件が立った（force で始めたときも） | trigger_fn(u16: force では 0)、trigger_ns(u64)、generation(u32: 組の世代)、[TLV] |
-| 出来事 kind 0x02 stopped | 全トラックが止まった | reason(u8: トラックの stopped と同じ)、error(u8)、generation(u32: 組の世代)、[TLV] |
+| 出来事 kind 0x02 stopped | 全トラックが止まった | reason(u8: トラックの stopped と同じ)、error(u8: reason 3 では state 6 に入ったトラックの error、§4.1)、generation(u32: 組の世代)、[TLV] |
 
 kind の番号はトラック（§3.4）と揃える（triggered 3、stopped 2）。triggered はトラックの出来事としても出る（両方に出る）。組の出来事も
 トラックと同じく世代を持ち、host は今の組の世代と違うものを前の世代のものとして扱う。

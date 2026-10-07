@@ -680,3 +680,23 @@ def test_a_bound_track_keeps_the_groups_pretrigger_as_a_time():
     assert ans[4] == REG["reject_reasons"]["unavailable"]
     unav, cause = core["tlv"]["unavailable_payload"], core["enum"]["unavailable_cause"]
     assert tlvs(ans[5:]) == [(unav["cause"], bytes([cause["limit"]])), (unav["fn"], struct.pack("<H", 13))]
+
+
+def test_streamed_bytes_at_or_past_write_pos_are_dropped_after_an_error():
+    """capture §2.1 rule 2, §2.2: a segment's data may be streamed before it ends; after the track stops in error (state 6), the host
+    keeps only the received bytes below status's write_pos, the start of the segment that was not kept."""
+    logic = next(i for i in REG["interface"] if i["name"] == "oep.fixture.logic")
+    e = logic["enum"]
+    (d,) = [x for x in load("ops.json")["data"] if x["name"].startswith("logic data: a frame running into")]
+    f = bytes.fromhex(d["frame_hex"])
+    role, fn, _seq, position, n = struct.unpack_from("<BHHQH", f)
+    assert role == REG["roles"]["data"] and fn == 9
+    body, tail = f[15:15 + n], f[15 + n:]
+    assert tlvs(tail) == [(logic["tlv"]["data"]["generation"], struct.pack("<I", d["generation"]))]
+    by = {c["name"]: bytes.fromhex(c["answer_hex"])[5:] for c in load("ops.json")["cases"]}
+    state, serial_done, write_pos, flags, generation = struct.unpack_from(
+        "<BIQBI", by["logic status: streaming stopped in error, write_pos at the lost segment's start"])
+    assert (state, generation, flags & e["status_flag"]["dropped"]) == (e["state"]["error"], d["generation"], e["status_flag"]["dropped"])
+    assert position < write_pos < position + n                                     # the frame runs past the kept data
+    kept = body[:max(0, write_pos - position)]
+    assert len(kept) == d["keep"] and kept == bytes(range(24, 32))                  # serial 1's tail kept, serial 2's head dropped

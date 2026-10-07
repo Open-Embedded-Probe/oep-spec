@@ -289,8 +289,10 @@ rejected は要求が受け付けられなかったこと、completed failed / p
   中継のブローカーを通しても同じに使える: ブローカーは clock に自分で答えず probe に中継するので、値は probe のもので、中継の遅れは往復に
   入る（transports §1）。probe が生きているかは応答の待ち時間で、再起動は confirm、clock、open の boot_id で分かる（core §6.5）。
 - 通知は購読を受けた経路に送られる。同じ session_id の open を別の経路で送ると、そちらに移る（core §6.2）。
-- キャプチャの流し続けには独自の規則がある: 送る余地が無いと probe は新しいデータを捨て、stop の前に取った分は送り続け、stop の後で
-  受けた位置の終わりが status の write_pos と等しくなれば host はすべてを持っている（[キャプチャ](../interfaces/oep-if-capture.ja.md) §2.1）。受けている
+- キャプチャの流し続けには独自の規則がある: 送る余地が無いと probe は新しい区画を丸ごと捨て、stop の前に取った分は送り続け、stop の後で
+  受けた位置の終わりが status の write_pos と等しくなれば host はすべてを持っている（[キャプチャ](../interfaces/oep-if-capture.ja.md) §2.1）。
+  probe は区画が終わる前にその区画のデータを送ることがある。トラックがエラーで止まったら（stopped reason 3、state 6）、status を読み、
+  受けたデータのうち write_pos から先を捨てる（区画の中で落とした区画は、データではない。キャプチャ §2.2）。受けている
   間はロックを保つ。
 
 ## 13. plan とピン

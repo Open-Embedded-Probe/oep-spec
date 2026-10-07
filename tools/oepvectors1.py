@@ -841,7 +841,7 @@ def ops() -> dict:
             ok(corr, struct.pack("<BIH", 0, len(wire), 2) + spi_pack(wire, lsb)))
 
     # events (core §11.2): role, fn, seq, kind, the fixed part; every capture event carries its generation (capture §3.4, §4.2)
-    events = []
+    events, data = [], []
 
     def event(name, spec, fns, state, fn, seq, kind, fixed, generation):
         frame = struct.pack("<BHHB", REG["roles"]["event"], fn, seq, kind) + fixed
@@ -857,6 +857,18 @@ def ops() -> dict:
     event("logic stopped: data dropped inside a segment, error 2", "capture §2.2, §3.4", lg,
           "fn 9 subscribed; generation 1; the capture ring overflowed inside serial 2", 9, 9, le["stopped"],
           struct.pack("<BBI", reason["error"], IFACE["oep.fixture.logic"]["enum"]["error"]["storage"], 1), 1)
+    # capture §2.1 rule 2, §2.2: data of a segment may be sent before it ends; when the track stops in error the host drops what it got at
+    # or past status's write_pos (the start of the segment that was not kept)
+    sdrop = ("streaming, 1 channel w 8, the probe's segments 16 samples (16 bytes), generation 1: serials 0 and 1 done (bytes 0-31); "
+             "bytes 24-39 sent in one frame; then the capture ring overflowed inside serial 2")
+    data.append({"name": "logic data: a frame running into the segment that is then lost", "spec": "capture §2.2, §3.4; core §11.2",
+                 "fns": lg, "state": sdrop, "generation": 1, "keep": 8,
+                 "frame_hex": hx(struct.pack("<BHHQH", REG["roles"]["data"], 9, 10, 24, 16) + bytes(range(24, 40))
+                                 + tlv(IFACE["oep.fixture.logic"]["tlv"]["data"]["generation"], struct.pack("<I", 1)))})
+    add("logic status: streaming stopped in error, write_pos at the lost segment's start", "capture §2.2, §3.2", lg, sdrop,
+        request(0xA1, 9, op("oep.fixture.logic", "status"), b""),
+        ok(0xA1, struct.pack("<BIQBI", lst["state"]["error"], 2, 32, lst["status_flag"]["dropped"], 1)
+           + tlv(lt["status_answer"]["error"], bytes([lst["error"]["storage"]]))))
     event("capture-group triggered: the group's generation", "capture §4.2", grp, "fn 12 subscribed; group generation 5; fn 9's trigger at 7.05 ms",
           12, 0, ge["triggered"], struct.pack("<HQI", 9, 7_050_000, 5), 5)
     event("capture-group stopped: the group's generation", "capture §4.2", grp, "as above; every track done", 12, 1, ge["stopped"],
@@ -864,9 +876,11 @@ def ops() -> dict:
     return {
         "about": "Per-op byte vectors. `fns` says which interface each fn number is in the example; `state` is the probe state the answer assumes. "
                  "Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0. "
-                 "`events` are notification frames (core §11.2) with the generation each carries.",
+                 "`events` are notification frames (core §11.2) with the generation each carries; `data` are data frames, with `keep` the bytes "
+                 "from the frame's start the host keeps.",
         "cases": cases,
         "events": events,
+        "data": data,
     }
 
 

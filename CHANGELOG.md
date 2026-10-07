@@ -29,6 +29,20 @@ Ambiguities the probe implementer found in capture up to dd5a886. Japanese only 
   refuses unavailable (cause 2, TLV fn) a track that cannot keep P_k (above its max_pretrigger, or in mode 1 / 2 not below its
   actual_samples). A group without trigger_track has no pretrigger. Registry comment (trigger_track), generated code, vector (`ops.json`:
   the bind refusal), test, conformance and the host guide example (the analog track no longer sends pretrigger) follow.
+- Capture §2.1, §2.2, §3.2: **a segment's data may be read or streamed before the segment ends** (a zero-copy path), and a host never
+  takes a holey segment as data: when the track stops in error, status's write_pos is the start of the segment that was not kept and the
+  host drops every byte it received at or past write_pos. A segment already handed out (listed, or its segment event sent) is never taken
+  back. Losses are split by cause: a **gap** (flags bit0 on the next segment, capture continues) only when there is no place for a whole
+  segment (repeat: no free segment; streaming: no room to send), decided when a segment would start, since a segment starts only where
+  all of it fits; **any other lost sample** (queue or ring overflow, DMA or peripheral failure) is a loss inside the segment that should
+  have held it, even at a segment boundary: error as before. status flags bit0 names both streaming's dropped segments and losses inside
+  a segment.
+- Capture §3.2, §3.4, §4.1, §4.2: a track enters state 6 only for an acquisition failure, and then always sends stopped reason 3 with
+  status's error; the state table now shows the error transition from state 2 too. In a capture-group, the failed track is in state 6
+  and the group's stopped has reason 3 with that track's error (any one, if several); the other tracks stop as by the group's stop
+  (state 1, short segments flags bit1, stopped reason 1, which now reads "stop", the host's or the group's).
+- Vectors (`ops.json`: a new `data` list with a streamed frame running into the lost segment, and the status after it), tests and
+  conformance follow.
 
 ### Logic capture: any sample width, seamless segments, multirate (2026-10-07)
 

@@ -1,5 +1,5 @@
 {
-  "about": "Per-op byte vectors. `fns` says which interface each fn number is in the example; `state` is the probe state the answer assumes. Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0. `events` are notification frames (core §11.2) with the generation each carries.",
+  "about": "Per-op byte vectors. `fns` says which interface each fn number is in the example; `state` is the probe state the answer assumes. Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0. `events` are notification frames (core §11.2) with the generation each carries; `data` are data frames, with `keep` the bytes from the frame's start the host keeps.",
   "cases": [
     {
       "name": "restart: completed success, sent before the probe restarts",
@@ -932,6 +932,16 @@
       "state": "session S; configured with bit_order 1; one transaction queued: CS ended after 12 MOSI bits 1 1 0 0 0 0 0 0 1 0 1 1 (in wire order); no ns TLV",
       "request_hex": "018d000e000344332211",
       "answer_hex": "028d000100000c0000000200030d"
+    },
+    {
+      "name": "logic status: streaming stopped in error, write_pos at the lost segment's start",
+      "spec": "capture §2.2, §3.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "streaming, 1 channel w 8, the probe's segments 16 samples (16 bytes), generation 1: serials 0 and 1 done (bytes 0-31); bytes 24-39 sent in one frame; then the capture ring overflowed inside serial 2",
+      "request_hex": "01a10009000500000000",
+      "answer_hex": "02a100010006020000002000000000000000010100000001010002"
     }
   ],
   "events": [
@@ -988,6 +998,19 @@
       "state": "as above; every track done",
       "generation": 5,
       "event_hex": "050c00010002000005000000"
+    }
+  ],
+  "data": [
+    {
+      "name": "logic data: a frame running into the segment that is then lost",
+      "spec": "capture §2.2, §3.4; core §11.2",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "streaming, 1 channel w 8, the probe's segments 16 samples (16 bytes), generation 1: serials 0 and 1 done (bytes 0-31); bytes 24-39 sent in one frame; then the capture ring overflowed inside serial 2",
+      "generation": 1,
+      "keep": 8,
+      "frame_hex": "0609000a001800000000000000100018191a1b1c1d1e1f202122232425262701040001000000"
     }
   ]
 }
