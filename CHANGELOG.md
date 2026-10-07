@@ -40,6 +40,22 @@ Japanese is the working text.
   §15.1: setting Wi-Fi (prompt for the passphrase, never print or log it, compare entries without it, 0xFF keeps it only at the same
   index, changing the entry in use drops a TCP link). Conformance and glossary follow.
 
+### External review core re-check (2026-10-07, 0991759)
+
+From the core re-check of 0991759 in `docs/external-spec-review-2026-10-06.ja.md`; verdicts in
+`docs/external-spec-review-2026-10-07-response.ja.md`. Japanese only while Japanese is the working text. No byte layout changes.
+
+- Core §7.3: each describe TLV fits every transport's max_frame together with the answer header (5) and `more` (1), so a TLV's value is
+  at most the smallest max_frame - 9 bytes. Registry comment on describe; conformance follows.
+- Core §7.3 end of paging: a first at or past the count answers no elements and more 0; an answer with an element count field puts 0
+  there. describe past the end is `more` 0 alone (as the existing vector shows); get carries its hash and no items. Conformance and
+  glossary follow.
+- Core §9 (and §2.5): resource numbers are 1 to 65535; the first after boot is 1, and 0 is never assigned, so an interface may use 0
+  as "none" (probe.config's slot_state connection). Standard interface common parts §2, conformance and glossary follow.
+- Core editorial: fn is fixed while boot_id is the same (§1, not "the session"); §4.4 "these limits" for max_frame, window and
+  max_inflight; boot_id is a value chosen to change at each boot (§6.5), so the allowed repeats of the last source no longer read as a
+  contradiction. Glossary and conformance follow.
+
 ### External review re-re-check (2026-10-07, 764b110)
 
 From the re-re-check of 764b110 in `docs/external-spec-review-2026-10-06.ja.md`; verdicts in

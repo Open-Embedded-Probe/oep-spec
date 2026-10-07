@@ -187,7 +187,7 @@ connection_closed = 4
 op = [
   { code = 0x01, name = "confirm", lock = false },     # answer carries boot_id (core §7.1)
   { code = 0x02, name = "list", lock = false },
-  { code = 0x03, name = "describe", lock = false },
+  { code = 0x03, name = "describe", lock = false },    # answer: more(u8) TLVs; each TLV with the header 5 and more 1 fits every transport's max_frame; past the end: more 0, no TLVs (core §7.3)
   { code = 0x04, name = "clock", lock = false },       # answer: boot_id(u32) uptime_ns(u64), the clock read while handling the request (core §7.7)
   { code = 0x10, name = "open", lock = false },
   { code = 0x11, name = "end", lock = true },

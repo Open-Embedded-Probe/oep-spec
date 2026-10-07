@@ -37,7 +37,7 @@ OEP の外: probe 自身の firmware の更新（DFU、Mass Storage など）、
 | 経路（transport） | OEP のフレームを運ぶもの（UART bridge、USB CDC、内蔵の USB シリアル、USB の vendor bulk、HID、TCP） |
 | シリアルの口（serial port） | 経路のうち OS からシリアルデバイスに見えるもの（UART bridge、USB CDC、内蔵の USB シリアル）。OEP と生のバイトを共用する（[経路](oep-transports.ja.md) §4） |
 | インターフェース | probe が名前で出す機能。list で見つけ、fn で呼ぶ |
-| fn | そのセッションの間、インターフェースを指す番号（u16）。fn 0 は本体（名前を持たず、list に載らない） |
+| fn | 同じ boot_id の間、インターフェースを指す番号（u16、§7.2）。fn 0 は本体（名前を持たず、list に載らない） |
 | op | インターフェースの中の操作の番号（u8） |
 | セッション | ロックを持って状態を変える権利。host が選ぶ session_id（u32）で識別する |
 | lease | ロックの期限。keepalive などの要求で延びる |
@@ -136,7 +136,7 @@ tag(u8) | len(u16) | value(len byte)
 | 出来事の kind | fn ごとの空間。0x01〜0x7F はインターフェースが決める、0x80〜0xFF は予約（fn 0 は通知を送らない、§11.2） |
 | TLV の tag | (fn, op) の文脈ごと。番号は下位 7 bit で、bit 7 は critical の印（§2.2）。0x00 と 0x7F は全文脈で予約 |
 | describe の tag | 0x01〜0x3F 本体の共通タグ（§7.4）、0x40〜0x7E インターフェース |
-| 資源の番号 | u16、probe で 1 つの空間（§9） |
+| 資源の番号 | u16（1〜65535、0 は割り当てない）、probe で 1 つの空間（§9） |
 
 定義が別に言わない限り、enum の使っていない値と要求の予約のビットは、どれも後から定義されうる（§2.7）。probe はそれらを rejected unsupported で断る。
 
@@ -240,7 +240,7 @@ unsupported の payload の tag は、固定部分の値なら 0x00、TLV につ
 
 - confirm（§7.1）で probe は `max_frame`（受け取る最大の message 長）、`window`（未解決の要求の message 長の合計の上限）、
   `max_inflight`（未解決の要求の数の上限）を返す。message 長は見出し（role から）を含み、フレームの包み（COBS、CRC、length）は含まない。
-- host は両方の上限を守る。超えた要求を probe は rejected window_exceeded で断ってよいが、バッファを超えて失われた要求には
+- host はこれらの上限を守る。超えた要求を probe は rejected window_exceeded で断ってよいが、バッファを超えて失われた要求には
   応答も返らない。守るのは host の責任である。
 - probe は要求を受け取った順に処理し、応答を受け取った順に返す。
 - confirm の max_frame、window、max_inflight は、**その confirm が来た経路の**上限である。経路ごとに別々に数え、ある経路で未解決の要求は、ほかの経路の受けの余地を使わない。§5.2 の表は probe に 1 つのまま（セッションの要求は 1 つの経路で送る、[経路](oep-transports.ja.md) §3）。
@@ -327,7 +327,7 @@ owner を覚えている。§5.2 の表の判定（送り直し）はこの表�
 
 ### 6.5 boot_id
 
-boot_id は probe の起動ごとに変わる値で、confirm（§7.1）、clock（§7.7）と open の応答に入る（同じ値）。probe は boot_id を、次の好ましい順に取る: ハードウェアの乱数源（32 bit）。不揮発の記憶に置き、起動ごとに変える値（数え上げ、または保存した乱数）。どちらも無ければ、起動ごとに変わる値を混ぜたもの（初期化していない RAM、ADC の入力の変換の雑音、最初の USB や UART の動きなど外からの出来事が来たときの、止まらないタイマーの数）。起動のコードの決まった場所で読んだタイマーは、そうした値ではない。最後の素しか持たない probe は boot_id を繰り返しうるし、host はその確率を受け入れる。0 も普通の値。host は、boot_id が変わった
+boot_id は probe が起動ごとに変わるように選ぶ値で、confirm（§7.1）、clock（§7.7）と open の応答に入る（同じ値）。probe は boot_id を、次の好ましい順に取る: ハードウェアの乱数源（32 bit）。不揮発の記憶に置き、起動ごとに変える値（数え上げ、または保存した乱数）。どちらも無ければ、起動ごとに変わる値を混ぜたもの（初期化していない RAM、ADC の入力の変換の雑音、最初の USB や UART の動きなど外からの出来事が来たときの、止まらないタイマーの数）。起動のコードの決まった場所で読んだタイマーは、そうした値ではない。最後の素しか持たない probe は boot_id を繰り返しうるし、host はその確率を受け入れる。0 も普通の値。host は、boot_id が変わった
 とき、そのセッションの資源（インターフェースの資源）と、覚えた fn の対応、資源の番号、ストリームの位置がすべて無効になったとみなす。
 ロックを持たない host（監視、発見）は confirm か clock で再起動を知る。
 
@@ -377,13 +377,13 @@ entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
 ```
 
 fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返す。more = 1 なら続きがあり、host は first に受け取った TLV の数を
-足してもう一度聞く。probe は TLV を 1 つずつ、自分のどの経路の max_frame にも収まる大きさにする（describe は経路によらない）。fn 0 は probe 全体の宣言。
+足してもう一度聞く。probe は各 TLV を、応答の見出し 5 byte と more 1 byte を足しても自分のどの経路の max_frame にも収まる大きさにする（TLV の値は、いちばん小さい max_frame − 9 byte まで。describe は経路によらない）。fn 0 は probe 全体の宣言。
 
 **describe は宣言だけを返す**: 同じ boot_id の間、TLV の並びと値は変わらない（host は boot_id が同じ間 cache してよく、ページングは
 途中で設定が変わっても崩れない）。変わるもの（接続、保存の有無、スロットの状態、空き容量）は、インターフェースが状態を返す op
 （ロック不要）で出す。
-- **ページングの終わり**（describe、state、connections、streams、segments、get に共通）: first が数以上なら count 0 と more 0 を
-  返す。host は more = 0 で止める。list は more を持たず、total で終わりが分かる（§7.2）。
+- **ページングの終わり**（describe、state、connections、streams、segments、get に共通）: first が数以上なら、要素を 0 個、more 0 で
+  返す（要素の数の欄を持つ応答では、その欄は 0）。host は more = 0 で止める。list は more を持たず、total で終わりが分かる（§7.2）。
 
 ### 7.4 describe の共通タグ（0x01〜0x3F）
 
@@ -486,7 +486,7 @@ channel（probe のピン、§1）は、インターフェースがそれを取�
   （誰が使っているか、いつ閉じるか）。
 - 保存した設定（インターフェースが定める）から入れた資源は、セッションの資源ではない。
 - **資源の番号は u16 で、probe で 1 つの空間**（connection、ストリームなど、インターフェースが番号で指すものすべて。別のインター
-  フェースの資源を渡されたら rejected unavailable cause 6）。新しい資源を作るたびに前の番号から 1 進め（65535 の次は 1、§2.6）、使用中の番号は
+  フェースの資源を渡されたら rejected unavailable cause 6）。番号は 1〜65535 で、0 はどの資源にも割り当てない（インターフェースは 0 を「無し」に使える）。起動後の最初の資源は 1 で、新しい資源を作るたびに前の番号から 1 進め（65535 の次は 1、§2.6）、使用中の番号は
   飛ばす。閉じた資源の番号を使った要求は rejected no_connection。一周の後は古い番号が
   別の資源を指しうる: host は no_connection を受けた番号を捨て、長く持つ番号は一覧の op（connections、streams）で確かめる。
 

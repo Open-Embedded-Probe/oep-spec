@@ -45,9 +45,9 @@ probe は、自分が出す transport とインターフェースについてこ
 - ロックは一つ、§6.2 の判定表、lease の再開始と実行中は数えないこと（§6.1）。
 - open / end / keepalive / lock_state / force / owner（§6.4）。lease は 1000〜60000 ms に丸める（§6.4）。session_id 0 は断る（§6.1）。
 - 再送の表: 少なくとも max_inflight 件、rejected の答えも覚える、成功した open のたびに捨てる、probe に一つ（§5.2）。
-- ロック不要の op は状態を変えない（§6.3）。boot_id は起動のたびに変わり、§6.5 の素をその順に使う（§6.5）。
+- ロック不要の op は状態を変えない（§6.3）。boot_id は起動のたびに変わるように、§6.5 の素をその順に使って選ぶ（§6.5）。
 - 時計: 起動からの ns で、同じ boot_id の間、減らず一周しない（§2.6a）。
-- セッションが作ったものはすべて、そのロックが終わるとき end、期限切れ、force のどれでも同じに解放し、再送された open では残す（§9）。再開は無い（§6.4）。資源の番号（§9）。閉じたコンソールのストリームは、同じ場所で同じ mechanism が次に open されるまで読める（[コンソール](../interfaces/oep-if-console.ja.md) §2）。
+- セッションが作ったものはすべて、そのロックが終わるとき end、期限切れ、force のどれでも同じに解放し、再送された open では残す（§9）。再開は無い（§6.4）。資源の番号（1〜65535、起動後の最初は 1、0 は割り当てない、§9）。閉じたコンソールのストリームは、同じ場所で同じ mechanism が次に open されるまで読める（[コンソール](../interfaces/oep-if-console.ja.md) §2）。
 
 **fn 0（本体。名前を持たず、list に載らない）**
 
@@ -55,7 +55,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - confirm: revision の選び方、transport TLV、扱える範囲つきの断り。max_frame は 64 以上、window は max_frame 以上、
   max_inflight は 1 以上（§7.1）。
 - list: fn 0 を載せない、instance の番号、boot_id が同じ間は答えが変わらない、first が total 以上なら total と count 0（§7.2）。
-- describe: ページ送り、宣言だけで boot_id が同じ間は変わらない（§7.3）。経路によらないので、各 TLV と max_length は probe のどの経路の max_frame にも収まる（§7.3、§7.4）。
+- describe: ページ送り、first が数以上なら more 0 だけで TLV 無し、宣言だけで boot_id が同じ間は変わらない（§7.3）。経路によらないので、各 TLV は応答の見出し 5 byte と more 1 byte を足しても、max_length はその op の要求と応答で、probe のどの経路の max_frame にも収まる（§7.3、§7.4）。
 - clock: boot_id と uptime_ns（要求を受けてから応答を送るまでの間に読んだ時計）。ロック不要で、session_id 0 ならセッションが無くても、ほかのセッションが
   ロックを持っていても答え、セッション、ロック、lease に触れない。中継のブローカーは自分で答えず中継する（§7.7、transports §1）。
 - fn 0 の describe の必須の tag: unit_id、transport（transport ごとに一つ、interface の欄は §7.5 のとおり）、channel を持つなら channels（番号は 0〜channels − 1）、max_op_ms（1〜

@@ -63,7 +63,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 出来事 | event | kind と固定部分を持つ通知 | core §11.2 |
 | データ | data | 位置つきでストリームのバイトを運ぶ通知 | core §11.2 |
 | corr | corr | host が要求に付ける u16 の番号。1 ずつ進め、0 は使わない。応答が同じ値を持つ | core §4.1 |
-| fn | fn | セッションの間、インターフェースを指す u16。fn 0 は本体（list に載らない） | core §1、§7.2 |
+| fn | fn | 同じ boot_id の間、インターフェースを指す u16。fn 0 は本体（list に載らない） | core §1、§7.2 |
 | op | op | インターフェースの中の操作の u8 の番号 | core §1、§2.5 |
 | resolution | resolution | completed（0x01）か rejected（0x00）。0x02 は予約 | core §4.2 |
 | outcome | outcome | completed の success 0、failed 1、partial 2 | core §4.2 |
@@ -101,8 +101,8 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 期限切れ | lease expiry | lease が尽きた。そのセッションの資源は外れる | core §6.1、§9 |
 | force | force | ほかのセッションからロックを奪う open（認証ではない） | core §6.4 |
 | owner | owner | open に付ける表示の文字列。lock_state と locked で返る | core §6.4 |
-| boot_id | boot_id | 起動のたびに変わる値 | core §6.5 |
-| 資源、資源の番号 | resource, resource number | セッションが作るもの（plan、接続、ストリーム…）。番号は probe に 1 つの空間の u16 で、1 ずつ進め、使用中の番号は飛ばす | core §9 |
+| boot_id | boot_id | 起動のたびに変わるように選ぶ値 | core §6.5 |
+| 資源、資源の番号 | resource, resource number | セッションが作るもの（plan、接続、ストリーム…）。番号は probe に 1 つの空間の u16 で、1 から 1 ずつ進め（0 は割り当てない）、使用中の番号は飛ばす | core §9 |
 | 寿命 | lifetime | end、期限切れ、force、再起動で資源がどうなるか | core §9 |
 
 ## 発見と宣言
@@ -115,7 +115,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | list | list | 名前ごとのインターフェースと、その fn、instance、revision | core §7.2 |
 | describe | describe | インターフェースの、または（fn 0 で）probe 全体の宣言 | core §7.3 |
 | 宣言 | declaration | describe が返すもの。boot_id が同じ間変わらない | core §7.3 |
-| ページング | paging | more = 1 の間、`first` を進めて聞き直す | core §7.3 |
+| ページング | paging | more = 1 の間、`first` を進めて聞き直す。終わりを越えた first には要素 0 個と more 0 | core §7.3 |
 | 名前、ラベル | name, label (of a name) | `a-z 0-9 - .`。`.` で区切ったラベルが 2 つ以上 | core §7.2、§13 |
 | instance、`name#instance` | instance | 同じ (name, revision) のインターフェースの中の番号。文字で書く形は host ガイド §5.3 | core §7.2 |
 | role_channels、channel_group | role_channels, channel_group | 役が使える channel、決まった組 | core §7.4 |

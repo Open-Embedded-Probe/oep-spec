@@ -99,7 +99,7 @@ marks はロックなしで使える。
 
 - **connection** は、線の attach が作る、ある target への接続。番号（u16）で指し、target の操作の要求は先頭に
   connection を置く。
-- 番号（u16）は core §9 の規則で振る（probe で 1 つの空間、1 進めて一周し、使用中の番号は飛ばす。閉じた番号は
+- 番号（u16）は core §9 の規則で振る（probe で 1 つの空間、1 から進めて一周し（0 は割り当てない）、使用中の番号は飛ばす。閉じた番号は
   rejected no_connection、別の種類の資源の番号は rejected unavailable cause 6）。
 - connection は、**使っているもの**が 1 つでもある間は開いている。使っているもの:
   - attach した host のセッション（セッションごとに 1 つ）
