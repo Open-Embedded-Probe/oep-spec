@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "b0afc33f52a71c63"
+REGISTRY_HASH = "56b9b4ac2b3f3f3f"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -89,7 +89,7 @@ FIXTURE_ANALOG = _NS(name="oep.fixture.analog", revision=1, target=None, op={"co
     line_names={})
 INTERFACES["oep.fixture.analog"] = FIXTURE_ANALOG
 FIXTURE_CAPTURE_GROUP = _NS(name="oep.fixture.capture-group", revision=1, target=None, op={"bind": 0x01, "start": 0x02, "stop": 0x03, "force": 0x04, "status": 0x05, "subscribe": 0x30, "unsubscribe": 0x32}, lock_free={0x05},
-    tlv={"bind": {"trigger_track": 0x01}, "start_answer": {"generations": 0x01}, "describe": {"tracks": 0x40}}, event={"stopped": 0x02, "triggered": 0x03}, enum={"features": {}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}}, own={},
+    tlv={"bind": {"trigger_track": 0x01}, "describe": {"tracks": 0x40}}, event={"stopped": 0x02, "triggered": 0x03}, enum={"features": {}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}}, own={},
     line_names={})
 INTERFACES["oep.fixture.capture-group"] = FIXTURE_CAPTURE_GROUP
 PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, target=None, op={"get": 0x01, "set": 0x02, "save": 0x03, "erase": 0x04, "unset": 0x05, "state": 0x06}, lock_free={0x01, 0x06},

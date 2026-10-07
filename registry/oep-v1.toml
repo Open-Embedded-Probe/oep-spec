@@ -631,7 +631,7 @@ op = [
   { code = 0x30, name = "subscribe", lock = true },      # optional (ops); core §11.3
   { code = 0x32, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
-[interface.tlv.configure]       # also the request of query (the analog-only tag 0x47 frontend is not used here)
+[interface.tlv.configure]       # also the request of query (the analog-only tag 0x47 frontend is not used here); mode and rate required (oep-if-capture §3.3)
 mode = 0x40
 rate = 0x42
 samples = 0x43
@@ -653,10 +653,10 @@ mode = 0x40                     # repeats, one per mode: mode(u8) max_samples(u3
 rate_range = 0x41
 channels = 0x44                 # max(u8)
 trigger = 0x45                  # types(u32 bit set) max_pretrigger(u32)
-[interface.event]
+[interface.event]               # every event carries its generation (oep-if-capture §3.4)
 segment = 0x01                  # the segment record (oep-if-capture §2)
-stopped = 0x02                  # reason(u8) error(u8)
-triggered = 0x03                # serial(u32) trigger_index(u32) trigger_ns(u64)
+stopped = 0x02                  # reason(u8) error(u8) generation(u32)
+triggered = 0x03                # serial(u32) trigger_index(u32) trigger_ns(u64) generation(u32)
 [interface.enum.features]       # none in revision 1; 0x01 / 0x02 / 0x04 reserved (query, force, subscribe and unsubscribe are declared by ops)
 [interface.reserved]
 features = [[0x01, 0x04]]
@@ -712,7 +712,7 @@ op = [
   { code = 0x30, name = "subscribe", lock = true },      # optional (ops); core §11.3
   { code = 0x32, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
-[interface.tlv.configure]       # also the request of query
+[interface.tlv.configure]       # also the request of query; mode and rate required (oep-if-capture §3.3)
 mode = 0x40
 rate = 0x42
 samples = 0x43
@@ -743,10 +743,10 @@ rate_range = 0x41
 channels = 0x44                 # max(u8)
 trigger = 0x45                  # types(u32 bit set) max_pretrigger(u32)
 frontend = 0x46                 # repeats, one per input range: frontend(u8) range_min_mv(i32) range_max_mv(i32) attenuation_mdb(u32)
-[interface.event]
+[interface.event]               # as oep.fixture.logic: every event carries its generation
 segment = 0x01
-stopped = 0x02                  # reason(u8) error(u8)
-triggered = 0x03
+stopped = 0x02                  # reason(u8) error(u8) generation(u32)
+triggered = 0x03                # serial(u32) trigger_index(u32) trigger_ns(u64) generation(u32)
 [interface.enum.features]       # none in revision 1; 0x01 / 0x02 / 0x04 reserved (query, force, subscribe and unsubscribe are declared by ops)
 [interface.reserved]
 features = [[0x01, 0x04]]
@@ -797,26 +797,25 @@ name = "oep.fixture.capture-group"     # oep-if-capture §4: capture / analog tr
 revision = 1
 op = [
   { code = 0x01, name = "bind", lock = true },
-  { code = 0x02, name = "start", lock = true },
+  { code = 0x02, name = "start", lock = true },         # blocking_ms(u32) start_ns(u64) generation(u32) n(u8) n x (fn(u16) generation(u32))
   { code = 0x03, name = "stop", lock = true },
   { code = 0x04, name = "force", lock = true },
-  { code = 0x05, name = "status", lock = false },
+  { code = 0x05, name = "status", lock = false },       # state(u8) start_ns(u64) trigger_ns(u64) trigger_fn(u16) generation(u32)
   { code = 0x30, name = "subscribe", lock = true },      # optional (ops); core §11.3
   { code = 0x32, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
 [interface.tlv.bind]
 trigger_track = 0x01            # fn(u16): the track whose configure trigger starts the group (absent: immediate)
-[interface.tlv.start_answer]
-generations = 0x01              # n x (fn(u16) generation(u32)): each track's new generation
 [interface.tlv.describe]        # plus ops 0x09 and features 0x06 (enum features)
 tracks = 0x40                   # n(u8) n x fn(u16): the tracks it can bind
-[interface.event]               # numbered as the tracks' events
-stopped = 0x02                  # reason(u8) error(u8): as the track's stopped
-triggered = 0x03                # trigger_fn(u16, 0 on force) trigger_ns(u64)
+[interface.event]               # numbered as the tracks' events; the group's generation (start answer, status) in each
+stopped = 0x02                  # reason(u8) error(u8) generation(u32): as the track's stopped
+triggered = 0x03                # trigger_fn(u16, 0 on force) trigger_ns(u64) generation(u32)
 [interface.enum.features]       # none in revision 1; 0x01 / 0x02 / 0x04 reserved (force, subscribe and unsubscribe are declared by ops)
 [interface.reserved]
 features = [[0x01, 0x04]]
 "tlv.describe" = [[0x41, 0x43]]   # were max_tracks, budget, start_skew
+"tlv.start_answer" = [[0x01, 0x01]]   # was generations: now the start answer's fixed part, generation(u32) n(u8) n x (fn(u16) generation(u32))
 [interface.enum.state]          # as the tracks'
 unconfigured = 0
 configured = 1

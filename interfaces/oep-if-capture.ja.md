@@ -22,9 +22,10 @@ calibration（§3.8）だけ。複数トラックの同時開始と時刻合わ�
 時計は起動から数えるので、比べられるのは同じ起動の中だけ。host は confirm、clock、open の応答の boot_id（core §6.5）が同じかで、同じ
 時計かを判断する。probe の時計と host の時計の対応は clock（core §7.7）で取る。
 
-**世代（generation）**: トラックは start ごとに世代（u32、1 から）を進める。区画の serial と位置（position）は世代の中で 0 から数える
+**世代（generation）**: トラックは start ごとに世代（u32）を 1 進める。起動後の最初の start で 1、0xFFFFFFFF の次は 1 で、0 は最初の start の
+前だけを表す。世代は等しいかどうかだけを比べる。区画の serial と位置（position）は世代の中で 0 から数える
 ので、host は read と release に世代を付け、probe は違えば断る（古い read が新しいデータを黙って返さない）。世代は start の応答、
-status、区画の情報、ストリーミングのデータの TLV で分かる。
+status、区画の情報、出来事、ストリーミングのデータの TLV で分かる。
 
 キャプチャは位置つきのストリームの形（[共通部品](oep-if-common.ja.md) §1）を使わない（from とマークが無く、区画と世代を持つ）。
 モード（ワンショット、リピート、ストリーミング）は §2.1。レートは probe が刻む。宣言は目安で、configure の応答が正（§3.5）。
@@ -146,7 +147,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 
 | フィールド | 意味 |
 |---|---|
-| serial | start からの区画の通し番号（0 から） |
+| serial | start からの区画の通し番号（0 から。u32 で一周し、core §2.6 で比べる） |
 | position | 区画の先頭のバイト位置（start から通し、u64 で一周しない。read と通知の position と同じ空間） |
 | generation | この区画の世代（start ごとに 1 ずつ増える） |
 | samples | 区画のサンプル数（stop で途中で終わった区画は短い） |
@@ -186,17 +187,19 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 - query（0x09）、force（0x04）、subscribe（0x30）と unsubscribe（0x32）は任意で、describe の ops で宣言する（core §1.2、§7.4）。subscribe と unsubscribe は両方とも持つか、両方とも持たない（core §11.3）。それを持たない probe は、その op に unknown_operation で答える（core §1.2）。この表のほかの op は必ず持つ。calibration はアナログでは必ず持ち、ロジックの op ではない。
 - state: 0 未設定、1 設定済み、2 トリガ待ち、3 取得中、4 完了（ワンショット）、5 止まっている（リピートで空き区画なし）、
   6 エラー。
-- `serial_done` は終わった区画の数、`write_pos` は取り終えたバイト位置（position の空間。**捨てた分を含む**: 次に書くバイトの位置）。
+- `serial_done` は次に終わる区画の serial（start から終わった区画の数を 2^32 で割った余り）、`write_pos` は取り終えたバイト位置（position の空間。**捨てた分を含む**: 次に書くバイトの位置）。
 - status の `flags`: bit0 probe の中でデータを落とした（取り込みのキューやリングがあふれた）、bit1 時間の基準が曲がった
   （区画の flags の bit2 と同じ）。ほかのビットは予約（0）。**start で 0 に戻し、その回の累積**。state 6 のときは応答の TLV 0x01 error（u8:
   1 DMA / ペリフェラル、2 置き場、3 時計、0x40〜 probe 固有。registry の enum `error`）で理由を返す。
 - **generation**: read と release は今の世代を要求に置く。違えば rejected unavailable（cause 6）。start 前は 0。
 - read で要求した位置がもう使い回されていれば（または押し出されていれば）、応答の position が先に進み、gap が立つ。
   まだ取れていない位置なら、あるところまで返す（何もなければ空。max = 0 も空の成功）。
-- release はリピートだけ（ワンショットとストリーミングでは何もせず成功）。serial **以下**（inclusive）を解放する。state 5 で空きが
+- release はリピートだけ（ワンショットとストリーミングでは何もせず成功）。終わった区画のうち、serial かそれより前（inclusive、core §2.6 で
+  比べる）のものを解放する。まだ終わっていない区画は解放しない（serial がそれより先でも、解放するのは終わった区画だけ）。state 5 で空きが
   できれば probe は自動で取得を再開し（state 3）、再開した最初の区画に flags bit0 を立てる。stopped reason 2 は送らない（予約）。
 - read が実際に返す量は probe が決める（max 以下で、応答が max_frame に収まる量）。
-- segments の more は、まだ返していない区画があること。from_serial が serial_done より先なら空の成功。
+- segments は [共通部品](oep-if-common.ja.md) §1.3 の通し番号のページングで答える（next は serial_done、残っているのは probe が情報を
+  覚えている区画）。
 
 **状態の遷移**（行 = 今の state、列 = 契機。「—」は何もせず成功。force の列は force を持つ probe に当てはまる）:
 
@@ -222,16 +225,20 @@ configure の応答の blocking_ms が core の max_op_ms を超える構成は�
 
 **設定の TLV**（扱えない値は、core §2.3 のとおり configure 全体を rejected unsupported（受け取ったままの tag）で断る）:
 
-| tag | 名前 | 値 | 対象 |
-|---|---|---|---|
-| 0x40 | mode | u8: 1 ワンショット、2 リピート、3 ストリーミング | 両方 |
-| 0x42 | rate | rate_hz(u32)（アナログはチャネルあたり。1 Hz 以上） | 両方 |
-| 0x43 | samples | u32（1 区画のサンプル数。ストリーミングでは省略してよい） | 両方 |
-| 0x44 | segments | u32（リピートの区画の数。省略すれば probe に任せる） | 両方 |
-| 0x45 | trigger | type(u8)、role(u8)、value(u32) | 両方 |
-| 0x46 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 |
-| 0x47 | frontend | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。繰り返す（core §2.3）。同じ role に 2 つあれば rejected malformed | アナログ |
+| tag | 名前 | 値 | 対象 | 送るか（省略したとき） |
+|---|---|---|---|---|
+| 0x40 | mode | u8: 1 ワンショット、2 リピート、3 ストリーミング | 両方 | 必須 |
+| 0x42 | rate | rate_hz(u32)（アナログはチャネルあたり。1 Hz 以上） | 両方 | 必須 |
+| 0x43 | samples | u32（1 区画のサンプル数。1 以上） | 両方 | mode 1 / 2 で必須。mode 3 では送らない |
+| 0x44 | segments | u32（リピートの区画の数。1 以上） | 両方 | mode 2 だけ（probe が決める） |
+| 0x45 | trigger | type(u8)、role(u8)、value(u32) | 両方 | 任意（type 0 即時） |
+| 0x46 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 | trigger の type が 0 でないときだけ（0） |
+| 0x47 | frontend | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。繰り返す（core §2.3）。同じ role に 2 つあれば rejected malformed | アナログ | 任意（そのチャネルは probe が選ぶ） |
 
+- **契約**（configure と query で同じ）: 必須の TLV が無ければ rejected malformed。表の「だけ」「送らない」に反する TLV（mode 3 の
+  samples と segments、mode 1 の segments、type 0 または trigger 無しの pretrigger）は、値によらず rejected unsupported（受け取ったままの tag）。
+  trigger の role がその fn の plan に無ければ rejected unavailable（cause 6）。pretrigger が max_pretrigger を超えるか、samples（切り下げた
+  後）以上なら rejected unsupported（pretrigger の tag）。断るときは何も変えない。
 - **問い合わせは別の操作（0x09）**。configure の TLV のフラグにすると、probe はロックの要否を操作の番号で決めるので、
   ロックなしの問い合わせができない。問い合わせは今の設定と取ったデータを壊さない。
 - trigger の type: 0 即時（省略時）、1 レベル（value 0 / 1）、2 エッジ（value 0 立ち上がり / 1 立ち下がり / 2 両方）、
@@ -244,11 +251,12 @@ configure の応答の blocking_ms が core の max_op_ms を超える構成は�
 - probe が持てる量を超える samples は、その上限に切り下げ、応答の actual_samples（0x52）
   が正である。host は送った値を仮定せず、actual_samples と actual_segments を読む。
 
-**応答の TLV**:
+**応答の TLV**（configure と query の success は、その対象の行をすべて返す。例外: actual_samples は mode 1 / 2 だけ、actual_segments は
+mode 2 だけ、skew は遅れが 0 のチャネルを省いてよい。チャネルごとの行は plan のチャネルごとに 1 つ）:
 
 | tag | 名前 | 値 | 対象 |
 |---|---|---|---|
-| 0x50 | actual_rate | num(u32)、den(u32)（実際のレート = num / den Hz） | 両方 |
+| 0x50 | actual_rate | num(u32)、den(u32)（実際のレート = num / den Hz。どちらも 1 以上） | 両方 |
 | 0x51 | layout | ロジック: w(u8)、C(u8)、pos[C](u8)。アナログ: s(u8)、o(u8)、b(u8)、C(u8)、order[C](u8)（§1） | 両方 |
 | 0x52 | actual_samples | u32 | 両方 |
 | 0x53 | actual_segments | u32 | 両方 |
@@ -266,10 +274,12 @@ configure の応答の blocking_ms が core の max_op_ms を超える構成は�
 | 送るもの | いつ | 中身 |
 |---|---|---|
 | 出来事 kind 0x01 segment | 区画が終わった（ワンショットの完了も。ストリーミングでは送らない） | 区画の情報（§2）、[TLV] |
-| 出来事 kind 0x02 stopped | 取得が止まった | reason(u8: 0 完了、1 host の stop、2 予約（空き区画なしは送らない）、3 エラー)、error(u8: reason 3 の理由、status の error と同じ値)、[TLV] |
-| 出来事 kind 0x03 triggered | トリガが立った | serial(u32)、trigger_index(u32)、trigger_ns(u64: probe の時計でトリガが立った時刻の推定値)、[TLV] |
+| 出来事 kind 0x02 stopped | 取得が止まった | reason(u8: 0 完了、1 host の stop、2 予約（空き区画なしは送らない）、3 エラー)、error(u8: reason 3 の理由、status の error と同じ値)、generation(u32)、[TLV] |
+| 出来事 kind 0x03 triggered | トリガが立った | serial(u32)、trigger_index(u32)、trigger_ns(u64: probe の時計でトリガが立った時刻の推定値)、generation(u32)、[TLV] |
 | データ（role 0x06） | ストリーミングの間だけ | core §11.2 の形（position、len、data、TLV）。read と同じ位置の空間。**TLV 0x01 generation(u32) を必ず付ける**（start の応答の後に前の世代の送り残しが届きうるため） |
 
+- **出来事はどれも、それが生まれた世代を持つ**（segment は区画の情報の generation）。start の応答の後に前の世代の出来事が届きうる
+  （core §11.4）。host は今の世代と違う出来事を前の世代のものとして扱う。
 - ストリーミングは subscribe が前提（データは probe が送る。ストリーミングの mode を宣言する fn は subscribe と unsubscribe を ops に立てる）。
 
 ### 3.5 describe で宣言するもの
@@ -324,10 +334,10 @@ ADC の値を電圧に換算するための、probe が持っている情報を*
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
 | 0x01 | bind | n(u8)、n × fn(u16)、[TLV] | — | 必要 |
-| 0x02 | start | — | blocking_ms(u32)、start_ns(u64)、[TLV 0x01 generations: n × (fn(u16)、generation(u32))] | 必要 |
+| 0x02 | start | — | blocking_ms(u32)、start_ns(u64)、generation(u32)、n(u8)、n × (fn(u16)、generation(u32))、[TLV] | 必要 |
 | 0x03 | stop | — | — | 必要 |
 | 0x04 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
-| 0x05 | status | — | state(u8)、start_ns(u64)、trigger_ns(u64)、trigger_fn(u16)、[TLV] | 不要 |
+| 0x05 | status | — | state(u8)、start_ns(u64)、trigger_ns(u64)、trigger_fn(u16)、generation(u32)、[TLV] | 不要 |
 | 0x30 | subscribe | core §11.3 | — | 必要 |
 | 0x32 | unsubscribe | core §11.3 | — | 必要 |
 
@@ -349,8 +359,10 @@ bind の TLV:
   期限切れ、force）に解ける）。
 - トラックを束ねていないとき: start は rejected unavailable cause 6。stop と、持っていれば force は、何もせず成功。state は 0。
 - **start** は、どのトラックを始めるよりも前に全トラックの前提を確かめ（ストリーミングで購読の無いトラックがあれば、start は TLV fn（0x05）=
-  そのトラックを付けて rejected unavailable cause 6）、それから束ねたトラックをできるだけ同時に始め、組の開始の時刻 start_ns（probe の時計）と、
-  各トラックの新しい世代を返す（各トラックの start と同じく generation を +1）。始めた後にトラックが失敗したら、組は state 6、
+  そのトラックを付けて rejected unavailable cause 6）、それから束ねたトラックをできるだけ同時に始め、組の開始の時刻 start_ns（probe の時計）、
+  組の新しい世代、各トラックの新しい世代を返す（各トラックの start と同じく generation を +1）。n は束ねたトラックの数で、各 fn を bind の
+  順に 1 回ずつ置く。**組の世代**は組の start ごとに 1 進め、規則はトラックの世代と同じ（起動後の最初の start で 1、0xFFFFFFFF の次は 1、
+  0 は最初の start の前。bind し直しても続きから）。始めた後にトラックが失敗したら、組は state 6、
   stopped reason 3 で、ほかのトラックも止める。**start_ns は取得（pretrigger のリングを含む）を始めた時刻**。即時トリガのとき、トラックの
   ずれは、その最初の区画の start_ns − 組の start_ns（推定値）。start 前の status の start_ns と trigger_ns は全ビット 1。
 - **トリガ**: trigger_track の条件が立つと、組の全トラックが取得を始める（各トラックの pretrigger は、そのトラック自身の
@@ -370,10 +382,11 @@ bind の TLV:
 
 | 送るもの | いつ | 中身 |
 |---|---|---|
-| 出来事 kind 0x03 triggered | trigger_track の条件が立った（力で始めたときも） | trigger_fn(u16: force では 0)、trigger_ns(u64)、[TLV] |
-| 出来事 kind 0x02 stopped | 全トラックが止まった | reason(u8: トラックの stopped と同じ)、error(u8)、[TLV] |
+| 出来事 kind 0x03 triggered | trigger_track の条件が立った（force で始めたときも） | trigger_fn(u16: force では 0)、trigger_ns(u64)、generation(u32: 組の世代)、[TLV] |
+| 出来事 kind 0x02 stopped | 全トラックが止まった | reason(u8: トラックの stopped と同じ)、error(u8)、generation(u32: 組の世代)、[TLV] |
 
-kind の番号はトラック（§3.4）と揃える（triggered 3、stopped 2）。triggered はトラックの出来事としても出る（両方に出る）。
+kind の番号はトラック（§3.4）と揃える（triggered 3、stopped 2）。triggered はトラックの出来事としても出る（両方に出る）。組の出来事も
+トラックと同じく世代を持ち、host は今の組の世代と違うものを前の世代のものとして扱う。
 
 ### 4.3 describe で宣言するもの
 

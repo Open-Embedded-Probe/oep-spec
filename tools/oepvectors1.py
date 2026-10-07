@@ -681,10 +681,60 @@ def ops() -> dict:
     add("logic read: another generation", "capture §3.2", lg, "generation 1",
         request(0x81, 9, op("oep.fixture.logic", "read"), struct.pack("<IQI", 2, 0, 64)),
         rej(0x81, "unavailable", tlv(unav["cause"], bytes([cause["wrong_state"]]))))
+    add("logic segments: from_serial = serial_done, no segments and more 0", "capture §3.2, common §1.3 paging 2", lg,
+        "one-shot done, generation 1, serial_done 1",
+        request(0x87, 9, op("oep.fixture.logic", "segments"), struct.pack("<I", 1)), ok(0x87, bytes([0, 0])))
+    lt = IFACE["oep.fixture.logic"]["tlv"]
+    cfg, qry = op("oep.fixture.logic", "configure"), op("oep.fixture.logic", "query")
+    mode = IFACE["oep.fixture.logic"]["enum"]["mode"]
+    one_shot = (tlv(lt["configure"]["mode"], bytes([mode["one_shot"]])) + tlv(lt["configure"]["rate"], struct.pack("<I", 20_000_000))
+                + tlv(lt["configure"]["samples"], struct.pack("<I", 200_000)))
+    ca = lt["configure_answer"]
+    add("logic configure: one-shot, the required answer set", "capture §3.3", lg,
+        "session S holds the lock; roles 0 and 1 in fn 9's plan; 20 MHz exact, 200000 samples fit; the probe packs 2 bits per sample",
+        request(0x88, 9, cfg, one_shot, S),
+        ok(0x88, tlv(ca["actual_rate"], struct.pack("<II", 20_000_000, 1)) + tlv(ca["layout"], bytes([2, 2, 0, 1]))
+           + tlv(ca["actual_samples"], struct.pack("<I", 200_000)) + tlv(ca["blocking_ms"], struct.pack("<I", 0))))
+    add("logic configure without rate: malformed", "capture §3.3 contract", lg, "session S; as above",
+        request(0x89, 9, cfg, tlv(lt["configure"]["mode"], bytes([mode["one_shot"]])) + tlv(lt["configure"]["samples"], struct.pack("<I", 200_000)), S),
+        rej(0x89, "malformed"))
+    add("logic query: streaming with samples, refused with the tag", "capture §3.3 contract, core §2.3", lg, "as above (query needs no lock)",
+        request(0x8A, 9, qry, tlv(lt["configure"]["mode"], bytes([mode["streaming"]])) + tlv(lt["configure"]["rate"], struct.pack("<I", 1_000_000))
+                + tlv(lt["configure"]["samples"], struct.pack("<I", 1000))),
+        rej(0x8A, "unsupported", bytes([lt["configure"]["samples"]])))
+
+    # oep.fixture.capture-group (capture §4): the group's generation, then n x (fn, generation) in bind order, in the fixed part
+    grp = {"12": "oep.fixture.capture-group", "9": "oep.fixture.logic", "13": "oep.fixture.analog"}
+    add("capture-group start: the group's and each track's new generation", "capture §4.1", grp,
+        "session S; fn 12 bound to fn 9 then fn 13, both one-shot with immediate triggers; generations before: group 4, fn 9 3, fn 13 1; "
+        "acquisition starts at 7 ms",
+        request(0x8B, 12, op("oep.fixture.capture-group", "start"), b"", S),
+        ok(0x8B, struct.pack("<IQIB", 0, 7_000_000, 5, 2) + struct.pack("<HI", 9, 4) + struct.pack("<HI", 13, 2)))
+
+    # events (core §11.2): role, fn, seq, kind, the fixed part; every capture event carries its generation (capture §3.4, §4.2)
+    events = []
+
+    def event(name, spec, fns, state, fn, seq, kind, fixed, generation):
+        frame = struct.pack("<BHHB", REG["roles"]["event"], fn, seq, kind) + fixed
+        events.append({"name": name, "spec": spec, "fns": fns, "state": state, "generation": generation, "event_hex": hx(frame)})
+
+    le, ge = IFACE["oep.fixture.logic"]["event"], IFACE["oep.fixture.capture-group"]["event"]
+    reason = IFACE["oep.fixture.logic"]["enum"]["stopped_reason"]
+    after = "fn 9 subscribed; start answered generation 4 while generation 3's stop was still queued"
+    event("logic stopped of the previous generation, after the start answer", "capture §3.4, core §11.4", lg, after, 9, 7, le["stopped"],
+          struct.pack("<BBI", reason["host"], 0, 3), 3)
+    event("logic triggered of the new generation", "capture §3.4", lg, after + "; the edge at sample 1000 of serial 0, at 7.05 ms", 9, 8,
+          le["triggered"], struct.pack("<IIQI", 0, 1000, 7_050_000, 4), 4)
+    event("capture-group triggered: the group's generation", "capture §4.2", grp, "fn 12 subscribed; group generation 5; fn 9's trigger at 7.05 ms",
+          12, 0, ge["triggered"], struct.pack("<HQI", 9, 7_050_000, 5), 5)
+    event("capture-group stopped: the group's generation", "capture §4.2", grp, "as above; every track done", 12, 1, ge["stopped"],
+          struct.pack("<BBI", reason["complete"], 0, 5), 5)
     return {
         "about": "Per-op byte vectors. `fns` says which interface each fn number is in the example; `state` is the probe state the answer assumes. "
-                 "Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0.",
+                 "Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0. "
+                 "`events` are notification frames (core §11.2) with the generation each carries.",
         "cases": cases,
+        "events": events,
     }
 
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,

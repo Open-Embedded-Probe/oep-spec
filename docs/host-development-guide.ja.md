@@ -845,7 +845,10 @@ capture-group: ロジック 2 本（20 MHz）とアナログ 1 本（48 kHz）�
   logic.configure(mode=1, rate=20 MHz, samples=200000, trigger(edge, role1, fall), pretrigger=1000)
   analog.configure(mode=1, rate=48000, samples=4800, pretrigger=48)
   group.bind(logic, analog, trigger_track=logic)
-  group.start → start_ns
+  group.start → start_ns、組の世代、各トラックの世代（bind の順）
   出来事 triggered(logic, trigger_ns) → 各トラックの segment（trigger_index はどちらも trigger_ns の位置）
   各トラックを read → host は start_ns の差と trigger_index で並べる
 ```
+
+出来事（トラックの segment、stopped、triggered と組の出来事）はどれも世代を持つ。start の応答の後に前の start の出来事が届くことが
+あるので、host は今の世代と違う出来事を前の start のものとして扱う（[キャプチャ](../interfaces/oep-if-capture.ja.md) §3.4、§4.2）。

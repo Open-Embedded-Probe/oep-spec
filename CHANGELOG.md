@@ -52,6 +52,24 @@ From the core / interface re-check of 0991759 in `docs/external-spec-review-2026
 - Console streams: **first is u16** (was u8); the number of streams has no u8 bound. Registry comment follows.
 - Vectors: marks from_serial included with more 1, the next page from the last serial + 1, a pushed-out serial starting at the oldest,
   from_serial = next; console streams with first(u16), and its last page.
+- Capture §3.3 configure / query contract: mode and rate are required (malformed without them); samples is required in modes 1 and 2
+  and not sent in mode 3; segments is mode 2 only; pretrigger only with a trigger type other than 0; a TLV against these is refused
+  rejected unsupported with its tag whatever its value. A trigger role not in the fn's plan is unavailable (cause 6); a pretrigger above
+  max_pretrigger or not below samples (after truncation) is unsupported. A success answer carries every answer row of its target, except
+  actual_samples (modes 1 and 2), actual_segments (mode 2) and zero skews; per-channel rows once per plan channel; actual_rate's num and
+  den are 1 or more.
+- Capture generations: the first start after boot gives 1, 0xFFFFFFFF is followed by 1, 0 means only "before the first start";
+  generations compare for equality only. Segment serials wrap (core §2.6); serial_done is the serial of the next segment to finish;
+  segments pages by common §1.3; release frees the finished segments at or before serial and never a segment not yet finished.
+- Capture events carry their generation: track stopped = reason, error, **generation(u32)**; triggered = serial, trigger_index,
+  trigger_ns, **generation(u32)** (segment already had it). A host treats an event of another generation as the previous start's.
+- Capture-group: the start answer is blocking_ms, start_ns, **generation(u32)** (the group's), **n(u8), n x (fn(u16), generation(u32))**
+  in bind order, each bound fn once (the TLV 0x01 generations is gone and its tag reserved); status adds generation(u32); the group's
+  triggered and stopped events end with the group's generation. The group's generation follows the tracks' rules and continues across
+  binds.
+- Vectors: logic configure (the one-shot answer set, no rate, streaming with samples), segments from serial_done, capture-group start,
+  and a new `events` list in ops.json (logic stopped of the previous generation, triggered, the group's triggered and stopped). Registry,
+  generated code, host guide §22, conformance and glossary follow.
 
 ### External review core re-check (2026-10-07, 0991759)
 

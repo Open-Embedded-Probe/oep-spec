@@ -464,6 +464,18 @@ def test_per_op_vectors_decode_exactly():
     assert serials["console marks: from_serial = next, no marks and more 0"] == (0, [])                             # paging 2
     p = pay("logic segments: one segment")
     assert 1 + _fixed_sequence(p[1:], lambda b, i: 37) == len(p)
+    assert pay("logic segments: from_serial = serial_done, no segments and more 0") == b"\x00\x00"   # common §1.3 paging 2
+    got = dict(tlvs(pay("logic configure: one-shot, the required answer set")))
+    ca = iface["oep.fixture.logic"]["tlv"]["configure_answer"]
+    assert set(got) == {ca["actual_rate"], ca["layout"], ca["actual_samples"], ca["blocking_ms"]}     # mode 1: no actual_segments (§3.3)
+    num, den = struct.unpack("<II", got[ca["actual_rate"]])
+    assert num >= 1 and den >= 1 and got[ca["layout"]][1] + 2 == len(got[ca["layout"]])              # w C pos[C]
+    p = pay("capture-group start: the group's and each track's new generation")
+    n = p[16]                                                                                     # blocking_ms start_ns generation n
+    assert len(p) == 17 + 6 * n and n == 2
+    fns = [struct.unpack_from("<H", p, 17 + 6 * k)[0] for k in range(n)]
+    assert len(set(fns)) == n                                                                     # each bound fn once (§4.1)
+    assert "start_answer" not in iface["oep.fixture.capture-group"].get("tlv", {})                # no generations TLV any more
     p = pay("probe.config state: one slot and one bind")
     i = 7                                                                                         # more state hash(u32) reason
     i += _fixed_sequence(p[i:], lambda b, j: 12)                                                  # slot_state: slot state connection last_try_at_ns
@@ -491,3 +503,19 @@ def test_per_op_vectors_decode_exactly():
     n = struct.unpack_from("<H", p)[0]
     assert n == 1024 - 5 - 2                                                                      # the answer's header and len
     assert p[2:] == bytes(k & 0xFF for k in range(n))
+
+
+def test_capture_events_carry_their_generation():
+    """ops.json events: the capture events' fixed parts end with generation(u32) (oep-if-capture §3.4, §4.2)."""
+    iface = {i["name"]: i for i in REG["interface"]}
+    fixed = {("oep.fixture.logic", "stopped"): 6, ("oep.fixture.logic", "triggered"): 20,
+             ("oep.fixture.capture-group", "stopped"): 6, ("oep.fixture.capture-group", "triggered"): 14}
+    events = load("ops.json")["events"]
+    assert events
+    for e in events:
+        f = bytes.fromhex(e["event_hex"])
+        role, fn, _seq, kind = struct.unpack_from("<BHHB", f)
+        name = e["fns"][str(fn)]
+        (ev,) = [k for k, v in iface[name]["event"].items() if v == kind]
+        assert role == REG["roles"]["event"] and len(f) == 6 + fixed[(name, ev)], e["name"]   # no TLV in these
+        assert struct.unpack_from("<I", f, len(f) - 4)[0] == e["generation"], e["name"]

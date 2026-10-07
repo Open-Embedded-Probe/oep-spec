@@ -186,7 +186,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | トラック | track | 1 つのロジックかアナログのキャプチャのインターフェース | capture の冒頭 |
 | mode | mode | one-shot、repeat、streaming | capture §2.1 |
 | 区画 | segment | 自分の時刻とサンプル数を持つキャプチャの一部 | capture §2.2 |
-| 世代 | generation | start のたびに進む。read と release が指す | capture の冒頭 |
+| 世代 | generation | start のたびに進む（最初の start で 1、0xFFFFFFFF の次は 1、0 は start の前）。read と release が指し、出来事も持つ。capture-group は組の世代を持つ | capture の冒頭、§4.1 |
 | capture-group | capture-group | 複数のトラックを一緒に始める | capture §4 |
 
 ## probe の設定
