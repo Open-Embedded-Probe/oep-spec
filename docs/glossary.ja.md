@@ -38,6 +38,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | フレーム | frame | 経路の上の 1 つのメッセージと、その包み | transports §1 |
 | COBS のフレーム | COBS frame | `0x00 COBS(message + CRC-16) 0x00`。シリアルの口で使う | transports §1 |
 | 長さつきのフレーム | length-prefixed frame | `length(u16) message`。vendor bulk、HID の report、TCP で使う | transports §1 |
+| `_oep._tcp` | `_oep._tcp` | TCP で待ち受ける probe が mDNS で広告する DNS-SD の service。port は SRV、TXT に `unit_id` | transports §3 |
 | 候補 | candidate | 0x00 から次の 0x00 までのバイト。フレームかもしれないものとして解く | transports §1、§4 |
 | 壊れた候補 | broken candidate | 解けないか CRC の合わない候補 | transports §4 |
 | 生のバイト | raw bytes | シリアルの口の、OEP のフレームの外のバイト（target のコンソールなど） | transports §4 |

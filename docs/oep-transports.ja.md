@@ -1,7 +1,7 @@
 # Open Embedded Probe — 経路とフレーム（OEP transports）v1
 
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作る。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。
-この文書は、OEP のメッセージをどう運ぶかを定める: 経路とそのフレーム、host が probe の口を見つけて開くやり方（USB の見分け方、探りの規則、口の選び方）、
+この文書は、OEP のメッセージをどう運ぶかを定める: 経路とそのフレーム、host が probe の口を見つけて開くやり方（USB の見分け方、TCP の probe の見つけ方、探りの規則、口の選び方）、
 1 つの probe の複数の経路、シリアルの口を生のバイトと共用すること、長さつきのフレームの区切りの立て直し、host の待ちが数える転送の時間。
 メッセージ、セッション、そのほかは [OEP core](oep-core.ja.md) が定める。この文書は本体の層に属し、本体の適合（core §1.2）とプロトコルの
 revision（core §7.1）はこの文書も含む。番号の唯一の定義は `registry/oep-v1.toml`。
@@ -47,7 +47,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **セッションの op に自分で答える中継のブローカー**で、ほかの要求をすべて 1 つの OEP の probe に中継するものは、自分の describe を持たない: それが中継する fn 0 の describe は probe のもの。自分で答えるセッションの op は confirm、open、end、keepalive、lock_state の 5 つだけである。fn 0 の clock（core §7.7）はそれに含まれない: ブローカーは clock をほかの要求と同じく probe に中継し、client はその応答を core §4.4 のとおりに待つ。confirm の transport TLV では index 0xFF（「describe に無い」）を返す。probe に対しては host である。それらのセッションの op の規則はすべて、その応答に掛かる。
 - **中継のブローカーの probe への経路が無くなったとき**（USB で device が bus から外れた、TCP の接続が閉じた、ブローカーが probe への経路を閉じた）: ブローカーは終わる: client の接続をすべて閉じる。client は、経路が閉じたときと同じに、新しく開くのと同じやり方でやり直す。
 - **TCP の経路**: TCP で待ち受ける probe は、待ち受けの socket 1 つを fn 0 の describe の経路 1 つとして並べる（kind 6、interface 0xFF）。その socket で受けた接続はどれも、confirm の transport TLV でその index を返す。§3、core §4.4、core §7.1、core §11.4 が経路ごとに掛ける規則（セッションの要求は 1 つの経路で、max_frame / window / max_inflight、使っている revision、通知の送り先）は、受けた接続ごとに別々に掛かる。
-  probe が待ち受ける TCP の port と、host が TCP の probe を見つける方法は、この仕様の外である。
+  待ち受ける port は probe が決める。host が TCP の probe を見つける方法は §3。
 
 ## 2. フレームの送り方
 
@@ -92,6 +92,11 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **USB の serial number は unit_id**（core §7.5）: probe が serial を選べる口（CDC、vendor bulk、HID を自分で出す device）では、serial number を
   unit_id そのものにする（core §7.5 の不変性）。host は開かずに個体を見分けられ（名指した probe を探せる）、どの経路の describe とも同じ値に
   なる。serial を選べない口（内蔵の USB シリアル、USB-UART の変換チップ）は、host が経路を外から指定し、describe で unit_id を確かめる。
+- **TCP の probe の見つけ方**: TCP で待ち受ける probe は、待ち受けている間、DNS-SD（RFC 6763）の service `_oep._tcp` の instance を
+  mDNS（RFC 6762）で広告する。port は SRV の record のもので、決まった port は無い。TXT の record は `unit_id=<unit_id>`（fn 0 の describe の
+  unit_id）を持つ。probe はほかの key を足してよく、host は知らない key を無視する。instance の名前と host の名前は probe が決める。
+  host が開く TCP の接続先は、`_oep._tcp` で見つけたものか、利用者が明示したもの（アドレスと port）だけで、どちらも上の探りの規則に従う。
+  名指した probe は TXT の unit_id で選んでよいが、使うのは describe の unit_id が名指した値と同じときだけ（違えば閉じる。比べ方は上の名指した probe と同じ）。
 - **max_frame は両方向の上限**: probe は max_frame を超える message を送らず、host は max_frame を超える message を送らない。
 - **confirm の前**: どの probe も 64 byte（registry の `min_max_frame`）までの message を受ける（confirm の max_frame は 64 以上）。
   host は confirm の応答を受けるまで、64 byte を超える message を送らない。host は probe から長さ 65535 byte までの message を

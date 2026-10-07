@@ -62,6 +62,21 @@ max_frame を使う（core §4.4）。
   列挙する）と、ハードウェアが記述子を決める内蔵の USB シリアルの probe。host はこれらを自分では見つけられない: 利用者が口を
   選ぶ。confirm の後、fn 0 の describe がその probe の unit_id を返す。probe は口の名前ではなくこれで覚える（§5.3）。
 
+### 4.1 TCP の probe の見つけ方
+
+TCP で待ち受ける probe は、DNS-SD の service `_oep._tcp` を mDNS で広告する（transports §3）。
+
+- `_oep._tcp.local.` を browse し、instance ごとに SRV（host の名前と port）、アドレス、TXT の `unit_id` を読む。port はいつも SRV の値を使う。
+  例: 参照の probe（oep-probe-arduino）は port 7450 で待ち受けるが、仕様は port を決めない。
+- 開いたら transports §3 の探りの規則のとおり、最初は confirm だけを送る。fn 0 の describe の unit_id で確かめ、TXT と違えば閉じる。
+- **どれを使うか**は host が決める。目安: 利用者が unit_id で名指したら、TXT の unit_id が同じ instance を開く。名指しが無く 1 つも
+  覚えていなければ、見つけた probe（unit_id と instance の名前）を並べて利用者に選ばせ、選んだ unit_id を覚える。同じ unit_id を USB と
+  TCP の両方で見つけたら 1 つの probe としてまとめ（§5.1）、ふつうは USB の経路を使う（Wi-Fi の切れや遅れが無い）。
+- 再起動の後や Wi-Fi のつなぎ直しの後は、アドレスが変わりうる: unit_id で browse し直す（§5.2 の 5）。
+- mDNS が届かない所（ルーターの向こう、VPN）では、利用者がアドレスと port を明示する。
+- 広告は同じネットワークの誰でも出せ、describe の unit_id も偽れる。TCP は信頼できるネットワークか、認証したトンネルの中でだけ使う
+  （transports §1）。
+
 ## 5. session_id と発見
 
 - open のたびに新しい、予測できない 32 bit の乱数の session_id を選ぶ。0、連番、固定値にしない（core §6.1）。
@@ -120,7 +135,7 @@ restart の前に読んでおく。
    restart_max_ms が過ぎるまで開き直しと confirm を繰り返す（それぞれの confirm の応答は core §4.4 のとおり待つ）。それでも正しい
    confirm の応答が無ければ、probe は無くなったものとして扱う: その probe の経路を閉じて利用者に知らせ、利用者が開き直すまで何も送らない。
    利用者が前もって頼んだ開き直し（道具の option で、閉じた後も一定の時間開き直しを続ける、など）は、利用者が開き直すことに当たる。
-   UART bridge と TCP の口は閉じずに残ることもあるが、同じ手順でよい。
+   UART bridge と TCP の口は閉じずに残ることもあるが、同じ手順でよい。TCP では、アドレスが変わりうるので unit_id で browse し直す（§4.1）。
 6. confirm の boot_id を restart の前のものと比べる。違えば再起動した: 覚えた fn の対応、資源の番号、ストリームの位置、セッションを
    すべて捨て（core §6.5）、list し直し、要るなら新しいセッションを開く。前のセッションの id の要求は no_session で断られる。同じなら
    restart は実行されなかったものとして扱う。
@@ -336,6 +351,23 @@ rejected は要求が受け付けられなかったこと、completed failed / p
 - label で名付けた線は、probe の設定 §1.3 の探し方で見つかる（§18.1）。
 - スロットの target が入れ替わっていないかは、connections の tid（target_id）で確かめる（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2.1）。probe はスロットの target を照合しない。
 - erase は保存した写しだけを消す。今の設定は次の起動まで残る。
+
+### 15.1 Wi-Fi の設定
+
+describe の items に wifi（0x08）があり wifi_max が載る probe は、Wi-Fi でつなぐネットワークを設定で持つ（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.4）。
+
+- **passphrase は利用者に聞く**: 入力を画面に出さないプロンプトで受ける。表示しない、ログに書かない（probe の設定 §1.4）。コマンドの引数
+  （シェルの履歴とプロセスの一覧に残る）や host の設定ファイルに平文で置かない。保管するなら OS の鍵の保管を使う。
+- **経路**: passphrase は暗号なしで set に載る。手元の USB やシリアルの口か、信頼するネットワークの経路で送る（[安全とセキュリティ](security.ja.md) §1）。
+- **並び**: index が試す順。よく使うネットワークを小さい index に置く。probe は最初につながった entry を使い、切れたら初めから試す。
+- **比べ方**（§15 の 3）: get は passphrase を返さない（pass_len は、あれば 0xFF、無ければ 0）。host は ssid と passphrase の有無だけを比べ、
+  passphrase は利用者が変えると言ったときだけ送る。ssid だけ変えるときは pass_len 0xFF で送ると、その index の passphrase が残る。
+  entry を別の index に移すときは、passphrase をもう一度送る（0xFF は同じ index のものしか保たない）。
+- **見る**: state（ロック不要）の wifi の TLV。state 2 で使っている entry、rssi、ipv4 が分かる。state 3 なら reason（1 見つからない、
+  2 認証、3 アドレスが来ない）を利用者に見せる。
+- TCP の経路で、使っている entry を変えると（変えた set の応答の後で）その経路も切れる。シリアルの口か USB から設定するのが確か。
+  TCP からしか届かないときは、変えた後に §4.1 のやり方で probe を見つけ直す。
+- 保存しなければ、再起動で消える（§15 の 5）。
 
 ## 16. fake の probe で確かめる
 

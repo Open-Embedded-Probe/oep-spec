@@ -31,6 +31,14 @@ Japanese is the working text.
 - Vectors: probe.config wifi set, get (pass_len 0xFF), get's item sent back, refusals (0xFF with no entry, a 7-byte passphrase, index at
   wifi_max), state with the wifi TLV, unset. Security guide: the passphrase crosses OEP unencrypted, so send it over a trusted transport;
   it is write-only. Conformance and glossary follow.
+- Transports §3: a probe listening on TCP advertises a DNS-SD (RFC 6763) instance of `_oep._tcp` over mDNS (RFC 6762) with the TXT
+  record `unit_id=<unit_id>`; the port comes from SRV (no fixed port); other TXT keys may be added and are ignored by hosts. A host opens
+  only TCP endpoints found this way or given by the user, under the probing rule, and uses a named probe only when describe's unit_id
+  matches. Port and discovery are no longer outside the specification.
+- Host guide §4.1: browsing `_oep._tcp.local.`, choosing among probes (named, else let the user pick; one probe on USB and TCP is one
+  probe), browsing again after a restart, an explicit address where mDNS does not reach; the reference probe's port 7450 as an example.
+  §15.1: setting Wi-Fi (prompt for the passphrase, never print or log it, compare entries without it, 0xFF keeps it only at the same
+  index, changing the entry in use drops a TCP link). Conformance and glossary follow.
 
 ### External review re-check (2026-10-07)
 

@@ -21,6 +21,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - HID: `count(u16)` の report が運ぶ長さつきの流れ、report をまたぐフレーム、count 0 は飛ばす、詰め物は 0 で送り無視する、report ID は 1 つか無し、流れの上のフレームの途切れ、長すぎる count（transports §1）。出力 report を interrupt OUT と SET_REPORT の両方で受ける（transports §3）。
 - max_frame を超える長さ: 捨てて待つ。TCP では閉じる（transports §1）。`probe_frame_gap_ms` の途切れで読み直す。TCP を除く（transports §2）。
 - confirm の前でも 64 バイトまでのメッセージを受ける（transports §3）。max_frame を超えて送らない（transports §3）。
+- TCP で待ち受けるなら、DNS-SD の `_oep._tcp` を mDNS で広告し、TXT に `unit_id=<unit_id>` を載せる（port は SRV、transports §3）。
 - USB: probe が選べる口では シリアル番号 = unit_id（transports §3）。vendor bulk と HID は transports §3 の形で、それぞれ一つまで。
 - 自分で OEP の要求に答える端点は、後ろに何があっても probe である。中継する broker は transports §1 と core §5.2 に従う（probe への transport が無くなったら終わることを含む）。
 
@@ -72,7 +73,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - **フレーム**: 1 フレームを 1 回の write で送り、途中で `probe_frame_gap_ms` 止まらない（transports §2）。COBS の受け方（transports §1）。confirm の答えの前は
   64 バイトを超えて送らず、後は max_frame を超えて送らず、65535 バイトまで受けられる（transports §3）。vendor bulk の長さ 0 の転送（transports §1）。
 - **見つけ方**: USB の自動識別は project の VID:PID `1209:4F45` だけ、名指しの probe は unit_id で、それ以外は
-  利用者が選ぶ（transports §3）。試し方の規則: confirm だけを送り、正しい答えがなければ閉じる（transports §3）。OEP の probe と分かった機器の中の口の選び方（transports §3）。
+  利用者が選ぶ（transports §3）。TCP の接続先は `_oep._tcp` で見つけたものか利用者が明示したものだけで、TXT の unit_id は describe で確かめる（transports §3）。試し方の規則: confirm だけを送り、正しい答えがなければ閉じる（transports §3）。OEP の probe と分かった機器の中の口の選び方（transports §3）。
   transport を試す順（transports §3）。排他で開く（transports §3）。DTR / RTS を立てる（transports §4）。
 - **confirm と revision**: 扱える範囲を送り、その後は使っている revision を `min_rev = max_rev` で送る（§7.1）。revision を知らない
   インターフェースは使わない（§2.7）。
