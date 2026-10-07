@@ -41,3 +41,39 @@
 - **core §7.3 / §7.4**: describe の各 TLV と max_length は、probe のどの経路の max_frame にも収まる値にする。
 - **core §7.5 / §1.2**: channel を持つ probe は channels を必ず付ける。番号は 0〜channels − 1。
 - **restart §2**: 中継のブローカーの client には restart_max_ms は掛からない（ブローカーは終わり、client はやり直す）。
+
+## 再々確認（764b110）への回答
+
+[外部仕様レビュー](external-spec-review-2026-10-06.ja.md) の 764b110（TCP の発見と Wi-Fi の設定を足したもの）の再々確認（2b17990）。
+判断の基準は上と同じ。日本語の作業の文だけを直した。
+
+| 指摘 | 判断 | 理由 | commit |
+|---|---|---|---|
+| 1 結論 | — | 指摘ではない | — |
+| 3.1 いちばん長い wifi の set が max_frame 64 に収まらない | 採る | 収まらなければ、有効な項目を送れない probe が適合になる。分ける形（ssid と鍵を別の項目に）は原子性と書くだけの扱いを増やし、鍵を 32 byte の PSK にしても見出しと合わせて 64 を超え、WPA3 の passphrase も運べない。規則 1 つ: items に wifi を宣言する probe は、どの経路でも max_frame 112 以上（10 + 3 + 99）。registry の `wifi_min_max_frame`、112 byte のベクタ、和を確かめる試験。同じ仕組みのほかの所: slot のいちばん長い set は 10 + 3 + 51 = 64 でちょうど収まり、label（47）、open と owner、list（63）も収まる | 29902a6 |
+| 3.2 mDNS / DNS-SD を全 TCP probe の必須に | 変えて採る | MUST は、無くても相互運用は崩れない（利用者の明示したアドレスでいつもつながる）ので規範に残す理由が無い。SHOULD は確かめられない半端な規則になる。残すのはやり方だけ: 広告するなら `_oep._tcp` を mDNS で、広告しない probe は明示したアドレスで使う。一般の host は、見つけられたい probe をどれも同じやり方で見つけられ、USB（プロジェクトの VID:PID なら自動、ほかは利用者が選ぶ）と同じ形になる。参照の probe は広告する。別の文書の profile は作らない（同じことを 1 文で言える） | 3db3cee |
+| 3.3 RFC 6762 / 6763 が参照の一覧に無い | 採る | transports §7 に足し、使う部分（問い合わせと応答、名前の衝突と付け直し、広告し直し、instance の名前、PTR / SRV / TXT、TXT の key=value）を書いた。従うのは広告する probe と browse する host | b3d9c81 |
+| 3.4 適合の host の一覧に「1 回の write」 | 採る | 消し忘れ。transports §2 の文に直した | 89b2844 |
+| 4 前の指摘の反映 | — | 確認だけ。ESP32 の結果は実装と結合試験の仕事（下の 9） | — |
+| 5 core の再評価 | — | 同意。変更なし | — |
+| 6 拡張性（発見は framing と別にする） | 変えて採る | 3.2 のとおり、広告を probe の選ぶものにした。文書は分けない | 3db3cee |
+| 7.1 TCP の framing と接続の試験 | もうある | リリース前の結合試験の 10 番 | — |
+| 7.2 Wi-Fi の設定の試験 | 変えて採る | いちばん長い set を各経路で送るのを 11 番にした。passphrase の長さごとの試し、get が秘密を返さないこと、応答が先に来ることは参照の probe の試験とベクタの範囲。誤った資格情報からの戻り方は、設定がどの経路でも同じ操作で行えるので USB かシリアルの口からでき、規則は足さない | 29902a6 |
+| 7.3 mDNS の試験 | 変えて採る | 広告する probe だけの 12 番（見つかる、SRV の port、TXT と describe の unit_id、つなぎ直しと再起動の後）。衝突の付け直しと IPv6 は RFC と mDNS の実装の範囲で、足さない。複数の IPv4 の接続から問い合わせるのは host ガイド §4.1 にある | 3db3cee |
+| 8 機械検証（いちばん長い set、mDNS の packet、TCP の分割） | 一部採る | いちばん長い set のベクタは足した。mDNS の packet は RFC の形で OEP のベクタではなく、TCP の流れの分け方はこの repo の道具が自分を試すだけになる（前回の 9 と同じ） | 29902a6 |
+| 9 必須 1〜3 | 上の 3.1、3.4、3.3 のとおり | — | 29902a6、89b2844、b3d9c81 |
+| 9 core / transport を小さく 1〜3 | 変えて採る | 3.2 と同じ | 3db3cee |
+| 9 凍結の判定の実装条件 1〜5 | 変えて採る | 実装と結合試験の仕事。リリース前の結合試験の 10〜12 番 | 29902a6、3db3cee |
+| 9 リリース前 1〜3 | 凍結のときに / もうそうなっている | 前回の 10 リリース前と同じ | — |
+| 10 最終評価 | — | 同意 | — |
+
+### 実装が追う変更（この回）
+
+- **probe.config §1.4**（probe）: items に wifi を宣言する probe は、どの経路の confirm でも max_frame を 112 以上で答える
+  （`LIMITS.wifi_min_max_frame`）。いちばん長い set（32 byte の ssid、64 文字の鍵）を受けられること。
+- **host（Python / JS）**: wifi の set は項目 1 つなら必ず送れる。112 より小さい max_frame の経路で wifi を宣言する probe は仕様に反する
+  （host は項目を分けず、その経路では送らずに誤りとして見せる）。生成物の LIMITS に `wifi_min_max_frame` が増えた。
+- **transports §3**: TCP の probe の広告は任意になった。広告するなら今までどおり `_oep._tcp`、TXT `unit_id`、SRV の port。host は
+  browse と、利用者の明示したアドレスと port の両方を持つ（今までどおり）。参照の probe（ESP32）は広告を続ける。
+- **transports §7**: 広告する probe と browse する host は RFC 6762 / 6763 に従う（衝突のときの名前の付け直し、アドレスが変わったときの広告し直し）。
+- ch32rv: wifi を宣言しないなら変更なし。
