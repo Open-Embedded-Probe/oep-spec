@@ -31,6 +31,7 @@ describe（core §7.4 の共通の tag のほか）:
   「probe の再起動」の行）。シリアルの口の速さは起動時の速さ（[経路](../docs/oep-transports.ja.md) §4）。
 - **経路**: 再起動のあいだ probe は経路に答えない。USB の経路では device が bus から外れて列挙し直してよく、TCP の接続は閉じてよい。
 - **戻るまでの時間**: probe は、restart の応答が経路を出てから restart_max_ms のうちに、その応答を送った経路で confirm にまた答える（USB の経路では
-  列挙し直したうえで、TCP の経路では待ち受け直したうえで）。
+  列挙し直したうえで、TCP の経路では待ち受け直したうえで）。中継のブローカー（[経路](../docs/oep-transports.ja.md) §1）の client には、この時間は掛からない:
+  probe が再起動するとブローカーの probe への経路が無くなってブローカーは終わり、client は経路が閉じたときと同じにやり直す（経路 §1）。
 
 host の待ち方と開き直し方は [host 開発ガイド](../docs/host-development-guide.ja.md) §5.2。

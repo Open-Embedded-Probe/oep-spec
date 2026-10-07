@@ -98,7 +98,7 @@ timeout = 4
 state = 5
 
 [timing]                        # times and line values host and probe both implement (transports §2, §4, §5; core §11)
-probe_frame_gap_ms = 200        # probe: a pause this long inside a frame restarts its reader (not on TCP; transports §2); a host waits longer than this before a resync's confirm (transports §5)
+probe_frame_gap_ms = 200        # no sender pauses this long inside a frame, and a probe's reader restarts after such a pause (not on TCP; transports §2); a host waits longer than this before a resync's confirm (transports §5)
 uart_bridge_boot_baud = 115200  # a UART bridge's boot speed, 8N1 without flow control (transports §4)
 port_speed_idle_ms = 3000       # a committed port_speed goes back to the boot speed after this long without a good frame (oep-if-link §3)
 host_wait_add_ms = 1000         # host: waits at least the request's argument time (at most max_op_ms) plus this plus the transfer time (core §4.4)

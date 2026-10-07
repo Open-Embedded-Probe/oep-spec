@@ -157,7 +157,7 @@ probe がすることを順に（参照の先が規則）:
 ## 5. 最初の host
 
 1. **口を開く**: 排他で（Linux は TIOCEXCL）、UART bridge なら 115200 8N1、DTR と RTS を立てて（transports §3、§4、host ガイド §1）。
-2. **confirm を送る**: 1 回の書き込みで、前後を 0x00 で囲む（transports §1、§2）。見分けていない口に送るのはこれだけ（探りの規則、
+2. **confirm を送る**: 前後を 0x00 で囲み、途中で止めずに送る（transports §1、§2）。見分けていない口に送るのはこれだけ（探りの規則、
    transports §3）。64 byte に収まる。
 3. **待つ**: 少なくとも `host_wait_add_ms`（1000 ms）+ 転送の時間（core §4.4）。UART bridge かもしれないシリアルの口では、転送の時間は
    (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒。L は線の上の要求のフレームの長さ（ここでは 21 byte）。confirm の

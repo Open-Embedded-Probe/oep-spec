@@ -11,6 +11,19 @@ v1 candidate. Changes since the last pushed state (ad9f8be). Most rule changes c
 [2026-10-06 rule-change proposal](docs/v1-rule-change-proposal-2026-10-06.md), reviewed by the implementers (ch32rv, WireSkein, bench),
 and from the [third zero-base review](docs/v1-zero-base-review-3-2026-10-02.ja.md).
 
+### External review re-check (2026-10-07)
+
+From the re-check of 3bca24c in `docs/external-spec-review-2026-10-06.ja.md`; verdicts in
+`docs/external-spec-review-2026-10-07-response.ja.md`. Japanese only while Japanese is the working text.
+
+- Transports: a frame may be split over any number of writes, USB transfers, HID reports or TCP segments, or written together with other
+  frames; a receiver never relies on those boundaries. The "one frame per write" host rule goes; instead no sender (host or probe) pauses
+  `probe_frame_gap_ms` inside a frame, except on TCP. HID rule 2 (frames across reports) is covered by this and goes (rules renumbered).
+- Transports: a transport closing (a TCP connection, a USB device leaving the bus) does not end the session: session, lock, subscriptions
+  and the resend table stay until a core §9 event; answers and notifications for the closed transport are dropped.
+- restart: `restart_max_ms` does not apply to a client of a relaying broker; the probe's restart ends the broker (transports §1) and the
+  client starts again as after a closed transport.
+
 ### Rule review (2026-10-07)
 
 From the v1 rule review of 2026-10-07 (`docs/v1-rule-review-2026-10-07.ja.md`): a rule stays normative only if, without it, independent

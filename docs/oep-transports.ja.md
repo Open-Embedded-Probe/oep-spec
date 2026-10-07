@@ -15,21 +15,19 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 | 経路 | フレーム |
 |---|---|
 | シリアルの口（UART bridge、USB CDC、内蔵の USB シリアル） | COBS + CRC-16、0x00 で区切る（下） |
-| USB の vendor bulk、TCP | `length(u16) message`。CRC なし。length 0 は予約（keepalive。読み飛ばす）。vendor bulk では 1 回の転送に複数のフレームが入ってよく、フレームが転送をまたいでもよい |
+| USB の vendor bulk、TCP | `length(u16) message`。CRC なし。length 0 は予約（keepalive。読み飛ばす） |
 | USB の HID（vendor 定義の report） | vendor bulk の長さつきのバイト列を report で運ぶ: report = `count(u16)`、その列の count バイト、埋め（report の大きさは HID の記述子のとおり）。規則は下 |
 
 - **HID の report**: 向きごとに、report は 1 つのバイト列を運ぶ。
   1. report の OEP のバイトは、count の後ろの count バイトである。向きごとに report の順につなげると、1 つの長さつきのバイト列になる。
      vendor bulk と同じ列（`length(u16) message`）である。
-  2. フレームは report をまたいでよく、1 つの report があるフレームの終わりと次のフレームの始まりを持ってよい。送る側はフレームごとに新しい report から始めてよい。
-     受ける側はそれに頼らない。
-  3. count が 0 の report は空で、読み飛ばす。
-  4. 送る側は埋めを 0 にする。受ける側は、埋めをその値によらず無視する。
-  5. OEP の HID の interface は、report ID を宣言しないか、その input の report と output の report が使う report ID を 1 つ宣言する。宣言するときは、
+  2. count が 0 の report は空で、読み飛ばす。
+  3. 送る側は埋めを 0 にする。受ける側は、埋めをその値によらず無視する。
+  4. OEP の HID の interface は、report ID を宣言しないか、その input の report と output の report が使う report ID を 1 つ宣言する。宣言するときは、
      両方向のすべての report がそれで始まり、count はその後ろから数える。受ける側は、別の ID で始まる report を捨てる。
-  6. §2 の途切れの規則はこの列に掛かる: フレームが途中で、report が 200 ms（`probe_frame_gap_ms`）来ないとき、probe は
+  5. §2 の途切れの規則はこの列に掛かる: フレームが途中で、report が 200 ms（`probe_frame_gap_ms`）来ないとき、probe は
      途中のフレームを捨て、列の次のバイトを長さの始まりとして読む。host は §5 で立て直す。
-  7. count が report に入る量（report の長さ − 2、report ID があれば − 3）より大きい report は捨て、受ける側は列が壊れたとして
+  6. count が report に入る量（report の長さ − 2、report ID があれば − 3）より大きい report は捨て、受ける側は列が壊れたとして
      扱う: 200 ms 途切れるまで入力を捨てる。max_frame より大きい長さ（下）と同じ。
 - **COBS のフレーム**: message の後ろに CRC-16/CCITT-FALSE（多項式 0x1021、初期値 0xFFFF、反転なし、"123456789" → 0x29B1）を
   little endian で付け、COBS（254 byte のブロックに分ける標準の形）で符号にし、**前後を 0x00 で囲んで送る**（`0x00 <COBS> 0x00`）。
@@ -41,7 +39,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **USB の束ね方**（vendor bulk）: host は、書き込みの長さが wMaxPacketSize の倍数なら長さ 0 の転送を続ける。probe は、送り
   終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか最後の 1 byte を別の転送に分ける。
   続きがすぐ来るときは倍数のままでよい。
-- **max_frame より大きい長さ**: probe はそのフレームと、次に `probe_frame_gap_ms` 途切れるまでの入力を捨て、次のフレームを待つ。応答は送らない。TCP では代わりに接続を閉じる。HID では、これは列から読んだ長さに掛かる（report の count は上の規則 7）。
+- **max_frame より大きい長さ**: probe はそのフレームと、次に `probe_frame_gap_ms` 途切れるまでの入力を捨て、次のフレームを待つ。応答は送らない。TCP では代わりに接続を閉じる。HID では、これは列から読んだ長さに掛かる（report の count は上の規則 6）。
 - どのフレームを使うかは経路の種類だけで決まる（VID:PID で選ばない）。
 - **TCP は、信頼できるローカルの接続か、認証したトンネルの内側でだけ使う。** OEP は認証を持たない（core §6.4 の force を含む）。
   1 つの probe を複数の host で使うときは、ブローカーが 1 つのセッションに束ねる（probe の規則がブローカーに何を求めるかは次の項目）。
@@ -53,13 +51,16 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 
 ## 2. フレームの送り方
 
-- host は **1 つのフレームを 1 回の書き込みで送り**、フレームの途中で `probe_frame_gap_ms` 止めない。
+- フレームは、何回の書き込み、USB の転送、HID の report、TCP の segment に分けても、ほかのフレームと 1 回にまとめてもよい。受ける側はその区切りに頼らない。
+- 送る側（host も probe も）は、TCP を除き、1 つのフレームの途中で `probe_frame_gap_ms` 止めない。
 - シリアルの口、vendor bulk、HID では、フレームの途中で 200 ms（`probe_frame_gap_ms`）入力が途切れたら、probe は読み取りを最初からやり直す。**TCP ではやり直さない。** TCP は区切りを失わず、流れの壊れた TCP の接続は閉じる。
 
 ## 3. 複数の経路
 
 - probe は OEP の制御を複数の経路で受けてよい。**複数の経路はセッションとロックを 1 つ共有する**。どの経路から来た要求も同じ
   ものとして扱い、応答はその要求の来た経路に返す。通知は subscribe が来た経路に送る（core §11.4）。
+- **経路が閉じても**（TCP の接続が閉じた、USB の device が外れた）、セッション、ロック、購読、core §5.2 の表は残る: それらが終わるのは core §9 の出来事だけである。
+  閉じた経路に送るはずの応答と通知は捨てる。
 - **1 つのセッションの id を持つ要求は 1 つの経路で送る**（core §5.2 の順序の判定が経路の遅れで誤らないため）。session_id 0 の要求は
   別の経路から送ってよい。host が 1 つのセッションの要求を 2 つの経路から送ったときの誤判定は host の責任で、probe は確かめない。
 - host は、同じ probe に複数の経路があれば vendor bulk、HID、シリアルの口の順に試す（シリアルの口は生のバイトの転送にも
