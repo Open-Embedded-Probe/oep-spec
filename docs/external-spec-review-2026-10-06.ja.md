@@ -1,12 +1,18 @@
-# OEP v1 外部公開仕様レビュー（2026-10-07 最終再確認）
+# OEP v1 外部公開仕様レビュー（2026-10-07 core 再確認）
 
 Status: **record**（非規範）。OEP v1 freeze 前の仕様を、第三者による相互運用実装、曖昧さ、独自拡張、単純性の観点からレビューした記録。
 
-この版は、前回の再々確認への対応を含む `9118dc0` を対象とする。freeze 前は日本語版が作業上の規範であるため、日本語版を基準にした。
+この版は、DNS-SD の未登録名について host guide を更新した `0991759` を対象とする。freeze 前は日本語版が作業上の規範であるため、日本語版を基準にした。今回は特に [OEP core](oep-core.ja.md) を先頭から再読し、wire encoding、状態遷移、ページング、資源番号を独立実装者の視点で再確認した。
 
 ## 1. 結論
 
-前回までに指摘した protocol 上の問題はすべて解消された。今回、新しい wire-level の矛盾、独立実装を妨げる曖昧さ、core の過剰な必須機能は見つからなかった。
+前回までに指摘した protocol 上の問題は解消された。core の分割、状態モデル、再送、拡張モデルに大きな設計上の問題はなく、必須範囲も十分小さい。一方、今回の core 集中再読で、freeze 前に直すべき局所的な規範上の不備を3点見つけた。
+
+1. describe の TLV が `max_frame` に収まるという条件に、応答headerと`more`を含むことが明示されていない。
+2. describe等のページング終端に、その応答形式には無い`count`を返すと書かれている。
+3. probe全体で共有するresource numberが1から始まり、0を割り当てないことがcore日本語版には明記されていない。
+
+いずれも新しい仕組みを足す変更ではなく、既存設計の意図を1〜2文で固定する修正である。しかし、1と2は実際のresponse byte列、3は`connection = 0`を「無し」とするinterfaceとの整合に関わるため、規範文を直してからfreezeするべきである。
 
 - wifi itemを広告するprobeは、すべての経路で`max_frame >= 112`を返すことになった。
 - 32 byte SSIDと64桁PSKを載せた112 byteの最大request vectorが追加された。
@@ -17,7 +23,7 @@ Status: **record**（非規範）。OEP v1 freeze 前の仕様を、第三者に
 
 coreはfn 0の8操作と、message、session、discovery、通知、共通資源規則に絞られている。`plan`、`restart`、`link`、probe configurationは名前付きの任意interfaceであり、通知とchannelの規則も、それらを使うprobeにだけ適用される。「小さく単純だが拡張可能」という目標を満たしている。
 
-現在残る仕様公開前の指摘は、DNS-SD service name `oep` のIANA登録確認だけである。これは現在のローカル実装を妨げるwire上の欠陥ではないが、公開されたservice nameの衝突を防ぐため、freeze前に処理すべきgovernance項目である。
+DNS-SD service name `oep` はIANAに登録しない方針である。これは現在のローカル実装を妨げるwire上の欠陥ではなく、登録をOEP適合やfreezeの条件にはしない。未登録名であることと、同名の別serviceをIANAが排除してくれる保証がないことだけを明記して使う。
 
 仕様書だけから互換host / probeを実装できる水準に達している。ただし、ESP32 Wi-Fiの参照実装と独立hostによる実機試験結果は、仕様の明確さとは別のfreeze条件として残る。
 
@@ -49,23 +55,58 @@ coreはfn 0の8操作と、message、session、discovery、通知、共通資源
 
 ## 3. 現在残る指摘
 
-### 3.1 Medium / Governance: DNS-SD service name `oep` を公開前に登録する
+### 3.1 Medium / Core: describe の1 TLVが収まる条件に応答overheadを含める
 
-OEPはDNS-SDのservice typeとして`_oep._tcp`を定義している。RFC 6763 §7と§16ではservice nameをIANA管理の名前空間として扱い、RFC 6335がservice nameの登録手順を定めている。
+core §7.3は、probeがdescribeの「TLVを1つずつ、自分のどの経路のmax_frameにも収まる大きさにする」と定める。しかしdescribe responseには、message header 5 byteと`more` 1 byteがTLVより前にある。現状の文を「encoded TLV単体がmax_frame以下」と読めば、そのTLVを載せたresponseは最大6 byte超過する。
 
-2026-10-07時点の[IANA Service Name and Transport Protocol Port Number Registry](https://www.iana.org/assignments/service-names-port-numbers/)には、`oep`のentryがない。service nameはfirst-come, first-servedであり、未登録のまま外部公開すると、別用途による先行登録または同名利用との衝突リスクが残る。
+規範は、例えば次の条件にする。
 
-推奨する対応は次である。
+> probeは、各TLVについて、応答header 5 byte、more 1 byte、そのTLV全体（tag 1 byte、len 2 byte、value）を合わせた長さが、自分のどの経路のmax_frameにも収まるようにする。
 
-1. freeze前にservice name `oep`をIANAへ申請する。
-2. 固定portは仕様で使わないため、service nameだけを申請する。
-3. descriptionにOpen Embedded Probe protocolを示す。
-4. DNS-SD TXT keyとして`unit_id`を使用することをassignment notesまたは公開仕様で関連づける。
-5. 登録が完了する前に名前をfreezeする場合は、登録未完了であることと変更可能性をrelease blockerとして明記する。
+すなわち、describe TLVのvalue長の上限は、経路の最小`max_frame - 9` byteである。この修正はwire形式を増やさず、元の意図を正確にするだけである。conformanceの「各TLVがmax_frameに収まる」も同じ表現へ合わせる。
 
-RFC 6335は、DNS SRV等のためにport番号を伴わないservice nameだけを申請できるとしている。したがって、現在の「portはSRVで決まり、固定portは無い」という設計を変える必要はない。
+### 3.2 Medium / Core: ページング終端の`count 0`を「要素0個」に直す
 
-これはprotocol framingやESP32実装のblockerではない。しかし、`_oep._tcp`を外部の独立実装が永続的な識別子として使い始める前に確定すべきである。
+core §7.3の共通規則は、firstが数以上なら「count 0とmore 0」を返すとしている。しかしdescribe responseは`more(u8), TLVの並び`であり、count fieldを持たない。probe.configのgetもcountを持たない。字面どおりに実装すると、describeの空pageに余分な0 byteを付ける実装と、TLV 0個なので`more`だけを返す実装に分かれうる。
+
+次のようにfield名ではなく要素数で書けば、すべての対象に適用できる。
+
+> firstが数以上なら、要素を0個、more = 0で返す。count fieldを持つ応答ではcount = 0とする。
+
+### 3.3 Medium / Core: resource numberの0を明示的に予約する
+
+core §9はresource numberをu16とし、「新しい資源を作るたびに前の番号から1進め、65535の次は1」とするが、最初の番号と0を割り当てるかを日本語規範で明記していない。一方、probe.configの`slot_state.connection`は0を「接続無し」のsentinelに使い、consoleはcore §9の番号を「1から進める」と説明する。
+
+独立したcore実装が最初のresourceに0を割り当てると、標準interfaceの0 sentinelと衝突する。core §9で次を明記する。
+
+> resource numberは1から65535。新しい資源には前の番号から1進めた番号を割り当て、65535の次は1とする。0は資源に割り当てない。
+
+### 3.4 Note / Core editorial: 意味は確定している表現上の修正
+
+次は他の節から正しい意味を一意に回復でき、相互運用上のblockerではないが、coreをfreezeするときに直すとよい。
+
+- §1の`fn`は「そのセッションの間」とあるが、§7.2では同じboot_idの間、対応が固定される。用語表も「その起動の間」とする。
+- §4.4は`max_frame`、`window`、`max_inflight`の3値を挙げた直後に「両方の上限」とする。どれを指すか列挙するか、「これらの上限」とする。
+- §6.5はboot_idを「起動ごとに変わる値」と定義しつつ、最後のfallbackでは繰り返しを許す。「変わるように選ぶ値」とすれば、許容する確率的衝突と矛盾して見えない。
+
+### 3.5 解決確認 / Governance: DNS-SD service name `oep` は未登録名として使う
+
+OEPはDNS-SDのservice typeとして`_oep._tcp`を定義している。ここで以前述べた「IANA登録」は、固定TCP port、domain、組織名、商標の登録ではなく、先頭labelに使うservice name `oep`をIANAのService Name and Transport Protocol Port Number Registryへ載せる申請を指す。
+
+2026-10-07時点の[IANA Service Name and Transport Protocol Port Number Registry](https://www.iana.org/assignments/service-names-port-numbers/)には、`oep`のentryがない。projectは登録しないため、`_oep._tcp`はOEP仕様がlocal discovery用に選んだ未登録名として扱う。
+
+`0991759`で、未登録名であること、発見したすべてのendpointをconfirmとdescribeで検証すること、検証できない候補を外すことがhost guideに明記された。以前のレビューで求めた文書上の対応は完了した。
+
+維持すべき扱いは次である。
+
+1. `_oep._tcp`をIANA登録済みの一意な名前として扱わない。
+2. advertisementで見つけたendpointも、通常どおりOEP `confirm`とfn 0の`describe`で検証する。
+3. TXTの`unit_id`だけを認証またはprotocol判定として信頼しない。
+4. 将来IANAで`oep`が別用途に登録された場合は、service typeの変更と移行手順を別途決める。
+
+未登録でもmDNS / DNS-SDのpacket形式、SRVによるport解決、TXTの`unit_id`は実装できる。登録の有無はwire形式を変えない。
+
+衝突時に無関係なserviceへ接続する可能性は残るが、hostは最初にOEP `confirm`だけを送り、正しい応答が無ければ閉じる。さらにTXTとdescribeの`unit_id`を照合するため、同名であるだけのendpointをOEP probeとして使い続けない。この残余リスクを受け入れるなら、IANA登録はfreeze blockerではない。
 
 ## 4. 前回指摘の反映確認
 
@@ -205,11 +246,17 @@ cd tests && uv run pytest registry_v1 vectors
 
 vectorにはwifiのset / get / write-only round-trip / refusal / state / unsetと、32 byte SSID + 64桁PSKの112 byte最大requestが含まれる。TCP streamの分割、複数connection、mDNS packetは実装と結合試験の範囲として明示されている。
 
+今回見つけた3点は既存vectorの対象外なので、現在の成功はそれらを否定しない。修正時には、最小`max_frame = 64`でvalue 55 byteのdescribe TLVが1個だけ収まる例、範囲外firstへのdescribe responseが`more = 0`の1 byteだけである例、最初のresource numberが1でwrap後も0を使わない例を追加すると再発を防げる。
+
 ## 10. Freeze 前の残作業
 
-### 仕様・名前管理
+### 仕様
 
-1. DNS-SD service name `oep`をIANAへ申請するか、登録完了前は名前をfreezeしない。
+1. core §7.3のdescribe TLV上限に、response headerと`more`を含める。
+2. core §7.3のページング終端を「要素0個、more = 0」に直す。
+3. core §9でresource numberを1〜65535とし、0を割り当てないと明記する。
+4. conformanceの対応する記述を同期し、可能なら3.4のeditorial項目も直す。
+5. `_oep._tcp`を未登録名として扱い、`confirm`とdescribeによるin-band検証を維持する（host guideへの注記は`0991759`で完了）。
 
 ### 実装によるFreeze判定
 
@@ -230,4 +277,4 @@ coreは十分小さく、状態と拡張の規則も一貫している。通常�
 
 独自拡張はreverse-DNS interface、TLV、`ops`、revisionによって既存実装から分離できる。未知値の扱いも定義されており、拡張性は担保されている。
 
-現時点で仕様内容そのものにfreeze blockerは見つからない。残るのは、DNS-SD service nameの登録、ESP32と独立hostによる実装検証、英語版同期とrelease作業である。特にESP32実装は、文書レビューでは見えないstream分割、複数connection、Wi-Fi切断、credential最大長を検証するため、freeze前に完了すべきである。
+coreは「ほぼ問題ない」と評価できる。ただし「このまま規範をfreezeしてよい」段階ではなく、上の3点を先に直す。その後にESP32と独立hostによる実装検証を通せば、core設計を見直す可能性は低い。
