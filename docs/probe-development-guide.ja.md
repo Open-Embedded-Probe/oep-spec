@@ -1,17 +1,11 @@
 # Open Embedded Probe — probe 開発ガイド
 
-[English](probe-development-guide.md)
-
-状態: **ガイド**（規範ではない。2026-10-07 にその日の規範の文に合わせて更新）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。probe を作る人のために、[OEP core](oep-core.ja.md) と
+状態: **ガイド**（規範ではない）。probe を作る人のために、[OEP core](oep-core.ja.md) と
 `oep-if-*.ja.md` が probe に求めることを満たす実務のやり方と、実際に踏んだ罠をまとめる。規範と食い違えば規範が正しい。host の側は [host 開発ガイド](host-development-guide.ja.md)。
 
 - 最初の一歩（confirm、list、describe に答えるいちばん小さい probe とバイト列）は [はじめに](getting-started.ja.md)、probe が
   しなければならないことのチェックリストは [適合](conformance.ja.md) §1。
-- 参照のライブラリの上で probe を作る案内は、ライブラリの側にある:
-  [getting started](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/getting-started.ja.md)、
-  [writing a probe](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.ja.md)、例の
-  `examples/01.Basics/MinimalProbe`（oep-probe-arduino）。
-  節の番号は 2026-10-06 に付け直した。古い番号と新しい番号の対応はその記録の冒頭。
+- probe library や board ごとの作り方と制約は、その実装のリポジトリに置く。
 - `probe_frame_gap_ms` のような逆引用符の名前は、すべての数を持つ `registry/oep-v1.toml` のキー。
 
 ## 1. 開閉でリセットしない・状態を変えない
@@ -86,8 +80,7 @@ transports §4 の規則を守るための作り:
 
 口を開閉しても probe が再起動しないようにする（§1）。USB スタックの再起動のきっかけ（DTR / RTS の並び、1200 bps の「touch」、vendor の
 リセットの要求）をすべて切る。きっかけが firmware の外にあるとき（USB-UART の変換チップの先の自動リセットの回路）は、host が DTR と
-RTS を立てて開き（host ガイド §1）、それでもリセットするなら、その probe の文書で利用者に伝える。例: ESP32 の USB-Serial/JTAG の口は、chip-reset-disable のビットを
-立てないと DTR / RTS の並びでチップをリセットする。arduino-esp32 の TinyUSB の CDC（`USBCDC`）は `enableReboot(false)` で再起動しなくなる。
+RTS を立てて開き（host ガイド §1）、それでもリセットするなら、その probe の文書で利用者に伝える。platform 固有の設定方法は実装リポジトリに置く。
 
 ## 8. 推奨の USB の作り（VID:PID、iProduct、serial number、interface）
 
@@ -107,7 +100,7 @@ RTS を立てて開き（host ガイド §1）、それでもリセットする�
   - HID は、他の道具が vendor や CDC を握っていても読め、ドライバも要らず、ロック不要の発見（describe、設定の get と state）に向く;
   - CDC は IDE や端末から見えるシリアルの口。OEP も受けるが（transports §4）、主にはコンソールを流す。
 - 出している経路をすべて fn 0 の describe（transport の tag）に並べ、どの経路でも同じ unit_id を返す。
-- 参照の probe の今の USB の形: [USB の識別](usb-identity.ja.md)。
+- USB の識別と host の選び方は [USB の識別](usb-identity.ja.md)。
 
 ## 9. ロックの奪い方に probe が答えること
 
@@ -198,7 +191,7 @@ clock（core §7.7）の応答の uptime_ns は、その要求を処理する中
 
 ## 12. target を扱う部品
 
-参照の probe から取った一般の決まり。
+target を扱う probe に共通する実装上の注意。
 
 - **止まるまで走らせる**: host が渡したコードを走らせる前に、どの特権のモードでも ebreak が debug モードに入るようにする debug の制御の
   bit を立て、いちばん強い特権のモードで走らせる。最後の ebreak が trap のベクタに飛ばずに止まるようにするため。割り込みは host が
@@ -216,7 +209,7 @@ clock（core §7.7）の応答の uptime_ns は、その要求を処理する中
   決める（fixture §1.1）。
 - **debug の線が忙しいときだけ壊れる fixture** は、CPU より先に線のエッジを疑う。線が休んでいるときと忙しいときで同じ手順を回し、まず
   出力の強さを見て、直ったかは前後を同じ手順で測る。
-- **問題を直したら、同じ仕組みの箇所を探す**（ほかの PHY、ほかの SoC、線を駆動する fixture、client と fake）。どこが大丈夫で、どこが
+- **問題を直したら、同じ仕組みの箇所を探す**（ほかの PHY、ほかの SoC、線を駆動する fixture、client と仮想ベンチ）。どこが大丈夫で、どこが
   未確認かを記録に残す。
 - **resume と run は出し直さない**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.2、§4.4）。resume の要求が 2 回要る target や、すべて再開したと
   知らせない target は host が扱う: 汎用の名前のインターフェースに target 固有の知識を入れると core §13 の規則 8 に反する。
@@ -232,13 +225,3 @@ clock（core §7.7）の応答の uptime_ns は、その要求を処理する中
   connection の上の再試行と同期の取り直しでは、target をリセットしうる wake を送らない。
 - **コンソールの読みの順**（[コンソール](../interfaces/oep-if-console.ja.md) §3）: その connection の riscv-dm の要求に答えた後は、次にコンソールのために DATA0 を
   読む前に DMSTATUS を読み、hart が止まっていれば読まない。
-
-## 13. 参照の firmware の値（規範が選び方を任せる所）
-
-参照の firmware（oep-probe-arduino）が宣言する値（max_op_ms、model、chip）、線の時間と回数（再試行、線切れ、attach、scan、DM の待ち）と、
-platform ごとの限界は、そのリポジトリの
-[implementation-limits](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/implementation-limits.ja.md) にまとめてある。
-仕様はそれらの値を決めない。
-
-- **unit_id**: チップの固有の番号を小文字の 16 進で。
-- **UART bridge の起動時の速さ**: `uart_bridge_boot_baud`（§5）。

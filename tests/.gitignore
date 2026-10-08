@@ -1,9 +1,0 @@
-/.env
-/.pytest-results/
-/.pytest_cache/
-/.venv/
-/report.html
-__pycache__/
-/**/__pycache__/
-/**/build/
-/**/output/

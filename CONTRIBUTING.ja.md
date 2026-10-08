@@ -1,53 +1,35 @@
-# OEP の仕様への貢献
+# OEP 仕様への貢献
 
-[English](CONTRIBUTING.md)
+## 変更する場所
 
-この文書と [CONTRIBUTING.md](CONTRIBUTING.md) は同じことを書く。
+OEP の仕様の正は、規範文書（`docs/oep-core.ja.md`、`docs/oep-transports.ja.md`、`interfaces/*.ja.md`）と `registry/oep-v1.toml` である。凍結までは日本語だけを変更する。実装の挙動を仕様として採用する場合も、先にこのリポジトリの規範文書へ書く。
 
-## 仕様の置き場
+このリポジトリに置く情報と実装側に置く情報は [リポジトリ間の責務](docs/repository-boundaries.ja.md) に従う。日付付きの提案、会議録、レビュー回答、旧仕様の写しは追加しない。採用した結論は規範またはガイドへ直接反映し、必要な理由だけをその近くに残す。不採用案と検討の順序は Git 履歴または issue で扱う。
 
-このリポジトリが OEP の唯一の正である。仕様は規範の文（`docs/` の `oep-core.ja.md`、`oep-transports.ja.md` と、`interfaces/` の、名前が `oep.` で始まるインターフェースの `oep-if-*.ja.md`、`target-console-dmseq.ja.md`。凍結までは日本語が作業の文）と、
-番号の registry `registry/oep-v1.toml` である。実装は仕様に従うもので、仕様を決めるものではない。実装が適合するために何をするか、それをどう確かめるかは [適合](docs/conformance.ja.md) に並べてある。
+## 文言の変更と規則の変更
 
-仕様を変えるやり方は 2 つ: maintainer がこのリポジトリを直接直すか、誰でもこのリポジトリに pull request を出す。誤りは issue で
-知らせるか、pull request で直してよい。
+- **文言の変更**は、probe と host の必須動作を変えない修正である。曖昧さ、誤字、リンク、例、ガイドを直してよい。
+- **規則の変更**は、実装の必須動作、wire 上の形、registry の値、名前、revision を変える修正である。変更理由、互換性への影響、追随が必要な実装を pull request に書き、実装者のレビューを受ける。
 
-v1 の凍結までは、日本語の文（`.ja.md`）が作業の文で、変更は日本語の文に入れる。英語の文書は保たず、凍結のときに日本語から作り直す。そのときから英語の文が規範として正しく、変更は両方の言語を同じ commit で直し、両者が食い違えば英語が正しい。
+規範文書は、それだけで相互運用実装を作れる必要がある。必須の分岐、境界値、エラー、寿命を明記し、「通常」「など」「実装による」で必須動作を曖昧にしない。hardware 名、製品名、性能測定、実装上の回避策は、それを所有する実装リポジトリへ置く。
 
-## 変更の 2 つの種類
+## registry と生成物
 
-- **文言の変更**: probe や host のすることは変わらない。分かりやすい文、誤字、訳の直し、コメント、例、リンク、状態の行。
-  文言の変更はそのまま入れてよい。
-- **規則の変更**: 実装がしなければならないことが変わる。または registry の値（op、tag、enum、timing、limit、名前、revision）が
-  変わる。pull request には、規則、理由、どの実装が追随するかを書き、merge の前に実装者のレビューを受ける。実装は仕様の後で
-  直す。
+`oep.` の名前および wire 上の番号は、定義する規範文書と `registry/oep-v1.toml` を同じ変更で更新したときだけ割り当てる。生成物は直接編集せず、次を実行して commit する。
 
-規範の文は、文だけで実装できなければならない: 数は目安ではなく値で、手順のすべての分かれ道を書く。チップ、ボード、製品の名前、
-実測、日付、逸話は記録の文書に置く。規範とガイドは記録が無くても完結する: 読む人が必要とするもの（事実、数、短い理由）は
-文そのものに書き、どちらも記録へはリンクしない。ガイドは例としてチップの名前を挙げてよい。記録を並べるのは、レビューの手引きの §5.1 と README だけ。
+```sh
+python3 tools/oepgen1.py
+python3 tools/oepgen1.py --check
+python3 tools/oepvectors1.py --check
+cd tests && uv run pytest
+```
 
-## `oep.` の名前や registry の値を足す
+ベクタが扱う規則を変えた場合は、check の前に `python3 tools/oepvectors1.py` で更新する。
 
-`oep.` の名前と registry のすべての番号は、`registry/oep-v1.toml` と、新しい名前や値を定める文を一緒に変える pull request を
-merge したときにだけ割り当てる。その pull request では:
+第三者のインターフェースは逆 DNS 名（例 `io.github.owner.name`）を使い、この registry への登録を必要としない。`oep.` 名前空間を使うものだけが、このリポジトリのレビュー対象である。
 
-1. `registry/oep-v1.toml` と規範の文（両方の言語）を直す。
-2. `python3 tools/oepgen1.py`、続いて `python3 tools/oepgen1.py --check` を走らせ、`generated/` を commit する。
-3. `python3 tools/oepvectors1.py --check` を走らせる（ベクタが扱う規則が変わったら `python3 tools/oepvectors1.py` を走らせ、`tests/vectors/` を commit する）。
-4. `cd tests && uv run pytest registry_v1 vectors` を走らせる。
+## 凍結後
 
-merge されるまでは、自分の逆 DNS の名前のインターフェースで試す（core §13）。
+凍結後の互換性と revision の規則は [版と安定性](docs/versioning.ja.md) に従う。英語を規範、日本語を対訳として同じ変更で更新する。
 
-## 第三者のインターフェース
-
-project のものでないインターフェースは逆 DNS の名前（例 `io.github.<owner>.<name>`、core §13）を使う。プロトコルの上では、`oep.` の名前のインターフェースと同じに扱われる。登録も、ここへの pull request も
-要らない。op、tag、値は、そのインターフェース自身の定義が割り当てる。
-
-## 凍結の後の errata
-
-v1 の凍結の後も、errata は同じ pull request の手順で入れる。文言だけを直す erratum は文言の変更、振る舞いを変えるものは
-規則の変更で、core §2.7 の revision の規則に従う。
-
-## License
-
-貢献は、このリポジトリの [MIT License](LICENSE) のもとで行う。
+貢献は [MIT License](LICENSE) のもとで行う。

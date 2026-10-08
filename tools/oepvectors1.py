@@ -746,7 +746,7 @@ def ops() -> dict:
     logic_ops = [o["code"] for o in lo["op"]]
     mr_state = ("fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); "
                 "describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate "
-                "policies 7, d 2-128 (d 1 always), powers of 2 only); the fake keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32")
+                "policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32")
     add("logic describe: multirate declared", "capture §3.5, §5.1; core §7.3", mrf, mr_state,
         request(0x93, 0, op("core", "describe"), struct.pack("<HH", 9, 0)),
         ok(0x93, bytes([0]) + tlv(REG["describe_common"]["ops"], ops_value(logic_ops))

@@ -1,7 +1,5 @@
 # OEP v1 の安全とセキュリティの考え方
 
-[English](security.md)
-
 状態: **ガイド**（規範ではない）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。規則は足さない。規範の文がすでに持つ安全とセキュリティの考え方を、それぞれの節を添えて 1 か所に
 集める。このページと規範が食い違えば規範が正しい。
 
@@ -17,7 +15,7 @@
   host（transports §1）。
 - probe 自身の firmware の更新は OEP の外（core §0）。OEP は firmware を運ばず、署名もしない。
 - target のメモリの読み出しと、その読み出しの保護は host のこと: probe は host の要求を実行し、target の知識を持たない（core §13 の
-  規則 8、host ガイド §20）。
+  規則 8）。target 固有の保護や手順は host 実装が扱う。
 
 ## 2. 壊れた入力
 
@@ -90,7 +88,7 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
 
 - **出力の強さ**: host が強さを選べるのは gpio の出力と出力の idle（mode 3 / 4）だけ。線と、uart、i2c-target、spi-target の線の強さは
   probe が決める（[fixture](../interfaces/oep-if-fixture.ja.md) §1.1）。実務: debug の線はタイミングが許すいちばん弱い強さで駆動し、target に給電する
-  線は弱くしない（probe ガイド §12、host ガイド §18.5）。
+  線は弱くしない。具体的な段は probe と外部回路の仕様に従う。
 - **出力の idle**: 解いたピンは空きの状態（設定の idle か Hi-Z）に戻る（core §8）。plan を取ってもピンは変わらず、読むだけの
   インターフェースは駆動しない（core §8、キャプチャ §1.2）。出力の idle は、ピンが空いている間ずっと、起動時から、host なしで level を
   駆動する。target の出力とぶつからないようにするのは配線の責任（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1）。idle の項目のある
@@ -117,8 +115,8 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
   TX を UART の休みの level に保つ（fixture §2）。
 - **リセットの線**はオープンドレインで引く（gpio の mode 5 / 6、attach の reset TLV）。riscv-dm の reset の op はリセットの線を
   動かさないので、線が動くのは host が名指した所だけ（debug §4.3）。接続を閉じても target をリセットしない（debug §2）。
-- **probe のピンからの給電**は、ピンが流せる範囲でだけ。大きいものは外付けのスイッチを介す（host ガイド §18.2）。
-- 分からない target の**ピンを探す**とき: host ガイド §19.2。
+- **probe のピンからの給電**は、ピンが流せる範囲でだけ行う。大きいものは外付けのスイッチを介す。
+- 配線の分からない target に scan や出力を行う前に、利用者の同意と電気的な安全を確認する。
 
 ## 7. 同じ口のほかのソフトウェア
 

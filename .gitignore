@@ -1,1 +1,19 @@
+# Python
 __pycache__/
+*.py[cod]
+.pytest_cache/
+.pytest-results/
+.venv/
+
+# Local editor and OS files
+.DS_Store
+.idea/
+.vscode/
+
+# Build products (the specification repository does not publish binaries)
+build/
+*.bin
+*.elf
+*.hex
+*.lst
+*.map

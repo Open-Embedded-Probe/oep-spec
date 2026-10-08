@@ -1,8 +1,6 @@
 # Open Embedded Probe — プロジェクトの目的と範囲
 
-[English](project-concept.md)
-
-状態: **ガイド**（規範ではない）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。上流で合意したprojectの目的と範囲: project名、相互運用を中心とする目的、機能に必要な通信経路をOEP native pathまたは明示的なexternal bindingとして扱う原則、および非互換な派生をOEPとして識別しない原則。この文書はprotocolの構造や技術的な解決方法を規定しない。それはv1の仕様（[OEP core](oep-core.ja.md)とインターフェースの文書）が定める。
+状態: **ガイド**（規範ではない）。project の目的と範囲を定める。この文書は protocol の構造や技術的な解決方法を規定しない。それは v1 の仕様（[OEP core](oep-core.ja.md) とインターフェースの文書）が定める。
 
 ## 背景
 
@@ -144,4 +142,4 @@ Projectの中心的な成功条件は、次の状態を実証できることで�
 - versioning、拡張、互換性およびlifecycleの規則
 - USBの識別
 
-適合性の定義と検証方法、governanceは、まだ仕様で決まっていない（projectのUSB VID:PIDの利用はoep-probe-arduinoのPID-USE.mdが定める）。変更の手順は[CONTRIBUTING](../CONTRIBUTING.ja.md)にある。
+適合性の定義と検証方法は [適合](conformance.ja.md)、変更の手順は [CONTRIBUTING](../CONTRIBUTING.ja.md)、リポジトリ間の責務は [OEP リポジトリ間の責務](repository-boundaries.ja.md) が定める。project の USB VID:PID の利用条件は、それを管理する `oep-probe-arduino` の `PID-USE.md` が定める。

@@ -1,7 +1,5 @@
 # OEP v1 をはじめる: 最初の probe と最初の host
 
-[English](getting-started.md)
-
 状態: **ガイド**（規範ではない）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。規則は足さない。どの段も規範の文を指し、このガイドと規範が食い違えば規範が正しい。
 
 OEP を初めて見る人のためのページ。**confirm**、**list**、**describe** に答えるいちばん小さい probe と、probe を見つけて confirm し、
@@ -150,9 +148,7 @@ probe がすることを順に（参照の先が規則）:
 6. **答える**: 同じ corr で、要求が来た経路に、来た順に、要求 1 つに応答 1 つ（core §4.2、§4.4）。シリアルの口では `0x00 COBS 0x00`。
 7. **boot_id**: 起動時に乱数から選ぶ（core §6.5）。**unit_id**: 小文字、変わらない、一意（probe ガイド §10）。
 
-参照のライブラリの [MinimalProbe の例](https://github.com/Open-Embedded-Probe/oep-probe-arduino/tree/main/examples/01.Basics/MinimalProbe) と
-案内 [writing a probe](https://github.com/Open-Embedded-Probe/oep-probe-arduino/blob/main/docs/guide/writing-a-probe.ja.md) に、そのライブラリで
-作った probe の全体がある。
+具体的な library での実装方法は、その probe 実装のリポジトリに置く。この節の規則とバイト列を満たすかは [適合](conformance.ja.md) で確かめる。
 
 ## 5. 最初の host
 
@@ -161,7 +157,7 @@ probe がすることを順に（参照の先が規則）:
    transports §3）。64 byte に収まる。
 3. **待つ**: 少なくとも `host_wait_add_ms`（1000 ms）+ 転送の時間（core §4.4）。UART bridge かもしれないシリアルの口では、転送の時間は
    (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒。L は線の上の要求のフレームの長さ（ここでは 21 byte）。confirm の
-   応答の前には host は max_frame を知らない。参照の client は `min_max_frame`（64）で数える: (21 + 64 × 3) × 10 / 115200 ≈ 18 ms。長く
+   応答の前には host は max_frame を知らないため、`min_max_frame`（64）で数える: (21 + 64 × 3) × 10 / 115200 ≈ 18 ms。長く
    待つのはいつでもよい。
 4. **受ける**: 0x00 の間の候補をすべて解く。口を開いてから最初の 0x00 までのバイトも解く。解けない、CRC が合わない、role を知らない、
    待っていない corr の候補は雑音として捨てる（transports §1、core §11.1）。
@@ -175,12 +171,7 @@ probe がすることを順に（参照の先が規則）:
    cache する（core §7.3、§7.5）。
 8. **次**: 何かを変えるにはセッションを開き（core §6）、インターフェースをその fn で使う。終わったら `end` を送る。
 
-host はまず fake の probe に当てて試す（host ガイド §16）:
-
-```sh
-python -m oep_client.fake_serve --pty      # 開く pty を出す。いくつものインターフェースを持つ probe を出す
-oep dump --port /dev/pts/N                 # すべてのインターフェースの list と describe。自分の host と見比べる
-```
+host は、別の実装が提供する仮想ベンチまたは実機に当てて、独立した実装どうしで同じ結果になることを確かめる。具体的な起動方法は、その実装のリポジトリに置く。
 
 ## 6. 次に足すもの
 
@@ -212,7 +203,7 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 3. revision と知らない値（core §2.4、§2.7、host ガイド §10）。購読するなら通知（host ガイド §12）。
 4. USB の probe の発見と複数の経路（transports §3、host ガイド §4、§5）。
 
-それから [適合](conformance.ja.md) §4 で確かめる: 試験ベクトル、fake の probe、本物の probe への `oep dump`。
+それから [適合](conformance.ja.md) §4 に従い、試験ベクトル、独立した仮想ベンチ、実機で確かめる。
 
 ## 7. 次に読むもの
 
