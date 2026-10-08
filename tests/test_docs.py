@@ -12,9 +12,8 @@ def maintained_markdown():
     yield ROOT / "CONTRIBUTING.ja.md"
     yield ROOT / "CONTRIBUTING.md"
     yield ROOT / "CHANGELOG.md"
-    yield from sorted((ROOT / "docs").glob("*.ja.md"))
-    yield from sorted((ROOT / "interfaces").glob("*.ja.md"))
-    yield ROOT / "tests" / "README.ja.md"
+    for directory in ("docs", "interfaces", "registry", "generated", "tools", "tests"):
+        yield from sorted((ROOT / directory).rglob("*.ja.md"))
 
 
 def test_normative_and_guide_copies_are_japanese_only():

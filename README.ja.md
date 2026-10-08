@@ -27,6 +27,24 @@ wire 上の数値は registry が唯一の定義である。文書と registry �
 
 実装時は [host 開発ガイド](docs/host-development-guide.ja.md) または [probe 開発ガイド](docs/probe-development-guide.ja.md) も参照する。用語、セキュリティ、互換性の方針はそれぞれ [用語集](docs/glossary.ja.md)、[安全とセキュリティ](docs/security.ja.md)、[版と安定性](docs/versioning.ja.md) にまとめた。レビューの入口は [レビューガイド](docs/review-guide.ja.md) である。
 
+## ディレクトリ構成
+
+各ディレクトリ直下の `README.ja.md` に、内容と更新方法をまとめている。
+
+| ディレクトリ | 内容 |
+|---|---|
+| [docs/](docs/README.ja.md) | core・transport の規範、適合要件、開発ガイド、保守方針 |
+| [interfaces/](interfaces/README.ja.md) | 標準インターフェースと、それらが使う共通部品・framing の規範 |
+| [registry/](registry/README.ja.md) | wire 上の番号と定数の定義 |
+| [generated/](generated/README.ja.md) | registry から生成した言語別の定数 |
+| [generated/oep-v1/](generated/oep-v1/README.ja.md) | OEP v1 の C、C++、Python、JavaScript 用生成物 |
+| [tools/](tools/README.ja.md) | registry の定数と共有テストベクタの生成・整合検査 |
+| [tests/](tests/README.ja.md) | 仕様、registry、生成物、文書の自動検査 |
+| [tests/registry_v1/](tests/registry_v1/README.ja.md) | v1 の番号規則と生成物の検査 |
+| [tests/vectors/](tests/vectors/README.ja.md) | 実装間で共有する wire ベクタと、その自己整合検査 |
+
+ルートには、この案内、[貢献手順](CONTRIBUTING.ja.md)、[変更一覧](CHANGELOG.md)、[ライセンス](LICENSE)を置く。
+
 ## リポジトリの境界
 
 [リポジトリ間の責務](docs/repository-boundaries.ja.md)を正とする。要点は次のとおり。

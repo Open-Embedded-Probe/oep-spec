@@ -2,8 +2,8 @@
 
 このディレクトリは、現行仕様そのものを検査するものだけを持つ。
 
-- `registry_v1/`: `registry/oep-v1.toml`、生成物、番号の規則の整合
-- `vectors/`: 文書から生成した共有 wire ベクタと、その自己整合
+- [registry_v1/](registry_v1/README.ja.md): `registry/oep-v1.toml`、生成物、番号の規則の整合
+- [vectors/](vectors/README.ja.md): 規範の規則から計算した共有 wire ベクタと、その自己整合
 - `test_docs.py`: 日本語版だけを保守する構成と、ローカル文書リンク
 
 ```sh
