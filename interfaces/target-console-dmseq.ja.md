@@ -84,6 +84,8 @@ OEP の probe については [線とデバッグ](oep-if-debug.ja.md) §4.6。
 5. `pending` があり A == `h` なら届いている: `h` := not `h`、`pending` を空にする。
    `pending` が空なら、送るものの次の最大 2 byte を入れる（OEP の probe では送りの列の先頭から、[コンソール](oep-if-console.ja.md) §2）。K = S、H = `h`、M = len(`pending`)、CRC で答える。
 
+OEP probe がこれらの観測をストリームの mark として通知する条件は、[コンソール §2](oep-if-console.ja.md#2-ストリームの規則)で定める。
+
 ## target の規則（フレームを出している間に DATA0 を読んだとき）
 
 0. **bit 7 が 1 で、自分が出した語と違う**（attach が残した `0xffffffff` など）なら、答えを待たずに**すぐ同じフレームを

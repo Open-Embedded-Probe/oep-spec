@@ -44,6 +44,16 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
   失う前に必要な出力を host が read で読み、ログへ保存する。
 - stream が生きている間、probe は target の出力を吸い出してバッファへ貯める。
 - target の自己リセットを検出したら restart mark を付け、dmseq を未同期へ戻す。
+- dmseq の mark は、共通部品 §1 の kind/detail を使い、次の条件で付ける。
+  - 未同期からの初回同期では restart mark を要求しない。
+  - 同期済みで、重複でない新しい SYN フレームによって再同期する場合は restart（kind 2、detail 2: resync）。
+  - 有効な target フレームで TO が 1 なら lost（kind 5、detail 4: TO）。payload が重複でも適用する。
+  - target フレームの CRC が不一致なら lost（kind 5、detail 2: framing）。N > 6 では CRC の位置を求めない。
+  - 同じフレームを繰り返し観測した際の mark はまとめてよい。poll ごとの mark 数は要求しない。
+  - 無効なフレームの SYN/TO から restart/resync や lost/TO を付けてはならない。
+    CRC 不一致による lost/framing は、この禁止とは別に付ける。
+  フレームの有効性・重複・再同期は [dmseq の host の規則](target-console-dmseq.ja.md#host-の規則bit-7-が-1-の-word-を読んだとき)で判定する。
+
 
 - **送りの列**: probe は、host → target を運ぶ mechanism（1、2）のストリームごとに、送りの列を持つ（大きさは probe が決める）。
   write は data を先頭から、列の空きに入る分だけ列の終わりに入れる。**accepted は列に入れたバイトの数**（count と列の空きの小さい方）で、
