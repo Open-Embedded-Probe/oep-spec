@@ -22,13 +22,12 @@
 
 - OS からシリアルデバイスに見える口（UART bridge、USB CDC、内蔵の USB シリアル）は、どれも COBS + CRC-16 で話す（transports §1）。
   フレームの形は経路の種類で決まり、VID:PID では選ばない。
-- 口の上には、OEP の応答と一緒に生のバイト（target のコンソールなど）が流れてくる（transports §4）。フレームにならないバイト、
-  CRC の合わない候補、待っていない corr の応答は雑音として捨てる。**雑音を見ても送り直さない**。応答が来ないことは待ち時間だけで
-  判断し（core §4.4）、送り直しは §8 のとおり。
+- OEP の口はフレーム専用で、コンソールの生データを混ぜない。解けない候補と CRC 不一致は捨てる。
+  正常なフレームでも待っていない corr の応答は捨てる。再送は §8 に従う。
 - 正しい COBS のフレームは、2 つの 0x00 の間に 65796 byte（65535 byte の message とその CRC-16、
   254 byte ごとに COBS の code の 1 byte）より多くを持たない。それより長くなった候補は、閉じの 0x00 を待たずに雑音として捨ててよい。
-- 送るフレームは必ず前後を 0x00 で囲む。前の 0x00 が無いと、probe はフレームの頭を生のバイトとして流してしまう。
-- 自分のセッションが口を持っている間、その口の生の転送は止まる（transports §4）。コンソールは OEP の read で読む。
+- 送るフレームは必ず前後を 0x00 で囲む。前の区切りが無い候補は probe に捨てられうる。
+- コンソールは OEP の read / write を使う。別の raw endpoint は明示した経路として扱う。
 
 ## 3. UART の速度
 
@@ -77,14 +76,10 @@ TCP で待ち受ける probe が自分を広告するときは、DNS-SD の serv
 ## 5. session_id と発見
 
 - open のたびに新しい、予測できない 32 bit の乱数の session_id を選ぶ。0、連番、固定値にしない（core §6.1）。
-- **one-shot CLI はコマンドごとに新しいセッションを開く。** 再開は無い: セッションが終わると（end、lease の期限切れ、force）、
-  probe はそれが作ったものをすべて解放する（core §6.4、§9）。前のコマンドから要るものは、明示の経路で probe の上に見つける:
-  同じピンへの attach はスロットが保つ接続を返し（flags bit1。その attach が運ばない idle_clock などの設定は、接続の今のままになる。
-  [線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）、同じ場所で同じ mechanism のコンソールの open は、閉じた後でも
-  位置とマークを保ったストリームを返すので、リセット直後の最初の行が残る（[コンソール](../interfaces/oep-if-console.ja.md) §2）。
-  コマンドの間も駆動し続けるピン（電源のスイッチ）は設定の plan か出力の idle にし、コマンドの間も張っておく接続はスロットにする
-  （[probe の設定](../interfaces/oep-if-probe-config.ja.md)）。boot_id を probe ごとに、unit_id をキーにして覚える: open の応答の
-  boot_id が違えば probe は再起動したので、覚えた fn の対応を使う前に list し直す（core §6.5）。
+- **one-shot CLI はコマンドごとに新しいセッションを開く。** 前のセッションの connection や stream を再利用しない。
+  配線の preset を読み、pins と設定を明示して attach する。複数コマンドで出力や接続を保つ場合は、それらを同じセッションで実行する。
+  必要なコンソール出力は end の前に read して host のログへ保存する。
+  unit_id ごとに boot_id を記録し、変わったら fn の対応を list から作り直す。
 - **発見の手順**: USB の device を列挙し、プロジェクトの VID:PID を持つもの（§4）と、名指した unit_id と serial
   number が同じものを開く（transports §3）。serial number が unit_id。device の中の口は interface の
   記述子で選ぶ（vendor bulk: class 0xFF / subclass 0x4F / protocol 0x45、HID: usage page 0xFF4F / usage 0x45、CDC はすべてシリアルの口）。
@@ -108,7 +103,7 @@ TCP で待ち受ける probe が自分を広告するときは、DNS-SD の serv
 - 1 つの probe が複数の経路（vendor bulk、HID、シリアルの口、TCP）を見せることがある。経路はセッションとロックを 1 つ共有する
   （transports §3）。fn 0 の describe の unit_id（ASCII の大文字と小文字を区別せずに比べる）でまとめ、`x-` で始まる unit_id ではまとめない
   （core §7.5）。
-- 選べるなら vendor bulk、HID、シリアルの口の順に使う（transports §3）。シリアルの口は生のバイトも運び、受けの量にも限りがある
+- 選べるなら vendor bulk、HID、シリアルの口の順に使う（transports §3）。シリアルの口は受けの量にも限りがある
   （transports §4）。
 - 自分のセッションの id を持つ要求は、すべて 1 つの経路で送る（transports §3）。ロック不要の要求は別の経路で送ってよい（たとえば、
   デバッガが vendor bulk を持つ間に、HID で describe と state を読む）。
@@ -143,7 +138,7 @@ restart の前に読んでおく。
 probe への経路を閉じる。ブローカーの probe への経路が無くなれば（ブローカーが閉じた、USB で列挙し直した、TCP が閉じた）ブローカーは終わり、
 道具への接続も閉じる（transports §1）: 道具は新しく開くのと同じにやり直す。
 
-再起動の後、保存した設定はどの起動とも同じに掛かる（at boot のスロットはまた attach する）。target は reset されず、止めていた hart は
+再起動の後、保存した設定はどの起動とも同じに掛かる（preset は host が再適用する）。target は reset されず、止めていた hart は
 止めたまま残る（[再起動](../interfaces/oep-if-restart.ja.md) §2）。
 
 ### 5.3 probe とスロットの名指し方
@@ -171,37 +166,21 @@ probe への経路を閉じる。ブローカーの probe への経路が無く�
 
 ## 7. ブローカー
 
-1 つの probe を同じ PC の複数の道具で同時に使うときは、host の側のブローカーが probe との 1 本のセッションを持ち、道具ごとの
-要求を束ねる（corr の付け替え、道具の open / end を probe に出さない、道具が切れたらその道具の資源を外す）。probe から見える
-transport とセッションは 1 つのまま。道具とブローカーの間は、仕様の TCP の形（`length(u16) message`、transports §1）を使える。セッションの
-op に自分で答え、ほかを中継するブローカーは、transports §1 と core §5.2 の中継のブローカーの規則に従う（confirm の transport の index は
-0xFF、client の接続ごとの corr の対応表）。自分で答えるのはセッションの op（confirm、open、end、keepalive、lock_state）だけで、fn 0 の
-clock はほかの要求と同じに probe に中継する（道具が読む時刻が probe のものであるため。transports §1、core §7.7）。
+OEP へ自分で答える broker は独立した OEP の端点として動かす。list / describe / confirm、セッション、再送履歴、資源の寿命を
+client 向けに実装し、上流の probe との対応は内部で管理する。core の 5 個の op だけを特別扱いする端点にはしない。
+同じ資源を長く保持したい複数の道具は、broker のセッション内で処理をまとめる。client 向けの共有方針は core が決めない。
+
 
 ## 8. 応答の対応付けと送り直し（transports §5 と core §5.2 が求めること）
 
-- **corr が合わない応答は受け取らず、入力を読み捨てて同期し直す**（transports §5）。USB の経路によっては、取り消した転送の残りが次の
-  応答として届くことがある（USB-over-IP の層を通したときに見た）。vendor bulk / HID / TCP のフレームには CRC が無いので、
-  corr の照合がこの防御になる。
-- **corr は要求ごとに 1 ずつ進める**（session_id 0 の要求も数える。65535 の次は 1、0 は使わない。core §4.1）。同じ corr を使うのは
-  送り直しのときだけ。
-- 応答が壊れたか来なかったら、**同じ corr で送り直す**（状態を変える要求も。core §5.2）。probe は覚えた応答を返すので、
-  二重に実行されない。
-  - result_lost: probe が応答を覚えていない（大きすぎた、表から落ちた）。実行されたかは分からないので、状態を読み直して確かめる。
-  - 同じ corr の要求は、中身が違っても送り直しとして扱われ、覚えた応答が返る（core §5.2）。corr を使い回すと別の要求の応答を受けるので、
-    番号付けを誤らない。
-  - 立て直しの中で unsubscribe と end を送ったときは、元の要求は送り直さない。
-- **送り直す回数の目安**（core は回数を決めない）:
-  - 答えがまったく来ない: core §4.4 の待ちの後に 1 回。
-  - シリアルの口で壊れたフレームが届いた（セッションが口を持っている間）: 待たずにすぐ、数回（例: 3 回）まで（下の「シリアルの口の壊れたフレーム」）。
-- **最後の送り直しにも答えが無ければ、その経路は失敗した**（core §5.2）: その要求の結果は分からず、その経路で出ている要求もいっしょに
-  失敗する。何もなかったように次の要求を送らない。COBS を含むどの種類のフレームでも、先に立て直す: 入力が静かになるのを待ち、
-  自分の corr を持つ応答が返るまで confirm する（transports §5）か、口を閉じて開き直す。その confirm で boot_id が変わっていれば再起動
-  （やり直す、§5）。その後、状態を変える要求を繰り返す前に状態を読む。
-- **シリアルの口の壊れたフレーム**: 未解決の応答があるときに CRC の合わない候補が届いたら、それを失われた応答とみなし、待ち時間を待たずに
-  同じ corr で送り直してよい（core §5.2。セッションが口を持っている間）。probe は覚えた応答か result_lost を返すので安全である。
-  フロー制御の無い USB-UART の変換器は、続けて流れる probe → host のバイトをどの速さでも落としうる。負荷の下の壊れたフレーム 1 つを、
-  線の失敗とみなさない。
+- 待っていない corr の正常な応答は捨てる。長さやフレームが壊れた場合の回復は transports §5 に従う。TCP は閉じて開き直す。
+- corr は u16 のまま、session_id ごとに単調増加させ、一周させない。同じ経路の未解決要求では、セッションが違っても番号を重ねない。
+  65535 まで使い切る前に end の番号を残して新規セッションへ切り替える。未解決要求と古い応答を残したまま番号を振り直さない。
+- 再送は見出しと payload を含めて同じ byte 列を使う。変更した要求には新しい corr を振る。同じ corr で内容を変えると malformed。
+- result_lost は実行済みか不明なので、再実行の前に状態を読む。保持する要求・応答にはサイズ上限がありうる。
+- 再送を諦めた経路の未解決要求はすべて結果不明として扱う。回復時に boot_id を確認し、資源の一覧や状態を読んでから次を判断する。
+- 再送回数と間隔は host が決める。CRC 不一致の候補が届いたら、待ち時間前に同一要求を再送してよい。
+
 - **シリアルの口の受けの量**: OS のシリアルドライバは、一度にまとまって届く量がドライバの受けの量を超えると、エラーなしに黙って
   落とすことがある（測った Linux のドライバの 1 つでは約 8 KiB の burst）。シリアルの口では、未解決の要求の応答の見込み量（同時数 ×
   フレームの上限）と購読の min_bytes を小さく（目安: 応答 6 KiB 以下、min_bytes 2 KiB 以下）保ち、大量の転送は vendor bulk を優先する。
@@ -216,17 +195,17 @@ rejected は要求が受け付けられなかったこと、completed failed / p
 | reason | 意味（core §4.3） | host がすること |
 |---|---|---|
 | unknown_function（0x01） | その fn が無い（payload の中で指した fn も） | 手元の fn の対応表が古いか誤り。list し直す（fn の番号は boot_id が同じ間だけ有効、core §7.2）。そのインターフェースは使わない |
-| unknown_operation（0x02） | その fn にその op が無い | probe が実装していない任意の op（core §1.2）。任意の op は describe の ops（0x09）を見てから使う。ops を確かめて送らないときは、この応答と同じ失敗を報告し、呼び出し側がどちらでも 1 つのエラーを見るようにする |
+| unknown_operation（0x02） | その fn にその op が無い | probe が実装していない任意の op（core §1.2）。任意の op は describe の ops（0x07）を見てから使う。ops を確かめて送らないときは、この応答と同じ失敗を報告し、呼び出し側がどちらでも 1 つのエラーを見るようにする |
 | malformed（0x03） | 要求の形が誤り | 自分の符号化の誤りか、どの revision でも除かれる値。そのまま送り直さず、要求を直す。要求のバイト列をログに残す |
-| unavailable（0x04） | 今の状態か今の資源ではできない | TLV を読む: cause（1 ピンが使用中、2 数の上限、3 保存の容量が足りない、4 グループに束ねられている、5 設定が持っている、6 状態が違う）、channel、fn。利用者に見せ、自分の資源を解くか順を変える。cause 5 は probe の設定（plan、disable、出力の idle、スロット）が持っているので、要求ではなく設定を変える（どれが持つかは probe の設定の get で見る）。知らない cause は不明として見せる（core §2.4） |
+| unavailable（0x04） | 今の状態か今の資源ではできない | TLV を読む: cause（1 ピンが使用中、2 数の上限、3 保存の容量が足りない、4 グループに束ねられている、5 設定が持っている、6 状態が違う）、channel、fn。利用者に見せ、自分の資源を解くか順を変える。cause 5 は probe の設定（disable、出力の idle）が持っているので、要求ではなく設定を変える（どれが持つかは probe の設定の get で見る）。知らない cause は不明として見せる（core §2.4） |
 | window_exceeded（0x06） | window / max_inflight を超えた | この経路の probe の上限を超えて先送りした。応答を待ち、新しい corr で送り直す（core §5.2: 直した要求は新しい corr で送る） |
 | no_session（0x07） | どのセッションもロックを持っていない: 自分のセッションが終わった（end、lease の期限切れ、force）か、probe が再起動した | セッションが作ったものはすべて解放された（core §9）。新しいセッションを開き、plan、attach、購読を張り直す。黙って続けない（§5）。再起動は open の boot_id で分かる |
 | locked（0x08） | 別のセッションがロックを持っている | payload に残りの ms と、あれば持ち主の文字列。待つか、持ち主を添えて「使用中」とするか、利用者が頼んだときだけ force で奪う（§6） |
 | session_required（0x09） | ロックの要る op の要求が session_id 0 だった | 誤り: 自分の session_id で送る |
-| no_connection（0x0A） | その資源の番号を知らない | 接続やストリームが閉じたか、probe が再起動した。番号を捨て、資源を作り直す（attach、open）。長く持つ番号は一覧の op で確かめる（core §9） |
+| no_resource（0x0A） | その資源の番号を知らない | 接続やストリームが閉じたか、probe が再起動した。番号を捨て、資源を作り直す（attach、open）。長く持つ番号は一覧の op で確かめる（core §9） |
 | unsupported（0x0B） | 定義にはあるが、この probe は扱えない | payload の tag が何かを示す: 0x00 = 固定部分の値、それ以外は受け取ったままの critical な TLV の tag。channel / index の TLV がどの要素かを示すことがある。describe を見て probe が宣言するものを選ぶ。そのまま送り直さない。confirm では TLV 0x01 が probe の扱える revision を示す（core §7.1） |
 | result_lost（0x0C） | 送り直しの応答を覚えていない | 実行されたかは分からない: 状態を読み直す（core §5.2） |
-| 0x05、0x0D、0x0E | 予約 | 失敗として扱う |
+| 未割当の reason | 未定義 | 失敗として扱う |
 
 - **completed failed / partial**: payload は op が決める（wire と target では `status` と `done`、[共通部品](../interfaces/oep-if-common.ja.md) §3）。
   status の line はふつう、速さを下げて attach し直す。wait は後で `done` から続ける。fault は原因を読んで消す。timeout は上限を見直す。
@@ -259,12 +238,11 @@ rejected は要求が受け付けられなかったこと、completed failed / p
 
 ## 12. 通知
 
-- 購読にはロックが要り、購読はロックと一緒に終わる（end、期限切れ、force。core §11.3）。監視だけの host は、代わりに bind した
-  シリアルの口の生のバイトを読むか（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.2）、ロック不要の read の op で読みに行く。
-- 購読は、通知を送り出すインターフェースの fn に、その fn 自身の op で送る: subscribe は op 0x30、unsubscribe は op 0x32（どのインターフェースでも
+- 購読にはロックが要り、購読はセッションと一緒に終わる。監視だけの host はロック不要の read を使う。
+- 購読は、通知を送り出すインターフェースの fn に、その fn 自身の op で送る: subscribe は op 0x01、unsubscribe は op 0x02（どのインターフェースでも
   同じ番号。要求は相手の fn を持たない）。その fn の describe の ops にこの 2 つが立っていなければ、その fn は通知を送らない（送っても
   unknown_operation）。同じ fn を購読し直すと購読は丸ごと置き換わり、seq は購読のたびに 0 から数える（core §11.3）。
-- **role で振り分ける**（core §11.1）: corr で照らすのは応答（0x02）だけ。出来事（0x05）とデータ（0x06）は byte 1〜2 が fn。通知が
+- **role で振り分ける**（core §11.1）: corr で照らすのは応答（0x02）だけ。出来事（0x03）とデータ（0x04）は byte 1〜2 が fn。通知が
   来続けても、応答を待つ処理と入力を読む処理が期限までに終わるようにする。
 - **seq** は fn ごとのフレームの通し番号（u16、一周する）。飛びは、probe の中か途中で通知が失われたこと。データではストリームの
   `position` も失われた分を示す: フレームの position が前のフレームの終わりと合わなければ、その間のバイトは失われた（core §11.2、
@@ -333,21 +311,14 @@ rejected は要求が受け付けられなかったこと、completed failed / p
 5. **要るときだけ save する**: state（ロック不要）を読み、storage_state が 1 で storage_hash が今の get の hash と等しければ、保存済みの
    設定は今の設定と同じなので save しない。違えば save を送る。保存は flash を書いて消耗させ、書く間（最長 max_op_ms）ほかの要求を止める。
    ループの中や毎回の実行で save しない。
-6. **効き目を確かめる**: 自動の attach と bind のコンソールは set が終わった後に始まり、巻き戻されない。state の slot_state と bind_state
-   で見る（probe の設定 §3.3）。
-7. **firmware を更新した後**: state が storage_state 2（読めない）で理由 2（保存した項目が指すインターフェースが無い、revision が違う、
-   bind の口がシリアルの口でなくなった）なら、保存した設定は掛かっていない。自分のファイルから set し直して save する。理由 1 は保存の
-   形が読めない、理由 3 は掛けるのを断られた（資源がぶつかる）。
+6. **preset を使う**: plan / slot / uart の設定は線を駆動しない。host が plan_apply、attach、configure を送る。
+   slot の接続の有無と target_id は connections で確認する。
+7. **firmware 更新後**: state が保存を読めないと知らせたら理由を確認し、自分の設定ファイルから設定し直す。
 
 覚えておくこと:
 
-- 既定値は無い: 設定していないことは何もしない（probe の設定の冒頭）。設定の plan はセッションではなく設定のもの: plan_release では
-  解けず、その fn への plan_apply は断られる（[plan](../interfaces/oep-if-plan.ja.md) §2.3）。
-- idle: 相手の入力が浮くピンには適切な pull の入力を選び、外部回路を制御する channel の出力は安全な level を選ぶ。出力の idle は
-  ピンが空いている間ずっと、起動時にも駆動するので、保存する前に配線を確かめる。idle の項目のある channel は、count = 0 の scan と pins
-  の無い attach から外れる（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。
-- disable: 外に出していない channel や、ほかの部品につながる channel を並べると、probe はそれを駆動しない。
-- label で名付けた線は、probe の設定 §1.3 の探し方で見つかる。
+- plan、slot、uart は preset。set / unset は実行中の資源の所有権や状態を変えない。
+- idle が出力なら、ピンが空いている間は起動時も駆動する。配線を確認して保存する。disable は実行時のピンの使用を禁止する。
 - スロットの target が入れ替わっていないかは、connections の tid（target_id）で確かめる（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2.1）。probe はスロットの target を照合しない。
 - erase は保存した写しだけを消す。今の設定は次の起動まで残る。
 

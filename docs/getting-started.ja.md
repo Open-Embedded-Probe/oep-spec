@@ -100,13 +100,13 @@ message      01 0300 0000 03 00000000 | 0000 | 0000
 serial frame 00 03 01 03 01 01 02 03 01 01 01 01 01 01 01 03 ea 30 00
 ```
 
-応答: `more(u8)`、続いて宣言の TLV。fn 0 でどの probe も出す 4 つ: ops（この fn が持つ op を base 0x01 と bitmap で示す、
+応答: `more(u8)`、続いて宣言の TLV。fn 0 でどの probe も出す 4 つ: ops（この fn が持つ op を base 0x00 と bitmap で示す、
 core §7.4。ここでは core §1.2 が fn 0 に求める 8 つ: confirm、list、describe、clock、open、end、keepalive、lock_state）、unit_id、transport（経路ごとに 1 つ）、max_op_ms（core §1.2）。
 
 ```text
-message      02 0300 01 00 | 00 | 09 0400 01 0f 80 07 | 42 0800 61 31 62 32 63 33 64 34 | 49 0300 00 01 ff | 4d 0400 e8 03 00 00
+message      02 03 00 01 00 00 07 04 00 00 1e 00 0f 42 08 00 61 31 62 32 63 33 64 34 49 03 00 00 01 ff 4d 04 00 e8 03 00 00
                completed success | more 0 | ops 01-04 10-13 | unit_id "a1b2c3d4" | transport: index 0、kind 1、interface 0xFF | max_op_ms 1000
-serial frame 00 03 02 03 02 01 01 03 09 04 07 01 0f 80 07 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4d 04 03 e8 03 01 03 93 b4 00
+serial frame 00 03 02 03 02 01 01 03 07 04 01 02 1e 04 0f 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4d 04 03 e8 03 01 03 28 e1 00
 ```
 
 `first` が TLV の数（ここでは 4）以上の describe には、more 0 で TLV 無しで答える（core §7.3。`discovery.json` の
@@ -134,7 +134,7 @@ request fn 0 op 0x50   01 0600 0000 50 00000000     answer 02 0600 00 02    reje
 probe がすることを順に（参照の先が規則）:
 
 1. **フレームを受ける。** 0x00 から次の 0x00 までのバイトをため、COBS を解き、CRC-16 を確かめる。解けない候補と CRC の合わない候補は
-   要求ではない（シリアルの口では生のバイト、transports §4）。フレームの途中で `probe_frame_gap_ms`（200 ms）途切れたら読み直す（transports §2）。
+   壊れた候補なので捨てる（transports §4）。フレームの途中で `probe_frame_gap_ms`（200 ms）途切れたら読み直す（transports §2）。
    confirm の前でも、少なくとも `min_max_frame`（64）byte のメッセージを受ける（transports §3）。
 2. **見出しを読む。** role 0x01 で 10 byte 以上（ほかのメッセージは捨てる、core §2.4）。これらはロック不要の要求なので session_id は 0。core §4.3 の順に、fn（unknown_function）、op
    （unknown_operation）、固定部分の長さ（malformed）を見る。
@@ -190,7 +190,7 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 
 2. セッション: open、end、keepalive、lock_state と、lease、core §6.2 の判断の表。session_id の確かめ（session_required、no_session、
    locked）。end、lease の期限切れ、force のどれでも、セッションが作ったものを解放する（core §9）。
-3. core §5.2 の送り直しの表（少なくとも max_inflight 個、断りの応答も含め、成功した open のたびに捨てる）。
+3. core §5.2 の送り直しの表（少なくとも max_inflight 個、断りの応答も含め、異なる ID の新規 open の成功時だけ置き換える）。
 4. core §4.3 の断り方と、core §2.3 の TLV の規則（critical、知らない TLV、長さの違う TLV）。
 5. 通知を送り出すインターフェースがあれば、その fn の subscribe / unsubscribe と通知の送り方（core §11）。
 6. 欲しいインターフェース（[適合](conformance.ja.md) §3）。plan の role を持つインターフェースがあれば `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)）も。

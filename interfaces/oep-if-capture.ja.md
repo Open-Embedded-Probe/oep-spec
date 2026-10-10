@@ -184,20 +184,20 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x01 | configure | 設定の TLV（§3.3） | 実際の値の TLV（§3.3） | 必要 |
-| 0x02 | start | — | blocking_ms(u32)（0 = 取っている間も答える）、generation(u32)、[TLV] | 必要 |
-| 0x03 | stop | — | — | 必要 |
-| 0x04 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
-| 0x05 | status | — | state(u8)、serial_done(u32)、write_pos(u64)、flags(u8)、generation(u32)、[TLV error] | 不要 |
-| 0x06 | read | generation(u32)、position(u64)、max(u32) | position(u64)、flags(u8: bit0 more、bit1 gap)、len(u32)、data、[TLV] | 不要 |
-| 0x07 | segments | from_serial(u32) | more(u8)、count(u8)、count × 区画の情報（§2）、[TLV] | 不要 |
-| 0x08 | release | generation(u32)、serial(u32) | —（serial 以下の区画を使い回してよい） | 必要 |
-| 0x09 | query | 設定の TLV（configure と同じ） | 実際の値の TLV（設定はしない） | 不要 |
-| 0x0A | calibration | — | 較正の情報の TLV（§3.8）。アナログだけ（ロジックは unknown_operation） | 不要 |
-| 0x30 | subscribe | core §11.3 | — | 必要 |
-| 0x32 | unsubscribe | core §11.3 | — | 必要 |
+| 0x10 | configure | 設定の TLV（§3.3） | 実際の値の TLV（§3.3） | 必要 |
+| 0x11 | start | — | blocking_ms(u32)（0 = 取っている間も答える）、generation(u32)、[TLV] | 必要 |
+| 0x12 | stop | — | — | 必要 |
+| 0x13 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
+| 0x14 | status | — | state(u8)、serial_done(u32)、write_pos(u64)、flags(u8)、generation(u32)、[TLV error] | 不要 |
+| 0x15 | read | generation(u32)、position(u64)、max(u32) | position(u64)、flags(u8: bit0 more、bit1 gap)、len(u32)、data、[TLV] | 不要 |
+| 0x16 | segments | from_serial(u32) | more(u8)、count(u8)、count × 区画の情報（§2）、[TLV] | 不要 |
+| 0x17 | release | generation(u32)、serial(u32) | —（serial 以下の区画を使い回してよい） | 必要 |
+| 0x18 | query | 設定の TLV（configure と同じ） | 実際の値の TLV（設定はしない） | 不要 |
+| 0x19 | calibration | — | 較正の情報の TLV（§3.8）。アナログだけ（ロジックは unknown_operation） | 不要 |
+| 0x01 | subscribe | core §11.3 | — | 必要 |
+| 0x02 | unsubscribe | core §11.3 | — | 必要 |
 
-- query（0x09）、force（0x04）、subscribe（0x30）と unsubscribe（0x32）は任意で、describe の ops で宣言する（core §1.2、§7.4）。subscribe と unsubscribe は両方とも持つか、両方とも持たない（core §11.3）。それを持たない probe は、その op に unknown_operation で答える（core §1.2）。この表のほかの op は必ず持つ。calibration はアナログでは必ず持ち、ロジックの op ではない。
+- query（0x18）、force（0x13）、subscribe（0x01）と unsubscribe（0x02）は任意で、describe の ops で宣言する（core §1.2、§7.4）。subscribe と unsubscribe は両方とも持つか、両方とも持たない（core §11.3）。それを持たない probe は、その op に unknown_operation で答える（core §1.2）。この表のほかの op は必ず持つ。calibration はアナログでは必ず持ち、ロジックの op ではない。
 - state: 0 未設定、1 設定済み、2 トリガ待ち、3 取得中、4 完了（ワンショット）、5 止まっている（リピートで空き区画なし）、
   6 エラー。
 - `serial_done` は次に終わる区画の serial（start から終わった区画の数を 2^32 で割った余り）、`write_pos` は取り終えたバイト位置（position の空間。**捨てた分を含む**: 次に書くバイトの位置）。
@@ -266,7 +266,7 @@ configure の応答の blocking_ms が core の max_op_ms を超える構成は�
   rate は最も近い値を使い（どちらも下の規則）、断らない。host は断られた組み合わせを query で確かめ直せる（§3.5）。
 - **断りが 2 つ以上当たるとき**（例: mode 1 で samples が無く、ほかの TLV の値も扱えない）、probe は当たったどれか 1 つで答える（core §4.3 の
   順 4）。この節は順を決めない。host は理由の順に頼らない。
-- **問い合わせは別の操作（0x09）**。configure の TLV のフラグにすると、probe はロックの要否を操作の番号で決めるので、
+- **問い合わせは別の操作（0x18）**。configure の TLV のフラグにすると、probe はロックの要否を操作の番号で決めるので、
   ロックなしの問い合わせができない。問い合わせは今の設定と取ったデータを壊さない。
 - trigger の type: 0 即時（省略時）、1 レベル（value 0 / 1）、2 エッジ（value 0 立ち上がり / 1 立ち下がり / 2 両方）、
   3 しきい値を上向きに横切る、4 下向きに横切る（value は o / b で切り出した後の ADC の値）。1〜2 はロジック、3〜4 はアナログ。
@@ -303,7 +303,7 @@ mode 2 だけ、skew は遅れが 0 のチャネルを省いてよい。チャ�
 | 出来事 kind 0x01 segment | 区画が終わった（ワンショットの完了も。ストリーミングでは送らない） | 区画の情報（§2）、[TLV] |
 | 出来事 kind 0x02 stopped | 取得が止まった | reason(u8: 0 完了、1 stop（host の stop。組（§4）が止めたときも）、2 予約（空き区画なしは送らない）、3 エラー（state 6 に入るときは必ずこれ、§3.2）)、error(u8: reason 3 の理由、status の error と同じ値)、generation(u32)、[TLV] |
 | 出来事 kind 0x03 triggered | トリガが立った | serial(u32)、trigger_index(u32)、trigger_ns(u64: probe の時計でトリガが立った時刻の推定値)、generation(u32)、[TLV] |
-| データ（role 0x06） | ストリーミングの間だけ | core §11.2 の形（position、len、data、TLV）。read と同じ位置の空間。**TLV 0x01 generation(u32) を必ず付ける**（start の応答の後に前の世代の送り残しが届きうるため） |
+| データ（role 0x04） | ストリーミングの間だけ | core §11.2 の形（position、len、data、TLV）。read と同じ位置の空間。**TLV 0x01 generation(u32) を必ず付ける**（start の応答の後に前の世代の送り残しが届きうるため） |
 
 - **出来事はどれも、それが生まれた世代を持つ**（segment は区画の情報の generation）。start の応答の後に前の世代の出来事が届きうる
   （core §11.4）。host は今の世代と違う出来事を前の世代のものとして扱う。
@@ -313,8 +313,8 @@ mode 2 だけ、skew は遅れが 0 のチャネルを省いてよい。チャ�
 
 | tag | 名前 | 値 |
 |---|---|---|
-| 0x09 | ops | 持つ op（core §7.4）: query、force、subscribe と unsubscribe は持つときだけ立てる |
-| 0x06 | features | 共通のビット。revision 1 はビットを定めない（bit0〜bit2 は予約、0） |
+| 0x07 | ops | 持つ op（core §7.4）: query、force、subscribe と unsubscribe は持つときだけ立てる |
+| 0x05 | features | 共通のビット。revision 1 はビットを定めない（bit0〜bit2 は予約、0） |
 | 0x40 | mode | mode(u8)、max_samples(u32、1 区画)、max_segments(u32)（モードごとに 1 つ。**最大**の置き場で答える。describe は宣言だけなので、その時点の空きでは答えない） |
 | 0x41 | rate_range | min_hz(u32)、max_hz(u32)、exact(u8: 1 = 範囲内の任意の値を指定できる) |
 | 0x44 | channels | max(u8)。チャネル数の上限 |
@@ -358,13 +358,13 @@ ADC の値を電圧に換算するための、probe が持っている情報を*
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x01 | bind | n(u8)、n × fn(u16)、[TLV] | — | 必要 |
-| 0x02 | start | — | blocking_ms(u32)、start_ns(u64)、generation(u32)、n(u8)、n × (fn(u16)、generation(u32))、[TLV] | 必要 |
-| 0x03 | stop | — | — | 必要 |
-| 0x04 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
-| 0x05 | status | — | state(u8)、start_ns(u64)、trigger_ns(u64)、trigger_fn(u16)、generation(u32)、[TLV] | 不要 |
-| 0x30 | subscribe | core §11.3 | — | 必要 |
-| 0x32 | unsubscribe | core §11.3 | — | 必要 |
+| 0x10 | bind | n(u8)、n × fn(u16)、[TLV] | — | 必要 |
+| 0x11 | start | — | blocking_ms(u32)、start_ns(u64)、generation(u32)、n(u8)、n × (fn(u16)、generation(u32))、[TLV] | 必要 |
+| 0x12 | stop | — | — | 必要 |
+| 0x13 | force | — | —（トリガを待っていれば、今すぐ始める） | 必要 |
+| 0x14 | status | — | state(u8)、start_ns(u64)、trigger_ns(u64)、trigger_fn(u16)、generation(u32)、[TLV] | 不要 |
+| 0x01 | subscribe | core §11.3 | — | 必要 |
+| 0x02 | unsubscribe | core §11.3 | — | 必要 |
 
 - force、subscribe と unsubscribe は任意で、describe の ops で宣言する（§4.3、core §1.2）。それを持たない probe は、その op に unknown_operation で答える。subscribe と unsubscribe は両方とも持つか、両方とも持たない（core §11.3）。ほかの op は必ず持つ。
 
@@ -424,8 +424,8 @@ kind の番号はトラック（§3.4）と揃える（triggered 3、stopped 2�
 
 | tag | 名前 | 値 |
 |---|---|---|
-| 0x09 | ops | 持つ op（core §7.4）: force、subscribe と unsubscribe は持つときだけ立てる |
-| 0x06 | features | revision 1 はビットを定めない（bit0〜bit2 は予約、0） |
+| 0x07 | ops | 持つ op（core §7.4）: force、subscribe と unsubscribe は持つときだけ立てる |
+| 0x05 | features | revision 1 はビットを定めない（bit0〜bit2 は予約、0） |
 | 0x40 | tracks | n(u8)、n × fn(u16)。束ねられるトラック |
 
 - 束ねられるトラックは tracks で宣言する。ある組を束ねられるかは bind を試して確かめる（断られても何も変わらない）。

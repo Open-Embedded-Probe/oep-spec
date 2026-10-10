@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "bfb0f6931178ae26"
+REGISTRY_HASH = "cbe25053be20cb5c"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -11,88 +11,88 @@ CONFIRM_RESULT_MAGIC = 'OEP!'
 TAG_CRITICAL = 0x80
 TAG_RESERVED_ZERO = 0x00
 MIN_MAX_FRAME = 0x40
-OP_SUBSCRIBE = 0x30
-OP_UNSUBSCRIBE = 0x32
-ROLES = {"request": 0x01, "result": 0x02, "event": 0x05, "data": 0x06}
-RESOLUTIONS = {"rejected": 0x00, "completed": 0x01, "accepted": 0x02}
+OP_SUBSCRIBE = 0x01
+OP_UNSUBSCRIBE = 0x02
+ROLES = {"request": 0x01, "result": 0x02, "event": 0x03, "data": 0x04}
+RESOLUTIONS = {"rejected": 0x00, "completed": 0x01}
 OUTCOMES = {"success": 0x00, "failed": 0x01, "partial": 0x02}
-REJECT_REASONS = {"unknown_function": 0x01, "unknown_operation": 0x02, "malformed": 0x03, "unavailable": 0x04, "busy": 0x05, "window_exceeded": 0x06, "no_session": 0x07, "locked": 0x08, "session_required": 0x09, "no_connection": 0x0A, "unsupported": 0x0B, "result_lost": 0x0C}
+REJECT_REASONS = {"unknown_function": 0x01, "unknown_operation": 0x02, "malformed": 0x03, "unavailable": 0x04, "window_exceeded": 0x06, "no_session": 0x07, "locked": 0x08, "session_required": 0x09, "no_resource": 0x0A, "unsupported": 0x0B, "result_lost": 0x0C}
 STATUS = {"ok": 0x00, "wait": 0x01, "line": 0x02, "fault": 0x03, "timeout": 0x04, "state": 0x05}
-DESCRIBE_COMMON = {"role_channels": 0x01, "max_clock_hz": 0x02, "max_length": 0x03, "min_clock_hz": 0x05, "features": 0x06, "channel_group": 0x08, "ops": 0x09}
+DESCRIBE_COMMON = {"role_channels": 0x01, "max_clock_hz": 0x02, "max_length": 0x03, "min_clock_hz": 0x04, "features": 0x05, "channel_group": 0x06, "ops": 0x07}
 TIMING = {"probe_frame_gap_ms": 0xC8, "uart_bridge_boot_baud": 0x1C200, "port_speed_idle_ms": 0xBB8, "host_wait_add_ms": 0x3E8, "notify_pending_max_frames": 0x02, "port_speed_switch_wait_ms": 0x14}
 USB = {"project_vid": 0x1209, "project_pid": 0x4F45, "vendor_bulk_class": 0xFF, "vendor_bulk_subclass": 0x4F, "vendor_bulk_protocol": 0x45, "hid_usage_page": 0xFF4F, "hid_usage": 0x45}
-LIMITS = {"lease_min_ms": 0x3E8, "lease_max_ms": 0xEA60, "owner_max_bytes": 0x20, "unit_id_max_bytes": 0x20, "slot_name_max_bytes": 0x20, "wifi_ssid_max_bytes": 0x20, "wifi_passphrase_min_bytes": 0x08, "wifi_passphrase_max_bytes": 0x3F, "wifi_psk_hex_digits": 0x40, "wifi_min_max_frame": 0x70, "label_max_bytes": 0x20, "interface_name_max_bytes": 0x30, "port_speed_tolerance_pct": 0x02, "uart_baud_tolerance_pct": 0x05, "uart_default_baud": 0x1C200, "max_op_ms_max": 0x927C0}
-COMMON = _NS(enum={"target_id_scheme": {"dmi_7f": 0x01, "targetsel": 0x02}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "read_flags": {"more": 0x01, "gap": 0x02}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08, "closed": 0x09}, "mark_detail_reset": {"ndmreset": 0x01, "attach_reset": 0x03}, "mark_detail_restart": {"havereset": 0x01, "resync": 0x02}, "mark_detail_lost": {"overflow": 0x01, "framing": 0x02, "parity": 0x03, "target_timeout": 0x04}, "mark_detail_closed": {"all_released": 0x01, "session_ended": 0x02, "slot_changed": 0x03, "connection_closed": 0x04}})
+LIMITS = {"request_header_bytes": 0x0A, "result_header_bytes": 0x05, "corr_max": 0xFFFF, "lease_min_ms": 0x3E8, "lease_max_ms": 0xEA60, "owner_max_bytes": 0x20, "unit_id_max_bytes": 0x20, "slot_name_max_bytes": 0x20, "wifi_ssid_max_bytes": 0x20, "wifi_passphrase_min_bytes": 0x08, "wifi_passphrase_max_bytes": 0x3F, "wifi_psk_hex_digits": 0x40, "wifi_min_max_frame": 0x70, "label_max_bytes": 0x20, "interface_name_max_bytes": 0x30, "port_speed_tolerance_pct": 0x02, "uart_baud_tolerance_pct": 0x05, "uart_default_baud": 0x1C200, "max_op_ms_max": 0x927C0}
+COMMON = _NS(enum={"target_id_scheme": {"dmi_7f": 0x01, "targetsel": 0x02}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "read_flags": {"more": 0x01, "gap": 0x02}, "mark_kind": {"reset": 0x01, "restart": 0x02, "attach": 0x03, "detach": 0x04, "lost": 0x05, "clear": 0x06, "host": 0x07, "link_lost": 0x08, "closed": 0x09}, "mark_detail_reset": {"ndmreset": 0x01, "attach_reset": 0x03}, "mark_detail_restart": {"havereset": 0x01, "resync": 0x02}, "mark_detail_lost": {"overflow": 0x01, "framing": 0x02, "parity": 0x03, "target_timeout": 0x04}, "mark_detail_closed": {"all_released": 0x01, "session_ended": 0x02, "connection_closed": 0x04}})
 
 INTERFACES = {}
 CORE = _NS(op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "clock": 0x04, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13}, lock_free={0x01, 0x02, 0x03, 0x04, 0x10, 0x13},
     tlv={"confirm_answer": {"transport": 0x01}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "unavailable_payload": {"cause": 0x01, "channel": 0x02, "fn": 0x05}, "unsupported_payload": {"supported": 0x01, "channel": 0x02, "fn": 0x05, "index": 0x40}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "label": 0x46, "transport": 0x49, "chip": 0x4C, "max_op_ms": 0x4D}}, event={}, enum={"unavailable_cause": {"pin_in_use": 0x01, "limit": 0x02, "storage_full": 0x03, "bound_in_group": 0x04, "held_by_settings": 0x05, "wrong_state": 0x06}, "transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}}, own={},
     line_names={})
-PROBE_PLAN = _NS(name="oep.probe.plan", revision=1, target=None, op={"plan_apply": 0x01, "plan_release": 0x02}, lock_free=set(),
+PROBE_PLAN = _NS(name="oep.probe.plan", revision=1, target=None, op={"plan_apply": 0x10, "plan_release": 0x11}, lock_free=set(),
     tlv={"plan_apply": {"role_assignment": 0x10}, "describe": {"plan_roles": 0x40}}, event={}, enum={}, own={},
     line_names={})
 INTERFACES["oep.probe.plan"] = PROBE_PLAN
-PROBE_RESTART = _NS(name="oep.probe.restart", revision=1, target=None, op={"restart": 0x01}, lock_free=set(),
+PROBE_RESTART = _NS(name="oep.probe.restart", revision=1, target=None, op={"restart": 0x10}, lock_free=set(),
     tlv={"describe": {"restart_max_ms": 0x40}}, event={}, enum={}, own={},
     line_names={})
 INTERFACES["oep.probe.restart"] = PROBE_RESTART
-PROBE_LINK = _NS(name="oep.probe.link", revision=1, target=None, op={"source": 0x01, "sink": 0x02, "port_speed": 0x03}, lock_free={0x01, 0x02},
+PROBE_LINK = _NS(name="oep.probe.link", revision=1, target=None, op={"source": 0x10, "sink": 0x11, "port_speed": 0x12}, lock_free={0x10, 0x11},
     tlv={}, event={}, enum={"port_speed_step": {"try": 0x00, "commit": 0x01, "revert": 0x02}}, own={},
     line_names={})
 INTERFACES["oep.probe.link"] = PROBE_LINK
-WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, target="RISC-V targets whose debug module is reached over the two-wire RVSWD line", op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "connections": 0x05}, lock_free={0x05},
-    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "skip": 0x02, "idle_clock": 0x04}, "detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "pins": 0x03, "idle_clock": 0x04, "reset": 0x05}, "attach_answer": {"target_id": 0x10, "dpc": 0x11, "search_retries": 0x12}}, event={}, enum={"connection_users": {"host_session": 0x01, "slot": 0x02}, "scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "existing": 0x02, "halted": 0x08}, "features": {}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}, "idle_clock": {"high": 0x00, "low": 0x01}}, own={},
+WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, target="RISC-V targets whose debug module is reached over the two-wire RVSWD line", op={"scan": 0x10, "attach": 0x11, "detach": 0x12, "connections": 0x13}, lock_free={0x13},
+    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "idle_clock": 0x04}, "attach": {"max_speed": 0x01, "pins": 0x03, "idle_clock": 0x04, "reset": 0x05}, "attach_answer": {"target_id": 0x10, "dpc": 0x11, "search_retries": 0x12}}, event={}, enum={"scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "halted": 0x08}, "features": {}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}, "idle_clock": {"high": 0x00, "low": 0x01}}, own={},
     line_names={})
 INTERFACES["oep.wire.rvswd"] = WIRE_RVSWD
-WIRE_SWIO = _NS(name="oep.wire.swio", revision=1, target="RISC-V targets whose debug module is reached over the one-wire SWIO line", op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "connections": 0x05}, lock_free={0x05},
-    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "skip": 0x02}, "detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "pins": 0x03, "reset": 0x05}, "attach_answer": {"target_id": 0x10, "dpc": 0x11, "search_retries": 0x12}}, event={}, enum={"connection_users": {"host_session": 0x01, "slot": 0x02}, "scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "existing": 0x02, "halted": 0x08}, "features": {}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "reset": 0x03}}, own={},
+WIRE_SWIO = _NS(name="oep.wire.swio", revision=1, target="RISC-V targets whose debug module is reached over the one-wire SWIO line", op={"scan": 0x10, "attach": 0x11, "detach": 0x12, "connections": 0x13}, lock_free={0x13},
+    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01}, "attach": {"max_speed": 0x01, "pins": 0x03, "reset": 0x05}, "attach_answer": {"target_id": 0x10, "dpc": 0x11, "search_retries": 0x12}}, event={}, enum={"scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "halted": 0x08}, "features": {}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "reset": 0x03}}, own={},
     line_names={})
 INTERFACES["oep.wire.swio"] = WIRE_SWIO
-WIRE_SWD = _NS(name="oep.wire.swd", revision=1, target="ARM targets with an SWD debug port", op={"scan": 0x01, "attach": 0x02, "detach": 0x03, "connections": 0x05}, lock_free={0x05},
-    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "skip": 0x02, "targetsel": 0x06}, "detach": {"force": 0x01}, "attach": {"max_speed": 0x01, "targetsel": 0x02, "pins": 0x03, "reset": 0x05}, "attach_answer": {"search_retries": 0x12}}, event={}, enum={"connection_users": {"host_session": 0x01, "slot": 0x02}, "scan_kind": {"arm_adi": 0x02}, "attach_flags": {"existing": 0x02, "dormant_woken": 0x04}, "features": {}, "attach_method": {"run": 0x00}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}}, own={},
+WIRE_SWD = _NS(name="oep.wire.swd", revision=1, target="ARM targets with an SWD debug port", op={"scan": 0x10, "attach": 0x11, "detach": 0x12, "connections": 0x13}, lock_free={0x13},
+    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "targetsel": 0x06}, "attach": {"max_speed": 0x01, "targetsel": 0x02, "pins": 0x03, "reset": 0x05}, "attach_answer": {"search_retries": 0x12}}, event={}, enum={"scan_kind": {"arm_adi": 0x02}, "attach_flags": {"dormant_woken": 0x04}, "features": {}, "attach_method": {"run": 0x00}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}}, own={},
     line_names={})
 INTERFACES["oep.wire.swd"] = WIRE_SWD
-TARGET_RISCV_DM = _NS(name="oep.target.riscv-dm", revision=1, target="RISC-V targets with a RISC-V Debug Module", op={"dmi": 0x01, "halt": 0x02, "resume": 0x03, "reset": 0x04, "read_block": 0x05, "write_block": 0x06, "run": 0x07, "step": 0x08}, lock_free=set(),
+TARGET_RISCV_DM = _NS(name="oep.target.riscv-dm", revision=1, target="RISC-V targets with a RISC-V Debug Module", op={"dmi": 0x10, "halt": 0x11, "resume": 0x12, "reset": 0x13, "read_block": 0x14, "write_block": 0x15, "run": 0x16, "step": 0x17}, lock_free=set(),
     tlv={"describe": {}, "step_answer": {"step_left": 0x01}}, event={}, enum={"run_stopped": {"timeout_halted": 0x00, "stopped": 0x01, "not_halted": 0x02, "not_run": 0x03}, "reset_flags": {"reached": 0x01, "verified": 0x02}, "dmi_step": {"write": 0x01, "read": 0x02, "poll_reads": 0x03, "wait_us": 0x04, "poll_us": 0x05}, "reset_mode": {"run": 0x00, "run_verified": 0x01, "halt_at_reset": 0x02}}, own={},
     line_names={})
 INTERFACES["oep.target.riscv-dm"] = TARGET_RISCV_DM
-TARGET_ARM_ADI = _NS(name="oep.target.arm-adi", revision=1, target="ARM targets with an ADI debug interface", op={"transfer": 0x01, "read_block": 0x02, "write_block": 0x03}, lock_free=set(),
+TARGET_ARM_ADI = _NS(name="oep.target.arm-adi", revision=1, target="ARM targets with an ADI debug interface", op={"transfer": 0x10, "read_block": 0x11, "write_block": 0x12}, lock_free=set(),
     tlv={}, event={}, enum={"swd_ack": {"ok": 0x01, "wait": 0x02, "fault": 0x04}}, own={},
     line_names={})
 INTERFACES["oep.target.arm-adi"] = TARGET_ARM_ADI
-TARGET_CONSOLE = _NS(name="oep.target.console", revision=1, target=None, op={"open": 0x01, "read": 0x02, "marks": 0x03, "clear": 0x04, "mark": 0x05, "write": 0x06, "close": 0x07, "streams": 0x08}, lock_free={0x02, 0x03, 0x08},
-    tlv={"describe": {"mechanisms": 0x40}}, event={}, enum={"mechanism": {"sdi": 0x00, "dmdata": 0x01, "dmseq": 0x02, "none": 0xFF}, "open_flags": {"existing": 0x01}, "stream_state": {"open": 0x00, "closed": 0x01}, "stream_users": {"host_session": 0x01, "slot": 0x02}}, own={},
+TARGET_CONSOLE = _NS(name="oep.target.console", revision=1, target=None, op={"open": 0x10, "read": 0x11, "marks": 0x12, "clear": 0x13, "mark": 0x14, "write": 0x15, "close": 0x16, "streams": 0x17}, lock_free={0x11, 0x12, 0x17},
+    tlv={"describe": {"mechanisms": 0x40}}, event={}, enum={"mechanism": {"sdi": 0x00, "dmdata": 0x01, "dmseq": 0x02, "none": 0xFF}, "open_flags": {}}, own={},
     line_names={})
 INTERFACES["oep.target.console"] = TARGET_CONSOLE
-FIXTURE_GPIO = _NS(name="oep.fixture.gpio", revision=1, target=None, op={"set": 0x01, "read": 0x02}, lock_free={0x02},
+FIXTURE_GPIO = _NS(name="oep.fixture.gpio", revision=1, target=None, op={"set": 0x10, "read": 0x11}, lock_free={0x11},
     tlv={"describe": {"modes": 0x40, "drive_levels": 0x41}, "set": {"drive": 0x01}, "unavailable_payload": {"index": 0x40}}, event={}, enum={"role": {"line": 0x01}, "mode": {"input": 0x00, "input_pullup": 0x01, "input_pulldown": 0x02, "output_low": 0x03, "output_high": 0x04, "open_drain_low": 0x05, "open_drain_release": 0x06}, "drive_level": {"default": 0xFF}}, own={},
     line_names={})
 INTERFACES["oep.fixture.gpio"] = FIXTURE_GPIO
-FIXTURE_UART = _NS(name="oep.fixture.uart", revision=1, target=None, op={"configure": 0x01, "read": 0x02, "marks": 0x03, "clear": 0x04, "mark": 0x05, "write": 0x06, "status": 0x07}, lock_free={0x02, 0x03, 0x07},
+FIXTURE_UART = _NS(name="oep.fixture.uart", revision=1, target=None, op={"configure": 0x10, "read": 0x11, "marks": 0x12, "clear": 0x13, "mark": 0x14, "write": 0x15, "status": 0x16}, lock_free={0x11, 0x12, 0x16},
     tlv={"configure": {"format": 0x01}, "describe": {"formats": 0x40}}, event={}, enum={"role": {"rx": 0x01, "tx": 0x02}, "format_field": {"data_bits_mask": 0x03, "parity_mask": 0x0C, "parity_even": 0x04, "parity_odd": 0x08, "stop_bits_2": 0x10}}, own={},
     line_names={})
 INTERFACES["oep.fixture.uart"] = FIXTURE_UART
-FIXTURE_I2C_TARGET = _NS(name="oep.fixture.i2c-target", revision=1, target=None, op={"configure": 0x01, "read_rx": 0x03, "preload_tx": 0x04, "status": 0x05, "stretch": 0x07}, lock_free={0x05},
+FIXTURE_I2C_TARGET = _NS(name="oep.fixture.i2c-target", revision=1, target=None, op={"configure": 0x10, "read_rx": 0x11, "preload_tx": 0x12, "status": 0x13, "stretch": 0x14}, lock_free={0x13},
     tlv={"describe": {"queue_depth": 0x40, "max_stretch_us": 0x41}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sda": 0x01, "scl": 0x02}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"internal_pullups": 0x04}}, own={},
     line_names={})
 INTERFACES["oep.fixture.i2c-target"] = FIXTURE_I2C_TARGET
-FIXTURE_SPI_TARGET = _NS(name="oep.fixture.spi-target", revision=1, target=None, op={"configure": 0x01, "arm": 0x02, "read_rx": 0x03, "status": 0x04}, lock_free={0x04},
+FIXTURE_SPI_TARGET = _NS(name="oep.fixture.spi-target", revision=1, target=None, op={"configure": 0x10, "arm": 0x11, "read_rx": 0x12, "status": 0x13}, lock_free={0x13},
     tlv={"describe": {"queue_depth": 0x40, "cs_setup_ns": 0x43}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sck": 0x01, "mosi": 0x02, "miso": 0x03, "cs": 0x04}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"lsb_first": 0x01}}, own={},
     line_names={})
 INTERFACES["oep.fixture.spi-target"] = FIXTURE_SPI_TARGET
-FIXTURE_LOGIC = _NS(name="oep.fixture.logic", revision=1, target=None, op={"configure": 0x01, "start": 0x02, "stop": 0x03, "force": 0x04, "status": 0x05, "read": 0x06, "segments": 0x07, "release": 0x08, "query": 0x09, "subscribe": 0x30, "unsubscribe": 0x32}, lock_free={0x05, 0x06, 0x07, 0x09},
+FIXTURE_LOGIC = _NS(name="oep.fixture.logic", revision=1, target=None, op={"configure": 0x10, "start": 0x11, "stop": 0x12, "force": 0x13, "status": 0x14, "read": 0x15, "segments": 0x16, "release": 0x17, "query": 0x18, "subscribe": 0x01, "unsubscribe": 0x02}, lock_free={0x14, 0x15, 0x16, 0x18},
     tlv={"configure": {"mode": 0x40, "rate": 0x42, "samples": 0x43, "segments": 0x44, "trigger": 0x45, "pretrigger": 0x46, "multirate": 0x60}, "configure_answer": {"actual_rate": 0x50, "layout": 0x51, "actual_samples": 0x52, "actual_segments": 0x53, "blocking_ms": 0x56, "block": 0x60}, "status_answer": {"error": 0x01}, "data": {"generation": 0x01}, "describe": {"mode": 0x40, "rate_range": 0x41, "channels": 0x44, "trigger": 0x45, "multirate": 0x60}}, event={"segment": 0x01, "stopped": 0x02, "triggered": 0x03}, enum={"features": {}, "mode": {"one_shot": 0x01, "repeat": 0x02, "streaming": 0x03}, "trigger": {"immediate": 0x00, "level": 0x01, "edge": 0x02}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}, "error": {"peripheral": 0x01, "storage": 0x02, "clock": 0x03}, "status_flag": {"dropped": 0x01, "slipped": 0x02}, "multirate_policy": {"sample": 0x00, "any_active": 0x01, "edge_latch": 0x02}, "segment_flag": {"gap": 0x01, "short": 0x02, "slipped": 0x04}}, own={},
     line_names={})
 INTERFACES["oep.fixture.logic"] = FIXTURE_LOGIC
-FIXTURE_ANALOG = _NS(name="oep.fixture.analog", revision=1, target=None, op={"configure": 0x01, "start": 0x02, "stop": 0x03, "force": 0x04, "status": 0x05, "read": 0x06, "segments": 0x07, "release": 0x08, "query": 0x09, "calibration": 0x0A, "subscribe": 0x30, "unsubscribe": 0x32}, lock_free={0x05, 0x06, 0x07, 0x09, 0x0A},
+FIXTURE_ANALOG = _NS(name="oep.fixture.analog", revision=1, target=None, op={"configure": 0x10, "start": 0x11, "stop": 0x12, "force": 0x13, "status": 0x14, "read": 0x15, "segments": 0x16, "release": 0x17, "query": 0x18, "calibration": 0x19, "subscribe": 0x01, "unsubscribe": 0x02}, lock_free={0x14, 0x15, 0x16, 0x18, 0x19},
     tlv={"configure": {"mode": 0x40, "rate": 0x42, "samples": 0x43, "segments": 0x44, "trigger": 0x45, "pretrigger": 0x46, "frontend": 0x47}, "configure_answer": {"actual_rate": 0x50, "layout": 0x51, "actual_samples": 0x52, "actual_segments": 0x53, "scale": 0x55, "blocking_ms": 0x56, "skew": 0x57, "frontend_used": 0x58, "reference": 0x59}, "status_answer": {"error": 0x01}, "data": {"generation": 0x01}, "calibration_answer": {"factory": 0x01, "vrefint": 0x02}, "describe": {"mode": 0x40, "rate_range": 0x41, "channels": 0x44, "trigger": 0x45, "frontend": 0x46}}, event={"segment": 0x01, "stopped": 0x02, "triggered": 0x03}, enum={"features": {}, "mode": {"one_shot": 0x01, "repeat": 0x02, "streaming": 0x03}, "trigger": {"immediate": 0x00, "cross_up": 0x03, "cross_down": 0x04}, "reference_source": {"supply": 0x00, "internal": 0x01, "external": 0x02}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}, "error": {"peripheral": 0x01, "storage": 0x02, "clock": 0x03}, "reference_how": {"nominal": 0x00, "measured": 0x01}, "status_flag": {"dropped": 0x01, "slipped": 0x02}, "segment_flag": {"gap": 0x01, "short": 0x02, "slipped": 0x04}}, own={},
     line_names={})
 INTERFACES["oep.fixture.analog"] = FIXTURE_ANALOG
-FIXTURE_CAPTURE_GROUP = _NS(name="oep.fixture.capture-group", revision=1, target=None, op={"bind": 0x01, "start": 0x02, "stop": 0x03, "force": 0x04, "status": 0x05, "subscribe": 0x30, "unsubscribe": 0x32}, lock_free={0x05},
+FIXTURE_CAPTURE_GROUP = _NS(name="oep.fixture.capture-group", revision=1, target=None, op={"bind": 0x10, "start": 0x11, "stop": 0x12, "force": 0x13, "status": 0x14, "subscribe": 0x01, "unsubscribe": 0x02}, lock_free={0x14},
     tlv={"bind": {"trigger_track": 0x01}, "describe": {"tracks": 0x40}}, event={"stopped": 0x02, "triggered": 0x03}, enum={"features": {}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "no_free_segment": 0x02, "error": 0x03}}, own={},
     line_names={})
 INTERFACES["oep.fixture.capture-group"] = FIXTURE_CAPTURE_GROUP
-PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, target=None, op={"get": 0x01, "set": 0x02, "save": 0x03, "erase": 0x04, "unset": 0x05, "state": 0x06}, lock_free={0x01, 0x06},
-    tlv={"item": {"plan": 0x01, "label": 0x02, "idle": 0x03, "slot": 0x04, "bind": 0x05, "uart": 0x06, "disable": 0x07, "wifi": 0x08}, "describe": {"storage": 0x40, "items": 0x41, "slots_max": 0x42, "wifi_max": 0x46}, "state_answer": {"wifi": 0x01}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02, "output_low": 0x03, "output_high": 0x04}, "slot_attach": {"host": 0x00, "at_boot": 0x01}, "slot_state": {"connected": 0x00, "absent": 0x01}, "bind_stream": {"slot_console": 0x01, "fixture_uart": 0x02}, "bind_flow": {"idle": 0x00, "streaming": 0x01, "held": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}, "storage_unreadable": {"form": 0x01, "interface": 0x02, "refused": 0x03}, "wifi_pass_len": {"none": 0x00, "hidden": 0xFF}, "wifi_state": {"off": 0x00, "connecting": 0x01, "connected": 0x02, "waiting": 0x03}, "wifi_entry": {"none": 0xFF}, "wifi_reason": {"none": 0x00, "not_found": 0x01, "auth": 0x02, "no_address": 0x03, "other": 0x04}}, own={},
+PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, target=None, op={"get": 0x10, "set": 0x11, "save": 0x12, "erase": 0x13, "unset": 0x14, "state": 0x15}, lock_free={0x10, 0x15},
+    tlv={"item": {"plan": 0x01, "label": 0x02, "idle": 0x03, "slot": 0x04, "uart": 0x06, "disable": 0x07, "wifi": 0x08}, "describe": {"storage": 0x40, "items": 0x41, "slots_max": 0x42, "wifi_max": 0x46}, "state_answer": {"wifi": 0x01}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02, "output_low": 0x03, "output_high": 0x04}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02}, "storage_unreadable": {"form": 0x01, "interface": 0x02, "refused": 0x03}, "wifi_pass_len": {"none": 0x00, "hidden": 0xFF}, "wifi_state": {"off": 0x00, "connecting": 0x01, "connected": 0x02, "waiting": 0x03}, "wifi_entry": {"none": 0xFF}, "wifi_reason": {"none": 0x00, "not_found": 0x01, "auth": 0x02, "no_address": 0x03, "other": 0x04}}, own={},
     line_names={'nrst': "the target's reset line (the host)", 'power_hi': 'a line that powers the target when high (the host only)', 'power_lo': 'a line that powers the target when low (the host only)'})
 INTERFACES["oep.probe.config"] = PROBE_CONFIG

@@ -11,45 +11,45 @@
       ]
     },
     {
-      "name": "riscv-dm with ops 0x01-0x08 (the core's example)",
+      "name": "riscv-dm with ops 0x10-0x17 (the core's example)",
       "note": "core §7.4 example",
-      "value_hex": "01ff",
+      "value_hex": "10ff",
       "valid": true,
       "ops": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
       ]
     },
     {
       "name": "dmi, halt and resume only (the core's example)",
       "note": "core §7.4 example",
-      "value_hex": "0107",
+      "value_hex": "1007",
       "valid": true,
       "ops": [
-        1,
-        2,
-        3
+        16,
+        17,
+        18
       ]
     },
     {
-      "name": "ops 0x01 and 0xEF: the widest set of defined ops, a 30-byte bitmap",
-      "note": "base 0x01, highest 0xEF",
-      "value_hex": "01010000000000000000000000000000000000000000000000000000000040",
+      "name": "ops 0x01 and 0xFF: the widest set, a 32-byte bitmap",
+      "note": "base 0, highest 0xFF",
+      "value_hex": "000200000000000000000000000000000000000000000000000000000000000080",
       "valid": true,
       "ops": [
         1,
-        239
+        255
       ]
     },
     {
       "name": "the longest value: 33 bytes, base 0 and a 32-byte bitmap",
-      "note": "base + 8 x 32 = 256: the decoder limit only (op 0x00 and 0xF0-0xFF are reserved, core §2.5)",
+      "note": "base + 8 x 32 = 256: the decoder limit only (op 0x00 is invalid, core §2.5)",
       "value_hex": "000100000000000000000000000000000000000000000000000000000000000080",
       "valid": true,
       "ops": [
@@ -59,7 +59,7 @@
     },
     {
       "name": "base + 8 x n = 256 exactly",
-      "note": "the decoder limit only: 0xF8 is reserved (core §2.5)",
+      "note": "the decoder limit only: 0xF8 is interface-owned (core §2.5)",
       "value_hex": "f801",
       "valid": true,
       "ops": [

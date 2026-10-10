@@ -107,7 +107,7 @@ def answer(corr: int, resolution: int, detail: int, payload: bytes = b"") -> byt
 
 def ops_value(codes: list[int]) -> bytes:
     """The value of the common describe tag ops (core §7.4): base(u8), bitmap; bit i = op base + i."""
-    base = min(codes)
+    base = min(codes) & ~7
     bits = bytearray((max(codes) - base) // 8 + 1)
     for c in codes:
         bits[(c - base) // 8] |= 1 << ((c - base) % 8)
@@ -184,8 +184,8 @@ def headers() -> dict:
             {"name": "request without a session: session_id 0", "role": ROLE_REQUEST, "corr": 0x1234, "fn": 0x0000, "op": c,
              "session_id": 0, "payload_hex": "00000000", "message_hex": hx(request(0x1234, 0, c, bytes(4)))},
             {"name": "request of a session", "role": ROLE_REQUEST, "corr": 0x0102, "fn": 0x0203,
-             "op": 0x01, "session_id": 0x11223344, "payload_hex": "",
-             "message_hex": hx(request(0x0102, 0x0203, 0x01, b"", 0x11223344))},
+             "op": 0x10, "session_id": 0x11223344, "payload_hex": "",
+             "message_hex": hx(request(0x0102, 0x0203, 0x10, b"", 0x11223344))},
         ],
         "answers": [
             {"name": "completed success", "role": ROLE_ANSWER, "corr": 0x1234, "resolution": COMPLETED,
@@ -242,6 +242,7 @@ def refusals() -> dict:
     unav = CORE["tlv"]["unavailable_payload"]
     max_speed = IFACE["oep.wire.rvswd"]["tlv"]["attach"]["max_speed"]
     ms = tlv(max_speed | CRITICAL, struct.pack("<I", 1_000_000))
+    pins = tlv(0x83, struct.pack("<HH", 1, 2))
     idx_tag = IFACE["oep.fixture.gpio"]["tlv"]["unavailable_payload"]["index"]
     cases = []
 
@@ -260,21 +261,23 @@ def refusals() -> dict:
     add("i2c-target address 0x03 (reserved by the I2C specification)", "core §4.3; fixture §3",
         {"3": "oep.fixture.i2c-target"}, request(0x0012, 3, i2c_conf, bytes([0x03]), s), "unsupported", b"\x00")
     add("attach method 2", "core §4.3; debug §3", {"4": "oep.wire.rvswd"},
-        request(0x0013, 4, rv_attach, bytes([2]) + ms, s), "unsupported", b"\x00")
+        request(0x0013, 4, rv_attach, bytes([2]) + ms + pins, s), "unsupported", b"\x00")
     add("attach without max_speed (a mandatory TLV)", "debug §1", {"4": "oep.wire.rvswd"},
-        request(0x0014, 4, rv_attach, bytes([0]), s), "malformed")
+        request(0x0014, 4, rv_attach, bytes([0]) + pins, s), "malformed")
     add("an unknown critical TLV: its tag as received", "core §2.3", {"4": "oep.wire.rvswd"},
-        request(0x0015, 4, rv_attach, bytes([0]) + ms + tlv(0x3E | CRITICAL, b""), s), "unsupported", bytes([0x3E | CRITICAL]))
+        request(0x0015, 4, rv_attach, bytes([0]) + ms + pins + tlv(0x3E | CRITICAL, b""), s), "unsupported", bytes([0x3E | CRITICAL]))
     add("a TLV whose length runs past the end of the request", "core §2.2, §4.3", {"4": "oep.wire.rvswd"},
-        request(0x0017, 4, rv_attach, bytes([0, max_speed | CRITICAL]) + struct.pack("<H", 8) + struct.pack("<I", 1_000_000), s), "malformed")
+        request(0x0017, 4, rv_attach, bytes([0]) + pins + bytes([max_speed | CRITICAL]) + struct.pack("<H", 8) + struct.pack("<I", 1_000_000), s), "malformed")
     add("read from 4", "core §2.5, §4.3; common §1.2", {"5": "oep.fixture.uart"},
         request(0x0018, 5, uart_read, bytes([4]) + struct.pack("<QH", 0, 64)), "unsupported", b"\x00")
     add("riscv-dm reset mode 3", "core §2.5, §4.3; debug §4.3", {"6": "oep.target.riscv-dm"},
-        request(0x0019, 6, dm_reset, struct.pack("<HB", 0, 3), s), "unsupported", b"\x00")
+        request(0x0019, 6, dm_reset, struct.pack("<HB", 1, 3), s), "unsupported", b"\x00")
     add("confirm min_rev > max_rev", "core §7.1", {},
         request(0x001A, 0, op("core", "confirm"), b"OEP?" + bytes([2, 1])), "malformed")
     add("an unknown non-critical TLV is ignored", "core §2.3", fns_gpio,
         request(0x001B, 2, gpio_set, bytes([1]) + struct.pack("<HB", 3, 0) + tlv(0x3E, b"\x01"), s), "", completed=True)
+    add("corr zero is malformed", "core §4.1, §4.3", {},
+        request(0, 0, op("core", "clock"), b""), "malformed")
     return {
         "about": "Refusals (core §2.3, §4.3) and an ignored unknown TLV. `fns` says which interface each fn number is in the example "
                  "(the numbers come from list in a real session). Requests with session_id 0x11223344 come from the session that holds the lock; "
@@ -346,15 +349,15 @@ def discovery() -> dict:
 def ops_encoding() -> dict:
     """The value of the common describe tag ops (core §7.4) at its boundaries: base(u8) and a bitmap of 1 byte or more, base + 8 x bitmap
     bytes <= 256; valid values decode to their op set."""
-    widest = ops_value([0x01, 0xEF])                       # the lowest and the highest op an interface may define (core §2.5)
+    widest = ops_value([0x01, 0xFF])                       # the lowest and the highest op an interface may define (core §2.5)
     longest = bytes([0x00]) + bytes([0x01]) + bytes(30) + bytes([0x80])     # 33 bytes: base 0, bitmap 32 bytes (bits 0 and 255)
     cases = [
         ("the shortest: one op", bytes([0x01, 0x01]), "the smallest value, 2 bytes"),
-        ("riscv-dm with ops 0x01-0x08 (the core's example)", bytes([0x01, 0xFF]), "core §7.4 example"),
-        ("dmi, halt and resume only (the core's example)", bytes([0x01, 0x07]), "core §7.4 example"),
-        ("ops 0x01 and 0xEF: the widest set of defined ops, a 30-byte bitmap", widest, "base 0x01, highest 0xEF"),
-        ("the longest value: 33 bytes, base 0 and a 32-byte bitmap", longest, "base + 8 x 32 = 256: the decoder limit only (op 0x00 and 0xF0-0xFF are reserved, core §2.5)"),
-        ("base + 8 x n = 256 exactly", bytes([0xF8, 0x01]), "the decoder limit only: 0xF8 is reserved (core §2.5)"),
+        ("riscv-dm with ops 0x10-0x17 (the core's example)", bytes([0x10, 0xFF]), "core §7.4 example"),
+        ("dmi, halt and resume only (the core's example)", bytes([0x10, 0x07]), "core §7.4 example"),
+        ("ops 0x01 and 0xFF: the widest set, a 32-byte bitmap", widest, "base 0, highest 0xFF"),
+        ("the longest value: 33 bytes, base 0 and a 32-byte bitmap", longest, "base + 8 x 32 = 256: the decoder limit only (op 0x00 is invalid, core §2.5)"),
+        ("base + 8 x n = 256 exactly", bytes([0xF8, 0x01]), "the decoder limit only: 0xF8 is interface-owned (core §2.5)"),
         ("no bitmap: 1 byte", bytes([0x01]), "invalid length"),
         ("34 bytes", bytes([0x00, 0x01]) + bytes(31) + bytes([0x01]), "invalid length"),
         ("past op 0xFF: base 0xF9 with a 1-byte bitmap", bytes([0xF9, 0x01]), "base + 8 x n > 256"),
@@ -419,7 +422,7 @@ def sessions() -> dict:
              step("keepalive with session_id 0: an op that requires the lock", request(1, 0, keep_op, b""), rej(1, "session_required")),
              step("open with session_id 0", request(2, 0, open_op, struct.pack("<IB", lease, 0)), rej(2, "malformed")),
              step("open S", request(3, 0, open_op, struct.pack("<IB", lease, 0), S), opened(3)),
-             step("the same open resent (open is not looked up in the table): the lease restarts, nothing is released",
+             step("the same open resent: replay the answer, without renewing the lease or clearing the history",
                   request(3, 0, open_op, struct.pack("<IB", lease, 0), S), opened(3)),
              step("lock_state with session_id 0: held, the remaining time as if no time had passed",
                   request(4, 0, state_op, b""), ok(4, struct.pack("<BI", 1, lease))),
@@ -436,6 +439,36 @@ def sessions() -> dict:
              step("clock with S: a lock-free op of the session holding the lock", request(5, 0, clock_op, b"", S), clocked(5, 2_002_000_000)),
              step("end of S", request(6, 0, end_op, b"", S), ok(6)),
              step("clock with session_id 0 after end: answered as before", request(7, 0, clock_op, b""), clocked(7, 2_003_000_000)),
+         ]},
+    ]
+    scenarios += [
+        {"name": "session-zero traffic does not advance the session; open preserves replay history",
+         "spec": "core §4.1, §5.2", "initial": "lock free; max_inflight 4",
+         "steps": [
+             step("open S", request(1, 0, open_op, struct.pack("<IB", lease, 0), S), opened(1)),
+             step("keepalive S", request(2, 0, keep_op, b"", S), ok(2)),
+             step("independent session-zero counter past half-cycle", request(40000, 0, clock_op, b""), clocked(40000, 2_000_000_000)),
+             step("S still advances from 2 to 3", request(3, 0, keep_op, b"", S), ok(3)),
+             step("new open S keeps the existing history", request(4, 0, open_op, struct.pack("<IB", lease, 0), S), opened(4)),
+             step("keepalive 2 still replays", request(2, 0, keep_op, b"", S), ok(2)),
+             step("same corr with altered bytes is malformed", request(2, 0, keep_op, bytes([0]), S), rej(2, "malformed")),
+         ]},
+        {"name": "16-bit counter does not wrap; an ended session cannot be reopened",
+         "spec": "core §4.1, §5.2, §6.2", "initial": "lock free; max_inflight 4",
+         "steps": [
+             step("open S", request(1, 0, open_op, struct.pack("<IB", lease, 0), S), opened(1)),
+             step("a new request more than half a cycle ahead is new", request(65533, 0, keep_op, b"", S), ok(65533)),
+             step("end S, leaving a higher corr for a check", request(65534, 0, end_op, b"", S), ok(65534)),
+             step("new open of ended S is no_session", request(65535, 0, open_op, struct.pack("<IB", lease, 0), S), rej(65535, "no_session")),
+             step("old end still replays without resurrecting resources", request(65534, 0, end_op, b"", S), ok(65534)),
+             step("T starts a new counter, only after all S requests resolved", request(1, 0, open_op, struct.pack("<IB", lease, 0), T), opened(1)),
+         ]},
+        {"name": "evicted request returns result_lost instead of being executed",
+         "spec": "core §5.2", "initial": "lock free; max_inflight 4; exactly four cache entries",
+         "steps": [
+             step("open S", request(1, 0, open_op, struct.pack("<IB", lease, 0), S), opened(1)),
+             *[step("keepalive S", request(c, 0, keep_op, b"", S), ok(c)) for c in range(2, 6)],
+             step("open 1 has fallen out; it must not reset history", request(1, 0, open_op, struct.pack("<IB", lease, 0), S), rej(1, "result_lost")),
          ]},
     ]
     return {
@@ -527,11 +560,10 @@ def ops() -> dict:
 
     # oep.wire.rvswd (debug §1 to §3)
     rv = {"4": "oep.wire.rvswd"}
-    users = IFACE["oep.wire.rvswd"]["enum"]["connection_users"]
     scheme = REG["common"]["enum"]["target_id_scheme"]["dmi_7f"]
-    entry = struct.pack("<HHHIBBBB", 1, 0x0001, 0x0002, 1_000_000, users["host_session"], 0xFF, scheme, 4) + struct.pack("<I", 0x00203500)
+    entry = struct.pack("<HHHIBB", 1, 0x0001, 0x0002, 1_000_000, scheme, 4) + struct.pack("<I", 0x00203500)
     add("rvswd connections: one connection with a target_id", "debug §2.1", rv,
-        "connection 1 on channels 1 / 2 at 1 MHz, attached by the session, no slot, target_id scheme 1 = 0x00203500",
+        "connection 1 on channels 1 / 2 at 1 MHz, owned by the session, target_id scheme 1 = 0x00203500",
         request(0x40, 4, op("oep.wire.rvswd", "connections"), bytes([0])), ok(0x40, bytes([0, 1]) + entry))
     add("rvswd connections: first beyond the count", "core §7.3 end of paging, debug §2.1", rv, "as above",
         request(0x41, 4, op("oep.wire.rvswd", "connections"), bytes([1])), ok(0x41, bytes([0, 0])))
@@ -539,20 +571,26 @@ def ops() -> dict:
     add("rvswd scan: one combination listed and found", "debug §1, §3", rv, "session S; channels 1 / 2 free and allowed; a DM answers DMSTATUS 0x00400382",
         request(0x42, 4, op("oep.wire.rvswd", "scan"), bytes([1]) + struct.pack("<HH", 1, 2), S),
         ok(0x42, bytes([1, 1]) + struct.pack("<BHHI", kind, 1, 2, 0x00400382)))
-    add("rvswd scan: count 0 with nothing left from skip", "debug §1", rv, "session S; the count = 0 sequence has 4 combinations",
-        request(0x43, 4, op("oep.wire.rvswd", "scan"), bytes([0]) + tlv(IFACE["oep.wire.rvswd"]["tlv"]["scan"]["skip"], struct.pack("<H", 4)), S),
-        ok(0x43, bytes([0, 0])))
-    add("rvswd scan: count > 0 ignores skip", "debug §1", rv, "as the first scan case; skip = 1 is not looked at, the listed combination is tried",
-        request(0x44, 4, op("oep.wire.rvswd", "scan"), bytes([1]) + struct.pack("<HH", 1, 2)
-                + tlv(IFACE["oep.wire.rvswd"]["tlv"]["scan"]["skip"], struct.pack("<H", 1)), S),
-        ok(0x44, bytes([1, 1]) + struct.pack("<BHHI", kind, 1, 2, 0x00400382)))
+    add("rvswd scan: count 0 is malformed", "debug §1", rv, "session S; no implicit candidate list",
+        request(0x43, 4, op("oep.wire.rvswd", "scan"), bytes([0]), S), rej(0x43, "malformed"))
+    speed = tlv(0x81, struct.pack("<I", 1_000_000))
+    add("rvswd attach: pins are required", "debug §1", rv, "session S; channels free",
+        request(0x44, 4, op("oep.wire.rvswd", "attach"), bytes([0]) + speed, S), rej(0x44, "malformed"))
+    add("rvswd attach: a second target on separate pins", "debug §1", rv,
+        "session S owns connection 1 on pins 1 / 2; max_connections 2; pins 3 / 4 allowed and free; next resource 2",
+        request(0x45, 4, op("oep.wire.rvswd", "attach"), bytes([0]) + speed + tlv(0x83, struct.pack("<HH", 3, 4)), S),
+        ok(0x45, struct.pack("<HIBI", 2, 0x00400382, 0, 1_000_000)))
+    add("rvswd attach: busy pins never join or evict", "debug §1, core §8.1", rv,
+        "session S owns connection 1 on pins 1 / 2; connection remains unchanged",
+        request(0x46, 4, op("oep.wire.rvswd", "attach"), bytes([0]) + speed + tlv(0x83, struct.pack("<HH", 1, 2)), S),
+        rej(0x46, "unavailable", tlv(1, bytes([1])) + tlv(2, struct.pack("<H", 1))))
 
     # oep.target.riscv-dm (debug §4)
     dm = {"6": "oep.target.riscv-dm"}
     add("riscv-dm halt: halted", "debug §4.2", dm, "session S; connection 1 open; the hart halts",
         request(0x50, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<H", 1), S), ok(0x50, bytes([REG["status"]["ok"]])))
     add("riscv-dm halt on an unknown connection", "core §4.3", dm, "no connection 9",
-        request(0x51, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<H", 9), S), rej(0x51, "no_connection"))
+        request(0x51, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<H", 9), S), rej(0x51, "no_resource"))
     add("riscv-dm run not offered", "debug §4, core §1.2", dm, "ops of fn 6: dmi, halt, resume (09 02 00 01 07)",
         request(0x52, 6, op("oep.target.riscv-dm", "run"), struct.pack("<HIIBB", 1, 0x20000000, 100, 0, 0), S), rej(0x52, "unknown_operation"))
     run_stopped = IFACE["oep.target.riscv-dm"]["enum"]["run_stopped"]
@@ -598,7 +636,7 @@ def ops() -> dict:
     add("console marks: from_serial = next, no marks and more 0", "common §1.3 paging 2", con, kept,
         request(0x67, 7, mk, struct.pack("<HI", 2, 9)), ok(0x67, bytes([0, 0])))
     st = IFACE["oep.target.console"]["enum"]
-    sentry = struct.pack("<HHBBB", 2, 1, st["mechanism"]["dmseq"], st["stream_users"]["host_session"], st["stream_state"]["open"])
+    sentry = struct.pack("<HHB", 2, 1, st["mechanism"]["dmseq"])
     add("console streams: one open stream", "console §1, core §9", con, "stream 2 on connection 1 (one number space: connection 1, then stream 2), dmseq, opened by the session",
         request(0x61, 7, op("oep.target.console", "streams"), struct.pack("<H", 0)), ok(0x61, bytes([0, 1]) + sentry))
     add("console streams: first(u16) beyond the count, the last page", "console §1, core §7.3 end of paging", con, "as above (one stream)",
@@ -609,15 +647,13 @@ def ops() -> dict:
     add("console read from 4", "common §1.2, core §4.3", con, "—",
         request(0x63, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 2, 4, 0, 64)), rej(0x63, "unsupported", b"\x00"))
 
-    # oep.probe.config (probe settings §3.3)
+    # oep.probe.config (probe settings §3)
     pc = {"8": "oep.probe.config"}
     pce = IFACE["oep.probe.config"]["enum"]
-    slot_state = struct.pack("<BBHQ", 0, pce["slot_state"]["connected"], 1, 1_000_000)
-    bind_state = bytes([0, pce["bind_flow"]["streaming"]])
-    add("probe.config state: one slot and one bind", "probe settings §3.3", pc,
-        "no save; slot 0 connected on connection 1 (last try at 1 ms); bind on port 0, streaming",
-        request(0x70, 8, op("oep.probe.config", "state"), bytes([0, 0])),
-        ok(0x70, struct.pack("<BBIB", 0, pce["storage_state"]["none"], 0, 0) + bytes([1]) + slot_state + bytes([1]) + bind_state))
+    add("probe.config state: no saved settings", "probe settings §3", pc,
+        "no save; presets do not own runtime resources",
+        request(0x70, 8, op("oep.probe.config", "state"), b""),
+        ok(0x70, struct.pack("<BIB", pce["storage_state"]["none"], 0, 0)))
     add("probe.config save not offered", "probe settings §2, core §1.2", pc, "ops without save and erase; no storage tag",
         request(0x71, 8, op("oep.probe.config", "save"), b"", S), rej(0x71, "unknown_operation"))
     idle_tag = IFACE["oep.probe.config"]["tlv"]["item"]["idle"]
@@ -657,17 +693,17 @@ def ops() -> dict:
         wifi_state + "session S; no settings; max_frame 112 or more on this transport; the probe's hash for the new settings is 0x5A5A0003",
         longest, ok(0x7C, struct.pack("<I", 0x5A5A0003)))
     ws = pce["wifi_state"]
-    add("probe.config state: wifi connected on entry 0", "probe settings §3.3", pc,
-        wifi_state + "no save, no slots, no binds; connected through entry 0 at -52 dBm, address 192.168.1.23",
-        request(0x7A, 8, op("oep.probe.config", "state"), bytes([0, 0])),
-        ok(0x7A, struct.pack("<BBIB", 0, pce["storage_state"]["none"], 0, 0) + bytes([0, 0])
+    add("probe.config state: wifi connected on entry 0", "probe settings §3", pc,
+        wifi_state + "no save; connected through entry 0 at -52 dBm, address 192.168.1.23",
+        request(0x7A, 8, op("oep.probe.config", "state"), b"" ),
+        ok(0x7A, struct.pack("<BIB", pce["storage_state"]["none"], 0, 0)
            + tlv(IFACE["oep.probe.config"]["tlv"]["state_answer"]["wifi"],
                  struct.pack("<BBBb", ws["connected"], 0, pce["wifi_reason"]["none"], -52) + bytes([192, 168, 1, 23]))))
     add("probe.config unset: wifi entry 0", "probe settings §1.4, §2", pc,
         wifi_state + "session S; settings as above; the probe's hash for the empty settings is 0x5A5A0002",
         request(0x7B, 8, pc_unset, bytes([1, 1, wifi_tag, 0]), S), ok(0x7B, struct.pack("<I", 0x5A5A0002)))
 
-    # subscribe / unsubscribe (core §11.3): ops of the interface that sends notifications, 0x30 / 0x32 in every op space, no target fn
+    # subscribe / unsubscribe (core §11.3): ops of the interface that sends notifications, 0x01 / 0x02 in the common operation range, no target fn
     sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]
     lgs = {"9": "oep.fixture.logic"}
     add("logic subscribe: min_bytes 1024, max_delay_ms 20", "core §11.3; capture §3.4", lgs,

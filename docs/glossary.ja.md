@@ -28,7 +28,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
 | 経路 | transport | OEP のフレームを運ぶもの: UART bridge、USB CDC、内蔵の USB シリアル、vendor bulk、HID、TCP（`transport_kind` 1〜6） | core §1、transports §1、core §7.5 |
-| シリアルの口 | serial port | OS からシリアルデバイスに見える経路（kind 1〜3）。OEP と生のバイトを運ぶ | core §1、transports §4 |
+| シリアルの口 | serial port | OS からシリアルデバイスに見える経路（kind 1〜3）。OEP のフレームだけを運ぶ | core §1、transports §4 |
 | UART bridge | UART bridge | probe の UART を USB-UART の変換チップで出したもの | transports §1 |
 | 内蔵の USB シリアル | built-in USB serial | MCU のハードウェアが作る USB シリアルの口。記述子を probe が選べない | core §7.5 |
 | vendor bulk | vendor bulk | class 0xFF / 0x4F / 0x45 の interface の bulk の組 | transports §1、§3 |
@@ -39,8 +39,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | `_oep._tcp` | `_oep._tcp` | TCP で待ち受ける probe が自分を広告するときに mDNS で広告する DNS-SD の service。port は SRV、TXT に `unit_id` | transports §3 |
 | 候補 | candidate | 0x00 から次の 0x00 までのバイト。フレームかもしれないものとして解く | transports §1、§4 |
 | 壊れた候補 | broken candidate | 解けないか CRC の合わない候補 | transports §4 |
-| 生のバイト | raw bytes | シリアルの口の、OEP のフレームの外のバイト（target のコンソールなど） | transports §4 |
-| 生の転送 | raw transfer | シリアルの口と、それに結んだ流れの間で生のバイトを運ぶこと。セッションが口を使う間は止まる | transports §4 |
+| 生のバイト | raw bytes | 別の raw endpoint が運ぶバイト。OEP のシリアル経路には混ぜない | transports §4 |
 | フレームの途切れ | frame gap | フレームの途中の `probe_frame_gap_ms` の途切れ。probe は読み直す（TCP では読み直さない） | transports §2 |
 | 区切りの立て直し | resync | 長さつきのフレームで、host が区切りを取り戻すこと | transports §5 |
 | 起動時の速さ | boot speed | UART bridge の起動時の速さ、`uart_bridge_boot_baud` | transports §4、link §3 |
@@ -118,7 +117,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | instance、`name#instance` | instance | 同じ (name, revision) のインターフェースの中の番号。文字で書く形は host ガイド §5.3 | core §7.2 |
 | role_channels、channel_group | role_channels, channel_group | 役が使える channel、決まった組 | core §7.4 |
 | features | features | インターフェースの、op でない任意の機能の u32 の bit（モード、format） | core §7.4 |
-| ops | ops | すべての fn が持つ op を宣言する、describe の共通の tag 0x09（base + bitmap、op 0xFF を越えない） | core §1.2、§7.4 |
+| ops | ops | すべての fn が持つ op を宣言する、describe の共通の tag 0x07（base + bitmap、op 0xFF を越えない） | core §1.2、§7.4 |
 | unit_id | unit_id | 個体の識別子。`a-z 0-9 -` の 1〜32、USB の serial number と等しい | core §7.5 |
 | `x-` の unit_id | `x-` unit_id | 一意でない unit_id。まとめにも名指しにも使わない | core §7.5 |
 | model、chip、firmware | model, chip, firmware | probe の種類、その MCU、firmware の自由な文字列 | core §7.5 |
@@ -137,7 +136,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 役（role） | role (of a plan) | インターフェースの中のピンの働き（RX、SWDIO…） | core §7.4、§13、plan 冒頭 |
 | role_assignment | role_assignment | plan_apply の TLV: fn、role、channel | plan §2.1 |
 | plan_roles | plan_roles | plan が一度に持てる割り当ての数 | plan §1、§2.1 |
-| 設定の plan | settings plan | 設定が置いた plan。設定でしか変わらない | plan §2.3、settings §1 |
+| 設定の plan | settings plan | host が plan_apply に使う preset。保存だけではピンを取らない | plan §2.3、settings §1 |
 | 空きの状態 | idle state | どのインターフェースも取っていないピンの状態: 保存した設定の idle か Hi-Z | core §8 |
 | 資源の取り合い | resource contention | 持たれているピンや資源を取ろうとするものを断る | core §8.1 |
 | 出力の強さ、段 | drive strength, drive_levels | mode 3 / 4 の出力の選べる強さ | fixture §1.1 |
@@ -147,7 +146,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
 | 通知 | notification | probe が要求なしに送る出来事とデータ | core §11 |
-| 購読 | subscribe, subscription | 1 つの fn の通知を求めること。送り出すインターフェース自身の op（0x30 subscribe、0x32 unsubscribe）。ロックと一緒に終わる | core §11.3 |
+| 購読 | subscribe, subscription | 1 つの fn の通知を求めること。送り出すインターフェース自身の op（0x01 subscribe、0x02 unsubscribe）。ロックと一緒に終わる | core §11.3 |
 | seq | seq | fn ごとの通知のフレームの u16 の通し番号 | core §11.2 |
 | 位置つきのストリーム | positioned stream | 起動の間戻らない u64 の位置で番号を振ったバイト | common §1 |
 | 位置 | position | ストリームのバイトの通し番号 | common §1.1 |
@@ -160,7 +159,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 |---|---|---|---|
 | 線（wire） | wire | 接続を作る debug の線のインターフェース `oep.wire.*` | debug §0 |
 | 接続（connection） | connection | attach が作る target への接続 | common §2 |
-| 使っているもの | user (of a connection) | 接続を開いたままにするセッションかスロット | common §2 |
+| 使っているもの | user (of a connection) | 接続を所有するセッション | common §2 |
 | ピンの役 | pin role | 1 SWDIO、2 SWCLK、3 reset | debug §1 |
 | ピンの組 | combination | 線の 1 回の試しの channel | debug §1 |
 | scan、attach、detach | scan, attach, detach | target を探す、つなぐ、離れる | debug §1、§2 |
@@ -200,13 +199,9 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | idle | idle (item) | channel の空きの状態: Hi-Z、pull、出力 low / high | settings §1 |
 | disable | disable | probe が決して使わない channel | settings §1 |
 | スロット | slot | target がつながる場所の登録 | settings §1.1 |
-| attach の方針 | attach policy | host か at boot | settings §3.1 |
-| bind | bind | シリアルの口が流すストリーム 1 つ（スロットのコンソールか fixture UART の受信） | settings §1.2 |
-| 口の位置 | position of the port | bind の口が、流すストリームのどこにいるか | settings §1.2 |
 | 線の名前 | line names | `nrst`、`power_hi`、`power_lo`。ほかは `x-` | settings §1.3 |
 | hash | hash | 今の設定を表す u32。設定が変われば変わり、作り方は probe が決める | settings §2 |
 | wifi の項目、entry | wifi item, entry | probe がつなぐ Wi-Fi のネットワーク 1 つ（index、ssid、passphrase）。index の順に試す | settings §1.4 |
 | 書くだけ（passphrase） | write-only (passphrase) | get も state もほかのどの応答も passphrase を返さない。get の pass_len 0xFF は「ある」で、set で送り返すと今のものを保つ | settings §1.4 |
 | 保存、消去 | save, erase | 保存の写しを書く / 消す | settings §2 |
-| storage_state、読めない理由 | storage_state, unreadable reason | 保存があり、掛かっているか | settings §3.3 |
-| slot_state、bind_state | slot_state, bind_state | スロットと bind の今の状態 | settings §3.2、§3.3 |
+| storage_state、読めない理由 | storage_state, unreadable reason | 保存があり、掛かっているか | settings §3 |

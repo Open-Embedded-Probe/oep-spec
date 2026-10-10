@@ -16,8 +16,8 @@
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x01 | set | n(u8)、n × (channel(u16)、mode(u8))、[TLV] | — | 必要 |
-| 0x02 | read | n(u8)、n × channel(u16) | n(u8)、n × level(u8: 0 / 1)、[TLV] | 不要 |
+| 0x10 | set | n(u8)、n × (channel(u16)、mode(u8))、[TLV] | — | 必要 |
+| 0x11 | read | n(u8)、n × channel(u16) | n(u8)、n × level(u8: 0 / 1)、[TLV] | 不要 |
 
 | mode | 意味 |
 |---:|---|
@@ -60,13 +60,13 @@
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x01 | configure | baud(u32)、[TLV] | baud(u32、実際の値)、[TLV] | 必要 |
-| 0x02 | read | from(u8)、arg(u64)、max(u16)、[TLV] | start(u64)、flags(u8)、len(u16)、data、[TLV] | 不要 |
-| 0x03 | marks | from_serial(u32) | more(u8)、count(u8)、count × mark、[TLV] | 不要 |
-| 0x04 | clear | — | — | 必要 |
-| 0x05 | mark | value(u8) | — | 必要 |
-| 0x06 | write | count(u16)、data | accepted(u16)、[TLV] | 必要 |
-| 0x07 | status | — | baud(u32、実際の値)、format(u8)、[TLV] | 不要 |
+| 0x10 | configure | baud(u32)、[TLV] | baud(u32、実際の値)、[TLV] | 必要 |
+| 0x11 | read | from(u8)、arg(u64)、max(u16)、[TLV] | start(u64)、flags(u8)、len(u16)、data、[TLV] | 不要 |
+| 0x12 | marks | from_serial(u32) | more(u8)、count(u8)、count × mark、[TLV] | 不要 |
+| 0x13 | clear | — | — | 必要 |
+| 0x14 | mark | value(u8) | — | 必要 |
+| 0x15 | write | count(u16)、data | accepted(u16)、[TLV] | 必要 |
+| 0x16 | status | — | baud(u32、実際の値)、format(u8)、[TLV] | 不要 |
 
 - op 0x02〜0x06 は [共通部品](oep-if-common.ja.md) §1 の形（stream の byte なし）で、`oep.target.console` と同じ番号。
 - configure の TLV 0x01 format（u8）: bit0-1 データ長（0 = 8、1 = 7）、bit2-3 パリティ（0 なし、1 偶数、2 奇数）、bit4 ストップ
@@ -92,11 +92,11 @@ read_rx で取り出す。
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x01 | configure | address(u8、7 ビット)、[TLV] | — | 必要 |
-| 0x03 | read_rx | — | pending(u8)、count(u16)、data、[TLV ns(u64): そのフレームを終えた STOP か次の START の時刻、任意] | 必要 |
-| 0x04 | preload_tx | count(u16)、data | — | 必要 |
-| 0x05 | status | — | state(u8)、queued(u8)、rx_frames(u32)、tx_slots(u8)、errors(u32)、[TLV] | 不要 |
-| 0x07 | stretch | stretch_us(u32) | — | 必要 |
+| 0x10 | configure | address(u8、7 ビット)、[TLV] | — | 必要 |
+| 0x11 | read_rx | — | pending(u8)、count(u16)、data、[TLV ns(u64): そのフレームを終えた STOP か次の START の時刻、任意] | 必要 |
+| 0x12 | preload_tx | count(u16)、data | — | 必要 |
+| 0x13 | status | — | state(u8)、queued(u8)、rx_frames(u32)、tx_slots(u8)、errors(u32)、[TLV] | 不要 |
+| 0x14 | stretch | stretch_us(u32) | — | 必要 |
 
 - この fn の plan は role 1 と 2 をちょうど 1 つずつ、別々の channel で持つ（どちらかが無い、同じ role が 2 つある、両方の role が同じ
   channel の plan_apply は rejected malformed）。plan を解く・置き換えると target は止まり、describe の直後と同じ状態に戻る（state 0、
@@ -134,10 +134,10 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x01 | configure | mode(u8: SPI の mode 0〜3)、bit_order(u8: 0 MSB が先、1 LSB が先)、[TLV] | — | 必要 |
-| 0x02 | arm | length(u16)、count(u16)、tx(count byte)、[TLV] | — | 必要 |
-| 0x03 | read_rx | — | pending(u8)、bits(u32)、count(u16)、data、[TLV ns(u64): その転送で CS が無効になった時刻、任意] | 必要 |
-| 0x04 | status | — | state(u8)、mode(u8)、bit_order(u8)、armed(u8)、queued(u8)、transactions(u32)、errors(u32)、[TLV] | 不要 |
+| 0x10 | configure | mode(u8: SPI の mode 0〜3)、bit_order(u8: 0 MSB が先、1 LSB が先)、[TLV] | — | 必要 |
+| 0x11 | arm | length(u16)、count(u16)、tx(count byte)、[TLV] | — | 必要 |
+| 0x12 | read_rx | — | pending(u8)、bits(u32)、count(u16)、data、[TLV ns(u64): その転送で CS が無効になった時刻、任意] | 必要 |
+| 0x13 | status | — | state(u8)、mode(u8)、bit_order(u8)、armed(u8)、queued(u8)、transactions(u32)、errors(u32)、[TLV] | 不要 |
 
 - **SPI の mode** = CPOL × 2 + CPHA。CPOL は CS が無効な間の SCK の level（0 low、1 high）。CPHA 0 では、各ビットはそのクロック周期の最初の SCK の
   エッジで取り込まれ、2 番目のエッジで変わるので、MISO の最初のビットは最初の SCK のエッジより前に線に出ている（cs_setup_ns、下）。CPHA 1 では、

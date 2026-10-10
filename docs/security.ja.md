@@ -54,7 +54,7 @@ host は:
 - **時間**: どの要求も宣言した max_op_ms より長くかからず、引数がそれを超えうる op は unsupported で断る（core §7.5）。attach、scan、
   riscv-dm の reset もそのうちに答える（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1、§4.3）。lease は `lease_min_ms` から `lease_max_ms` の間（core §6.4）。
 - **番号**: 資源の番号は u16 で probe に 1 つの空間。1 ずつ進め、使用中の番号は飛ばす。一周の後は古い番号が別の資源を指しうるので、
-  host は no_connection を受けた番号を捨てる（core §9）。
+  host は no_resource を受けた番号を捨てる（core §9）。
 - **ためるデータ**: 位置つきのストリームとキャプチャの区画は、古いものから押し出して失ったことを知らせる輪（common §1.1、
   [キャプチャ](../interfaces/oep-if-capture.ja.md) §2）。probe の設定は max_bytes が上限で、超えれば unavailable cause 3（probe の設定 §2）。
 
@@ -75,12 +75,11 @@ host は:
   ほかの host のロック不要の読みも含めて途切れさせ、保存していない設定を捨て、connection を閉じる。probe は応答を先に送り、再起動の前に
   線を空きの状態にする（target は reset しない。止めていた hart は止めたまま）。`oep.probe.restart` を出さない probe は再起動しない。
 
-## 5. target の出力で偽れるロック不要の応答
+## 5. target の出力と OEP の制御
 
-シリアルの口では、target の生のバイトは OEP の応答と同じ口で host に届く（transports §4）。host の role と corr の照合は、偶然できた
-フレームは捨てるが、わざと作ったフレームは止めない: 生の転送が止まっていない口では、target の出力が、正しい CRC と、待っている
-ロック不要の要求の corr（1 ずつ進むので予測できる）を持つフレームを含みうる。応答の中身を信じる必要のある host は、生の転送が
-止まっている口（自分のセッションの要求がそこに届いた後）か、長さつきの口で要求を送る（transports §4 の参考の注）。
+OEP のシリアル経路はフレーム専用で、target の生データと共用しない（transports §4）。
+コンソールの byte は read の payload で運ぶ。raw endpoint を併設する場合も、OEP の parser や受信キューと混ぜない。
+
 
 ## 6. 電気の安全
 
@@ -92,11 +91,11 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
 - **出力の idle**: 解いたピンは空きの状態（設定の idle か Hi-Z）に戻る（core §8）。plan を取ってもピンは変わらず、読むだけの
   インターフェースは駆動しない（core §8、キャプチャ §1.2）。出力の idle は、ピンが空いている間ずっと、起動時から、host なしで level を
   駆動する。target の出力とぶつからないようにするのは配線の責任（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1）。idle の項目のある
-  channel は count = 0 の scan と pins の無い attach から外れ、idle が出力の channel を名指せば unavailable cause 5
+  channel を名指す要求で、idle が出力なら unavailable cause 5
   （[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。
 - **保存した設定と起動**: 起動したら、probe は最初の応答の前に、自分で使う channel を除くすべての channel を空きの状態にし、保存した設定では
   disable と idle をほかの項目より先に掛ける（core §8、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2）。
-  保存した設定（idle、plan、at boot の attach）は起動のたびに host が居ても居なくても線を駆動する（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2、§3.1）。
+  出力の idle は host の有無にかかわらず駆動する。plan / slot / uart の preset は起動時に target を操作しない（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1、§2）。
   電源投入やリセットから firmware が設定を掛けるまで、firmware を更新している間、firmware が壊れたときは、ピンは MCU のリセットの状態で、
   設定が定めるものは何も駆動されない。level を誤ると害のある線（target の電源を切り替える線など）にはそれだけで安全な level に保つ外付けの pull が要る。
   disable は利用者の宣言で、守りではない: ロックを持つ host は unset で外し、その channel を使える。設定に認証は無い: ロックを取ったどの host も、
@@ -108,7 +107,7 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
   元に戻す（debug §1）。
 - **線の再試行**: probe の線の再試行は、target に届いたかもしれない target のメモリへの store と host の dmi の手順を繰り返さず（失敗は failed / partial で見える）、connection がある間は
   target の状態を変えない（target をリセットしうる wake は attach と reset の中だけ）（debug §2）。
-- **count = 0 の scan** は空いている候補のピンを順に駆動する。配線の分からない治具に、利用者の同意なしに送らない（debug §1、参考）。
+- **scan** は host が明示した候補のピンを順に駆動する。配線の分からない治具に、利用者の同意なしに送らない（debug §1、参考）。
 - **治具の線**: spi-target は CS が有効な間だけ MISO を駆動し（cs_setup_ns を除く）、ソフトウェアで MISO を出し始めるなら cs_setup_ns を
   宣言する（fixture §4）。i2c-target は SDA / SCL をオープンドレインでだけ駆動し、内部の pull-up は宣言し、バスの general call や 10 bit の見出しに
   答えないよう予約のアドレスを断る（fixture §3）。uart の plan は
@@ -125,7 +124,7 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
   device を乱さないため。class / subclass / protocol や usage page だけで probe とは決めない（transports §3）。
 - probe は DTR、RTS、線の設定を何の判断にも使わず、1200 bps の touch と CDC の線の設定は何もしない（transports §4、probe の設定 §1.2）。
   host は自動リセットの回路を動かさないよう DTR と RTS を立てておく（transports §4、host ガイド §1）。
-- 共用のシリアルの口の生のバイトは、その口に結んだ流れへ行き、セッションが口を使う間は生の転送が止まる（transports §4）。
+- OEP のシリアル経路へ raw byte を混ぜない（transports §4）。
 
 ## 8. probe が見せる情報
 

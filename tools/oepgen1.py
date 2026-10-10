@@ -40,8 +40,8 @@ def check(reg: dict) -> list[str]:
         errors.append(f"unknown table kinds {sorted(set(reg) - top)} (registry header)")
     if set(reg.get("common", {})) - {"enum"}:
         errors.append(f"unknown common tables {sorted(set(reg['common']) - {'enum'})} (registry header)")
-    iface_keys = {"name", "revision", "fn", "target", "op", "tlv", "enum", "event", "status", "reject_reasons", "reserved", "line_names"}
-    core_keys = {"op", "tlv", "enum", "event", "status", "reject_reasons", "reserved"}
+    iface_keys = {"name", "revision", "fn", "target", "op", "tlv", "enum", "event", "status", "reject_reasons", "retired", "line_names"}
+    core_keys = {"op", "tlv", "enum", "event", "status", "reject_reasons", "retired"}
     for iface in reg.get("interface", []):
         if set(iface) - iface_keys:
             errors.append(f"{iface.get('name')}: unknown interface keys {sorted(set(iface) - iface_keys)} (registry header)")
@@ -70,8 +70,8 @@ def check(reg: dict) -> list[str]:
             if c in codes:
                 errors.append(f"{n}: op {c:#x} used by {codes[c]} and {op['name']}")
             codes[c] = op["name"]
-            if not 0x01 <= c <= 0xEF:
-                errors.append(f"{n}: op {op['name']} = {c:#x} outside 0x01-0xEF (0xF0-0xFF are reserved)")
+            if not 0x01 <= c <= 0xFF:
+                errors.append(f"{n}: op {op['name']} = {c:#x} outside 0x01-0xFF")
             if set(op) - {"code", "name", "lock", "fields"}:
                 errors.append(f"{n}: op {op['name']} has unknown keys {sorted(set(op) - {'code', 'name', 'lock', 'fields'})}")
         if iface is reg["core"]:
@@ -80,7 +80,10 @@ def check(reg: dict) -> list[str]:
                 if not any(a <= c <= b for a, b in ranges):
                     errors.append(f"core: op {opname} = {c:#x} outside the core ranges")
         else:
-            # core §11.3: 0x30 subscribe and 0x32 unsubscribe are reserved in every interface's op space; both or neither
+            for c, opname in codes.items():
+                if c < 0x10 and opname not in ("subscribe", "unsubscribe"):
+                    errors.append(f"{n}: op {opname} = {c:#x} uses the common-operation range 0x01-0x0F")
+            # Common operations: both subscription operations or neither.
             sub, unsub = reg["constants"]["op_subscribe"], reg["constants"]["op_unsubscribe"]
             for c, want in ((sub, "subscribe"), (unsub, "unsubscribe")):
                 if c in codes and codes[c] != want:
@@ -95,10 +98,8 @@ def check(reg: dict) -> list[str]:
                 if tag in seen:
                     errors.append(f"{n}: tlv {context}: {tag:#x} used by {seen[tag]} and {tag_name}")
                 seen[tag] = tag_name
-                if tag in (0x7F, 0xFF, 0x00):
+                if not 0x01 <= tag <= 0x7F:
                     errors.append(f"{n}: tlv {context}.{tag_name} = {tag:#x} is reserved")
-                if context == "describe" and tag == 0x3F:
-                    errors.append(f"{n}: describe tag {tag_name} = 0x3f is reserved for response meta")
                 if tag & 0x80:
                     errors.append(f"{n}: tlv {context}.{tag_name} = {tag:#x} has the critical bit set in the registry")
         for group in ("status", "reject_reasons"):
@@ -106,9 +107,15 @@ def check(reg: dict) -> list[str]:
                 if not 0x40 <= v <= 0x7F:
                     errors.append(f"{n}: {group} {v_name} = {v:#x} outside the interface range 0x40-0x7F")
         for tag_name, tag in iface.get("tlv", {}).get("describe", {}).items():
+            if tag < 0x40:
+                errors.append(f"{n}: describe tag {tag_name} = {tag:#x} uses the common describe range")
             if tag in common.values() or tag_name in common:
                 errors.append(f"{n}: describe tag {tag_name} = {tag:#x} repeats a common tag ([describe_common])")
-        for what, ranges in iface.get("reserved", {}).items():
+        for what, ranges in iface.get("retired", {}).items():
+            if not isinstance(ranges, list) or any(not isinstance(r, list) or len(r) != 2 or
+                    any(not isinstance(x, int) for x in r) or not 0 <= r[0] <= r[1] for r in ranges):
+                errors.append(f"{n}: retired.{what} has invalid ranges")
+                continue
             if what == "op":
                 values = codes
             elif what.startswith("tlv."):
@@ -116,12 +123,12 @@ def check(reg: dict) -> list[str]:
             else:
                 values = iface.get("enum", {}).get(what)
             if values is None:
-                errors.append(f"{n}: reserved.{what} names no enum")
+                errors.append(f"{n}: retired.{what} names no enum")
                 continue
             items = values.items() if what in ("op",) or what.startswith("tlv.") else ((v, k) for k, v in values.items())
             for v, v_name in items:
                 if any(lo <= v <= hi for lo, hi in ranges):
-                    errors.append(f"{n}: {what} {v_name} = {v:#x} is in a reserved range")
+                    errors.append(f"{n}: {what} {v_name} = {v:#x} is in a retired range")
         for line in iface.get("line_names", {}):
             if line.startswith("x-") or "." in line or not 1 <= len(line.encode()) <= 32 or not re.fullmatch(r"[a-z0-9_-]+", line):
                 errors.append(f"{n}: line name {line!r} is not a standard name (1-32 of a-z 0-9 _ -, no x- prefix, no '.')")
@@ -186,8 +193,10 @@ def cpp(reg: dict, digest: str) -> str:
             L += [f'constexpr const char *kName = "{iface["name"]}";', f"constexpr uint8_t kRevision = {iface['revision']};"]
         for op in iface["op"]:
             L.append(f"constexpr uint8_t kOp{camel(op['name'])} = 0x{op['code']:02X};")
-        lock = sum(1 << op["code"] for op in iface["op"] if not op.get("lock") and op["code"] < 64)
-        L.append(f"constexpr uint64_t kLockFreeOps = 0x{lock:X}ull;   // bit n = op n needs no lock")
+        words = [sum(1 << (op["code"] % 64) for op in iface["op"]
+                     if not op.get("lock") and op["code"] // 64 == w) for w in range(max(c["code"] for c in iface["op"]) // 64 + 1)]
+        L.append("constexpr uint64_t kLockFreeOps[] = {" + ", ".join(f"0x{w:X}ull" for w in words) + "};")
+        L.append("constexpr bool isLockFree(uint8_t op) { return op / 64 < sizeof(kLockFreeOps) / sizeof(kLockFreeOps[0]) && ((kLockFreeOps[op / 64] >> (op % 64)) & 1); }")
         for context, tags in iface.get("tlv", {}).items():
             for k, v in tags.items():
                 L.append(f"constexpr uint8_t kTlv{camel(context)}{camel(k)} = 0x{v:02X};")
@@ -239,8 +248,10 @@ def c(reg: dict, digest: str) -> str:
             L += [f'#define {ns}_NAME "{iface["name"]}"', f"#define {ns}_REVISION {iface['revision']}u"]
         for op in iface["op"]:
             L.append(d(up(ns, "OP", op["name"]), op["code"]))
-        lock = sum(1 << op["code"] for op in iface["op"] if not op.get("lock") and op["code"] < 64)
-        L.append(f"#define {ns}_LOCK_FREE_OPS {lock:#x}ull   // bit n = op n needs no lock")
+        for w in range(4):
+            lock = sum(1 << (op["code"] % 64) for op in iface["op"]
+                       if not op.get("lock") and op["code"] // 64 == w)
+            L.append(f"#define {ns}_LOCK_FREE_OPS_{w} {lock:#x}ull")
         for context, tags in iface.get("tlv", {}).items():
             for k, v in tags.items():
                 L.append(d(up(ns, "TLV", context, k), v))

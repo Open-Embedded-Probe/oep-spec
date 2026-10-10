@@ -4,6 +4,33 @@
 正しい。答える問いは一つ: probe と host が OEP v1 に適合するには何をするか、実装者はそれをどう確かめるか。
 適合の条項そのものは [core](oep-core.ja.md) §1.2 である。
 
+## 適合検査の3段階
+
+仕様を先に定め、それから独立した検査を作る。コアを固めた後に共通インターフェース契約、標準 OEP インターフェース固有契約を固め、実装の追従は別段階で行う。
+
+| 段階 | 適用対象 | 検査するもの |
+|---|---|---|
+| コア準拠 | OEP を話す全端点と host | transport/framing、見出し、拒否の順序、TLV の拡張規則、session、再送、時刻、資源の所有・寿命。本書 §1/§2 |
+| インターフェース準拠 | 標準・独自の全インターフェース | 名前/revision/instance、describe/ops、宣言と状態の分離、適用される共通のページング・資源・購読・通知規則。core §7/§9/§11/§13 と [common](../interfaces/oep-if-common.ja.md) |
+| OEPインターフェース固有準拠 | その標準インターフェースを実装する端点 | 各 op の payload、動作、副作用、競合、時間上限、拒否と failed/partial、異常系。本書 §3 と各規範 |
+
+最初の2段階は独自拡張にも使う。3段階目は、規範の条項から「初期状態 → 要求 → 応答 → 観測可能な副作用 → 後始末」の検査を作り、独自拡張の試験にも使える雛形として保守する。固有の op や配線は adapter が与え、共通の合否条件へ実装固有の期待値を混ぜない。
+
+結果には段階、条項、case ID、実行範囲、SPEC commit/tag、registry hash、実装版、transport、個体、条件、要求/応答と観測を残す。PASS は実行した case の成功であり、全準拠の意味にはしない。未検査、適用外、設備不足、前提失敗で実行できなかった項目を分ける。仕様違反、設定不備、実装未追従を設備不足として skip しない。
+
+コアを確定する前に、少なくとも次を独立に検査できる形にする。ベクタの自己整合、仮想端点の動作、実機の動作、電気的な観測は別の証拠である。
+
+| コアの契約 | 正常・境界・異常の検査 |
+|---|---|
+| framing/transport | 分割・結合、CRC/COBS/count/length破損、frame gap、過大frame、TCP切断・再接続、未知role/待っていないcorr、複数経路の独立性 |
+| confirm/discovery | confirm前の64byte、revision範囲の境界、frame/window/inflight、transport照合、list/describeの末尾・ページ進行・不変性・必須宣言 |
+| 見出し・拒否・TLV | 短い要求の無応答、corr 0、未知fn/op、session_required、拒否優先順、長さ/値域、未知非critical/critical、ID 0、0x7F、応答の補助情報 |
+| session | lease最小/最大/既定、keepalive、owner、他IDとの排他、end/期限切れ/force、session 0の無副作用、boot_idの変化 |
+| 再送 | openを含む同一要求の結果、内容の違う同corrの拒否、cache eviction/保持サイズ上限とresult_lost、rejectedの保持、同ID open後の履歴、終了後の履歴、重複によるlease/通知の変更禁止 |
+| corrと寿命 | u16半周を越える増加、65535での終了と新IDへの移行、旧経路の未解決応答、資源IDの非再利用/枯渇、終了時の解放、古いIDと他種/他fnのIDの拒否 |
+
+実機でも端点の状態変更を独立に観測する。二重実行の検査は、同じ応答が返るだけでなく、時計・資源・通知などの副作用が重複しないことを確かめる。資源を作る方法はインターフェース adapter に依存しても、その所有・解放・非再利用の合否はコアの契約で決める。
+
 ## 1. probe のチェックリスト
 
 probe は、自分が出す transport とインターフェースについてこの一覧のすべてを行うとき適合する。
@@ -30,7 +57,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - 断りの順序: 見出し、送り直しの表、セッションの順。それ以外は何も変える前にすべて確かめ、当てはまる理由のどれか 1 つで断る（§4.3）。
   payload は §4.3 のとおり（unavailable の TLV、unsupported の tag）。
 - role が要求の role でないメッセージと、10 バイトのヘッダより短い要求は、答えずに捨てる（§2.4）。ロックが要る op で session_id 0: session_required（§4.1）。
-- fn 0 とすべての fn の describe は ops（0x09）を載せる: 必須の op はすべて立て、任意の op は持つときに限り立てる（§1.2、§7.4）。ops に立っていない op は unknown_operation、probe が持つ op の任意の機能は unsupported（§1.2）。インターフェースの表の op は、文書が任意と書かない限り必須。
+- fn 0 とすべての fn の describe は ops（0x07）を載せる: 必須の op はすべて立て、任意の op は持つときに限り立てる（§1.2、§7.4）。ops に立っていない op は unknown_operation、probe が持つ op の任意の機能は unsupported（§1.2）。インターフェースの表の op は、文書が任意と書かない限り必須。
 - ops の値は base と 1 byte 以上の bitmap で、`base + 8 × bitmap の byte 数 ≤ 256`（§7.4）。
 - 要求の TLV: 知らない critical TLV は unsupported、知らない非 critical TLV は無視する。実装する TLV は bit 7 によらず、長さが定義と違えば malformed、
   扱わない値は unsupported（§2.2、§2.3）。
@@ -42,10 +69,10 @@ probe は、自分が出す transport とインターフェースについてこ
 
 - ロックは一つ、§6.2 の判定表、lease の再開始と実行中は数えないこと（§6.1）。
 - open / end / keepalive / lock_state / force / owner（§6.4）。lease は 1000〜60000 ms に丸める（§6.4）。session_id 0 は断る（§6.1）。
-- 再送の表: 少なくとも max_inflight 件、rejected の答えも覚える、成功した open のたびに捨てる、probe に一つ（§5.2）。
+- 再送の表: 少なくとも max_inflight 件、rejected の答えも覚える、異なる ID の新規 open が成功したときだけ置き換える。同じ ID の open は履歴を保つ、probe に一つ（§5.2）。
 - ロック不要の op は状態を変えない（§6.3）。boot_id は起動のたびに変わるように、§6.5 の素をその順に使って選ぶ（§6.5）。
 - 時計: 起動からの ns で、同じ boot_id の間、減らず一周しない（§2.6a）。
-- セッションが作ったものはすべて、そのロックが終わるとき end、期限切れ、force のどれでも同じに解放し、再送された open では残す（§9）。再開は無い（§6.4）。資源の番号（1〜65535、起動後の最初は 1、0 は割り当てない、§9）。閉じたコンソールのストリームは、同じ場所で同じ mechanism が次に open されるまで読める（[コンソール](../interfaces/oep-if-console.ja.md) §2）。
+- セッションが作ったものはすべて、そのロックが終わるとき end、期限切れ、force のどれでも同じに解放し、再送された open では残す（§9）。再開は無い（§6.4）。資源の番号（1〜65535、起動後の最初は 1、0 は割り当てない、§9）。閉じたコンソールの stream とバッファは解放し、番号は同じ boot_id の間に再利用しない（コンソール §2）。
 
 **fn 0（本体。名前を持たず、list に載らない）**
 
@@ -55,11 +82,11 @@ probe は、自分が出す transport とインターフェースについてこ
 - list: fn 0 を載せない、instance の番号、boot_id が同じ間は答えが変わらない、first が total 以上なら total と count 0（§7.2）。
 - describe: ページ送り、first が数以上なら more 0 だけで TLV 無し、宣言だけで boot_id が同じ間は変わらない（§7.3）。経路によらないので、各 TLV は応答の見出し 5 byte と more 1 byte を足しても、max_length はその op の要求と応答で、probe のどの経路の max_frame にも収まる（§7.3、§7.4）。
 - clock: boot_id と uptime_ns（要求を受けてから応答を送るまでの間に読んだ時計）。ロック不要で、session_id 0 ならセッションが無くても、ほかのセッションが
-  ロックを持っていても答え、セッション、ロック、lease に触れない。中継のブローカーは自分で答えず中継する（§7.7、transports §1）。
+  ロックを持っていても答え、セッション、ロック、lease に触れない。broker 自身の OEP 端点も同じ契約を実装する（§7.7、transports §1）。
 - fn 0 の describe の必須の tag: unit_id、transport（transport ごとに一つ、interface の欄は §7.5 のとおり）、channel を持つなら channels（番号は 0〜channels − 1）、max_op_ms（1〜
   `max_op_ms_max`）（§1.2、§7.5）。unit_id の一意性と不変性、transport の index の不変性（§7.5）。
 - channel: 解放したピンは空きの状態へ、起動したら最初の答えの前に自分で使う channel を除くすべての channel を空きの状態へ、ピンを取ってもピンは変わらない、資源の取り合いは何も変えずに断る（§8、§8.1）。
-- 通知（送り出すインターフェースがあれば）: その fn の subscribe（0x30）/ unsubscribe（0x32）を ops に立てる、送り出さない fn は持たない、seq、データだけをまとめ出来事は先の答えの後すぐ送る、答えを先に送ることと溜める量の上限（§11.2〜§11.4）。
+- 通知（送り出すインターフェースがあれば）: その fn の subscribe（0x01）/ unsubscribe（0x02）を ops に立てる、送り出さない fn は持たない、seq、データだけをまとめ出来事は先の答えの後すぐ送る、答えを先に送ることと溜める量の上限（§11.2〜§11.4）。
 **時間の上限**（値は `registry/oep-v1.toml`）
 
 - `probe_frame_gap_ms`（transports §2）。宣言した max_op_ms より長い要求はなく、超えうる op は断る（§7.5）。lease の範囲
@@ -77,9 +104,7 @@ probe は、自分が出す transport とインターフェースについてこ
   インターフェースは使わない（§2.7）。
 - **待ち**: すべての要求に §4.4 の下限、自分のリンクの要求も含む。UART ブリッジでの転送時間、その transport での最初の confirm の
   答えまでは `min_max_frame` で（§4.4）。attach、scan、riscv-dm の reset の引数の時間は max_op_ms（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1、§4.3）。
-- **再送と回復**: 送り直しは同じ corr で（§5.2）。corr は要求ごとに 1 進め、0 を飛ばす（§4.1）。長さつきフレームの再同期と、
-  最後に書いてから `probe_frame_gap_ms` より長く待つこと（transports §5）。再送にも答えが無ければその transport は失敗した: そこで何かを送る前に、どの種類のフレームでも transports §5 の
-  confirm で立て直すか開き直し、状態を変える要求を繰り返す前に状態を読む（§5.2）。
+- **再送と回復**: 送り直しは同じ corr で（§5.2）。corr は session_id ごとに増やし、0 を使わず、一周させない（§4.1）。TCP の区切り破損は再接続、vendor bulk / HID の再同期では最後に書いてから `probe_frame_gap_ms` より長く待つこと（transports §5）。再送にも答えが無ければその transport は失敗した: そこで何かを送る前に、transports §5 の手順で立て直すか開き直し、状態を変える要求を繰り返す前に状態を読む（§5.2）。
 - **セッション**: 0 でない乱数の session_id（§6.1）。答えの lease_ms が正で、keepalive が延ばす（§6.4）。no_session /
   locked への対応（§4.3、§6.2）。no_session の後は新しいセッションを開いて設定し直す。boot_id が（confirm でも open でも）変われば自分の状態は無効で、
   list し直す（§6.5）。一つのセッションの要求は一つの transport で（transports §3）。セッションの要らないロック不要の要求は session_id 0 で（§4.1）。
@@ -106,7 +131,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | インターフェース | 必須 | 任意（宣言するもの） |
 |---|---|---|
 | 位置つきのストリーム（[共通部品](../interfaces/oep-if-common.ja.md) §1） | それを使う各インターフェースで §1 の read、marks（§1.3 の通し番号のページング: from_serial を含む、押し出されていれば一番古いものから、next なら空）、clear、mark、write。§3 の status の値 | — |
-| `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §0〜§3、§5） | scan（skip の後に何も残らない count = 0 の並びは tried 0 の success で答える。max_speed が無ければその wire の最も遅い速さ）、attach（max_speed は必須。既存の connection に加わる attach は、運ばない設定（idle_clock など）をその connection の今のまま保つ）、detach、connections。§1 の attach の規範と max_op_ms。§2 の寿命と線の状態（書き込みを繰り返さない再試行、target の状態を変えない再試行） | attach の reset TLV（role_channels の role 3）。持つなら、線を離した後に DM を待つ（§3、max_op_ms のうち） |
+| `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（[線とデバッグ](../interfaces/oep-if-debug.ja.md)） | attach（pins、max_speed 必須）、detach、connections。資源はセッション所有。暗黙の join / eviction をしない。§1 の attach の規範と max_op_ms。§2 の再試行と寿命 | scan（候補 count ≥ 1、有限探索）、attach の reset TLV |
 | `oep.target.riscv-dm`（§4） | dmi、halt、resume | reset、read_block / write_block、run、step: ops。reset があれば、ndmreset を解いた後に DM を待つ（§4.3、max_op_ms のうち）。read_block / write_block があれば max_length。自分の op で使った DATA0 / DATA1 を戻す（§4）。step が ok でなければ moved と dpc を 0、run の elapsed_us は resumereq から（§4.2、§4.4） |
 | `oep.target.arm-adi`（§6） | transfer（n = 0 は success、ack 0）、read_block、write_block。max_length は必ず出す | — |
 | `oep.target.console`（[コンソール](../interfaces/oep-if-console.ja.md)） | §1 の op。describe の mechanisms は必ず出す。mechanism 1 か 2 を持てば write を送りの列で受ける（§2）。§3 の読みの順（要求の実行中と hart が止まっている間は読まない、要求の後は DMSTATUS を先に読む）。方式 2 の枠は [dmseq](../interfaces/target-console-dmseq.ja.md) のとおり | どの方式か（describe の mechanisms） |
@@ -116,10 +141,10 @@ probe は、自分が出す transport とインターフェースについてこ
 | `oep.fixture.spi-target`（§4） | §4 の op。data のビットの置き方（バイトの途中で終わった転送も、来なかったビットは 0）、bits は 0xFFFFFFFF で止める、ns は CS が無効になった時刻。MISO をソフトウェアで駆動するなら cs_setup_ns | LSB first（features bit0） |
 | `oep.fixture.logic`、`oep.fixture.analog`（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1〜§3） | query と force を除く §3.2 の op。§3.3 の configure と query の契約（mode と rate は必須、mode ごとに送れる TLV、type 0 の trigger の role は見ない、0 の samples / segments / rate は malformed、mode 3 の pretrigger は max_pretrigger で縛る、挙げていない値は unsupported、応答の必須の行）。区画の通し番号のページング（[共通部品](../interfaces/oep-if-common.ja.md) §1.3）。出来事の世代、世代は 0 を飛ばして一周。区画を連続に保てなければその区画を出さず、エラーで止まる（§2.2。隙間は置き場が無くて区画を丸ごと取らないときだけ、state 6 に入るときは必ず stopped reason 3、エラーの後の write_pos はその区画の先頭）。host はエラーの後、受けたデータの write_pos から先を捨てる。§3.5 の describe。calibration はアナログだけ | query、force（ops）。通知: subscribe / unsubscribe（ops）。ロジックの multirate（§5。describe の multirate: 方針、d の範囲。宣言すれば §5 の断り、L の倍数の samples、block の layout、base sample での数え方とトリガ） |
 | `oep.fixture.capture-group`（§4） | force を除く §4.1 の op（start の応答は組の世代と、bind の順の各トラックの世代）。組の pretrigger は trigger_track のものを時間として全トラックが残す（P_k）、持てなければ bind を断る。出来事の組の世代。トラックがエラーで止まれば組の stopped は reason 3 とその error、ほかのトラックは stop と同じに止まる。§4.3 の describe | force（ops）。通知: subscribe / unsubscribe（ops） |
-| `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)） | plan の役割を持つインターフェースがあれば list に出す。plan_apply（fn ごとに不可分）、plan_release、§2.5 の断り方、設定の plan。上限があれば describe の plan_roles | — |
+| `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)） | plan の役割を持つインターフェースがあれば list に出す。plan_apply（fn ごとに不可分）、plan_release、§2.5 の断り方、設定の plan は preset。上限があれば describe の plan_roles | — |
 | `oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)） | restart。describe の restart_max_ms。ロックの要る op として断る。答えは completed success で、それを先に送る。答えの後は再起動するまでどの transport の要求にも答えず、target を reset しない。再起動の後は電源を入れたときと同じ（新しい boot_id、保存した設定だけが残る）。答えが transport を出てから restart_max_ms のうちに、同じ transport で confirm にまた答える | — |
 | `oep.probe.link`（[リンク](../interfaces/oep-if-link.ja.md)） | source、sink | port_speed（ops）: その状態と戻る条件（§3） |
-| `oep.probe.config`（[probe の設定](../interfaces/oep-if-probe-config.ja.md)） | 設定を扱う probe だけが list に出す。get、set、unset、state。設定が変われば変わる hash。起動時に disable と idle を先に掛ける。§4 の describe | save / erase（ops、storage の tag とともに。無ければ unknown_operation）。slot。bind。wifi（describe の wifi_max、どの経路でも max_frame 112 以上、state の wifi の TLV、index の順に試す、passphrase は書くだけで hash もそれから作らない、§1.4） |
+| `oep.probe.config`（[probe の設定](../interfaces/oep-if-probe-config.ja.md)） | 設定を扱う probe だけが list に出す。get、set、unset、state。設定が変われば変わる hash。起動時に disable と idle を先に掛ける。§4 の describe | save / erase（ops、storage の tag とともに。無ければ unknown_operation）。slot（配線の preset）。wifi（describe の wifi_max、どの経路でも max_frame 112 以上、state の wifi の TLV、index の順に試す、passphrase は書くだけで hash もそれから作らない、§1.4） |
 
 ## 4. 確かめ方
 

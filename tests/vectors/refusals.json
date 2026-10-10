@@ -7,7 +7,7 @@
       "fns": {
         "2": "oep.fixture.gpio"
       },
-      "request_hex": "0110000200014433221101030008",
+      "request_hex": "0110000200104433221101030008",
       "answer": "unsupported",
       "answer_hex": "021000000b00020200030040010000"
     },
@@ -17,7 +17,7 @@
       "fns": {
         "3": "oep.fixture.i2c-target"
       },
-      "request_hex": "0111000300014433221180",
+      "request_hex": "0111000300104433221180",
       "answer": "malformed",
       "answer_hex": "0211000003"
     },
@@ -27,7 +27,7 @@
       "fns": {
         "3": "oep.fixture.i2c-target"
       },
-      "request_hex": "0112000300014433221103",
+      "request_hex": "0112000300104433221103",
       "answer": "unsupported",
       "answer_hex": "021200000b00"
     },
@@ -37,7 +37,7 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "011300040002443322110281040040420f00",
+      "request_hex": "011300040011443322110281040040420f0083040001000200",
       "answer": "unsupported",
       "answer_hex": "021300000b00"
     },
@@ -47,7 +47,7 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "0114000400024433221100",
+      "request_hex": "011400040011443322110083040001000200",
       "answer": "malformed",
       "answer_hex": "0214000003"
     },
@@ -57,7 +57,7 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "011500040002443322110081040040420f00be0000",
+      "request_hex": "011500040011443322110081040040420f0083040001000200be0000",
       "answer": "unsupported",
       "answer_hex": "021500000bbe"
     },
@@ -67,7 +67,7 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "011700040002443322110081080040420f00",
+      "request_hex": "01170004001144332211008304000100020081080040420f00",
       "answer": "malformed",
       "answer_hex": "0217000003"
     },
@@ -77,7 +77,7 @@
       "fns": {
         "5": "oep.fixture.uart"
       },
-      "request_hex": "011800050002000000000400000000000000004000",
+      "request_hex": "011800050011000000000400000000000000004000",
       "answer": "unsupported",
       "answer_hex": "021800000b00"
     },
@@ -87,7 +87,7 @@
       "fns": {
         "6": "oep.target.riscv-dm"
       },
-      "request_hex": "01190006000444332211000003",
+      "request_hex": "01190006001344332211010003",
       "answer": "unsupported",
       "answer_hex": "021900000b00"
     },
@@ -105,9 +105,17 @@
       "fns": {
         "2": "oep.fixture.gpio"
       },
-      "request_hex": "011b0002000144332211010300003e010001",
+      "request_hex": "011b0002001044332211010300003e010001",
       "answer": "completed success",
       "answer_hex": "021b000100"
+    },
+    {
+      "name": "corr zero is malformed",
+      "spec": "core §4.1, §4.3",
+      "fns": {},
+      "request_hex": "01000000000400000000",
+      "answer": "malformed",
+      "answer_hex": "0200000003"
     }
   ]
 }

@@ -24,4 +24,4 @@ cd tests
 uv run pytest vectors
 ```
 
-`test_vectors.py` は encoding の復号、独立した checksum 計算、規範で定めた値などで出力を検査する。実装側の unit test と実機試験は、それぞれの実装リポジトリで行う。
+`test_vectors.py` は encoding の復号、独立した checksum 計算、規範で定めた値などで出力を検査する。`test_replay_state.py` は独立した状態モデルで、再送履歴、open の再送、終了したセッション、16 bit の境界を検査する。実装側の unit test と実機試験は、それぞれの実装リポジトリで行う。

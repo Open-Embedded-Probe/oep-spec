@@ -11,20 +11,20 @@
   plan の role ではない。
 - plan の role を持つインターフェースを list に出す probe は、`oep.probe.plan` を list に出す。plan の role を持つインターフェースが 1 つも
   無い probe は、出さない。probe が list に出す `oep.probe.plan` は高々 1 つ。
-- plan はセッションの資源である（core §9）。ただし保存した設定が入れた plan（§2.3）は除く。
+- plan はセッションの資源である（core §9）。永続設定の plan は preset として扱う（§2.3）。
 
 ## 1. 操作
 
 | op | 名前 | 要求 | 応答 | ロック | 必須 |
 |---:|---|---|---|---|---|
-| 0x01 | plan_apply | role_assignment の TLV の並び | — | 必要 | 必須 |
-| 0x02 | plan_release | n(u8)、n × fn(u16) | — | 必要 | 必須 |
+| 0x10 | plan_apply | role_assignment の TLV の並び | — | 必要 | 必須 |
+| 0x11 | plan_release | n(u8)、n × fn(u16) | — | 必要 | 必須 |
 
 describe（core §7.4 の共通の tag のほか）:
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x40 | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計。設定の plan を含む）。上限のある probe は必ず出す |
+| 0x40 | plan_roles | u32。plan が一度に持てる role_assignment の数（すべての fn の合計）。上限のある probe は必ず出す |
 
 ## 2. plan
 
@@ -37,7 +37,7 @@ plan は **fn ごと**に持つ。
 - **要求に出てくる fn の割り当てだけを原子的に置き換え**、ほかの fn の plan はそのまま保つ。置き換える fn の今の割り当てを外したものとして、
   各インターフェースが副作用なしで確かめ（core §8.1 の取り合いの確かめを含む）、全部が受け入れたときだけ適用する。1 つでも断れば、
   何も変えずに rejected（置き換えるはずだった fn の今の plan も残る）。
-- **割り当ての数**: 置き換えた後の割り当ての合計（すべての fn。設定の plan を含む）が plan_roles を超える plan_apply（と設定の set）は、何も変えずに
+- **割り当ての数**: 置き換えた後の割り当ての合計（すべての fn）が plan_roles を超える plan_applyは、何も変えずに
   rejected unavailable（cause 2。資源が足りない。core §8.1 と同じ断り方。要求の形は正しいので malformed ではない）。
 - 応答は completed success で、payload は無い。
 
@@ -48,10 +48,10 @@ plan は **fn ごと**に持つ。
 
 ### 2.3 設定の plan
 
-保存した設定（[probe の設定](oep-if-probe-config.ja.md) の plan の項目）が入れた fn の plan は、セッションのものではなく、設定だけが変える。
-plan_release はその fn を解かずに無視し（n = 0 でも）、plan_apply がその fn を挙げたら何も変えずに rejected unavailable（cause 5、core §8.1 の
-ピンの取り合いと同じ断り方）。設定の plan を変える・外すのは、設定の set（とその保存）で行う。こうしないと、保存した設定と実際の割り当てが
-食い違う。
+保存した設定の plan は host が読む preset であり、ピンを予約も駆動もしない。
+host がその内容を明示的に plan_apply すると、通常のセッション所有の plan になる。
+設定の set / unset は実行中の plan を変えない。plan_release はすべて通常の寿命に従う。
+
 
 ### 2.4 ピン
 
@@ -71,6 +71,6 @@ plan_apply（core §4.3 の順）:
 | 形の誤り、同じ (fn, role, channel) が 2 回、fn 0 を挙げた | malformed |
 | fn が無い | unknown_function |
 | role がそのインターフェースに無い（plan の role でない）、channel が role_channels の候補に無い、channel_group のどれにも一致しない | unsupported（受け取ったままの tag） |
-| plan_roles を超える、ピンや資源の取り合い（core §8.1）、設定の plan の fn、インターフェースが断る出力の idle | unavailable（cause 2 / 1 / 5） |
+| plan_roles を超える、ピンや資源の取り合い（core §8.1）、インターフェースが断る出力の idle | unavailable（cause 2 / 1 / 5） |
 
 plan_release: 形の誤り（n と後ろの fn の数が合わない）は malformed。

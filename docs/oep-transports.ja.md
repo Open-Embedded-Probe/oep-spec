@@ -2,14 +2,14 @@
 
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作る。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。
 この文書は、OEP のメッセージをどう運ぶかを定める: 経路とそのフレーム、host が probe の口を見つけて開くやり方（USB の見分け方、TCP の probe の見つけ方、探りの規則、口の選び方）、
-1 つの probe の複数の経路、シリアルの口を生のバイトと共用すること、長さつきのフレームの区切りの立て直し、host の待ちが数える転送の時間。
+1 つの probe の複数の経路、OEP 専用のシリアルの口、長さつきのフレームの区切りの立て直し、host の待ちが数える転送の時間。
 メッセージ、セッション、そのほかは [OEP core](oep-core.ja.md) が定める。この文書は本体の層に属し、本体の適合（core §1.2）とプロトコルの
 revision（core §7.1）はこの文書も含む。番号の唯一の定義は `registry/oep-v1.toml`。
 
 ## 1. フレーム
 
 経路の種類は 2 つに分かれる。**シリアルの口（serial port）** は OS からシリアルデバイスに見える経路（UART bridge = probe の
-UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB シリアル）で、OEP とシリアルの生のバイトを同じ口で運ぶ（§4）。
+UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB シリアル）で、OEP のフレームだけを運ぶ（§4）。
 ほかの経路（USB の vendor bulk、HID、TCP）は OEP だけを運ぶ。
 
 | 経路 | フレーム |
@@ -35,7 +35,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   付いた形も付かない形も受ける。空のフレーム（0x00 の連続）は読み飛ばす。
 - **host の受け方（COBS）**: 口を開いた直後から最初の 0x00 までと、0x00 から次の 0x00 までを、どちらもフレームの候補として解く
   （開く前に送られたバイトや、開いた直後に落ちたバイトで前の 0x00 が届かないことがある）。解けない候補、CRC の合わない候補、
-  role か corr の合わないフレーム（core §11.1）は、シリアルの生のバイト（雑音）として捨てる。
+  role か corr の合わないフレーム（core §11.1）は、壊れた候補として捨てる。
 - **USB の束ね方**（vendor bulk）: host は、書き込みの長さが wMaxPacketSize の倍数なら長さ 0 の転送を続ける。probe は、送り
   終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか最後の 1 byte を別の転送に分ける。
   続きがすぐ来るときは倍数のままでよい。
@@ -44,8 +44,9 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **TCP は、信頼できるローカルの接続か、認証したトンネルの内側でだけ使う。** OEP は認証を持たない（core §6.4 の force を含む）。
   1 つの probe を複数の host で使うときは、ブローカーが 1 つのセッションに束ねる（probe の規則がブローカーに何を求めるかは次の項目）。
 - **OEP の要求に自分で答える端点は probe である**。何が運び、後ろに何があるかによらない（たとえば TCP で OEP を出し、別のデバッガを動かすプログラム）。probe の規則はすべてそれに掛かる。要求を OEP の probe に中継するだけのブローカーは、その probe に対しては host である。
-- **セッションの op に自分で答える中継のブローカー**で、ほかの要求をすべて 1 つの OEP の probe に中継するものは、自分の describe を持たない: それが中継する fn 0 の describe は probe のもの。自分で答えるセッションの op は confirm、open、end、keepalive、lock_state の 5 つだけである。fn 0 の clock（core §7.7）はそれに含まれない: ブローカーは clock をほかの要求と同じく probe に中継し、client はその応答を core §4.4 のとおりに待つ。confirm の transport TLV では index 0xFF（「describe に無い」）を返す。probe に対しては host である。それらのセッションの op の規則はすべて、その応答に掛かる。
-- **中継のブローカーの probe への経路が無くなったとき**（USB で device が bus から外れた、TCP の接続が閉じた、ブローカーが probe への経路を閉じた）: ブローカーは終わる: client の接続をすべて閉じる。client は、経路が閉じたときと同じに、新しく開くのと同じやり方でやり直す。
+- **broker が OEP の要求へ自分で答える場合**は、独立した OEP の端点として、発見、経路の宣言、セッション、再送、資源の寿命をすべて実装する。
+  上流のセッションや資源との対応付けは broker の内部で行う。client 向けに core の一部だけを例外扱いしない。
+- **broker の上流が失われた場合**は、影響する資源を無効にする。端点を再生成するなら boot_id を変える。
 - **TCP の経路**: TCP で待ち受ける probe は、待ち受けの socket 1 つを fn 0 の describe の経路 1 つとして並べる（kind 6、interface 0xFF）。その socket で受けた接続はどれも、confirm の transport TLV でその index を返す。§3、core §4.4、core §7.1、core §11.4 が経路ごとに掛ける規則（セッションの要求は 1 つの経路で、max_frame / window / max_inflight、使っている revision、通知の送り先）は、受けた接続ごとに別々に掛かる。
   待ち受ける port は probe が決める。host が TCP の probe を見つける方法は §3。
 
@@ -63,8 +64,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   閉じた経路に送るはずの応答と通知は捨てる。
 - **1 つのセッションの id を持つ要求は 1 つの経路で送る**（core §5.2 の順序の判定が経路の遅れで誤らないため）。session_id 0 の要求は
   別の経路から送ってよい。host が 1 つのセッションの要求を 2 つの経路から送ったときの誤判定は host の責任で、probe は確かめない。
-- host は、同じ probe に複数の経路があれば vendor bulk、HID、シリアルの口の順に試す（シリアルの口は生のバイトの転送にも
-  使われる、§4）。probe の経路の一覧は fn 0 の describe の transport（core §7.5）で分かる。
+- host は、同じ probe に複数の経路があれば vendor bulk、HID、シリアルの口の順に試す（§4）。probe の経路の一覧は fn 0 の describe の transport（core §7.5）で分かる。
 - **USB の OEP の probe の見分け方**: host が知らない device の中から OEP の probe を自動で見分けるのは、**プロジェクトの USB の
   VID:PID `1209:4F45` で列挙する device** だけである（VID 0x1209、PID 0x4F45。registry の `usb` の `project_vid` / `project_pid`）。ほかの値で
   OEP の probe を自動で見分けることはない。それ以外は、利用者が probe を名指すか口を選ぶ（次の 2 つの項目）。device の
@@ -83,12 +83,14 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   confirm と同じ corr の completed で、payload が core §7.1 の形（`OEP!` で始まる）のものをいう。正しい応答が来た device と口は OEP の
   probe として扱う。
 - **口の選び方**: OEP の probe と分かった device（プロジェクトの VID:PID、名指した device、正しい confirm の応答が来た device）の中の
-  口は、interface の記述子で選ぶ: CDC（ACM）はすべてシリアルの口（§4。どれも OEP を受ける）、**bInterfaceClass 0xFF、
+  口は、interface の記述子で選ぶ: CDC（ACM）のうち describe の transport が宣言する interface は OEP のシリアルの口（§4）、**bInterfaceClass 0xFF、
   bInterfaceSubClass 0x4F ('O')、bInterfaceProtocol 0x45 ('E') の interface の bulk IN / OUT の組**は vendor bulk、**usage page 0xFF4F、
   usage 0x45 の HID** は HID（registry の `usb`）。probe は vendor bulk と HID をこの形で出し、それぞれ高々 1 つしか出さない。host は、
   この class / subclass / protocol と usage page / usage だけで device を OEP の probe とは決めない。ほかの class 0xFF の interface
   （内蔵の USB シリアルのデバッグの機能、WebUSB など）はこの subclass / protocol を持たないので掴まない。ほかの機能（DFU、Mass Storage など）は
   OEP の外。
+- raw CDC を併設する probe は、最初の発見に使える vendor bulk または HID の OEP 経路を出す。host はそこで confirm / describe してから、
+  宣言された OEP の CDC interface だけを開く。vendor bulk / HID の無い probe が出す CDC はすべて OEP 専用である。
 - **USB の serial number は unit_id**（core §7.5）: probe が serial を選べる口（CDC、vendor bulk、HID を自分で出す device）では、serial number を
   unit_id そのものにする（core §7.5 の不変性）。host は開かずに個体を見分けられ（名指した probe を探せる）、どの経路の describe とも同じ値に
   なる。serial を選べない口（内蔵の USB シリアル、USB-UART の変換チップ）は、host が経路を外から指定し、describe で unit_id を確かめる。
@@ -106,10 +108,11 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - HID を出す probe は、output の report を、interrupt OUT の endpoint でも SET_REPORT（Output）でも受ける。
 - vendor bulk を出す probe は、できれば（SHOULD）その interface に Microsoft OS 2.0 の compatible ID `WINUSB` を付ける。
 
-## 4. シリアルの口の共用
+## 4. シリアルの口
 
-シリアルの口は、OEP のフレームと生のバイト（target のコンソールなど）を同じ口で運ぶ。probe はどの口でもいつでも OEP を受ける
-（口を OEP 専用にする設定や、起動の型は持たない）。
+OEP のシリアル経路はフレーム専用である。コンソールの生データ、ログ、起動メッセージを同じ経路へ混ぜない。
+コンソールは OEP の read / write を使う。別の raw endpoint を出してもよいが、OEP の経路としては扱わず、
+その endpoint の識別と接続先の設定は OEP core の外で明示する。CDC の列挙だけで raw endpoint に confirm を送らない。
 
 - **UART bridge の回線**: データ 8 bit、パリティなし、ストップ 1 bit、フロー制御なし。起動時の速さは **115200 bps**（registry の `uart_bridge_boot_baud`）。port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3）が変えるのは速さだけ。
 - **上げた速さの後**: UART bridge の口を開く host は、port_speed を使うかどうかにかかわらず、起動時の速さで正しい confirm の応答が来なければ、
@@ -117,32 +120,19 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   それまでに起動時の速さに戻る、[リンク](../interfaces/oep-if-link.ja.md) §3）。
 - **USB のシリアルの口**（USB CDC、内蔵の USB シリアル）: probe は、host がどんな line coding を設定しても OEP を受けて送り、line coding を何にも掛けない。
 - **制御線**: probe は、OEP を受けるか送るかを DTR、RTS、回線の状態で決めない。host は口を開いている間 DTR と RTS を立てておく（UART bridge はそれを probe のリセットにつないでいることがある）。
-- **probe の受け方**: 0x00 が来たら次の 0x00 までためて解く。解けて CRC が合えば OEP の要求。解けない、CRC が合わない、または
-  次の 0x00 の前に 200 ms 途切れた（§2）ときは、ためた分（前の 0x00 を含む）を生のバイトとして扱う。候補を閉じた 0x00 は
-  次の候補の始まりになる。**0x00 だけで中身の無い候補**（フレームの閉じの 0x00 の後に何も来ないとき、0x00 の連続）は区切りで
-  あり、200 ms 途切れても生のバイトにしない。0x00 の外で来たバイトはすぐ生のバイトとして扱う。
-- **生のバイトの行き先**: probe がその口に結んだ流れ（どの流れを結ぶかは probe の設定が決める。結んでいなければ捨てる）。
-  （参考）上の受け方により、0x00 の後に来た生のバイトは、次の 0x00 が来るか入力が 200 ms 途切れたときに初めて結んだ流れに届く。だから結んだ流れは
-  文字の流れに向く。0x00 を含む二進の流れは、0x00 ごとに最長 200 ms 遅れる。
-- **probe の送り方**: 応答と通知は `0x00 <COBS> 0x00`。1 つの口の送信は 1 つの書き手が行い、フレームの途中に生のバイトを挟ま
-  ない（フレームは生のバイトより先に出してよく、生のバイトどうしの順は保つ）。
-- **生の転送を止める口**: ロックを持つセッションの要求（その session_id を持つ要求。ロックを取った open も含む）が 1 つでも
-  来た口では、そのセッションが終わる（end、lease の期限切れ、force で奪われる）まで、probe は生のバイトを送らず、口から来た
-  生のバイトを捨てる。ロックの要らない要求だけが来た口と、ほかの経路でセッションが動いている口は止めない。
-- host は、生のバイトの中に正しいフレームに見えるものが偶然現れても、role と corr の照合（core §11.1）で捨てる。
-  （参考）この照合は、わざと作ったフレームは止めない。生の転送が止まっていない口では、target の出力が、CRC の合ったフレームで、
-  未解決のロックなしの要求の corr を持つものを含みうる（corr は 1 ずつ進むので予測できる）。host はそれを応答として受ける。応答の中身を信じる必要のある host は、
-  生の転送が止まった口（上のとおり、自分のセッションの要求が届いた後）か、長さつきのフレームの口で要求を送る。
+- probe は `0x00 <COBS(message | CRC)> 0x00` の候補だけを処理する。CRC 不一致、解けない候補、途中の timeout は捨てる。
+  破損したバイトを target に転送しない。候補を閉じた 0x00 は次の候補の始まりにもなる。
+- 応答と通知は同じフレームで送る。1 つの経路の書き手は 1 つで、フレームの途中に別のフレームを挟まない。
 
-## 5. 区切りの立て直し（長さつきのフレーム）
+## 5. 区切りの立て直し
 
-長さつきのフレーム（vendor bulk、HID、TCP）で、host は、corr の合わない応答、あり得ない長さ（max_frame を超える）、途中で
-止まったフレーム（続きが 200 ms 来ない。TCP を除く: TCP ではフレームの途中の休みは普通のことで、host はそのフレームを読み続ける、§2）を見たら、入力が静かになるまで読み捨て、confirm を送って自分の corr の応答が返ることを
-確かめてから再開する。通知が流れ続けて入力が静かにならないときは、
-unsubscribe と end を確かめずに送ってよい（二度実行しても害がない）。COBS のフレームは CRC で壊れたものを捨てられるので、
-この手順は要らない。
+- TCP のフレームの長さや形が壊れた場合は接続を閉じて開き直す。入力を静かにして confirm を送っても、TCP の parser はリセットされない。
+  フレームの途中の休みだけでは壊れたと判断しない。待っていない corr の正常な応答は捨てるだけで、区切りの破損とは扱わない。
+- vendor bulk と HID の区切りを失った host は入力を読み捨て、その口への最後の書き込みから probe_frame_gap_ms より長く待つ。
+  自分の corr の confirm 応答を確認して再開する。静かにできなければ経路を閉じて開き直す。
+- COBS は壊れた候補を捨て、次の区切りから読む。要求の結果が不明な場合は core §5.2 の再送規則を使う。
+- 開き直してもセッションと再送履歴は残る（§3）。新しい経路で confirm して boot_id を確認する。
 
-立て直しの confirm の前と、長さつきのフレームの口を開いて最初の confirm の前には、host は、その口に最後に書いてから `probe_frame_gap_ms` より長く待つ（probe が途中のフレームを捨てるまで）。TCP では、代わりに接続を閉じて新しく開いてもよい（長すぎる長さの後は、probe が閉じている、§1）。
 
 ## 6. host の待ちの転送の時間
 

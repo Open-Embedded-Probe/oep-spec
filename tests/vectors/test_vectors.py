@@ -84,10 +84,10 @@ def ops_set(value: bytes) -> set[int]:
 
 
 def test_ops_examples_of_the_text():
-    """core §7.4: riscv-dm with every op is 09 02 00 01 FF; with dmi, halt and resume only, 09 02 00 01 07."""
-    ((tag, v),) = tlvs(bytes.fromhex("09020001ff"))
-    assert tag == REG["describe_common"]["ops"] and ops_set(v) == set(range(1, 9))
-    assert ops_set(tlvs(bytes.fromhex("0902000107"))[0][1]) == {1, 2, 3}
+    """core §7.4: riscv-dm ops at 0x10, with the common tag 0x07."""
+    ((tag, v),) = tlvs(bytes.fromhex("07020010ff"))
+    assert tag == REG["describe_common"]["ops"] and ops_set(v) == set(range(0x10, 0x18))
+    assert ops_set(tlvs(bytes.fromhex("0702001007"))[0][1]) == {0x10, 0x11, 0x12}
 
 
 def valid_ops(value: bytes) -> bool:
@@ -348,7 +348,7 @@ def test_session_scenarios_follow_the_decision_table():
             req, ans = bytes.fromhex(st["request_hex"]), bytes.fromhex(st["answer_hex"])
             role, corr, fn, op, session = struct.unpack_from("<BHHBI", req)
             assert role == 0x01 and fn == 0 and ans[0] == 0x02 and ans[1:3] == req[1:3], st["note"]
-            if req in seen:                                                                   # a resend: the same answer
+            if req in seen and ans[3] == REG["resolutions"]["completed"]:                                                                   # a resend: the same answer
                 assert seen[req] == ans, st["note"]
             seen[req] = ans
             outcome = "completed" if ans[3] == 0x01 else reasons[ans[4]]
@@ -429,7 +429,7 @@ def test_per_op_vectors_decode_exactly():
                 assert tag & 0x7F == ra and len(value) == 5                                        # fn role channel (oep-if-plan §2.1)
     assert pay("plan_apply: gpio role 1 on channel 3") == b"" and pay("plan_release: fn 2") == b""
     sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]
-    assert (sub, unsub) == (0x30, 0x32)
+    assert (sub, unsub) == (0x01, 0x02)
     logic = {o["name"]: o["code"] for o in iface["oep.fixture.logic"]["op"]}
     assert logic["subscribe"] == sub and logic["unsubscribe"] == unsub                           # the reserved numbers (core §11.3)
     assert "subscribe" not in {o["name"] for o in CORE["op"]}                                   # fn 0 sends no notifications
@@ -441,14 +441,14 @@ def test_per_op_vectors_decode_exactly():
             assert len(req) == (10 + 6 if opc == sub else 10), c["name"]                            # no target fn in the request
     assert pay("logic subscribe: min_bytes 1024, max_delay_ms 20") == b""
     p = pay("rvswd connections: one connection with a target_id")
-    assert p[0] == 0 and 1 + _fixed_sequence(p[1:], lambda b, i: 18 + b[i + 17]) == len(p)        # entry 18 bytes + tid
+    assert p[0] == 0 and 1 + _fixed_sequence(p[1:], lambda b, i: 12 + b[i + 11]) == len(p)        # entry 12 bytes + tid
     p = pay("rvswd scan: one combination listed and found")
     assert p[0] == 1 and 1 + _fixed_sequence(p[1:], lambda b, i: 9) == len(p)                       # kind swdio swclk id
-    assert pay("rvswd scan: count 0 with nothing left from skip") == b"\x00\x00"                  # tried 0, count 0 (debug §1)
+    assert pay("rvswd scan: count 0 is malformed") == b""                  # tried 0, count 0 (debug §1)
     p = pay("console marks: one attach mark")
     assert 1 + _fixed_sequence(p[1:], lambda b, i: 22) == len(p)
     p = pay("console streams: one open stream")
-    assert 1 + _fixed_sequence(p[1:], lambda b, i: 7) == len(p)
+    assert 1 + _fixed_sequence(p[1:], lambda b, i: 5) == len(p)
     for c in v:
         if c["name"].startswith("console streams"):
             assert len(bytes.fromhex(c["request_hex"])) == 10 + 2, c["name"]                       # first(u16) (console §1)
@@ -479,15 +479,11 @@ def test_per_op_vectors_decode_exactly():
                        ("spi-target read_rx: 12 bits, LSB first, a partial last byte", "030d")):
         assert pay(name) == bytes.fromhex("000c0000000200" + data), name                          # pending bits count data (fixture §4)
     assert "start_answer" not in iface["oep.fixture.capture-group"].get("tlv", {})                # no generations TLV any more
-    p = pay("probe.config state: one slot and one bind")
-    i = 7                                                                                         # more state hash(u32) reason
-    i += _fixed_sequence(p[i:], lambda b, j: 12)                                                  # slot_state: slot state connection last_try_at_ns
-    i += _fixed_sequence(p[i:], lambda b, j: 2)                                                   # bind_state: port flow
-    assert i == len(p)
+    assert pay("probe.config state: no saved settings") == bytes(6)
     p = pay("probe.config state: wifi connected on entry 0")
-    assert p[1:7] == bytes(6) and p[7:9] == b"\x00\x00"                                         # no save, n_slots 0, n_binds 0
-    ((tag, value),) = tlvs(p[9:])
-    assert tag == iface["oep.probe.config"]["tlv"]["state_answer"]["wifi"] and len(value) == 8   # state entry reason rssi ipv4
+    assert p[:6] == bytes(6)
+    ((tag, value),) = tlvs(p[6:])
+    assert tag == iface["oep.probe.config"]["tlv"]["state_answer"]["wifi"] and len(value) == 8
     wifi = iface["oep.probe.config"]["tlv"]["item"]["wifi"]
     ((tag, value),) = tlvs(pay("probe.config get: the wifi entry without its passphrase")[5:])
     assert tag == wifi and value[-1] == 0xFF and len(value) == 3 + value[1]                      # pass_len 0xFF, nothing after (§1.4)
@@ -636,7 +632,7 @@ def test_multirate_ops():
     assert sorted(v[0] for v in rc) == [0, 1, 2, 3] == list(range(got[t["describe"]["channels"]][0]))  # the plan roles 0-3 the state names
     for c in cases:
         req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
-        if struct.unpack_from("<HB", req, 3) not in ((9, 1), (9, 9), (16, 1)):                  # configure / query of a logic fn
+        if struct.unpack_from("<HB", req, 3) not in ((9, 0x10), (9, 0x18), (16, 0x10)):                  # configure / query of a logic fn
             continue
         sent = tlvs(req[10:])
         if any(tg & 0x7F == tag for tg, _ in sent):
@@ -709,9 +705,9 @@ def test_capture_request_tlvs_are_plain_and_zero_counts_are_malformed():
     samples 0 is a value the definition excludes (malformed)."""
     iface = {i["name"]: i for i in REG["interface"]}
     cases = load("ops.json")["cases"]
-    plain = {("oep.fixture.logic", 0x01): set(iface["oep.fixture.logic"]["tlv"]["configure"].values()) - {0x60},
-             ("oep.fixture.logic", 0x09): set(iface["oep.fixture.logic"]["tlv"]["configure"].values()) - {0x60},
-             ("oep.fixture.capture-group", 0x01): set(iface["oep.fixture.capture-group"]["tlv"]["bind"].values())}
+    plain = {("oep.fixture.logic", 0x10): set(iface["oep.fixture.logic"]["tlv"]["configure"].values()) - {0x60},
+             ("oep.fixture.logic", 0x18): set(iface["oep.fixture.logic"]["tlv"]["configure"].values()) - {0x60},
+             ("oep.fixture.capture-group", 0x10): set(iface["oep.fixture.capture-group"]["tlv"]["bind"].values())}
     seen = 0
     for c in cases:
         req = bytes.fromhex(c["request_hex"])

@@ -14,9 +14,9 @@
 
 | op | 名前 | 要求 | 応答 | ロック | 必須 |
 |---:|---|---|---|---|---|
-| 0x01 | source | length(u32)、[TLV] | len(u16)、data、[TLV] | 不要 | 必須 |
-| 0x02 | sink | count(u16)、data、[TLV] | — | 不要 | 必須 |
-| 0x03 | port_speed | baud(u32)、step(u8: 0 試す、1 決める、2 戻す)、verify_ms(u16)、[TLV] | baud(u32: 実際に掛かる速さ)、[TLV] | 必要 | 任意 |
+| 0x10 | source | length(u32)、[TLV] | len(u16)、data、[TLV] | 不要 | 必須 |
+| 0x11 | sink | count(u16)、data、[TLV] | — | 不要 | 必須 |
+| 0x12 | port_speed | baud(u32)、step(u8: 0 試す、1 決める、2 戻す)、verify_ms(u16)、[TLV] | baud(u32: 実際に掛かる速さ)、[TLV] | 必要 | 任意 |
 
 port_speed は任意で、describe の ops で宣言する（core §1.2、§7.4）。それを持たない probe は unknown_operation で答える。
 
@@ -53,7 +53,7 @@ fixture UART の速さは別（そのインターフェースの configure と�
   2. 決めた後、その口に正常なフレームが `port_speed_idle_ms`（3000 ms）来ない。正常なフレームを受けた時と応答を送った時から数え直す（要求を実行して
      いる間は進まない。lease と同じ、core §6.1）。
   3. セッションが終わった（end、lease の期限切れ、force で持ち主が替わった）。end と force は応答を送ってから戻る。
-- 試しと決めるの間、セッションの資源とロックは変わらない。生の転送（transports §4）はセッションの間止まっている。
+- 試しと決めるの間、セッションの資源とロックは変わらない。シリアル経路は OEP のフレーム専用である。
 
 **host**
 

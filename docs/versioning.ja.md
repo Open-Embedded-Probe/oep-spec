@@ -17,7 +17,7 @@
 
 ## 2. 凍結の前（今）
 
-OEP v1 は凍結前である。凍結までは、壊す変更も **どの revision も上げずに** 入れる。revision 1 だけでは互換性を判定できないため、実装は対応する仕様の commit または tag を明記する。凍結前の版どうしの移行手順は仕様に残さない。
+OEP v1 は凍結前である。凍結までは、壊す変更も **どの revision も上げずに** 入れる。revision 1 だけでは互換性を判定できないため、実装は対応する仕様の commit または tag を明記する。凍結前に削除した番号は再利用してよい。凍結前の版どうしの移行手順は仕様に残さない。
 
 ## 3. 凍結が止めるもの
 
@@ -27,7 +27,7 @@ OEP v1 は凍結前である。凍結までは、壊す変更も **どの revisi
 - メッセージの形: 要求 / 応答 / 出来事 / データの固定部分、TLV の形と critical の規則、断りの理由、outcome、断り方の順（core §2、§4）;
 - 名前が `oep.` で始まるインターフェースの payload: op の表、固定部分、TLV の tag、出来事、status、資源の寿命（`interfaces/oep-if-*.ja.md`）;
 - **`registry/oep-v1.toml` のすべての数**: op、tag、reason、status、enum、`timing`、`limits`、`usb`、インターフェースの名前と revision、
-  予約（v1 で外した値は予約として残し、別の意味に使わない）。参照の firmware の値（max_op_ms、線の時間と回数）は仕様の外;
+  廃止（凍結後に外した値は retired として残し、別の意味に使わない）。参照の firmware の値（max_op_ms、線の時間と回数）は仕様の外;
 - core、`oep-if-*` の文書、dmseq の規範の文。
 
 固定部分か意味を変えるインターフェースは revision を上げ、core の形の変更はプロトコルの revision を上げる（core §2.7）。
@@ -41,7 +41,7 @@ OEP v1 は凍結前である。凍結までは、壊す変更も **どの revisi
 
 | 固定するもの | 理由 | もし要るなら |
 |---|---|---|
-| フレームの見出し（要求 10 byte、応答 5 byte、通知 5 / 6 byte） | 替えるのは本体の revision。confirm で revision を交渉するので将来の道は閉じない | プロトコルの revision |
+| フレームの見出し（要求 10 byte、応答 5 byte、通知 5 / 6 byte） | confirm の見出しは bootstrap として固定する。他の固定部分を替えるときは本体の revision を上げる | プロトコルの revision |
 | COBS + CRC-16 / `length(u16)` / HID report の詰め方 | 経路の種類ごとに決まる | 新しい transport kind が自分の方式を定める |
 | op（u8）、TLV の tag（u8、bit 7 critical）、reject reason（u8）、出来事の kind（u8） | 足りなくなったらインターフェースを分ける。空間を広げるより名前で分ける方が host に優しい | 別の名前のインターフェース（別の fn） |
 | 並びの要素に len を置かず、固定の形を末尾で延ばさない | どの読み手にも規則は一つ: 要素の形は revision で決まる。足すものは TLV で、要素についての情報は、その要素の番号を持つ応答の TLV に入れる | TLV、revision |
@@ -52,11 +52,11 @@ OEP v1 は凍結前である。凍結までは、壊す変更も **どの revisi
 | confirm に host の受けの上限を入れない | 応答の量は host が同時に出す要求の数で、通知の量は min_bytes で決める。probe が host の上限を知っても使い道が無い（通知に ack が無い） | confirm の非 critical の要求 TLV を後から |
 | max_frame は両方向の上限 | シリアルの口の受けの問題は 1 フレームではなく burst の量（transports §4 の host の規則） | — |
 | DFU / firmware の更新は OEP の外（core §0） | USB の記述子にすべてある。OEP が写しを持つと版ごとに食い違う。unit_id = USB の serial は変わらないので、焼く側は個体を見失わない | `oep.probe.firmware` のような名前つきのインターフェース |
-| read_block に `max_count` の宣言や専用の理由を足さない | max_length（byte）で表せる。断りは unsupported | read_block / write_block の tag 0x01 は予約（registry） |
+| read_block に `max_count` の宣言や専用の理由を足さない | max_length（byte）で表せる。断りは unsupported | 将来は別の任意 TLV で宣言する |
 | port_speed で probe は速さの候補を宣言しない | 通る速さは host 側の変換チップで決まり、probe からは見えない。候補は host の表 | 「試した結果」を運ぶ要求 TLV を後から |
 | ブリッジの実際の baud（整数分周のずれ）は出さない | host 側の性質で probe は知れない。応答の baud（probe の UART の実際の値）で足りる | — |
-| block の転送をまとめる op（system bus のまとめ読みなど）は足さない | read_block の意味は「target のバスを通して読む」で、手段は probe が選ぶ | riscv-dm の features ビットと op 0x09〜 |
-| 予約の番号: fn 0 の op 0x20〜、resolution 0x02、reason 0x05、role 0x03 / 0x04、u32 の番地の dmi の step、riscv-dm の reset の tag 0x01、wire の op 0x04、capture の 0x40 以降の値（どれも registry にだけある） | 使う実例が無いまま形を決めない | 予約の番号に後から定める |
+| block の転送をまとめる op（system bus のまとめ読みなど）は足さない | read_block の意味は「target のバスを通して読む」で、手段は probe が選ぶ | riscv-dm の features または新しい任意 op |
+| 未割当の番号と共通操作専用の範囲 | 未割当は将来の追加、共通範囲は所有者による追加に使う。凍結後に廃止した番号は再利用しない | 任意 op / TLV の追加 |
 
 ## 4. revision を変えずに足せるもの
 
@@ -65,10 +65,10 @@ OEP v1 は凍結前である。凍結までは、壊す変更も **どの revisi
 | 道 | 決まり |
 |---|---|
 | 任意の要求 / 応答 / 出来事の TLV | op の文脈の新しい tag。host は知らない非 critical の tag を読み飛ばし、probe は知らない critical の tag を unsupported で断る（core §2.2、§2.3） |
-| 任意の op と出来事 | インターフェースの op 0x01〜0xEF、出来事の kind 0x01〜0x7F。あるかどうかは describe で宣言する（core §2.5、§2.7） |
+| 任意の op と出来事 | インターフェースの op 0x10〜0xFF、出来事の kind 0x01〜0x7F。あるかどうかは describe で宣言する（core §2.5、§2.7） |
 | 新しい enum の値と予約の bit | 要求では: 定義が使っていなかった値は、それを知らない probe が unsupported で断る（core §2.5、§4.3）。応答、出来事、データでは: どのフィールドのあるなし、長さ、位置もその値に依らず、core §2.4 の知らない値の扱いが安全で、意味がその値に依るフィールドはどれも、その値を知らない読み手が無視するか生のまま見せるときだけ足せる（core §2.5）。そうでなければ新しい TLV、revision、インターフェース |
 | インターフェースの断りの理由と status の値 | 0x40〜0x7F（core §2.5、common §3） |
-| describe の tag | 共通 0x01〜0x3F、インターフェース 0x40〜0x7E。どの固定の形とも同じく、describe の値は延ばさない（core §2.3、§7.4） |
+| describe の tag | 共通 0x01〜0x3F、インターフェース 0x40〜0x7F。どの固定の形とも同じく、describe の値は延ばさない（core §2.3、§7.4） |
 | probe.config の項目と線の名前 | 新しい項目の tag（項目の形は固定）。標準の線の名前は registry に（probe の設定 §1、§1.3） |
 | 新しいインターフェース | `oep.` の名前はこのリポジトリを通して。逆 DNS の名前は誰でも登録なしに（core §13） |
 | 新しい経路 | フレームの方式と一緒に新しい transport の kind を（transports §1） |
@@ -79,7 +79,7 @@ OEP v1 は凍結前である。凍結までは、壊す変更も **どの revisi
 
 - 凍結の後、**キーは名前を変えず、消さない**。新しいキーを足す（registry の冒頭）。生成した識別子はキーから作るので、
   それを使うコードはそのまま通る。
-- キーの値は変わらない（凍結した数、§3）。v1 で外した値は予約として残し、別の意味に使わない。何かを試すときは、自分の逆 DNS の名前のインターフェースを使う（core §13）。
+- キーの値は変わらない（凍結した数、§3）。凍結後に外した値は retired として残し、別の意味に使わない。何かを試すときは、自分の逆 DNS の名前のインターフェースを使う（core §13）。
 - 新しい表の種類や、インターフェースや op の新しいキーは、pull request による registry の変更（CONTRIBUTING）。
 
 ## 6. 仕様のリリース

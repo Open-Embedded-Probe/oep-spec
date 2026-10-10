@@ -11,13 +11,12 @@
 
 ### 1.1 位置
 
-- probe はストリームの各バイトに通し番号（**位置**、u64、一周しない）を振る。位置は probe の起動で 0 から始まり、**起動の間は
-  戻らない**: ストリームが閉じて同じ場所に再び作られても（コンソールの再 open、fixture UART の plan のやり直し）、位置とマークの
-  serial は続きから進む（古い host の read が新しいデータを黙って返さないため）。
+- ストリームの各バイトに位置（u64、一周しない）を振る。資源として番号を持つストリームは作成時に 0 から始める。
+  再作成では新しい資源の番号を使う。fn で直接指す fixture UART は、同じ boot_id の間、位置とマークの serial を戻さない。
 - **読み出しはバッファを消費しない。** バイトが消えるのは次のときだけ:
   1. あふれ（古いものから押し出す。target や相手を待たせない）。
   2. host の明示の消去（clear）。
-  3. probe の再起動（位置も 0 から。boot_id が変わる）。
+  3. ストリームの解放、または probe の再起動。
 - target のリセットでは捨てない（リセット直前の出力が最も見たいことが多い）。代わりにマークを付ける（§1.3）。
 
 ### 1.2 read
@@ -50,13 +49,13 @@ mark : serial(u32)、position(u64)、kind(u8)、time_ns(u64)、detail(u8)       
 |---:|---|---|---|
 | 0x01 | reset | probe の指示で target をリセットした | 方法（`mark_detail_reset`: 1 ndmreset（reset の op）、3 attach の reset TLV。2 は予約） |
 | 0x02 | restart | target の再起動を検出した | 検出元（`mark_detail_restart`: 1 havereset、2 コンソールの再同期） |
-| 0x03 | attach | attach した（同じ場所の再 open を含む） | — |
+| 0x03 | attach | attach した | — |
 | 0x04 | detach | detach した | — |
 | 0x05 | lost | あふれで押し出した、または受信の誤り | 理由（`mark_detail_lost`: 1 あふれ、2 受信の誤り（framing）、3 パリティ、4 target の TO） |
 | 0x06 | clear | host が消去した | — |
 | 0x07 | host | host が付けた印 | host の値 |
 | 0x08 | link-lost | 線が落ちた（コンソールの読みの中で判定） | — |
-| 0x09 | closed | ストリームが閉じた | 理由（`mark_detail_closed`: 1 使っているものが全員外れた、2 セッションが終わった（end、lease の期限切れ、force）、3 スロットの置き換え・削除、4 connection が閉じた） |
+| 0x09 | closed | ストリームが閉じた | 理由（`mark_detail_closed`: 1 使っているものが全員外れた、2 セッションが終わった（end、lease の期限切れ、force）、4 connection が閉じた） |
 
 - マークの position は、probe がそのマークを付けた時の書き込みの位置である。position 以降のバイトはすべて、そのマークの出来事より後に受けた。
 - kind の空間: 0x01〜0x3F 標準、0x40〜0x7F インターフェース固有。detail の値は registry（`common.enum.mark_detail_*`）。0x40 以降は
@@ -101,20 +100,12 @@ core §2.6 で比べる。「残っている」は、残っている一番古い
 
 ## 2. debug の connection
 
-使うもの: `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（作る）、`oep.target.riscv-dm`、`oep.target.arm-adi`、
-`oep.target.console`（使う）、`oep.probe.config` のスロット（使う）。
+使うもの: `oep.wire.*`（作る）、対応する `oep.target.*` と `oep.target.console`（使う）。
 
-- **connection** は、線の attach が作る、ある target への接続。番号（u16）で指し、target の操作の要求は先頭に
-  connection を置く。
-- 番号（u16）は core §9 の規則で振る（probe で 1 つの空間、1 から進めて一周し（0 は割り当てない）、使用中の番号は飛ばす。閉じた番号は
-  rejected no_connection、別の種類の資源の番号は rejected unavailable cause 6）。
-- connection は、**使っているもの**が 1 つでもある間は開いている。使っているもの:
-  - attach した host のセッション（セッションごとに 1 つ）
-  - スロット（`oep.probe.config` §1.1。probe の自動の attach と、bind が開いたコンソール）
-- セッションの分は core §9 の寿命に従う: セッションのロックが終わるとき（end、lease の期限切れ、force で奪われる）に外れる。
-- 閉じるのは、使っているものが無くなったとき、force の detach、線が本当に切れたとき（インターフェースの文書が決める）だけ。
-- connection に載っている資源（コンソールのストリームなど）は、connection が閉じたら閉じる（何を残すかはそのインター
-  フェースが決める）。
+- connection は、明示したピンの組と target 選択に対して attach が作る、セッション所有の接続。target 操作は先頭に connection(u16) を置く。
+- 番号は core §9 の規則で振る。同じ boot_id の間は再利用しない。
+- detach、セッションの終わり、線切れで閉じる。connection に依存する stream は先に解放する。
+- 保存した slot は接続の情報だけで、connection を所有せず、自分から attach しない。
 
 ## 3. 線と target の操作の status
 

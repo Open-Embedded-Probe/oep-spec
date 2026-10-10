@@ -16,10 +16,10 @@
       "role": 1,
       "corr": 258,
       "fn": 515,
-      "op": 1,
+      "op": 16,
       "session_id": 287454020,
       "payload_hex": "",
-      "message_hex": "01020103020144332211"
+      "message_hex": "01020103021044332211"
     }
   ],
   "answers": [

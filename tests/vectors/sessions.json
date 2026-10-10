@@ -91,7 +91,7 @@
           "answer_hex": "0203000100d007000078563412"
         },
         {
-          "note": "the same open resent (open is not looked up in the table): the lease restarts, nothing is released",
+          "note": "the same open resent: replay the answer, without renewing the lease or clearing the history",
           "request_hex": "01030000001044332211d007000000",
           "answer_hex": "0203000100d007000078563412"
         },
@@ -141,6 +141,122 @@
           "note": "clock with session_id 0 after end: answered as before",
           "request_hex": "01070000000400000000",
           "answer_hex": "020700010078563412c05a637700000000"
+        }
+      ]
+    },
+    {
+      "name": "session-zero traffic does not advance the session; open preserves replay history",
+      "spec": "core §4.1, §5.2",
+      "initial": "lock free; max_inflight 4",
+      "steps": [
+        {
+          "note": "open S",
+          "request_hex": "01010000001044332211d007000000",
+          "answer_hex": "0201000100d007000078563412"
+        },
+        {
+          "note": "keepalive S",
+          "request_hex": "01020000001244332211",
+          "answer_hex": "0202000100"
+        },
+        {
+          "note": "independent session-zero counter past half-cycle",
+          "request_hex": "01409c00000400000000",
+          "answer_hex": "02409c0100785634120094357700000000"
+        },
+        {
+          "note": "S still advances from 2 to 3",
+          "request_hex": "01030000001244332211",
+          "answer_hex": "0203000100"
+        },
+        {
+          "note": "new open S keeps the existing history",
+          "request_hex": "01040000001044332211d007000000",
+          "answer_hex": "0204000100d007000078563412"
+        },
+        {
+          "note": "keepalive 2 still replays",
+          "request_hex": "01020000001244332211",
+          "answer_hex": "0202000100"
+        },
+        {
+          "note": "same corr with altered bytes is malformed",
+          "request_hex": "0102000000124433221100",
+          "answer_hex": "0202000003"
+        }
+      ]
+    },
+    {
+      "name": "16-bit counter does not wrap; an ended session cannot be reopened",
+      "spec": "core §4.1, §5.2, §6.2",
+      "initial": "lock free; max_inflight 4",
+      "steps": [
+        {
+          "note": "open S",
+          "request_hex": "01010000001044332211d007000000",
+          "answer_hex": "0201000100d007000078563412"
+        },
+        {
+          "note": "a new request more than half a cycle ahead is new",
+          "request_hex": "01fdff00001244332211",
+          "answer_hex": "02fdff0100"
+        },
+        {
+          "note": "end S, leaving a higher corr for a check",
+          "request_hex": "01feff00001144332211",
+          "answer_hex": "02feff0100"
+        },
+        {
+          "note": "new open of ended S is no_session",
+          "request_hex": "01ffff00001044332211d007000000",
+          "answer_hex": "02ffff0007"
+        },
+        {
+          "note": "old end still replays without resurrecting resources",
+          "request_hex": "01feff00001144332211",
+          "answer_hex": "02feff0100"
+        },
+        {
+          "note": "T starts a new counter, only after all S requests resolved",
+          "request_hex": "01010000001088776655d007000000",
+          "answer_hex": "0201000100d007000078563412"
+        }
+      ]
+    },
+    {
+      "name": "evicted request returns result_lost instead of being executed",
+      "spec": "core §5.2",
+      "initial": "lock free; max_inflight 4; exactly four cache entries",
+      "steps": [
+        {
+          "note": "open S",
+          "request_hex": "01010000001044332211d007000000",
+          "answer_hex": "0201000100d007000078563412"
+        },
+        {
+          "note": "keepalive S",
+          "request_hex": "01020000001244332211",
+          "answer_hex": "0202000100"
+        },
+        {
+          "note": "keepalive S",
+          "request_hex": "01030000001244332211",
+          "answer_hex": "0203000100"
+        },
+        {
+          "note": "keepalive S",
+          "request_hex": "01040000001244332211",
+          "answer_hex": "0204000100"
+        },
+        {
+          "note": "keepalive S",
+          "request_hex": "01050000001244332211",
+          "answer_hex": "0205000100"
+        },
+        {
+          "note": "open 1 has fallen out; it must not reset history",
+          "request_hex": "01010000001044332211d007000000",
+          "answer_hex": "020100000c"
         }
       ]
     }

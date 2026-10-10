@@ -36,7 +36,7 @@ def test_the_link_test_and_port_speed_are_oep_probe_link():
     assert not {o["name"] for o in reg["core"]["op"]} & {"link_source", "link_sink", "port_speed"}
     link = next(i for i in reg["interface"] if i["name"] == "oep.probe.link")
     assert {o["name"]: (o["code"], o["lock"]) for o in link["op"]} == {
-        "source": (0x01, False), "sink": (0x02, False), "port_speed": (0x03, True)}
+        "source": (0x10, False), "sink": (0x11, False), "port_speed": (0x12, True)}
     assert link["enum"]["port_speed_step"] == {"try": 0, "commit": 1, "revert": 2}
 
 
@@ -48,9 +48,9 @@ def test_the_core_has_no_name_and_keeps_only_what_is_mandatory():
     assert not {o["name"] for o in reg["core"]["op"]} & {"plan_apply", "plan_release", "restart"}
     assert not {"plan_roles", "restart_max_ms"} & set(reg["core"]["tlv"]["describe"])
     plan = next(i for i in reg["interface"] if i["name"] == "oep.probe.plan")
-    assert {o["name"]: (o["code"], o["lock"]) for o in plan["op"]} == {"plan_apply": (0x01, True), "plan_release": (0x02, True)}
+    assert {o["name"]: (o["code"], o["lock"]) for o in plan["op"]} == {"plan_apply": (0x10, True), "plan_release": (0x11, True)}
     restart = next(i for i in reg["interface"] if i["name"] == "oep.probe.restart")
-    assert {o["name"]: (o["code"], o["lock"]) for o in restart["op"]} == {"restart": (0x01, True)}
+    assert {o["name"]: (o["code"], o["lock"]) for o in restart["op"]} == {"restart": (0x10, True)}
     assert restart["tlv"]["describe"]["restart_max_ms"] == 0x40
     ns = {}
     exec(gen.py(reg, digest), ns)
@@ -83,7 +83,7 @@ def test_common_tables_are_generated():
 
 def test_a_broken_rule_is_reported():
     reg, _ = gen.load()
-    reg["interface"][1]["op"].append({"code": 0x01, "name": "duplicate", "lock": True})
+    reg["interface"][1]["op"].append({"code": 0x10, "name": "duplicate", "lock": True})
     assert any("used by" in e for e in gen.check(reg))
 
 
@@ -98,11 +98,12 @@ def test_crlf_checkout_gives_the_same_hash(tmp_path, monkeypatch):
 def test_reserved_ranges_and_common_tags_are_checked():
     reg, _ = gen.load()
     dm = next(i for i in reg["interface"] if i["name"] == "oep.target.riscv-dm")
+    dm["retired"] = {"dmi_step": [[0x11, 0x11]]}
     dm["enum"]["dmi_step"]["wide_write"] = 0x11
     cap = next(i for i in reg["interface"] if i["name"] == "oep.fixture.logic")
-    cap["tlv"]["describe"]["features"] = 0x06
+    cap["tlv"]["describe"]["features"] = reg["describe_common"]["features"]
     errors = gen.check(reg)
-    assert any("reserved range" in e for e in errors) and any("repeats a common tag" in e for e in errors)
+    assert any("retired range" in e for e in errors) and any("repeats a common tag" in e for e in errors)
 
 
 def test_line_names_are_generated_for_every_output():
@@ -129,4 +130,32 @@ def test_the_longest_wifi_set_is_wifi_min_max_frame():
     """oep-if-probe-config §1.4: request header 10 + TLV header 3 + index, ssid_len, pass_len + 32-byte ssid + 64 hex digits."""
     reg, _ = gen.load()
     lim = reg["limits"]
-    assert 10 + 3 + 3 + lim["wifi_ssid_max_bytes"] + lim["wifi_psk_hex_digits"] == lim["wifi_min_max_frame"]
+    assert lim["request_header_bytes"] + 3 + 3 + lim["wifi_ssid_max_bytes"] + lim["wifi_psk_hex_digits"] == lim["wifi_min_max_frame"]
+
+
+def test_interface_operation_and_tlv_boundaries():
+    reg, _ = gen.load()
+    iface = reg['interface'][0]
+    iface['op'].append({'code': 0x0F, 'name': 'private_common', 'lock': True})
+    assert any('common-operation range' in e for e in gen.check(reg))
+    iface['op'][-1]['code'] = 0xFF
+    iface.setdefault('tlv', {})['future'] = {'last': 0x7F}
+    assert gen.check(reg) == []
+    iface['tlv']['future']['zero'] = 0
+    assert any('is reserved' in e for e in gen.check(reg))
+
+
+def test_generated_lock_free_operations_cover_the_last_byte():
+    reg, digest = gen.load()
+    reg['interface'][0]['op'].append({'code': 0xFF, 'name': 'last', 'lock': False})
+    assert '0x8000000000000000ull' in gen.cpp(reg, digest)
+    assert 'LOCK_FREE_OPS_3 0x8000000000000000ull' in gen.c(reg, digest)
+    ns = {}
+    exec(gen.py(reg, digest), ns)
+    assert 0xFF in ns['PROBE_PLAN'].lock_free
+
+
+def test_common_describe_prefix_cannot_be_used_for_private_tags():
+    reg, _ = gen.load()
+    reg['interface'][0].setdefault('tlv', {}).setdefault('describe', {})['private'] = 0x3F
+    assert any('common describe range' in e for e in gen.check(reg))
