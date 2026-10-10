@@ -149,12 +149,13 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
 - configure は target を作り直す（積んだ転送、待ち、transactions と errors は消える）。この fn の plan が無いときは rejected unavailable
   （cause 6）。mode が 3 を超える、bit_order が 1 を超える は rejected malformed。features の bit0 が無いのに bit_order 1 は rejected
   unsupported。**CS は low で有効**（high で有効は後から TLV で）。
+- state 0（未設定）への arm は rejected unavailable（cause 6）で答え、状態を変えない。
 - arm は次の 1 回の転送を待つ: length は受ける最大 byte（1〜max_length。0 は malformed、超過は unsupported）、tx はその転送で MISO に
   出すバイト（count ≤ length。count > length は rejected malformed。足りない分は 0）。待っている間の arm は rejected unavailable（1 回に 1 つ）。**arm していない間の転送は
   MOSI を捨て、transactions と errors を数える**。**MISO は tx の外（未 arm、tx を使い切った後）では 0**。CS が有効になってから SCK が
   1 回も来ずに無効に戻ったもの（0 ビット）は転送とみなさない: 何も積まず、transactions も errors も数えず、arm は待ち続ける。
 - arm の success は、次の転送に tx を出せる状態になってから返す。その後に始まる転送（cs_setup_ns を守るもの）は、この arm で答えられる。
-  その状態にできなければ何も arm せずに completed failed で答える。
+  設定済みでもその状態にできなければ何も arm せずに completed failed で答える。
 - **configure から plan を解くまで、probe は CS が有効な間だけ MISO を駆動する。** CS が無効な間は MISO を駆動しない（プルの無い入力）。
   ただし CS が無効になってから cs_setup_ns の間は除く（下）。
   「MISO は tx の外では 0」は、CS が有効な間の転送のビットのことである。SCK、MOSI、CS は常に入力。configure の前は channel は空きの状態のまま（core §8）。
