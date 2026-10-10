@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- 応答の共通 TLV 拡張規則が、固定部分の空の成功応答と rejected にも掛かることを明記し、共有ベクタと独立した検査を追加。
+
 OEP v1 is under development and has not been frozen or released. Before the first release, the current normative documents and registry define the complete state; intermediate design history is available from Git history.
 
 Breaking changes before the v1 freeze:

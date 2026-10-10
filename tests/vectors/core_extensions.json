@@ -1,0 +1,53 @@
+{
+  "about": "Independent examples, not a sequential session. Successful calls have a valid session where needed; no_session has no active session; result_lost has discarded replay bytes. Unknown tag 0x7F adds no behavior, and follows both empty and nonempty fixed result payloads (core §2.3).",
+  "cases": [
+    {
+      "name": "open with unknown response TLV",
+      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "operation": "open",
+      "fixed_answer_bytes": 8,
+      "request_hex": "01010000001044332211b80b000000",
+      "answer_hex": "0201000100b80b0000785634127f010078"
+    },
+    {
+      "name": "keepalive with unknown response TLV",
+      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "operation": "keepalive",
+      "fixed_answer_bytes": 0,
+      "request_hex": "01020000001244332211",
+      "answer_hex": "02020001007f010078"
+    },
+    {
+      "name": "end with unknown response TLV",
+      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "operation": "end",
+      "fixed_answer_bytes": 0,
+      "request_hex": "01030000001144332211",
+      "answer_hex": "02030001007f010078"
+    },
+    {
+      "name": "clock with unknown response TLV",
+      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "operation": "clock",
+      "fixed_answer_bytes": 12,
+      "request_hex": "01040000000400000000",
+      "answer_hex": "02040001007856341264000000000000007f010078"
+    },
+    {
+      "name": "no_session with unknown response TLV",
+      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "operation": "keepalive",
+      "fixed_answer_bytes": 0,
+      "request_hex": "01050000001244332211",
+      "answer_hex": "02050000077f010078"
+    },
+    {
+      "name": "result_lost with unknown response TLV",
+      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "operation": "clock",
+      "fixed_answer_bytes": 0,
+      "request_hex": "01060000000444332211",
+      "answer_hex": "020600000c7f010078"
+    }
+  ]
+}

@@ -218,7 +218,7 @@ role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出�
 | 0x0B | unsupported | 定義にはあるが、この probe が扱えない（critical の TLV、固定部分の値、この probe が持つ op の任意の機能） | `tag(u8)`、[TLV]。tag は critical の TLV なら受け取ったままの値、固定部分の値なら 0x00。どの要素かを示すときは後ろに TLV（unavailable と同じ tag の空間: channel、index） |
 | 0x0C | result_lost | 送り直された要求の結果を覚えていない（§5.2） | — |
 
-rejected の detail は reason で、そのほかの情報は payload に置く。
+rejected の detail は reason で、そのほかの情報は payload に置く。表の `—` は固定部分のフィールドが無いことを表す。応答の固定部分の後ろへ TLV を足す §2.3 の規則は、固定部分が空の成功応答と rejected にも掛かる。知らない応答 TLV は読み飛ばす。
 
 **断り方の順**: probe は次の順に見て、最初に当たったもので答える。
 

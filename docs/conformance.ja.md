@@ -156,6 +156,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `checks.json` | CRC-16（transports §1）、dmseq の CRC-8 |
 | `cobs.json` | COBS の符号とシリアルの口のフレーム全体。復号が受け入れるもう一つの形も含む（transports §1） |
 | `headers.json` | 要求と答えのヘッダ、TLV の符号（§2.2、§4.1、§4.2） |
+| `core_extensions.json` | open/keepalive/end/clock と拒否の固定部分の後ろに未知応答 TLV を足す例。固定部分が空でも拡張規則は同じ（§2.3、§4.3） |
 | `confirm.json` | confirm のやりとり（§7.1） |
 | `discovery.json` | list（§7.2。fn 0 を載せないので、インターフェースの無い例の probe では空）、fn 0 の describe（§7.3、§7.5）、終わりを越えた describe、ヘッダの断り unknown_function / unknown_operation（§4.3 の順 1） |
 | `refusals.json` | §2.3 と §4.3 の断り方（理由が 1 つだけ当たる状態）と、無視される知らない TLV について、要求とそのとおりの答え。§4.3 の順 4 で理由が 2 つ以上当たる要求は、どれで断ってもよいので（意図した単純化）、ベクタは持たず、試験はどれか 1 つを受ける |

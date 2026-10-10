@@ -231,6 +231,27 @@ def confirm() -> dict:
     }
 
 
+def core_extensions() -> dict:
+    """Empty and nonempty fixed results share the same TLV extension rule."""
+    s = 0x11223344
+    tail = tlv(0x7F, b"x")
+    rows = []
+    cases = [
+        ("open", "open", struct.pack("<IB", 3000, 0), s, struct.pack("<II", 3000, 0x12345678), COMPLETED, 0),
+        ("keepalive", "keepalive", b"", s, b"", COMPLETED, 0),
+        ("end", "end", b"", s, b"", COMPLETED, 0),
+        ("clock", "clock", b"", 0, struct.pack("<IQ", 0x12345678, 100), COMPLETED, 0),
+        ("no_session", "keepalive", b"", s, b"", REJECTED, REASON["no_session"]),
+        ("result_lost", "clock", b"", s, b"", REJECTED, REASON["result_lost"]),
+    ]
+    for corr, (name, operation, payload, sid, fixed, resolution, detail) in enumerate(cases, 1):
+        rows.append({"name": name + " with unknown response TLV", "spec": "core §2.3/4.2/4.3/6.4/7.7",
+                     "operation": operation, "fixed_answer_bytes": len(fixed),
+                     "request_hex": hx(request(corr, 0, op("core", operation), payload, sid)),
+                     "answer_hex": hx(answer(corr, resolution, detail, fixed + tail))})
+    return {"about": "Independent examples, not a sequential session. Successful calls have a valid session where needed; no_session has no active session; result_lost has discarded replay bytes. Unknown tag 0x7F adds no behavior, and follows both empty and nonempty fixed result payloads (core §2.3).", "cases": rows}
+
+
 def refusals() -> dict:
     """Requests and the answer a probe gives, for the refusals of core §2.3 and §4.3."""
     s = 0x11223344
@@ -1069,7 +1090,7 @@ def multirate() -> dict:
     }
 
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
-         "refusals.json": refusals,
+         "refusals.json": refusals, "core_extensions.json": core_extensions,
          "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding,
          "logic_layout.json": logic_layout, "multirate.json": multirate}
 
