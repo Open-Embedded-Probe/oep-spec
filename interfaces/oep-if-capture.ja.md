@@ -271,6 +271,10 @@ configure の応答の blocking_ms が core の max_op_ms を超える構成は�
   順 4）。この節は順を決めない。host は理由の順に頼らない。
 - **問い合わせは別の操作（0x18）**。configure の TLV のフラグにすると、probe はロックの要否を操作の番号で決めるので、
   ロックなしの問い合わせができない。問い合わせは今の設定と取ったデータを壊さない。
+  planがあれば、state 0〜6のどの状態でも、束ねたトラックでも、要求の実現可能値を照会できる。
+  トリガ待ち・取得中・pause中・グループ結合中であることだけを理由に断らない。queryは状態・世代・
+  取得中の設定・データ・区画・group bindを変えず、要求値も適用しない。planがなければunavailable cause 6。
+  取得の時間経過による進行は続く（照会の前後で時刻が進めば、新しいsampleが取られてよい）。
 - trigger の type: 0 即時（省略時）、1 レベル（value 0 / 1）、2 エッジ（value 0 立ち上がり / 1 立ち下がり / 2 両方）、
   3 しきい値を上向きに横切る、4 下向きに横切る（value は o / b で切り出した後の ADC の値）。1〜2 はロジック、3〜4 はアナログ。
   宣言に無い type は rejected unsupported。
@@ -383,7 +387,8 @@ bind の TLV:
   trigger_track 以外が組の pretrigger（下のトリガ）を持てない（P_k が max_pretrigger を超えるか、mode 1 / 2 で actual_samples 以上）は
   unavailable（cause 6 / 2）。どのトラックについての断りかは payload の TLV fn（0x05、core §4.3。unsupported の payload も同じ）で返す。
   何も変えずに断る。束ねている間、各トラックの configure、start、stop、force は rejected unavailable
-  （cause 4。組の op を使う。configure し直すときは、いったん n = 0 で解く）。束ねたトラックの plan の
+  （cause 4。組の op を使う。configure し直すときは、いったん n = 0 で解く）。queryは結合中も使え、
+  bindや現在の設定を変えず実現可能値を照会する（§3.3）。束ねたトラックの plan の
   plan_release / plan_apply も rejected unavailable（cause 4）。**bind はセッションの資源**（core §9: セッションのロックが終わるとき（end、lease の
   期限切れ、force）に解ける）。
 - トラックを束ねていないとき: start は rejected unavailable cause 6。stop と、持っていれば force は、何もせず成功。state は 0。
