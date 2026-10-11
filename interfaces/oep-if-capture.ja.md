@@ -398,7 +398,8 @@ bind の TLV:
   順に 1 回ずつ置く。**組の世代**は組の start ごとに 1 進め、規則はトラックの世代と同じ（起動後の最初の start で 1、0xFFFFFFFF の次は 1、
   0 は最初の start の前。bind し直しても続きから）。始めた後にトラックが失敗したら（そのトラックは state 6、stopped
   reason 3）、組は state 6 で、組の stopped は reason 3 とそのトラックの error（2 本以上なら、そのどれか 1 本の error）。ほかのトラックは
-  組の stop と同じに止める（state 1、短い区画は flags bit1、stopped reason 1）。**start_ns は取得（pretrigger のリングを含む）を始めた時刻**。即時トリガのとき、トラックの
+  組の stop と同じに止める（取得中・トリガ待ち・pause中のトラックは state 1、短い区画は flags bit1、stopped reason 1）。
+  既に完了したトラック（state 4）は §3.2 の stop と同じく、state 4 と取得データ・区画を保持する。**start_ns は取得（pretrigger のリングを含む）を始めた時刻**。即時トリガのとき、トラックの
   ずれは、その最初の区画の start_ns − 組の start_ns（推定値）。start 前の status の start_ns と trigger_ns は全ビット 1。
 - **トリガ**: trigger_track の条件が立つと、組の全トラックが取得を始める。
 - **組の pretrigger** は trigger_track の pretrigger（P サンプル）だけで、全トラックに**同じ時間の長さ**として及ぶ: ほかのトラック k は、
