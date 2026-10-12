@@ -49,6 +49,8 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **broker の上流が失われた場合**は、影響する資源を無効にする。端点を再生成するなら boot_id を変える。
 - **TCP の経路**: TCP で待ち受ける probe は、待ち受けの socket 1 つを fn 0 の describe の経路 1 つとして並べる（kind 6、interface 0xFF）。その socket で受けた接続はどれも、confirm の transport TLV でその index を返す。§3、core §4.4、core §7.1、core §11.4 が経路ごとに掛ける規則（セッションの要求は 1 つの経路で、max_frame / window / max_inflight、使っている revision、通知の送り先）は、受けた接続ごとに別々に掛かる。
   待ち受ける port は probe が決める。host が TCP の probe を見つける方法は §3。
+  probe は同時接続数に上限を置いてよく、1 接続だけでもよい。上限を超える新しい接続は受け付けないか閉じる。
+  そのために既存のセッション・資源・接続を終了する必要はない。TCPを提供するだけで無制限の接続や接続ごとのthreadを要求しない。
 
 ## 2. フレームの送り方
 

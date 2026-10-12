@@ -190,7 +190,7 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 
 2. セッション: open、end、keepalive、lock_state と、lease、core §6.2 の判断の表。session_id の確かめ（session_required、no_session、
    locked）。end、lease の期限切れ、force のどれでも、セッションが作ったものを解放する（core §9）。
-3. core §5.2 の送り直しの表（少なくとも max_inflight 個、断りの応答も含め、異なる ID の新規 open の成功時だけ置き換える）。
+3. core §5.2 の送り直しの順序状態（新規の拒否でもcorrを更新し、異なるIDの新規openの成功時だけ初期化する）。byte記録は0件でもよく、保持していない旧要求はresult_lostで断る。
 4. core §4.3 の断り方と、core §2.3 の TLV の規則（critical、知らない TLV、長さの違う TLV）。
 5. 通知を送り出すインターフェースがあれば、その fn の subscribe / unsubscribe と通知の送り方（core §11）。
 6. 欲しいインターフェース（[適合](conformance.ja.md) §3）。plan の role を持つインターフェースがあれば `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)）も。

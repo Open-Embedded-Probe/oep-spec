@@ -44,8 +44,8 @@ host は:
 
 - **待っている要求**: 経路ごとの max_frame、window、max_inflight が host の送れる量を決める。probe は window_exceeded で断ってよく、
   守らない host は要求を失う（core §4.4）。
-- **送り直しの表**は少なくとも max_inflight 個を持つ。probe は覚える応答の大きさに上限を置いてよく、それより大きい応答の送り直しには
-  result_lost で答える（core §5.2）。
+- **送り直し**: 最後のsession_id/corrの順序状態は残す。要求/応答のbyte記録は件数と大きさを制限してよく、0件でもよい。
+  保持していない旧要求にはresult_lostで答え、再実行しない（core §5.2）。受信待ちbufferの上限とは別に決める。
 - **通知**: 経路の送信のバッファで待つのは多くて max_frame × `notify_pending_max_frames` byte。残りは probe の中で捨てられ、seq の
   飛びに見える。probe は応答を先に送り、通知の書き込みでブロックしない（core §11.4）。通知を送るのは、ロックの持ち主が購読した fn だけ
   （core §11.3）。

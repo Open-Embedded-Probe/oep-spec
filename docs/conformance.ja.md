@@ -26,7 +26,7 @@
 | confirm/discovery | confirm前の64byte、revision範囲の境界、frame/window/inflight、transport照合、list/describeの末尾・ページ進行・不変性・必須宣言 |
 | 見出し・拒否・TLV | 短い要求の無応答、corr 0、未知fn/op、session_required、拒否優先順、長さ/値域、未知非critical/critical、ID 0、0x7F、応答の補助情報 |
 | session | lease最小/最大/既定、keepalive、owner、他IDとの排他、end/期限切れ/force、session 0の無副作用、boot_idの変化 |
-| 再送 | openを含む同一要求の結果、内容の違う同corrの拒否、cache eviction/保持サイズ上限とresult_lost、rejectedの保持、同ID open後の履歴、終了後の履歴、重複によるlease/通知の変更禁止 |
+| 再送 | openを含む保持した同一要求の結果、保持した要求と内容の違う同corrの拒否、0件cache/eviction/保持サイズ上限とresult_lost、rejectedでも進む順序状態、同ID open後の履歴、終了後の履歴、重複によるlease/通知の変更禁止 |
 | corrと寿命 | u16循環/zero飛ばし、半周の境界、未解決要求の前進制限、セッション間の旧応答排出、再接続時のqueue破棄、旧経路の未解決応答、資源IDの非再利用/枯渇、終了時の解放、古いIDと他種/他fnのIDの拒否 |
 
 実機でも端点の状態変更を独立に観測する。二重実行の検査は、同じ応答が返るだけでなく、時計・資源・通知などの副作用が重複しないことを確かめる。資源を作る方法はインターフェース adapter に依存しても、その所有・解放・非再利用の合否はコアの契約で決める。
@@ -63,13 +63,14 @@ probe は、自分が出す transport とインターフェースについてこ
   扱わない値は unsupported（§2.2、§2.3）。
 - TLV の形は `tag len(u16) value` の一つ（§2.2）。並びは要素の長さを持たない `count × element`、固定の形はどれも定義のとおりで、末尾を延ばさない（§2.3）。
 - window / max_inflight は transport ごと（§4.4）。
-- 一周する値: 1 つの空間で同時に持つ値の広がりは幅の 4 分の 1 未満（§2.6）。
+- 一周する値: corr以外の1つの空間で同時に持つ値の広がりは幅の4分の1未満（§2.6）。corrは§4.1/§5.2の半周規則。
 
 **セッションとロック**
 
 - ロックは一つ、§6.2 の判定表、lease の再開始と実行中は数えないこと（§6.1）。
 - open / end / keepalive / lock_state / force / owner（§6.4）。lease は 1000〜60000 ms に丸める（§6.4）。session_id 0 は断る（§6.1）。
-- 再送の表: 少なくとも max_inflight 件、rejected の答えも覚える、異なる ID の新規 open が成功したときだけ置き換える。同じ ID の open は履歴を保つ、probe に一つ（§5.2）。
+- 再送の順序状態は必須、byte記録は0件でもよい。rejectedの新規要求も最後のcorrを更新し、記録が無い旧要求はresult_lostで断る。
+  異なるIDの新規openが成功したときだけ順序状態を置き換える。同じIDのopenは履歴を保つ、probeに一つ（§5.2）。
 - ロック不要の op は状態を変えない（§6.3）。boot_id は起動のたびに変わるように、§6.5 の素をその順に使って選ぶ（§6.5）。
 - 時計: 起動からの ns で、同じ boot_id の間、減らず一周しない（§2.6a）。
 - セッションが作ったものはすべて、そのロックが終わるとき end、期限切れ、force のどれでも同じに解放し、再送された open では残す（§9）。再開は無い（§6.4）。資源の番号（1〜65535、起動後の最初は 1、0 は割り当てない、§9）。閉じたコンソールの stream とバッファは解放し、番号は同じ boot_id の間に再利用しない（コンソール §2）。
