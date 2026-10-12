@@ -8,8 +8,8 @@
         "11": "oep.probe.restart"
       },
       "state": "session S holds the lock; restart_max_ms in fn 11's describe; after this answer the probe restarts (a new boot_id, no session)",
-      "request_hex": "01100000000b001044332211",
-      "answer_hex": "02100000000100"
+      "request_hex": "0110000b001044332211",
+      "answer_hex": "0210000100"
     },
     {
       "name": "restart without a session: session_required",
@@ -18,8 +18,8 @@
         "11": "oep.probe.restart"
       },
       "state": "—",
-      "request_hex": "01110000000b001000000000",
-      "answer_hex": "02110000000009"
+      "request_hex": "0111000b001000000000",
+      "answer_hex": "0211000009"
     },
     {
       "name": "restart while no session holds the lock: no_session",
@@ -28,8 +28,8 @@
         "11": "oep.probe.restart"
       },
       "state": "lock free (for example: the probe has restarted since S opened)",
-      "request_hex": "01120000000b001044332211",
-      "answer_hex": "02120000000007"
+      "request_hex": "0112000b001044332211",
+      "answer_hex": "0212000007"
     },
     {
       "name": "plan_apply: gpio role 1 on channel 3",
@@ -39,8 +39,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "session S holds the lock; channel 3 free and in gpio's role_channels for role 1; plan_roles not exceeded",
-      "request_hex": "01140000000a0010443322111005000200010300",
-      "answer_hex": "02140000000100"
+      "request_hex": "0114000a0010443322111005000200010300",
+      "answer_hex": "0214000100"
     },
     {
       "name": "plan_apply naming fn 0: malformed",
@@ -50,8 +50,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "session S",
-      "request_hex": "01150000000a0010443322111005000000010300",
-      "answer_hex": "02150000000003"
+      "request_hex": "0115000a0010443322111005000000010300",
+      "answer_hex": "0215000003"
     },
     {
       "name": "plan_apply naming a fn the probe does not have: unknown_function",
@@ -61,8 +61,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "session S; no fn 12",
-      "request_hex": "01160000000a0010443322111005000c00010300",
-      "answer_hex": "02160000000001"
+      "request_hex": "0116000a0010443322111005000c00010300",
+      "answer_hex": "0216000001"
     },
     {
       "name": "plan_release: fn 2",
@@ -72,8 +72,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "session S; fn 2 has the plan above",
-      "request_hex": "01170000000a001144332211010200",
-      "answer_hex": "02170000000100"
+      "request_hex": "0117000a001144332211010200",
+      "answer_hex": "0217000100"
     },
     {
       "name": "plan_release: n = 2 with one fn",
@@ -83,8 +83,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "session S",
-      "request_hex": "01180000000a001144332211020200",
-      "answer_hex": "02180000000003"
+      "request_hex": "0118000a001144332211020200",
+      "answer_hex": "0218000003"
     },
     {
       "name": "plan_apply without a session: session_required",
@@ -94,8 +94,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "—",
-      "request_hex": "01190000000a0010000000001005000200010300",
-      "answer_hex": "02190000000009"
+      "request_hex": "0119000a0010000000001005000200010300",
+      "answer_hex": "0219000009"
     },
     {
       "name": "link source: 8 bytes, byte k = k & 0xFF",
@@ -104,18 +104,18 @@
         "1": "oep.probe.link"
       },
       "state": "max_frame 1024",
-      "request_hex": "01200000000100100000000008000000",
-      "answer_hex": "0220000000010008000001020304050607"
+      "request_hex": "0120000100100000000008000000",
+      "answer_hex": "022000010008000001020304050607"
     },
     {
-      "name": "link source: more than fits, len = max_frame - 9",
+      "name": "link source: more than fits, len = max_frame - 7",
       "spec": "oep-if-link §2",
       "fns": {
         "1": "oep.probe.link"
       },
       "state": "max_frame 1024",
-      "request_hex": "012500000001001000000000d0070000",
-      "answer_hex": "02250000000100f703000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6"
+      "request_hex": "01250001001000000000d0070000",
+      "answer_hex": "0225000100f903000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8"
     },
     {
       "name": "link source: length 0",
@@ -124,8 +124,8 @@
         "1": "oep.probe.link"
       },
       "state": "—",
-      "request_hex": "01210000000100100000000000000000",
-      "answer_hex": "022100000001000000"
+      "request_hex": "0121000100100000000000000000",
+      "answer_hex": "02210001000000"
     },
     {
       "name": "link sink: 3 bytes, an empty answer",
@@ -134,8 +134,8 @@
         "1": "oep.probe.link"
       },
       "state": "—",
-      "request_hex": "0122000000010011000000000300aabbcc",
-      "answer_hex": "02220000000100"
+      "request_hex": "012200010011000000000300aabbcc",
+      "answer_hex": "0222000100"
     },
     {
       "name": "link sink: count larger than the bytes that follow",
@@ -144,8 +144,8 @@
         "1": "oep.probe.link"
       },
       "state": "—",
-      "request_hex": "0123000000010011000000000500aabbcc",
-      "answer_hex": "02230000000003"
+      "request_hex": "012300010011000000000500aabbcc",
+      "answer_hex": "0223000003"
     },
     {
       "name": "link port_speed not offered (not set in ops)",
@@ -154,8 +154,8 @@
         "1": "oep.probe.link"
       },
       "state": "ops of fn 1: source and sink only",
-      "request_hex": "01240000000100124433221100100e0000d007",
-      "answer_hex": "02240000000002"
+      "request_hex": "0124000100124433221100100e0000d007",
+      "answer_hex": "0224000002"
     },
     {
       "name": "gpio set: channel 3 output high",
@@ -164,8 +164,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "session S holds the lock; channel 3 in fn 2's plan; modes 0 to 4 declared",
-      "request_hex": "01300000000200104433221101030004",
-      "answer_hex": "02300000000100"
+      "request_hex": "0130000200104433221101030004",
+      "answer_hex": "0230000100"
     },
     {
       "name": "gpio read: channel 3 reads 1",
@@ -174,8 +174,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "as above, after the set; no drive_levels",
-      "request_hex": "013100000002001100000000010300",
-      "answer_hex": "023100000001000101"
+      "request_hex": "01310002001100000000010300",
+      "answer_hex": "02310001000101"
     },
     {
       "name": "gpio set: channel 9 not in the plan",
@@ -184,8 +184,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "channel 9 in no plan of fn 2",
-      "request_hex": "01320000000200104433221102030004090000",
-      "answer_hex": "02320000000004020200090040010001"
+      "request_hex": "0132000200104433221102030004090000",
+      "answer_hex": "0232000004020200090040010001"
     },
     {
       "name": "gpio set without a session: session_required",
@@ -194,8 +194,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "—",
-      "request_hex": "01330000000200100000000001030004",
-      "answer_hex": "02330000000009"
+      "request_hex": "0133000200100000000001030004",
+      "answer_hex": "0233000009"
     },
     {
       "name": "gpio set: n = 2 with one element",
@@ -204,8 +204,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "—",
-      "request_hex": "01340000000200104433221102030004",
-      "answer_hex": "02340000000003"
+      "request_hex": "0134000200104433221102030004",
+      "answer_hex": "0234000003"
     },
     {
       "name": "rvswd connections: one connection with a target_id",
@@ -214,8 +214,8 @@
         "4": "oep.wire.rvswd"
       },
       "state": "connection 1 on channels 1 / 2 at 1 MHz, owned by the session, target_id scheme 1 = 0x00203500",
-      "request_hex": "01400000000400130000000000",
-      "answer_hex": "02400000000100000101000100020040420f00010400352000"
+      "request_hex": "0140000400130000000000",
+      "answer_hex": "0240000100000101000100020040420f00010400352000"
     },
     {
       "name": "rvswd connections: first beyond the count",
@@ -224,8 +224,8 @@
         "4": "oep.wire.rvswd"
       },
       "state": "as above",
-      "request_hex": "01410000000400130000000001",
-      "answer_hex": "024100000001000000"
+      "request_hex": "0141000400130000000001",
+      "answer_hex": "02410001000000"
     },
     {
       "name": "rvswd scan: one combination listed and found",
@@ -234,8 +234,8 @@
         "4": "oep.wire.rvswd"
       },
       "state": "session S; channels 1 / 2 free and allowed; a DM answers DMSTATUS 0x00400382",
-      "request_hex": "0142000000040010443322110101000200",
-      "answer_hex": "024200000001000101010100020082034000"
+      "request_hex": "014200040010443322110101000200",
+      "answer_hex": "02420001000101010100020082034000"
     },
     {
       "name": "rvswd scan: count 0 is malformed",
@@ -244,8 +244,8 @@
         "4": "oep.wire.rvswd"
       },
       "state": "session S; no implicit candidate list",
-      "request_hex": "01430000000400104433221100",
-      "answer_hex": "02430000000003"
+      "request_hex": "0143000400104433221100",
+      "answer_hex": "0243000003"
     },
     {
       "name": "rvswd attach: pins are required",
@@ -254,8 +254,8 @@
         "4": "oep.wire.rvswd"
       },
       "state": "session S; channels free",
-      "request_hex": "0144000000040011443322110081040040420f00",
-      "answer_hex": "02440000000003"
+      "request_hex": "014400040011443322110081040040420f00",
+      "answer_hex": "0244000003"
     },
     {
       "name": "rvswd attach: a second target on separate pins",
@@ -264,8 +264,8 @@
         "4": "oep.wire.rvswd"
       },
       "state": "session S owns connection 1 on pins 1 / 2; max_connections 2; pins 3 / 4 allowed and free; next resource 2",
-      "request_hex": "0145000000040011443322110081040040420f0083040003000400",
-      "answer_hex": "024500000001000200820340000040420f00"
+      "request_hex": "014500040011443322110081040040420f0083040003000400",
+      "answer_hex": "02450001000200820340000040420f00"
     },
     {
       "name": "rvswd attach: busy pins never join or evict",
@@ -274,8 +274,8 @@
         "4": "oep.wire.rvswd"
       },
       "state": "session S owns connection 1 on pins 1 / 2; connection remains unchanged",
-      "request_hex": "0146000000040011443322110081040040420f0083040001000200",
-      "answer_hex": "02460000000004010100010202000100"
+      "request_hex": "014600040011443322110081040040420f0083040001000200",
+      "answer_hex": "0246000004010100010202000100"
     },
     {
       "name": "riscv-dm halt: halted",
@@ -284,8 +284,8 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "session S; connection 1 open; the hart halts",
-      "request_hex": "0150000000060011443322110100",
-      "answer_hex": "0250000000010000"
+      "request_hex": "015000060011443322110100",
+      "answer_hex": "025000010000"
     },
     {
       "name": "riscv-dm halt on an unknown connection",
@@ -294,8 +294,8 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "no connection 9",
-      "request_hex": "0151000000060011443322110900",
-      "answer_hex": "0251000000000a"
+      "request_hex": "015100060011443322110900",
+      "answer_hex": "025100000a"
     },
     {
       "name": "riscv-dm run not offered",
@@ -304,8 +304,8 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "ops of fn 6: dmi, halt, resume (09 02 00 01 07)",
-      "request_hex": "015200000006001644332211010000000020640000000000",
-      "answer_hex": "02520000000002"
+      "request_hex": "01520006001644332211010000000020640000000000",
+      "answer_hex": "0252000002"
     },
     {
       "name": "riscv-dm run: the preparation fails, the hart is not run",
@@ -314,8 +314,8 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "session S; connection 1; run offered in ops; the hart is halted and writing a0 fails with no answer from the wire",
-      "request_hex": "01560000000600164433221101000000002064000000010a100700000000",
-      "answer_hex": "025600000001010203000000000000000000"
+      "request_hex": "0156000600164433221101000000002064000000010a100700000000",
+      "answer_hex": "02560001010203000000000000000000"
     },
     {
       "name": "riscv-dm dmi: one read of DMSTATUS",
@@ -324,8 +324,8 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "session S; connection 1; DMSTATUS reads 0x00400382",
-      "request_hex": "015300000006001044332211010001000211",
-      "answer_hex": "02530000000100010000010082034000"
+      "request_hex": "01530006001044332211010001000211",
+      "answer_hex": "0253000100010000010082034000"
     },
     {
       "name": "riscv-dm dmi: n = 0",
@@ -334,8 +334,8 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "session S; connection 1",
-      "request_hex": "01540000000600104433221101000000",
-      "answer_hex": "025400000001000000000000"
+      "request_hex": "0154000600104433221101000000",
+      "answer_hex": "02540001000000000000"
     },
     {
       "name": "riscv-dm dmi: an unknown step kind",
@@ -344,8 +344,8 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "—",
-      "request_hex": "015500000006001044332211010001001011",
-      "answer_hex": "02550000000003"
+      "request_hex": "01550006001044332211010001001011",
+      "answer_hex": "0255000003"
     },
     {
       "name": "riscv-dm step on a running hart: status state, moved and both dpc 0",
@@ -354,8 +354,8 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "session S; connection 1; step offered in ops; the hart is running",
-      "request_hex": "0157000000060017443322110100",
-      "answer_hex": "0257000000010105000000000000000000"
+      "request_hex": "015700060017443322110100",
+      "answer_hex": "025700010105000000000000000000"
     },
     {
       "name": "arm-adi transfer: n = 0",
@@ -364,8 +364,8 @@
         "15": "oep.target.arm-adi"
       },
       "state": "session S; connection 1 (swd) open",
-      "request_hex": "01580000000f00104433221101000000",
-      "answer_hex": "02580000000100000000000000"
+      "request_hex": "0158000f00104433221101000000",
+      "answer_hex": "0258000100000000000000"
     },
     {
       "name": "console marks: one attach mark",
@@ -374,8 +374,8 @@
         "7": "oep.target.console"
       },
       "state": "stream 2 with one mark (serial 0, position 0, attach at 1 ms)",
-      "request_hex": "016000000007001200000000020000000000",
-      "answer_hex": "0260000000010000010000000000000000000000000340420f000000000000"
+      "request_hex": "01600007001200000000020000000000",
+      "answer_hex": "026000010000010000000000000000000000000340420f000000000000"
     },
     {
       "name": "console marks: from_serial included, more 1",
@@ -384,8 +384,8 @@
         "7": "oep.target.console"
       },
       "state": "stream 2; marks 5 to 8 kept (1 to 4 pushed out), the next mark gets serial 9; max_frame 64 (2 marks per answer)",
-      "request_hex": "016400000007001200000000020005000000",
-      "answer_hex": "02640000000100010205000000320000000000000007404b4c000000000005060000003c0000000000000007808d5b000000000006"
+      "request_hex": "01640007001200000000020005000000",
+      "answer_hex": "0264000100010205000000320000000000000007404b4c000000000005060000003c0000000000000007808d5b000000000006"
     },
     {
       "name": "console marks: the next page from the last serial + 1",
@@ -394,8 +394,8 @@
         "7": "oep.target.console"
       },
       "state": "stream 2; marks 5 to 8 kept (1 to 4 pushed out), the next mark gets serial 9; max_frame 64 (2 marks per answer)",
-      "request_hex": "016500000007001200000000020007000000",
-      "answer_hex": "02650000000100000207000000460000000000000007c0cf6a0000000000070800000050000000000000000700127a000000000008"
+      "request_hex": "01650007001200000000020007000000",
+      "answer_hex": "0265000100000207000000460000000000000007c0cf6a0000000000070800000050000000000000000700127a000000000008"
     },
     {
       "name": "console marks: a pushed-out from_serial starts at the oldest kept",
@@ -404,8 +404,8 @@
         "7": "oep.target.console"
       },
       "state": "stream 2; marks 5 to 8 kept (1 to 4 pushed out), the next mark gets serial 9; max_frame 64 (2 marks per answer)",
-      "request_hex": "016600000007001200000000020003000000",
-      "answer_hex": "02660000000100010205000000320000000000000007404b4c000000000005060000003c0000000000000007808d5b000000000006"
+      "request_hex": "01660007001200000000020003000000",
+      "answer_hex": "0266000100010205000000320000000000000007404b4c000000000005060000003c0000000000000007808d5b000000000006"
     },
     {
       "name": "console marks: from_serial = next, no marks and more 0",
@@ -414,8 +414,8 @@
         "7": "oep.target.console"
       },
       "state": "stream 2; marks 5 to 8 kept (1 to 4 pushed out), the next mark gets serial 9; max_frame 64 (2 marks per answer)",
-      "request_hex": "016700000007001200000000020009000000",
-      "answer_hex": "026700000001000000"
+      "request_hex": "01670007001200000000020009000000",
+      "answer_hex": "02670001000000"
     },
     {
       "name": "console streams: one open stream",
@@ -424,8 +424,8 @@
         "7": "oep.target.console"
       },
       "state": "stream 2 on connection 1 (one number space: connection 1, then stream 2), dmseq, opened by the session",
-      "request_hex": "0161000000070017000000000000",
-      "answer_hex": "0261000000010000010200010002"
+      "request_hex": "016100070017000000000000",
+      "answer_hex": "026100010000010200010002"
     },
     {
       "name": "console streams: first(u16) beyond the count, the last page",
@@ -434,8 +434,8 @@
         "7": "oep.target.console"
       },
       "state": "as above (one stream)",
-      "request_hex": "0168000000070017000000000100",
-      "answer_hex": "026800000001000000"
+      "request_hex": "016800070017000000000100",
+      "answer_hex": "02680001000000"
     },
     {
       "name": "console read: empty at the write position",
@@ -444,8 +444,8 @@
         "7": "oep.target.console"
       },
       "state": "stream 2, 5 bytes written (position 5)",
-      "request_hex": "01620000000700110000000002000005000000000000004000",
-      "answer_hex": "026200000001000500000000000000000000"
+      "request_hex": "0162000700110000000002000005000000000000004000",
+      "answer_hex": "02620001000500000000000000000000"
     },
     {
       "name": "console read from 4",
@@ -454,8 +454,8 @@
         "7": "oep.target.console"
       },
       "state": "—",
-      "request_hex": "01630000000700110000000002000400000000000000004000",
-      "answer_hex": "0263000000000b00"
+      "request_hex": "0163000700110000000002000400000000000000004000",
+      "answer_hex": "026300000b00"
     },
     {
       "name": "probe.config state: no saved settings",
@@ -464,8 +464,8 @@
         "8": "oep.probe.config"
       },
       "state": "no save; presets do not own runtime resources",
-      "request_hex": "017000000008001500000000",
-      "answer_hex": "02700000000100000000000000"
+      "request_hex": "01700008001500000000",
+      "answer_hex": "0270000100000000000000"
     },
     {
       "name": "probe.config save not offered",
@@ -474,8 +474,8 @@
         "8": "oep.probe.config"
       },
       "state": "ops without save and erase; no storage tag",
-      "request_hex": "017100000008001244332211",
-      "answer_hex": "02710000000002"
+      "request_hex": "01710008001244332211",
+      "answer_hex": "0271000002"
     },
     {
       "name": "probe.config set: an idle value of 6 bytes (longer than its 4)",
@@ -484,8 +484,8 @@
         "8": "oep.probe.config"
       },
       "state": "session S",
-      "request_hex": "017200000008001144332211030600040003000000",
-      "answer_hex": "02720000000003"
+      "request_hex": "01720008001144332211030600040003000000",
+      "answer_hex": "0272000003"
     },
     {
       "name": "probe.config set: an idle value of 3 bytes",
@@ -494,8 +494,8 @@
         "8": "oep.probe.config"
       },
       "state": "session S",
-      "request_hex": "017300000008001144332211830300040000",
-      "answer_hex": "02730000000003"
+      "request_hex": "01730008001144332211830300040000",
+      "answer_hex": "0273000003"
     },
     {
       "name": "probe.config set: wifi entry 0 with a passphrase",
@@ -504,8 +504,8 @@
         "8": "oep.probe.config"
       },
       "state": "items has wifi, wifi_max 4; session S; no settings; the probe's hash for the new settings is 0x5A5A0001",
-      "request_hex": "017400000008001144332211080f0000036c61620970617373776f726431",
-      "answer_hex": "0274000000010001005a5a"
+      "request_hex": "01740008001144332211080f0000036c61620970617373776f726431",
+      "answer_hex": "027400010001005a5a"
     },
     {
       "name": "probe.config get: the wifi entry without its passphrase",
@@ -514,8 +514,8 @@
         "8": "oep.probe.config"
       },
       "state": "items has wifi, wifi_max 4; settings: the wifi entry of the case above, hash 0x5A5A0001",
-      "request_hex": "0175000000080010000000000000",
-      "answer_hex": "027500000001000001005a5a08060000036c6162ff"
+      "request_hex": "017500080010000000000000",
+      "answer_hex": "02750001000001005a5a08060000036c6162ff"
     },
     {
       "name": "probe.config set: get's wifi item sent back keeps the passphrase",
@@ -524,8 +524,8 @@
         "8": "oep.probe.config"
       },
       "state": "items has wifi, wifi_max 4; session S; settings as above, hash 0x5A5A0001; nothing changes, so neither does the hash",
-      "request_hex": "01760000000800114433221108060000036c6162ff",
-      "answer_hex": "0276000000010001005a5a"
+      "request_hex": "0176000800114433221108060000036c6162ff",
+      "answer_hex": "027600010001005a5a"
     },
     {
       "name": "probe.config set: pass_len 0xFF for an index with no entry",
@@ -534,8 +534,8 @@
         "8": "oep.probe.config"
       },
       "state": "items has wifi, wifi_max 4; session S; settings as above (no entry 1)",
-      "request_hex": "01770000000800114433221108080001056669656c64ff",
-      "answer_hex": "02770000000003"
+      "request_hex": "0177000800114433221108080001056669656c64ff",
+      "answer_hex": "0277000003"
     },
     {
       "name": "probe.config set: a 7-byte passphrase",
@@ -544,8 +544,8 @@
         "8": "oep.probe.config"
       },
       "state": "items has wifi, wifi_max 4; session S",
-      "request_hex": "017800000008001144332211080f0001056669656c640773656372657437",
-      "answer_hex": "02780000000003"
+      "request_hex": "01780008001144332211080f0001056669656c640773656372657437",
+      "answer_hex": "0278000003"
     },
     {
       "name": "probe.config set: wifi index at wifi_max",
@@ -554,18 +554,18 @@
         "8": "oep.probe.config"
       },
       "state": "items has wifi, wifi_max 4; session S",
-      "request_hex": "01790000000800114433221108080004056669656c6400",
-      "answer_hex": "0279000000000b08"
+      "request_hex": "0179000800114433221108080004056669656c6400",
+      "answer_hex": "027900000b08"
     },
     {
-      "name": "probe.config set: the longest wifi item (32-byte ssid, 64 hex digits), a 114-byte request",
+      "name": "probe.config set: the longest wifi item (32-byte ssid, 64 hex digits), a 112-byte request",
       "spec": "probe settings §1.4",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "items has wifi, wifi_max 4; session S; no settings; max_frame 114 or more on this transport; the probe's hash for the new settings is 0x5A5A0003",
-      "request_hex": "017c00000008001144332211086300002073737373737373737373737373737373737373737373737373737373737373734030313233343536373839616263646566303132333435363738396162636465663031323334353637383961626364656630313233343536373839616263646566",
-      "answer_hex": "027c000000010003005a5a"
+      "state": "items has wifi, wifi_max 4; session S; no settings; max_frame 112 or more on this transport; the probe's hash for the new settings is 0x5A5A0003",
+      "request_hex": "017c0008001144332211086300002073737373737373737373737373737373737373737373737373737373737373734030313233343536373839616263646566303132333435363738396162636465663031323334353637383961626364656630313233343536373839616263646566",
+      "answer_hex": "027c00010003005a5a"
     },
     {
       "name": "probe.config state: wifi connected on entry 0",
@@ -574,8 +574,8 @@
         "8": "oep.probe.config"
       },
       "state": "items has wifi, wifi_max 4; no save; connected through entry 0 at -52 dBm, address 192.168.1.23",
-      "request_hex": "017a00000008001500000000",
-      "answer_hex": "027a0000000100000000000000010800020000ccc0a80117"
+      "request_hex": "017a0008001500000000",
+      "answer_hex": "027a000100000000000000010800020000ccc0a80117"
     },
     {
       "name": "probe.config unset: wifi entry 0",
@@ -584,8 +584,8 @@
         "8": "oep.probe.config"
       },
       "state": "items has wifi, wifi_max 4; session S; settings as above; the probe's hash for the empty settings is 0x5A5A0002",
-      "request_hex": "017b0000000800144433221101010800",
-      "answer_hex": "027b000000010002005a5a"
+      "request_hex": "017b000800144433221101010800",
+      "answer_hex": "027b00010002005a5a"
     },
     {
       "name": "logic subscribe: min_bytes 1024, max_delay_ms 20",
@@ -594,8 +594,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "session S holds the lock; subscribe and unsubscribe set in fn 9's ops",
-      "request_hex": "018200000009000144332211000414000000",
-      "answer_hex": "02820000000100"
+      "request_hex": "01820009000144332211000414000000",
+      "answer_hex": "0282000100"
     },
     {
       "name": "logic unsubscribe",
@@ -604,8 +604,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "session S; fn 9 subscribed",
-      "request_hex": "018300000009000244332211",
-      "answer_hex": "02830000000100"
+      "request_hex": "01830009000244332211",
+      "answer_hex": "0283000100"
     },
     {
       "name": "logic unsubscribe without a subscription: success, nothing done",
@@ -614,8 +614,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "session S; fn 9 not subscribed",
-      "request_hex": "018400000009000244332211",
-      "answer_hex": "02840000000100"
+      "request_hex": "01840009000244332211",
+      "answer_hex": "0284000100"
     },
     {
       "name": "logic subscribe without a session: session_required",
@@ -624,8 +624,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "subscribe set in fn 9's ops",
-      "request_hex": "018500000009000100000000000000000000",
-      "answer_hex": "02850000000009"
+      "request_hex": "01850009000100000000000000000000",
+      "answer_hex": "0285000009"
     },
     {
       "name": "gpio subscribe: gpio sends no notifications (not in its ops)",
@@ -634,8 +634,8 @@
         "2": "oep.fixture.gpio"
       },
       "state": "session S",
-      "request_hex": "018600000002000144332211000000000000",
-      "answer_hex": "02860000000002"
+      "request_hex": "01860002000144332211000000000000",
+      "answer_hex": "0286000002"
     },
     {
       "name": "logic segments: one segment",
@@ -644,8 +644,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "one-shot done, generation 1: 1000 samples from 5 ms, ±50 ns, no trigger",
-      "request_hex": "01800000000900160000000000000000",
-      "answer_hex": "028000000001000001000000000000000000000000e8030000404b4c000000000032000000ffffffff0001000000"
+      "request_hex": "0180000900160000000000000000",
+      "answer_hex": "02800001000001000000000000000000000000e8030000404b4c000000000032000000ffffffff0001000000"
     },
     {
       "name": "logic read: another generation",
@@ -654,8 +654,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "generation 1",
-      "request_hex": "01810000000900150000000002000000000000000000000040000000",
-      "answer_hex": "0281000000000401010006"
+      "request_hex": "0181000900150000000002000000000000000000000040000000",
+      "answer_hex": "028100000401010006"
     },
     {
       "name": "logic segments: from_serial = serial_done, no segments and more 0",
@@ -664,8 +664,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "one-shot done, generation 1, serial_done 1",
-      "request_hex": "01870000000900160000000001000000",
-      "answer_hex": "028700000001000000"
+      "request_hex": "0187000900160000000001000000",
+      "answer_hex": "02870001000000"
     },
     {
       "name": "logic configure: one-shot, the required answer set",
@@ -674,8 +674,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "session S holds the lock; roles 0 and 1 in fn 9's plan; 20 MHz exact, 200000 samples fit; the probe packs 2 bits per sample",
-      "request_hex": "01880000000900104433221140010001420400002d3101430400400d0300",
-      "answer_hex": "02880000000100500800002d31010100000051040002020001520400400d030056040000000000"
+      "request_hex": "0188000900104433221140010001420400002d3101430400400d0300",
+      "answer_hex": "0288000100500800002d31010100000051040002020001520400400d030056040000000000"
     },
     {
       "name": "logic configure without rate: malformed",
@@ -684,8 +684,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "session S; as above",
-      "request_hex": "01890000000900104433221140010001430400400d0300",
-      "answer_hex": "02890000000003"
+      "request_hex": "0189000900104433221140010001430400400d0300",
+      "answer_hex": "0289000003"
     },
     {
       "name": "logic query: streaming with samples, refused with the tag",
@@ -694,8 +694,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "as above (query needs no lock)",
-      "request_hex": "018a000000090018000000004001000342040040420f00430400e8030000",
-      "answer_hex": "028a000000000b43"
+      "request_hex": "018a00090018000000004001000342040040420f00430400e8030000",
+      "answer_hex": "028a00000b43"
     },
     {
       "name": "logic query: an immediate trigger's role is not looked at",
@@ -704,8 +704,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "as above (roles 0 and 1 in fn 9's plan); type 0 carries role 5, not in the plan",
-      "request_hex": "01a00000000900180000000040010001420400002d3101430400400d0300450600000500000000",
-      "answer_hex": "02a00000000100500800002d31010100000051040002020001520400400d030056040000000000"
+      "request_hex": "01a0000900180000000040010001420400002d3101430400400d0300450600000500000000",
+      "answer_hex": "02a0000100500800002d31010100000051040002020001520400400d030056040000000000"
     },
     {
       "name": "logic query: samples 0, a value the definition excludes: malformed",
@@ -714,8 +714,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "as above",
-      "request_hex": "01a20000000900180000000040010001420400002d310143040000000000",
-      "answer_hex": "02a20000000003"
+      "request_hex": "01a2000900180000000040010001420400002d310143040000000000",
+      "answer_hex": "02a2000003"
     },
     {
       "name": "logic status: data dropped inside a segment, state 6 and error 2",
@@ -724,8 +724,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "repeat, 1 channel w 1, samples 8000 (1000 bytes a segment), generation 1: serials 0 and 1 done, then the capture ring overflowed inside serial 2",
-      "request_hex": "019000000009001400000000",
-      "answer_hex": "029000000001000602000000d007000000000000010100000001010002"
+      "request_hex": "01900009001400000000",
+      "answer_hex": "02900001000602000000d007000000000000010100000001010002"
     },
     {
       "name": "logic segments: the dropped segment is not handed out",
@@ -734,8 +734,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "repeat, 1 channel w 1, samples 8000 (1000 bytes a segment), generation 1: serials 0 and 1 done, then the capture ring overflowed inside serial 2",
-      "request_hex": "01910000000900160000000000000000",
-      "answer_hex": "029100000001000002000000000000000000000000401f0000404b4c000000000032000000ffffffff000100000001000000e803000000000000401f0000405dc6000000000032000000ffffffff0001000000"
+      "request_hex": "0191000900160000000000000000",
+      "answer_hex": "02910001000002000000000000000000000000401f0000404b4c000000000032000000ffffffff000100000001000000e803000000000000401f0000405dc6000000000032000000ffffffff0001000000"
     },
     {
       "name": "logic read: nothing of the dropped segment",
@@ -744,8 +744,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "repeat, 1 channel w 1, samples 8000 (1000 bytes a segment), generation 1: serials 0 and 1 done, then the capture ring overflowed inside serial 2; write_pos 2000",
-      "request_hex": "01920000000900150000000001000000d00700000000000040000000",
-      "answer_hex": "02920000000100d0070000000000000000000000"
+      "request_hex": "0192000900150000000001000000d00700000000000040000000",
+      "answer_hex": "0292000100d0070000000000000000000000"
     },
     {
       "name": "logic describe: multirate declared",
@@ -754,8 +754,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32",
-      "request_hex": "01930000000000030000000009000000",
-      "answer_hex": "0293000000010000070500000600ff010104000014000f0104000114000f0104000214000f0104000314000f4009000140420f00010000004009000240420f0008000000410900e803000000e1f50501440100044508000700000040420f00600d0007000000020000008000000001"
+      "request_hex": "0193000000030000000009000000",
+      "answer_hex": "029300010000070500000600ff010104000014000f0104000114000f0104000214000f0104000314000f4009000140420f00010000004009000240420f0008000000410900e803000000e1f50501440100044508000700000040420f00600d0007000000020000008000000001"
     },
     {
       "name": "logic configure multirate: the capture §5.7 example",
@@ -764,8 +764,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S holds the lock",
-      "request_hex": "0194000000090010443322114001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
-      "answer_hex": "0294000000010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
+      "request_hex": "019400090010443322114001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
+      "answer_hex": "029400010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
     },
     {
       "name": "logic query multirate: the same answer, nothing changed",
@@ -774,8 +774,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; configured as the configure vector",
-      "request_hex": "0195000000090018000000004001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
-      "answer_hex": "0295000000010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
+      "request_hex": "019500090018000000004001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
+      "answer_hex": "029500010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
     },
     {
       "name": "logic configure multirate: samples 72 rounded up to a multiple of L",
@@ -784,8 +784,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "0196000000090010443322114001000142040000e1f50543040048000000e00a0000012000000000000000e00a0003000400000001000000",
-      "answer_hex": "0296000000010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
+      "request_hex": "019600090010443322114001000142040000e1f50543040048000000e00a0000012000000000000000e00a0003000400000001000000",
+      "answer_hex": "029600010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
     },
     {
       "name": "logic query multirate: rate = max_hz on a heavy combination answers the highest rate kept",
@@ -794,8 +794,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32",
-      "request_hex": "0197000000090018000000004001000142040000e1f50543040060000000e00a0000020200000001000000e00a0001020200000001000000e00a0002020200000001000000e00a0003020200000001000000",
-      "answer_hex": "02970000000100500800005a6202010000005102000100600400200000005204006000000056040000000000"
+      "request_hex": "019700090018000000004001000142040000e1f50543040060000000e00a0000020200000001000000e00a0001020200000001000000e00a0002020200000001000000e00a0003020200000001000000",
+      "answer_hex": "0297000100500800005a6202010000005102000100600400200000005204006000000056040000000000"
     },
     {
       "name": "logic configure multirate: d 0, malformed",
@@ -804,8 +804,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "0198000000090010443322114001000142040000e1f50543040060000000e00a0000000000000000000000",
-      "answer_hex": "02980000000003"
+      "request_hex": "019800090010443322114001000142040000e1f50543040060000000e00a0000000000000000000000",
+      "answer_hex": "0298000003"
     },
     {
       "name": "logic configure multirate: sample with phase = d, malformed",
@@ -814,8 +814,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "0199000000090010443322114001000142040000e1f50543040060000000e00a0003000400000004000000",
-      "answer_hex": "02990000000003"
+      "request_hex": "019900090010443322114001000142040000e1f50543040060000000e00a0003000400000004000000",
+      "answer_hex": "0299000003"
     },
     {
       "name": "logic configure multirate: any_active with param 2, malformed",
@@ -824,8 +824,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019a000000090010443322114001000142040000e1f50543040060000000e00a0000012000000002000000",
-      "answer_hex": "029a0000000003"
+      "request_hex": "019a00090010443322114001000142040000e1f50543040060000000e00a0000012000000002000000",
+      "answer_hex": "029a000003"
     },
     {
       "name": "logic configure multirate: edge_latch with d 1, malformed",
@@ -834,8 +834,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019b000000090010443322114001000142040000e1f50543040060000000e00a0000020100000001000000",
-      "answer_hex": "029b0000000003"
+      "request_hex": "019b00090010443322114001000142040000e1f50543040060000000e00a0000020100000001000000",
+      "answer_hex": "029b000003"
     },
     {
       "name": "logic configure multirate: the same role twice, malformed",
@@ -844,8 +844,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019c000000090010443322114001000142040000e1f50543040060000000e00a0003000400000001000000e00a0003000800000000000000",
-      "answer_hex": "029c0000000003"
+      "request_hex": "019c00090010443322114001000142040000e1f50543040060000000e00a0003000400000001000000e00a0003000800000000000000",
+      "answer_hex": "029c000003"
     },
     {
       "name": "logic configure multirate: a reserved policy (3), unsupported",
@@ -854,8 +854,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019d000000090010443322114001000142040000e1f50543040060000000e00a0000030400000000000000",
-      "answer_hex": "029d000000000be0"
+      "request_hex": "019d00090010443322114001000142040000e1f50543040060000000e00a0000030400000000000000",
+      "answer_hex": "029d00000be0"
     },
     {
       "name": "logic configure multirate: d 3 where only powers of 2 are declared, unsupported",
@@ -864,8 +864,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019e000000090010443322114001000142040000e1f50543040060000000e00a0003000300000000000000",
-      "answer_hex": "029e000000000be0"
+      "request_hex": "019e00090010443322114001000142040000e1f50543040060000000e00a0003000300000000000000",
+      "answer_hex": "029e00000be0"
     },
     {
       "name": "logic configure multirate: d 256 above max_d, unsupported",
@@ -874,8 +874,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019f000000090010443322114001000142040000e1f50543040060000000e00a0003000001000000000000",
-      "answer_hex": "029f000000000be0"
+      "request_hex": "019f00090010443322114001000142040000e1f50543040060000000e00a0003000001000000000000",
+      "answer_hex": "029f00000be0"
     },
     {
       "name": "logic configure multirate: a role not in the plan, unavailable",
@@ -884,8 +884,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "01a0000000090010443322114001000142040000e1f50543040060000000e00a0004000400000000000000",
-      "answer_hex": "02a0000000000401010006"
+      "request_hex": "01a000090010443322114001000142040000e1f50543040060000000e00a0004000400000000000000",
+      "answer_hex": "02a000000401010006"
     },
     {
       "name": "logic configure multirate on a fn that does not declare it: unsupported with the critical tag",
@@ -894,8 +894,8 @@
         "16": "oep.fixture.logic"
       },
       "state": "session S; fn 16 is a logic fn whose describe has no multirate; plan roles 0-3",
-      "request_hex": "01a1000000100010443322114001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
-      "answer_hex": "02a1000000000be0"
+      "request_hex": "01a100100010443322114001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
+      "answer_hex": "02a100000be0"
     },
     {
       "name": "logic segments multirate: a stopped segment, trigger_index in base samples on the any_active role",
@@ -904,8 +904,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; configured as the configure vector plus trigger (edge, role 0, falling) and pretrigger 13; generation 1; role 0 fell at base sample 13 of the segment, the host stopped at base sample 72 (the §5.7 input)",
-      "request_hex": "01a20000000900160000000000000000",
-      "answer_hex": "02a20000000100000100000000000000000000000048000000404b4c00000000000a0000000d0000000201000000"
+      "request_hex": "01a2000900160000000000000000",
+      "answer_hex": "02a2000100000100000000000000000000000048000000404b4c00000000000a0000000d0000000201000000"
     },
     {
       "name": "capture-group bind: a multirate logic and an analog, the logic as trigger_track",
@@ -916,8 +916,8 @@
         "13": "oep.fixture.analog"
       },
       "state": "session S; fn 9 configured multirate one-shot (the configure vector plus the TLVs 4506000200010000004604000d000000: edge, role 0, falling, pretrigger 13 base samples); fn 13 configured one-shot with an immediate trigger; fn 12's tracks list both",
-      "request_hex": "01a30000000c0010443322110209000d000102000900",
-      "answer_hex": "02a30000000100"
+      "request_hex": "01a3000c0010443322110209000d000102000900",
+      "answer_hex": "02a3000100"
     },
     {
       "name": "capture-group bind: a track cannot keep the group's pretrigger",
@@ -928,8 +928,8 @@
         "13": "oep.fixture.analog"
       },
       "state": "session S; fn 9 configured one-shot at actual_rate 20000000/1 with an edge trigger and pretrigger 100000 (5 ms); fn 13 configured one-shot at actual_rate 48000/1, immediate, actual_samples 4800, max_pretrigger 128; fn 13 would keep P_k = 240 > 128",
-      "request_hex": "01a40000000c0010443322110209000d000102000900",
-      "answer_hex": "02a40000000004010100020502000d00"
+      "request_hex": "01a4000c0010443322110209000d000102000900",
+      "answer_hex": "02a4000004010100020502000d00"
     },
     {
       "name": "capture-group start: the group's and each track's new generation",
@@ -940,8 +940,8 @@
         "13": "oep.fixture.analog"
       },
       "state": "session S; fn 12 bound to fn 9 then fn 13, both one-shot with immediate triggers; generations before: group 4, fn 9 3, fn 13 1; acquisition starts at 7 ms",
-      "request_hex": "018b0000000c001144332211",
-      "answer_hex": "028b000000010000000000c0cf6a000000000005000000020900040000000d0002000000"
+      "request_hex": "018b000c001144332211",
+      "answer_hex": "028b00010000000000c0cf6a000000000005000000020900040000000d0002000000"
     },
     {
       "name": "spi-target read_rx: 12 bits, MSB first, a partial last byte",
@@ -950,8 +950,8 @@
         "14": "oep.fixture.spi-target"
       },
       "state": "session S; configured with bit_order 0; one transaction queued: CS ended after 12 MOSI bits 1 1 0 0 0 0 0 0 1 0 1 1 (in wire order); no ns TLV",
-      "request_hex": "018c0000000e001244332211",
-      "answer_hex": "028c0000000100000c0000000200c0b0"
+      "request_hex": "018c000e001244332211",
+      "answer_hex": "028c000100000c0000000200c0b0"
     },
     {
       "name": "spi-target read_rx: 12 bits, LSB first, a partial last byte",
@@ -960,8 +960,8 @@
         "14": "oep.fixture.spi-target"
       },
       "state": "session S; configured with bit_order 1; one transaction queued: CS ended after 12 MOSI bits 1 1 0 0 0 0 0 0 1 0 1 1 (in wire order); no ns TLV",
-      "request_hex": "018d0000000e001244332211",
-      "answer_hex": "028d0000000100000c0000000200030d"
+      "request_hex": "018d000e001244332211",
+      "answer_hex": "028d000100000c0000000200030d"
     },
     {
       "name": "logic status: streaming stopped in error, write_pos at the lost segment's start",
@@ -970,8 +970,8 @@
         "9": "oep.fixture.logic"
       },
       "state": "streaming, 1 channel w 8, the probe's segments 16 samples (16 bytes), generation 1: serials 0 and 1 done (bytes 0-31); bytes 24-39 sent in one frame; then the capture ring overflowed inside serial 2",
-      "request_hex": "01a100000009001400000000",
-      "answer_hex": "02a1000000010006020000002000000000000000010100000001010002"
+      "request_hex": "01a10009001400000000",
+      "answer_hex": "02a100010006020000002000000000000000010100000001010002"
     }
   ],
   "events": [

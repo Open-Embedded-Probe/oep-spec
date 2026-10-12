@@ -388,7 +388,7 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
 
 - 語（32 bit）単位。8 / 16 bit のアクセスは dmi の手順で組む。
 - **1 回の長さ**: read_block / write_block を持つ probe は、describe の共通 tag max_length（core §7.4）を必ず出す。単位は **byte 数**
-  （4 の倍数）。probe は max_length を、read_block の応答（見出し 7 + done 2 + status 1 + 語）と write_block の要求（見出し 12 +
+  （4 の倍数）。probe は max_length を、read_block の応答（見出し 5 + done 2 + status 1 + 語）と write_block の要求（見出し 10 +
   connection 2 + address 4 + count 2 + 語）がどちらも自分のどの経路の max_frame にも収まる値で宣言する（core §7.4）。host は count を
   max_length から決め、max_frame から計算しない。count × 4 が max_length を超えれば rejected unsupported（payload `0x00`）。count = 0 は
   success、done 0。4 の倍数でない address は rejected malformed。

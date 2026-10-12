@@ -15,9 +15,9 @@ describe を読むいちばん小さい host を、線の上のすべてのバ�
 - **シリアルの口のフレーム**（UART bridge、USB CDC、内蔵の USB シリアル）: `0x00 COBS(message + CRC-16) 0x00`。CRC-16/CCITT-FALSE
   （多項式 0x1021、初期値 0xFFFF、反転なし。"123456789" → 0x29B1）をリトルエンディアンで付け、254 byte の区切りの COBS にする
   （transports §1）。vendor bulk と TCP のフレームは `length(u16) message` で、CRC は無い。
-- **要求**: `role(0x01) corr(u32) fn(u16) op(u8) session_id(u32) payload`（見出し 12 byte）。session_id 0 はセッション無しを表す。
+- **要求**: `role(0x01) corr(u16) fn(u16) op(u8) session_id(u32) payload`（見出し 10 byte）。session_id 0 はセッション無しを表す。
   セッションの要求はその id を持つ（core §4.1）。
-- **応答**: `role(0x02) corr(u32) resolution(u8) detail(u8) payload`（見出し 7 byte）。resolution 0x01 completed なら detail は outcome
+- **応答**: `role(0x02) corr(u16) resolution(u8) detail(u8) payload`（見出し 5 byte）。resolution 0x01 completed なら detail は outcome
   （0 success）、0x00 rejected なら detail は断りの理由（core §4.2、§4.3）。
 - **TLV**: `tag(u8) len(u16) value`。長さによらず形は一つ（core §2.2）。
 - **fn 0** は本体（core）で、名前を持たず list に載らない。op は confirm 0x01、list 0x02、describe 0x03（core §12）。
@@ -48,27 +48,27 @@ COBS と CRC-16（`binascii.crc_hqx`）で確かめる。空白は読むため�
 ベクタ: `confirm.json` の "revision 1 asked and answered"。要求: `"OEP?" min_rev max_rev` = revision 1〜1。
 
 ```text
-message      01 01000000 0000 01 00000000 | 4f 45 50 3f 01 01
+message      01 0100 0000 01 00000000 | 4f 45 50 3f 01 01
                role corr fn op session_id | "OEP?" min_rev max_rev
-serial frame 00 03 01 01 01 01 01 01 02 01 01 01 01 09 4f 45 50 3f 01 01 a2 5f 00
-length frame 12 00 01 01 00 00 00 00 00 01 00 00 00 00 4f 45 50 3f 01 01
+serial frame 00 03 01 01 01 01 02 01 01 01 01 09 4f 45 50 3f 01 01 08 96 00      （CRC-16 0x9608 → 08 96）
+length frame 10 00 01 01 00 00 00 01 00 00 00 00 4f 45 50 3f 01 01
 ```
 
 応答: `"OEP!" revision flags max_frame(u16) window(u32) max_inflight(u8) boot_id(u32)`、続いて TLV 0x01 transport（confirm が来た経路の
 index。いつも付く、core §7.1）。
 
 ```text
-message      02 01000000 01 00 | 4f 45 50 21 | 01 | 00 | 0004 | 00100000 | 04 | 78563412 | 01 01 00 00
+message      02 0100 01 00 | 4f 45 50 21 | 01 | 00 | 0004 | 00100000 | 04 | 78563412 | 01 01 00 00
                role corr completed success | "OEP!" | rev 1 | flags | max_frame 1024 | window 4096 | max_inflight 4 | boot_id | TLV transport = 0
-serial frame 00 03 02 01 01 01 02 01 06 4f 45 50 21 01 01 02 04 02 10 01 08 04 78 56 34 12 01 01 01 03 63 69 00
+serial frame 00 03 02 01 02 01 06 4f 45 50 21 01 01 02 04 02 10 01 08 04 78 56 34 12 01 01 01 03 ab a4 00
 ```
 
 範囲の中に扱える revision が無いとき（ここでは host が 2〜3 を求める）、probe は unsupported で断り、payload は tag 0x00 と、続く
 TLV 0x01 supported =（min 1、max 1）（`confirm.json` の "no revision in the range: unsupported with the supported range"）:
 
 ```text
-request      01 02000000 0000 01 00000000 | 4f 45 50 3f 02 03
-answer       02 02000000 00 0b | 00 | 01 02 00 01 01
+request      01 0200 0000 01 00000000 | 4f 45 50 3f 02 03
+answer       02 0200 00 0b | 00 | 01 02 00 01 01
                rejected unsupported | tag 0x00 | TLV supported: min 1、max 1
 ```
 
@@ -77,17 +77,17 @@ answer       02 02000000 00 0b | 00 | 01 02 00 01 01
 ベクタ: `discovery.json` の "list everything from the first"。要求: `first(u16)` = 最初のインターフェースから。
 
 ```text
-message      01 02000000 0000 02 00000000 | 0000
-serial frame 00 03 01 02 01 01 01 01 02 02 01 01 01 01 01 03 2e 38 00
+message      01 0200 0000 02 00000000 | 0000
+serial frame 00 03 01 02 01 01 02 02 01 01 01 01 01 03 dc 47 00
 ```
 
-応答: `total(u16) count(u8)`、続いて項を前に長さを置かずに並べる: `fn(u16) instance(u16) revision(u8) flags(u8)
+応答: `total(u16) count(u8)`、続いて項を前に長さを置かずに並べる: `fn(u16) instance(u16) revision(u8)
 name_len(u8) name`（core §2.3）。fn 0 の本体は名前を持たず list に載らないので、インターフェースを持たないいちばん小さい probe の list は空である。
 
 ```text
-message      02 02000000 01 00 | 0000 | 00
+message      02 0200 01 00 | 0000 | 00
                completed success | total 0 | count 0
-serial frame 00 03 02 02 01 01 02 01 01 01 01 03 85 53 00
+serial frame 00 03 02 02 02 01 01 01 01 03 2a 74 00
 ```
 
 ### 3.3 describe（core §7.3、§7.5）
@@ -96,25 +96,25 @@ serial frame 00 03 02 02 01 01 02 01 01 01 01 03 85 53 00
 要求には TLV を付けない。
 
 ```text
-message      01 03000000 0000 03 00000000 | 0000 | 0000
-serial frame 00 03 01 03 01 01 01 01 02 03 01 01 01 01 01 01 01 03 4f 0c 00
+message      01 0300 0000 03 00000000 | 0000 | 0000
+serial frame 00 03 01 03 01 01 02 03 01 01 01 01 01 01 01 03 ea 30 00
 ```
 
 応答: `more(u8)`、続いて宣言の TLV。fn 0 でどの probe も出す 4 つ: ops（この fn が持つ op を base 0x00 と bitmap で示す、
 core §7.4。ここでは core §1.2 が fn 0 に求める 8 つ: confirm、list、describe、clock、open、end、keepalive、lock_state）、unit_id、transport（経路ごとに 1 つ）、max_op_ms（core §1.2）。
 
 ```text
-message      02 03 00 00 00 01 00 00 07 04 00 00 1e 00 0f 42 08 00 61 31 62 32 63 33 64 34 49 03 00 00 01 ff 4d 04 00 e8 03 00 00
+message      02 03 00 01 00 00 07 04 00 00 1e 00 0f 42 08 00 61 31 62 32 63 33 64 34 49 03 00 00 01 ff 4d 04 00 e8 03 00 00
                completed success | more 0 | ops 01-04 10-13 | unit_id "a1b2c3d4" | transport: index 0、kind 1、interface 0xFF | max_op_ms 1000
-serial frame 00 03 02 03 01 01 02 01 01 03 07 04 01 02 1e 04 0f 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4d 04 03 e8 03 01 03 27 50 00
+serial frame 00 03 02 03 02 01 01 03 07 04 01 02 1e 04 0f 42 08 0b 61 31 62 32 63 33 64 34 49 03 01 05 01 ff 4d 04 03 e8 03 01 03 28 e1 00
 ```
 
 `first` が TLV の数（ここでは 4）以上の describe には、more 0 で TLV 無しで答える（core §7.3。`discovery.json` の
 "describe fn 0 from beyond the last: more 0 and no TLVs"）:
 
 ```text
-request      01 04000000 0000 03 00000000 | 0000 | 0400
-answer       02 04000000 01 00 | 00
+request      01 0400 0000 03 00000000 | 0000 | 0400
+answer       02 0400 01 00 | 00
 ```
 
 ### 3.4 ほかはすべて断る
@@ -123,8 +123,8 @@ answer       02 04000000 01 00 | 00
 unknown_operation。ここでは断りの応答に payload は無い（`discovery.json` の "refusals"）。
 
 ```text
-request fn 7 op 1      01 05000000 0700 01 00000000     answer 02 05000000 00 01    rejected unknown_function
-request fn 0 op 0x50   01 06000000 0000 50 00000000     answer 02 06000000 00 02    rejected unknown_operation
+request fn 7 op 1      01 0500 0700 01 00000000     answer 02 0500 00 01    rejected unknown_function
+request fn 0 op 0x50   01 0600 0000 50 00000000     answer 02 0600 00 02    rejected unknown_operation
 ```
 
 ほかの断りの正確なバイト列は `tests/vectors/refusals.json`。
@@ -183,8 +183,8 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
    `sessions.json` の "clock without a session and while a session holds the lock" の最初の段（uptime_ns は例の 2.0 s）:
 
    ```text
-   request      01 01000000 0000 04 00000000
-   answer       02 01000000 01 00 | 78563412 | 0094357700000000
+   request      01 0100 0000 04 00000000
+   answer       02 0100 01 00 | 78563412 | 0094357700000000
                   completed success | boot_id | uptime_ns = 2000000000
    ```
 

@@ -17,14 +17,14 @@ SCENARIOS = json.loads((Path(__file__).parent / 'sessions.json').read_text())['s
 
 @pytest.mark.parametrize('scenario', SCENARIOS, ids=lambda scenario: scenario['name'])
 def test_session_vectors_obey_replay_and_lock_state(scenario):
-    last_session, locked, highwater = None, False, 0
+    last_session, locked, highwater = None, False, None
     cache = OrderedDict()
     executions = {}
     for step in scenario['steps']:
         req = bytes.fromhex(step['request_hex'])
         ans = bytes.fromhex(step['answer_hex'])
-        _, corr, fn, op, session = struct.unpack_from('<BIHBI', req)
-        _, reply_corr, resolution, detail = struct.unpack_from('<BIBB', ans)
+        _, corr, fn, op, session = struct.unpack_from('<BHHBI', req)
+        _, reply_corr, resolution, detail = struct.unpack_from('<BHBB', ans)
         assert corr == reply_corr and fn == 0
         opening = op == OPS['open']
         needs_session = op in (OPS['end'], OPS['keepalive'])
@@ -41,10 +41,10 @@ def test_session_vectors_obey_replay_and_lock_state(scenario):
                 reason = 'malformed'
             else:
                 assert ans == previous_ans, step['note']
-        elif session and session == last_session and corr <= highwater:
+        elif session and session == last_session and not (0 < ((corr - highwater) & 0xFFFF) < REG['limits']['corr_half_range']):
             reason = 'result_lost'
         elif session:
-            force = opening and req[16] != 0
+            force = opening and req[14] != 0
             if not locked and not (opening and session != last_session):
                 reason = 'no_session'
             elif locked and session != last_session and not force:
@@ -59,7 +59,7 @@ def test_session_vectors_obey_replay_and_lock_state(scenario):
                 assert executions[key] == 1, step['note']
             if opening:
                 if session != last_session:
-                    last_session, highwater = session, 0
+                    last_session, highwater = session, None
                     cache.clear()
                 locked = True
             elif op == OPS['end']:
@@ -67,7 +67,10 @@ def test_session_vectors_obey_replay_and_lock_state(scenario):
         # Cache responses that passed the replay stage for the current/last session;
         # a malformed reused corr must not replace its original response.
         if session and session == last_session and not replay and reason != 'result_lost':
-            highwater = max(highwater, corr)
+            highwater = corr
+            for old_corr in list(cache):
+                if ((corr - old_corr) & 0xFFFF) >= REG['limits']['corr_half_range']:
+                    del cache[old_corr]
             cache[corr] = (req, ans)
             while len(cache) > 4:
                 cache.popitem(last=False)

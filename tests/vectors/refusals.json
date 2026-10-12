@@ -7,9 +7,9 @@
       "fns": {
         "2": "oep.fixture.gpio"
       },
-      "request_hex": "01100000000200104433221101030008",
+      "request_hex": "0110000200104433221101030008",
       "answer": "unsupported",
-      "answer_hex": "0210000000000b00020200030040010000"
+      "answer_hex": "021000000b00020200030040010000"
     },
     {
       "name": "i2c-target address above 0x7F (excluded by the definition)",
@@ -17,9 +17,9 @@
       "fns": {
         "3": "oep.fixture.i2c-target"
       },
-      "request_hex": "01110000000300104433221180",
+      "request_hex": "0111000300104433221180",
       "answer": "malformed",
-      "answer_hex": "02110000000003"
+      "answer_hex": "0211000003"
     },
     {
       "name": "i2c-target address 0x03 (reserved by the I2C specification)",
@@ -27,9 +27,9 @@
       "fns": {
         "3": "oep.fixture.i2c-target"
       },
-      "request_hex": "01120000000300104433221103",
+      "request_hex": "0112000300104433221103",
       "answer": "unsupported",
-      "answer_hex": "0212000000000b00"
+      "answer_hex": "021200000b00"
     },
     {
       "name": "attach method 2",
@@ -37,9 +37,9 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "0113000000040011443322110281040040420f0083040001000200",
+      "request_hex": "011300040011443322110281040040420f0083040001000200",
       "answer": "unsupported",
-      "answer_hex": "0213000000000b00"
+      "answer_hex": "021300000b00"
     },
     {
       "name": "attach without max_speed (a mandatory TLV)",
@@ -47,9 +47,9 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "0114000000040011443322110083040001000200",
+      "request_hex": "011400040011443322110083040001000200",
       "answer": "malformed",
-      "answer_hex": "02140000000003"
+      "answer_hex": "0214000003"
     },
     {
       "name": "an unknown critical TLV: its tag as received",
@@ -57,9 +57,9 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "0115000000040011443322110081040040420f0083040001000200be0000",
+      "request_hex": "011500040011443322110081040040420f0083040001000200be0000",
       "answer": "unsupported",
-      "answer_hex": "0215000000000bbe"
+      "answer_hex": "021500000bbe"
     },
     {
       "name": "a TLV whose length runs past the end of the request",
@@ -67,9 +67,9 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "request_hex": "011700000004001144332211008304000100020081080040420f00",
+      "request_hex": "01170004001144332211008304000100020081080040420f00",
       "answer": "malformed",
-      "answer_hex": "02170000000003"
+      "answer_hex": "0217000003"
     },
     {
       "name": "read from 4",
@@ -77,9 +77,9 @@
       "fns": {
         "5": "oep.fixture.uart"
       },
-      "request_hex": "0118000000050011000000000400000000000000004000",
+      "request_hex": "011800050011000000000400000000000000004000",
       "answer": "unsupported",
-      "answer_hex": "0218000000000b00"
+      "answer_hex": "021800000b00"
     },
     {
       "name": "riscv-dm reset mode 3",
@@ -87,17 +87,17 @@
       "fns": {
         "6": "oep.target.riscv-dm"
       },
-      "request_hex": "011900000006001344332211010003",
+      "request_hex": "01190006001344332211010003",
       "answer": "unsupported",
-      "answer_hex": "0219000000000b00"
+      "answer_hex": "021900000b00"
     },
     {
       "name": "confirm min_rev > max_rev",
       "spec": "core §7.1",
       "fns": {},
-      "request_hex": "011a000000000001000000004f45503f0201",
+      "request_hex": "011a00000001000000004f45503f0201",
       "answer": "malformed",
-      "answer_hex": "021a0000000003"
+      "answer_hex": "021a000003"
     },
     {
       "name": "an unknown non-critical TLV is ignored",
@@ -105,17 +105,17 @@
       "fns": {
         "2": "oep.fixture.gpio"
       },
-      "request_hex": "011b00000002001044332211010300003e010001",
+      "request_hex": "011b0002001044332211010300003e010001",
       "answer": "completed success",
-      "answer_hex": "021b0000000100"
+      "answer_hex": "021b000100"
     },
     {
       "name": "corr zero is malformed",
       "spec": "core §4.1, §4.3",
       "fns": {},
-      "request_hex": "010000000000000400000000",
+      "request_hex": "01000000000400000000",
       "answer": "malformed",
-      "answer_hex": "02000000000003"
+      "answer_hex": "0200000003"
     }
   ]
 }

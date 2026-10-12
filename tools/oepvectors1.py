@@ -98,11 +98,11 @@ def tlv(tag: int, value: bytes) -> bytes:
 
 def request(corr: int, fn: int, op_code: int, payload: bytes, session: int = 0) -> bytes:
     """The one request header (core §4.1): session_id always present, 0 = no session."""
-    return struct.pack("<BIHBI", ROLE_REQUEST, corr, fn, op_code, session) + payload
+    return struct.pack("<BHHBI", ROLE_REQUEST, corr, fn, op_code, session) + payload
 
 
 def answer(corr: int, resolution: int, detail: int, payload: bytes = b"") -> bytes:
-    return struct.pack("<BIBB", ROLE_ANSWER, corr, resolution, detail) + payload
+    return struct.pack("<BHBB", ROLE_ANSWER, corr, resolution, detail) + payload
 
 
 def ops_value(codes: list[int]) -> bytes:
@@ -183,15 +183,15 @@ def headers() -> dict:
         "requests": [
             {"name": "request without a session: session_id 0", "role": ROLE_REQUEST, "corr": 0x1234, "fn": 0x0000, "op": c,
              "session_id": 0, "payload_hex": "00000000", "message_hex": hx(request(0x1234, 0, c, bytes(4)))},
-            {"name": "request of a session", "role": ROLE_REQUEST, "corr": 0x01020304, "fn": 0x0203,
+            {"name": "request of a session", "role": ROLE_REQUEST, "corr": 0x0102, "fn": 0x0203,
              "op": 0x10, "session_id": 0x11223344, "payload_hex": "",
-             "message_hex": hx(request(0x01020304, 0x0203, 0x10, b"", 0x11223344))},
+             "message_hex": hx(request(0x0102, 0x0203, 0x10, b"", 0x11223344))},
         ],
         "answers": [
             {"name": "completed success", "role": ROLE_ANSWER, "corr": 0x1234, "resolution": COMPLETED,
              "detail": 0, "payload_hex": "", "message_hex": hx(answer(0x1234, COMPLETED, 0))},
-            {"name": "rejected malformed", "role": ROLE_ANSWER, "corr": 0xFFFFFFFF, "resolution": REJECTED,
-             "detail": REASON["malformed"], "payload_hex": "", "message_hex": hx(answer(0xFFFFFFFF, REJECTED, REASON["malformed"]))},
+            {"name": "rejected malformed", "role": ROLE_ANSWER, "corr": 0xFFFF, "resolution": REJECTED,
+             "detail": REASON["malformed"], "payload_hex": "", "message_hex": hx(answer(0xFFFF, REJECTED, REASON["malformed"]))},
         ],
         "tlvs": [
             {"name": "two bytes", "tag": 0x10, "value_hex": "0102", "tlv_hex": hx(tlv(0x10, b"\x01\x02"))},
@@ -268,7 +268,7 @@ def refusals() -> dict:
     cases = []
 
     def add(name, spec, fns, req, reason, payload=b"", completed=False):
-        corr = struct.unpack_from("<I", req, 1)[0]
+        corr = struct.unpack_from("<H", req, 1)[0]
         ans = answer(corr, COMPLETED, 0, payload) if completed else answer(corr, REJECTED, REASON[reason], payload)
         cases.append({"name": name, "spec": spec, "fns": fns, "request_hex": hx(req),
                       "answer": "completed success" if completed else reason, "answer_hex": hx(ans)})
@@ -474,14 +474,16 @@ def sessions() -> dict:
              step("keepalive 2 still replays", request(2, 0, keep_op, b"", S), ok(2)),
              step("same corr with altered bytes is malformed", request(2, 0, keep_op, bytes([0]), S), rej(2, "malformed")),
          ]},
-        {"name": "16-bit counter does not wrap; an ended session cannot be reopened",
+        {"name": "16-bit counter wraps without releasing resources; an ended session cannot be reopened",
          "spec": "core §4.1, §5.2, §6.2", "initial": "lock free; max_inflight 4",
          "steps": [
-             step("open S", request(1, 0, open_op, struct.pack("<IB", lease, 0), S), opened(1)),
-             step("a new request more than half a cycle ahead is new", request(65533, 0, keep_op, b"", S), ok(65533)),
-             step("end S, leaving a higher corr for a check", request(65534, 0, end_op, b"", S), ok(65534)),
-             step("new open of ended S is no_session", request(65535, 0, open_op, struct.pack("<IB", lease, 0), S), rej(65535, "no_session")),
-             step("old end still replays without resurrecting resources", request(65534, 0, end_op, b"", S), ok(65534)),
+             step("open S near the wrap boundary", request(65533, 0, open_op, struct.pack("<IB", lease, 0), S), opened(65533)),
+             step("keepalive before wrap", request(65534, 0, keep_op, b"", S), ok(65534)),
+             step("last nonzero corr", request(65535, 0, keep_op, b"", S), ok(65535)),
+             step("wrap, skipping zero; S still holds the lock", request(1, 0, keep_op, b"", S), ok(1)),
+             step("end S after wrap", request(2, 0, end_op, b"", S), ok(2)),
+             step("new open of ended S is no_session", request(3, 0, open_op, struct.pack("<IB", lease, 0), S), rej(3, "no_session")),
+             step("old end still replays without resurrecting resources", request(2, 0, end_op, b"", S), ok(2)),
              step("T starts a new counter, only after all S requests resolved", request(1, 0, open_op, struct.pack("<IB", lease, 0), T), opened(1)),
          ]},
         {"name": "evicted request returns result_lost instead of being executed",
@@ -550,8 +552,8 @@ def ops() -> dict:
     link = {"1": "oep.probe.link"}
     add("link source: 8 bytes, byte k = k & 0xFF", "oep-if-link §2", link, "max_frame 1024",
         request(0x20, 1, op("oep.probe.link", "source"), struct.pack("<I", 8)), ok(0x20, struct.pack("<H", 8) + bytes(range(8))))
-    most = 1024 - 7 - 2                                                 # the answer's header and len (oep-if-link §2)
-    add("link source: more than fits, len = max_frame - 9", "oep-if-link §2", link, "max_frame 1024",
+    most = 1024 - 5 - 2                                                 # the answer's header and len (oep-if-link §2)
+    add("link source: more than fits, len = max_frame - 7", "oep-if-link §2", link, "max_frame 1024",
         request(0x25, 1, op("oep.probe.link", "source"), struct.pack("<I", 2000)),
         ok(0x25, struct.pack("<H", most) + bytes(k & 0xFF for k in range(most))))
     add("link source: length 0", "oep-if-link §2", link, "—",
@@ -710,8 +712,8 @@ def ops() -> dict:
     longest = request(0x7C, 8, pc_set, wifi_item(0, b"s" * REG["limits"]["wifi_ssid_max_bytes"], REG["limits"]["wifi_psk_hex_digits"],
                                                  b"0123456789abcdef" * 4), S)
     assert len(longest) == REG["limits"]["wifi_min_max_frame"]
-    add("probe.config set: the longest wifi item (32-byte ssid, 64 hex digits), a 114-byte request", "probe settings §1.4", pc,
-        wifi_state + "session S; no settings; max_frame 114 or more on this transport; the probe's hash for the new settings is 0x5A5A0003",
+    add("probe.config set: the longest wifi item (32-byte ssid, 64 hex digits), a 112-byte request", "probe settings §1.4", pc,
+        wifi_state + "session S; no settings; max_frame 112 or more on this transport; the probe's hash for the new settings is 0x5A5A0003",
         longest, ok(0x7C, struct.pack("<I", 0x5A5A0003)))
     ws = pce["wifi_state"]
     add("probe.config state: wifi connected on entry 0", "probe settings §3", pc,

@@ -8,15 +8,15 @@
         "corr": 2,
         "first": 0
       },
-      "request_hex": "0102000000000002000000000000",
-      "request_serial_frame_hex": "000301020101010102020101010101032e3800",
+      "request_hex": "010200000002000000000000",
+      "request_serial_frame_hex": "0003010201010202010101010103dc4700",
       "answer": {
         "corr": 2,
         "total": 0,
         "entries": []
       },
-      "answer_hex": "02020000000100000000",
-      "answer_serial_frame_hex": "000302020101020101010103855300"
+      "answer_hex": "0202000100000000",
+      "answer_serial_frame_hex": "000302020201010101032a7400"
     },
     {
       "name": "describe fn 0 from the first",
@@ -26,8 +26,8 @@
         "fn": 0,
         "first": 0
       },
-      "request_hex": "01030000000000030000000000000000",
-      "request_serial_frame_hex": "0003010301010101020301010101010101034f0c00",
+      "request_hex": "0103000000030000000000000000",
+      "request_serial_frame_hex": "00030103010102030101010101010103ea3000",
       "answer": {
         "corr": 3,
         "more": 0,
@@ -51,8 +51,8 @@
         ],
         "max_op_ms": 1000
       },
-      "answer_hex": "0203000000010000070400001e000f42080061316232633364344903000001ff4d0400e8030000",
-      "answer_serial_frame_hex": "00030203010102010103070401021e040f42080b61316232633364344903010501ff4d0403e8030103275000"
+      "answer_hex": "020300010000070400001e000f42080061316232633364344903000001ff4d0400e8030000",
+      "answer_serial_frame_hex": "0003020302010103070401021e040f42080b61316232633364344903010501ff4d0403e803010328e100"
     },
     {
       "name": "describe fn 0 from beyond the last: more 0 and no TLVs",
@@ -62,12 +62,12 @@
         "fn": 0,
         "first": 4
       },
-      "request_hex": "01040000000000030000000000000400",
+      "request_hex": "0104000000030000000000000400",
       "answer": {
         "corr": 4,
         "more": 0
       },
-      "answer_hex": "0204000000010000"
+      "answer_hex": "020400010000"
     }
   ],
   "refusals": [
@@ -79,9 +79,9 @@
         "fn": 7,
         "op": 1
       },
-      "request_hex": "010500000007000100000000",
+      "request_hex": "01050007000100000000",
       "answer": "unknown_function",
-      "answer_hex": "02050000000001"
+      "answer_hex": "0205000001"
     },
     {
       "name": "an op fn 0 does not define",
@@ -91,9 +91,9 @@
         "fn": 0,
         "op": 80
       },
-      "request_hex": "010600000000005000000000",
+      "request_hex": "01060000005000000000",
       "answer": "unknown_operation",
-      "answer_hex": "02060000000002"
+      "answer_hex": "0206000002"
     }
   ]
 }

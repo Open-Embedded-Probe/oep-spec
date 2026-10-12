@@ -59,7 +59,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 応答 | answer | 要求に対する probe の 1 つの返事 | core §4.2 |
 | 出来事 | event | kind と固定部分を持つ通知 | core §11.2 |
 | データ | data | 位置つきでストリームのバイトを運ぶ通知 | core §11.2 |
-| corr | corr | host が要求に付ける u32 の番号。1 ずつ進め、0 は使わない。応答が同じ値を持つ | core §4.1 |
+| corr | corr | host が要求に付ける u16 の番号。0 を飛ばして循環し、未解決要求の距離は半周未満。応答が同じ値を持つ | core §4.1 |
 | fn | fn | 同じ boot_id の間、インターフェースを指す u16。fn 0 は本体（list に載らない） | core §1、§7.2 |
 | op | op | インターフェースの中の操作の u8 の番号 | core §1、§2.5 |
 | resolution | resolution | completed（0x01）か rejected（0x00）。0x02 は予約 | core §4.2 |
@@ -78,7 +78,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | bitmap | bitmap | bit i は byte ⌊i/8⌋ の bit (i mod 8) | core §2.1 |
 | 真偽値、文字列 | boolean, text | u8 の 0 / 1（0 でなければ真と読む）。終端なしの UTF-8 | core §2.1 |
 | 知らない値 | unknown value | 読む側が知らない値の扱い | core §2.4 |
-| 一周する値 | wrapping value | seq、資源の番号: 通し番号の算術で比べる | core §2.6 |
+| 一周する値 | wrapping value | corr、seqなど: 通し番号の算術で比べる。資源の番号は同じboot内で再利用しない | core §2.6、§4.1、§9 |
 | 時計 | clock | probe の 1 つの時計: 起動からの ns（u64）。全ビット 1 は「まだ」。今の値は op の clock で読む | core §2.6a、§7.7 |
 | revision | revision | プロトコルの revision（confirm）とインターフェースの revision（list）。固定部分が変わるときだけ上げる | core §2.7、§7.1 |
 | max_frame、window、max_inflight | max_frame, window, max_inflight | 経路ごとの、メッセージの長さ、待っている byte、待っている要求の上限 | core §4.4 |
