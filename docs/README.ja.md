@@ -15,6 +15,7 @@
 |---|---|
 | host を実装する | [host 開発ガイド](host-development-guide.ja.md) |
 | probe を実装する | [probe 開発ガイド](probe-development-guide.ja.md) |
+| 独自の機能と検査を定義する | [拡張開発ガイド](extension-development-guide.ja.md) |
 | 用語を確認する | [用語集](glossary.ja.md) |
 | 安全性と接続先の信頼を扱う | [安全とセキュリティ](security.ja.md) |
 | USB デバイスを識別する | [USB の識別](usb-identity.ja.md) |

@@ -81,7 +81,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - 必須の op: core §12 の行（confirm、list、describe、clock、open、end、keepalive、lock_state）。
 - confirm: revision の選び方、transport TLV、扱える範囲つきの断り。max_frame は 64 以上、window は max_frame 以上、
   max_inflight は 1 以上（§7.1）。
-- list: fn 0 を載せない、instance の番号、boot_id が同じ間は答えが変わらない、first が total 以上なら total と count 0（§7.2）。
+- list: fn 0 を載せない、(name, revision)内のinstanceの一意性と欠番、fn順からの独立、boot_id が同じ間は答えが変わらない、first が total 以上なら total と count 0（§7.2）。製品のfirmware更新をまたぐinstance維持は、保存した組を新しいlistで解決して確認する。
 - describe: ページ送り、first が数以上なら more 0 だけで TLV 無し、宣言だけで boot_id が同じ間は変わらない（§7.3）。経路によらないので、各 TLV は応答の見出し 5 byte と more 1 byte を足しても、max_length はその op の要求と応答で、probe のどの経路の max_frame にも収まる（§7.3、§7.4）。
 - clock: boot_id と uptime_ns（要求を受けてから応答を送るまでの間に読んだ時計）。ロック不要で、session_id 0 ならセッションが無くても、ほかのセッションが
   ロックを持っていても答え、セッション、ロック、lease に触れない。broker 自身の OEP 端点も同じ契約を実装する（§7.7、transports §1）。
