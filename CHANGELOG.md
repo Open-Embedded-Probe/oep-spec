@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Make instance a stable, possibly sparse identifier within (name, revision), independent of fn order. Resolve saved interface identities explicitly and do not reuse removed logical identities. Clarify that breaking requiredness, state or resource-lifetime contracts also requires a revision change after freeze; wire widths remain unchanged.
+
 - 応答の共通 TLV 拡張規則が、固定部分の空の成功応答と rejected にも掛かることを明記し、共有ベクタと独立した検査を追加。
 
 OEP v1 is under development and has not been frozen or released. Before the first release, the current normative documents and registry define the complete state; intermediate design history is available from Git history.

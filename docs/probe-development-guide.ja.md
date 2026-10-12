@@ -125,9 +125,9 @@ number と等しい（transports §3）。
 **firmware**（0x40）: 自由な文字列（ふつうは版）。describe は宣言だけなので、起動ごとに変わる情報（前の起動の終わり方など）を入れない。
 **chip**（0x4C、任意）: 自由な文字列。MCU の型番とリビジョン（キャプチャの記録に、どのチップで取ったかを残すのに使われる）。
 
-**インターフェースとその順**（core §7.2）: probe が起動している間 fn は変わらない。同じ (name, revision) の instance は fn の昇順に
-数え、保存した設定はインターフェースを (name, instance, revision) で指す: 同じ名前のインターフェースの順を firmware の版をまたいで
-変えない。インターフェースの固定部分を変えるときは revision を上げ、できれば古い revision も別の fn で出し続ける（core §2.7）。
+**インターフェースの識別**（core §7.2）: probe が起動している間 fn は変わらない。instance は同じ (name, revision) の中で重複しない固定識別子で、欠番を許す。
+firmware に定数として割り当ててよく、動的な割当表を要求しない。削除や fn 変更で残った instance を詰め直さず、削除した番号を別の論理インターフェースへ振り直さない。
+保存した設定は (name, instance, revision) で指す。既存の契約を壊す変更は revision を上げ、できれば古い revision も別の fn で出し続ける（core §2.7）。
 
 **ピン**（core §7.4）: ピンを集合のどれにでも割り当てられる機能は role_channels を、組が決まっている機能は組ごとに channel_group を
 宣言する。両方を使ってもよい。probe 自身が使う channel はどの宣言にも載せず（インターフェースに割り当てない）、配線の固定の名前は `label`（0x46）に置く。plan に

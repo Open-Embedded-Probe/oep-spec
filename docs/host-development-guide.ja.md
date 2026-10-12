@@ -223,7 +223,7 @@ rejected は要求が受け付けられなかったこと、completed failed / p
 - **プロトコルの revision**: 経路の最初の confirm で扱える範囲を送り、その後は `min_rev = max_rev =` 使っている revision を送る
   （core §7.1）。rejected unsupported なら、TLV 0x01 が probe の扱える revision を示す。revision は経路ごと（TCP は接続ごと）。
 - **インターフェースの revision**: list は fn ごとに (name, instance, revision) を返す。知らない revision のインターフェースは使わない
-  （core §2.7）。probe は古い revision を別の fn で出してよいので、知っているほうを選ぶ。instance は (name, revision) ごとに数える
+  （core §2.7）。probe は古い revision を別の fn で出してよいので、知っているほうを選ぶ。instance は (name, revision) ごとの識別子で、欠番を許す
   （core §7.2）。
 - **応答の読み方**: 固定部分の後ろは TLV の並び。知らない tag は読み飛ばす。繰り返さない tag は最初のものを使う。並びは要素に長さの
   無い `count × element` なので、要素は定義のとおりにフィールドごとに読む。固定の形は末尾を延ばされない。長さが定義と違う TLV の値は

@@ -171,10 +171,10 @@ host は時計の今の値を clock（§7.7）で読む。
 ### 2.7 名前と revision
 
 - インターフェースのどの**固定の形**（§2.3: 固定部分、TLV の値、並びの要素、項目）も、形と意味は **(名前, revision) で決まる**（list の revision、u8）。
-- **revision を上げるのは、固定の形の意味か長さを変えるときだけ**。host は知らない revision のインターフェースを使わない。
-- 固定の形を変えずに、任意の request TLV、response TLV、任意の op、任意の event を足すときは、revision を変えない。知らない
+- **revision を上げるのは、既存の契約を壊すとき**。固定の形の意味か長さ、必須操作、状態遷移、資源の寿命などを変え、既存の host または probe が従来の契約で動けなくなる変更を含む。任意の操作や機能を必須にする変更も含む。host は知らない revision のインターフェースを使わない。
+- 既存の形と振る舞いの契約を保ち、任意の request TLV、response TLV、任意の op、任意の event を足すときは、revision を変えない。知らない
   host はそれらを使わない。任意の op の有無は ops（§1.2、§7.4）で、op でない任意の機能（モード、format など）の有無は describe（features など）で宣言する。
-- 本体の形を変えるときは、プロトコルの revision（confirm）を上げる。この文書の形は revision 1。
+- 本体の形または既存の契約を壊す振る舞いを変えるときは、プロトコルの revision（confirm）を上げる。この文書の形は revision 1。
 
 ## 3. 経路
 
@@ -393,8 +393,10 @@ entry: fn(u16)、instance(u16)、revision(u8)、name_len(u8)、name
 - probe のインターフェースを、first 番目から 1 フレームに入る分だけ返す。total はインターフェースの数。本体（fn 0）は名前を持たないので
   list に載らない: entry の fn は 0 でない。
 - 名前は 1〜48 byte、使える文字は `a-z 0-9 - .`（§13）。項目 1 つの応答は、名前が 48 byte でも 62 byte（見出し 5、total と count 3、項目の固定部分 6、名前 48）で、どの max_frame（64 以上）にも収まる。
-- instance は、同じ名前のインターフェースが複数あるときの見分け。**同じ (名前, revision) のインターフェースを fn の昇順に 0 から振る**。probe は同じ名前のインターフェースの
-  順を firmware の版を越えて保つ（保存した設定が (name, instance, revision) でインターフェースを指すため）。未使用の flags フィールドは置かない。
+- instance は、同じ (名前, revision) のインターフェースを見分ける **u16 の識別子**。その組の中で重複しない。0 を使ってよく、欠番もよい。fn の順や list の位置から計算しない。
+  同じ製品の firmware 更新では、同じ論理インターフェースの instance を保つ。削除したものの番号を別の論理インターフェースへ振り直さない（保存した設定が (name, instance, revision) で指すため）。
+  host は保存した組を list から解決し、見つからなければ未提供として扱う。fn は同じ boot_id の間の呼び出し先で、firmware 更新後の保存識別には使わない。
+  instance は接続先 target や配線の識別ではない。複数の revision を提供するときは各 revision の組を明示的に選び、保存した設定を別の revision へ自動で移さない。未使用の flags フィールドは置かない。
 - list の応答（どのインターフェースがあるか、その fn、instance、revision、名前）は、同じ boot_id の間変わらない。インターフェースが増えたり減ったりする probe は再起動する（新しい boot_id）。host は boot_id が同じ間、名前から fn への対応を覚えてよい。
 - first が total 以上なら、応答は total と count 0。
 
