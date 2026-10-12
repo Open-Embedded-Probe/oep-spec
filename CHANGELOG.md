@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Scope partial-frame completion to the same route. Other routes can reply independently; discard closed-route output rather than delaying a new subscription or carrying the old tail into its stream.
+
 - Clarify subscription replacement/removal: discard old unsent notifications and complete an already-started frame before the operation's response.
 
 - Permit bounded subscription storage and reject unsatisfiable data batching without changing an existing subscription. Clarify response priority at frame boundaries and that the notification staging ceiling is not a required queue allocation. Remove excessive buffer/DMA requirements from the probe guide.
