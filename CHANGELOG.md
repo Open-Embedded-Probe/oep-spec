@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Clarify subscription replacement/removal: discard old unsent notifications and complete an already-started frame before the operation's response.
+
 - Permit bounded subscription storage and reject unsatisfiable data batching without changing an existing subscription. Clarify response priority at frame boundaries and that the notification staging ceiling is not a required queue allocation. Remove excessive buffer/DMA requirements from the probe guide.
 
 - Explain recovery from a lost resource-creation result without requiring a replay cache: confirm ownership and end the session, or change sessions under the existing rules, before explicitly recreating resources.
