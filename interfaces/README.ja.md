@@ -35,7 +35,8 @@ host は list で見つけて要るものだけを使う。
 | UART | configure/read/status、RXだけ | marks/clear/mark/write、TX queue |
 | I2C target | 1つの7bit address、小さいframe/queue | stretch、内部pull-up、受信timestampのTLV |
 | SPI target | 1回のarm、小さいframe/queue | LSB先、受信timestampのTLV。mode0〜3の既存契約は維持 |
-| capture | 1トラック/1役割/1対応mode、即時trigger、polling | query/force/通知/group/multirate、残るmode |
+| capture | 1トラック/1役割/ワンショットmode1、即時trigger、polling | query/force/通知/group/multirate、残るmode。別modeを選ぶ場合はそのmodeの契約を満たす |
+| capture-group | 必要なトラックだけを宣言し、bind/start/stop/statusで組を扱う | force、通知、全トラックの組合せ。各トラックの対応modeと同時取得条件を満たす |
 | wire | attach/detach/connections、1接続 | scan、複数接続、console |
 | RISC-V target | dmi/halt/resume | reset/block/run/step、チップ固有flash手順 |
 | ARM target | transferだけ | read_block/write_block |
