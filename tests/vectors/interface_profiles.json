@@ -1,0 +1,72 @@
+{
+  "about": "Declaration byte examples for core-only, independent, minimal UART and raw ARM profiles. List entries have no flags byte. Each describe reply has more=0 and ops plus selected pin/format tags. These are not complete endpoint identity/capability dumps or runtime conformance traces.",
+  "profiles": [
+    {
+      "name": "core only",
+      "list_answer_hex": "0201000100000000",
+      "entries": []
+    },
+    {
+      "name": "independent extension",
+      "list_answer_hex": "020100010001000103000000010f696f2e6578616d706c652e6563686f",
+      "entries": [
+        {
+          "fn": 3,
+          "instance": 0,
+          "revision": 1,
+          "name": "io.example.echo",
+          "ops": [
+            16
+          ],
+          "describe_answer_hex": "0203000100000702001001"
+        }
+      ]
+    },
+    {
+      "name": "receive-only UART",
+      "list_answer_hex": "02010001000100010700000001106f65702e666978747572652e75617274",
+      "entries": [
+        {
+          "fn": 7,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.fixture.uart",
+          "ops": [
+            16,
+            17,
+            22
+          ],
+          "describe_answer_hex": "0207000100000702001043010400010000014002000100"
+        }
+      ]
+    },
+    {
+      "name": "raw ARM target",
+      "list_answer_hex": "020100010002000208000000010c6f65702e776972652e7377640900000001126f65702e7461726765742e61726d2d616469",
+      "entries": [
+        {
+          "fn": 8,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.wire.swd",
+          "ops": [
+            17,
+            18,
+            19
+          ],
+          "describe_answer_hex": "020800010000070200100e0104000100000101040002000002"
+        },
+        {
+          "fn": 9,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.target.arm-adi",
+          "ops": [
+            16
+          ],
+          "describe_answer_hex": "0209000100000702001001"
+        }
+      ]
+    }
+  ]
+}

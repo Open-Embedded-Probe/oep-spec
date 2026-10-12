@@ -1091,10 +1091,38 @@ def multirate() -> dict:
         "cases": cases,
     }
 
+def interface_profiles() -> dict:
+    """Small declaration examples, not complete probes or operation traces."""
+    rows = []
+    for label, entries in (
+        ('core only', []),
+        ('independent extension', [(3, 'io.example.echo', [0x10], [])]),
+        ('receive-only UART', [(7, 'oep.fixture.uart', [0x10, 0x11, 0x16],
+                               [(0x01, b'\x01\0\0\x01'), (0x40, b'\x01\0')])]),
+        ('raw ARM target', [(8, 'oep.wire.swd', [0x11, 0x12, 0x13],
+                            [(0x01, b'\x01\0\0\x01'), (0x01, b'\x02\0\0\x02')]),
+                           (9, 'oep.target.arm-adi', [0x10], [])]),
+    ):
+        body = struct.pack('<HB', len(entries), len(entries))
+        declarations = []
+        for fn, name, offered, extra in entries:
+            encoded = name.encode('ascii')
+            body += struct.pack('<HHBB', fn, 0, 1, len(encoded)) + encoded
+            values = [(REG['describe_common']['ops'], ops_value(offered))] + extra
+            declarations.append({'fn': fn, 'instance': 0, 'revision': 1, 'name': name,
+                'ops': offered, 'describe_answer_hex': hx(answer(fn, COMPLETED, 0, b'\0' + b''.join(tlv(t, v) for t, v in values)))})
+        listed = answer(1, COMPLETED, 0, body)
+        assert len(listed) <= 64
+        rows.append({'name': label, 'list_answer_hex': hx(listed), 'entries': declarations})
+    return {'about': 'Declaration byte examples for core-only, independent, minimal UART and raw ARM profiles. '
+            'List entries have no flags byte. Each describe reply has more=0 and ops plus selected pin/format tags. '
+            'These are not complete endpoint identity/capability dumps or runtime conformance traces.', 'profiles': rows}
+
+
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
          "refusals.json": refusals, "core_extensions.json": core_extensions,
          "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding,
-         "logic_layout.json": logic_layout, "multirate.json": multirate}
+         "logic_layout.json": logic_layout, "multirate.json": multirate, "interface_profiles.json": interface_profiles}
 
 
 def render(build) -> str:
