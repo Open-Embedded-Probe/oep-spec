@@ -89,6 +89,7 @@ probe は、自分が出す transport とインターフェースについてこ
   `max_op_ms_max`）（§1.2、§7.5）。unit_id の一意性と不変性、transport の index の不変性（§7.5）。
 - channel: 解放したピンは空きの状態へ、起動したら最初の答えの前に自分で使う channel を除くすべての channel を空きの状態へ、ピンを取ってもピンは変わらない、資源の取り合いは何も変えずに断る（§8、§8.1）。
 - 通知（送り出すインターフェースがあれば）: その fn の subscribe（0x01）/ unsubscribe（0x02）を ops に立てる、送り出さない fn は持たない、seq、データだけをまとめ出来事は先の答えの後すぐ送る、答えを先に送ることと溜める量の上限（§11.2〜§11.4）。
+- 購読の保持量不足はunavailable cause2で断り、以前の購読の条件・送り先・seqを保つ。通知保持量の上限を必須queue容量として扱わず、送り始めたframeには別frameを挟まない（§11.3〜§11.4）。
 **時間の上限**（値は `registry/oep-v1.toml`）
 
 - `probe_frame_gap_ms`（transports §2）。宣言した max_op_ms より長い要求はなく、超えうる op は断る（§7.5）。lease の範囲
