@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Explain recovery from a lost resource-creation result without requiring a replay cache: confirm ownership and end the session, or change sessions under the existing rules, before explicitly recreating resources.
+
 - Clarify in the host guide that a retained success after lease expiry is a historical result and does not restore ownership or resources.
 
 - Add a generic extension-definition and three-layer testing guide with a small stateless example. Align the conformance checklist with stable, sparse instance identity.
