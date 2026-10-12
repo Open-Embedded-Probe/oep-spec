@@ -325,6 +325,8 @@ probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ�
 - **done は最後まで済んだ手順の数**（失敗したときは、失敗した手順の 0 起点の番号）。値を足すのは 0x02 / 0x03 / 0x05 だけ。
   `nvals` は応答に入っている値の数（最初の done 個の手順のうち値を足す手順の数に、失敗した手順が 0x03 / 0x05 で待ち切れた
   （status timeout）なら 1 を足したもの）。線の不良などで読めずに失敗した手順は値を足さない。
+- 実行前に、値を返す手順の数をrとして成功応答の固定結果`10 + 4×r`byteがその経路のmax_frameへ収まることを確認する。
+  収まらなければunsupported（固定部分の印0）で断り、DMIへアクセスしない（core §4.4）。診断用の任意TLVは収まる分だけ付ける。
 - 0x04 の手順の wait_us と 0x05 の手順の max_us の和は max_op_ms を超えてはならない（rejected unsupported）。0x03 の手順は時間ではなく回数で抑える。
   host の待ちは、この和を引数の時間として数える（core §4.4）。
   走っている間に要求が max_op_ms に達したら、probe はその手順で要求を終え、status timeout で答える（done = その手順の番号）。
@@ -451,6 +453,8 @@ read_block/write_blockはその手順をProbe内でまとめるための操作�
   n = 0 は success で、done 0、status ok、ack 0（転送が 1 つも無ければ ack は 0）、nvals 0。
 - transfer は生の転送で、AP の読み出しが 1 つ遅れて返るのもそのまま（host が RDBUFF か次の AP の読み出しで受け取る）。
   WAIT は probe の中で再試行し、諦めたら status wait。FAULT で止まるので、host は ABORT で sticky を消す。
+- 実行前に、読み出す転送の数をrとして成功応答の固定結果`11 + 4×r`byteがその経路のmax_frameへ収まることを確認する。
+  収まらなければunsupported（固定部分の印0）で断り、線へ転送しない（core §4.4）。診断用の任意TLVは収まる分だけ付ける。
 - read_block / write_blockを提供する場合の1回の長さと読みの意味は riscv-dm（§4.5）と同じ: describe の max_length（byte 数、4 の倍数、要求も応答も
   どの経路の max_frame にも収まる値）を必ず出し、count × 4 がそれを超えれば rejected unsupported（payload `0x00`）。host は max_length から count を
   決める。read_block は target のバスを通して読み、probe の側に写しを持たない。

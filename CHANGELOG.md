@@ -8,6 +8,7 @@ OEP v1 is under development and has not been frozen or released. Before the firs
 
 Breaking changes before the v1 freeze:
 
+- Reject fixed-result batches before execution when their required result cannot fit the route's max_frame, even if the request fits. DMI and ARM transfer count result-producing reads before target access; defined paging/prefix operations retain their own rules.
 - Allow transfer-only ARM ADI targets; paired block operations are optional through ops. Permit resources to cross fn boundaries only when their interface definitions explicitly establish compatibility, including wire-created connections consumed by target interfaces. Failed external writes do not guarantee absence of effects and must not be blindly reexecuted.
 - Permit a receive-only fixture UART with configure/read/status. Make marks/clear/mark/write optional through ops; mark requires marks, and omitting write also omits the TX pin role. Unplanned UART operations reject unavailable. Retain the existing operation numbers and payloads, and keep target-console requirements independent.
 - Separate mandatory replay order state from optional request/result byte retention. Permit zero replay entries and return result_lost for old requests without reexecution; max_inflight limits unresolved input, not cache capacity. Allow bounded numeric widths in extension definitions rather than requiring all hardware values to be at least 32 bits. Existing standard-interface field widths remain unchanged.

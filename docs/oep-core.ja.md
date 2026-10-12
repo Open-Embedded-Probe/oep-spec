@@ -265,6 +265,8 @@ unsupported の payload の tag は、固定部分の値なら 0x00、TLV につ
   `max_inflight`（未解決の要求の数の上限）を返す。message 長は見出し（role から）を含み、フレームの包み（COBS、CRC、length）は含まない。
 - host はこれらの上限を守る。超えた要求を probe は rejected window_exceeded で断ってよいが、バッファを超えて失われた要求には
   応答も返らない。守るのは host の責任である。
+- 要求が収まっても、要求の引数から必要となる固定結果がその経路のmax_frameへ収まらない場合は、Probeは実行前にrejected unsupported（固定部分の印0）で断る。
+  結果の短縮・prefix・ページングをインターフェースが定める場合は、その規則で収める。成功に必要な結果を捨ててsuccessにしない。
 - probe は要求を受け取った順に処理し、その要求の順に応答を返す。
 - confirm の max_frame、window、max_inflight は、**その confirm が来た経路の**上限である。経路ごとに別々に数え、ある経路で未解決の要求は、ほかの経路の受けの余地を使わない。§5.2 の表は probe に 1 つのまま（セッションの要求は 1 つの経路で送る、[経路](oep-transports.ja.md) §3）。
 - **host の待ち時間**: 応答が来ないことは時間切れだけで判断する。host は要求ごとに**少なくとも**次を待つ: その要求の引数で決まる時間（インターフェースの文書が
