@@ -22,3 +22,27 @@ host は list で見つけて要るものだけを使う。
 | [リンク](oep-if-link.ja.md) | `oep.probe.link`（線の試験と port_speed） |
 
 インターフェースの書き方（逆 DNS の名前で、誰でも足せる）は core §13。
+
+## 小さいProbeで採用する範囲
+
+名前付き機能がないcoreだけのProbeも有効である。下の最小例は、その機能をlistへ出したときの選択で、全機能を一律に要求する表ではない。
+詳しい必須操作・依存・拒否は各規範を参照する。任意のopはops、op以外の能力は各describeの定義で宣言する。
+
+| 機能 | 小さい構成の例 | 一律に要求しないもの |
+|---|---|---|
+| plan | 選んだfnのpinを割り当てて解放 | 他の拡張へのplan採用 |
+| GPIO | set/read、入力mode0 | 出力mode、drive段の切替 |
+| UART | configure/read/status、RXだけ | marks/clear/mark/write、TX queue |
+| I2C target | 1つの7bit address、小さいframe/queue | stretch、内部pull-up、受信timestampのTLV |
+| SPI target | 1回のarm、小さいframe/queue | LSB先、受信timestampのTLV。mode0〜3の既存契約は維持 |
+| capture | 1トラック/1役割/1対応mode、即時trigger、polling | query/force/通知/group/multirate、残るmode |
+| wire | attach/detach/connections、1接続 | scan、複数接続、console |
+| RISC-V target | dmi/halt/resume | reset/block/run/step、チップ固有flash手順 |
+| ARM target | transferだけ | read_block/write_block |
+| console | 1connection/1stream、対応mechanismだけ | 全mechanism、SDIの送信queue。操作表自体は維持 |
+| probe.config | 対応項目だけ、RAM上の設定 | save/erase、不揮発領域、Wi-Fi、全preset種別 |
+| link / restart | 提供する場合だけ採用 | coreへの一律の採用、linkのport_speed |
+
+有限buffer、同じboot内で再利用しない資源ID、session終了時の解放はcoreの共通契約である。
+frameへ収まる要求の数と、必要な成功応答の量を別々に確かめる。例えばcaptureのアナログ説明は役割数に応じて増え、最小64byteでは収まらない構成もある。
+その場合に重要な結果を省くのではなく、必要なmax_frameを選ぶか、実行前に対応しない要求を断る。

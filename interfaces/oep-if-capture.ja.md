@@ -29,6 +29,11 @@ status、区画の情報、出来事、ストリーミングのデータの TLV 
 キャプチャは位置つきのストリームの形（[共通部品](oep-if-common.ja.md) §1）を使わない（from とマークが無く、区画と世代を持つ）。
 モード（ワンショット、リピート、ストリーミング）は §2.1。レートは probe が刻む。宣言は目安で、configure の応答が正（§3.5）。
 
+**最小の構成**: 1トラック、1役割、対応modeが1つ、即時trigger、通知なしにしてよい。
+すべてのmode、query、force、capture-group、multirateを実装する義務はない。
+対応するmodeはdescribeのmodeで宣言し、宣言しないmodeのconfigure/queryはunsupported（受け取ったmode TLVのtag）で断る。
+必須の操作と、採用したmodeのデータ/世代/終了の規則は維持する。例えばワンショットだけでもsegmentsは取得した区画を返し、releaseは何もせず成功する。
+
 ## 1. データの形
 
 用語: **ストリーム**は、1 回のキャプチャ（1 区画）で probe が返すバイトの並び。バイト位置 0 から始まる。
@@ -328,6 +333,8 @@ mode 2 だけ、skew は遅れが 0 のチャネルを省いてよい。チャ�
 | 0x45 | trigger | types(u32: type のビット集合)、max_pretrigger(u32) |
 | 0x46 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)、attenuation_mdb(u32: 前段の減衰、ミリ dB。0 は減衰なし、0xFFFFFFFF は減衰で表せない前段)。入力範囲の候補ごとに 1 つ（アナログ）。番号は configure の frontend で選ぶ。候補が 1 つだけの probe はそれだけ書く |
 
+- modeは少なくとも1つ宣言する。1/2/3を全部宣言する必要はなく、対応するmodeだけを載せる。
+  宣言したmodeでの値の組合せや実現可能量は、下の目安とconfigure/queryの規則に従う。
 - **宣言は目安、configure の応答が正。** 宣言に出ていない組み合わせは query で確かめる。
 
 ### 3.6 別の定義に残すもの
