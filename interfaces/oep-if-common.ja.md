@@ -7,7 +7,11 @@
 ## 1. 位置つきのストリーム
 
 使うもの: `oep.target.console`、`oep.fixture.uart`。キャプチャ（`oep.fixture.logic` / `oep.fixture.analog`）は位置を持つが、区画と世代を
-持つ別の形で、この部品は使わない（[キャプチャ](oep-if-capture.ja.md) §2）。この部品を使うインターフェースは、read、marks、clear、mark、write を必須の op として持つ。
+持つ別の形で、この部品は使わない（[キャプチャ](oep-if-capture.ja.md) §2）。この部品の最小の採用は read である。
+marks、clear、mark、write を持つか、それらが必須か任意かは、採用するインターフェースの op 表が定める。
+宣言した操作は、この節の形と意味を使う。共通部品を採用しただけで、書き込み、消去、マークの記録をすべて実装する義務は生じない。
+mark を提供する場合は marks も提供する。marks を提供しない場合は、read の from 3 を rejected unsupported（固定部分の印 0）で断る。
+既存の `oep.target.console` と `oep.fixture.uart` は、それぞれの文書の必須操作を引き続き持つ。
 
 ### 1.1 位置
 
@@ -17,7 +21,7 @@
   1. あふれ（古いものから押し出す。target や相手を待たせない）。
   2. host の明示の消去（clear）。
   3. ストリームの解放、または probe の再起動。
-- target のリセットでは捨てない（リセット直前の出力が最も見たいことが多い）。代わりにマークを付ける（§1.3）。
+- target のリセットでは捨てない（リセット直前の出力が最も見たいことが多い）。マークの機能を持つ場合は、代わりにマークを付ける（§1.3）。
 
 ### 1.2 read
 
@@ -40,6 +44,8 @@
 - **read はロックなしで使える**（読んでも状態は変わらず、probe は読み手ごとの状態を持たない）。
 
 ### 1.3 マーク
+
+この節は、marks を提供するインターフェースへ適用する。マークを持たない最小の採用には、マークのリングや serial の管理を要求しない。
 
 ```text
 mark : serial(u32)、position(u64)、kind(u8)、time_ns(u64)、detail(u8)          22 byte
@@ -86,7 +92,7 @@ core §2.6 で比べる。「残っている」は、残っている一番古い
 
 | 操作 | 要求 | 応答 | 意味 |
 |---|---|---|---|
-| clear | [stream(u16)] | — | 貯めたバイトを捨て、マーク clear を付ける |
+| clear | [stream(u16)] | — | 貯めたバイトを捨てる。marks を提供する場合はマーク clear を付ける |
 | mark | [stream(u16)]、value(u8) | — | マーク host（detail = value）を付ける |
 | write | [stream(u16)]、count(u16)、data | accepted(u16) | 相手への入力。`accepted` は、data の先頭から probe の送りの列に入れたバイトの数（count と列の空きの小さい方）で、届いたことは意味しない。accepted = count なら completed success、0 < accepted < count なら completed partial、count > 0 で accepted 0 なら completed failed。列の大きさと、列から相手へ渡す速さはインターフェースが決める（コンソールは [コンソール](oep-if-console.ja.md) §2、fixture UART は UART の送信） |
 

@@ -68,7 +68,7 @@
 | 0x15 | write | count(u16)、data | accepted(u16)、[TLV] | 必要 |
 | 0x16 | status | — | baud(u32、実際の値)、format(u8)、[TLV] | 不要 |
 
-- op 0x02〜0x06 は [共通部品](oep-if-common.ja.md) §1 の形（stream の byte なし）で、`oep.target.console` と同じ番号。
+- op 0x11〜0x15 は [共通部品](oep-if-common.ja.md) §1 の形（stream の u16 なし）で、`oep.target.console` と同じ番号。
 - configure の TLV 0x01 format（u8）: bit0-1 データ長（0 = 8、1 = 7）、bit2-3 パリティ（0 なし、1 偶数、2 奇数）、bit4 ストップ
   ビット（0 = 1、1 = 2）。無ければ 8N1。宣言（formats）に無い値は rejected unsupported（受け取ったままの tag）。baud は実現できる値を返し、要求から
   ±5%（registry の `uart_baud_tolerance_pct`）を超えて外れれば rejected unsupported（payload `0x00`）。ピンの無い fn（plan に RX も TX も無い）の configure は rejected
