@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Clarify in the host guide that a retained success after lease expiry is a historical result and does not restore ownership or resources.
+
 - Add a generic extension-definition and three-layer testing guide with a small stateless example. Align the conformance checklist with stable, sparse instance identity.
 
 - Explain bounded resource-ID allocation using a counter and only live entries; retain boot-scoped nonreuse and clarify that request/plan counts are not allocation counts. Correct the host guide's name#instance example to refer to an identifier rather than list position.
