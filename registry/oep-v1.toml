@@ -430,8 +430,8 @@ revision = 1
 target = "ARM targets with an ADI debug interface"
 op = [
   { code = 0x10, name = "transfer", lock = true },
-  { code = 0x11, name = "read_block", lock = true },
-  { code = 0x12, name = "write_block", lock = true },
+  { code = 0x11, name = "read_block", lock = true },  # optional as a pair (ops); debug §6
+  { code = 0x12, name = "write_block", lock = true },  # optional as a pair (ops); debug §6
 ]
 
 [interface.enum.swd_ack]        # transfer answer's ack: line order, bit0 first (oep-if-debug §6)

@@ -115,6 +115,8 @@ core §2.6 で比べる。「残っている」は、残っている一番古い
 - 番号は core §9 の規則で振る。同じ boot_id の間は再利用しない。
 - detach、セッションの終わり、線切れで閉じる。connection に依存する stream は先に解放する。
 - 保存した slot は接続の情報だけで、connection を所有せず、自分から attach しない。
+- connectionを作るwireのfnと、それを使うtargetのfnは別でよい。wireの定義が対応するtargetを定め、target要求のconnection番号で明示的に選ぶ。
+  対応しないwireのconnectionはunavailable（cause 6）、存在しない/閉じた番号はno_resource。最後にattachした接続を暗黙に使わない。
 
 ## 3. 線と target の操作の status
 
@@ -132,5 +134,7 @@ core §2.6 で比べる。「残っている」は、残っている一番古い
 - 0x06〜0x3F は共通の値として予約、0x40〜0x7F はインターフェースが決める。知らない値は失敗として扱う。
 - **失敗は completed で返す**（core §4.2）。何も進まなければ failed、途中まで進めば partial。payload の形は成功のときと同じで、
   `done`（進んだ手順・語の数）と `status` で分かる。書式の誤りは rejected malformed。
+- failedやdone 0は、targetへ書き込みが届かなかった保証ではない。doneの計測点は各opが定める。
+  応答を失った書き込みなどは外部への作用が不明になりうるため、新しいcorrによる自動再実行や、線の無条件な再試行で同じ書き込みを繰り返さない。
 - 成功の形に done / status が無い op（scan、attach、detach）の失敗は、completed failed と payload `status(u8)、[TLV]`（core §2.3:
   固定部分は (op, resolution, outcome) ごとに定める）。

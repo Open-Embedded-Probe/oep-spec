@@ -344,3 +344,13 @@ describe の items に wifi（0x08）があり wifi_max が載る probe は、Wi
 - TCP の経路で、使っている entry を変えると（変えた set の応答の後で）その経路も切れる。シリアルの口か USB から設定するのが確か。
   TCP からしか届かないときは、変えた後に §4.1 のやり方で probe を見つけ直す。
 - 保存しなければ、再起動で消える（§15 の 5）。
+
+## 16. wireとtargetの操作を組み合わせる
+
+wireのattachが返したconnection番号を、対応するtargetのfnへの要求で明示する。wireのfn番号をtargetのfn番号として使わない。
+接続を複数持つ場合も、保存した番号を要求ごとに選び、最後の接続を暗黙に使わない。
+
+arm-adiの最小Probeはtransferだけを提供する。read_block/write_blockがopsに無ければ、HostがAPの選択・設定・posted readの回収をtransferで組む。
+ブロック操作があれば、そのmax_lengthの範囲で使う。未実装の任意操作からの組み替えと、実行した操作が失敗した後の再実行は区別する。
+失敗した書き込みやdone 0はtargetへの作用が無かった保証にならないため、失敗後に別の操作で同じ書き込みを自動的に繰り返さない。
+生のtransfer/dmiで扱うチップ固有の手順と復旧は、Host側のプロジェクトが管理する。

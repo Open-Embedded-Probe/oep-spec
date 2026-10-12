@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "12570ebb8424fbb8"
+REGISTRY_HASH = "0198bd3037a705e5"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'

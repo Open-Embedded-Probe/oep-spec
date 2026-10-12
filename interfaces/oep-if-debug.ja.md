@@ -14,6 +14,9 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 - `oep.wire.*` は connection を作り、`oep.target.*` は connection の上で target を操作する。target を扱うインターフェースは
   attach の前から list に出し、connection の無い要求は rejected no_resource。
 - connections のほかの op はすべてロックが要る。
+- 最小のwireはattach/detach/connectionsと1接続だけでよく、scan・複数接続・consoleを要求しない。
+  targetのflash手順、メモリ配置、チップの識別子の解釈はHostの知識として扱う。Probeが実装する高水準の操作は、宣言したtarget操作の範囲に限る。
+  connectionはwireのpin/target選択を保持し、各target要求が先頭のconnection番号でその接続を選ぶ。wireとtargetのfn番号が一致する必要はない。
 
 ## 0. すべての wire が共有するもの、新しい wire が定めるもの
 
@@ -433,7 +436,9 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
 
 ## 6. `oep.target.arm-adi`
 
-要求の先頭は connection(u16)。3 つの op はすべて必須（ops にすべて立てる）。arm-adi は任意の op を持たず、features を宣言しない。
+要求の先頭は connection(u16)。transferは必須。read_block/write_blockは組で提供する任意opで、opsに宣言する。
+最小の実装はtransferだけでよく、HostがAPの選択、CSW/TARの設定、posted readの回収を生の転送で組む。
+read_block/write_blockはその手順をProbe内でまとめるための操作で、提供しなければunknown_operation。任意opのためのfeaturesは追加しない。
 
 | op | 名前 | 要求（connection の後ろ） | 応答 |
 |---:|---|---|---|
@@ -446,7 +451,7 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
   n = 0 は success で、done 0、status ok、ack 0（転送が 1 つも無ければ ack は 0）、nvals 0。
 - transfer は生の転送で、AP の読み出しが 1 つ遅れて返るのもそのまま（host が RDBUFF か次の AP の読み出しで受け取る）。
   WAIT は probe の中で再試行し、諦めたら status wait。FAULT で止まるので、host は ABORT で sticky を消す。
-- read_block / write_block の 1 回の長さと読みの意味は riscv-dm（§4.5）と同じ: describe の max_length（byte 数、4 の倍数、要求も応答も
+- read_block / write_blockを提供する場合の1回の長さと読みの意味は riscv-dm（§4.5）と同じ: describe の max_length（byte 数、4 の倍数、要求も応答も
   どの経路の max_frame にも収まる値）を必ず出し、count × 4 がそれを超えれば rejected unsupported（payload `0x00`）。host は max_length から count を
   決める。read_block は target のバスを通して読み、probe の側に写しを持たない。
 - read_block / write_block は今の MEM-AP の TAR / DRW を使う。SELECT と CSW（32 bit、単一増加）は host が先に設定する。probe は

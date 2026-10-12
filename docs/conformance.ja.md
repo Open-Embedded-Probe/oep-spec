@@ -27,7 +27,7 @@
 | 見出し・拒否・TLV | 短い要求の無応答、corr 0、未知fn/op、session_required、拒否優先順、長さ/値域、未知非critical/critical、ID 0、0x7F、応答の補助情報 |
 | session | lease最小/最大/既定、keepalive、owner、他IDとの排他、end/期限切れ/force、session 0の無副作用、boot_idの変化 |
 | 再送 | openを含む保持した同一要求の結果、保持した要求と内容の違う同corrの拒否、0件cache/eviction/保持サイズ上限とresult_lost、rejectedでも進む順序状態、同ID open後の履歴、終了後の履歴、重複によるlease/通知の変更禁止 |
-| corrと寿命 | u16循環/zero飛ばし、半周の境界、未解決要求の前進制限、セッション間の旧応答排出、再接続時のqueue破棄、旧経路の未解決応答、資源IDの非再利用/枯渇、終了時の解放、古いIDと他種/他fnのIDの拒否 |
+| corrと寿命 | u16循環/zero飛ばし、半周の境界、未解決要求の前進制限、セッション間の旧応答排出、再接続時のqueue破棄、旧経路の未解決応答、資源IDの非再利用/枯渇、終了時の解放、古いIDと他種/非対応の作成元のIDの拒否、定義されたfn間の資源利用 |
 
 実機でも端点の状態変更を独立に観測する。二重実行の検査は、同じ応答が返るだけでなく、時計・資源・通知などの副作用が重複しないことを確かめる。資源を作る方法はインターフェース adapter に依存しても、その所有・解放・非再利用の合否はコアの契約で決める。
 
@@ -134,7 +134,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | 位置つきのストリーム（[共通部品](../interfaces/oep-if-common.ja.md) §1） | それを使う各インターフェースで §1 の read、marks（§1.3 の通し番号のページング: from_serial を含む、押し出されていれば一番古いものから、next なら空）、clear、mark、write。§3 の status の値 | — |
 | `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（[線とデバッグ](../interfaces/oep-if-debug.ja.md)） | attach（pins、max_speed 必須）、detach、connections。資源はセッション所有。暗黙の join / eviction をしない。§1 の attach の規範と max_op_ms。§2 の再試行と寿命 | scan（候補 count ≥ 1、有限探索）、attach の reset TLV |
 | `oep.target.riscv-dm`（§4） | dmi、halt、resume | reset、read_block / write_block、run、step: ops。reset があれば、ndmreset を解いた後に DM を待つ（§4.3、max_op_ms のうち）。read_block / write_block があれば max_length。自分の op で使った DATA0 / DATA1 を戻す（§4）。step が ok でなければ moved と dpc を 0、run の elapsed_us は resumereq から（§4.2、§4.4） |
-| `oep.target.arm-adi`（§6） | transfer（n = 0 は success、ack 0）、read_block、write_block。max_length は必ず出す | — |
+| `oep.target.arm-adi`（§6） | transfer（n = 0 は success、ack 0）。対応するwireのconnectionを明示して使う | read_block/write_blockは組でopsへ宣言。提供時だけmax_lengthが必須 |
 | `oep.target.console`（[コンソール](../interfaces/oep-if-console.ja.md)） | §1 の op。describe の mechanisms は必ず出す。mechanism 1 か 2 を持てば write を送りの列で受ける（§2）。§3 の読みの順（要求の実行中と hart が止まっている間は読まない、要求の後は DMSTATUS を先に読む）。方式 2 の枠は [dmseq](../interfaces/target-console-dmseq.ja.md) のとおり | どの方式か（describe の mechanisms） |
 | `oep.fixture.gpio`（[fixture](../interfaces/oep-if-fixture.ja.md) §1） | set、read。describe の modes に mode 0 | 出力の強さ（§1.1） |
 | `oep.fixture.uart`（§2） | configure/read/status。describeのformatsに8N1。planの存続中だけ受信し、解放時にbufferと設定を解放 | marks/clear/mark/write、ほかのformat。markはmarksが必要。writeなしではTX roleを宣言しない |
