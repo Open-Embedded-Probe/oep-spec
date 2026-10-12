@@ -14,7 +14,7 @@ OEPのGPIOはplanによるピン割り当てを使い、UARTはplanと位置つ�
 marks、clear、mark、write を持つか、それらが必須か任意かは、採用するインターフェースの op 表が定める。
 宣言した操作は、この節の形と意味を使う。共通部品を採用しただけで、書き込み、消去、マークの記録をすべて実装する義務は生じない。
 mark を提供する場合は marks も提供する。marks を提供しない場合は、read の from 3 を rejected unsupported（固定部分の印 0）で断る。
-既存の `oep.target.console` と `oep.fixture.uart` は、それぞれの文書の必須操作を引き続き持つ。
+`oep.target.console` と `oep.fixture.uart` は、それぞれの操作表が必須とする操作を持つ。UARTの任意操作の選択をconsoleの操作表へ流用しない。
 
 ### 1.1 位置
 

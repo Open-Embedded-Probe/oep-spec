@@ -495,10 +495,10 @@ revision = 1
 op = [
   { code = 0x10, name = "configure", lock = true },
   { code = 0x11, name = "read", lock = false },
-  { code = 0x12, name = "marks", lock = false },
-  { code = 0x13, name = "clear", lock = true },
-  { code = 0x14, name = "mark", lock = true },
-  { code = 0x15, name = "write", lock = true },
+  { code = 0x12, name = "marks", lock = false },  # optional (ops); fixture §2
+  { code = 0x13, name = "clear", lock = true },  # optional (ops); fixture §2
+  { code = 0x14, name = "mark", lock = true },  # optional (ops); fixture §2; requires marks
+  { code = 0x15, name = "write", lock = true },  # optional (ops); fixture §2
   { code = 0x16, name = "status", lock = false },
 ]
 [interface.tlv.configure]

@@ -14,6 +14,9 @@
 
 ## 1. `oep.fixture.gpio`
 
+最小の実装はset/readとmode 0でよく、出力mode、プル、出力強度の切替は対応するものだけを宣言する。
+GPIOのpin割り当てにはplanを使う。planを持たない他の独自拡張へ、この依存を要求するものではない。
+
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
 | 0x10 | set | n(u8)、n × (channel(u16)、mode(u8))、[TLV] | — | 必要 |
@@ -36,6 +39,8 @@
 - 扱える mode は describe の modes（tag 0x40、u32 のビット集合、bit n = mode n）で宣言する。0（入力）は必須。
 - **plan で取ったチャンネルは、最初の set までそれまでの状態を保つ**（空きの状態のまま。出力の idle なら、その level の駆動を続ける）。
   取ったことで level は変わらない。
+- readは現在のlevelを観測するだけで、入力へ切り替えたり、出力・プル・driveを変更したりしない。
+  planの解放・セッション終了では、そのplanによるGPIOの設定を解き、core §8/§9の空きの状態へ戻す。
 
 ### 1.1 出力の強さ（任意）
 
@@ -56,19 +61,25 @@
 
 ## 2. `oep.fixture.uart`
 
-ストリームは fn に 1 本。
+ストリームは fn に 1 本。最小の実装はconfigure/read/statusで、受信専用にしてよい。
+RXを割り当てて受信を保持するbufferと位置管理に対し、マークのringと送信のqueueは、それぞれの任意機能を提供しない場合には不要である。
 
-| op | 名前 | 要求 | 応答 | ロック |
-|---:|---|---|---|---|
-| 0x10 | configure | baud(u32)、[TLV] | baud(u32、実際の値)、[TLV] | 必要 |
-| 0x11 | read | from(u8)、arg(u64)、max(u16)、[TLV] | start(u64)、flags(u8)、len(u16)、data、[TLV] | 不要 |
-| 0x12 | marks | from_serial(u32) | more(u8)、count(u8)、count × mark、[TLV] | 不要 |
-| 0x13 | clear | — | — | 必要 |
-| 0x14 | mark | value(u8) | — | 必要 |
-| 0x15 | write | count(u16)、data | accepted(u16)、[TLV] | 必要 |
-| 0x16 | status | — | baud(u32、実際の値)、format(u8)、[TLV] | 不要 |
+| op | 名前 | 要求 | 応答 | ロック | 必須 |
+|---:|---|---|---|---|---|
+| 0x10 | configure | baud(u32)、[TLV] | baud(u32、実際の値)、[TLV] | 必要 | 必須 |
+| 0x11 | read | from(u8)、arg(u64)、max(u16)、[TLV] | start(u64)、flags(u8)、len(u16)、data、[TLV] | 不要 | 必須 |
+| 0x12 | marks | from_serial(u32) | more(u8)、count(u8)、count × mark、[TLV] | 不要 | 任意 |
+| 0x13 | clear | — | — | 必要 | 任意 |
+| 0x14 | mark | value(u8) | — | 必要 | 任意。marksも必要 |
+| 0x15 | write | count(u16)、data | accepted(u16)、[TLV] | 必要 | 任意 |
+| 0x16 | status | — | baud(u32、実際の値)、format(u8)、[TLV] | 不要 | 必須 |
 
 - op 0x11〜0x15 は [共通部品](oep-if-common.ja.md) §1 の形（stream の u16 なし）で、`oep.target.console` と同じ番号。
+- 任意opは提供するときだけopsに立てる。不在opはunknown_operation。marksを提供しない場合、readのfrom 3はunsupported（固定部分の印0）。
+  clearはmarksなしでも提供でき、その場合はclearのマークを要求しない。任意opをfeaturesの新しいbitで宣言しない。
+- writeを提供しないfnは、planのTX roleを受け付けず、そのroleのrole_channels/channel_groupを宣言しない。
+  writeを提供するfnでも、現在のplanにTXが無ければwriteはunavailable（cause 6）。TXだけのplanでは受信せず、readは共通部品の空bufferの規則に従う。
+- RXもTXもない、plan未作成の状態では、提供する上記opの有効な要求をunavailable（cause 6）で断る。coreの見出し・セッション・書式の規則は先に適用する。
 - configure の TLV 0x01 format（u8）: bit0-1 データ長（0 = 8、1 = 7）、bit2-3 パリティ（0 なし、1 偶数、2 奇数）、bit4 ストップ
   ビット（0 = 1、1 = 2）。無ければ 8N1。宣言（formats）に無い値は rejected unsupported（受け取ったままの tag）。baud は実現できる値を返し、要求から
   ±5%（registry の `uart_baud_tolerance_pct`）を超えて外れれば rejected unsupported（payload `0x00`）。ピンの無い fn（plan に RX も TX も無い）の configure は rejected
@@ -76,9 +87,11 @@
 - **status**（ロック不要）: 実際の baud / format。uart 項目の baud は set の時に範囲で確かめるが、実際の分周は plan で UART が動くときに決まる。
   そのとき ±5% を超えれば既定（115200 8N1、registry の `uart_default_baud`）にする。
 - **ストリームは plan が作り、plan を解くと消える**。セッションの configure も plan を解くと消える。受信は plan から（configure の前は
-  `oep.probe.config` の uart 項目があればその値、無ければ 115200 8N1）、セッションに関係なく貯める。configure をやり直しても貯めた分と位置はそのまま
+  `oep.probe.config` の uart 項目があればその値、無ければ 115200 8N1）。planを持つ間は、読むHostや要求のsession_idによらず受信を貯める。
+  configure をやり直しても貯めた分と位置はそのまま
   （境目が要るなら host が mark を付ける）。**位置とマークの serial は、plan を解いて再び作っても起動の中で戻らない**
-  （[共通部品](oep-if-common.ja.md) §1.1）。受信の誤りは mark lost（detail 2 framing、3 parity）。
+  （[共通部品](oep-if-common.ja.md) §1.1）。marksを提供する場合、受信の誤りはmark lost（detail 2 framing、3 parity）とする。
+  marksを提供しない場合は、マークの記録とserialの管理を要求しない。streamの位置は同じboot内で保持する。
 - **TX の線は、plan で割り当てている間（configure の前も）UART の休止（high）に保つ**: plan を取ることが TX を使い始めることである（core §8）（相手の受信が雑音を拾わないため）。plan を
   解いたら UART の駆動をやめ、core §8 の空きの状態にする。解いた後も相手の入力を浮かせたくない治具は、`oep.probe.config` の idle で
   そのピンをプルアップの入力に決めて保存する。
