@@ -59,7 +59,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 応答 | answer | 要求に対する probe の 1 つの返事 | core §4.2 |
 | 出来事 | event | kind と固定部分を持つ通知 | core §11.2 |
 | データ | data | 位置つきでストリームのバイトを運ぶ通知 | core §11.2 |
-| corr | corr | host が要求に付ける u16 の番号。1 ずつ進め、0 は使わない。応答が同じ値を持つ | core §4.1 |
+| corr | corr | host が要求に付ける u32 の番号。1 ずつ進め、0 は使わない。応答が同じ値を持つ | core §4.1 |
 | fn | fn | 同じ boot_id の間、インターフェースを指す u16。fn 0 は本体（list に載らない） | core §1、§7.2 |
 | op | op | インターフェースの中の操作の u8 の番号 | core §1、§2.5 |
 | resolution | resolution | completed（0x01）か rejected（0x00）。0x02 は予約 | core §4.2 |

@@ -120,8 +120,8 @@ def test_every_ops_in_the_vectors_is_valid():
     for name in ("discovery.json",):
         for ex in load(name)["exchanges"]:
             req, ans = bytes.fromhex(ex["request_hex"]), bytes.fromhex(ex["answer_hex"])
-            if struct.unpack_from("<B", req, 5)[0] == next(o["code"] for o in CORE["op"] if o["name"] == "describe") and len(ans) > 6:
-                for tag, value in tlvs(ans[6:]):
+            if struct.unpack_from("<B", req, 7)[0] == next(o["code"] for o in CORE["op"] if o["name"] == "describe") and len(ans) > 8:
+                for tag, value in tlvs(ans[8:]):
                     if tag == ops_tag:
                         assert valid_ops(value), ex["name"]
 
@@ -165,14 +165,14 @@ def test_headers_parse_to_their_fields():
     v = load("headers.json")
     for r in v["requests"]:
         msg = bytes.fromhex(r["message_hex"])
-        role, corr, fn, op, session = struct.unpack_from("<BHHBI", msg)                        # one 10-byte header (core §4.1)
+        role, corr, fn, op, session = struct.unpack_from("<BIHBI", msg)                        # one 12-byte header (core §4.1)
         assert (role, corr, fn, op, session) == (r["role"], r["corr"], r["fn"], r["op"], r["session_id"]) and role == 0x01
-        assert msg[10:].hex() == r["payload_hex"]
+        assert msg[12:].hex() == r["payload_hex"]
     assert {r["session_id"] == 0 for r in v["requests"]} == {True, False}
     for a in v["answers"]:
         msg = bytes.fromhex(a["message_hex"])
-        assert struct.unpack_from("<BHBB", msg) == (a["role"], a["corr"], a["resolution"], a["detail"])
-        assert msg[5:].hex() == a["payload_hex"]
+        assert struct.unpack_from("<BIBB", msg) == (a["role"], a["corr"], a["resolution"], a["detail"])
+        assert msg[7:].hex() == a["payload_hex"]
     for t in v["tlvs"]:
         ((tag, value),) = tlvs(bytes.fromhex(t["tlv_hex"]))
         assert tag == t["tag"]
@@ -184,40 +184,40 @@ def test_confirm_exchanges():
     confirm_op = next(o["code"] for o in CORE["op"] if o["name"] == "confirm")
     ok, refused = load("confirm.json")["exchanges"]
     req = bytes.fromhex(ok["request_hex"])
-    assert struct.unpack_from("<BHHBI", req) == (0x01, ok["request"]["corr"], 0, confirm_op, 0)
-    assert req[10:] == b"OEP?" + bytes([ok["request"]["min_rev"], ok["request"]["max_rev"]])
+    assert struct.unpack_from("<BIHBI", req) == (0x01, ok["request"]["corr"], 0, confirm_op, 0)
+    assert req[12:] == b"OEP?" + bytes([ok["request"]["min_rev"], ok["request"]["max_rev"]])
     assert unframe_serial(bytes.fromhex(ok["request_serial_frame_hex"])) == req
     lf = bytes.fromhex(ok["request_length_frame_hex"])
     assert struct.unpack_from("<H", lf)[0] == len(req) and lf[2:] == req
     ans = bytes.fromhex(ok["answer_hex"])
     assert unframe_serial(bytes.fromhex(ok["answer_serial_frame_hex"])) == ans
-    assert struct.unpack_from("<BHBB", ans) == (0x02, 1, 0x01, 0)
+    assert struct.unpack_from("<BIBB", ans) == (0x02, 1, 0x01, 0)
     a = ok["answer"]
-    assert ans[5:9] == b"OEP!"
-    assert struct.unpack_from("<BBHIBI", ans, 9) == (a["revision"], a["flags"], a["max_frame"], a["window"], a["max_inflight"], a["boot_id"])
-    assert tlvs(ans[9 + 13:]) == [(0x01, bytes([a["transport"]]))]                                  # transport only (core §7.1); the time is clock's
+    assert ans[7:11] == b"OEP!"
+    assert struct.unpack_from("<BBHIBI", ans, 11) == (a["revision"], a["flags"], a["max_frame"], a["window"], a["max_inflight"], a["boot_id"])
+    assert tlvs(ans[11 + 13:]) == [(0x01, bytes([a["transport"]]))]                                  # transport only (core §7.1); the time is clock's
     assert set(CORE["tlv"]["confirm_answer"]) == {"transport"}
     assert len(req) <= REG["constants"]["min_max_frame"] and len(ans) <= REG["constants"]["min_max_frame"]   # core §7.1
     ans = bytes.fromhex(refused["answer_hex"])
-    assert struct.unpack_from("<BHBB", ans) == (0x02, 2, 0x00, REG["reject_reasons"]["unsupported"])
-    assert ans[5] == 0x00 and tlvs(ans[6:]) == [(0x01, bytes(refused["answer"]["supported"]))]
+    assert struct.unpack_from("<BIBB", ans) == (0x02, 2, 0x00, REG["reject_reasons"]["unsupported"])
+    assert ans[7] == 0x00 and tlvs(ans[8:]) == [(0x01, bytes(refused["answer"]["supported"]))]
 
 
 def test_refusals_answer_their_requests():
     reasons = REG["reject_reasons"]
     for c in load("refusals.json")["cases"]:
         req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
-        assert ans[0] == 0x02 and ans[1:3] == req[1:3], c["name"]                                 # same corr
-        payload = ans[5:]
+        assert ans[0] == 0x02 and ans[1:5] == req[1:5], c["name"]                                 # same corr
+        payload = ans[7:]
         if c["answer"] == "completed success":
-            assert ans[3:5] == bytes([0x01, 0x00]) and payload == b""                               # an unknown non-critical TLV is ignored (core §2.3)
+            assert ans[5:7] == bytes([0x01, 0x00]) and payload == b""                               # an unknown non-critical TLV is ignored (core §2.3)
             continue
-        assert ans[3] == 0x00 and ans[4] == reasons[c["answer"]], c["name"]
+        assert ans[5] == 0x00 and ans[6] == reasons[c["answer"]], c["name"]
         if c["answer"] == "unsupported":
             marker = payload[0]
             assert marker == 0x00 or marker & 0x80, "the tag as received of a critical TLV, or 0x00"
             if marker:
-                assert bytes([marker]) in req[10:]
+                assert bytes([marker]) in req[12:]
             tlvs(payload[1:])
         else:
             assert payload == b""
@@ -231,32 +231,32 @@ def test_discovery_exchanges():
     lst, desc, past = v["exchanges"]
     for ex in v["exchanges"]:
         req, ans = bytes.fromhex(ex["request_hex"]), bytes.fromhex(ex["answer_hex"])
-        assert req[0] == 0x01 and struct.unpack_from("<H", req, 1)[0] == ex["request"]["corr"]   # no lock needed (core §12)
-        assert struct.unpack_from("<I", req, 6)[0] == 0                                          # session_id 0: no session (core §4.1)
-        assert struct.unpack_from("<BHBB", ans) == (0x02, ex["answer"]["corr"], 0x01, 0)
+        assert req[0] == 0x01 and struct.unpack_from('<I', req, 1)[0] == ex["request"]["corr"]   # no lock needed (core §12)
+        assert struct.unpack_from("<I", req, 8)[0] == 0                                          # session_id 0: no session (core §4.1)
+        assert struct.unpack_from("<BIBB", ans) == (0x02, ex["answer"]["corr"], 0x01, 0)
         for key in ("request", "answer"):
             if f"{key}_serial_frame_hex" in ex:
                 assert unframe_serial(bytes.fromhex(ex[f"{key}_serial_frame_hex"])) == bytes.fromhex(ex[f"{key}_hex"])
 
     req, ans = bytes.fromhex(lst["request_hex"]), bytes.fromhex(lst["answer_hex"])
-    assert struct.unpack_from("<HB", req, 3) == (0, ops["list"])
-    assert struct.unpack_from("<H", req, 10)[0] == 0 and len(req) == 12                       # first(u16) only (core §7.2)
-    total, count = struct.unpack_from("<HB", ans, 5)
-    i, entries = 8, []
+    assert struct.unpack_from("<HB", req, 5) == (0, ops["list"])
+    assert struct.unpack_from("<H", req, 12)[0] == 0 and len(req) == 14                       # first(u16) only (core §7.2)
+    total, count = struct.unpack_from("<HB", ans, 7)
+    i, entries = 10, []
     for _ in range(count):                                                                     # count x entry, no element len
-        fn, inst, rev, eflags, nlen = struct.unpack_from("<HHBBB", ans, i)
-        entries.append({"fn": fn, "instance": inst, "revision": rev, "flags": eflags,
-                        "name": ans[i + 7:i + 7 + nlen].decode()})
-        i += 7 + nlen
+        fn, inst, rev, nlen = struct.unpack_from("<HHBB", ans, i)
+        entries.append({"fn": fn, "instance": inst, "revision": rev,
+                        "name": ans[i + 6:i + 6 + nlen].decode()})
+        i += 6 + nlen
     assert i == len(ans) and total == len(entries) and entries == lst["answer"]["entries"]
     assert entries == [] and total == 0                                                        # fn 0 is never listed (core §7.2)
 
     req, ans = bytes.fromhex(desc["request_hex"]), bytes.fromhex(desc["answer_hex"])
-    assert struct.unpack_from("<HB", req, 3) == (0, ops["describe"]) and struct.unpack_from("<HH", req, 10) == (0, 0)
-    assert len(req) == 14                                                                      # no TLV (core §7.3)
-    assert ans[5] == desc["answer"]["more"] == 0
+    assert struct.unpack_from("<HB", req, 5) == (0, ops["describe"]) and struct.unpack_from("<HH", req, 12) == (0, 0)
+    assert len(req) == 16                                                                      # no TLV (core §7.3)
+    assert ans[7] == desc["answer"]["more"] == 0
     t = core["tlv"]["describe"]
-    got = tlvs(ans[6:])
+    got = tlvs(ans[8:])
     ops_tag = REG["describe_common"]["ops"]
     assert [tag for tag, _ in got] == [ops_tag, t["unit_id"], t["transport"], t["max_op_ms"]]
     offered = ops_set(got[0][1])
@@ -271,16 +271,16 @@ def test_discovery_exchanges():
     assert t["unit_id"] != 0x3F and t["transport"] != 0x3F
 
     req, ans = bytes.fromhex(past["request_hex"]), bytes.fromhex(past["answer_hex"])
-    assert struct.unpack_from("<HH", req, 10) == (0, past["request"]["first"]) and past["request"]["first"] >= len(got) + 1
-    assert ans[5:] == b"\x00"                                                                 # more 0, no TLVs (core §7.3)
+    assert struct.unpack_from("<HH", req, 12) == (0, past["request"]["first"]) and past["request"]["first"] >= len(got) + 1
+    assert ans[7:] == b"\x00"                                                                 # more 0, no TLVs (core §7.3)
 
     reasons = REG["reject_reasons"]
     defined = {o["code"] for o in core["op"]}
     for c in v["refusals"]:
         req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
-        corr, fn, op = struct.unpack_from("<HHB", req, 1)
+        corr, fn, op = struct.unpack_from('<IHB', req, 1)
         assert (corr, fn, op) == (c["request"]["corr"], c["request"]["fn"], c["request"]["op"]) and req[0] == 0x01
-        assert ans == struct.pack("<BHBB", 0x02, corr, 0x00, reasons[c["answer"]])           # no payload (core §4.3)
+        assert ans == struct.pack("<BIBB", 0x02, corr, 0x00, reasons[c["answer"]])           # no payload (core §4.3)
         if c["answer"] == "unknown_function":
             assert fn not in [e["fn"] for e in entries]
         else:
@@ -301,16 +301,16 @@ def test_example_probe_answers_carry_what_the_core_requires():
     confirms = describes = 0
     for ex in exchanges:
         req, ans = bytes.fromhex(ex["request_hex"]), bytes.fromhex(ex["answer_hex"])
-        if ans[3] != 0x01:                                                                     # only completed answers
+        if ans[5] != 0x01:                                                                     # only completed answers
             continue
-        fn, op = struct.unpack_from("<HB", req, 3)
+        fn, op = struct.unpack_from("<HB", req, 5)
         if fn == 0 and op == confirm_op:
             confirms += 1
-            got = dict(tlvs(ans[5 + 4 + 13:]))
+            got = dict(tlvs(ans[7 + 4 + 13:]))
             assert len(got.get(t_confirm, b"")) == 1, ex["name"]                              # core §7.1 "always attaches"
-        elif fn == 0 and op == describe_op and struct.unpack_from("<H", req, 12)[0] == 0:
+        elif fn == 0 and op == describe_op and struct.unpack_from("<H", req, 14)[0] == 0:
             describes += 1
-            got = tlvs(ans[6:])
+            got = tlvs(ans[8:])
             tags = [tag for tag, _ in got]
             for name in ("unit_id", "transport", "max_op_ms"):
                 assert t[name] in tags, (ex["name"], name)
@@ -333,7 +333,7 @@ def test_the_tool_still_gives_these_files():
 
 
 def test_session_scenarios_follow_the_decision_table():
-    """sessions.json (core §5.2, §6.2, §9): every step is one 10-byte-header request and its answer with the same corr; a resent request
+    """sessions.json (core §5.2, §6.2, §9): every step is one 12-byte-header request and its answer with the same corr; a resent request
     gets the same answer bytes; after end, the ended id is no_session; force hands the lock over."""
     reasons = {v: k for k, v in REG["reject_reasons"].items()}
     ops = {o["name"]: o["code"] for o in CORE["op"]}
@@ -346,18 +346,18 @@ def test_session_scenarios_follow_the_decision_table():
         last_uptime = -1
         for st in sc["steps"]:
             req, ans = bytes.fromhex(st["request_hex"]), bytes.fromhex(st["answer_hex"])
-            role, corr, fn, op, session = struct.unpack_from("<BHHBI", req)
-            assert role == 0x01 and fn == 0 and ans[0] == 0x02 and ans[1:3] == req[1:3], st["note"]
-            if req in seen and ans[3] == REG["resolutions"]["completed"]:                                                                   # a resend: the same answer
+            role, corr, fn, op, session = struct.unpack_from("<BIHBI", req)
+            assert role == 0x01 and fn == 0 and ans[0] == 0x02 and ans[1:5] == req[1:5], st["note"]
+            if req in seen and ans[5] == REG["resolutions"]["completed"]:                                                                   # a resend: the same answer
                 assert seen[req] == ans, st["note"]
             seen[req] = ans
-            outcome = "completed" if ans[3] == 0x01 else reasons[ans[4]]
+            outcome = "completed" if ans[5] == 0x01 else reasons[ans[6]]
             if op == ops["open"]:
-                assert len(req) >= 15                                                         # lease_ms(u32) force(u8) [TLV]
+                assert len(req) >= 17                                                         # lease_ms(u32) force(u8) [TLV]
                 if session == 0:
                     assert outcome == "malformed"
                 if outcome == "completed":
-                    assert len(ans) == 5 + 8                                                  # lease_ms(u32) boot_id(u32), no resumed
+                    assert len(ans) == 7 + 8                                                  # lease_ms(u32) boot_id(u32), no resumed
                     ended.discard(session)
             elif op == ops["end"] and outcome == "completed":
                 ended.add(session)
@@ -366,12 +366,12 @@ def test_session_scenarios_follow_the_decision_table():
             if op == ops["keepalive"] and session == 0:
                 assert outcome == "session_required"
             if op == ops["clock"]:
-                assert len(req) == 10, st["note"]                                                  # no fixed part (core §7.7)
+                assert len(req) == 12, st["note"]                                                  # no fixed part (core §7.7)
                 if session == 0:
                     assert outcome == "completed", st["note"]                                       # no session needed (core §4.1, §6.3)
                 if outcome == "completed":
-                    assert len(ans) == 5 + 12, st["note"]                                         # boot_id(u32) uptime_ns(u64)
-                    boot_id, uptime = struct.unpack_from("<IQ", ans, 5)
+                    assert len(ans) == 7 + 12, st["note"]                                         # boot_id(u32) uptime_ns(u64)
+                    boot_id, uptime = struct.unpack_from("<IQ", ans, 7)
                     assert boot_id == 0x12345678 and uptime >= last_uptime, st["note"]            # one boot: the clock does not decrease (core §2.6a)
                     last_uptime = uptime
                     clocks["held, its own id" if session else "held, session_id 0" if held else "no session"] += 1
@@ -380,8 +380,8 @@ def test_session_scenarios_follow_the_decision_table():
             elif op == ops["end"] and outcome == "completed":
                 held = False
             if outcome == "locked":
-                assert len(ans) >= 9                                                          # remaining_ms(u32), [TLV owner]
-                tlvs(ans[9:])
+                assert len(ans) >= 11                                                          # remaining_ms(u32), [TLV owner]
+                tlvs(ans[11:])
     assert all(clocks.values()), clocks                                                       # clock without a session and with one open
 
 
@@ -400,14 +400,14 @@ def test_per_op_vectors_decode_exactly():
     by = {c["name"]: c for c in v}
     for c in v:
         req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
-        assert len(req) >= 10 and req[0] == 0x01 and ans[0] == 0x02 and ans[1:3] == req[1:3], c["name"]
-        if ans[3] == 0x00:
-            assert ans[4] in REG["reject_reasons"].values(), c["name"]
-            if ans[4] == REG["reject_reasons"]["unavailable"]:
-                tlvs(ans[5:])
+        assert len(req) >= 12 and req[0] == 0x01 and ans[0] == 0x02 and ans[1:5] == req[1:5], c["name"]
+        if ans[5] == 0x00:
+            assert ans[6] in REG["reject_reasons"].values(), c["name"]
+            if ans[6] == REG["reject_reasons"]["unavailable"]:
+                tlvs(ans[7:])
 
     def pay(name):
-        return bytes.fromhex(by[name]["answer_hex"])[5:]
+        return bytes.fromhex(by[name]["answer_hex"])[7:]
 
     iface = {i["name"]: i for i in REG["interface"]}
     restart = next(o["code"] for o in iface["oep.probe.restart"]["op"] if o["name"] == "restart")
@@ -415,17 +415,17 @@ def test_per_op_vectors_decode_exactly():
         if c["name"].startswith("restart"):
             req = bytes.fromhex(c["request_hex"])
             assert c["fns"] == {"11": "oep.probe.restart"}                                             # never fn 0 (oep-if-restart)
-            assert struct.unpack_from("<HB", req, 3) == (11, restart) and len(req) == 10, c["name"]   # no fixed part (oep-if-restart §1)
+            assert struct.unpack_from("<HB", req, 5) == (11, restart) and len(req) == 12, c["name"]   # no fixed part (oep-if-restart §1)
     assert pay("restart: completed success, sent before the probe restarts") == b""                      # completed success, no payload
     plan_ops = {o["name"]: o["code"] for o in iface["oep.probe.plan"]["op"]}
     ra = iface["oep.probe.plan"]["tlv"]["plan_apply"]["role_assignment"]
     for c in v:
         if c["name"].startswith("plan_"):
             req = bytes.fromhex(c["request_hex"])
-            fn, opc = struct.unpack_from("<HB", req, 3)
+            fn, opc = struct.unpack_from("<HB", req, 5)
             assert fn == 10 and c["fns"]["10"] == "oep.probe.plan" and opc in plan_ops.values(), c["name"]
             if opc == plan_ops["plan_apply"]:
-                ((tag, value),) = tlvs(req[10:])
+                ((tag, value),) = tlvs(req[12:])
                 assert tag & 0x7F == ra and len(value) == 5                                        # fn role channel (oep-if-plan §2.1)
     assert pay("plan_apply: gpio role 1 on channel 3") == b"" and pay("plan_release: fn 2") == b""
     sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]
@@ -436,9 +436,9 @@ def test_per_op_vectors_decode_exactly():
     for c in v:
         if "subscribe" in c["name"]:
             req = bytes.fromhex(c["request_hex"])
-            fn, opc = struct.unpack_from("<HB", req, 3)
+            fn, opc = struct.unpack_from("<HB", req, 5)
             assert fn != 0 and opc in (sub, unsub), c["name"]
-            assert len(req) == (10 + 6 if opc == sub else 10), c["name"]                            # no target fn in the request
+            assert len(req) == (12 + 6 if opc == sub else 12), c["name"]                            # no target fn in the request
     assert pay("logic subscribe: min_bytes 1024, max_delay_ms 20") == b""
     p = pay("rvswd connections: one connection with a target_id")
     assert p[0] == 0 and 1 + _fixed_sequence(p[1:], lambda b, i: 12 + b[i + 11]) == len(p)        # entry 12 bytes + tid
@@ -451,12 +451,12 @@ def test_per_op_vectors_decode_exactly():
     assert 1 + _fixed_sequence(p[1:], lambda b, i: 5) == len(p)
     for c in v:
         if c["name"].startswith("console streams"):
-            assert len(bytes.fromhex(c["request_hex"])) == 10 + 2, c["name"]                       # first(u16) (console §1)
+            assert len(bytes.fromhex(c["request_hex"])) == 12 + 2, c["name"]                       # first(u16) (console §1)
     serials = {}
     for c in v:
         if c["name"].startswith("console marks"):
             p = pay(c["name"])
-            assert 1 + _fixed_sequence(p[1:], lambda b, i: 22) == len(p) and len(p) + 5 <= 64, c["name"]      # max_frame 64
+            assert 1 + _fixed_sequence(p[1:], lambda b, i: 22) == len(p) and len(p) + 7 <= 64, c["name"]      # max_frame 64
             serials[c["name"]] = (p[0], [struct.unpack_from("<I", p, 2 + 22 * k)[0] for k in range(p[1])])
     first = serials["console marks: from_serial included, more 1"]
     assert first == (1, [5, 6]) and serials["console marks: the next page from the last serial + 1"] == (0, [7, 8])   # last + 1
@@ -487,20 +487,20 @@ def test_per_op_vectors_decode_exactly():
     wifi = iface["oep.probe.config"]["tlv"]["item"]["wifi"]
     ((tag, value),) = tlvs(pay("probe.config get: the wifi entry without its passphrase")[5:])
     assert tag == wifi and value[-1] == 0xFF and len(value) == 3 + value[1]                      # pass_len 0xFF, nothing after (§1.4)
-    sent = tlvs(bytes.fromhex(by["probe.config set: wifi entry 0 with a passphrase"]["request_hex"])[10:])[0][1]
+    sent = tlvs(bytes.fromhex(by["probe.config set: wifi entry 0 with a passphrase"]["request_hex"])[12:])[0][1]
     secret = sent[3 + sent[1]:]
     assert len(secret) == sent[2 + sent[1]] >= 8
     for c in v:                                                                                  # the passphrase is in no answer
         assert secret not in bytes.fromhex(c["answer_hex"]), c["name"]
-    back = bytes.fromhex(by["probe.config set: get's wifi item sent back keeps the passphrase"]["request_hex"])[10:]
+    back = bytes.fromhex(by["probe.config set: get's wifi item sent back keeps the passphrase"]["request_hex"])[12:]
     assert tlvs(back) == [(wifi, value)]                                                         # get's item, sent back as it is
     assert pay("probe.config set: get's wifi item sent back keeps the passphrase") == pay("probe.config set: wifi entry 0 with a passphrase")
     p = pay("link source: 8 bytes, byte k = k & 0xFF")
     n = struct.unpack_from("<H", p)[0]
     assert p[2:2 + n] == bytes(k & 0xFF for k in range(n)) and len(p) == 2 + n
-    p = pay("link source: more than fits, len = max_frame - 7")                                  # max_frame 1024 (oep-if-link §2)
+    p = pay("link source: more than fits, len = max_frame - 9")                                  # max_frame 1024 (oep-if-link §2)
     n = struct.unpack_from("<H", p)[0]
-    assert n == 1024 - 5 - 2                                                                      # the answer's header and len
+    assert n == 1024 - 7 - 2                                                                      # the answer's header and len
     assert p[2:] == bytes(k & 0xFF for k in range(n))
 
 
@@ -543,7 +543,7 @@ def test_a_segment_with_dropped_data_is_not_handed_out():
     give nothing of it; the stopped event has reason 3, error 2."""
     logic = next(i for i in REG["interface"] if i["name"] == "oep.fixture.logic")
     e = logic["enum"]
-    by = {c["name"]: bytes.fromhex(c["answer_hex"])[5:] for c in load("ops.json")["cases"]}
+    by = {c["name"]: bytes.fromhex(c["answer_hex"])[7:] for c in load("ops.json")["cases"]}
     p = by["logic status: data dropped inside a segment, state 6 and error 2"]
     state, serial_done, write_pos, flags, generation = struct.unpack_from("<BIQBI", p)
     assert (state, flags & e["status_flag"]["dropped"]) == (e["state"]["error"], e["status_flag"]["dropped"])
@@ -625,28 +625,28 @@ def test_multirate_ops():
     assert tag == t["configure_answer"]["block"] == t["describe"]["multirate"] == 0x60
     cases = [c for c in load("ops.json")["cases"] if "multirate" in c["name"]]
     by = {c["name"]: c for c in cases}
-    pay = lambda name: bytes.fromhex(by[name]["answer_hex"])[5:]
+    pay = lambda name: bytes.fromhex(by[name]["answer_hex"])[7:]
     got = dict(tlvs(pay("logic describe: multirate declared")[1:]))
     assert struct.unpack("<IIIB", got[t["describe"]["multirate"]]) == (7, 2, 128, 1)
     rc = [v for tg, v in tlvs(pay("logic describe: multirate declared")[1:]) if tg == REG["describe_common"]["role_channels"]]
     assert sorted(v[0] for v in rc) == [0, 1, 2, 3] == list(range(got[t["describe"]["channels"]][0]))  # the plan roles 0-3 the state names
     for c in cases:
         req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
-        if struct.unpack_from("<HB", req, 3) not in ((9, 0x10), (9, 0x18), (16, 0x10)):                  # configure / query of a logic fn
+        if struct.unpack_from("<HB", req, 5) not in ((9, 0x10), (9, 0x18), (16, 0x10)):                  # configure / query of a logic fn
             continue
-        sent = tlvs(req[10:])
+        sent = tlvs(req[12:])
         if any(tg & 0x7F == tag for tg, _ in sent):
             assert all(tg == tag | 0x80 for tg, v in sent if tg & 0x7F == tag and len(v) == 10), c["name"]   # sent critical
-            if ans[3] == 0x01:
-                a = dict(tlvs(ans[5:]))
+            if ans[5] == 0x01:
+                a = dict(tlvs(ans[7:]))
                 L = struct.unpack("<I", a[t["configure_answer"]["block"]])[0]
                 ds = [struct.unpack_from("<I", v, 2)[0] for tg, v in sent if tg & 0x7F == tag]
                 assert all(L % d == 0 for d in ds) and struct.unpack("<I", a[t["configure_answer"]["actual_samples"]])[0] % L == 0, c["name"]
                 lay = a[t["configure_answer"]["layout"]]
                 assert lay[1] == 4 - len({v[0] for tg, v in sent if tg & 0x7F == tag}) + sum(
                     1 for tg, v in sent if tg & 0x7F == tag and v[1] == 0 and struct.unpack_from("<I", v, 2)[0] == 1), c["name"]
-            elif ans[4] == REG["reject_reasons"]["unsupported"]:
-                assert ans[5] == tag | 0x80, c["name"]                                                # the tag as received
+            elif ans[6] == REG["reject_reasons"]["unsupported"]:
+                assert ans[7] == tag | 0x80, c["name"]                                                # the tag as received
     assert pay("logic configure multirate: the capture §5.7 example") == bytes.fromhex(
         "50080000e1f5050100000051040002020001600400200000005204006000000056040000000000")
     assert pay("logic query multirate: the same answer, nothing changed") == pay("logic configure multirate: the capture §5.7 example")
@@ -660,10 +660,10 @@ def test_an_immediate_triggers_role_is_not_looked_at():
     by = {c["name"]: c for c in load("ops.json")["cases"]}
     c = by["logic query: an immediate trigger's role is not looked at"]
     req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
-    (trig,) = [v for t, v in tlvs(req[10:]) if t == logic["tlv"]["configure"]["trigger"]]
+    (trig,) = [v for t, v in tlvs(req[12:]) if t == logic["tlv"]["configure"]["trigger"]]
     assert struct.unpack("<BBI", trig)[:2] == (logic["enum"]["trigger"]["immediate"], 5)           # role 5: not in the plan (0, 1)
     plain = bytes.fromhex(by["logic configure: one-shot, the required answer set"]["answer_hex"])
-    assert ans[3:] == plain[3:]                                                                     # the same success as without it
+    assert ans[5:] == plain[5:]                                                                     # the same success as without it
 
 
 def test_a_bound_track_keeps_the_groups_pretrigger_as_a_time():
@@ -675,9 +675,9 @@ def test_a_bound_track_keeps_the_groups_pretrigger_as_a_time():
     assert p_k(100_000, 48_000, 1, 20_000_000, 1) == 240 > 128                                     # the vector's state
     c = next(c for c in load("ops.json")["cases"] if c["name"] == "capture-group bind: a track cannot keep the group's pretrigger")
     ans = bytes.fromhex(c["answer_hex"])
-    assert ans[4] == REG["reject_reasons"]["unavailable"]
+    assert ans[6] == REG["reject_reasons"]["unavailable"]
     unav, cause = core["tlv"]["unavailable_payload"], core["enum"]["unavailable_cause"]
-    assert tlvs(ans[5:]) == [(unav["cause"], bytes([cause["limit"]])), (unav["fn"], struct.pack("<H", 13))]
+    assert tlvs(ans[7:]) == [(unav["cause"], bytes([cause["limit"]])), (unav["fn"], struct.pack("<H", 13))]
 
 
 def test_streamed_bytes_at_or_past_write_pos_are_dropped_after_an_error():
@@ -691,7 +691,7 @@ def test_streamed_bytes_at_or_past_write_pos_are_dropped_after_an_error():
     assert role == REG["roles"]["data"] and fn == 9
     body, tail = f[15:15 + n], f[15 + n:]
     assert tlvs(tail) == [(logic["tlv"]["data"]["generation"], struct.pack("<I", d["generation"]))]
-    by = {c["name"]: bytes.fromhex(c["answer_hex"])[5:] for c in load("ops.json")["cases"]}
+    by = {c["name"]: bytes.fromhex(c["answer_hex"])[7:] for c in load("ops.json")["cases"]}
     state, serial_done, write_pos, flags, generation = struct.unpack_from(
         "<BIQBI", by["logic status: streaming stopped in error, write_pos at the lost segment's start"])
     assert (state, generation, flags & e["status_flag"]["dropped"]) == (e["state"]["error"], d["generation"], e["status_flag"]["dropped"])
@@ -711,14 +711,14 @@ def test_capture_request_tlvs_are_plain_and_zero_counts_are_malformed():
     seen = 0
     for c in cases:
         req = bytes.fromhex(c["request_hex"])
-        fn, opc = struct.unpack_from("<HB", req, 3)
+        fn, opc = struct.unpack_from("<HB", req, 5)
         name = c["fns"].get(str(fn))
         if (name, opc) not in plain:
             continue
-        fixed = 0 if name == "oep.fixture.logic" else 1 + 2 * req[10]
-        for tg, _ in tlvs(req[10 + fixed:]):
+        fixed = 0 if name == "oep.fixture.logic" else 1 + 2 * req[12]
+        for tg, _ in tlvs(req[12 + fixed:]):
             seen += 1
             assert tg in plain[(name, opc)] or tg == 0x60 | 0x80, (c["name"], hex(tg))               # no critical bit but multirate's
     assert seen
     c = next(c for c in cases if c["name"].startswith("logic query: samples 0"))
-    assert bytes.fromhex(c["answer_hex"])[3:5] == bytes([REG["resolutions"]["rejected"], REG["reject_reasons"]["malformed"]])
+    assert bytes.fromhex(c["answer_hex"])[5:7] == bytes([REG["resolutions"]["rejected"], REG["reject_reasons"]["malformed"]])

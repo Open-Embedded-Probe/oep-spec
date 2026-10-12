@@ -121,9 +121,9 @@ hid_usage_page = 0xFF4F
 hid_usage = 0x45
 
 [limits]                        # values the spec text states; generated code may check them
-request_header_bytes = 10
-result_header_bytes = 5
-corr_max = 0xFFFF
+request_header_bytes = 12
+result_header_bytes = 7
+corr_max = 0xFFFFFFFF
 lease_min_ms = 1000
 lease_max_ms = 60000
 owner_max_bytes = 32
@@ -133,9 +133,9 @@ wifi_ssid_max_bytes = 32        # probe.config wifi: ssid 1 to this (oep-if-prob
 wifi_passphrase_min_bytes = 8   # probe.config wifi: a passphrase is 8 to 63 bytes of 0x20-0x7E, or 64 hex digits
 wifi_passphrase_max_bytes = 63
 wifi_psk_hex_digits = 64
-wifi_min_max_frame = 112        # a probe whose items has wifi answers confirm with max_frame at least this on every transport: a set of the longest wifi item is 10 + 3 + (3 + 32 + 64) bytes (oep-if-probe-config §1.4)
+wifi_min_max_frame = 114        # a probe whose items has wifi answers confirm with max_frame at least this on every transport: a set of the longest wifi item is 12 + 3 + (3 + 32 + 64) bytes (oep-if-probe-config §1.4)
 label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
-interface_name_max_bytes = 48   # a list answer with one entry is 5 + 3 + 7 + 48 = 63 bytes, within min_max_frame (core §7.2, §13)
+interface_name_max_bytes = 48   # a list answer with one entry is 7 + 3 + 6 + 48 = 64 bytes, within min_max_frame (core §7.2, §13)
 port_speed_tolerance_pct = 2    # port_speed: the nearest speed the UART can make may differ from the request by at most this percent (oep-if-link §3)
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused or not used (oep-if-fixture §2, oep-if-probe-config §1)
 uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)
@@ -185,7 +185,7 @@ connection_closed = 4
 op = [
   { code = 0x01, name = "confirm", lock = false },     # answer carries boot_id (core §7.1)
   { code = 0x02, name = "list", lock = false },
-  { code = 0x03, name = "describe", lock = false },    # answer: more(u8) TLVs; each TLV with the header 5 and more 1 fits every transport's max_frame; past the end: more 0, no TLVs (core §7.3)
+  { code = 0x03, name = "describe", lock = false },    # answer: more(u8) TLVs; each TLV with the header 7 and more 1 fits every transport's max_frame; past the end: more 0, no TLVs (core §7.3)
   { code = 0x04, name = "clock", lock = false },       # answer: boot_id(u32) uptime_ns(u64), the clock read while handling the request (core §7.7)
   { code = 0x10, name = "open", lock = false },
   { code = 0x11, name = "end", lock = true },

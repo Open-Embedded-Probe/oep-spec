@@ -121,8 +121,8 @@ tag(u8) | len(u16) | value(len byte)
 ### 2.4 知らない値
 
 - 知らない role のフレームは捨てる。
-- probe は、role が要求の role（0x01）でない message と、見出し（10 byte）より短い要求を、答えずに捨てる。host は、role が要求の role の message を捨てる。
-- host は、5 byte より短い応答と、見出しより短い出来事やデータのフレームを、壊れたフレームとして扱う（§5.2、[経路](oep-transports.ja.md) §5）。
+- probe は、role が要求の role（0x01）でない message と、見出し（12 byte）より短い要求を、答えずに捨てる。host は、role が要求の role の message を捨てる。
+- host は、7 byte より短い応答と、見出しより短い出来事やデータのフレームを、壊れたフレームとして扱う（§5.2、[経路](oep-transports.ja.md) §5）。
 - 知らない resolution、completed の知らない outcome は失敗として扱う。
 - インターフェースの status や reason の知らない値は失敗として扱う。
 - 知らない出来事の kind は捨てる（seq は数える）。
@@ -182,12 +182,12 @@ host は時計の今の値を clock（§7.7）で読む。
 ### 4.1 要求
 
 ```text
-role=0x01 | corr(u16) | fn(u16) | op(u8) | session_id(u32) | payload    見出し 10 byte
+role=0x01 | corr(u32) | fn(u16) | op(u8) | session_id(u32) | payload    見出し 12 byte
 ```
 
-- `corr`: 0 を使わない u16。host は **session_id ごと**に、新しい要求へ前の番号より大きい番号を振る（通常は 1 ずつ）。
+- `corr`: 0 を使わない u32。host は **session_id ごと**に、新しい要求へ前の番号より大きい番号を振る（通常は 1 ずつ）。
   session_id 0 の要求の番号はセッションの順序に影響しない。同じ経路の未解決の要求どうしには、session_id が違っても同じ corr を使わない。送り直しは番号を含む要求全体を byte 単位で同じにする。
-  番号は一周させない。65535 を使う前に end 用の番号を残し、セッションを終えて新しい session_id で開く。
+  番号は一周させない。0xFFFFFFFF を使う前に end 用の番号を残し、セッションを終えて新しい session_id で開く。
   新規セッションで番号を振り直す前に、前の要求をすべて解決し、古い応答が残る経路は開き直す。
   session_id 0 の番号も、同じ経路に未解決の要求や古い応答が残る間は再使用しない。使い切ったらその経路を開き直す。
 - `session_id`: 要求が属するセッション、または **0 = セッションなし**。どの要求もこれを持つ。
@@ -199,7 +199,7 @@ role=0x01 | corr(u16) | fn(u16) | op(u8) | session_id(u32) | payload    見出�
 ### 4.2 応答
 
 ```text
-role=0x02 | corr(u16) | resolution(u8) | detail(u8) | payload           見出し 5 byte
+role=0x02 | corr(u32) | resolution(u8) | detail(u8) | payload           見出し 7 byte
 ```
 
 | resolution | 値 | detail | payload |
@@ -274,7 +274,7 @@ unsupported の payload の tag は、固定部分の値なら 0x00、TLV につ
   記録のキーは (session_id, corr)。要求の同一性は見出しと payload の全 byte で決まる。open も記録する。
 - §4.3 の順 2 で、記録した要求と同じ corr が来たら、全 byte が同じ場合だけ記録した応答を返す。
   内容が違えば rejected malformed。要求または応答を大きさの上限で保持していなければ rejected result_lost。いずれも再実行せず、lease や通知の送り先を変えない。
-- 記録に無く、corr がそのセッションの最大の corr 以下なら rejected result_lost。比較は u16 の通常の大小比較で、符号付きの差を使わない。
+- 記録に無く、corr がそのセッションの最大の corr 以下なら rejected result_lost。比較は u32 の通常の大小比較で、符号付きの差を使わない。
   要求・応答の保持に大きさの上限を置いてよい。そのために応答を保持しなかった要求も、corr の最大値と同一性を保持する期間は同じ規則を適用する。
 - 新しい要求で §4.3 の順 2 を通ったものは、rejected を含めて記録する。要求を直すときは新しい corr を使う。
 - end と期限切れでも記録は残す。同じ ID の open で記録を消さない。**異なる ID の新規セッションの open が成功したときだけ**、
@@ -368,14 +368,14 @@ rejected unsupported（下）。flags は予約（0）。max_frame は 64 以上
 ```text
 要求: first(u16)
 応答: total(u16)、count(u8)、count × entry
-entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
+entry: fn(u16)、instance(u16)、revision(u8)、name_len(u8)、name
 ```
 
 - probe のインターフェースを、first 番目から 1 フレームに入る分だけ返す。total はインターフェースの数。本体（fn 0）は名前を持たないので
   list に載らない: entry の fn は 0 でない。
-- 名前は 1〜48 byte、使える文字は `a-z 0-9 - .`（§13）。項目 1 つの応答は、名前が 48 byte でも 63 byte（見出し 5、total と count 3、項目の固定部分 7、名前 48）で、どの max_frame（64 以上）にも収まる。
+- 名前は 1〜48 byte、使える文字は `a-z 0-9 - .`（§13）。項目 1 つの応答は、名前が 48 byte でも 64 byte（見出し 7、total と count 3、項目の固定部分 6、名前 48）で、どの max_frame（64 以上）にも収まる。
 - instance は、同じ名前のインターフェースが複数あるときの見分け。**同じ (名前, revision) のインターフェースを fn の昇順に 0 から振る**。probe は同じ名前のインターフェースの
-  順を firmware の版を越えて保つ（保存した設定が (name, instance, revision) でインターフェースを指すため）。flags は予約（0）。
+  順を firmware の版を越えて保つ（保存した設定が (name, instance, revision) でインターフェースを指すため）。未使用の flags フィールドは置かない。
 - list の応答（どのインターフェースがあるか、その fn、instance、revision、名前）は、同じ boot_id の間変わらない。インターフェースが増えたり減ったりする probe は再起動する（新しい boot_id）。host は boot_id が同じ間、名前から fn への対応を覚えてよい。
 - first が total 以上なら、応答は total と count 0。
 
@@ -387,7 +387,7 @@ entry: fn(u16)、instance(u16)、revision(u8)、flags(u8)、name_len(u8)、name
 ```
 
 fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返す。more = 1 なら続きがあり、host は first に受け取った TLV の数を
-足してもう一度聞く。probe は各 TLV を、応答の見出し 5 byte と more 1 byte を足しても自分のどの経路の max_frame にも収まる大きさにする（TLV の値は、いちばん小さい max_frame − 9 byte まで。describe は経路によらない）。fn 0 は probe 全体の宣言。
+足してもう一度聞く。probe は各 TLV を、応答の見出し 7 byte と more 1 byte を足しても自分のどの経路の max_frame にも収まる大きさにする（TLV の値は、いちばん小さい max_frame − 11 byte まで。describe は経路によらない）。fn 0 は probe 全体の宣言。
 
 **describe は宣言だけを返す**: 同じ boot_id の間、TLV の並びと値は変わらない（host は boot_id が同じ間 cache してよく、ページングは
 途中で設定が変わっても崩れない）。変わるもの（接続、保存の有無、空き容量）は、インターフェースが状態を返す op

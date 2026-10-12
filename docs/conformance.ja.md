@@ -27,7 +27,7 @@
 | 見出し・拒否・TLV | 短い要求の無応答、corr 0、未知fn/op、session_required、拒否優先順、長さ/値域、未知非critical/critical、ID 0、0x7F、応答の補助情報 |
 | session | lease最小/最大/既定、keepalive、owner、他IDとの排他、end/期限切れ/force、session 0の無副作用、boot_idの変化 |
 | 再送 | openを含む同一要求の結果、内容の違う同corrの拒否、cache eviction/保持サイズ上限とresult_lost、rejectedの保持、同ID open後の履歴、終了後の履歴、重複によるlease/通知の変更禁止 |
-| corrと寿命 | u16半周を越える増加、65535での終了と新IDへの移行、旧経路の未解決応答、資源IDの非再利用/枯渇、終了時の解放、古いIDと他種/他fnのIDの拒否 |
+| corrと寿命 | u32の符号境界を越える増加、0xFFFFFFFFでの終了と新IDへの移行、旧経路の未解決応答、資源IDの非再利用/枯渇、終了時の解放、古いIDと他種/他fnのIDの拒否 |
 
 実機でも端点の状態変更を独立に観測する。二重実行の検査は、同じ応答が返るだけでなく、時計・資源・通知などの副作用が重複しないことを確かめる。資源を作る方法はインターフェース adapter に依存しても、その所有・解放・非再利用の合否はコアの契約で決める。
 
@@ -80,7 +80,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - confirm: revision の選び方、transport TLV、扱える範囲つきの断り。max_frame は 64 以上、window は max_frame 以上、
   max_inflight は 1 以上（§7.1）。
 - list: fn 0 を載せない、instance の番号、boot_id が同じ間は答えが変わらない、first が total 以上なら total と count 0（§7.2）。
-- describe: ページ送り、first が数以上なら more 0 だけで TLV 無し、宣言だけで boot_id が同じ間は変わらない（§7.3）。経路によらないので、各 TLV は応答の見出し 5 byte と more 1 byte を足しても、max_length はその op の要求と応答で、probe のどの経路の max_frame にも収まる（§7.3、§7.4）。
+- describe: ページ送り、first が数以上なら more 0 だけで TLV 無し、宣言だけで boot_id が同じ間は変わらない（§7.3）。経路によらないので、各 TLV は応答の見出し 7 byte と more 1 byte を足しても、max_length はその op の要求と応答で、probe のどの経路の max_frame にも収まる（§7.3、§7.4）。
 - clock: boot_id と uptime_ns（要求を受けてから応答を送るまでの間に読んだ時計）。ロック不要で、session_id 0 ならセッションが無くても、ほかのセッションが
   ロックを持っていても答え、セッション、ロック、lease に触れない。broker 自身の OEP 端点も同じ契約を実装する（§7.7、transports §1）。
 - fn 0 の describe の必須の tag: unit_id、transport（transport ごとに一つ、interface の欄は §7.5 のとおり）、channel を持つなら channels（番号は 0〜channels − 1）、max_op_ms（1〜
@@ -144,7 +144,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)） | plan の役割を持つインターフェースがあれば list に出す。plan_apply（fn ごとに不可分）、plan_release、§2.5 の断り方、設定の plan は preset。上限があれば describe の plan_roles | — |
 | `oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)） | restart。describe の restart_max_ms。ロックの要る op として断る。答えは completed success で、それを先に送る。答えの後は再起動するまでどの transport の要求にも答えず、target を reset しない。再起動の後は電源を入れたときと同じ（新しい boot_id、保存した設定だけが残る）。答えが transport を出てから restart_max_ms のうちに、同じ transport で confirm にまた答える | — |
 | `oep.probe.link`（[リンク](../interfaces/oep-if-link.ja.md)） | source、sink | port_speed（ops）: その状態と戻る条件（§3） |
-| `oep.probe.config`（[probe の設定](../interfaces/oep-if-probe-config.ja.md)） | 設定を扱う probe だけが list に出す。get、set、unset、state。設定が変われば変わる hash。起動時に disable と idle を先に掛ける。§4 の describe | save / erase（ops、storage の tag とともに。無ければ unknown_operation）。slot（配線の preset）。wifi（describe の wifi_max、どの経路でも max_frame 112 以上、state の wifi の TLV、index の順に試す、passphrase は書くだけで hash もそれから作らない、§1.4） |
+| `oep.probe.config`（[probe の設定](../interfaces/oep-if-probe-config.ja.md)） | 設定を扱う probe だけが list に出す。get、set、unset、state。設定が変われば変わる hash。起動時に disable と idle を先に掛ける。§4 の describe | save / erase（ops、storage の tag とともに。無ければ unknown_operation）。slot（配線の preset）。wifi（describe の wifi_max、どの経路でも max_frame 114 以上、state の wifi の TLV、index の順に試す、passphrase は書くだけで hash もそれから作らない、§1.4） |
 
 ## 4. 確かめ方
 
@@ -162,7 +162,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `refusals.json` | §2.3 と §4.3 の断り方（理由が 1 つだけ当たる状態）と、無視される知らない TLV について、要求とそのとおりの答え。§4.3 の順 4 で理由が 2 つ以上当たる要求は、どれで断ってもよいので（意図した単純化）、ベクタは持たず、試験はどれか 1 つを受ける |
 | `sessions.json` | セッションの場面: 判定の表（§6.2）、送り直しの表（§5.2。送り直した end）、end での解放と no_session（§9）、force、session_id 0（§4.1）、セッションが無いときと開いているときの clock（§7.7）。決めた初めの状態から順に送る要求と答え |
 | `ops_encoding.json` | describe の共通の tag ops の値の境（最短、最長、長さの誤り、op 0xFF の境、同じ集合の別の符号）と、正しい値が表す op の集合（§7.4） |
-| `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console（marks の通し番号のページング、streams の最後のページ）、logic（configure の契約、即時の trigger の role を見ない query、samples 0 の malformed、segments の空のページ、区画の中で落としたときの status / segments / read と stopped、ストリーミングで落とした区画に入りかけたデータのフレーム（`data`）とその後の status、multirate の describe、configure / query と断り、segments、capture-group の bind）、riscv-dm の失敗した step、arm-adi の n = 0 の transfer、spi-target の部分の byte（MSB / LSB が先）、capture-group の start と組の pretrigger を持てないトラックの bind、キャプチャの出来事のフレーム（`events`、世代）、probe.config（wifi の set（いちばん長い 112 byte のものを含む）/ get / unset と state を含む）、logic のほかの一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
+| `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console（marks の通し番号のページング、streams の最後のページ）、logic（configure の契約、即時の trigger の role を見ない query、samples 0 の malformed、segments の空のページ、区画の中で落としたときの status / segments / read と stopped、ストリーミングで落とした区画に入りかけたデータのフレーム（`data`）とその後の status、multirate の describe、configure / query と断り、segments、capture-group の bind）、riscv-dm の失敗した step、arm-adi の n = 0 の transfer、spi-target の部分の byte（MSB / LSB が先）、capture-group の start と組の pretrigger を持てないトラックの bind、キャプチャの出来事のフレーム（`events`、世代）、probe.config（wifi の set（いちばん長い 114 byte のものを含む）/ get / unset と state を含む）、logic のほかの一部）。並びの答えは要素の長さ無しの `count × 要素`（§2.3） |
 | `logic_layout.json` | ロジックのキャプチャのストリーム（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1.1）: layout の w と pos、チャネルのレベル、区画のバイト列。2 の冪でない w（w = 3、サンプルがバイトをまたぐ） |
 | `multirate.json` | multirate のストリーム（[キャプチャ](../interfaces/oep-if-capture.ja.md) §5）: 役割ごとの multirate の TLV、layout と L、区画ごとの base sample のレベルとバイト列。§5.7 の例、L·w が 8 の倍数でない、w = 3、D = 1 のチャネルが無い、縮約のチャネルがバイトをまたぐ、phase のある sample の最後の block、any_active の active-high、edge_latch（区間の最初の立ち上がり、区間全体、block の境目をまたぐ、base sample 0）、pretrigger で短い最初の区画と次の区画 |
 

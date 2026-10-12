@@ -6,48 +6,48 @@
       "spec": "core §2.3/4.2/4.3/6.4/7.7",
       "operation": "open",
       "fixed_answer_bytes": 8,
-      "request_hex": "01010000001044332211b80b000000",
-      "answer_hex": "0201000100b80b0000785634127f010078"
+      "request_hex": "010100000000001044332211b80b000000",
+      "answer_hex": "02010000000100b80b0000785634127f010078"
     },
     {
       "name": "keepalive with unknown response TLV",
       "spec": "core §2.3/4.2/4.3/6.4/7.7",
       "operation": "keepalive",
       "fixed_answer_bytes": 0,
-      "request_hex": "01020000001244332211",
-      "answer_hex": "02020001007f010078"
+      "request_hex": "010200000000001244332211",
+      "answer_hex": "020200000001007f010078"
     },
     {
       "name": "end with unknown response TLV",
       "spec": "core §2.3/4.2/4.3/6.4/7.7",
       "operation": "end",
       "fixed_answer_bytes": 0,
-      "request_hex": "01030000001144332211",
-      "answer_hex": "02030001007f010078"
+      "request_hex": "010300000000001144332211",
+      "answer_hex": "020300000001007f010078"
     },
     {
       "name": "clock with unknown response TLV",
       "spec": "core §2.3/4.2/4.3/6.4/7.7",
       "operation": "clock",
       "fixed_answer_bytes": 12,
-      "request_hex": "01040000000400000000",
-      "answer_hex": "02040001007856341264000000000000007f010078"
+      "request_hex": "010400000000000400000000",
+      "answer_hex": "020400000001007856341264000000000000007f010078"
     },
     {
       "name": "no_session with unknown response TLV",
       "spec": "core §2.3/4.2/4.3/6.4/7.7",
       "operation": "keepalive",
       "fixed_answer_bytes": 0,
-      "request_hex": "01050000001244332211",
-      "answer_hex": "02050000077f010078"
+      "request_hex": "010500000000001244332211",
+      "answer_hex": "020500000000077f010078"
     },
     {
       "name": "result_lost with unknown response TLV",
       "spec": "core §2.3/4.2/4.3/6.4/7.7",
       "operation": "clock",
       "fixed_answer_bytes": 0,
-      "request_hex": "01060000000444332211",
-      "answer_hex": "020600000c7f010078"
+      "request_hex": "010600000000000444332211",
+      "answer_hex": "0206000000000c7f010078"
     }
   ]
 }

@@ -8,33 +8,33 @@
       "steps": [
         {
           "note": "open S, lease 2000 ms, no force",
-          "request_hex": "01010000001044332211d007000000",
-          "answer_hex": "0201000100d007000078563412"
+          "request_hex": "010100000000001044332211d007000000",
+          "answer_hex": "02010000000100d007000078563412"
         },
         {
           "note": "keepalive of S",
-          "request_hex": "01020000001244332211",
-          "answer_hex": "0202000100"
+          "request_hex": "010200000000001244332211",
+          "answer_hex": "02020000000100"
         },
         {
           "note": "end of S: the lock and everything S created are released",
-          "request_hex": "01030000001144332211",
-          "answer_hex": "0203000100"
+          "request_hex": "010300000000001144332211",
+          "answer_hex": "02030000000100"
         },
         {
           "note": "the same end resent with the same corr: the remembered answer, nothing executed",
-          "request_hex": "01030000001144332211",
-          "answer_hex": "0203000100"
+          "request_hex": "010300000000001144332211",
+          "answer_hex": "02030000000100"
         },
         {
           "note": "a new request with S: no session holds the lock",
-          "request_hex": "01040000001244332211",
-          "answer_hex": "0204000007"
+          "request_hex": "010400000000001244332211",
+          "answer_hex": "02040000000007"
         },
         {
           "note": "lock_state with session_id 0: free",
-          "request_hex": "01050000001300000000",
-          "answer_hex": "02050001000000000000"
+          "request_hex": "010500000000001300000000",
+          "answer_hex": "020500000001000000000000"
         }
       ]
     },
@@ -45,28 +45,28 @@
       "steps": [
         {
           "note": "open S with owner \"cli\"",
-          "request_hex": "01010000001044332211d007000000010300636c69",
-          "answer_hex": "0201000100d007000078563412"
+          "request_hex": "010100000000001044332211d007000000010300636c69",
+          "answer_hex": "02010000000100d007000078563412"
         },
         {
           "note": "open T without force: locked, the remaining time (as if no time had passed) and the owner",
-          "request_hex": "01020000001088776655d007000000",
-          "answer_hex": "0202000008d0070000010300636c69"
+          "request_hex": "010200000000001088776655d007000000",
+          "answer_hex": "02020000000008d0070000010300636c69"
         },
         {
           "note": "keepalive of T: locked",
-          "request_hex": "01030000001288776655",
-          "answer_hex": "0203000008d0070000010300636c69"
+          "request_hex": "010300000000001288776655",
+          "answer_hex": "02030000000008d0070000010300636c69"
         },
         {
           "note": "open T with force: S's resources are released, T holds the lock",
-          "request_hex": "01040000001088776655d007000001",
-          "answer_hex": "0204000100d007000078563412"
+          "request_hex": "010400000000001088776655d007000001",
+          "answer_hex": "02040000000100d007000078563412"
         },
         {
           "note": "keepalive of S: locked (T holds it; T's open gave no owner)",
-          "request_hex": "01050000001244332211",
-          "answer_hex": "0205000008d0070000"
+          "request_hex": "010500000000001244332211",
+          "answer_hex": "02050000000008d0070000"
         }
       ]
     },
@@ -77,28 +77,28 @@
       "steps": [
         {
           "note": "keepalive with session_id 0: an op that requires the lock",
-          "request_hex": "01010000001200000000",
-          "answer_hex": "0201000009"
+          "request_hex": "010100000000001200000000",
+          "answer_hex": "02010000000009"
         },
         {
           "note": "open with session_id 0",
-          "request_hex": "01020000001000000000d007000000",
-          "answer_hex": "0202000003"
+          "request_hex": "010200000000001000000000d007000000",
+          "answer_hex": "02020000000003"
         },
         {
           "note": "open S",
-          "request_hex": "01030000001044332211d007000000",
-          "answer_hex": "0203000100d007000078563412"
+          "request_hex": "010300000000001044332211d007000000",
+          "answer_hex": "02030000000100d007000078563412"
         },
         {
           "note": "the same open resent: replay the answer, without renewing the lease or clearing the history",
-          "request_hex": "01030000001044332211d007000000",
-          "answer_hex": "0203000100d007000078563412"
+          "request_hex": "010300000000001044332211d007000000",
+          "answer_hex": "02030000000100d007000078563412"
         },
         {
           "note": "lock_state with session_id 0: held, the remaining time as if no time had passed",
-          "request_hex": "01040000001300000000",
-          "answer_hex": "020400010001d0070000"
+          "request_hex": "010400000000001300000000",
+          "answer_hex": "0204000000010001d0070000"
         }
       ]
     },
@@ -109,38 +109,38 @@
       "steps": [
         {
           "note": "clock with session_id 0, no session: boot_id and uptime_ns",
-          "request_hex": "01010000000400000000",
-          "answer_hex": "0201000100785634120094357700000000"
+          "request_hex": "010100000000000400000000",
+          "answer_hex": "02010000000100785634120094357700000000"
         },
         {
           "note": "open S",
-          "request_hex": "01020000001044332211d007000000",
-          "answer_hex": "0202000100d007000078563412"
+          "request_hex": "010200000000001044332211d007000000",
+          "answer_hex": "02020000000100d007000078563412"
         },
         {
           "note": "clock with session_id 0 while S holds the lock: answered, the session, lock and lease untouched",
-          "request_hex": "01030000000400000000",
-          "answer_hex": "02030001007856341240d6447700000000"
+          "request_hex": "010300000000000400000000",
+          "answer_hex": "020300000001007856341240d6447700000000"
         },
         {
           "note": "lock_state with session_id 0: still held by a session",
-          "request_hex": "01040000001300000000",
-          "answer_hex": "020400010001d0070000"
+          "request_hex": "010400000000001300000000",
+          "answer_hex": "0204000000010001d0070000"
         },
         {
           "note": "clock with S: a lock-free op of the session holding the lock",
-          "request_hex": "01050000000444332211",
-          "answer_hex": "0205000100785634128018547700000000"
+          "request_hex": "010500000000000444332211",
+          "answer_hex": "02050000000100785634128018547700000000"
         },
         {
           "note": "end of S",
-          "request_hex": "01060000001144332211",
-          "answer_hex": "0206000100"
+          "request_hex": "010600000000001144332211",
+          "answer_hex": "02060000000100"
         },
         {
           "note": "clock with session_id 0 after end: answered as before",
-          "request_hex": "01070000000400000000",
-          "answer_hex": "020700010078563412c05a637700000000"
+          "request_hex": "010700000000000400000000",
+          "answer_hex": "0207000000010078563412c05a637700000000"
         }
       ]
     },
@@ -151,38 +151,38 @@
       "steps": [
         {
           "note": "open S",
-          "request_hex": "01010000001044332211d007000000",
-          "answer_hex": "0201000100d007000078563412"
+          "request_hex": "010100000000001044332211d007000000",
+          "answer_hex": "02010000000100d007000078563412"
         },
         {
           "note": "keepalive S",
-          "request_hex": "01020000001244332211",
-          "answer_hex": "0202000100"
+          "request_hex": "010200000000001244332211",
+          "answer_hex": "02020000000100"
         },
         {
           "note": "independent session-zero counter past half-cycle",
-          "request_hex": "01409c00000400000000",
-          "answer_hex": "02409c0100785634120094357700000000"
+          "request_hex": "01409c000000000400000000",
+          "answer_hex": "02409c00000100785634120094357700000000"
         },
         {
           "note": "S still advances from 2 to 3",
-          "request_hex": "01030000001244332211",
-          "answer_hex": "0203000100"
+          "request_hex": "010300000000001244332211",
+          "answer_hex": "02030000000100"
         },
         {
           "note": "new open S keeps the existing history",
-          "request_hex": "01040000001044332211d007000000",
-          "answer_hex": "0204000100d007000078563412"
+          "request_hex": "010400000000001044332211d007000000",
+          "answer_hex": "02040000000100d007000078563412"
         },
         {
           "note": "keepalive 2 still replays",
-          "request_hex": "01020000001244332211",
-          "answer_hex": "0202000100"
+          "request_hex": "010200000000001244332211",
+          "answer_hex": "02020000000100"
         },
         {
           "note": "same corr with altered bytes is malformed",
-          "request_hex": "0102000000124433221100",
-          "answer_hex": "0202000003"
+          "request_hex": "01020000000000124433221100",
+          "answer_hex": "02020000000003"
         }
       ]
     },
@@ -193,33 +193,33 @@
       "steps": [
         {
           "note": "open S",
-          "request_hex": "01010000001044332211d007000000",
-          "answer_hex": "0201000100d007000078563412"
+          "request_hex": "010100000000001044332211d007000000",
+          "answer_hex": "02010000000100d007000078563412"
         },
         {
           "note": "a new request more than half a cycle ahead is new",
-          "request_hex": "01fdff00001244332211",
-          "answer_hex": "02fdff0100"
+          "request_hex": "01fdff000000001244332211",
+          "answer_hex": "02fdff00000100"
         },
         {
           "note": "end S, leaving a higher corr for a check",
-          "request_hex": "01feff00001144332211",
-          "answer_hex": "02feff0100"
+          "request_hex": "01feff000000001144332211",
+          "answer_hex": "02feff00000100"
         },
         {
           "note": "new open of ended S is no_session",
-          "request_hex": "01ffff00001044332211d007000000",
-          "answer_hex": "02ffff0007"
+          "request_hex": "01ffff000000001044332211d007000000",
+          "answer_hex": "02ffff00000007"
         },
         {
           "note": "old end still replays without resurrecting resources",
-          "request_hex": "01feff00001144332211",
-          "answer_hex": "02feff0100"
+          "request_hex": "01feff000000001144332211",
+          "answer_hex": "02feff00000100"
         },
         {
           "note": "T starts a new counter, only after all S requests resolved",
-          "request_hex": "01010000001088776655d007000000",
-          "answer_hex": "0201000100d007000078563412"
+          "request_hex": "010100000000001088776655d007000000",
+          "answer_hex": "02010000000100d007000078563412"
         }
       ]
     },
@@ -230,33 +230,33 @@
       "steps": [
         {
           "note": "open S",
-          "request_hex": "01010000001044332211d007000000",
-          "answer_hex": "0201000100d007000078563412"
+          "request_hex": "010100000000001044332211d007000000",
+          "answer_hex": "02010000000100d007000078563412"
         },
         {
           "note": "keepalive S",
-          "request_hex": "01020000001244332211",
-          "answer_hex": "0202000100"
+          "request_hex": "010200000000001244332211",
+          "answer_hex": "02020000000100"
         },
         {
           "note": "keepalive S",
-          "request_hex": "01030000001244332211",
-          "answer_hex": "0203000100"
+          "request_hex": "010300000000001244332211",
+          "answer_hex": "02030000000100"
         },
         {
           "note": "keepalive S",
-          "request_hex": "01040000001244332211",
-          "answer_hex": "0204000100"
+          "request_hex": "010400000000001244332211",
+          "answer_hex": "02040000000100"
         },
         {
           "note": "keepalive S",
-          "request_hex": "01050000001244332211",
-          "answer_hex": "0205000100"
+          "request_hex": "010500000000001244332211",
+          "answer_hex": "02050000000100"
         },
         {
           "note": "open 1 has fallen out; it must not reset history",
-          "request_hex": "01010000001044332211d007000000",
-          "answer_hex": "020100000c"
+          "request_hex": "010100000000001044332211d007000000",
+          "answer_hex": "0201000000000c"
         }
       ]
     }

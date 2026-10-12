@@ -23,8 +23,8 @@ def test_session_vectors_obey_replay_and_lock_state(scenario):
     for step in scenario['steps']:
         req = bytes.fromhex(step['request_hex'])
         ans = bytes.fromhex(step['answer_hex'])
-        _, corr, fn, op, session = struct.unpack_from('<BHHBI', req)
-        _, reply_corr, resolution, detail = struct.unpack_from('<BHBB', ans)
+        _, corr, fn, op, session = struct.unpack_from('<BIHBI', req)
+        _, reply_corr, resolution, detail = struct.unpack_from('<BIBB', ans)
         assert corr == reply_corr and fn == 0
         opening = op == OPS['open']
         needs_session = op in (OPS['end'], OPS['keepalive'])
@@ -44,7 +44,7 @@ def test_session_vectors_obey_replay_and_lock_state(scenario):
         elif session and session == last_session and corr <= highwater:
             reason = 'result_lost'
         elif session:
-            force = opening and req[14] != 0
+            force = opening and req[16] != 0
             if not locked and not (opening and session != last_session):
                 reason = 'no_session'
             elif locked and session != last_session and not force:
