@@ -148,7 +148,8 @@ probe への経路を閉じる。ブローカーの probe への経路が無く�
   IDE や設定のファイルが probe を覚えるときはこの形で覚える（VID:PID や口の名前ではなく）。unit_id とスロットの名前は、どちらも URL の中で
   encode の要らない文字だけを使う。
 - **インターフェース**: 文字で 1 つのインターフェースを指すとき（CLI、設定のファイル、ログ）は `name#instance` と書く（instance は list の値、
-  0 から。`#0` は省いてよい）。例: `oep.fixture.uart#1` は 2 つめの `oep.fixture.uart`。
+  0 も有効で、`#0` は省いてよい）。例: `oep.fixture.uart#1` は instance=1 の `oep.fixture.uart` であり、list の2番目という意味ではない。
+  revision は別に明示して保存・選択し、(name, instance, revision) を解決する。欠番なら未提供として扱う。
 
 ## 6. 排他とロックの奪い方
 
