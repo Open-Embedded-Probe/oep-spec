@@ -35,7 +35,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   付いた形も付かない形も受ける。空のフレーム（0x00 の連続）は読み飛ばす。
 - **host の受け方（COBS）**: 口を開いた直後から最初の 0x00 までと、0x00 から次の 0x00 までを、どちらもフレームの候補として解く
   （開く前に送られたバイトや、開いた直後に落ちたバイトで前の 0x00 が届かないことがある）。解けない候補、CRC の合わない候補、
-  role か corr の合わないフレーム（core §11.1）は、壊れた候補として捨てる。
+  role か corr の合わないフレーム（core §10.1）は、壊れた候補として捨てる。
 - **USB の束ね方**（vendor bulk）: host は、書き込みの長さが wMaxPacketSize の倍数なら長さ 0 の転送を続ける。probe は、送り
   終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか最後の 1 byte を別の転送に分ける。
   続きがすぐ来るときは倍数のままでよい。
@@ -47,7 +47,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **broker が OEP の要求へ自分で答える場合**は、独立した OEP の端点として、発見、経路の宣言、セッション、再送、資源の寿命をすべて実装する。
   上流のセッションや資源との対応付けは broker の内部で行う。client 向けに core の一部だけを例外扱いしない。
 - **broker の上流が失われた場合**は、影響する資源を無効にする。端点を再生成するなら boot_id を変える。
-- **TCP の経路**: TCP で待ち受ける probe は、待ち受けの socket 1 つを fn 0 の describe の経路 1 つとして並べる（kind 6、interface 0xFF）。その socket で受けた接続はどれも、confirm の transport TLV でその index を返す。§3、core §4.4、core §7.1、core §11.4 が経路ごとに掛ける規則（セッションの要求は 1 つの経路で、max_frame / window / max_inflight、使っている revision、通知の送り先）は、受けた接続ごとに別々に掛かる。
+- **TCP の経路**: TCP で待ち受ける probe は、待ち受けの socket 1 つを fn 0 の describe の経路 1 つとして並べる（kind 6、interface 0xFF）。その socket で受けた接続はどれも、confirm の transport TLV でその index を返す。§3、core §4.4、core §7.1、core §10.4 が経路ごとに掛ける規則（セッションの要求は 1 つの経路で、max_frame / window / max_inflight、使っている revision、通知の送り先）は、受けた接続ごとに別々に掛かる。
   待ち受ける port は probe が決める。host が TCP の probe を見つける方法は §3。
   probe は同時接続数に上限を置いてよく、1 接続だけでもよい。上限を超える新しい接続は受け付けないか閉じる。
   そのために既存のセッション・資源・接続を終了する必要はない。TCPを提供するだけで無制限の接続や接続ごとのthreadを要求しない。
@@ -55,7 +55,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 ## 2. フレームの送り方
 
 - 同じ経路では、受け取る完全な message の順序を送った順序に保つ。分割や結合はその順序を変えない。
-  host と broker は、解決済み要求を後から再投入せず、旧経路の queue を新しい経路へ自動的に持ち越さない（core §4.1、§5.2）。
+  host と broker は、解決済み要求を後から再投入せず、旧経路の queue を新しい経路へ自動的に持ち越さない（core §4.1、§5.1）。
 - フレームは、何回の書き込み、USB の転送、HID の report、TCP の segment に分けても、ほかのフレームと 1 回にまとめてもよい。受ける側はその区切りに頼らない。
 - 送る側（host も probe も）は、TCP を除き、1 つのフレームの途中で `probe_frame_gap_ms` 止めない。
 - シリアルの口、vendor bulk、HID では、フレームの途中で 200 ms（`probe_frame_gap_ms`）入力が途切れたら、probe は読み取りを最初からやり直す。**TCP ではやり直さない。** TCP は区切りを失わず、流れの壊れた TCP の接続は閉じる。
@@ -63,12 +63,13 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 ## 3. 複数の経路
 
 - probe は OEP の制御を複数の経路で受けてよい。**複数の経路はセッションとロックを 1 つ共有する**。どの経路から来た要求も同じ
-  ものとして扱い、応答はその要求の来た経路に返す。通知は subscribe が来た経路に送る（core §11.4）。
-- **経路が閉じても**（TCP の接続が閉じた、USB の device が外れた）、セッション、ロック、購読、core §5.2 の表は残る: それらが終わるのは core §9 の出来事だけである。
+  ものとして扱い、応答はその要求の来た経路に返す。通知は subscribe が来た経路に送る（core §10.4）。
+- **経路が閉じても**（TCP の接続が閉じた、USB の device が外れた）、セッション、ロック、購読、core §5.1 の表は残る: それらが終わるのは core §9 の出来事だけである。
   閉じた経路に送るはずの応答と通知は捨てる。
-- **1 つのセッションの id を持つ要求は 1 つの経路で送る**（core §5.2 の順序の判定が経路の遅れで誤らないため）。session_id 0 の要求は
+- **1 つのセッションの id を持つ要求は 1 つの経路で送る**（core §5.1 の順序の判定が経路の遅れで誤らないため）。session_id 0 の要求は
   別の経路から送ってよい。host が 1 つのセッションの要求を 2 つの経路から送ったときの誤判定は host の責任で、probe は確かめない。
-- host は、同じ probe に複数の経路があれば vendor bulk、HID、シリアルの口の順に試す（§4）。probe の経路の一覧は fn 0 の describe の transport（core §7.5）で分かる。
+- host は、同じ probe に複数の経路があれば、自分が対応する経路を vendor bulk、HID、シリアルの口の順に試す（§4）。
+  host はすべての種類の経路を実装する義務はなく、利用者が指定した対応経路を直接使ってよい。probe の経路の一覧は fn 0 の describe の transport（core §7.5）で分かる。
 - **USB の OEP の probe の見分け方**: host が知らない device の中から OEP の probe を自動で見分けるのは、**プロジェクトの USB の
   VID:PID `1209:4F45` で列挙する device** だけである（VID 0x1209、PID 0x4F45。registry の `usb` の `project_vid` / `project_pid`）。ほかの値で
   OEP の probe を自動で見分けることはない。それ以外は、利用者が probe を名指すか口を選ぶ（次の 2 つの項目）。device の
@@ -81,8 +82,8 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **ほかの device とシリアルの口**: 上の 2 つに当たらない USB の device とシリアルの口は、host が自分で扱い方を持つものか、利用者が
   明示して選んだものだけを開く。
 - **探りの規則**: host が見分けずに開く device と口（名指した device、利用者の選んだ口、host が自分で扱う device）では、
-  host が最初に送るのは confirm（core §7.1）とその送り直し（core §5.2）だけである。confirm の待ち時間
-  （core §4.4。confirm には引数で決まる時間が無いので 1000 ms（`host_wait_add_ms`）と転送の時間）が過ぎても正しい confirm の応答が来なければ（送り直したときは、最後の送り直しの待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。ただし UART bridge（transport の
+  host が最初に送るのは confirm（core §7.1）とその送り直し（core §5.1）だけである。confirm の待ち時間
+  （core §4.4。max_op_ms の取得前は 1000 ms（`host_wait_add_ms`）と転送の時間）が過ぎても正しい confirm の応答が来なければ（送り直したときは、最後の送り直しの待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。ただし UART bridge（transport の
   kind 1）の口では、送り直しの代わりに §4 の「上げた速さの後」のとおり confirm を繰り返す（送るのは confirm だけで、その間に正しい応答が来なければ閉じる）。正しい confirm の応答とは、送った
   confirm と同じ corr の completed で、payload が core §7.1 の形（`OEP!` で始まる）のものをいう。正しい応答が来た device と口は OEP の
   probe として扱う。
@@ -119,9 +120,9 @@ OEP のシリアル経路はフレーム専用である。コンソールの生�
 その endpoint の識別と接続先の設定は OEP core の外で明示する。CDC の列挙だけで raw endpoint に confirm を送らない。
 
 - **UART bridge の回線**: データ 8 bit、パリティなし、ストップ 1 bit、フロー制御なし。起動時の速さは **115200 bps**（registry の `uart_bridge_boot_baud`）。port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3）が変えるのは速さだけ。
-- **上げた速さの後**: UART bridge の口を開く host は、port_speed を使うかどうかにかかわらず、起動時の速さで正しい confirm の応答が来なければ、
-  あきらめる前にそこで `port_speed_idle_ms` + `host_wait_add_ms` の間 confirm を繰り返す（前の host が上げた速さは
-  それまでに起動時の速さに戻る、[リンク](../interfaces/oep-if-link.ja.md) §3）。
+- **任意の速さ変更を扱うHost**: [port_speed](../interfaces/oep-if-link.ja.md)を使った/使う可能性のある口では、起動時の速さに戻るまで
+  confirmを再試行してよい。待ちの期限は以前の要求の処理時間とframeの転送時間も含めてHostが決める。
+  `port_speed_idle_ms + host_wait_add_ms`だけを復帰の上限とはしない。未対応Hostへ一律の4秒待ちを要求しない。
 - **USB のシリアルの口**（USB CDC、内蔵の USB シリアル）: probe は、host がどんな line coding を設定しても OEP を受けて送り、line coding を何にも掛けない。
 - **制御線**: probe は、OEP を受けるか送るかを DTR、RTS、回線の状態で決めない。host は口を開いている間 DTR と RTS を立てておく（UART bridge はそれを probe のリセットにつないでいることがある）。
 - probe は `0x00 <COBS(message | CRC)> 0x00` の候補だけを処理する。CRC 不一致、解けない候補、途中の timeout は捨てる。
@@ -134,9 +135,9 @@ OEP のシリアル経路はフレーム専用である。コンソールの生�
   フレームの途中の休みだけでは壊れたと判断しない。待っていない corr の正常な応答は捨てるだけで、区切りの破損とは扱わない。
 - vendor bulk と HID の区切りを失った host は入力を読み捨て、その口への最後の書き込みから probe_frame_gap_ms より長く待つ。
   自分の corr の confirm 応答を確認して再開する。静かにできなければ経路を閉じて開き直す。
-- COBS は壊れた候補を捨て、次の区切りから読む。要求の結果が不明な場合は core §5.2 の再送規則を使う。
+- COBS は壊れた候補を捨て、次の区切りから読む。要求の結果が不明な場合は core §5.1 の再送規則を使う。
 - 開き直してもセッションと再送履歴は残る（§3）。新しい経路で confirm して boot_id を確認する。
-  これは旧経路の未送信/未読 queue を持ち越す意味ではない。同一要求を再送する場合も、core §4.1、§5.2 の半周と番号再使用の規則を守る。
+  これは旧経路の未送信/未読 queue を持ち越す意味ではない。同一要求を再送する場合も、core §4.1、§5.1 の半周と番号再使用の規則を守る。
 
 
 ## 6. host の待ちの転送の時間

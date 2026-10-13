@@ -9,12 +9,11 @@
   ロックの force は認証ではなく、取り違えを防ぐだけ（core §6.4）。
 - USB とシリアルの経路は、PC のほかの手元の装置と同じく信頼する。**TCP は信頼できる手元の接続か、認証したトンネルの中でだけ使う**
   （transports §1）。
-- **秘密も OEP を通る**: Wi-Fi の passphrase（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.4）は set の要求に暗号なしで載る。
-  passphrase を送るのは、信頼する経路（手元の USB やシリアルの口、信頼するネットワーク、認証したトンネル）だけにする。
+- targetのメモリやコンソールに秘密が含まれる場合も、OEPのpayloadは暗号化されない。TCPでの保護は上記のトンネル等で行う。
 - OEP の要求に自分で答える端点は、後ろに何があっても probe で、probe の規則すべてに従う。中継するだけのブローカーは probe に対して
   host（transports §1）。
 - probe 自身の firmware の更新は OEP の外（core §0）。OEP は firmware を運ばず、署名もしない。
-- target のメモリの読み出しと、その読み出しの保護は host のこと: probe は host の要求を実行し、target の知識を持たない（core §13 の
+- target のメモリの読み出しと、その読み出しの保護は host のこと: probe は host の要求を実行し、target の知識を持たない（core §12 の
   規則 8）。target 固有の保護や手順は host 実装が扱う。
 
 ## 2. 壊れた入力
@@ -32,10 +31,10 @@ probe は:
 
 host は:
 
-- 候補を解き、解けないもの、CRC が合わないもの、role を知らないもの、待っていない corr のものを捨てる（transports §1、core §11.1）;
+- 候補を解き、解けないもの、CRC が合わないもの、role を知らないもの、待っていない corr のものを捨てる（transports §1、core §10.1）;
 - role が要求の role のメッセージは捨て、5 byte より短い応答、ヘッダより短い出来事やデータのフレーム（core §2.4）、固定部分より短い
   応答は壊れたものとし、知らない tag は読み飛ばし、長さが定義と違う TLV の値は壊れたものとし、知らない status と reason は失敗とする（core §2.3、§2.4）;
-- 送り直しにも答えが無ければ、その経路は失敗したとし、そこで何かを送る前に confirm で立て直す（か開き直す）（core §5.2）;
+- 送り直しにも答えが無ければ、その経路は失敗したとし、そこで何かを送る前に confirm で立て直す（か開き直す）（core §5.1）;
 - 65535 byte までのメッセージを受けられる。正しい COBS のフレームは、2 つの 0x00 の間が 65796 byte より長くならない
   （transports §3、host 開発ガイド §2）;
 - 応答の文字列は、見せる前に制御文字と不正な UTF-8 を置き換える（core §2.1）。
@@ -45,23 +44,23 @@ host は:
 - **待っている要求**: 経路ごとの max_frame、window、max_inflight が host の送れる量を決める。probe は window_exceeded で断ってよく、
   守らない host は要求を失う（core §4.4）。
 - **送り直し**: 最後のsession_id/corrの順序状態は残す。要求/応答のbyte記録は件数と大きさを制限してよく、0件でもよい。
-  保持していない旧要求にはresult_lostで答え、再実行しない（core §5.2）。受信待ちbufferの上限とは別に決める。
+  保持していない旧要求にはresult_lostで答え、再実行しない（core §5.1）。受信待ちbufferの上限とは別に決める。
 - **通知**: 経路の送信のバッファで待つのは多くて max_frame × `notify_pending_max_frames` byte。残りは probe の中で捨てられ、seq の
-  飛びに見える。probe は応答を先に送り、通知の書き込みでブロックしない（core §11.4）。通知を送るのは、ロックの持ち主が購読した fn だけ
-  （core §11.3）。
+  飛びに見える。probe は応答を先に送り、通知の書き込みでブロックしない（core §10.4）。通知を送るのは、ロックの持ち主が購読した fn だけ
+  （core §10.3）。
 - **シリアルの口での host の受けの量**: OS のドライバは一度に来た量を黙って落とすことがあるので、host は待つ応答の量と subscribe の
   min_bytes を小さく保つ（host 開発ガイド §8）。
 - **時間**: どの要求も宣言した max_op_ms より長くかからず、引数がそれを超えうる op は unsupported で断る（core §7.5）。attach、scan、
   riscv-dm の reset もそのうちに答える（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1、§4.3）。lease は `lease_min_ms` から `lease_max_ms` の間（core §6.4）。
-- **番号**: 資源の番号は u16 で probe に 1 つの空間。1 ずつ進め、使用中の番号は飛ばす。一周の後は古い番号が別の資源を指しうるので、
-  host は no_resource を受けた番号を捨てる（core §9）。
+- **番号**: 資源の番号は u32 で probe に 1 つの空間。同じboot内では再利用せず、閉じた番号はno_resourceになる。
+  host は no_resource を受けた番号を捨て、boot_idが変わればすべての番号を捨てる（core §9）。
 - **ためるデータ**: 位置つきのストリームとキャプチャの区画は、古いものから押し出して失ったことを知らせる輪（common §1.1、
   [キャプチャ](../interfaces/oep-if-capture.ja.md) §2）。probe の設定は max_bytes が上限で、超えれば unavailable cause 3（probe の設定 §2）。
 
 ## 4. ロックの公平さ
 
 - ロックは probe に **1 つ**。状態を変えられるのは、それを持つセッションだけ（core §6.1、§6.3）。ロック不要の要求は読むだけ
-  （core §6.3、§13 の規則 5）。
+  （core §6.3、§12 の規則 5）。
 - 持ち主が更新しなくなったロックは lease が空ける。期限切れでも end と同じく、そのセッションの資源は解放される（core §6.1、§9）。要求の実行中は lease を
   数えず、その長さは max_op_ms が抑える（core §6.1、§7.5）。
 - locked で断られた host は残りの時間と、あれば持ち主の文字列を知る（core §4.3、§6.4）。lock_state はセッションなしで同じことを返す。
@@ -73,7 +72,7 @@ host は:
 - **ロックを持つ host は probe を再起動できる**（任意のインターフェース `oep.probe.restart` の restart、[再起動](../interfaces/oep-if-restart.ja.md)）。ロックの持ち主はもともと線を駆動し
   設定を変えられるので、再起動も持ち主を信頼することの中にある。ロックの無い要求では再起動しない（session_required、no_session、locked）。再起動はすべての経路の、
   ほかの host のロック不要の読みも含めて途切れさせ、保存していない設定を捨て、connection を閉じる。probe は応答を先に送り、再起動の前に
-  線を空きの状態にする（target は reset しない。止めていた hart は止めたまま）。`oep.probe.restart` を出さない probe は再起動しない。
+  線を空きの状態にする。再起動手順でtargetのreset/resumeを意図して行わないが、MCUのリセット時のピン状態や外部回路による影響はある（[再起動](../interfaces/oep-if-restart.ja.md) §2）。`oep.probe.restart` を出さない probe は再起動しない。
 
 ## 5. target の出力と OEP の制御
 
@@ -85,17 +84,16 @@ OEP のシリアル経路はフレーム専用で、target の生データと共
 
 probe は本物の線を駆動する。target、治具、probe 自身を傷めないための規則:
 
-- **出力の強さ**: host が強さを選べるのは gpio の出力と出力の idle（mode 3 / 4）だけ。線と、uart、i2c-target、spi-target の線の強さは
-  probe が決める（[fixture](../interfaces/oep-if-fixture.ja.md) §1.1）。実務: debug の線はタイミングが許すいちばん弱い強さで駆動し、target に給電する
+- **出力の強さ**: v1ではProbeが決め、Hostによる段の選択を定義しない（[fixture](../interfaces/oep-if-fixture.ja.md) §1）。実務: debug の線はタイミングが許すいちばん弱い強さで駆動し、target に給電する
   線は弱くしない。具体的な段は probe と外部回路の仕様に従う。
 - **出力の idle**: 解いたピンは空きの状態（設定の idle か Hi-Z）に戻る（core §8）。plan を取ってもピンは変わらず、読むだけの
   インターフェースは駆動しない（core §8、キャプチャ §1.2）。出力の idle は、ピンが空いている間ずっと、起動時から、host なしで level を
   駆動する。target の出力とぶつからないようにするのは配線の責任（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1）。idle の項目のある
-  channel を名指す要求で、idle が出力なら unavailable cause 5
+  channel を名指す要求で、idle が出力なら、そのインターフェースが取得を許す場合を除きunavailable cause 5
   （[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。
-- **保存した設定と起動**: 起動したら、probe は最初の応答の前に、自分で使う channel を除くすべての channel を空きの状態にし、保存した設定では
-  disable と idle をほかの項目より先に掛ける（core §8、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2）。
-  出力の idle は host の有無にかかわらず駆動する。plan / slot / uart の preset は起動時に target を操作しない（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1、§2）。
+- **保存した設定と起動**: 起動したら、probe は最初の応答の前に、自分で使うchannelと設定が使用・設定を禁止するchannelを除くすべてのchannelを空きの状態にし、保存した設定では
+  disable と idle をほかの項目より先に掛ける（core §8、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §3）。
+  出力の idle は host の有無にかかわらず駆動する。配線やUARTの設定はHostが明示的に適用する（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1、§2）。
   電源投入やリセットから firmware が設定を掛けるまで、firmware を更新している間、firmware が壊れたときは、ピンは MCU のリセットの状態で、
   設定が定めるものは何も駆動されない。level を誤ると害のある線（target の電源を切り替える線など）にはそれだけで安全な level に保つ外付けの pull が要る。
   disable は利用者の宣言で、守りではない: ロックを持つ host は unset で外し、その channel を使える。設定に認証は無い: ロックを取ったどの host も、
@@ -103,8 +101,8 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
 - **逆給電**: やり取りが失敗してから、成功するか接続を失うまで、probe は線を駆動せずに休ませ、やり取りの最中だけ駆動する。電源の
   落ちた target をピンの保護ダイオード経由で給電しないため（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）。接続が閉じたら、そのピンは空きの
   状態に戻る（debug §2）。
-- **速さを確かめる前の target への書き込み**は、wake / 設定の手順と dmactive だけ。書き込みの確かめはスクラッチのレジスタだけを使い、
-  元に戻す（debug §1）。
+- **速さを確かめる前の target への書き込み**は、wake / 設定の手順と dmactive だけ。scratchを定めるwireの書き込み検証はそのレジスタだけを使い、元に戻す。
+  SWDはDPIDRの読み出しとACK/parityで確認し、scratchへの書き込みを要求しない（debug §1、§5）。
 - **線の再試行**: probe の線の再試行は、target に届いたかもしれない target のメモリへの store と host の dmi の手順を繰り返さず（失敗は failed / partial で見える）、connection がある間は
   target の状態を変えない（target をリセットしうる wake は attach と reset の中だけ）（debug §2）。
 - **scan** は host が明示した候補のピンを順に駆動する。配線の分からない治具に、利用者の同意なしに送らない（debug §1、参考）。
@@ -113,7 +111,7 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
   答えないよう予約のアドレスを断る（fixture §3）。uart の plan は
   TX を UART の休みの level に保つ（fixture §2）。
 - **リセットの線**はオープンドレインで引く（gpio の mode 5 / 6、attach の reset TLV）。riscv-dm の reset の op はリセットの線を
-  動かさないので、線が動くのは host が名指した所だけ（debug §4.3）。接続を閉じても target をリセットしない（debug §2）。
+  動かさないので、線が動くのは host が名指した所だけ（debug §4.3）。接続を閉じる手順でtargetのreset/resumeを意図して行わない。ピン解放や外部回路の影響は別である（debug §2）。
 - **probe のピンからの給電**は、ピンが流せる範囲でだけ行う。大きいものは外付けのスイッチを介す。
 - 配線の分からない target に scan や出力を行う前に、利用者の同意と電気的な安全を確認する。
 
@@ -122,7 +120,7 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
 - host は、OS が許す所ではシリアルの口と HID を排他で開く（transports §3）。協力型のロックはほかの道具を止めない（host ガイド §6）。
 - 見分けていない device や口には、host は confirm だけを送り、正しい応答が来なければ閉じる（探りの規則、transports §3）。probe でない
   device を乱さないため。class / subclass / protocol や usage page だけで probe とは決めない（transports §3）。
-- probe は DTR、RTS、線の設定を何の判断にも使わず、1200 bps の touch と CDC の線の設定は何もしない（transports §4、probe の設定 §1.2）。
+- probe は DTR、RTS、線の設定を何の判断にも使わず、1200 bps の touch と CDC の線の設定は何もしない（transports §4）。
   host は自動リセットの回路を動かさないよう DTR と RTS を立てておく（transports §4、host ガイド §1）。
 - OEP のシリアル経路へ raw byte を混ぜない（transports §4）。
 
@@ -131,8 +129,5 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
 - **owner**（open の TLV 0x01）は、lock_state と locked の断りで、どの host にも返る: 秘密を入れない（core §6.4、参考）。
 - **unit_id** はどの host も読め、USB の serial number でもある。チップの固有の番号から作れば、その番号を見せる（core §7.5。代わりの
   作り方は probe ガイド §10）。
-- **Wi-Fi の passphrase は書くだけ**: probe はどの応答にも、ログにも出さず、get は pass_len だけ（あれば 0xFF）を返し、hash を passphrase
-  から作らない。host は表示もログもしない（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.4）。保存した passphrase は probe の
-  保存の中に残る: flash を読める人から守るかは probe による。ssid、つながりの様子、アドレスは、get と state でどの host も読める。
 - describe、list、設定の get と state、connections、streams、位置つきのストリームの read はロック不要: 口を開けるプログラムは何でも
   読める（core §6.3）。

@@ -16,10 +16,10 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | host | host | probe を使うソフトウェア | core §1 |
 | target | target | probe がつながる相手（開発中の MCU） | core §1 |
 | ブローカー | broker | 複数の道具を 1 つのセッションに束ねる host の側のソフトウェア。probe に対しては host | transports §1 |
-| 中継のブローカー | relaying broker | セッションの op に自分で答え、ほかを 1 つの probe に中継するブローカー | transports §1、core §5.2 |
+| 中継のブローカー | relaying broker | セッションの op に自分で答え、ほかを 1 つの probe に中継するブローカー | transports §1、core §5.1 |
 | core（本体） | core | どの probe と host も実装するもの。名前を持たず fn 0 で話し、list に載らない。版はプロトコルの revision | core §0 |
-| oep インターフェース | oep interface | 名前が `oep.` で始まるインターフェースの略。project 自身のもので、逆 DNS の名前の代わりに短い `oep.` の名前を持つ。ほかのどのインターフェースとも同じに扱う | core §13 |
-| 独自のインターフェース | third-party interface | 逆 DNS の名前で、それを定めた者の文書が定めるインターフェース。OEP を伸ばす者は誰でもこれを使う。ほかのどのインターフェースとも同じに扱う | core §13 |
+| oep インターフェース | oep interface | 名前が `oep.` で始まるインターフェースの略。project 自身のもので、逆 DNS の名前の代わりに短い `oep.` の名前を持つ。ほかのどのインターフェースとも同じに扱う | core §12 |
+| 独自のインターフェース | third-party interface | 逆 DNS の名前で、それを定めた者の文書が定めるインターフェース。OEP を伸ばす者は誰でもこれを使う。ほかのどのインターフェースとも同じに扱う | core §12 |
 | 規範の語 | normative words | RFC 2119 / 8174 の MUST / MUST NOT / SHOULD / MAY。日本語は する / しない / できれば / してよい | core §1.1 |
 | 適合 | conformance | probe と host が実装しなければならないもの | core §1.2、[適合](conformance.ja.md) |
 
@@ -57,8 +57,8 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | role | role (of a frame) | 先頭の 1 byte: 要求 0x01、応答 0x02、出来事 0x05、データ 0x06 | core §2.5、§4.1 |
 | 要求 | request | host からのメッセージ | core §4.1 |
 | 応答 | answer | 要求に対する probe の 1 つの返事 | core §4.2 |
-| 出来事 | event | kind と固定部分を持つ通知 | core §11.2 |
-| データ | data | 位置つきでストリームのバイトを運ぶ通知 | core §11.2 |
+| 出来事 | event | kind と固定部分を持つ通知 | core §10.2 |
+| データ | data | 位置つきでストリームのバイトを運ぶ通知 | core §10.2 |
 | corr | corr | host が要求に付ける u16 の番号。0 を飛ばして循環し、未解決要求の距離は半周未満。応答が同じ値を持つ | core §4.1 |
 | fn | fn | 同じ boot_id の間、インターフェースを指す u16。fn 0 は本体（list に載らない） | core §1、§7.2 |
 | op | op | インターフェースの中の操作の u8 の番号 | core §1、§2.5 |
@@ -72,20 +72,20 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | TLV | TLV | `tag(u8) len(u16) value`。どの長さでも形は一つ | core §2.2 |
 | tag の文脈 | tag context | tag の空間: (fn, op) ごと | core §2.2 |
 | critical | critical | 要求の TLV の tag の bit 7: その tag を実装しない probe は断る（印が無ければ無視する） | core §2.2、§2.3 |
-| 固定部分 | fixed part | (name, revision) が形を決める payload の部分 | core §2.3、§2.7 |
+| 固定部分 | fixed part | (name, revision) が形を決める payload の部分 | core §2.3、§2.8 |
 | 末尾、後ろ | tail | 要求、応答、出来事、データの固定部分の後ろに続く TLV | core §2.3 |
 | 並び、要素 | sequence, element | 数の付いた並び、`count × element`。要素は固定の形で、自分の長さを持たない | core §2.3 |
 | bitmap | bitmap | bit i は byte ⌊i/8⌋ の bit (i mod 8) | core §2.1 |
 | 真偽値、文字列 | boolean, text | u8 の 0 / 1（0 でなければ真と読む）。終端なしの UTF-8 | core §2.1 |
 | 知らない値 | unknown value | 読む側が知らない値の扱い | core §2.4 |
 | 一周する値 | wrapping value | corr、seqなど: 通し番号の算術で比べる。資源の番号は同じboot内で再利用しない | core §2.6、§4.1、§9 |
-| 時計 | clock | probe の 1 つの時計: 起動からの ns（u64）。全ビット 1 は「まだ」。今の値は op の clock で読む | core §2.6a、§7.7 |
-| revision | revision | プロトコルの revision（confirm）とインターフェースの revision（list）。固定部分が変わるときだけ上げる | core §2.7、§7.1 |
+| 時計 | clock | probe の 1 つの時計: 起動からの ns（u64）。全ビット 1 は「まだ」。今の値は op の clock で読む | core §2.7、§7.6 |
+| revision | revision | プロトコルの revision（confirm）とインターフェースの revision（list）。固定部分が変わるときだけ上げる | core §2.8、§7.1 |
 | max_frame、window、max_inflight | max_frame, window, max_inflight | 経路ごとの、メッセージの長さ、待っている byte、待っている要求の上限 | core §4.4 |
 | 待ち時間（の下限） | wait floor | host が応答を待つ最短の時間 | core §4.4 |
 | 転送の時間 | transfer time | UART bridge の線の速さのための、待ち時間の一部 | core §4.4 |
-| 送り直し | resend | 応答が壊れたか遅れたときの、同じ corr での送り直し（probe は表から答える） | core §5.2 |
-| 送り直しの表 | resend table | 二重の実行を防ぐために probe が覚える最近の応答 | core §5.2 |
+| 送り直し | resend | 応答が壊れたか遅れたときの、同じ corr での送り直し（probe は表から答える） | core §5.1 |
+| 送り直しの表 | resend table | 二重の実行を防ぐために probe が覚える最近の応答 | core §5.1 |
 
 ## セッションと資源
 
@@ -99,7 +99,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | force | force | ほかのセッションからロックを奪う open（認証ではない） | core §6.4 |
 | owner | owner | open に付ける表示の文字列。lock_state と locked で返る | core §6.4 |
 | boot_id | boot_id | 起動のたびに変わるように選ぶ値 | core §6.5 |
-| 資源、資源の番号 | resource, resource number | セッションが作るもの（plan、接続、ストリーム…）。番号は probe に 1 つの空間の u16 で、1 から 1 ずつ進め（0 は割り当てない）、使用中の番号は飛ばす | core §9 |
+| 資源、資源の番号 | resource, resource number | セッションが作るもの（plan、接続、ストリーム…）。番号は probe に 1 つの空間の u32 で、1 から増やす。0 は割り当てず、同じboot内では再利用しない | core §9 |
 | 寿命 | lifetime | end、期限切れ、force、再起動で資源がどうなるか | core §9 |
 
 ## 発見と宣言
@@ -107,13 +107,13 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
 | confirm | confirm | 最初の要求: `OEP?` / `OEP!`、revision、上限、boot_id | core §7.1 |
-| clock（op） | clock (op) | fn 0 の op 0x04。必須、ロック不要、session_id 0 で送れる。応答は boot_id と uptime_ns。中継のブローカーも probe に中継する | core §7.7、transports §1 |
-| uptime_ns | uptime_ns | clock の応答の probe の今の時刻（起動からの ns）。probe が要求を受けてから応答を送るまでの間に読んだ値 | core §2.6a、§7.7 |
+| clock（op） | clock (op) | fn 0 の op 0x04。必須、ロック不要、session_id 0 で送れる。応答は boot_id と uptime_ns。中継のブローカーも probe に中継する | core §7.6、transports §1 |
+| uptime_ns | uptime_ns | clock の応答の probe の今の時刻（起動からの ns）。probe が要求を受けてから応答を送るまでの間に読んだ値 | core §2.7、§7.6 |
 | list | list | 名前ごとのインターフェースと、その fn、instance、revision | core §7.2 |
 | describe | describe | インターフェースの、または（fn 0 で）probe 全体の宣言 | core §7.3 |
 | 宣言 | declaration | describe が返すもの。boot_id が同じ間変わらない | core §7.3 |
 | ページング | paging | more = 1 の間、`first` を進めて聞き直す。終わりを越えた first には要素 0 個と more 0。marks と segments は from_serial（最後の serial + 1）で聞き直す | core §7.3、common §1.3 |
-| 名前、ラベル | name, label (of a name) | `a-z 0-9 - .`。`.` で区切ったラベルが 2 つ以上 | core §7.2、§13 |
+| 名前、ラベル | name, label (of a name) | `a-z 0-9 - .`。`.` で区切ったラベルが 2 つ以上 | core §7.2、§12 |
 | instance、`name#instance` | instance | 同じ (name, revision) のインターフェースの中の番号。文字で書く形は host ガイド §5.3 | core §7.2 |
 | role_channels、channel_group | role_channels, channel_group | 役が使える channel、決まった組 | core §7.4 |
 | features | features | インターフェースの、op でない任意の機能の u32 の bit（モード、format） | core §7.4 |
@@ -123,9 +123,9 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | model、chip、firmware | model, chip, firmware | probe の種類、その MCU、firmware の自由な文字列 | core §7.5 |
 | max_op_ms | max_op_ms | probe が 1 つの要求にかける最長の時間 | core §7.5 |
 | label | label (firmware) | firmware の固定の channel の名前 | core §7.5 |
-| アドレス | address | `oep://<unit_id>[/<スロットの name>]` | host ガイド §5.3 |
+| アドレス | address | `oep://<unit_id>[/<Hostのprofile name>]` | host ガイド §5.3 |
 | 線の試験 | link test | `oep.probe.link` の source と sink の op。経路を測る | link §2 |
-| restart | restart | `oep.probe.restart` の op: 応答を先に送り、probe が起動し直す。restart_max_ms のうちに confirm にまた答える | restart §2 |
+| restart | restart | `oep.probe.restart`のop。応答を先に送り、restart_max_msのうちにProbe内部を初期化する。OSの列挙やHostの再接続待ちは別 | restart §2 |
 
 ## plan とピン
 
@@ -133,25 +133,23 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 |---|---|---|---|
 | channel | channel | probe のピンの u16 の番号。0〜channels − 1 | core §1、§7.5 |
 | plan | plan | どの fn のどの役にどの channel を使うか。fn ごとに持つ。`oep.probe.plan` | plan §2 |
-| 役（role） | role (of a plan) | インターフェースの中のピンの働き（RX、SWDIO…） | core §7.4、§13、plan 冒頭 |
+| 役（role） | role (of a plan) | インターフェースの中のピンの働き（RX、SWDIO…） | core §7.4、§12、plan 冒頭 |
 | role_assignment | role_assignment | plan_apply の TLV: fn、role、channel | plan §2.1 |
 | plan_roles | plan_roles | plan が一度に持てる割り当ての数 | plan §1、§2.1 |
-| 設定の plan | settings plan | host が plan_apply に使う preset。保存だけではピンを取らない | plan §2.3、settings §1 |
 | 空きの状態 | idle state | どのインターフェースも取っていないピンの状態: 保存した設定の idle か Hi-Z | core §8 |
 | 資源の取り合い | resource contention | 持たれているピンや資源を取ろうとするものを断る | core §8.1 |
-| 出力の強さ、段 | drive strength, drive_levels | mode 3 / 4 の出力の選べる強さ | fixture §1.1 |
 
 ## 通知とストリーム
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
-| 通知 | notification | probe が要求なしに送る出来事とデータ | core §11 |
-| 購読 | subscribe, subscription | 1 つの fn の通知を求めること。送り出すインターフェース自身の op（0x01 subscribe、0x02 unsubscribe）。ロックと一緒に終わる | core §11.3 |
-| seq | seq | fn ごとの通知のフレームの u16 の通し番号 | core §11.2 |
+| 通知 | notification | probe が要求なしに送る出来事とデータ | core §10 |
+| 購読 | subscribe, subscription | 1 つの fn の通知を求めること。送り出すインターフェース自身の op（0x01 subscribe、0x02 unsubscribe）。ロックと一緒に終わる | core §10.3 |
+| seq | seq | fn ごとの通知のフレームの u16 の通し番号 | core §10.2 |
 | 位置つきのストリーム | positioned stream | 起動の間戻らない u64 の位置で番号を振ったバイト | common §1 |
 | 位置 | position | ストリームのバイトの通し番号 | common §1.1 |
 | gap | gap | read の flag: 求めた位置が押し出されていた | common §1.2 |
-| マーク | mark | ストリームの位置に付けた出来事の記録（reset、attach、lost…） | common §1.3 |
+| マーク | mark | ストリームの位置に付けた出来事の記録（lost、clear、host。consoleにはreset/restartもある） | common §1.3、console §2 |
 
 ## 線と target
 
@@ -165,7 +163,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | scan、attach、detach | scan, attach, detach | target を探す、つなぐ、離れる | debug §1、§2 |
 | 席、max_connections | seat, max_connections | 線が一度に持てる接続の数 | debug §1 |
 | リセットの後の待ち | reset settle wait | リセットを解いた後、黙った debug module が答えるまでの待ち。多くても max_op_ms、線の再試行に数えない | debug §3、§4.3 |
-| 立ち上げ、search_retries | bring-up, search_retries | wake、速さを選んで確かめること。その追加の試しの数（数え方は実装が決める、診断用） | debug §1 |
+| 立ち上げ | bring-up | wireのwake、速さを選んで確かめること | debug §1 |
 | スクラッチのレジスタ | scratch register | 書き込みの確かめに使い、後で元に戻すレジスタ | debug §1 |
 | target_id、scheme | target_id, scheme | probe が読んだ識別子と、その読み方 | debug §1 |
 | やり取り | exchange | 線の上の 1 つのフレーム、packet、wake pattern | debug §2 |
@@ -183,12 +181,8 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | トラック | track | 1 つのロジックかアナログのキャプチャのインターフェース | capture の冒頭 |
 | mode | mode | one-shot、repeat、streaming | capture §2.1 |
 | 区画 | segment | 自分の時刻とサンプル数を持つキャプチャの一部 | capture §2.2 |
-| 世代 | generation | start のたびに進む（最初の start で 1、0xFFFFFFFF の次は 1、0 は start の前）。read と release が指し、出来事も持つ。capture-group は組の世代を持つ | capture の冒頭、§4.1 |
+| 世代 | generation | 受理したstartごとに進む（最初は1、0はstart前。0xFFFFFFFF後はstartを断り再起動まで再利用しない）。read と release が指し、出来事も持つ。capture-group は組の世代を持つ | capture の冒頭、§4.1 |
 | capture-group | capture-group | 複数のトラックを一緒に始める | capture §4 |
-| multirate | multirate | ロジックの別の定義: 全チャネルを同じ base rate で見て、チャネルごとに違う間隔 d で値を出し、区間を要約する | capture §5 |
-| base sample | base sample | multirate で全チャネルのレベルを同時に見る点。rate、samples、trigger_index はこれで数える | capture §5 |
-| 縮約のチャネル | reduced channel | multirate で、sample の d = 1 でないチャネル（sample、any_active、edge_latch） | capture §5.2 |
-| block | block | multirate のデータの単位: L 個の base sample の、D = 1 の部分と縮約の部分 | capture §5.5 |
 
 ## probe の設定
 
@@ -198,10 +192,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | label | label (item) | 設定で付けた channel の名前 | settings §1 |
 | idle | idle (item) | channel の空きの状態: Hi-Z、pull、出力 low / high | settings §1 |
 | disable | disable | probe が決して使わない channel | settings §1 |
-| スロット | slot | target がつながる場所の登録 | settings §1.1 |
-| 線の名前 | line names | `nrst`、`power_hi`、`power_lo`。ほかは `x-` | settings §1.3 |
-| hash | hash | 今の設定を表す u32。設定が変われば変わり、作り方は probe が決める | settings §2 |
-| wifi の項目、entry | wifi item, entry | probe がつなぐ Wi-Fi のネットワーク 1 つ（index、ssid、passphrase）。index の順に試す | settings §1.4 |
-| 書くだけ（passphrase） | write-only (passphrase) | get も state もほかのどの応答も passphrase を返さない。get の pass_len 0xFF は「ある」で、set で送り返すと今のものを保つ | settings §1.4 |
-| 保存、消去 | save, erase | 保存の写しを書く / 消す | settings §2 |
+| 線の名前 | line names | `nrst`、`power_hi`、`power_lo`。ほかは `x-` | Hostガイド §5.3 |
+| 保存、消去 | save, erase | 保存の写しを書く / 消す | settings §3 |
 | storage_state、読めない理由 | storage_state, unreadable reason | 保存があり、掛かっているか | settings §3 |
+| 設定の世代 | settings generation | boot内で再利用しないu32変更カウンタ。getページとsave済みの状態の等値に使う | settings §2/§3 |

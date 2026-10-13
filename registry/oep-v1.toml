@@ -30,7 +30,7 @@
 #                      [[interface]] below except name, revision, fn, target and line_names.
 #   [[interface]]      one per interface, with these keys and sub-tables only:
 #     name = string, revision = integer, fn = integer (u16; only where the fn is fixed: none in v1),
-#     target = string (optional: the target family the interface is for, core §13 rule 8; absent = any family),
+#     target = string (optional: the target family the interface is for, core §12 rule 8; absent = any family),
 #     op = array of inline tables { code = integer (u8), name = string, lock = bool } (`fields` is reserved on ops);
 #     [interface.tlv.<context>]   name = integer: a TLV tag (u8, low 7 bits) in that op, answer, payload or declaration;
 #     [interface.enum.<enum>]     name = integer: a value of a field, or a bit mask for a bit set (the width is the field's);
@@ -54,8 +54,8 @@ confirm_result_magic = "OEP!"
 tag_critical = 0x80             # bit 7 of a TLV tag in a request: a probe that does not implement the tag refuses (core §2.3)
 tag_reserved_zero = 0x00        # never a TLV tag; the rejected unsupported payload's "fixed-part value" marker (core §4.3)
 min_max_frame = 64              # every probe takes messages this long; a host sends no longer message before confirm answers (transports §3)
-op_subscribe = 0x01             # common-operation range in every interface's op space: subscribe of the interface that sends notifications (core §11.3)
-op_unsubscribe = 0x02           # common-operation range in every interface's op space: unsubscribe (core §11.3)
+op_subscribe = 0x01             # common-operation range in every interface's op space: subscribe of the interface that sends notifications (core §10.3)
+op_unsubscribe = 0x02           # common-operation range in every interface's op space: unsubscribe (core §10.3)
 
 [roles]
 request = 0x01
@@ -83,7 +83,7 @@ locked = 0x08
 session_required = 0x09
 no_resource = 0x0A
 unsupported = 0x0B
-result_lost = 0x0C              # a resend whose answer is not kept (it fell out of the table, or was too large): read the state again (core §5.2)
+result_lost = 0x0C              # a resend whose answer is not kept (it fell out of the table, or was too large): read the state again (core §5.1)
 
 [status]                        # wire and target operations (oep-if-common §3); 0x06-0x3F unallocated, 0x40-0x7F per interface
 ok = 0
@@ -93,18 +93,18 @@ fault = 3
 timeout = 4
 state = 5
 
-[timing]                        # times and line values host and probe both implement (transports §2, §4, §5; core §11)
+[timing]                        # times and line values host and probe both implement (transports §2, §4, §5; core §10)
 probe_frame_gap_ms = 200        # no sender pauses this long inside a frame, and a probe's reader restarts after such a pause (not on TCP; transports §2); a host waits longer than this before a resync's confirm (transports §5)
 uart_bridge_boot_baud = 115200  # a UART bridge's boot speed, 8N1 without flow control (transports §4)
 port_speed_idle_ms = 3000       # a committed port_speed goes back to the boot speed after this long without a good frame (oep-if-link §3)
-host_wait_add_ms = 1000         # host: waits at least the request's argument time (at most max_op_ms) plus this plus the transfer time (core §4.4)
-notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §11.4)
+host_wait_add_ms = 1000         # host: waits at least max_op_ms (or an explicitly shorter whole-request bound) plus this plus transfer time; discovery before max_op_ms uses this plus transfer time (core §4.4)
+notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §10.4)
 port_speed_switch_wait_ms = 20  # host: after the answer to try, at least this long before the next request at the new speed (oep-if-link §3 host 1)
 
 [describe_common]               # declaration tags every interface's describe may use (core §7.4); unused values are unallocated
 role_channels = 0x01            # repeats: the same role may be written several times (union; core §7.4)
 max_clock_hz = 0x02
-max_length = 0x03               # requests and answers at this length fit every transport's max_frame (core §7.4)
+max_length = 0x03               # per-function limit; also apply the route's max_frame. Unpaged external RX interfaces bound this to every route's frame (core §7.4)
 min_clock_hz = 0x04
 features = 0x05
 channel_group = 0x06            # repeats, one per combination: group(u8) n(u8) n x (role(u8) channel(u16))
@@ -124,27 +124,22 @@ hid_usage = 0x45
 request_header_bytes = 10
 result_header_bytes = 5
 corr_max = 0xFFFF
-corr_half_range = 0x8000       # modulo-65536 forward distance must be smaller than this (core §4.1, §5.2)
+corr_half_range = 0x8000       # modulo-65536 forward distance must be smaller than this (core §4.1, §5.1)
+resource_id_bytes = 4         # u32 resource references; fn and corr remain u16 (core §9)
+resource_id_max = 0xFFFFFFFF  # boot-scoped nonreuse; zero is not a resource ID (core §9)
 lease_min_ms = 1000
 lease_max_ms = 60000
 owner_max_bytes = 32
 unit_id_max_bytes = 32
-slot_name_max_bytes = 32
-wifi_ssid_max_bytes = 32        # probe.config wifi: ssid 1 to this (oep-if-probe-config §1.4)
-wifi_passphrase_min_bytes = 8   # probe.config wifi: a passphrase is 8 to 63 bytes of 0x20-0x7E, or 64 hex digits
-wifi_passphrase_max_bytes = 63
-wifi_psk_hex_digits = 64
-wifi_min_max_frame = 112        # a probe whose items has wifi answers confirm with max_frame at least this on every transport: a set of the longest wifi item is 10 + 3 + (3 + 32 + 64) bytes (oep-if-probe-config §1.4)
 label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
-interface_name_max_bytes = 48   # a list answer with one entry is 5 + 3 + 6 + 48 = 62 bytes, within min_max_frame (core §7.2, §13)
+interface_name_max_bytes = 48   # a list answer with one entry is 5 + 3 + 6 + 48 = 62 bytes, within min_max_frame (core §7.2, §12)
 port_speed_tolerance_pct = 2    # port_speed: the nearest speed the UART can make may differ from the request by at most this percent (oep-if-link §3)
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused or not used (oep-if-fixture §2, oep-if-probe-config §1)
-uart_default_baud = 115200      # fixture uart: the speed before any configure or uart item, with format 0 (8N1) (oep-if-fixture §2)
 max_op_ms_max = 600000          # fn 0 describe max_op_ms is 1 to this (10 minutes) (core §7.5)
 
 [common.enum.target_id_scheme]  # one space for the whole probe; each wire states which it uses (oep-if-debug §1)
 dmi_7f = 1                      # the u32 at DMI address 0x7F of that debug module; 0 and all ones = none (not sent)
-targetsel = 2                   # swd: connections entries only, the u32 TARGETSEL (0 when none)
+dpidr = 2                       # swd: the u32 DPIDR read during attach; never a Host selector
 [common.enum.read_from]         # positioned streams (oep-if-common §1.2)
 position = 0
 oldest = 1
@@ -154,31 +149,13 @@ last_mark = 3
 more = 0x01
 gap = 0x02
 [common.enum.mark_kind]         # 0x01-0x3F standard, 0x40-0x7F per interface (oep-if-common §1.3)
-reset = 0x01
-restart = 0x02
-attach = 0x03
-detach = 0x04
-lost = 0x05
-clear = 0x06
-host = 0x07
-link_lost = 0x08
-closed = 0x09
-[common.enum.mark_detail_reset]
-ndmreset = 1                    # the reset op (oep-if-debug §4.3)
-# 2 reserved: the reset op never drives a reset line (oep-if-debug §4.3)
-attach_reset = 3                # the attach request's reset TLV (NRST)
-[common.enum.mark_detail_restart]
-havereset = 1
-resync = 2                      # the console mechanism resynchronized
+lost = 0x01
+clear = 0x02
+host = 0x03
 [common.enum.mark_detail_lost]
 overflow = 1
 framing = 2
 parity = 3
-target_timeout = 4              # dmseq: the target gave up waiting for the probe
-[common.enum.mark_detail_closed]
-all_released = 1
-session_ended = 2               # the owning session ended (end, lease expiry, force)
-connection_closed = 4
 
 # ---- interfaces ------------------------------------------------------------------------------------------------
 
@@ -187,7 +164,7 @@ op = [
   { code = 0x01, name = "confirm", lock = false },     # answer carries boot_id (core §7.1)
   { code = 0x02, name = "list", lock = false },
   { code = 0x03, name = "describe", lock = false },    # answer: more(u8) TLVs; each TLV with the header 5 and more 1 fits every transport's max_frame; past the end: more 0, no TLVs (core §7.3)
-  { code = 0x04, name = "clock", lock = false },       # answer: boot_id(u32) uptime_ns(u64), the clock read while handling the request (core §7.7)
+  { code = 0x04, name = "clock", lock = false },       # answer: boot_id(u32) uptime_ns(u64), the clock read while handling the request (core §7.6)
   { code = 0x10, name = "open", lock = false },
   { code = 0x11, name = "end", lock = true },
   { code = 0x12, name = "keepalive", lock = true },
@@ -244,7 +221,7 @@ op = [
 [interface.tlv.plan_apply]
 role_assignment = 0x10          # repeats: fn(u16) role(u8) channel(u16); one assignment is identified by all three (oep-if-plan §2.1)
 [interface.tlv.describe]
-plan_roles = 0x40               # u32: the most role assignments the plan holds at once, every fn together, settings' plan included (oep-if-plan §1)
+plan_roles = 0x40               # u32: the most runtime role assignments the plan holds at once, every fn together (oep-if-plan §1)
 
 [[interface]]
 name = "oep.probe.restart"             # optional: the probe restarts itself (oep-if-restart)
@@ -253,7 +230,7 @@ op = [
   { code = 0x10, name = "restart", lock = true },       # answers, then the probe restarts as from power-on (oep-if-restart §2)
 ]
 [interface.tlv.describe]
-restart_max_ms = 0x40           # u32, required: the longest from restart's answer until the probe answers confirm again on the same transport (oep-if-restart §1)
+restart_max_ms = 0x40           # u32, required: Probe-controlled internal restart readiness; excludes OS enumeration/network availability (restart §1)
 
 [[interface]]
 name = "oep.probe.link"                # optional: the link test and a UART bridge's speed for a session (oep-if-link)
@@ -262,11 +239,17 @@ op = [
   { code = 0x10, name = "source", lock = false },     # length(u32) -> len(u16) data: byte k = k & 0xFF
   { code = 0x11, name = "sink", lock = false },       # count(u16) data -> (empty)
   { code = 0x12, name = "port_speed", lock = true },  # optional (ops): oep-if-link §3
+  { code = 0x13, name = "port_state", lock = false }, # required with port_speed; current route baud(u32), state(u8)
 ]
 [interface.enum.port_speed_step]   # port_speed's step (oep-if-link §3)
 try = 0
 commit = 1
 revert = 2
+[interface.enum.port_state]
+boot = 0
+trying = 1
+committed = 2
+recovery_pending = 3
 
 [[interface]]
 name = "oep.wire.rvswd"
@@ -286,21 +269,19 @@ max_connections = 0x40          # u8: live connections at once (absent = 1; oep-
 max_speed = 0x01                # u32 Hz (absent: the wire's slowest speed)
 idle_clock = 0x04               # u8: SWCLK while the line rests during the scan, 0 high / 1 low
 
-[interface.tlv.attach]
-max_speed = 0x01                # critical, u32 Hz; required
-pins = 0x03                     # critical: swdio(u16) swclk(u16) - the pair to attach on
+[interface.tlv.attach]          # fixed body: method(u8), swdio(u16), swclk(u16), max_speed(u32)
 idle_clock = 0x04               # critical, u8: SWCLK while the line rests, 0 high / 1 low (oep-if-debug §3)
 reset = 0x05                    # critical: channel(u16) hold_ms(u16) - hold the reset line, then attach (oep-if-debug §3)
 [interface.tlv.attach_answer]   # the attach result's tail
 target_id = 0x10                # scheme(u8) value: what the probe read of the target's identity (oep-if-debug §1)
-dpc = 0x11                      # u32: the halted hart's dpc when flags halted is set
-search_retries = 0x12           # u16, optional: extra attempts the bring-up needed beyond each step's first try (saturates at 0xFFFF); only when a bring-up ran (oep-if-debug §1)
+dpc = 0x11                      # optional u32 RV32 dpc, only when flags halted is set
 [interface.enum.scan_kind]      # the kind byte of a scan entry; on rvswd only riscv-dm (oep-if-debug §3)
 riscv_dm = 1
 [interface.enum.attach_flags]   # the attach answer's flags, every wire
 havereset_acked = 0x01
 halted = 0x08                   # 0x04 is meaningful only on SWD (dormant_woken)
-[interface.enum.features]       # describe features bits (common tag 0x05): none in revision 1
+[interface.enum.features]       # describe features bits (common tag 0x05)
+attach_halt = 0x01              # optional attach method 1; method 0 is mandatory
 [interface.enum.attach_method]
 run = 0
 halt = 1
@@ -308,7 +289,7 @@ halt = 1
 swdio = 1
 swclk = 2
 reset = 3                       # a channel attach's reset TLV may take; no default (oep-if-debug §3)
-[interface.enum.idle_clock]     # the idle_clock TLV and probe.config's slot field
+[interface.enum.idle_clock]     # the RVSWD idle_clock TLV
 high = 0
 low = 1
 
@@ -329,20 +310,18 @@ max_connections = 0x40          # u8: live connections at once (absent = 1; oep-
 [interface.tlv.scan]
 max_speed = 0x01
 
-[interface.tlv.attach]
-max_speed = 0x01                # critical, required
-pins = 0x03                     # critical: swdio(u16) swclk(u16, 0xFFFF: one wire) - the pair to attach on
+[interface.tlv.attach]          # fixed body: method(u8), swdio(u16), swclk(u16), max_speed(u32)
 reset = 0x05                    # critical: channel(u16) hold_ms(u16)
 [interface.tlv.attach_answer]
 target_id = 0x10
 dpc = 0x11
-search_retries = 0x12           # u16, optional (oep-if-debug §1)
 [interface.enum.scan_kind]      # on swio only riscv-dm (oep-if-debug §3)
 riscv_dm = 1
 [interface.enum.attach_flags]
 havereset_acked = 0x01
 halted = 0x08                   # 0x04 is meaningful only on SWD (dormant_woken)
-[interface.enum.features]       # describe features bits (common tag 0x05): none in revision 1
+[interface.enum.features]       # describe features bits (common tag 0x05)
+attach_halt = 0x01              # optional attach method 1; method 0 is mandatory
 [interface.enum.attach_method]
 run = 0
 halt = 1
@@ -368,13 +347,13 @@ max_connections = 0x40          # u8: live connections at once (absent = 1; oep-
 max_speed = 0x01
 targetsel = 0x06                # u32: try one multidrop target (absent: none)
 
-[interface.tlv.attach]
-max_speed = 0x01                # critical, required
+[interface.tlv.attach]          # fixed body: method(u8), swdio(u16), swclk(u16), max_speed(u32)
 targetsel = 0x02                # critical, u32 (multidrop only)
-pins = 0x03                     # critical: swdio(u16) swclk(u16) - the pair to attach on
 reset = 0x05                    # critical: channel(u16) hold_ms(u16); probes without it refuse unsupported
 [interface.tlv.attach_answer]
-search_retries = 0x12           # u16, optional (oep-if-debug §1)
+target_id = 0x10                # optional scheme(u8), value; SWD uses scheme 2 DPIDR
+[interface.tlv.connections_answer]
+selected_target = 0x01          # required per selected entry: entry_index(u8), targetsel(u32), repeatable
 [interface.enum.scan_kind]
 arm_adi = 2                     # 1 reserved
 [interface.enum.attach_flags]
@@ -401,17 +380,16 @@ op = [
   { code = 0x16, name = "run", lock = true },
   { code = 0x17, name = "step", lock = true },
 ]
-[interface.tlv.describe]        # the common tags only (ops 0x07: reset, read_block / write_block, run, step are optional; no features)
+[interface.tlv.describe]        # the common tags only (ops 0x07: dmi required; halt/resume/reset, paired blocks, run/step optional; no features)
 [interface.tlv.step_answer]
 step_left = 0x01                # length 0: step could not halt the hart again; dcsr.step may still be set and the hart runs (oep-if-debug §4.2)
 [interface.enum.run_stopped]    # run answer's stopped byte (oep-if-debug §4.4)
 timeout_halted = 0              # the limit passed; the probe halted the hart (dpc and values valid)
 stopped = 1
 not_halted = 2                  # the limit passed and the hart could not be halted (dpc invalid, nvals 0)
-not_run = 3                     # the preparation (registers, dcsr, pc) failed; the hart was not run and stays halted (dpc invalid, nvals 0)
-[interface.enum.reset_flags]    # reset answer's flags (oep-if-debug §4.3)
+not_run = 3                     # the preparation (registers, dcsr, pc) failed; the probe did not issue resume (dpc invalid, nvals 0)
+[interface.enum.reset_flags]    # reset answer's flags; reached does not imply cleanup succeeded (debug §4.3)
 reached = 0x01
-verified = 0x02
 
 [interface.enum.dmi_step]
 write = 0x01
@@ -421,7 +399,6 @@ wait_us = 0x04
 poll_us = 0x05
 [interface.enum.reset_mode]
 run = 0
-run_verified = 1
 halt_at_reset = 2
 
 [[interface]]
@@ -445,23 +422,29 @@ revision = 1
 op = [
   { code = 0x10, name = "open", lock = true },
   { code = 0x11, name = "read", lock = false },
-  { code = 0x12, name = "marks", lock = false },
-  { code = 0x13, name = "clear", lock = true },
-  { code = 0x14, name = "mark", lock = true },
-  { code = 0x15, name = "write", lock = true },
+  { code = 0x12, name = "marks", lock = false },     # optional (ops)
+  { code = 0x13, name = "clear", lock = true },      # optional (ops)
+  { code = 0x14, name = "mark", lock = true },       # optional; requires marks
+  { code = 0x15, name = "write", lock = true },      # optional; absent also permits RX-only DMDATA/dmseq
   { code = 0x16, name = "close", lock = true },
   { code = 0x17, name = "streams", lock = false },      # first(u16) -> more, count x entry
 ]
 [interface.tlv.describe]
-mechanisms = 0x40               # u8 list: the mechanisms this probe opens (required; oep-if-console §1)
-[interface.enum.mechanism]      # read_from / mark_kind / mark details: [common.enum.*]
+mechanisms = 0x40               # n(u8), n x mechanism(u8), n >= 1, no duplicates (required; oep-if-console §1)
+[interface.enum.mark_kind]      # console-only mark kinds, common kinds stay in [common.enum.mark_kind]
+reset = 0x40
+restart = 0x41
+[interface.enum.mark_detail_reset]
+ndmreset = 1
+[interface.enum.mark_detail_restart]
+havereset = 1
+resync = 2
+[interface.enum.mark_detail_lost]
+target_timeout = 0x40           # console-specific detail of the common lost kind
+[interface.enum.mechanism]
 sdi = 0
 dmdata = 1
 dmseq = 2
-none = 0xFF                     # probe.config slot: no console (never opened)
-[interface.enum.open_flags]
-
-
 [[interface]]
 name = "oep.fixture.gpio"
 revision = 1
@@ -471,9 +454,6 @@ op = [
 ]
 [interface.tlv.describe]
 modes = 0x40                    # u32 bit set: bit n = mode n is supported (0 input required)
-drive_levels = 0x41             # default(u8) n(u8) n x ma(u16 ascending): selectable output strengths (oep-if-fixture §1.1); absent = not switchable
-[interface.tlv.set]
-drive = 0x01                    # repeats: index(u8) level(u8, 0xFF = the default level): the strength of one mode 3 / 4 element (oep-if-fixture §1.1)
 [interface.tlv.unavailable_payload]   # set / read refusal, after the core TLVs (core §4.3); unsupported uses the same index tag
 index = 0x40                    # u8: the position in the request's list
 [interface.enum.role]
@@ -486,9 +466,6 @@ output_low = 3
 output_high = 4
 open_drain_low = 5
 open_drain_release = 6
-[interface.enum.drive_level]    # the strength specification (gpio set's drive, probe.config idle's drive): a level number, or
-default = 0xFF                  # the default level of drive_levels
-
 [[interface]]
 name = "oep.fixture.uart"
 revision = 1
@@ -550,6 +527,7 @@ op = [
 ]
 [interface.tlv.describe]
 queue_depth = 0x40              # u8: transactions the queue holds
+modes = 0x41                    # required u8 bitmap of supported SPI modes 0..3, at least one
 cs_setup_ns = 0x43              # u32 ns: CS active to the first SCK edge with MISO driven with the first bit, worst case (oep-if-fixture §4)
 [interface.tlv.read_rx_answer]
 ns = 0x01                       # u64: when CS went inactive, ending the transaction (probe clock; optional)
@@ -577,7 +555,7 @@ op = [
   { code = 0x16, name = "segments", lock = false },
   { code = 0x17, name = "release", lock = true },
   { code = 0x18, name = "query", lock = false },
-  { code = 0x01, name = "subscribe", lock = true },      # optional (ops); core §11.3
+  { code = 0x01, name = "subscribe", lock = true },      # optional (ops); core §10.3
   { code = 0x02, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
 [interface.tlv.configure]       # also the request of query (the analog-only tag 0x47 frontend is not used here); mode and rate required (oep-if-capture §3.3)
@@ -587,24 +565,21 @@ samples = 0x43
 segments = 0x44
 trigger = 0x45                  # type(u8) role(u8) value(u32)
 pretrigger = 0x46
-multirate = 0x60                # repeats, one per role: role(u8) policy(u8, enum multirate_policy) d(u32) param(u32); the host sets the critical bit (0xE0) (oep-if-capture §5.2)
 [interface.tlv.configure_answer]  # the answer of configure and query
 actual_rate = 0x50
 layout = 0x51                   # w(u8, 1-128, any integer) C(u8) pos[C](u8)
 actual_samples = 0x52
 actual_segments = 0x53
-blocking_ms = 0x56
-block = 0x60                    # L(u32): base samples per block; multirate only, with the layout of the D = 1 channels (oep-if-capture §5.3)
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error: why state is 6
-[interface.tlv.data]            # the data frame's TLV tail (core §11.2)
+[interface.tlv.data]            # the data frame's TLV tail (core §10.2)
 generation = 0x01               # u32, required in streaming mode
+segment_info = 0x02             # position(u64) samples(u32) start_ns(u64) uncertainty(u32); every data frame
 [interface.tlv.describe]        # plus the common tags (ops 0x07, features 0x05, enum features)
 mode = 0x40                     # repeats, one per mode: mode(u8) max_samples(u32) max_segments(u32): the maximum (not the current free space)
 rate_range = 0x41
 channels = 0x44                 # max(u8)
 trigger = 0x45                  # types(u32 bit set) max_pretrigger(u32)
-multirate = 0x60                # policies(u32 bit set of multirate_policy) min_d(u32) max_d(u32) pow2(u8) (oep-if-capture §5.1)
 [interface.event]               # every event carries its generation (oep-if-capture §3.4)
 segment = 0x01                  # the segment record (oep-if-capture §2)
 stopped = 0x02                  # reason(u8) error(u8) generation(u32)
@@ -630,7 +605,6 @@ error = 6
 [interface.enum.stopped_reason]
 complete = 0
 host = 1
-no_free_segment = 2             # reserved: not sent (the probe resumes on release; oep-if-capture §3.2)
 error = 3
 [interface.enum.error]          # status_answer error / stopped's error byte; 0x40 onwards probe-specific (oep-if-capture §3.2)
 peripheral = 1
@@ -639,17 +613,13 @@ clock = 3
 [interface.enum.status_flag]    # status flags, reset on start
 dropped = 0x01
 slipped = 0x02
-[interface.enum.multirate_policy] # the multirate TLV's policy (oep-if-capture §5.4); 3 onwards reserved
-sample = 0                      # 1 bit: x(k*D + phase); D = 1 is a D = 1 channel
-any_active = 1                  # 1 bit: active if any base sample of the interval is active
-edge_latch = 2                  # 2 bits: bit0 the interval's last level, bit1 a change to active from the previous base sample
 [interface.enum.segment_flag]      # segment flags (oep-if-capture §2)
 gap = 0x01
 short = 0x02
 slipped = 0x04                     # the time base bent inside the segment (a sample taken one sample period or more late)
 
 [[interface]]
-name = "oep.fixture.analog"            # logic-capture §0.1: the same operations and numbers as oep.fixture.logic, one analog track
+name = "oep.fixture.analog"            # oep-if-capture §3: the same operations and numbers as oep.fixture.logic, one analog track
 revision = 1
 op = [
   { code = 0x10, name = "configure", lock = true },
@@ -662,7 +632,7 @@ op = [
   { code = 0x17, name = "release", lock = true },
   { code = 0x18, name = "query", lock = false },
   { code = 0x19, name = "calibration", lock = false },
-  { code = 0x01, name = "subscribe", lock = true },      # optional (ops); core §11.3
+  { code = 0x01, name = "subscribe", lock = true },      # optional (ops); core §10.3
   { code = 0x02, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
 [interface.tlv.configure]       # also the request of query; mode and rate required (oep-if-capture §3.3)
@@ -679,7 +649,6 @@ layout = 0x51                   # s(u8) o(u8) b(u8, 1-31) C(u8) order[C](u8)
 actual_samples = 0x52
 actual_segments = 0x53
 scale = 0x55                    # repeats, one per channel: role(u8) zero(i32) scale_nv(i32): the pin voltage (attenuation included)
-blocking_ms = 0x56
 skew = 0x57                     # repeats, one per channel: role(u8) skew_ns(u32)
 frontend_used = 0x58            # repeats, one per channel: role(u8) frontend(u8): the frontend each channel took
 reference = 0x59                # source(u8, enum reference_source) mv(u32) how(u8, enum reference_how)
@@ -687,7 +656,8 @@ reference = 0x59                # source(u8, enum reference_source) mv(u32) how(
 error = 0x01                    # u8, enum error
 [interface.tlv.data]
 generation = 0x01               # u32, required in streaming mode
-[interface.tlv.calibration_answer]   # oep-if-capture §3.8: raw, never applied by the probe
+segment_info = 0x02             # position(u64) samples(u32) start_ns(u64) uncertainty(u32); every data frame
+[interface.tlv.calibration_answer]   # oep-if-capture §3.7: raw, never applied by the probe
 factory = 0x01                  # repeats, one per frontend: frontend(u8, 0xFF any) scheme_len(u8) scheme(text) raw_len(u16) raw
 vrefint = 0x02                  # raw(u32) ns(u64) nominal_mv(u32): the internal reference measured at the last start
 [interface.tlv.describe]        # plus the common tags (ops 0x07, features 0x05, enum features)
@@ -695,7 +665,7 @@ mode = 0x40                     # repeats, one per mode: the maximum (not the cu
 rate_range = 0x41
 channels = 0x44                 # max(u8)
 trigger = 0x45                  # types(u32 bit set) max_pretrigger(u32)
-frontend = 0x46                 # repeats, one per input range: frontend(u8) range_min_mv(i32) range_max_mv(i32) attenuation_mdb(u32)
+frontend = 0x46                 # repeats: frontend(u8), range_min_mv(i32), range_max_mv(i32); scale already refers to the input pin
 [interface.event]               # as oep.fixture.logic: every event carries its generation
 segment = 0x01
 stopped = 0x02                  # reason(u8) error(u8) generation(u32)
@@ -725,7 +695,6 @@ error = 6
 [interface.enum.stopped_reason]
 complete = 0
 host = 1
-no_free_segment = 2             # reserved: not sent
 error = 3
 [interface.enum.error]          # 0x40 onwards probe-specific (oep-if-capture §3.2)
 peripheral = 1
@@ -747,34 +716,28 @@ name = "oep.fixture.capture-group"     # oep-if-capture §4: capture / analog tr
 revision = 1
 op = [
   { code = 0x10, name = "bind", lock = true },
-  { code = 0x11, name = "start", lock = true },         # blocking_ms(u32) start_ns(u64) generation(u32) n(u8) n x (fn(u16) generation(u32))
+  { code = 0x11, name = "start", lock = true },         # start_ns(u64) generation(u32) n(u8) n x (fn(u16) generation(u32))
   { code = 0x12, name = "stop", lock = true },
-  { code = 0x13, name = "force", lock = true },
-  { code = 0x14, name = "status", lock = false },       # state(u8) start_ns(u64) trigger_ns(u64) trigger_fn(u16) generation(u32)
-  { code = 0x01, name = "subscribe", lock = true },      # optional (ops); core §11.3
+  { code = 0x14, name = "status", lock = false },       # state(u8) start_ns(u64) generation(u32)
+  { code = 0x01, name = "subscribe", lock = true },      # optional (ops); core §10.3
   { code = 0x02, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
-[interface.tlv.bind]
-trigger_track = 0x01            # fn(u16): the track whose configure trigger starts the group and whose pretrigger, as a time, every track keeps (absent: immediate, no pretrigger)
-[interface.tlv.describe]        # plus ops 0x07 and features 0x05 (enum features)
+[interface.tlv.bind]            # no v1 tags; future behavioral selectors must be critical
+[interface.tlv.describe]        # plus required ops 0x07; no features defined in v1
 tracks = 0x40                   # n(u8) n x fn(u16): the tracks it can bind
 [interface.event]               # numbered as the tracks' events; the group's generation (start answer, status) in each
 stopped = 0x02                  # reason(u8) error(u8) generation(u32): as the track's stopped
-triggered = 0x03                # trigger_fn(u16, 0 on force) trigger_ns(u64) generation(u32)
-[interface.enum.features]       # none in revision 1; unused values are unallocated (force, subscribe and unsubscribe are declared by ops)
+[interface.enum.features]       # none in revision 1; unused values are unallocated (subscribe and unsubscribe are declared by ops)
 
 [interface.enum.state]          # as the tracks'
 unconfigured = 0
 configured = 1
-waiting = 2
 capturing = 3
 done = 4
-paused = 5
 error = 6
 [interface.enum.stopped_reason]
 complete = 0
 host = 1
-no_free_segment = 2
 error = 3
 
 [[interface]]
@@ -788,57 +751,30 @@ op = [
   { code = 0x14, name = "unset", lock = true },
   { code = 0x15, name = "state", lock = false },
 ]
-[interface.tlv.item]            # the items of the configuration (get / set / unset); every item repeats, one per key (the same key twice is malformed, oep-if-probe-config §2); unused tags are unallocated
-plan = 0x01                     # fn(u16) role(u8) channel(u16); key (fn, role, channel)
-label = 0x02                    # channel(u16) text
-idle = 0x03                     # channel(u16) mode(u8) drive(u8, gpio's drive_level): the state of a free pin (4 bytes)
-slot = 0x04                     # a place a target is wired to (oep-if-probe-config §1.1)
-uart = 0x06                     # fn(u16) baud(u32) format(u8): a fixture UART settings preset; host explicitly configures it
-disable = 0x07                  # channel(u16): a channel the probe never uses or touches (not on this board)
-wifi = 0x08                     # index(u8) ssid_len(u8) ssid pass_len(u8) passphrase; key index; the passphrase is write-only (oep-if-probe-config §1.4)
-[interface.tlv.describe]        # declarations only; the state is op 0x15 (oep-if-probe-config §3)
-storage = 0x40                  # max_bytes(u32, 1 or more): the item TLV bytes it can always save; present exactly when ops offers save and erase
-items = 0x41                    # u8 list: the item tags this probe takes
-slots_max = 0x42                # u8
-wifi_max = 0x46                 # u8, 1 or more: wifi entries (index 0 .. wifi_max - 1); present exactly when items has wifi
-[interface.tlv.state_answer]    # the state answer's TLV tail (oep-if-probe-config §3)
-wifi = 0x01                     # state(u8) entry(u8) reason(u8) rssi(i8) ipv4(4 bytes); on every page when items has wifi
-
-[interface.line_names]          # standard line names of label texts (oep-if-probe-config §1.3); private names start with x-
-nrst = "the target's reset line (the host)"
-power_hi = "a line that powers the target when high (the host only)"
-power_lo = "a line that powers the target when low (the host only)"
+[interface.tlv.item]            # counted settings records; bit7 ignored, unknown items always refused
+label = 0x02                    # channel(u16), text; key channel
+idle = 0x03                     # channel(u16), mode(u8); 3 bytes; Probe selects output strength
+disable = 0x07                  # channel(u16); key channel
+[interface.tlv.describe]
+storage = 0x40                  # max_bytes(u32>=1), canonical item bytes; only with save/erase
+items = 0x41                    # nonempty u8 item-tag list
+[interface.line_names]          # Host conventions only (host-development-guide §5.3)
+nrst = "the target reset line (Host only)"
+power_hi = "target power on when high (Host only)"
+power_lo = "target power on when low (Host only)"
 [interface.enum.idle_mode]
 hi_z = 0
 pull_up = 1
 pull_down = 2
 output_low = 3
 output_high = 4
-
-
-
-
 [interface.enum.storage_state]
 none = 0
 applied = 1
 unreadable = 2
-[interface.enum.storage_unreadable]   # state's unreadable_reason: why the saved items were not applied (§3)
-form = 1                        # not readable (damaged, another firmware's form)
-interface = 2                   # an interface they name is gone or of another revision,
-refused = 3                     # applying them was refused (resources clash)
-[interface.enum.wifi_pass_len]  # the wifi item's pass_len besides 8-64 (oep-if-probe-config §1.4)
-none = 0                        # no passphrase (an open network)
-hidden = 0xFF                   # get: the entry has a passphrase, none follows; set: keep the entry's current passphrase
-[interface.enum.wifi_state]     # the state answer's wifi TLV
-off = 0                         # no wifi entries: Wi-Fi not used
-connecting = 1
-connected = 2
-waiting = 3                     # every entry failed; the probe waits, then tries again
-[interface.enum.wifi_entry]
-none = 0xFF                     # the state answer's entry when no entry is being tried or used
-[interface.enum.wifi_reason]    # the last failure; 0 after a connection
+partial = 3
+[interface.enum.storage_unreadable]
 none = 0
-not_found = 1
-auth = 2
-no_address = 3
-other = 4
+form = 1
+item = 2
+capacity = 3

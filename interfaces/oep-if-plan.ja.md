@@ -11,7 +11,7 @@
   plan の role ではない。
 - plan の role を持つインターフェースを list に出す probe は、`oep.probe.plan` を list に出す。plan の role を持つインターフェースが 1 つも
   無い probe は、出さない。probe が list に出す `oep.probe.plan` は高々 1 つ。
-- plan はセッションの資源である（core §9）。永続設定の plan は preset として扱う（§2.3）。
+- plan はセッションの資源である（core §9）。保存した割り当ての再適用はHostが明示的に行う。
 
 ## 1. 操作
 
@@ -37,32 +37,28 @@ plan は **fn ごと**に持つ。
 - **要求に出てくる fn の割り当てだけを原子的に置き換え**、ほかの fn の plan はそのまま保つ。置き換える fn の今の割り当てを外したものとして、
   各インターフェースが副作用なしで確かめ（core §8.1 の取り合いの確かめを含む）、全部が受け入れたときだけ適用する。1 つでも断れば、
   何も変えずに rejected（置き換えるはずだった fn の今の plan も残る）。
+- 同じ(fn, role, channel)のまま残る割り当ては解放も再取得もせず、ピンのlevel・向き・プル・強さと機能の状態を保つ。
+  取り除く割り当てだけを解放し、追加する割り当てだけを取得する。割り当ての集合が変わらないfnは何もしない。
+  変更するfnの機能が動作中なら、そのインターフェースの定義に従いunavailable（cause 6）で断る。
+  別fnに束ねられている資源の変更はunavailable（cause 4）。原子性は要求全体の受け付けと状態の更新についての契約であり、
+  複数ピンの電気的な切替を同時にする要求ではない。
 - **割り当ての数**: 置き換えた後の割り当ての合計（すべての fn）が plan_roles を超える plan_applyは、何も変えずに
   rejected unavailable（cause 2。資源が足りない。core §8.1 と同じ断り方。要求の形は正しいので malformed ではない）。
 - 応答は completed success で、payload は無い。
 
 ### 2.2 plan_release
 
-- `n(u8)、n × fn(u16)`。挙げた fn の plan を解く（n = 0 はすべての fn）。plan の無い fn は無視する。
+- `n(u8)、n × fn(u16)`。挙げたfnのplanを解く（n = 0はすべてのfn）。存在するfnにplanが無ければ無視する。
+  対象を全部確かめてから解放する。存在しないfnはunknown_function、別fnに束ねられて解放できないものはunavailable（cause 4）で、要求全体を何も変えずに断る。
+  セッションの終了ではcore §9に従い依存資源を先に解放するため、この拒否によって後始末を止めない。
 - 応答は completed success で、payload は無い。
 
-### 2.3 設定の plan
+### 2.3 ピン
 
-保存した設定の plan は host が読む preset であり、ピンを予約も駆動もしない。
-host がその内容を明示的に plan_apply すると、通常のセッション所有の plan になる。
-設定の set / unset は実行中の plan を変えない。plan_release はすべて通常の寿命に従う。
+ピンの取得・解放・空きの状態はcore §8に従う。§2.1で残す割り当てには解放の処理を行わない。
+使い始める操作と、設定が駆動する出力のピンを取れるかは、採用するインターフェースが定める。
 
-
-### 2.4 ピン
-
-- 解いたピンは、どの道で解いても（plan_release、plan_apply による置き換え、core §9 のセッションの終わりでの後始末）、core §8 の空きの状態にする。
-  インターフェースは、解いた後もピンを自分の駆動のまま残してはならない。
-- plan を取ってもピンの電気の状態は変わらない（core §8）。ピンは、それを持つインターフェースが使い始めるまで空きの状態を保つ。どの操作で使い始める
-  かは、各インターフェースの文書が定める（plan そのもので使い始めるインターフェースもある）。
-- idle が出力（mode 3 / 4）の channel への plan をインターフェースの文書が断るときの断り方は core §8。
-- セッションの終わりで plan が外れると、ピンは plan_release と同じく空きの状態になる。target の線を plan で保っていた場合、target の状態が変わりうる。
-
-### 2.5 断り方
+### 2.4 断り方
 
 plan_apply（core §4.3 の順）:
 
@@ -70,7 +66,8 @@ plan_apply（core §4.3 の順）:
 |---|---|
 | 形の誤り、同じ (fn, role, channel) が 2 回、fn 0 を挙げた | malformed |
 | fn が無い | unknown_function |
-| role がそのインターフェースに無い（plan の role でない）、channel が role_channels の候補に無い、channel_group のどれにも一致しない | unsupported（受け取ったままの tag） |
+| role がそのインターフェースに無い（plan の role でない）、channel が role_channels の候補に無い、channel_group のどれにも一致しない、個別機能が定める役割の個数・ピンの組を満たさない | unsupported（受け取ったままの tag） |
 | plan_roles を超える、ピンや資源の取り合い（core §8.1）、インターフェースが断る出力の idle | unavailable（cause 2 / 1 / 5） |
+| 変更対象が動作中、別fnに束ねられている | unavailable（cause 6 / 4） |
 
 plan_release: 形の誤り（n と後ろの fn の数が合わない）は malformed。

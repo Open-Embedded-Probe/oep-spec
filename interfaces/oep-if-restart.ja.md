@@ -19,19 +19,19 @@ describe（core §7.4 の共通の tag のほか）:
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x40 | restart_max_ms | u32。**必須**。restart の応答が経路を出てから、probe が同じ経路で confirm にまた答えるまでの最長の時間（ms）。USB の経路では列挙し直す時間を、TCP の経路では待ち受け直す時間を含む。値は probe が決める |
+| 0x40 | restart_max_ms | u32。**必須**。応答が経路を出てから、Probe内部の再起動・初期化が済み、元の経路でメッセージを受けられる内部状態になるまでの上限（ms）。USBのdescriptor/endpointの準備、ネットワークstack/待受けの準備を含む。OSの列挙、ネットワーク接続/IP取得、Hostの再接続・confirm送信を待つ時間は含まない |
 
 ## 2. restart
 
 - **ロックが要る**（core §6.3）。restart は要求の TLV を定めない（要求の TLV は core §2.3 のとおり）。
 - **応答が先**: 受け付けた restart に、probe は completed success で答える（payload は無い）。restart は completed failed / partial を返さない。
 - **応答の後**: probe は、その応答を送った後、再起動するまで、どの経路の要求にも答えず（同じ経路で restart の後ろに来ていた要求も同じ）、通知を送らない。
-- **target**: 再起動は target を reset せず、止めていた hart を止めたままにする（connection を閉じるときと同じ、[線とデバッグ](oep-if-debug.ja.md) §2）。
+- **target**: 再起動の手順でtargetのreset/resumeを意図して行わない。再起動中のピンはMCUのリセット状態になりうる。
+  外部のpullや電源/reset配線によるtargetの変化までは保証しない。
 - **再起動の後**は、OEP については電源を入れたときの起動と同じである: boot_id は新しい値（core §6.5）で、前の起動のものは何も残らない（core §9 の
   「probe の再起動」の行）。シリアルの口の速さは起動時の速さ（[経路](../docs/oep-transports.ja.md) §4）。
 - **経路**: 再起動のあいだ probe は経路に答えない。USB の経路では device が bus から外れて列挙し直してよく、TCP の接続は閉じてよい。
-- **戻るまでの時間**: probe は、restart の応答が経路を出てから restart_max_ms のうちに、その応答を送った経路で confirm にまた答える（USB の経路では
-  列挙し直したうえで、TCP の経路では待ち受け直したうえで）。中継のブローカー（[経路](../docs/oep-transports.ja.md) §1）の client には、この時間は掛からない:
-  probe が再起動するとブローカーの probe への経路が無くなってブローカーは終わり、client は経路が閉じたときと同じにやり直す（経路 §1）。
+- **内部の復帰**: Probeはrestart_max_msのうちに上記の内部状態になる。外部の経路が使用可能になって要求を受けた後の
+  confirm応答はcore §4.4の待ちの規則に従う。Host側の開き直しの期限はHostが別に決める。
 
 host の待ち方と開き直し方は [host 開発ガイド](../docs/host-development-guide.ja.md) §5.2。

@@ -14,15 +14,14 @@
       "answer": {
         "corr": 1,
         "revision": 1,
-        "flags": 0,
         "max_frame": 1024,
         "window": 4096,
         "max_inflight": 4,
         "boot_id": 305419896,
         "transport": 0
       },
-      "answer_hex": "02010001004f4550210100000400100000047856341201010000",
-      "answer_serial_frame_hex": "000302010201064f4550210101020402100108047856341201010103aba400"
+      "answer_hex": "02010001004f45502101000400100000047856341201010000",
+      "answer_serial_frame_hex": "000302010201064f45502101020402100108047856341201010103619e00"
     },
     {
       "name": "no revision in the range: unsupported with the supported range",

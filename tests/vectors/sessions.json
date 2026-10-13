@@ -1,9 +1,9 @@
 {
-  "about": "Session scenarios (core §5.2, §6, §9) of the example probe of confirm.json (boot_id 0x12345678). Each scenario starts from its initial state; the steps are sent in order on one transport, each answered before the next. Remaining times are shown as if no time had passed between the steps: a real probe answers the time actually left. clock's uptime_ns values are an example probe's (a real probe answers its clock read just before the answer, which does not decrease while boot_id is the same). S = 0x11223344, T = 0x55667788.",
+  "about": "Session scenarios (core §5.1, §6, §9) of the example probe of confirm.json (boot_id 0x12345678). Each scenario starts from its initial state; the steps are sent in order on one transport, each answered before the next. Remaining times are shown as if no time had passed between the steps: a real probe answers the time actually left. clock's uptime_ns values are an example probe's (a real probe answers its clock read just before the answer, which does not decrease while boot_id is the same). S = 0x11223344, T = 0x55667788.",
   "scenarios": [
     {
       "name": "end releases the session; its id is then no_session, and a resent end is answered from the table",
-      "spec": "core §5.2, §6.2, §6.4, §9",
+      "spec": "core §5.1, §6.2, §6.4, §9",
       "initial": "lock free, no session has held it since boot",
       "steps": [
         {
@@ -104,7 +104,7 @@
     },
     {
       "name": "clock without a session and while a session holds the lock",
-      "spec": "core §4.1, §6.3, §7.7",
+      "spec": "core §4.1, §6.3, §7.6",
       "initial": "lock free, no session has held it since boot",
       "steps": [
         {
@@ -146,7 +146,7 @@
     },
     {
       "name": "session-zero traffic does not advance the session; open preserves replay history",
-      "spec": "core §4.1, §5.2",
+      "spec": "core §4.1, §5.1",
       "initial": "lock free; max_inflight 4",
       "steps": [
         {
@@ -188,7 +188,7 @@
     },
     {
       "name": "16-bit counter wraps without releasing resources; an ended session cannot be reopened",
-      "spec": "core §4.1, §5.2, §6.2",
+      "spec": "core §4.1, §5.1, §6.2",
       "initial": "lock free; max_inflight 4",
       "steps": [
         {
@@ -235,7 +235,7 @@
     },
     {
       "name": "evicted request returns result_lost instead of being executed",
-      "spec": "core §5.2",
+      "spec": "core §5.1",
       "initial": "lock free; max_inflight 4; exactly four cache entries",
       "steps": [
         {

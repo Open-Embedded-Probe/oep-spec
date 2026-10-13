@@ -4,7 +4,7 @@
 定める。部品は本体ではない。あるインターフェースの文書がこの部品を使うと書いたときだけ、そのインターフェースに効く
 （どのインターフェースも、文書でそう書けば同じ部品を使える）。番号の唯一の定義は `registry/oep-v1.toml`。
 
-すべての標準・独自インターフェースが守る共通契約はcore §13である。本書はその上で選んで使う部品の意味を定める。
+すべての標準・独自インターフェースが守る共通契約はcore §12である。本書はその上で選んで使う部品の意味を定める。
 OEPのGPIOはplanによるピン割り当てを使い、UARTはplanと位置つきstreamを使うが、独自拡張へこれらを一律には要求しない。
 
 ## 1. 位置つきのストリーム
@@ -14,7 +14,9 @@ OEPのGPIOはplanによるピン割り当てを使い、UARTはplanと位置つ�
 marks、clear、mark、write を持つか、それらが必須か任意かは、採用するインターフェースの op 表が定める。
 宣言した操作は、この節の形と意味を使う。共通部品を採用しただけで、書き込み、消去、マークの記録をすべて実装する義務は生じない。
 mark を提供する場合は marks も提供する。marks を提供しない場合は、read の from 3 を rejected unsupported（固定部分の印 0）で断る。
-`oep.target.console` と `oep.fixture.uart` は、それぞれの操作表が必須とする操作を持つ。UARTの任意操作の選択をconsoleの操作表へ流用しない。
+採用するインターフェースは、それぞれの操作表が必須とする操作だけを必須にする。
+以下の`[stream(u32)]`は、資源番号でストリームを指す定義では必ず置き、fn自身で1本のストリームを指す定義では置かない。
+個々の要求で省略を選ぶフィールドではなく、インターフェースの名前とrevisionで固定部分が決まる。
 
 ### 1.1 位置
 
@@ -29,7 +31,7 @@ mark を提供する場合は marks も提供する。marks を提供しない�
 ### 1.2 read
 
 ```text
-要求: [stream(u16)]、from(u8)、arg(u64)、max(u16)、[TLV]
+要求: [stream(u32)]、from(u8)、arg(u64)、max(u16)、[TLV]
 応答: start(u64)、flags(u8: bit0 more、bit1 gap)、len(u16)、data、[TLV]
 ```
 
@@ -56,27 +58,21 @@ mark : serial(u32)、position(u64)、kind(u8)、time_ns(u64)、detail(u8)       
 
 | kind | 名前 | 付ける契機 | detail |
 |---:|---|---|---|
-| 0x01 | reset | probe の指示で target をリセットした | 方法（`mark_detail_reset`: 1 ndmreset（reset の op）、3 attach の reset TLV。2 は予約） |
-| 0x02 | restart | target の再起動を検出した | 検出元（`mark_detail_restart`: 1 havereset、2 コンソールの再同期） |
-| 0x03 | attach | attach した | — |
-| 0x04 | detach | detach した | — |
-| 0x05 | lost | あふれで押し出した、または受信の誤り | 理由（`mark_detail_lost`: 1 あふれ、2 受信の誤り（framing）、3 パリティ、4 target の TO） |
-| 0x06 | clear | host が消去した | — |
-| 0x07 | host | host が付けた印 | host の値 |
-| 0x08 | link-lost | 線が落ちた（コンソールの読みの中で判定） | — |
-| 0x09 | closed | ストリームが閉じた | 理由（`mark_detail_closed`: 1 使っているものが全員外れた、2 セッションが終わった（end、lease の期限切れ、force）、4 connection が閉じた） |
+| 0x01 | lost | あふれで押し出した、または受信の誤り | 理由（`mark_detail_lost`: 1 あふれ、2 framing、3 parity） |
+| 0x02 | clear | host が消去した | 0 |
+| 0x03 | host | host が付けた印 | host の値 |
 
 - マークの position は、probe がそのマークを付けた時の書き込みの位置である。position 以降のバイトはすべて、そのマークの出来事より後に受けた。
 - kind の空間: 0x01〜0x3F 標準、0x40〜0x7F インターフェース固有。detail の値は registry（`common.enum.mark_detail_*`）。0x40 以降は
-  インターフェース固有。
+  インターフェース固有。resetやrestartなどの機能固有の契機とdetailは、採用するインターフェースが自分の範囲で定める。
 - `serial` はストリームごとのマークの通し番号（u32、一周する。core §2.6）。同じ位置に複数のマークが付いても、serial で
   落ちも重複もなく読める。
-- `time_ns` は probe の時計（起動からの ns、u64、core §2.6a）。バイトごとの時刻は持たない。
+- `time_ns` は probe の時計（起動からの ns、u64、core §2.7）。バイトごとの時刻は持たない。
 - マークは本文とは別の小さなリングにためる。あふれたら古いものから捨てる。host は捨てられたマークを serial の飛びで知る:
   飛んだ数が押し出されたマークの数である。
 
 ```text
-marks  要求: [stream(u16)]、from_serial(u32)
+marks  要求: [stream(u32)]、from_serial(u32)
        応答: more(u8)、count(u8)、count × mark、[TLV]（core §2.3）
 ```
 
@@ -95,15 +91,15 @@ core §2.6 で比べる。「残っている」は、残っている一番古い
 
 | 操作 | 要求 | 応答 | 意味 |
 |---|---|---|---|
-| clear | [stream(u16)] | — | 貯めたバイトを捨てる。marks を提供する場合はマーク clear を付ける |
-| mark | [stream(u16)]、value(u8) | — | マーク host（detail = value）を付ける |
-| write | [stream(u16)]、count(u16)、data | accepted(u16) | 相手への入力。`accepted` は、data の先頭から probe の送りの列に入れたバイトの数（count と列の空きの小さい方）で、届いたことは意味しない。accepted = count なら completed success、0 < accepted < count なら completed partial、count > 0 で accepted 0 なら completed failed。列の大きさと、列から相手へ渡す速さはインターフェースが決める（コンソールは [コンソール](oep-if-console.ja.md) §2、fixture UART は UART の送信） |
+| clear | [stream(u32)] | — | 貯めたバイトを捨てる。marks を提供する場合はマーク clear を付ける |
+| mark | [stream(u32)]、value(u8) | — | マーク host（detail = value）を付ける |
+| write | [stream(u32)]、count(u16)、data | accepted(u16) | 相手への入力。`accepted` は、data の先頭から probe の送りの列に入れたバイトの数（count と列の空きの小さい方）で、届いたことは意味しない。accepted = count なら completed success、0 < accepted < count なら completed partial、count > 0 で accepted 0 なら completed failed。列の大きさと、列から相手へ渡す速さはインターフェースが決める（コンソールは [コンソール](oep-if-console.ja.md) §2、fixture UART は UART の送信） |
 
 どれもロックが要る。
 
 ### 1.5 通知のデータ
 
-ストリームを送り出すインターフェースは、core §11.2 のデータの形（`position, len, data, [TLV]`）を使う。`position` はこのフレームの
+ストリームを送り出すインターフェースは、core §10.2 のデータの形（`position, len, data, [TLV]`）を使う。`position` はこのフレームの
 先頭の位置。前のフレームの終わりと合わなければ、その間は probe の中で押し出された。送ったデータを read で読み直せるかはインター
 フェースが決める。
 
@@ -111,10 +107,9 @@ core §2.6 で比べる。「残っている」は、残っている一番古い
 
 使うもの: `oep.wire.*`（作る）、対応する `oep.target.*` と `oep.target.console`（使う）。
 
-- connection は、明示したピンの組と target 選択に対して attach が作る、セッション所有の接続。target 操作は先頭に connection(u16) を置く。
+- connection は、明示したピンの組と target 選択に対して attach が作る、セッション所有の接続。target 操作は先頭に connection(u32) を置く。
 - 番号は core §9 の規則で振る。同じ boot_id の間は再利用しない。
-- detach、セッションの終わり、線切れで閉じる。connection に依存する stream は先に解放する。
-- 保存した slot は接続の情報だけで、connection を所有せず、自分から attach しない。
+- detach、セッションの終わり、線切れ、または提供するtarget opが定める後始末の失敗で閉じる。connection に依存する stream は先に解放する。
 - connectionを作るwireのfnと、それを使うtargetのfnは別でよい。wireの定義が対応するtargetを定め、target要求のconnection番号で明示的に選ぶ。
   対応しないwireのconnectionはunavailable（cause 6）、存在しない/閉じた番号はno_resource。最後にattachした接続を暗黙に使わない。
 

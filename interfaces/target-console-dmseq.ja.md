@@ -2,24 +2,18 @@
 
 状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。この文書は `oep.target.console` の mechanism 2（dmseq、[コンソール](oep-if-console.ja.md) §3）の framing を規定する。
 
-## 目的
-
-dmseq は両方向に 1 bit の通し番号と CRC-8 を持たせる。
-これにより host は、もう一度読んだフレーム（**重複**）と、同じ内容の新しいフレームを区別でき、二重に渡すことも欠落もしない。
-
-名前: framing 名は **dmseq**（`registry/oep-v1.toml`: `oep.target.console` の `[interface.enum.mechanism]`、`dmseq = 2`）。
+dmseqは両方向に1bitの通し番号とCRC-8を持たせ、同期中の再読フレームと新しいフレームを区別する。
+この文書のtarget側の規則（20ms/1sの待ちを含む）は、mechanism 2を採用するtarget firmwareへの要件である。
+全OEP Probe/Hostへtarget firmwareや常時pollを要求するものではない。targetの再起動や同期状態喪失の制限は下記のとおり。
 
 ## 搬送と所有権
 
-debug module の DATA0 と DATA1（[コンソール](oep-if-console.ja.md) §3）。所有権は厳密に交代する。
+debug moduleのDATA0とDATA1を使う（[コンソール](oep-if-console.ja.md) §3）。
 
-- target が DATA0 / DATA1 を書くのは次のときだけである:
-  (a) begin() のとき（「target のフレーム」）;
-  (b) DATA0 の bit 7 が 0 のとき、フレームを出すため;
-  (c) 答えを待っているフレームを出し直すため: target の規則 0（bit 7 が 1 だが自分が出した語でない）、target の規則 1、タイムアウトのとき、
-  フレームを出したままにしている間（「タイムアウト」）、DATA0 が 0 と読める間（「0 の語は答えではない」、target の規則）。
-- host は bit 7 が 1 のとき（target のフレームがある）だけ書く。
-- (c) で bit 7 が 1 の、target 自身のフレームでない語の上に書くことを除き、どちらも相手が書いた語を上書きしない。
+- targetはbit7が0のときに新しいフレームを書き、答え待ちの間は同じフレームの出し直しだけを行う。
+  bit7が1でも自分の語と違う場合は、無効な語との待ち合いを防ぐため、すぐ出し直す（targetの規則0）。
+- begin()は同期の初期化であり、上の交代にかかわらずDATA0を0にしてよい。その後SYN付きのフレームを出す。
+- hostはbit7が1の有効なtargetフレームにだけ答える。DATA1を読んでからDATA0を書き、相手の新しいDATA1を先に上書きさせない。
 
 ## target のフレーム（target → host）
 
@@ -58,17 +52,18 @@ poly 0x07、init 0xFF、反転なし、最終 XOR なし。byte0 と payload（1
 
 ## host の状態
 
-- `synced`: この session でフレームを 1 つ以上受理した。
+- `synced`: この同期状態でフレームを1つ以上受理した。
 - `last_s`: 最後に受理したフレームの S。
 - `last_syn`: 最後に受理したフレームが SYN 付きだった。
 - `h`、`pending`: まだ届いたと分かっていない host payload の番号と中身。
 
-session は未同期で始まる。**target を reset した host は新しい session を始める**（上の状態を全部捨てる）。
+同期状態は未同期で始まる。**targetをresetしたhostは同期状態を初期化する**（上の状態を全部捨てる）。
+これはOEP coreのsession_id/ロックとは別の状態である。
 OEP の probe については [線とデバッグ](oep-if-debug.ja.md) §4.6。
 
 ## host の規則（bit 7 が 1 の word を読んだとき）
 
-1 回の poll の順序: DATA0 を読む。bit 7 が 1 で N >= 3 なら DATA1 を読む。検査する。
+1回のpollの順序: DATA0を読み、bit7とNを確かめる。bit7が1で3 ≤ N ≤ 6ならDATA1を読み、CRCを検査する。
 答えを書くのはその後（答えた時点で target は次のフレームを出して DATA1 を上書きしてよい）。
 
 1. **無効**なら答えず、次の poll で読み直す。無効とは N > 6、または CRC 不一致。CRC の位置を求める前に N を見る
@@ -79,12 +74,13 @@ OEP の probe については [線とデバッグ](oep-if-debug.ja.md) §4.6。
 3. **再同期**: 未同期、または SYN が 1 で 2 の重複でないなら、`last_s` := not S（このフレームを新しいものとして数えるため）、
    `h` := not A、`pending` を捨て、`synced` := true。
    **3 のあとはそのまま 4 へ進む**（別の分岐ではない）。host が SYN フレームを受理した直後に target が再起動し、
-   たまたま同じ S を使った場合、その 1 フレームは落ちる。1 bit では区別できないので、target を reset した host は新しい session を始める。
+   たまたま同じSを使った場合、その1フレームは落ちる。1bitでは区別できないため、targetをresetしたhostは同期状態を初期化する。
 4. **受理**: S != `last_s` なら payload を渡し、`last_s` := S、`last_syn` := SYN。
 5. `pending` があり A == `h` なら届いている: `h` := not `h`、`pending` を空にする。
    `pending` が空なら、送るものの次の最大 2 byte を入れる（OEP の probe では送りの列の先頭から、[コンソール](oep-if-console.ja.md) §2）。K = S、H = `h`、M = len(`pending`)、CRC で答える。
 
 OEP probe がこれらの観測をストリームの mark として通知する条件は、[コンソール §2](oep-if-console.ja.md#2-ストリームの規則)で定める。
+TO付きも普通のフレームとして重複/受理を判定し、TOを再同期の理由にしない。
 
 ## target の規則（フレームを出している間に DATA0 を読んだとき）
 
@@ -100,6 +96,7 @@ bit 7 が 0 を読んだとき:
 
 1. 無効（M > 2、または CRC 不一致。CRC の位置を求める前に M を見る）、または K != S なら、同じフレームを出し直す
    （host は重複として扱う）。
+   bit3とbit6は受信側では無視する。ただしCRCの計算は、そのbitも含め受信したbyte0全体にかける。
 2. それ以外は ack: S を反転、以後 SYN は 0。M > 0 で H が最後に受け取った H と違い、置き場所があれば
    payload を取り、最後に受け取った H := H。置き場所がなければ取らない（host が送り直す）。
 3. 送るものがあれば次のフレームを出す。送るものが無ければ空フレームを出してよい（入力は答えにしか乗らないので、空フレームを出さない target は、
@@ -112,7 +109,8 @@ bit 7 が 0 を読んだとき:
 target は、割込み禁止中でも終わるやり方でそれを測る。「短い待ちごと」（フレームを出したままにする間と、DATA0 が 0 と読める間）も
 同じ測り方を使う。
 
-**host への含意.** 同期した host が 1 秒に 1 回以上 poll すれば出力は失われない。後から attach した host は、
+**pollの間隔.** 有効なフレームに答える間隔がtargetの長い待ちより短い間は、タイムアウトによる出力の損失は起きない。
+ちょうど1sの境界でのpoll、CRC不一致、長いdebug操作中の非pollに無損失を保証しない。後からattachしたhostは、
 タイムアウトしたフレームと、自分が答えた後に書かれた分を受け取る。その間の書込みは捨てられている。
 
 **タイムアウトで起きること.** target は出していたフレームを **TO を立てて**出し直し（S と payload は同じ、CRC は計算し
@@ -124,4 +122,3 @@ target は、割込み禁止中でも終わるやり方でそれを測る。「�
 （target の規則 0）。host はこれのために何かを書く必要はない。
 
 - DATA0 / DATA1 を使う抽象コマンドの後の書き戻しは [線とデバッグ](oep-if-debug.ja.md) §4。
-- host: TO フレームは普通のフレームとして扱う（規則 2 と 4 が適用される）。再同期の理由にはしない。

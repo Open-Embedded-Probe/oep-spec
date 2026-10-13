@@ -1,6 +1,6 @@
 # OEP の版と安定性
 
-状態: **ガイド**（規範ではない）。何が変わらないかの約束をまとめる。規則そのものは [OEP core](oep-core.ja.md)（§2.3、§2.5、§2.7、§7.1、§13）と、core と `registry/oep-v1.toml`
+状態: **ガイド**（規範ではない）。何が変わらないかの約束をまとめる。規則そのものは [OEP core](oep-core.ja.md)（§2.3、§2.5、§2.8、§7.1、§12）と、core と `registry/oep-v1.toml`
 の冒頭にあり、このページと食い違えばそちらが正しい。§6 のリリースのタグは決まっている。
 
 
@@ -8,8 +8,8 @@
 
 | もの | 運ぶ所 | 変わるとき |
 |---|---|---|
-| **プロトコルの revision** | confirm の revision（u8。v1 = 1）。経路ごとに取り決める（core §7.1） | core の形や既存の契約を壊す振る舞いが変わるとき（core §2.7）。confirm そのもの、その magic、64 byte の決まりは変わらない |
-| **インターフェースの revision** | list の fn ごとの revision（u8）と、registry のインターフェースごとの `revision` | 固定部分、必須機能、状態遷移、資源寿命など、既存の契約を壊すとき（core §2.7） |
+| **プロトコルの revision** | confirm の revision（u8。v1 = 1）。経路ごとに取り決める（core §7.1） | core の形や既存の契約を壊す振る舞いが変わるとき（core §2.8）。confirm そのもの、その magic、64 byte の決まりは変わらない |
+| **インターフェースの revision** | list の fn ごとの revision（u8）と、registry のインターフェースごとの `revision` | 固定部分、必須機能、状態遷移、資源寿命など、既存の契約を壊すとき（core §2.8） |
 | **インターフェースの名前** | list | インターフェースの意味が変わるとき（名前が違えば別のインターフェース） |
 | **registry の schema** | `[registry] schema`（1） | registry のファイルの形が変わるとき（線の上ではない） |
 | **REGISTRY_HASH** | 生成したファイル | registry のどこかの byte が変わるとき。生成したコードが registry と合うかを示すだけで、線の上の互換については何も言わない |
@@ -34,7 +34,7 @@ OEP v1 は凍結前である。凍結までは、壊す変更も **どの revisi
   廃止（凍結後に外した値は retired として残し、別の意味に使わない）。参照の firmware の値（max_op_ms、線の時間と回数）は仕様の外;
 - core、`oep-if-*` の文書、dmseq の規範の文。
 
-既存の契約を壊すインターフェース変更は revision を上げ、core の形や既存の契約を壊す振る舞いの変更はプロトコルの revision を上げる（core §2.7）。任意から必須への変更も破壊的変更であり、単なる機能追加として扱わない。
+既存の契約を壊すインターフェース変更は revision を上げ、core の形や既存の契約を壊す振る舞いの変更はプロトコルの revision を上げる（core §2.8）。任意から必須への変更も破壊的変更であり、単なる機能追加として扱わない。
 
 凍結の後も自由なもの: ガイドとその中の参考の数字、リリースの前の試験、仕様が probe に選び方を任せる所での仮想ベンチの
 動き、各実装の方針と宣言する値。
@@ -52,7 +52,7 @@ OEP v1 は凍結前である。凍結までは、壊す変更も **どの revisi
 | 応答の固定部 | 固定部を変えるのは revision と新しい fn。足すものは TLV（伸ばし方は 1 つ） | TLV、revision |
 | 線の試験（`oep.probe.link` の source / sink）の意味 | 線の試験のためにある。意味を足す理由が無い | — |
 | confirm の前の 64 byte | 交渉の前の約束。小さいほど安全 | — |
-| probe.config の項目のキー（slot u8、port u8、fn u16、channel u16） | 1 台の probe の中の数。u8 / u16 で足りる | — |
+| probe.configの項目のキー（channel u16） | 1 台の probe の中の数。u8 / u16 で足りる | — |
 | confirm に host の受けの上限を入れない | 応答の量は host が同時に出す要求の数で、通知の量は min_bytes で決める。probe が host の上限を知っても使い道が無い（通知に ack が無い） | confirm の非 critical の要求 TLV を後から |
 | max_frame は両方向の上限 | シリアルの口の受けの問題は 1 フレームではなく burst の量（transports §4 の host の規則） | — |
 | DFU / firmware の更新は OEP の外（core §0） | USB の記述子にすべてある。OEP が写しを持つと版ごとに食い違う。unit_id = USB の serial は変わらないので、焼く側は個体を見失わない | `oep.probe.firmware` のような名前つきのインターフェース |
@@ -64,26 +64,26 @@ OEP v1 は凍結前である。凍結までは、壊す変更も **どの revisi
 
 ## 4. revision を変えずに足せるもの
 
-凍結の後の OEP の伸び方はこれだけである（core §13.1）。これらを足しても、どの revision も変わらない。それを知らない host や probe は動き続ける（core §2.7）:
+凍結の後の OEP の伸び方はこれだけである（core §12.1）。これらを足しても、どの revision も変わらない。それを知らない host や probe は動き続ける（core §2.8）:
 
 | 道 | 決まり |
 |---|---|
 | 任意の要求 / 応答 / 出来事の TLV | op の文脈の新しい tag。host は知らない非 critical の tag を読み飛ばし、probe は知らない critical の tag を unsupported で断る（core §2.2、§2.3） |
-| 任意の op と出来事 | インターフェースの op 0x10〜0xFF、出来事の kind 0x01〜0x7F。あるかどうかは describe で宣言する（core §2.5、§2.7） |
+| 任意の op と出来事 | インターフェースの op 0x10〜0xFF、出来事の kind 0x01〜0x7F。あるかどうかは describe で宣言する（core §2.5、§2.8） |
 | 新しい enum の値と予約の bit | 要求では: 定義が使っていなかった値は、それを知らない probe が unsupported で断る（core §2.5、§4.3）。応答、出来事、データでは: どのフィールドのあるなし、長さ、位置もその値に依らず、core §2.4 の知らない値の扱いが安全で、意味がその値に依るフィールドはどれも、その値を知らない読み手が無視するか生のまま見せるときだけ足せる（core §2.5）。そうでなければ新しい TLV、revision、インターフェース |
 | インターフェースの断りの理由と status の値 | 0x40〜0x7F（core §2.5、common §3） |
 | describe の tag | 共通 0x01〜0x3F、インターフェース 0x40〜0x7F。どの固定の形とも同じく、describe の値は延ばさない（core §2.3、§7.4） |
-| probe.config の項目と線の名前 | 新しい項目の tag（項目の形は固定）。標準の線の名前は registry に（probe の設定 §1、§1.3） |
-| 新しいインターフェース | `oep.` の名前はこのリポジトリを通して。逆 DNS の名前は誰でも登録なしに（core §13） |
+| probe.config の項目と線の名前 | 新しい項目の tag（項目の形は固定、probe の設定 §1）。標準の線の名前はregistryとHostガイド §5.3に（Hostの慣行） |
+| 新しいインターフェース | `oep.` の名前はこのリポジトリを通して。逆 DNS の名前は誰でも登録なしに（core §12） |
 | 新しい経路 | フレームの方式と一緒に新しい transport の kind を（transports §1） |
 
-インターフェースの revision を上げる probe は、できれば古い revision も別の fn で出し続ける（core §2.7）。古い host が動き続けるように。
+インターフェースの revision を上げる probe は、できれば古い revision も別の fn で出し続ける（core §2.8）。古い host が動き続けるように。
 
 ## 5. registry の約束
 
 - 凍結の後、**キーは名前を変えず、消さない**。新しいキーを足す（registry の冒頭）。生成した識別子はキーから作るので、
   それを使うコードはそのまま通る。
-- キーの値は変わらない（凍結した数、§3）。凍結後に外した値は retired として残し、別の意味に使わない。何かを試すときは、自分の逆 DNS の名前のインターフェースを使う（core §13）。
+- キーの値は変わらない（凍結した数、§3）。凍結後に外した値は retired として残し、別の意味に使わない。何かを試すときは、自分の逆 DNS の名前のインターフェースを使う（core §12）。
 - 新しい表の種類や、インターフェースや op の新しいキーは、pull request による registry の変更（CONTRIBUTING）。
 
 ## 6. 仕様のリリース

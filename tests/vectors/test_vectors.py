@@ -73,7 +73,7 @@ def tlvs(data: bytes) -> list[tuple[int, bytes]]:
     return out
 
 
-# core §1.2 (and the 必須 column of core §12): fn 0's ops every probe offers; plan_apply / plan_release only with a plan role
+# core §1.2 (and the 必須 column of core §11): fn 0's ops every probe offers; plan_apply / plan_release only with a plan role
 REQUIRED_FN0_OPS = ("confirm", "list", "describe", "clock", "open", "end", "keepalive", "lock_state")
 
 
@@ -194,8 +194,8 @@ def test_confirm_exchanges():
     assert struct.unpack_from("<BHBB", ans) == (0x02, 1, 0x01, 0)
     a = ok["answer"]
     assert ans[5:9] == b"OEP!"
-    assert struct.unpack_from("<BBHIBI", ans, 9) == (a["revision"], a["flags"], a["max_frame"], a["window"], a["max_inflight"], a["boot_id"])
-    assert tlvs(ans[9 + 13:]) == [(0x01, bytes([a["transport"]]))]                                  # transport only (core §7.1); the time is clock's
+    assert struct.unpack_from("<BHIBI", ans, 9) == (a["revision"], a["max_frame"], a["window"], a["max_inflight"], a["boot_id"])
+    assert tlvs(ans[9 + 12:]) == [(0x01, bytes([a["transport"]]))]                                  # transport only (core §7.1); the time is clock's
     assert set(CORE["tlv"]["confirm_answer"]) == {"transport"}
     assert len(req) <= REG["constants"]["min_max_frame"] and len(ans) <= REG["constants"]["min_max_frame"]   # core §7.1
     ans = bytes.fromhex(refused["answer_hex"])
@@ -231,7 +231,7 @@ def test_discovery_exchanges():
     lst, desc, past = v["exchanges"]
     for ex in v["exchanges"]:
         req, ans = bytes.fromhex(ex["request_hex"]), bytes.fromhex(ex["answer_hex"])
-        assert req[0] == 0x01 and struct.unpack_from("<H", req, 1)[0] == ex["request"]["corr"]   # no lock needed (core §12)
+        assert req[0] == 0x01 and struct.unpack_from("<H", req, 1)[0] == ex["request"]["corr"]   # no lock needed (core §11)
         assert struct.unpack_from("<I", req, 6)[0] == 0                                          # session_id 0: no session (core §4.1)
         assert struct.unpack_from("<BHBB", ans) == (0x02, ex["answer"]["corr"], 0x01, 0)
         for key in ("request", "answer"):
@@ -306,7 +306,7 @@ def test_example_probe_answers_carry_what_the_core_requires():
         fn, op = struct.unpack_from("<HB", req, 3)
         if fn == 0 and op == confirm_op:
             confirms += 1
-            got = dict(tlvs(ans[5 + 4 + 13:]))
+            got = dict(tlvs(ans[5 + 4 + 12:]))
             assert len(got.get(t_confirm, b"")) == 1, ex["name"]                              # core §7.1 "always attaches"
         elif fn == 0 and op == describe_op and struct.unpack_from("<H", req, 12)[0] == 0:
             describes += 1
@@ -333,11 +333,11 @@ def test_the_tool_still_gives_these_files():
 
 
 def test_session_scenarios_follow_the_decision_table():
-    """sessions.json (core §5.2, §6.2, §9): every step is one 10-byte-header request and its answer with the same corr; a resent request
+    """sessions.json (core §5.1, §6.2, §9): every step is one 10-byte-header request and its answer with the same corr; a resent request
     gets the same answer bytes; after end, the ended id is no_session; force hands the lock over."""
     reasons = {v: k for k, v in REG["reject_reasons"].items()}
     ops = {o["name"]: o["code"] for o in CORE["op"]}
-    assert ops["clock"] == 0x04 and not next(o["lock"] for o in CORE["op"] if o["name"] == "clock")     # core §12: no lock
+    assert ops["clock"] == 0x04 and not next(o["lock"] for o in CORE["op"] if o["name"] == "clock")     # core §11: no lock
     clocks = {"no session": 0, "held, session_id 0": 0, "held, its own id": 0}
     for sc in load("sessions.json")["scenarios"]:
         seen = {}
@@ -366,13 +366,13 @@ def test_session_scenarios_follow_the_decision_table():
             if op == ops["keepalive"] and session == 0:
                 assert outcome == "session_required"
             if op == ops["clock"]:
-                assert len(req) == 10, st["note"]                                                  # no fixed part (core §7.7)
+                assert len(req) == 10, st["note"]                                                  # no fixed part (core §7.6)
                 if session == 0:
                     assert outcome == "completed", st["note"]                                       # no session needed (core §4.1, §6.3)
                 if outcome == "completed":
                     assert len(ans) == 5 + 12, st["note"]                                         # boot_id(u32) uptime_ns(u64)
                     boot_id, uptime = struct.unpack_from("<IQ", ans, 5)
-                    assert boot_id == 0x12345678 and uptime >= last_uptime, st["note"]            # one boot: the clock does not decrease (core §2.6a)
+                    assert boot_id == 0x12345678 and uptime >= last_uptime, st["note"]            # one boot: the clock does not decrease (core §2.7)
                     last_uptime = uptime
                     clocks["held, its own id" if session else "held, session_id 0" if held else "no session"] += 1
             if op == ops["open"] and outcome == "completed":
@@ -425,13 +425,13 @@ def test_per_op_vectors_decode_exactly():
             fn, opc = struct.unpack_from("<HB", req, 3)
             assert fn == 10 and c["fns"]["10"] == "oep.probe.plan" and opc in plan_ops.values(), c["name"]
             if opc == plan_ops["plan_apply"]:
-                ((tag, value),) = tlvs(req[10:])
-                assert tag & 0x7F == ra and len(value) == 5                                        # fn role channel (oep-if-plan §2.1)
+                for tag,value in tlvs(req[10:]):
+                    assert tag & 0x7F == ra and len(value) == 5                                    # fn role channel (oep-if-plan §2.1)
     assert pay("plan_apply: gpio role 1 on channel 3") == b"" and pay("plan_release: fn 2") == b""
     sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]
     assert (sub, unsub) == (0x01, 0x02)
     logic = {o["name"]: o["code"] for o in iface["oep.fixture.logic"]["op"]}
-    assert logic["subscribe"] == sub and logic["unsubscribe"] == unsub                           # the reserved numbers (core §11.3)
+    assert logic["subscribe"] == sub and logic["unsubscribe"] == unsub                           # the reserved numbers (core §10.3)
     assert "subscribe" not in {o["name"] for o in CORE["op"]}                                   # fn 0 sends no notifications
     for c in v:
         if "subscribe" in c["name"]:
@@ -441,20 +441,20 @@ def test_per_op_vectors_decode_exactly():
             assert len(req) == (10 + 6 if opc == sub else 10), c["name"]                            # no target fn in the request
     assert pay("logic subscribe: min_bytes 1024, max_delay_ms 20") == b""
     p = pay("rvswd connections: one connection with a target_id")
-    assert p[0] == 0 and 1 + _fixed_sequence(p[1:], lambda b, i: 12 + b[i + 11]) == len(p)        # entry 12 bytes + tid
+    assert p[0] == 0 and 1 + _fixed_sequence(p[1:], lambda b, i: 14 + b[i + 13]) == len(p)        # entry 14 bytes + tid; connection u32
     p = pay("rvswd scan: one combination listed and found")
     assert p[0] == 1 and 1 + _fixed_sequence(p[1:], lambda b, i: 9) == len(p)                       # kind swdio swclk id
     assert pay("rvswd scan: count 0 is malformed") == b""                  # tried 0, count 0 (debug §1)
-    p = pay("console marks: one attach mark")
+    p = pay("console marks: one host mark")
     assert 1 + _fixed_sequence(p[1:], lambda b, i: 22) == len(p)
     p = pay("console streams: one open stream")
-    assert 1 + _fixed_sequence(p[1:], lambda b, i: 5) == len(p)
+    assert 1 + _fixed_sequence(p[1:], lambda b, i: 9) == len(p)                                  # stream/connection u32, mechanism u8
     for c in v:
         if c["name"].startswith("console streams"):
             assert len(bytes.fromhex(c["request_hex"])) == 10 + 2, c["name"]                       # first(u16) (console §1)
     serials = {}
     for c in v:
-        if c["name"].startswith("console marks"):
+        if c["name"].startswith("console marks") and bytes.fromhex(c['answer_hex'])[3] == 1:
             p = pay(c["name"])
             assert 1 + _fixed_sequence(p[1:], lambda b, i: 22) == len(p) and len(p) + 5 <= 64, c["name"]      # max_frame 64
             serials[c["name"]] = (p[0], [struct.unpack_from("<I", p, 2 + 22 * k)[0] for k in range(p[1])])
@@ -467,34 +467,19 @@ def test_per_op_vectors_decode_exactly():
     assert pay("logic segments: from_serial = serial_done, no segments and more 0") == b"\x00\x00"   # common §1.3 paging 2
     got = dict(tlvs(pay("logic configure: one-shot, the required answer set")))
     ca = iface["oep.fixture.logic"]["tlv"]["configure_answer"]
-    assert set(got) == {ca["actual_rate"], ca["layout"], ca["actual_samples"], ca["blocking_ms"]}     # mode 1: no actual_segments (§3.3)
+    assert set(got) == {ca["actual_rate"], ca["layout"], ca["actual_samples"]}     # mode 1: no actual_segments (§3.3)
     num, den = struct.unpack("<II", got[ca["actual_rate"]])
     assert num >= 1 and den >= 1 and got[ca["layout"]][1] + 2 == len(got[ca["layout"]])              # w C pos[C]
     p = pay("capture-group start: the group's and each track's new generation")
-    n = p[16]                                                                                     # blocking_ms start_ns generation n
-    assert len(p) == 17 + 6 * n and n == 2
-    fns = [struct.unpack_from("<H", p, 17 + 6 * k)[0] for k in range(n)]
+    n = p[12]                                                                                     # start_ns generation n
+    assert len(p) == 13 + 6 * n and n == 2
+    fns = [struct.unpack_from("<H", p, 13 + 6 * k)[0] for k in range(n)]
     assert len(set(fns)) == n                                                                     # each bound fn once (§4.1)
     for name, data in (("spi-target read_rx: 12 bits, MSB first, a partial last byte", "c0b0"),
                        ("spi-target read_rx: 12 bits, LSB first, a partial last byte", "030d")):
         assert pay(name) == bytes.fromhex("000c0000000200" + data), name                          # pending bits count data (fixture §4)
     assert "start_answer" not in iface["oep.fixture.capture-group"].get("tlv", {})                # no generations TLV any more
     assert pay("probe.config state: no saved settings") == bytes(6)
-    p = pay("probe.config state: wifi connected on entry 0")
-    assert p[:6] == bytes(6)
-    ((tag, value),) = tlvs(p[6:])
-    assert tag == iface["oep.probe.config"]["tlv"]["state_answer"]["wifi"] and len(value) == 8
-    wifi = iface["oep.probe.config"]["tlv"]["item"]["wifi"]
-    ((tag, value),) = tlvs(pay("probe.config get: the wifi entry without its passphrase")[5:])
-    assert tag == wifi and value[-1] == 0xFF and len(value) == 3 + value[1]                      # pass_len 0xFF, nothing after (§1.4)
-    sent = tlvs(bytes.fromhex(by["probe.config set: wifi entry 0 with a passphrase"]["request_hex"])[10:])[0][1]
-    secret = sent[3 + sent[1]:]
-    assert len(secret) == sent[2 + sent[1]] >= 8
-    for c in v:                                                                                  # the passphrase is in no answer
-        assert secret not in bytes.fromhex(c["answer_hex"]), c["name"]
-    back = bytes.fromhex(by["probe.config set: get's wifi item sent back keeps the passphrase"]["request_hex"])[10:]
-    assert tlvs(back) == [(wifi, value)]                                                         # get's item, sent back as it is
-    assert pay("probe.config set: get's wifi item sent back keeps the passphrase") == pay("probe.config set: wifi entry 0 with a passphrase")
     p = pay("link source: 8 bytes, byte k = k & 0xFF")
     n = struct.unpack_from("<H", p)[0]
     assert p[2:2 + n] == bytes(k & 0xFF for k in range(n)) and len(p) == 2 + n
@@ -504,11 +489,121 @@ def test_per_op_vectors_decode_exactly():
     assert p[2:] == bytes(k & 0xFF for k in range(n))
 
 
+def test_resource_ids_cross_u16_without_changing_function_or_correlation_width():
+    cases = {case['name']: case for case in load('ops.json')['cases']}
+    attach = bytes.fromhex(cases['rvswd attach: a resource ID above u16']['answer_hex'])
+    assert attach[5:9] == b'\x00\x00\x01\x00'  # 65536, little endian u32.
+    assert len(attach) == 18 and attach[9:13] == bytes.fromhex('82034000')
+    transfer = bytes.fromhex(cases['arm-adi transfer: a connection ID above u16']['request_hex'])
+    assert transfer[1:3] == b'\x59\x00' and transfer[3:5] == b'\x0f\x00'
+    assert transfer[10:] == b'\x00\x00\x01\x00\x00\x00'  # Connection, then u16 n.
+    streams = bytes.fromhex(cases['console streams: resource IDs above u16']['answer_hex'])
+    assert streams[5:7] == b'\x00\x01'
+    assert streams[7:11] == b'\x01\x00\x01\x00' and streams[11:15] == b'\x00\x00\x01\x00'
+    assert len(streams) == 16 and streams[15] == 2
+    assert REG['limits']['resource_id_bytes'] == 4 and REG['limits']['resource_id_max'] == 0xFFFFFFFF
+
+
+def test_debug_fixed_attach_selection_and_cleanup_failure_shapes():
+    cases = {row['name']: row for row in load('ops.json')['cases']}
+    request = bytes.fromhex(cases['rvswd attach: a resource ID above u16']['request_hex'])
+    assert len(request)==19 and struct.unpack_from('<BHHI',request,10)==(0,3,4,1000000)
+    response = bytes.fromhex(cases['swd connections: read identity and supplied selector are distinct']['answer_hex'])
+    assert len(response)==33 and response[5:7]==b'\0\1'
+    assert struct.unpack_from('<IHHIBBI',response,7)==(65536,1,2,1000000,2,4,0x2BA01477)
+    assert tlvs(response[25:])==[(1,struct.pack('<BI',0,0x01000001))]
+    # A write may complete before restoration fails; done does not imply success.
+    response = bytes.fromhex(cases['riscv-dm write_block: memory written but cleanup lost the line']['answer_hex'])
+    assert response[3:]==b'\1\2'+struct.pack('<HB',2,2)
+    response = bytes.fromhex(cases['riscv-dm dmi: connection closed after incomplete cleanup']['answer_hex'])
+    assert response[3:5]==bytes([0,REG['reject_reasons']['no_resource']])
+    response = bytes.fromhex(cases['spi-target arm: preparation failed with no fixed result']['answer_hex'])
+    assert len(response)==5 and response[3:]==b'\1\1'
+
+
+def test_capture_minimal_reply_and_analog_diagnostics_fit_frame64():
+    cases={row['name']:row for row in load('ops.json')['cases']}
+    response=bytes.fromhex(cases['logic start: bounded CPU capture finishes before the reply']['answer_hex'])
+    assert response[5:]==struct.pack('<I',1) and len(response)==9
+    row=cases['logic read: maximum u16 request, response constrained by frame']
+    request,response=bytes.fromhex(row['request_hex']),bytes.fromhex(row['answer_hex'])
+    assert len(request)==24 and struct.unpack_from('<IQH',request,10)==(1,0,65535)
+    assert len(response)==64 and struct.unpack_from('<QBH',response,5)==(0,0,48)
+    assert response[16:]==bytes(range(48))
+    for count,size in ((1,51),(2,64)):
+        response=bytes.fromhex(cases[f'analog configure: {count} roles and one nonzero skew without optional diagnostics']['answer_hex'])
+        decoded=tlvs(response[5:]);assert len(response)==size
+        assert {tag for tag,_ in decoded}=={0x50,0x51,0x52,0x55,0x57}
+        assert [struct.unpack('<Bii',value) for tag,value in decoded if tag==0x55]==[(role,0,1000000) for role in range(count)]
+        assert len([v for t,v in decoded if t==0x57])==1
+    row=cases['logic start: generation exhausted without clearing current data']
+    assert bytes.fromhex(row['answer_hex'])[5:]==bytes.fromhex('01010002')
+
+
+def test_settings_counted_container_and_change_counter_shapes():
+    cases={row['name']:row for row in load('ops.json')['cases']}
+    response=bytes.fromhex(cases['probe.config get: count separates items from response extensions']['answer_hex'])
+    more,generation,count=struct.unpack_from('<BIB',response,5)
+    assert (more,generation,count)==(0,2,1)
+    # Decode count records, then the extension tail separately.
+    tag,size=struct.unpack_from('<BH',response,11)
+    assert tag==3 and size==3 and struct.unpack_from('<HB',response,14)==(4,0)
+    assert tlvs(response[17:])==[(0x7f,b'x')]
+    request=bytes.fromhex(cases['probe.config set: item bit7 ignored for known idle']['request_hex'])
+    assert request[10:]==bytes.fromhex('01830300040000')
+    request=bytes.fromhex(cases['probe.config unset: fixed channel key']['request_hex'])
+    assert request[10:]==bytes.fromhex('01070400')
+    request=bytes.fromhex(cases['probe.config set: longest label fits frame64']['request_hex'])
+    assert len(request)==48 and request[10]==1 and request[-32:]==b'L'*32
+    response=bytes.fromhex(cases['probe.config state: independent valid items restored despite invalid label']['answer_hex'])
+    assert struct.unpack_from('<BIB',response,5)==(3,0,2)
+
+
+def test_link_current_phase_query_is_distinct_from_cached_speed_success():
+    rows={r['name']:r for r in load('ops.json')['cases']}
+    raw=bytes.fromhex(rows['link port_state: cached try success no longer describes the route']['answer_hex'])
+    assert len(raw)==10 and struct.unpack_from('<IB',raw,5)==(115200,0)
+    raw=bytes.fromhex(rows['link port_state: session-ended fallback waits for old frame']['answer_hex'])
+    assert struct.unpack_from('<IB',raw,5)==(921600,3)
+
+
+def test_minimal_console_has_no_unused_flags_or_required_mark_write():
+    cases = {case['name']: case for case in load('ops.json')['cases']}
+    opened = bytes.fromhex(cases['console open: RX-only SDI without flags']['answer_hex'])
+    assert opened[5:] == b'\x01\x00\x01\x00' and len(opened) == 9
+    for name in ('console marks: absent on RX-only console','console write: absent on RX-only console'):
+        result = bytes.fromhex(cases[name]['answer_hex'])
+        assert result[3:] == bytes([0,REG['reject_reasons']['unknown_operation']])
+    for name in ('console read: from3 without marks is unsupported',
+                 'console write: SDI is unsupported even if other mechanisms can write'):
+        result = bytes.fromhex(cases[name]['answer_hex'])
+        assert result[3:] == bytes([0,REG['reject_reasons']['unsupported'],0])
+
+
+def test_plan_lifetime_and_explicit_uart_initialization_vectors():
+    cases = {case['name']:case for case in load('ops.json')['cases']}
+    for name in ('plan_apply: GPIO addition preserves an existing output',
+                 'plan_apply: identical configured UART is unchanged'):
+        result=bytes.fromhex(cases[name]['answer_hex'])
+        assert result[3:] == b'\x01\x00'
+    for name in ('plan_apply: configured UART role change is refused',
+                 'plan_apply: active capture role change is refused'):
+        result=bytes.fromhex(cases[name]['answer_hex'])
+        assert result[3:5] == bytes([0,REG['reject_reasons']['unavailable']])
+        assert tlvs(result[5:]) == [(1,b'\x06')]
+    status=bytes.fromhex(cases['UART status: unconfigured has no implicit baud']['answer_hex'])
+    assert status[5:] == bytes(5)
+    empty=bytes.fromhex(cases['UART read: unconfigured is empty at its retained position']['answer_hex'])
+    assert struct.unpack('<QBH',empty[5:]) == (7,0,0)
+    zero=bytes.fromhex(cases['UART configure: zero baud is malformed']['answer_hex'])
+    assert zero[3:] == bytes([0,REG['reject_reasons']['malformed']])
+
+
 def test_capture_events_carry_their_generation():
     """ops.json events: the capture events' fixed parts end with generation(u32) (oep-if-capture §3.4, §4.2)."""
     iface = {i["name"]: i for i in REG["interface"]}
     fixed = {("oep.fixture.logic", "stopped"): 6, ("oep.fixture.logic", "triggered"): 20,
-             ("oep.fixture.capture-group", "stopped"): 6, ("oep.fixture.capture-group", "triggered"): 14}
+             ("oep.fixture.capture-group", "stopped"): 6}
     events = load("ops.json")["events"]
     assert events
     for e in events:
@@ -553,105 +648,10 @@ def test_a_segment_with_dropped_data_is_not_handed_out():
     kept = [struct.unpack_from("<IQI", p, 2 + 37 * k) for k in range(p[1])]
     assert serial_done not in [s for s, _, _ in kept]                                          # the dropped serial is not listed
     assert max(pos + n // 8 for _, pos, n in kept) == write_pos                                 # w 1: write_pos is the dropped one's start
-    assert by["logic read: nothing of the dropped segment"] == struct.pack("<QBI", write_pos, 0, 0)
+    assert by["logic read: nothing of the dropped segment"] == struct.pack("<QBH", write_pos, 0, 0)
     (ev,) = [x for x in load("ops.json")["events"] if x["name"].startswith("logic stopped: data dropped")]
     f = bytes.fromhex(ev["event_hex"])
     assert struct.unpack_from("<BBI", f, 6) == (e["stopped_reason"]["error"], e["error"]["storage"], generation)
-
-
-def _policy_values(x: list[int], policy: str, d: int, param: int, r0: int, r: int) -> list[int]:
-    """capture §5.4 written out apart from the tool: the values a block of base samples [r0, r0 + r) holds, in order."""
-    out = []
-    if policy == "sample":
-        for n in range(r0 + param, r0 + r, d):                                                   # one point per D, its point inside the block
-            out.append(x[n])
-        return out
-    for lo in range(r0, r0 + r - d + 1, d):                                                      # whole intervals only
-        seg = x[lo:lo + d]
-        if policy == "any_active":
-            out.append(param if param in seg else 1 - param)
-        else:
-            rises = [n for n in range(max(lo, 1), lo + d) if x[n] == param and x[n - 1] != param]
-            out.append(seg[-1] | (1 if rises else 0) << 1)
-    return out
-
-
-def test_multirate_streams_decode_back():
-    """multirate.json: each block is the D = 1 part (capture §1.1 rules, padded with 0) and the reduced part (role order, values packed
-    with no gap, padded with 0); every segment starts its own grid (capture §5.5)."""
-    cases = load("multirate.json")["cases"]
-    widths = {"sample": 1, "any_active": 1, "edge_latch": 2}
-    for c in cases:
-        w, L = c["layout"]["w"], c["L"]
-        raw = [k for k, role in enumerate(c["roles"]) if role is None]
-        reduced = [k for k, role in enumerate(c["roles"]) if role is not None]
-        assert c["layout"]["pos"] == list(range(len(raw))) and all(L % c["roles"][k]["d"] == 0 for k in reduced), c["name"]
-        for seg in c["segments"]:
-            stream, n = bytes.fromhex(seg["stream_hex"]), seg["samples"]
-            chans = [[int(ch) for ch in s] for s in seg["channels"]]
-            i = 0
-            for r0 in range(0, n, L):
-                r = min(L, n - r0)
-                if raw:
-                    nb = (r * w + 7) // 8
-                    part = stream[i:i + nb]
-                    got = unpack_samples(part, w, c["layout"]["pos"], r)
-                    assert got == ["".join(map(str, chans[k][r0:r0 + r])) for k in raw], (c["name"], r0)
-                    assert int.from_bytes(part, "little") >> (r * w) == 0, (c["name"], "D = 1 padding")
-                    i += nb
-                want, nbits = 0, 0
-                for k in reduced:
-                    role = c["roles"][k]
-                    for v in _policy_values(chans[k], role["policy"], role["d"], role["param"], r0, r):
-                        want |= v << nbits
-                        nbits += widths[role["policy"]]
-                nb = (nbits + 7) // 8
-                assert stream[i:i + nb] == want.to_bytes(nb, "little"), (c["name"], r0)       # the padding bits are 0 too
-                i += nb
-            assert i == len(stream), c["name"]
-    by = {c["name"]: [s["stream_hex"] for s in c["segments"]] for c in cases}
-    text = {"four channels": "5501aa00005500000c011911111111111111ff01a5aa02", "L*w not": "07010200", "w 3:": "590403080807",
-            "edge_latch, d 8, active-high: the": "080f00"}                                        # capture §5.7
-    for prefix, stream in text.items():
-        (name,) = [k for k in by if k.startswith(prefix)]
-        assert by[name] == [stream], name
-
-
-def test_multirate_ops():
-    """ops.json: describe declares multirate; configure / query answer layout and block; refusals of capture §5.2."""
-    logic = next(i for i in REG["interface"] if i["name"] == "oep.fixture.logic")
-    t = logic["tlv"]
-    tag = t["configure"]["multirate"]
-    assert tag == t["configure_answer"]["block"] == t["describe"]["multirate"] == 0x60
-    cases = [c for c in load("ops.json")["cases"] if "multirate" in c["name"]]
-    by = {c["name"]: c for c in cases}
-    pay = lambda name: bytes.fromhex(by[name]["answer_hex"])[5:]
-    got = dict(tlvs(pay("logic describe: multirate declared")[1:]))
-    assert struct.unpack("<IIIB", got[t["describe"]["multirate"]]) == (7, 2, 128, 1)
-    rc = [v for tg, v in tlvs(pay("logic describe: multirate declared")[1:]) if tg == REG["describe_common"]["role_channels"]]
-    assert sorted(v[0] for v in rc) == [0, 1, 2, 3] == list(range(got[t["describe"]["channels"]][0]))  # the plan roles 0-3 the state names
-    for c in cases:
-        req, ans = bytes.fromhex(c["request_hex"]), bytes.fromhex(c["answer_hex"])
-        if struct.unpack_from("<HB", req, 3) not in ((9, 0x10), (9, 0x18), (16, 0x10)):                  # configure / query of a logic fn
-            continue
-        sent = tlvs(req[10:])
-        if any(tg & 0x7F == tag for tg, _ in sent):
-            assert all(tg == tag | 0x80 for tg, v in sent if tg & 0x7F == tag and len(v) == 10), c["name"]   # sent critical
-            if ans[3] == 0x01:
-                a = dict(tlvs(ans[5:]))
-                L = struct.unpack("<I", a[t["configure_answer"]["block"]])[0]
-                ds = [struct.unpack_from("<I", v, 2)[0] for tg, v in sent if tg & 0x7F == tag]
-                assert all(L % d == 0 for d in ds) and struct.unpack("<I", a[t["configure_answer"]["actual_samples"]])[0] % L == 0, c["name"]
-                lay = a[t["configure_answer"]["layout"]]
-                assert lay[1] == 4 - len({v[0] for tg, v in sent if tg & 0x7F == tag}) + sum(
-                    1 for tg, v in sent if tg & 0x7F == tag and v[1] == 0 and struct.unpack_from("<I", v, 2)[0] == 1), c["name"]
-            elif ans[4] == REG["reject_reasons"]["unsupported"]:
-                assert ans[5] == tag | 0x80, c["name"]                                                # the tag as received
-    assert pay("logic configure multirate: the capture §5.7 example") == bytes.fromhex(
-        "50080000e1f5050100000051040002020001600400200000005204006000000056040000000000")
-    assert pay("logic query multirate: the same answer, nothing changed") == pay("logic configure multirate: the capture §5.7 example")
-    seg = pay("logic segments multirate: a stopped segment, trigger_index in base samples on the any_active role")
-    assert struct.unpack_from("<IQIQIIB", seg, 2)[2::3] == (72, 13)                               # samples, trigger_index
 
 
 def test_an_immediate_triggers_role_is_not_looked_at():
@@ -666,42 +666,51 @@ def test_an_immediate_triggers_role_is_not_looked_at():
     assert ans[3:] == plain[3:]                                                                     # the same success as without it
 
 
-def test_a_bound_track_keeps_the_groups_pretrigger_as_a_time():
-    """capture §4.1: P_k = ceil(P * num_k * den_t / (den_k * num_t)); bind refuses unavailable cause 2 with the track's fn when P_k does
-    not fit that track (more than max_pretrigger, or not below actual_samples)."""
-    core = REG["core"]
-    p_k = lambda p, num_k, den_k, num_t, den_t: -(-p * num_k * den_t // (den_k * num_t))
-    assert p_k(1000, 48_000, 1, 20_000_000, 1) == 3                                                # the §4.1 example: 50 us at 48 kHz
-    assert p_k(100_000, 48_000, 1, 20_000_000, 1) == 240 > 128                                     # the vector's state
-    c = next(c for c in load("ops.json")["cases"] if c["name"] == "capture-group bind: a track cannot keep the group's pretrigger")
-    ans = bytes.fromhex(c["answer_hex"])
-    assert ans[4] == REG["reject_reasons"]["unavailable"]
-    unav, cause = core["tlv"]["unavailable_payload"], core["enum"]["unavailable_cause"]
-    assert tlvs(ans[5:]) == [(unav["cause"], bytes([cause["limit"]])), (unav["fn"], struct.pack("<H", 13))]
+def test_streaming_metadata_and_error_rollback_do_not_cross_segments():
+    logic=next(i for i in REG['interface'] if i['name']=='oep.fixture.logic')
+    by={c['name']:bytes.fromhex(c['answer_hex'])[5:] for c in load('ops.json')['cases']}
+    state,_,write_pos,flags,generation=struct.unpack_from('<BIQBI',by['logic status: streaming stopped in error, write_pos at the lost segment\'s start'])
+    assert (state,write_pos,flags,generation)==(6,32,1,1)
+    for row in load('ops.json')['data']:
+        if 'layout' in row: continue
+        frame=bytes.fromhex(row['frame_hex'])
+        role,fn,seq,position,count=struct.unpack_from('<BHHQH',frame)
+        assert role==4 and fn==9 and len(frame)<=64
+        body,tail=frame[15:15+count],dict(tlvs(frame[15+count:]))
+        assert tail[1]==struct.pack('<I',generation)
+        origin,samples,time_ns,uncertainty=struct.unpack('<QIQI',tail[2])
+        assert origin<=position and position+count<=origin+samples
+        assert time_ns==1000000+origin*1000000 and uncertainty==50
+        kept=body[:max(0,min(count,write_pos-position))]
+        assert len(kept)==row['keep']
+        assert kept==bytes(range(position,position+len(kept)))
 
 
-def test_streamed_bytes_at_or_past_write_pos_are_dropped_after_an_error():
-    """capture §2.1 rule 2, §2.2: a segment's data may be streamed before it ends; after the track stops in error (state 6), the host
-    keeps only the received bytes below status's write_pos, the start of the segment that was not kept."""
-    logic = next(i for i in REG["interface"] if i["name"] == "oep.fixture.logic")
-    e = logic["enum"]
-    (d,) = [x for x in load("ops.json")["data"] if x["name"].startswith("logic data: a frame running into")]
-    f = bytes.fromhex(d["frame_hex"])
-    role, fn, _seq, position, n = struct.unpack_from("<BHHQH", f)
-    assert role == REG["roles"]["data"] and fn == 9
-    body, tail = f[15:15 + n], f[15 + n:]
-    assert tlvs(tail) == [(logic["tlv"]["data"]["generation"], struct.pack("<I", d["generation"]))]
-    by = {c["name"]: bytes.fromhex(c["answer_hex"])[5:] for c in load("ops.json")["cases"]}
-    state, serial_done, write_pos, flags, generation = struct.unpack_from(
-        "<BIQBI", by["logic status: streaming stopped in error, write_pos at the lost segment's start"])
-    assert (state, generation, flags & e["status_flag"]["dropped"]) == (e["state"]["error"], d["generation"], e["status_flag"]["dropped"])
-    assert position < write_pos < position + n                                     # the frame runs past the kept data
-    kept = body[:max(0, write_pos - position)]
-    assert len(kept) == d["keep"] and kept == bytes(range(24, 32))                  # serial 1's tail kept, serial 2's head dropped
+def test_streaming_lost_first_frame_recovers_w3_boundary_and_padding():
+    row=next(r for r in load('ops.json')['data'] if r['name'].startswith('logic data: w3 byte1'))
+    raw=bytes.fromhex(row['frame_hex'])
+    _,_,_,position,size=struct.unpack_from('<BHHQH',raw)
+    info=dict(tlvs(raw[15+size:]));origin,samples,start_ns,_=struct.unpack('<QIQI',info[2])
+    assert (position,size,origin,samples,start_ns)==(1,1,0,5,1000000)
+    byte=raw[15];first=(8*(position-origin)+2)//3
+    end=min(samples,(8*(position-origin+size))//3)
+    values=[sum(((byte>>(3*sample+bit-8))&1)<<bit for bit in range(3)) for sample in range(first,end)]
+    assert values==[4,5]  # sample2's first bits were lost; the final padding is ignored.
+    assert len(raw)==50 and info[1]==struct.pack('<I',1)
+
+
+def test_basic_group_has_only_immediate_start_and_future_selector_refusal():
+    rows={r['name']:r for r in load('ops.json')['cases']}
+    raw=bytes.fromhex(rows['capture-group status: immediate group has no unused trigger fields']['answer_hex'])
+    assert len(raw)==18 and struct.unpack_from('<BQI',raw,5)==(3,7000000,5)
+    future=bytes.fromhex(rows['capture-group bind: future critical selector is refused']['answer_hex'])
+    assert future[3:]==bytes([0,REG['reject_reasons']['unsupported'],0x81])
+    group=next(i for i in REG['interface'] if i['name']=='oep.fixture.capture-group')
+    assert 'force' not in {op['name'] for op in group['op']} and group['event']=={'stopped':2}
 
 
 def test_capture_request_tlvs_are_plain_and_zero_counts_are_malformed():
-    """capture §3.3: the table's TLVs (and capture-group's trigger_track) are sent without the critical bit, only multirate is critical;
+    """capture §3.3: base setting TLVs are plain; future behavioral extension TLVs are critical;
     samples 0 is a value the definition excludes (malformed)."""
     iface = {i["name"]: i for i in REG["interface"]}
     cases = load("ops.json")["cases"]
@@ -718,7 +727,7 @@ def test_capture_request_tlvs_are_plain_and_zero_counts_are_malformed():
         fixed = 0 if name == "oep.fixture.logic" else 1 + 2 * req[10]
         for tg, _ in tlvs(req[10 + fixed:]):
             seen += 1
-            assert tg in plain[(name, opc)] or tg == 0x60 | 0x80, (c["name"], hex(tg))               # no critical bit but multirate's
+            assert tg in plain[(name, opc)] or tg & 0x80, (c["name"], hex(tg))               # a refused future extension may be critical
     assert seen
     c = next(c for c in cases if c["name"].startswith("logic query: samples 0"))
     assert bytes.fromhex(c["answer_hex"])[3:5] == bytes([REG["resolutions"]["rejected"], REG["reject_reasons"]["malformed"]])

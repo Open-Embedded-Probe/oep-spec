@@ -1,5 +1,5 @@
 {
-  "about": "Per-op byte vectors. `fns` says which interface each fn number is in the example; `state` is the probe state the answer assumes. Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0. `events` are notification frames (core §11.2) with the generation each carries; `data` are data frames, with `keep` the bytes from the frame's start the host keeps.",
+  "about": "Per-op byte vectors. `fns` says which interface each fn number is in the example; `state` is the probe state the answer assumes. Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0. `events` are notification frames (core §10.2) with the generation each carries; `data` are data frames, with `keep` the bytes from the frame's start the host keeps.",
   "cases": [
     {
       "name": "restart: completed success, sent before the probe restarts",
@@ -98,6 +98,50 @@
       "answer_hex": "0219000009"
     },
     {
+      "name": "plan_apply: GPIO addition preserves an existing output",
+      "spec": "plan §2.1, fixture §1",
+      "fns": {
+        "10": "oep.probe.plan",
+        "2": "oep.fixture.gpio"
+      },
+      "state": "session S; fn2 role1 channel3 is high; channel4 free; keep channel3 high and acquire only channel4",
+      "request_hex": "011a000a00104433221110050002000103001005000200010400",
+      "answer_hex": "021a000100"
+    },
+    {
+      "name": "plan_apply: identical configured UART is unchanged",
+      "spec": "plan §2.1, fixture §2",
+      "fns": {
+        "10": "oep.probe.plan",
+        "5": "oep.fixture.uart"
+      },
+      "state": "session S; fn5 RX on channel3 at 9600 baud, bytes retained; preserve baud and buffer",
+      "request_hex": "011b000a0010443322111005000500010300",
+      "answer_hex": "021b000100"
+    },
+    {
+      "name": "plan_apply: configured UART role change is refused",
+      "spec": "plan §2.1, fixture §2",
+      "fns": {
+        "10": "oep.probe.plan",
+        "5": "oep.fixture.uart"
+      },
+      "state": "session S; fn5 RX on channel3 at 9600 baud; channel4 allowed; all old state remains",
+      "request_hex": "011c000a0010443322111005000500010400",
+      "answer_hex": "021c00000401010006"
+    },
+    {
+      "name": "plan_apply: active capture role change is refused",
+      "spec": "plan §2.1, capture §3.2",
+      "fns": {
+        "10": "oep.probe.plan",
+        "9": "oep.fixture.logic"
+      },
+      "state": "session S; fn9 state3, role0 channel1; preserve capture and data",
+      "request_hex": "011d000a0010443322111005000900000200",
+      "answer_hex": "021d00000401010006"
+    },
+    {
       "name": "link source: 8 bytes, byte k = k & 0xFF",
       "spec": "oep-if-link §2",
       "fns": {
@@ -158,6 +202,26 @@
       "answer_hex": "0224000002"
     },
     {
+      "name": "link port_state: cached try success no longer describes the route",
+      "spec": "link §1/3",
+      "fns": {
+        "1": "oep.probe.link"
+      },
+      "state": "UART bridge, expired try, now boot baud; old try success921600 exists in replay cache",
+      "request_hex": "01250001001300000000",
+      "answer_hex": "022500010000c2010000"
+    },
+    {
+      "name": "link port_state: session-ended fallback waits for old frame",
+      "spec": "link §3",
+      "fns": {
+        "1": "oep.probe.link"
+      },
+      "state": "UART bridge at921600, previous owner ended; frame in progress; normal requests cannot cancel session-ended fallback",
+      "request_hex": "01260001001300000000",
+      "answer_hex": "022600010000100e0003"
+    },
+    {
       "name": "gpio set: channel 3 output high",
       "spec": "fixture §1",
       "fns": {
@@ -173,7 +237,7 @@
       "fns": {
         "2": "oep.fixture.gpio"
       },
-      "state": "as above, after the set; no drive_levels",
+      "state": "as above, after the set; Probe-selected output strength",
       "request_hex": "01310002001100000000010300",
       "answer_hex": "02310001000101"
     },
@@ -208,6 +272,36 @@
       "answer_hex": "0234000003"
     },
     {
+      "name": "UART status: unconfigured has no implicit baud",
+      "spec": "fixture §2",
+      "fns": {
+        "5": "oep.fixture.uart"
+      },
+      "state": "RX plan exists; configure not called; no UART reception or hidden preset application",
+      "request_hex": "01350005001600000000",
+      "answer_hex": "02350001000000000000"
+    },
+    {
+      "name": "UART read: unconfigured is empty at its retained position",
+      "spec": "fixture §2, common §1.2",
+      "fns": {
+        "5": "oep.fixture.uart"
+      },
+      "state": "RX plan exists; not configured; boot-scoped write position7, no retained bytes",
+      "request_hex": "013600050011000000000100000000000000003000",
+      "answer_hex": "02360001000700000000000000000000"
+    },
+    {
+      "name": "UART configure: zero baud is malformed",
+      "spec": "fixture §2",
+      "fns": {
+        "5": "oep.fixture.uart"
+      },
+      "state": "session S; RX plan exists; state unchanged",
+      "request_hex": "0137000500104433221100000000",
+      "answer_hex": "0237000003"
+    },
+    {
       "name": "rvswd connections: one connection with a target_id",
       "spec": "debug §2.1",
       "fns": {
@@ -215,7 +309,7 @@
       },
       "state": "connection 1 on channels 1 / 2 at 1 MHz, owned by the session, target_id scheme 1 = 0x00203500",
       "request_hex": "0140000400130000000000",
-      "answer_hex": "0240000100000101000100020040420f00010400352000"
+      "answer_hex": "02400001000001010000000100020040420f00010400352000"
     },
     {
       "name": "rvswd connections: first beyond the count",
@@ -248,13 +342,13 @@
       "answer_hex": "0243000003"
     },
     {
-      "name": "rvswd attach: pins are required",
+      "name": "rvswd attach: a short fixed body is malformed",
       "spec": "debug §1",
       "fns": {
         "4": "oep.wire.rvswd"
       },
       "state": "session S; channels free",
-      "request_hex": "014400040011443322110081040040420f00",
+      "request_hex": "01440004001144332211000100",
       "answer_hex": "0244000003"
     },
     {
@@ -264,8 +358,18 @@
         "4": "oep.wire.rvswd"
       },
       "state": "session S owns connection 1 on pins 1 / 2; max_connections 2; pins 3 / 4 allowed and free; next resource 2",
-      "request_hex": "014500040011443322110081040040420f0083040003000400",
-      "answer_hex": "02450001000200820340000040420f00"
+      "request_hex": "01450004001144332211000300040040420f00",
+      "answer_hex": "024500010002000000820340000040420f00"
+    },
+    {
+      "name": "rvswd attach: a resource ID above u16",
+      "spec": "debug §1, core §9",
+      "fns": {
+        "4": "oep.wire.rvswd"
+      },
+      "state": "session S; 65535 resources were created and closed; next resource 65536; pins 3 / 4 allowed and free",
+      "request_hex": "01470004001144332211000300040040420f00",
+      "answer_hex": "024700010000000100820340000040420f00"
     },
     {
       "name": "rvswd attach: busy pins never join or evict",
@@ -274,8 +378,58 @@
         "4": "oep.wire.rvswd"
       },
       "state": "session S owns connection 1 on pins 1 / 2; connection remains unchanged",
-      "request_hex": "014600040011443322110081040040420f0083040001000200",
+      "request_hex": "01460004001144332211000100020040420f00",
       "answer_hex": "0246000004010100010202000100"
+    },
+    {
+      "name": "swd connections: read identity and supplied selector are distinct",
+      "spec": "debug §2.1, §5",
+      "fns": {
+        "5": "oep.wire.swd"
+      },
+      "state": "connection 65536, DPIDR 0x2BA01477 read on attach; Host supplied TARGETSEL 0x01000001",
+      "request_hex": "0148000500130000000000",
+      "answer_hex": "02480001000001000001000100020040420f0002047714a02b0105000001000001"
+    },
+    {
+      "name": "swd attach: another selector on occupied pins is refused before selection",
+      "spec": "debug §1, §5",
+      "fns": {
+        "5": "oep.wire.swd"
+      },
+      "state": "connection 65536 on pins 1/2 at TARGETSEL 0x01000001 remains selected and unchanged",
+      "request_hex": "01490005001144332211000100020040420f0082040002000001",
+      "answer_hex": "0249000004010100010202000100"
+    },
+    {
+      "name": "riscv-dm halt not offered by raw-only fn",
+      "spec": "debug §4",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "fn 6 declares only dmi in ops",
+      "request_hex": "015b000600114433221101000000",
+      "answer_hex": "025b000002"
+    },
+    {
+      "name": "riscv-dm write_block: memory written but cleanup lost the line",
+      "spec": "debug §4",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "two words completed; restoring saved DATA failed; response is sent then connection 1 and its streams close",
+      "request_hex": "015c0006001544332211010000000000002002000700000008000000",
+      "answer_hex": "025c000102020002"
+    },
+    {
+      "name": "riscv-dm dmi: connection closed after incomplete cleanup",
+      "spec": "debug §4, core §4.3",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "connection 1 closed after the previous high-level op failed cleanup; no target access",
+      "request_hex": "015d0006001044332211010000000000",
+      "answer_hex": "025d00000a"
     },
     {
       "name": "riscv-dm halt: halted",
@@ -284,7 +438,7 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "session S; connection 1 open; the hart halts",
-      "request_hex": "015000060011443322110100",
+      "request_hex": "0150000600114433221101000000",
       "answer_hex": "025000010000"
     },
     {
@@ -294,7 +448,7 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "no connection 9",
-      "request_hex": "015100060011443322110900",
+      "request_hex": "0151000600114433221109000000",
       "answer_hex": "025100000a"
     },
     {
@@ -303,8 +457,8 @@
       "fns": {
         "6": "oep.target.riscv-dm"
       },
-      "state": "ops of fn 6: dmi, halt, resume (09 02 00 01 07)",
-      "request_hex": "01520006001644332211010000000020640000000000",
+      "state": "ops of fn 6: dmi only (07 02 00 10 01)",
+      "request_hex": "015200060016443322110100000000000020640000000000",
       "answer_hex": "0252000002"
     },
     {
@@ -314,7 +468,7 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "session S; connection 1; run offered in ops; the hart is halted and writing a0 fails with no answer from the wire",
-      "request_hex": "0156000600164433221101000000002064000000010a100700000000",
+      "request_hex": "01560006001644332211010000000000002064000000010a100700000000",
       "answer_hex": "02560001010203000000000000000000"
     },
     {
@@ -324,7 +478,7 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "session S; connection 1; DMSTATUS reads 0x00400382",
-      "request_hex": "01530006001044332211010001000211",
+      "request_hex": "015300060010443322110100000001000211",
       "answer_hex": "0253000100010000010082034000"
     },
     {
@@ -334,7 +488,7 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "session S; connection 1",
-      "request_hex": "0154000600104433221101000000",
+      "request_hex": "01540006001044332211010000000000",
       "answer_hex": "02540001000000000000"
     },
     {
@@ -344,8 +498,18 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "—",
-      "request_hex": "01550006001044332211010001001011",
-      "answer_hex": "0255000003"
+      "request_hex": "015500060010443322110100000001001011",
+      "answer_hex": "025500000b00"
+    },
+    {
+      "name": "riscv-dm dmi: a known write before an unknown kind is not executed",
+      "spec": "debug §4.1, core §4.3",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "session S; connection 1; no target register is changed",
+      "request_hex": "015a000600104433221101000000020001040700000010",
+      "answer_hex": "025a00000b00"
     },
     {
       "name": "riscv-dm step on a running hart: status state, moved and both dpc 0",
@@ -354,7 +518,7 @@
         "6": "oep.target.riscv-dm"
       },
       "state": "session S; connection 1; step offered in ops; the hart is running",
-      "request_hex": "015700060017443322110100",
+      "request_hex": "0157000600174433221101000000",
       "answer_hex": "025700010105000000000000000000"
     },
     {
@@ -364,17 +528,87 @@
         "15": "oep.target.arm-adi"
       },
       "state": "session S; connection 1 (swd) open",
-      "request_hex": "0158000f00104433221101000000",
+      "request_hex": "0158000f001044332211010000000000",
       "answer_hex": "0258000100000000000000"
     },
     {
-      "name": "console marks: one attach mark",
+      "name": "arm-adi transfer: a connection ID above u16",
+      "spec": "debug §6, core §9",
+      "fns": {
+        "15": "oep.target.arm-adi"
+      },
+      "state": "session S; connection 65536 (swd) open; zero transfers",
+      "request_hex": "0159000f001044332211000001000000",
+      "answer_hex": "0259000100000000000000"
+    },
+    {
+      "name": "arm-adi transfer: reserved req bits do not execute an earlier write",
+      "spec": "debug §6, core §4.3",
+      "fns": {
+        "15": "oep.target.arm-adi"
+      },
+      "state": "session S; connection 1; no wire transfer is executed",
+      "request_hex": "015b000f001044332211010000000200000700000012",
+      "answer_hex": "025b00000b00"
+    },
+    {
+      "name": "console open: RX-only SDI without flags",
+      "spec": "console §1",
+      "fns": {
+        "7": "oep.target.console"
+      },
+      "state": "session S; connection 65536 (rvswd); fn 7 mechanisms SDI; ops open/read/close/streams; no marks or TX queue",
+      "request_hex": "016a00070010443322110000010000",
+      "answer_hex": "026a00010001000100"
+    },
+    {
+      "name": "console marks: absent on RX-only console",
+      "spec": "console §1, core §1.2",
+      "fns": {
+        "7": "oep.target.console"
+      },
+      "state": "session S; connection 65536 (rvswd); fn 7 mechanisms SDI; ops open/read/close/streams; no marks or TX queue",
+      "request_hex": "016b00070012000000000100010000000000",
+      "answer_hex": "026b000002"
+    },
+    {
+      "name": "console write: absent on RX-only console",
+      "spec": "console §1, core §1.2",
+      "fns": {
+        "7": "oep.target.console"
+      },
+      "state": "session S; connection 65536 (rvswd); fn 7 mechanisms SDI; ops open/read/close/streams; no marks or TX queue",
+      "request_hex": "016c000700154433221101000100010078",
+      "answer_hex": "026c000002"
+    },
+    {
+      "name": "console read: from3 without marks is unsupported",
+      "spec": "console §1, common §1.2",
+      "fns": {
+        "7": "oep.target.console"
+      },
+      "state": "session S; connection 65536 (rvswd); fn 7 mechanisms SDI; ops open/read/close/streams; no marks or TX queue; stream 65537 open",
+      "request_hex": "016d0007001100000000010001000300000000000000003000",
+      "answer_hex": "026d00000b00"
+    },
+    {
+      "name": "console write: SDI is unsupported even if other mechanisms can write",
+      "spec": "console §1",
+      "fns": {
+        "7": "oep.target.console"
+      },
+      "state": "session S; stream 65537 is SDI; fn7 also provides dmseq and write",
+      "request_hex": "016e000700154433221101000100010078",
+      "answer_hex": "026e00000b00"
+    },
+    {
+      "name": "console marks: one host mark",
       "spec": "common §1.3, console §1",
       "fns": {
         "7": "oep.target.console"
       },
-      "state": "stream 2 with one mark (serial 0, position 0, attach at 1 ms)",
-      "request_hex": "01600007001200000000020000000000",
+      "state": "stream 2 with one explicit host mark (serial 0, position 0, value 0 at 1 ms); marks/mark offered",
+      "request_hex": "016000070012000000000200000000000000",
       "answer_hex": "026000010000010000000000000000000000000340420f000000000000"
     },
     {
@@ -384,8 +618,8 @@
         "7": "oep.target.console"
       },
       "state": "stream 2; marks 5 to 8 kept (1 to 4 pushed out), the next mark gets serial 9; max_frame 64 (2 marks per answer)",
-      "request_hex": "01640007001200000000020005000000",
-      "answer_hex": "0264000100010205000000320000000000000007404b4c000000000005060000003c0000000000000007808d5b000000000006"
+      "request_hex": "016400070012000000000200000005000000",
+      "answer_hex": "0264000100010205000000320000000000000003404b4c000000000005060000003c0000000000000003808d5b000000000006"
     },
     {
       "name": "console marks: the next page from the last serial + 1",
@@ -394,8 +628,8 @@
         "7": "oep.target.console"
       },
       "state": "stream 2; marks 5 to 8 kept (1 to 4 pushed out), the next mark gets serial 9; max_frame 64 (2 marks per answer)",
-      "request_hex": "01650007001200000000020007000000",
-      "answer_hex": "0265000100000207000000460000000000000007c0cf6a0000000000070800000050000000000000000700127a000000000008"
+      "request_hex": "016500070012000000000200000007000000",
+      "answer_hex": "0265000100000207000000460000000000000003c0cf6a0000000000070800000050000000000000000300127a000000000008"
     },
     {
       "name": "console marks: a pushed-out from_serial starts at the oldest kept",
@@ -404,8 +638,8 @@
         "7": "oep.target.console"
       },
       "state": "stream 2; marks 5 to 8 kept (1 to 4 pushed out), the next mark gets serial 9; max_frame 64 (2 marks per answer)",
-      "request_hex": "01660007001200000000020003000000",
-      "answer_hex": "0266000100010205000000320000000000000007404b4c000000000005060000003c0000000000000007808d5b000000000006"
+      "request_hex": "016600070012000000000200000003000000",
+      "answer_hex": "0266000100010205000000320000000000000003404b4c000000000005060000003c0000000000000003808d5b000000000006"
     },
     {
       "name": "console marks: from_serial = next, no marks and more 0",
@@ -414,7 +648,7 @@
         "7": "oep.target.console"
       },
       "state": "stream 2; marks 5 to 8 kept (1 to 4 pushed out), the next mark gets serial 9; max_frame 64 (2 marks per answer)",
-      "request_hex": "01670007001200000000020009000000",
+      "request_hex": "016700070012000000000200000009000000",
       "answer_hex": "02670001000000"
     },
     {
@@ -425,7 +659,17 @@
       },
       "state": "stream 2 on connection 1 (one number space: connection 1, then stream 2), dmseq, opened by the session",
       "request_hex": "016100070017000000000000",
-      "answer_hex": "026100010000010200010002"
+      "answer_hex": "02610001000001020000000100000002"
+    },
+    {
+      "name": "console streams: resource IDs above u16",
+      "spec": "console §1, core §9",
+      "fns": {
+        "7": "oep.target.console"
+      },
+      "state": "stream 65537 on connection 65536; one open dmseq stream",
+      "request_hex": "016900070017000000000000",
+      "answer_hex": "02690001000001010001000000010002"
     },
     {
       "name": "console streams: first(u16) beyond the count, the last page",
@@ -444,7 +688,7 @@
         "7": "oep.target.console"
       },
       "state": "stream 2, 5 bytes written (position 5)",
-      "request_hex": "0162000700110000000002000005000000000000004000",
+      "request_hex": "01620007001100000000020000000005000000000000004000",
       "answer_hex": "02620001000500000000000000000000"
     },
     {
@@ -454,152 +698,162 @@
         "7": "oep.target.console"
       },
       "state": "—",
-      "request_hex": "0163000700110000000002000400000000000000004000",
+      "request_hex": "01630007001100000000020000000400000000000000004000",
       "answer_hex": "026300000b00"
     },
     {
       "name": "probe.config state: no saved settings",
-      "spec": "probe settings §3",
+      "spec": "settings §3",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "no save; presets do not own runtime resources",
+      "state": "state offered; no saved settings",
       "request_hex": "01700008001500000000",
       "answer_hex": "0270000100000000000000"
     },
     {
       "name": "probe.config save not offered",
-      "spec": "probe settings §2, core §1.2",
+      "spec": "settings §2",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "ops without save and erase; no storage tag",
+      "state": "get/set/unset only; no storage",
       "request_hex": "01710008001244332211",
       "answer_hex": "0271000002"
     },
     {
-      "name": "probe.config set: an idle value of 6 bytes (longer than its 4)",
-      "spec": "probe settings §1, core §2.3",
+      "name": "probe.config state not offered",
+      "spec": "settings §2",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "session S",
-      "request_hex": "01720008001144332211030600040003000000",
+      "state": "get/set/unset only; no storage/state",
+      "request_hex": "017d0008001500000000",
+      "answer_hex": "027d000002"
+    },
+    {
+      "name": "probe.config set: idle with obsolete drive byte is malformed",
+      "spec": "settings §1",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "empty configuration, generation1 unchanged",
+      "request_hex": "0172000800114433221101030400040000ff",
       "answer_hex": "0272000003"
     },
     {
-      "name": "probe.config set: an idle value of 3 bytes",
-      "spec": "probe settings §1, core §2.3",
+      "name": "probe.config set: item bit7 ignored for known idle",
+      "spec": "settings §1",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "session S",
-      "request_hex": "01730008001144332211830300040000",
-      "answer_hex": "0273000003"
+      "state": "empty configuration generation1; supported idle0/channel4",
+      "request_hex": "0173000800114433221101830300040000",
+      "answer_hex": "027300010002000000"
     },
     {
-      "name": "probe.config set: wifi entry 0 with a passphrase",
-      "spec": "probe settings §1.4, §2",
+      "name": "probe.config set: unknown item 3e is not silently ignored",
+      "spec": "settings §1",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "items has wifi, wifi_max 4; session S; no settings; the probe's hash for the new settings is 0x5A5A0001",
-      "request_hex": "01740008001144332211080f0000036c61620970617373776f726431",
-      "answer_hex": "027400010001005a5a"
+      "state": "no settings/pin change",
+      "request_hex": "01740008001144332211013e02000400",
+      "answer_hex": "027400000b3e"
     },
     {
-      "name": "probe.config get: the wifi entry without its passphrase",
-      "spec": "probe settings §1.4, §2",
+      "name": "probe.config set: unknown item be is not silently ignored",
+      "spec": "settings §1",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "items has wifi, wifi_max 4; settings: the wifi entry of the case above, hash 0x5A5A0001",
-      "request_hex": "017500080010000000000000",
-      "answer_hex": "02750001000001005a5a08060000036c6162ff"
+      "state": "no settings/pin change",
+      "request_hex": "0175000800114433221101be02000400",
+      "answer_hex": "027500000bbe"
     },
     {
-      "name": "probe.config set: get's wifi item sent back keeps the passphrase",
-      "spec": "probe settings §1.4",
+      "name": "probe.config set: unknown outer noncritical TLV ignored",
+      "spec": "settings §1/2, core §2.3",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "items has wifi, wifi_max 4; session S; settings as above, hash 0x5A5A0001; nothing changes, so neither does the hash",
-      "request_hex": "0176000800114433221108060000036c6162ff",
-      "answer_hex": "027600010001005a5a"
+      "state": "empty configuration generation1",
+      "request_hex": "01760008001144332211010303000400003e010078",
+      "answer_hex": "027600010002000000"
     },
     {
-      "name": "probe.config set: pass_len 0xFF for an index with no entry",
-      "spec": "probe settings §1.4",
+      "name": "probe.config get: count separates items from response extensions",
+      "spec": "settings §2",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "items has wifi, wifi_max 4; session S; settings as above (no entry 1)",
-      "request_hex": "0177000800114433221108080001056669656c64ff",
-      "answer_hex": "0277000003"
+      "state": "one idle item, generation2",
+      "request_hex": "017700080010000000000000",
+      "answer_hex": "02770001000002000000010303000400007f010078"
     },
     {
-      "name": "probe.config set: a 7-byte passphrase",
-      "spec": "probe settings §1.4",
+      "name": "probe.config get: final empty page still has count and generation",
+      "spec": "settings §2",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "items has wifi, wifi_max 4; session S",
-      "request_hex": "01780008001144332211080f0001056669656c640773656372657437",
-      "answer_hex": "0278000003"
+      "state": "one item generation2; first1",
+      "request_hex": "017800080010000000000100",
+      "answer_hex": "0278000100000200000000"
     },
     {
-      "name": "probe.config set: wifi index at wifi_max",
-      "spec": "probe settings §1.4, core §4.3",
+      "name": "probe.config unset: fixed channel key",
+      "spec": "settings §2",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "items has wifi, wifi_max 4; session S",
-      "request_hex": "0179000800114433221108080004056669656c6400",
-      "answer_hex": "027900000b08"
+      "state": "disable channel4 present, generation2; becomes empty generation3",
+      "request_hex": "0179000800144433221101070400",
+      "answer_hex": "027900010003000000"
     },
     {
-      "name": "probe.config set: the longest wifi item (32-byte ssid, 64 hex digits), a 112-byte request",
-      "spec": "probe settings §1.4",
+      "name": "probe.config set: longest label fits frame64",
+      "spec": "settings §1/4",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "items has wifi, wifi_max 4; session S; no settings; max_frame 112 or more on this transport; the probe's hash for the new settings is 0x5A5A0003",
-      "request_hex": "017c0008001144332211086300002073737373737373737373737373737373737373737373737373737373737373734030313233343536373839616263646566303132333435363738396162636465663031323334353637383961626364656630313233343536373839616263646566",
-      "answer_hex": "027c00010003005a5a"
+      "state": "empty generation1; channel4 free",
+      "request_hex": "017a00080011443322110102220004004c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c",
+      "answer_hex": "027a00010002000000"
     },
     {
-      "name": "probe.config state: wifi connected on entry 0",
-      "spec": "probe settings §3",
+      "name": "probe.config state: independent valid items restored despite invalid label",
+      "spec": "settings §3",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "items has wifi, wifi_max 4; no save; connected through entry 0 at -52 dBm, address 192.168.1.23",
-      "request_hex": "017a0008001500000000",
-      "answer_hex": "027a000100000000000000010800020000ccc0a80117"
+      "state": "CRC-valid saved blob; valid disable/idle applied, unsupported label omitted; current generation1",
+      "request_hex": "017b0008001500000000",
+      "answer_hex": "027b000100030000000002"
     },
     {
-      "name": "probe.config unset: wifi entry 0",
-      "spec": "probe settings §1.4, §2",
+      "name": "probe.config set: changed contents at exhausted generation refused",
+      "spec": "settings §2",
       "fns": {
         "8": "oep.probe.config"
       },
-      "state": "items has wifi, wifi_max 4; session S; settings as above; the probe's hash for the empty settings is 0x5A5A0002",
-      "request_hex": "017b000800144433221101010800",
-      "answer_hex": "027b00010002005a5a"
+      "state": "generation0xFFFFFFFF unchanged; current contents retained",
+      "request_hex": "017c000800114433221101030300040000",
+      "answer_hex": "027c00000401010002"
     },
     {
       "name": "logic subscribe: min_bytes 1024, max_delay_ms 20",
-      "spec": "core §11.3; capture §3.4",
+      "spec": "core §10.3; capture §3.4",
       "fns": {
         "9": "oep.fixture.logic"
       },
-      "state": "session S holds the lock; subscribe and unsubscribe set in fn 9's ops",
+      "state": "session S holds the lock; max_frame2048; subscribe/unsubscribe declared in fn9 ops",
       "request_hex": "01820009000144332211000414000000",
       "answer_hex": "0282000100"
     },
     {
       "name": "logic unsubscribe",
-      "spec": "core §11.3",
+      "spec": "core §10.3",
       "fns": {
         "9": "oep.fixture.logic"
       },
@@ -609,7 +863,7 @@
     },
     {
       "name": "logic unsubscribe without a subscription: success, nothing done",
-      "spec": "core §11.3",
+      "spec": "core §10.3",
       "fns": {
         "9": "oep.fixture.logic"
       },
@@ -619,7 +873,7 @@
     },
     {
       "name": "logic subscribe without a session: session_required",
-      "spec": "core §4.1, §4.3 order 1, §11.3",
+      "spec": "core §4.1, §4.3 order 1, §10.3",
       "fns": {
         "9": "oep.fixture.logic"
       },
@@ -629,7 +883,7 @@
     },
     {
       "name": "gpio subscribe: gpio sends no notifications (not in its ops)",
-      "spec": "core §1.2, §11.3; fixture §1",
+      "spec": "core §1.2, §10.3; fixture §1",
       "fns": {
         "2": "oep.fixture.gpio"
       },
@@ -654,7 +908,7 @@
         "9": "oep.fixture.logic"
       },
       "state": "generation 1",
-      "request_hex": "0181000900150000000002000000000000000000000040000000",
+      "request_hex": "018100090015000000000200000000000000000000004000",
       "answer_hex": "028100000401010006"
     },
     {
@@ -675,7 +929,7 @@
       },
       "state": "session S holds the lock; roles 0 and 1 in fn 9's plan; 20 MHz exact, 200000 samples fit; the probe packs 2 bits per sample",
       "request_hex": "0188000900104433221140010001420400002d3101430400400d0300",
-      "answer_hex": "0288000100500800002d31010100000051040002020001520400400d030056040000000000"
+      "answer_hex": "0288000100500800002d31010100000051040002020001520400400d0300"
     },
     {
       "name": "logic configure without rate: malformed",
@@ -705,7 +959,7 @@
       },
       "state": "as above (roles 0 and 1 in fn 9's plan); type 0 carries role 5, not in the plan",
       "request_hex": "01a0000900180000000040010001420400002d3101430400400d0300450600000500000000",
-      "answer_hex": "02a0000100500800002d31010100000051040002020001520400400d030056040000000000"
+      "answer_hex": "02a0000100500800002d31010100000051040002020001520400400d0300"
     },
     {
       "name": "logic query: samples 0, a value the definition excludes: malformed",
@@ -716,6 +970,76 @@
       "state": "as above",
       "request_hex": "01a2000900180000000040010001420400002d310143040000000000",
       "answer_hex": "02a2000003"
+    },
+    {
+      "name": "logic start: bounded CPU capture finishes before the reply",
+      "spec": "capture §3.2",
+      "fns": {
+        "19": "oep.fixture.logic"
+      },
+      "state": "mode1, immediate, 16ms CPU capture, max_op_ms50; generation0 before; capture completes and request service resumes before this reply; lease uses core rules",
+      "request_hex": "01e00013001144332211",
+      "answer_hex": "02e000010001000000"
+    },
+    {
+      "name": "logic release: not offered by a one-shot-only fn",
+      "spec": "capture §3.2",
+      "fns": {
+        "19": "oep.fixture.logic"
+      },
+      "state": "mode1 only; ops10,11,12,14,15,16; no release handler",
+      "request_hex": "01e100130017443322110100000000000000",
+      "answer_hex": "02e1000002"
+    },
+    {
+      "name": "logic release: old generation is refused before the one-shot no-op",
+      "spec": "capture §3.2",
+      "fns": {
+        "19": "oep.fixture.logic"
+      },
+      "state": "release offered; mode1; current generation2; current data unchanged",
+      "request_hex": "01e200130017443322110100000000000000",
+      "answer_hex": "02e200000401010006"
+    },
+    {
+      "name": "logic start: generation exhausted without clearing current data",
+      "spec": "capture §0, §3.2",
+      "fns": {
+        "19": "oep.fixture.logic"
+      },
+      "state": "current generation0xFFFFFFFF, state4, previous data retained; no new generation until reboot",
+      "request_hex": "01e30013001144332211",
+      "answer_hex": "02e300000401010002"
+    },
+    {
+      "name": "logic read: maximum u16 request, response constrained by frame",
+      "spec": "capture §3.2",
+      "fns": {
+        "19": "oep.fixture.logic"
+      },
+      "state": "generation1; 48 retained bytes at0; max_frame64; no marks/timing TLVs",
+      "request_hex": "01e40013001500000000010000000000000000000000ffff",
+      "answer_hex": "02e40001000000000000000000003000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f"
+    },
+    {
+      "name": "analog configure: 1 roles and one nonzero skew without optional diagnostics",
+      "spec": "capture §3.3",
+      "fns": {
+        "20": "oep.fixture.analog"
+      },
+      "state": "mode1; given plan roles; no calibration op; scale is pin-voltage estimate; frontend/reference diagnostics omitted",
+      "request_hex": "01e5001400104433221140010001420400e80300004304000a000000",
+      "answer_hex": "02e5000100500800e80300000100000051050010000c01005204000a000000550900000000000040420f005705000005000000"
+    },
+    {
+      "name": "analog configure: 2 roles and one nonzero skew without optional diagnostics",
+      "spec": "capture §3.3",
+      "fns": {
+        "20": "oep.fixture.analog"
+      },
+      "state": "mode1; given plan roles; no calibration op; scale is pin-voltage estimate; frontend/reference diagnostics omitted",
+      "request_hex": "01e6001400104433221140010001420400e80300004304000a000000",
+      "answer_hex": "02e6000100500800e80300000100000051060010000c0200015204000a000000550900000000000040420f00550900010000000040420f005705000105000000"
     },
     {
       "name": "logic status: data dropped inside a segment, state 6 and error 2",
@@ -744,192 +1068,42 @@
         "9": "oep.fixture.logic"
       },
       "state": "repeat, 1 channel w 1, samples 8000 (1000 bytes a segment), generation 1: serials 0 and 1 done, then the capture ring overflowed inside serial 2; write_pos 2000",
-      "request_hex": "0192000900150000000001000000d00700000000000040000000",
-      "answer_hex": "0292000100d0070000000000000000000000"
+      "request_hex": "0192000900150000000001000000d0070000000000004000",
+      "answer_hex": "0292000100d007000000000000000000"
     },
     {
-      "name": "logic describe: multirate declared",
-      "spec": "capture §3.5, §5.1; core §7.3",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32",
-      "request_hex": "0193000000030000000009000000",
-      "answer_hex": "029300010000070500000600ff010104000014000f0104000114000f0104000214000f0104000314000f4009000140420f00010000004009000240420f0008000000410900e803000000e1f50501440100044508000700000040420f00600d0007000000020000008000000001"
-    },
-    {
-      "name": "logic configure multirate: the capture §5.7 example",
-      "spec": "capture §5.2, §5.3, §5.7",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S holds the lock",
-      "request_hex": "019400090010443322114001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
-      "answer_hex": "029400010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
-    },
-    {
-      "name": "logic query multirate: the same answer, nothing changed",
-      "spec": "capture §3.3, §5.3",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; configured as the configure vector",
-      "request_hex": "019500090018000000004001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
-      "answer_hex": "029500010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
-    },
-    {
-      "name": "logic configure multirate: samples 72 rounded up to a multiple of L",
-      "spec": "capture §5.2",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019600090010443322114001000142040000e1f50543040048000000e00a0000012000000000000000e00a0003000400000001000000",
-      "answer_hex": "029600010050080000e1f5050100000051040002020001600400200000005204006000000056040000000000"
-    },
-    {
-      "name": "logic query multirate: rate = max_hz on a heavy combination answers the highest rate kept",
-      "spec": "capture §5.2",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32",
-      "request_hex": "019700090018000000004001000142040000e1f50543040060000000e00a0000020200000001000000e00a0001020200000001000000e00a0002020200000001000000e00a0003020200000001000000",
-      "answer_hex": "0297000100500800005a6202010000005102000100600400200000005204006000000056040000000000"
-    },
-    {
-      "name": "logic configure multirate: d 0, malformed",
-      "spec": "capture §5.2",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019800090010443322114001000142040000e1f50543040060000000e00a0000000000000000000000",
-      "answer_hex": "0298000003"
-    },
-    {
-      "name": "logic configure multirate: sample with phase = d, malformed",
-      "spec": "capture §5.2",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019900090010443322114001000142040000e1f50543040060000000e00a0003000400000004000000",
-      "answer_hex": "0299000003"
-    },
-    {
-      "name": "logic configure multirate: any_active with param 2, malformed",
-      "spec": "capture §5.2",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019a00090010443322114001000142040000e1f50543040060000000e00a0000012000000002000000",
-      "answer_hex": "029a000003"
-    },
-    {
-      "name": "logic configure multirate: edge_latch with d 1, malformed",
-      "spec": "capture §5.2",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019b00090010443322114001000142040000e1f50543040060000000e00a0000020100000001000000",
-      "answer_hex": "029b000003"
-    },
-    {
-      "name": "logic configure multirate: the same role twice, malformed",
-      "spec": "capture §5.2",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019c00090010443322114001000142040000e1f50543040060000000e00a0003000400000001000000e00a0003000800000000000000",
-      "answer_hex": "029c000003"
-    },
-    {
-      "name": "logic configure multirate: a reserved policy (3), unsupported",
-      "spec": "capture §5.2",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019d00090010443322114001000142040000e1f50543040060000000e00a0000030400000000000000",
-      "answer_hex": "029d00000be0"
-    },
-    {
-      "name": "logic configure multirate: d 3 where only powers of 2 are declared, unsupported",
-      "spec": "capture §5.2",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019e00090010443322114001000142040000e1f50543040060000000e00a0003000300000000000000",
-      "answer_hex": "029e00000be0"
-    },
-    {
-      "name": "logic configure multirate: d 256 above max_d, unsupported",
-      "spec": "capture §5.2",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "019f00090010443322114001000142040000e1f50543040060000000e00a0003000001000000000000",
-      "answer_hex": "029f00000be0"
-    },
-    {
-      "name": "logic configure multirate: a role not in the plan, unavailable",
-      "spec": "capture §5.2",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; session S",
-      "request_hex": "01a000090010443322114001000142040000e1f50543040060000000e00a0004000400000000000000",
-      "answer_hex": "02a000000401010006"
-    },
-    {
-      "name": "logic configure multirate on a fn that does not declare it: unsupported with the critical tag",
-      "spec": "capture §5.2, core §2.3",
-      "fns": {
-        "16": "oep.fixture.logic"
-      },
-      "state": "session S; fn 16 is a logic fn whose describe has no multirate; plan roles 0-3",
-      "request_hex": "01a100100010443322114001000142040000e1f50543040060000000e00a0000012000000000000000e00a0003000400000001000000",
-      "answer_hex": "02a100000be0"
-    },
-    {
-      "name": "logic segments multirate: a stopped segment, trigger_index in base samples on the any_active role",
-      "spec": "capture §2.2, §5, §5.7",
-      "fns": {
-        "9": "oep.fixture.logic"
-      },
-      "state": "fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32; configured as the configure vector plus trigger (edge, role 0, falling) and pretrigger 13; generation 1; role 0 fell at base sample 13 of the segment, the host stopped at base sample 72 (the §5.7 input)",
-      "request_hex": "01a2000900160000000000000000",
-      "answer_hex": "02a2000100000100000000000000000000000048000000404b4c00000000000a0000000d0000000201000000"
-    },
-    {
-      "name": "capture-group bind: a multirate logic and an analog, the logic as trigger_track",
-      "spec": "capture §4.1, §5.6",
-      "fns": {
-        "12": "oep.fixture.capture-group",
-        "9": "oep.fixture.logic",
-        "13": "oep.fixture.analog"
-      },
-      "state": "session S; fn 9 configured multirate one-shot (the configure vector plus the TLVs 4506000200010000004604000d000000: edge, role 0, falling, pretrigger 13 base samples); fn 13 configured one-shot with an immediate trigger; fn 12's tracks list both",
-      "request_hex": "01a3000c0010443322110209000d000102000900",
-      "answer_hex": "02a3000100"
-    },
-    {
-      "name": "capture-group bind: a track cannot keep the group's pretrigger",
+      "name": "capture-group bind: non-immediate track is refused",
       "spec": "capture §4.1",
       "fns": {
         "12": "oep.fixture.capture-group",
         "9": "oep.fixture.logic",
         "13": "oep.fixture.analog"
       },
-      "state": "session S; fn 9 configured one-shot at actual_rate 20000000/1 with an edge trigger and pretrigger 100000 (5 ms); fn 13 configured one-shot at actual_rate 48000/1, immediate, actual_samples 4800, max_pretrigger 128; fn 13 would keep P_k = 240 > 128",
-      "request_hex": "01a4000c0010443322110209000d000102000900",
-      "answer_hex": "02a4000004010100020502000d00"
+      "state": "fn9 configured edge trigger; fn13 immediate; prior binding unchanged",
+      "request_hex": "018a000c0010443322110209000d00",
+      "answer_hex": "028a000004010100060502000900"
+    },
+    {
+      "name": "capture-group bind: future critical selector is refused",
+      "spec": "capture §4.1, core §2.3",
+      "fns": {
+        "12": "oep.fixture.capture-group"
+      },
+      "state": "both tracks immediate, v1 defines no bind tags; no effects",
+      "request_hex": "018c000c0010443322110209000d008102000900",
+      "answer_hex": "028c00000b81"
+    },
+    {
+      "name": "capture-group status: immediate group has no unused trigger fields",
+      "spec": "capture §4.1",
+      "fns": {
+        "12": "oep.fixture.capture-group",
+        "9": "oep.fixture.logic",
+        "13": "oep.fixture.analog"
+      },
+      "state": "group generation5, started at7ms, both tracks capturing",
+      "request_hex": "018d000c001400000000",
+      "answer_hex": "028d00010003c0cf6a000000000005000000"
     },
     {
       "name": "capture-group start: the group's and each track's new generation",
@@ -941,7 +1115,27 @@
       },
       "state": "session S; fn 12 bound to fn 9 then fn 13, both one-shot with immediate triggers; generations before: group 4, fn 9 3, fn 13 1; acquisition starts at 7 ms",
       "request_hex": "018b000c001144332211",
-      "answer_hex": "028b00010000000000c0cf6a000000000005000000020900040000000d0002000000"
+      "answer_hex": "028b000100c0cf6a000000000005000000020900040000000d0002000000"
+    },
+    {
+      "name": "spi-target configure: known but unsupported mode preserves state",
+      "spec": "fixture §4",
+      "fns": {
+        "14": "oep.fixture.spi-target"
+      },
+      "state": "fn 14 has plan and modes=1 (mode0 only); previous mode0 state, queue, counters and arm remain unchanged",
+      "request_hex": "01ce000e0010443322110300",
+      "answer_hex": "02ce00000b00"
+    },
+    {
+      "name": "spi-target arm: preparation failed with no fixed result",
+      "spec": "fixture §4",
+      "fns": {
+        "14": "oep.fixture.spi-target"
+      },
+      "state": "configured with plan; driver cannot prepare output; no arm or queue/counter changes",
+      "request_hex": "01cf000e0011443322110100010078",
+      "answer_hex": "02cf000101"
     },
     {
       "name": "spi-target read_rx: 12 bits, MSB first, a partial last byte",
@@ -969,7 +1163,7 @@
       "fns": {
         "9": "oep.fixture.logic"
       },
-      "state": "streaming, 1 channel w 8, the probe's segments 16 samples (16 bytes), generation 1: serials 0 and 1 done (bytes 0-31); bytes 24-39 sent in one frame; then the capture ring overflowed inside serial 2",
+      "state": "streaming, w8, generation1, 16 samples/segment; bytes24-31 and32-39 in separate frames; serial2 later lost in error, write_pos32",
       "request_hex": "01a10009001400000000",
       "answer_hex": "02a100010006020000002000000000000000010100000001010002"
     }
@@ -977,7 +1171,7 @@
   "events": [
     {
       "name": "logic stopped of the previous generation, after the start answer",
-      "spec": "capture §3.4, core §11.4",
+      "spec": "capture §3.4, core §10.4",
       "fns": {
         "9": "oep.fixture.logic"
       },
@@ -1006,18 +1200,6 @@
       "event_hex": "030900090002030201000000"
     },
     {
-      "name": "capture-group triggered: the group's generation",
-      "spec": "capture §4.2",
-      "fns": {
-        "12": "oep.fixture.capture-group",
-        "9": "oep.fixture.logic",
-        "13": "oep.fixture.analog"
-      },
-      "state": "fn 12 subscribed; group generation 5; fn 9's trigger at 7.05 ms",
-      "generation": 5,
-      "event_hex": "030c00000003090010936b000000000005000000"
-    },
-    {
       "name": "capture-group stopped: the group's generation",
       "spec": "capture §4.2",
       "fns": {
@@ -1025,22 +1207,69 @@
         "9": "oep.fixture.logic",
         "13": "oep.fixture.analog"
       },
-      "state": "as above; every track done",
+      "state": "fn12 subscribed, generation5; every track done",
       "generation": 5,
       "event_hex": "030c00010002000005000000"
     }
   ],
   "data": [
     {
-      "name": "logic data: a frame running into the segment that is then lost",
-      "spec": "capture §2.2, §3.4; core §11.2",
+      "name": "logic data: retained bytes of previous segment",
+      "spec": "capture §2.2/§3.4",
       "fns": {
         "9": "oep.fixture.logic"
       },
-      "state": "streaming, 1 channel w 8, the probe's segments 16 samples (16 bytes), generation 1: serials 0 and 1 done (bytes 0-31); bytes 24-39 sent in one frame; then the capture ring overflowed inside serial 2",
+      "state": "streaming, w8, generation1, 16 samples/segment; bytes24-31 and32-39 in separate frames; serial2 later lost in error, write_pos32",
       "generation": 1,
       "keep": 8,
-      "frame_hex": "0409000a001800000000000000100018191a1b1c1d1e1f202122232425262701040001000000"
+      "frame_hex": "0409000a001800000000000000080018191a1b1c1d1e1f01040001000000021800100000000000000010000000406603010000000032000000"
+    },
+    {
+      "name": "logic data: a frame of the segment that is then lost",
+      "spec": "capture §2.2/§3.4",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "streaming, w8, generation1, 16 samples/segment; bytes24-31 and32-39 in separate frames; serial2 later lost in error, write_pos32",
+      "generation": 1,
+      "keep": 0,
+      "frame_hex": "0409000b0020000000000000000800202122232425262701040001000000021800200000000000000008000000408af7010000000032000000"
+    },
+    {
+      "name": "logic data: w3 byte0, first frame may be lost",
+      "spec": "capture §3.4",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "independent w3 capture, five samples1/2/3/4/5; one segment at0; first frame is lost in recovery test",
+      "layout": {
+        "w": 3,
+        "pos": [
+          0,
+          1,
+          2
+        ]
+      },
+      "generation": 1,
+      "frame_hex": "040900140000000000000000000100d10104000100000002180000000000000000000500000040420f000000000032000000"
+    },
+    {
+      "name": "logic data: w3 byte1, first frame may be lost",
+      "spec": "capture §3.4",
+      "fns": {
+        "9": "oep.fixture.logic"
+      },
+      "state": "independent w3 capture, five samples1/2/3/4/5; one segment at0; first frame is lost in recovery test",
+      "layout": {
+        "w": 3,
+        "pos": [
+          0,
+          1,
+          2
+        ]
+      },
+      "generation": 1,
+      "frame_hex": "040900150001000000000000000100580104000100000002180000000000000000000500000040420f000000000032000000"
     }
   ]
 }

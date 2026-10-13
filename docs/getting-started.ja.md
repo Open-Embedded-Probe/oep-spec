@@ -20,7 +20,7 @@ describe を読むいちばん小さい host を、線の上のすべてのバ�
 - **応答**: `role(0x02) corr(u16) resolution(u8) detail(u8) payload`（見出し 5 byte）。resolution 0x01 completed なら detail は outcome
   （0 success）、0x00 rejected なら detail は断りの理由（core §4.2、§4.3）。
 - **TLV**: `tag(u8) len(u16) value`。長さによらず形は一つ（core §2.2）。
-- **fn 0** は本体（core）で、名前を持たず list に載らない。op は confirm 0x01、list 0x02、describe 0x03（core §12）。
+- **fn 0** は本体（core）で、名前を持たず list に載らない。op は confirm 0x01、list 0x02、describe 0x03（core §11）。
 
 ## 2. 例
 
@@ -54,13 +54,13 @@ serial frame 00 03 01 01 01 01 02 01 01 01 01 09 4f 45 50 3f 01 01 08 96 00     
 length frame 10 00 01 01 00 00 00 01 00 00 00 00 4f 45 50 3f 01 01
 ```
 
-応答: `"OEP!" revision flags max_frame(u16) window(u32) max_inflight(u8) boot_id(u32)`、続いて TLV 0x01 transport（confirm が来た経路の
+応答: `"OEP!" revision max_frame(u16) window(u32) max_inflight(u8) boot_id(u32)`、続いて TLV 0x01 transport（confirm が来た経路の
 index。いつも付く、core §7.1）。
 
 ```text
-message      02 0100 01 00 | 4f 45 50 21 | 01 | 00 | 0004 | 00100000 | 04 | 78563412 | 01 01 00 00
-               role corr completed success | "OEP!" | rev 1 | flags | max_frame 1024 | window 4096 | max_inflight 4 | boot_id | TLV transport = 0
-serial frame 00 03 02 01 02 01 06 4f 45 50 21 01 01 02 04 02 10 01 08 04 78 56 34 12 01 01 01 03 ab a4 00
+message      02 0100 01 00 | 4f 45 50 21 | 01 | 0004 | 00100000 | 04 | 78563412 | 01 01 00 00
+               role corr completed success | "OEP!" | rev 1 | max_frame 1024 | window 4096 | max_inflight 4 | boot_id | TLV transport = 0
+serial frame 00 03 02 01 02 01 06 4f 45 50 21 01 02 04 02 10 01 08 04 78 56 34 12 01 01 01 03 61 9e 00
 ```
 
 範囲の中に扱える revision が無いとき（ここでは host が 2〜3 を求める）、probe は unsupported で断り、payload は tag 0x00 と、続く
@@ -139,7 +139,7 @@ probe がすることを順に（参照の先が規則）:
 2. **見出しを読む。** role 0x01 で 10 byte 以上（ほかのメッセージは捨てる、core §2.4）。これらはロック不要の要求なので session_id は 0。core §4.3 の順に、fn（unknown_function）、op
    （unknown_operation）、固定部分の長さ（malformed）を見る。
 3. **confirm**（payload は `OEP?` min_rev max_rev）: `min_rev > max_rev` は malformed。1 が [min_rev, max_rev] にあれば §3.1 のとおり答え、
-   無ければ §3.1 のとおり断る。どの confirm の応答にも transport の TLV を付ける。flags は 0。
+   無ければ §3.1 のとおり断る。どの confirm の応答にも transport の TLV を付ける。
 4. **list**: インターフェースを `first` から 1 つのフレームに入るだけ項に入れる（fn 0 は載せない）。total はインターフェースの総数（core §7.2）。
 5. **describe**: fn 0 なら `first` からの TLV（少なくとも ops、unit_id、transport、max_op_ms。§3.3）を返す。入りきらなければ
    more = 1。`first` が数以上なら more 0 で TLV なし。boot_id が同じ間、値は変わらない（core §7.3）。
@@ -160,9 +160,9 @@ probe がすることを順に（参照の先が規則）:
    応答の前には host は max_frame を知らないため、`min_max_frame`（64）で数える: (21 + 64 × 3) × 10 / 115200 ≈ 18 ms。長く
    待つのはいつでもよい。
 4. **受ける**: 0x00 の間の候補をすべて解く。口を開いてから最初の 0x00 までのバイトも解く。解けない、CRC が合わない、role を知らない、
-   待っていない corr の候補は雑音として捨てる（transports §1、core §11.1）。
+   待っていない corr の候補は雑音として捨てる（transports §1、core §10.1）。
 5. **応答を確かめる**: completed、同じ corr、payload が `OEP!` で始まる（transports §3）。来なければ同じ corr で 1 回送り直し
-   （host ガイド §8）、それでも来なければ口を閉じ、ほかに何も送らない（transports §3、core §5.2）。max_frame、window、max_inflight、boot_id、
+   （host ガイド §8）、それでも来なければ口を閉じ、ほかに何も送らない（transports §3、core §5.1）。max_frame、window、max_inflight、boot_id、
    transport の index を取っておく。以後 max_frame より長いメッセージは送らない（transports §3）。
 6. **list**: `first` 0 から、受けた項の数を `first` に足しながら `total` まで読む。名前 → fn の対応は boot_id が同じ間覚えてよい
    （core §7.2）。
@@ -179,7 +179,7 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 
 **probe**（[適合](conformance.ja.md) §1）:
 
-1. clock（op 0x04）: boot_id と、応答を作る直前に読んだ時計の uptime_ns を返す。ロック不要で、session_id 0 で来る（core §7.7）。
+1. clock（op 0x04）: boot_id と、応答を作る直前に読んだ時計の uptime_ns を返す。ロック不要で、session_id 0 で来る（core §7.6）。
    `sessions.json` の "clock without a session and while a session holds the lock" の最初の段（uptime_ns は例の 2.0 s）:
 
    ```text
@@ -190,17 +190,17 @@ confirm、list、describe にしか答えない probe は、まだ OEP の probe
 
 2. セッション: open、end、keepalive、lock_state と、lease、core §6.2 の判断の表。session_id の確かめ（session_required、no_session、
    locked）。end、lease の期限切れ、force のどれでも、セッションが作ったものを解放する（core §9）。
-3. core §5.2 の送り直しの順序状態（新規の拒否でもcorrを更新し、異なるIDの新規openの成功時だけ初期化する）。byte記録は0件でもよく、保持していない旧要求はresult_lostで断る。
+3. core §5.1 の送り直しの順序状態（新規の拒否でもcorrを更新し、異なるIDの新規openの成功時だけ初期化する）。byte記録は0件でもよく、保持していない旧要求はresult_lostで断る。
 4. core §4.3 の断り方と、core §2.3 の TLV の規則（critical、知らない TLV、長さの違う TLV）。
-5. 通知を送り出すインターフェースがあれば、その fn の subscribe / unsubscribe と通知の送り方（core §11）。
+5. 通知を送り出すインターフェースがあれば、その fn の subscribe / unsubscribe と通知の送り方（core §10）。
 6. 欲しいインターフェース（[適合](conformance.ja.md) §3）。plan の role を持つインターフェースがあれば `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)）も。
 7. 任意: `oep.probe.link`（線の試験と、UART bridge の port_speed。[リンク](../interfaces/oep-if-link.ja.md)）、`oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)）、probe の設定（[probe の設定](../interfaces/oep-if-probe-config.ja.md)）、ほかの経路。
 
 **host**（[適合](conformance.ja.md) §2）:
 
-1. corr の振り方と送り直し（core §4.1、§5.2、host ガイド §8）。長さつきの口での同期のし直し（transports §5）。
+1. corr の振り方と送り直し（core §4.1、§5.1、host ガイド §8）。長さつきの口での同期のし直し（transports §5）。
 2. セッション: 乱数の session_id、open の応答の lease、keepalive、断りごとにすること（host ガイド §9）。
-3. revision と知らない値（core §2.4、§2.7、host ガイド §10）。購読するなら通知（host ガイド §12）。
+3. revision と知らない値（core §2.4、§2.8、host ガイド §10）。購読するなら通知（host ガイド §12）。
 4. USB の probe の発見と複数の経路（transports §3、host ガイド §4、§5）。
 
 それから [適合](conformance.ja.md) §4 に従い、試験ベクトル、独立した仮想ベンチ、実機で確かめる。

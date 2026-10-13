@@ -59,8 +59,28 @@ def test_minimal_declaration_bytes(profile):
             assert all(value[0] == 1 for tag, value in decoded if tag == 1)  # RX only.
         elif row['name'] == 'oep.target.arm-adi':
             assert offered == {0x10} and all(tag != 3 for tag, _ in decoded)
-        elif row['name'] == 'oep.wire.swd':
+        elif row['name'] == 'oep.target.riscv-dm':
+            assert offered == {0x10}  # No high-level CPU or scratch-restore helpers required.
+        elif row['name'] == 'oep.fixture.spi-target':
+            assert offered == {0x10,0x11,0x12,0x13}
+            assert next(v for t,v in decoded if t==0x41)==b'\1'
+            assert next(v for t,v in decoded if t==2)==struct.pack('<I',1000000)
+            assert len(bytes.fromhex(row['describe_answer_hex']))<=64
+        elif row['name'] == 'oep.fixture.logic':
+            assert offered == {0x10,0x11,0x12,0x14,0x15,0x16}
+            assert next(v for t,v in decoded if t==0x40)==struct.pack('<BII',1,16,0)
+            assert {1,0x40,0x41,0x44,0x45}.issubset({t for t,_ in decoded})
+            assert len(bytes.fromhex(row['describe_answer_hex']))<=64
+        elif row['name'] in ('oep.wire.swd','oep.wire.rvswd'):
             assert offered == {0x11, 0x12, 0x13}  # No scan required.
+        elif row['name'] == 'oep.probe.config':
+            assert offered == {0x10,0x11,0x14}
+            assert next(v for t,v in decoded if t==0x41)==b'\2\3\7'
+            assert all(t!=0x40 for t,_ in decoded)
+        elif row['name'] == 'oep.target.console':
+            assert offered == {0x10,0x11,0x16,0x17}  # No marks or TX queue required.
+            value = next(value for tag,value in decoded if tag == 0x40)
+            assert value[0] == 1 and len(value) == 2 and value[1] in (0,2)
         else:
             assert offered == {0x10}  # No standard OEP operations required.
 

@@ -210,7 +210,7 @@ def confirm() -> dict:
     t_transport = CORE["tlv"]["confirm_answer"]["transport"]
     t_supported = CORE["tlv"]["unsupported_payload"]["supported"]
     req = request(1, 0, confirm_op, b"OEP?" + bytes([1, 1]))
-    fixed = b"OEP!" + struct.pack("<BBHIBI", 1, 0, 1024, 4096, 4, 0x12345678)
+    fixed = b"OEP!" + struct.pack("<BHIBI", 1, 1024, 4096, 4, 0x12345678)
     ans = answer(1, COMPLETED, 0, fixed + tlv(t_transport, b"\x00"))
     req_hi = request(2, 0, confirm_op, b"OEP?" + bytes([2, 3]))
     ans_hi = answer(2, REJECTED, REASON["unsupported"], b"\x00" + tlv(t_supported, bytes([1, 1])))
@@ -220,7 +220,7 @@ def confirm() -> dict:
             {"name": "revision 1 asked and answered", "request": {"corr": 1, "min_rev": 1, "max_rev": 1},
              "request_hex": hx(req), "request_serial_frame_hex": hx(serial_frame(req)),
              "request_length_frame_hex": hx(length_frame(req)),
-             "answer": {"corr": 1, "revision": 1, "flags": 0, "max_frame": 1024, "window": 4096, "max_inflight": 4,
+             "answer": {"corr": 1, "revision": 1, "max_frame": 1024, "window": 4096, "max_inflight": 4,
                         "boot_id": 0x12345678, "transport": 0},
              "answer_hex": hx(ans), "answer_serial_frame_hex": hx(serial_frame(ans))},
             {"name": "no revision in the range: unsupported with the supported range",
@@ -261,9 +261,7 @@ def refusals() -> dict:
     uart_read = op("oep.fixture.uart", "read")
     dm_reset = op("oep.target.riscv-dm", "reset")
     unav = CORE["tlv"]["unavailable_payload"]
-    max_speed = IFACE["oep.wire.rvswd"]["tlv"]["attach"]["max_speed"]
-    ms = tlv(max_speed | CRITICAL, struct.pack("<I", 1_000_000))
-    pins = tlv(0x83, struct.pack("<HH", 1, 2))
+    fixed_attach = struct.pack("<BHHI", 0, 1, 2, 1_000_000)
     idx_tag = IFACE["oep.fixture.gpio"]["tlv"]["unavailable_payload"]["index"]
     cases = []
 
@@ -282,17 +280,23 @@ def refusals() -> dict:
     add("i2c-target address 0x03 (reserved by the I2C specification)", "core §4.3; fixture §3",
         {"3": "oep.fixture.i2c-target"}, request(0x0012, 3, i2c_conf, bytes([0x03]), s), "unsupported", b"\x00")
     add("attach method 2", "core §4.3; debug §3", {"4": "oep.wire.rvswd"},
-        request(0x0013, 4, rv_attach, bytes([2]) + ms + pins, s), "unsupported", b"\x00")
-    add("attach without max_speed (a mandatory TLV)", "debug §1", {"4": "oep.wire.rvswd"},
-        request(0x0014, 4, rv_attach, bytes([0]) + pins, s), "malformed")
+        request(0x0013, 4, rv_attach, bytes([2]) + fixed_attach[1:], s), "unsupported", b"\x00")
+    add("attach fixed body truncated before max_speed", "debug §1", {"4": "oep.wire.rvswd"},
+        request(0x0014, 4, rv_attach, fixed_attach[:5], s), "malformed")
     add("an unknown critical TLV: its tag as received", "core §2.3", {"4": "oep.wire.rvswd"},
-        request(0x0015, 4, rv_attach, bytes([0]) + ms + pins + tlv(0x3E | CRITICAL, b""), s), "unsupported", bytes([0x3E | CRITICAL]))
+        request(0x0015, 4, rv_attach, fixed_attach + tlv(0x3E | CRITICAL, b""), s), "unsupported", bytes([0x3E | CRITICAL]))
     add("a TLV whose length runs past the end of the request", "core §2.2, §4.3", {"4": "oep.wire.rvswd"},
-        request(0x0017, 4, rv_attach, bytes([0]) + pins + bytes([max_speed | CRITICAL]) + struct.pack("<H", 8) + struct.pack("<I", 1_000_000), s), "malformed")
+        request(0x0017, 4, rv_attach, fixed_attach + bytes([0x3E]) + struct.pack("<H", 8) + struct.pack("<I", 0), s), "malformed")
     add("read from 4", "core §2.5, §4.3; common §1.2", {"5": "oep.fixture.uart"},
         request(0x0018, 5, uart_read, bytes([4]) + struct.pack("<QH", 0, 64)), "unsupported", b"\x00")
     add("riscv-dm reset mode 3", "core §2.5, §4.3; debug §4.3", {"6": "oep.target.riscv-dm"},
-        request(0x0019, 6, dm_reset, struct.pack("<HB", 1, 3), s), "unsupported", b"\x00")
+        request(0x0019, 6, dm_reset, struct.pack("<IB", 1, 3), s), "unsupported", b"\x00")
+    add("riscv-dm reset mode 1 is undefined", "debug §4.3", {"6":"oep.target.riscv-dm"},
+        request(0x001C,6,dm_reset,struct.pack("<IB",1,1),s),"unsupported",b"\x00")
+    add("attach max_speed zero", "debug §1", {"4":"oep.wire.rvswd"},
+        request(0x001D,4,rv_attach,struct.pack("<BHHI",0,1,2,0),s),"malformed")
+    add("attach halt method is not offered", "debug §3", {"4":"oep.wire.rvswd"},
+        request(0x001E,4,rv_attach,struct.pack("<BHHI",1,1,2,1000000),s),"unsupported",b"\x00")
     add("confirm min_rev > max_rev", "core §7.1", {},
         request(0x001A, 0, op("core", "confirm"), b"OEP?" + bytes([2, 1])), "malformed")
     add("an unknown non-critical TLV is ignored", "core §2.3", fns_gpio,
@@ -395,7 +399,7 @@ def ops_encoding() -> dict:
 
 
 def sessions() -> dict:
-    """Scenarios of the session decision table (core §6.2), the resend table (core §5.2) and the release at end (core §9), as
+    """Scenarios of the session decision table (core §6.2), the resend table (core §5.1) and the release at end (core §9), as
     request / answer byte pairs from a stated initial state, for the example probe of confirm.json (boot_id 0x12345678)."""
     open_op, end_op, keep_op, state_op, clock_op = (op("core", n) for n in ("open", "end", "keepalive", "lock_state", "clock"))
     boot_id, lease = 0x12345678, 2000
@@ -419,7 +423,7 @@ def sessions() -> dict:
 
     scenarios = [
         {"name": "end releases the session; its id is then no_session, and a resent end is answered from the table",
-         "spec": "core §5.2, §6.2, §6.4, §9", "initial": "lock free, no session has held it since boot",
+         "spec": "core §5.1, §6.2, §6.4, §9", "initial": "lock free, no session has held it since boot",
          "steps": [
              step("open S, lease 2000 ms, no force", request(1, 0, open_op, struct.pack("<IB", lease, 0), S), opened(1)),
              step("keepalive of S", request(2, 0, keep_op, b"", S), ok(2)),
@@ -449,7 +453,7 @@ def sessions() -> dict:
                   request(4, 0, state_op, b""), ok(4, struct.pack("<BI", 1, lease))),
          ]},
         {"name": "clock without a session and while a session holds the lock",
-         "spec": "core §4.1, §6.3, §7.7", "initial": "lock free, no session has held it since boot",
+         "spec": "core §4.1, §6.3, §7.6", "initial": "lock free, no session has held it since boot",
          "steps": [
              step("clock with session_id 0, no session: boot_id and uptime_ns", request(1, 0, clock_op, b""), clocked(1, 2_000_000_000)),
              step("open S", request(2, 0, open_op, struct.pack("<IB", lease, 0), S), opened(2)),
@@ -464,7 +468,7 @@ def sessions() -> dict:
     ]
     scenarios += [
         {"name": "session-zero traffic does not advance the session; open preserves replay history",
-         "spec": "core §4.1, §5.2", "initial": "lock free; max_inflight 4",
+         "spec": "core §4.1, §5.1", "initial": "lock free; max_inflight 4",
          "steps": [
              step("open S", request(1, 0, open_op, struct.pack("<IB", lease, 0), S), opened(1)),
              step("keepalive S", request(2, 0, keep_op, b"", S), ok(2)),
@@ -475,7 +479,7 @@ def sessions() -> dict:
              step("same corr with altered bytes is malformed", request(2, 0, keep_op, bytes([0]), S), rej(2, "malformed")),
          ]},
         {"name": "16-bit counter wraps without releasing resources; an ended session cannot be reopened",
-         "spec": "core §4.1, §5.2, §6.2", "initial": "lock free; max_inflight 4",
+         "spec": "core §4.1, §5.1, §6.2", "initial": "lock free; max_inflight 4",
          "steps": [
              step("open S near the wrap boundary", request(65533, 0, open_op, struct.pack("<IB", lease, 0), S), opened(65533)),
              step("keepalive before wrap", request(65534, 0, keep_op, b"", S), ok(65534)),
@@ -487,7 +491,7 @@ def sessions() -> dict:
              step("T starts a new counter, only after all S requests resolved", request(1, 0, open_op, struct.pack("<IB", lease, 0), T), opened(1)),
          ]},
         {"name": "evicted request returns result_lost instead of being executed",
-         "spec": "core §5.2", "initial": "lock free; max_inflight 4; exactly four cache entries",
+         "spec": "core §5.1", "initial": "lock free; max_inflight 4; exactly four cache entries",
          "steps": [
              step("open S", request(1, 0, open_op, struct.pack("<IB", lease, 0), S), opened(1)),
              *[step("keepalive S", request(c, 0, keep_op, b"", S), ok(c)) for c in range(2, 6)],
@@ -495,7 +499,7 @@ def sessions() -> dict:
          ]},
     ]
     return {
-        "about": "Session scenarios (core §5.2, §6, §9) of the example probe of confirm.json (boot_id 0x12345678). Each scenario starts from its "
+        "about": "Session scenarios (core §5.1, §6, §9) of the example probe of confirm.json (boot_id 0x12345678). Each scenario starts from its "
                  "initial state; the steps are sent in order on one transport, each answered before the next. Remaining times are shown as if no time "
                  "had passed between the steps: a real probe answers the time actually left. clock's uptime_ns values are an example probe's (a real probe answers its "
                  "clock read just before the answer, which does not decrease while boot_id is the same). S = 0x11223344, T = 0x55667788.",
@@ -547,6 +551,19 @@ def ops() -> dict:
         request(0x18, 10, release, bytes([2]) + struct.pack("<H", 2), S), rej(0x18, "malformed"))
     add("plan_apply without a session: session_required", "core §4.1, §4.3 order 1", pl, "—",
         request(0x19, 10, apply_, tlv(ra, struct.pack("<HBH", 2, 1, 3))), rej(0x19, "session_required"))
+    add('plan_apply: GPIO addition preserves an existing output', 'plan §2.1, fixture §1',pl,
+        'session S; fn2 role1 channel3 is high; channel4 free; keep channel3 high and acquire only channel4',
+        request(0x1A,10,apply_,tlv(ra,struct.pack('<HBH',2,1,3))+tlv(ra,struct.pack('<HBH',2,1,4)),S),ok(0x1A))
+    up={'10':'oep.probe.plan','5':'oep.fixture.uart'}
+    add('plan_apply: identical configured UART is unchanged','plan §2.1, fixture §2',up,
+        'session S; fn5 RX on channel3 at 9600 baud, bytes retained; preserve baud and buffer',
+        request(0x1B,10,apply_,tlv(ra,struct.pack('<HBH',5,1,3)),S),ok(0x1B))
+    add('plan_apply: configured UART role change is refused','plan §2.1, fixture §2',up,
+        'session S; fn5 RX on channel3 at 9600 baud; channel4 allowed; all old state remains',
+        request(0x1C,10,apply_,tlv(ra,struct.pack('<HBH',5,1,4)),S),rej(0x1C,'unavailable',tlv(1,b'\x06')))
+    add('plan_apply: active capture role change is refused','plan §2.1, capture §3.2',
+        {'10':'oep.probe.plan','9':'oep.fixture.logic'},'session S; fn9 state3, role0 channel1; preserve capture and data',
+        request(0x1D,10,apply_,tlv(ra,struct.pack('<HBH',9,0,2)),S),rej(0x1D,'unavailable',tlv(1,b'\x06')))
 
     # oep.probe.link (oep-if-link §1, §2)
     link = {"1": "oep.probe.link"}
@@ -564,6 +581,12 @@ def ops() -> dict:
         request(0x23, 1, op("oep.probe.link", "sink"), struct.pack("<H", 5) + b"\xaa\xbb\xcc"), rej(0x23, "malformed"))
     add("link port_speed not offered (not set in ops)", "oep-if-link §1, core §1.2", link, "ops of fn 1: source and sink only",
         request(0x24, 1, op("oep.probe.link", "port_speed"), struct.pack("<IBH", 921600, 0, 2000), S), rej(0x24, "unknown_operation"))
+    add("link port_state: cached try success no longer describes the route", "link §1/3", link,
+        "UART bridge, expired try, now boot baud; old try success921600 exists in replay cache",
+        request(0x25,1,op("oep.probe.link","port_state"),b""),ok(0x25,struct.pack("<IB",115200,0)))
+    add("link port_state: session-ended fallback waits for old frame", "link §3", link,
+        "UART bridge at921600, previous owner ended; frame in progress; normal requests cannot cancel session-ended fallback",
+        request(0x26,1,op("oep.probe.link","port_state"),b""),ok(0x26,struct.pack("<IB",921600,3)))
 
     # oep.fixture.gpio (fixture §1)
     gpio = {"2": "oep.fixture.gpio"}
@@ -571,7 +594,7 @@ def ops() -> dict:
     gidx = IFACE["oep.fixture.gpio"]["tlv"]["unavailable_payload"]["index"]
     add("gpio set: channel 3 output high", "fixture §1", gpio, "session S holds the lock; channel 3 in fn 2's plan; modes 0 to 4 declared",
         request(0x30, 2, gset, bytes([1]) + struct.pack("<HB", 3, 4), S), ok(0x30))
-    add("gpio read: channel 3 reads 1", "fixture §1", gpio, "as above, after the set; no drive_levels",
+    add("gpio read: channel 3 reads 1", "fixture §1", gpio, "as above, after the set; Probe-selected output strength",
         request(0x31, 2, gread, bytes([1]) + struct.pack("<H", 3)), ok(0x31, bytes([1, 1])))
     add("gpio set: channel 9 not in the plan", "fixture §1, core §4.3", gpio, "channel 9 in no plan of fn 2",
         request(0x32, 2, gset, bytes([2]) + struct.pack("<HBHB", 3, 4, 9, 0), S),
@@ -581,10 +604,20 @@ def ops() -> dict:
     add("gpio set: n = 2 with one element", "core §4.3", gpio, "—",
         request(0x34, 2, gset, bytes([2]) + struct.pack("<HB", 3, 4), S), rej(0x34, "malformed"))
 
+    uart={'5':'oep.fixture.uart'}
+    add('UART status: unconfigured has no implicit baud','fixture §2',uart,
+        'RX plan exists; configure not called; no UART reception or hidden preset application',
+        request(0x35,5,op('oep.fixture.uart','status'),b''),ok(0x35,bytes(5)))
+    add('UART read: unconfigured is empty at its retained position','fixture §2, common §1.2',uart,
+        'RX plan exists; not configured; boot-scoped write position7, no retained bytes',
+        request(0x36,5,op('oep.fixture.uart','read'),struct.pack('<BQH',1,0,48)),ok(0x36,struct.pack('<QBH',7,0,0)))
+    add('UART configure: zero baud is malformed','fixture §2',uart,'session S; RX plan exists; state unchanged',
+        request(0x37,5,op('oep.fixture.uart','configure'),bytes(4),S),rej(0x37,'malformed'))
+
     # oep.wire.rvswd (debug §1 to §3)
     rv = {"4": "oep.wire.rvswd"}
     scheme = REG["common"]["enum"]["target_id_scheme"]["dmi_7f"]
-    entry = struct.pack("<HHHIBB", 1, 0x0001, 0x0002, 1_000_000, scheme, 4) + struct.pack("<I", 0x00203500)
+    entry = struct.pack("<IHHIBB", 1, 0x0001, 0x0002, 1_000_000, scheme, 4) + struct.pack("<I", 0x00203500)
     add("rvswd connections: one connection with a target_id", "debug §2.1", rv,
         "connection 1 on channels 1 / 2 at 1 MHz, owned by the session, target_id scheme 1 = 0x00203500",
         request(0x40, 4, op("oep.wire.rvswd", "connections"), bytes([0])), ok(0x40, bytes([0, 1]) + entry))
@@ -596,149 +629,187 @@ def ops() -> dict:
         ok(0x42, bytes([1, 1]) + struct.pack("<BHHI", kind, 1, 2, 0x00400382)))
     add("rvswd scan: count 0 is malformed", "debug §1", rv, "session S; no implicit candidate list",
         request(0x43, 4, op("oep.wire.rvswd", "scan"), bytes([0]), S), rej(0x43, "malformed"))
-    speed = tlv(0x81, struct.pack("<I", 1_000_000))
-    add("rvswd attach: pins are required", "debug §1", rv, "session S; channels free",
-        request(0x44, 4, op("oep.wire.rvswd", "attach"), bytes([0]) + speed, S), rej(0x44, "malformed"))
+    fixed_attach = struct.pack("<BHHI", 0, 1, 2, 1_000_000)
+    add("rvswd attach: a short fixed body is malformed", "debug §1", rv, "session S; channels free",
+        request(0x44, 4, op("oep.wire.rvswd", "attach"), fixed_attach[:3], S), rej(0x44, "malformed"))
     add("rvswd attach: a second target on separate pins", "debug §1", rv,
         "session S owns connection 1 on pins 1 / 2; max_connections 2; pins 3 / 4 allowed and free; next resource 2",
-        request(0x45, 4, op("oep.wire.rvswd", "attach"), bytes([0]) + speed + tlv(0x83, struct.pack("<HH", 3, 4)), S),
-        ok(0x45, struct.pack("<HIBI", 2, 0x00400382, 0, 1_000_000)))
+        request(0x45, 4, op("oep.wire.rvswd", "attach"), struct.pack("<BHHI", 0, 3, 4, 1_000_000), S),
+        ok(0x45, struct.pack("<IIBI", 2, 0x00400382, 0, 1_000_000)))
+    add("rvswd attach: a resource ID above u16", "debug §1, core §9", rv,
+        "session S; 65535 resources were created and closed; next resource 65536; pins 3 / 4 allowed and free",
+        request(0x47, 4, op("oep.wire.rvswd", "attach"), struct.pack("<BHHI", 0, 3, 4, 1_000_000), S),
+        ok(0x47, struct.pack("<IIBI", 65536, 0x00400382, 0, 1_000_000)))
     add("rvswd attach: busy pins never join or evict", "debug §1, core §8.1", rv,
         "session S owns connection 1 on pins 1 / 2; connection remains unchanged",
-        request(0x46, 4, op("oep.wire.rvswd", "attach"), bytes([0]) + speed + tlv(0x83, struct.pack("<HH", 1, 2)), S),
+        request(0x46, 4, op("oep.wire.rvswd", "attach"), fixed_attach, S),
         rej(0x46, "unavailable", tlv(1, bytes([1])) + tlv(2, struct.pack("<H", 1))))
+
+    swd = {"5":"oep.wire.swd"}
+    selector = IFACE["oep.wire.swd"]["tlv"]["attach"]["targetsel"]
+    selected = IFACE["oep.wire.swd"]["tlv"]["connections_answer"]["selected_target"]
+    dpidr_scheme = REG["common"]["enum"]["target_id_scheme"]["dpidr"]
+    swd_entry = struct.pack("<IHHIBBI",65536,1,2,1000000,dpidr_scheme,4,0x2BA01477)
+    add("swd connections: read identity and supplied selector are distinct", "debug §2.1, §5", swd,
+        "connection 65536, DPIDR 0x2BA01477 read on attach; Host supplied TARGETSEL 0x01000001",
+        request(0x48,5,op("oep.wire.swd","connections"),b"\0"),
+        ok(0x48,b"\0\1"+swd_entry+tlv(selected,struct.pack("<BI",0,0x01000001))))
+    add("swd attach: another selector on occupied pins is refused before selection", "debug §1, §5", swd,
+        "connection 65536 on pins 1/2 at TARGETSEL 0x01000001 remains selected and unchanged",
+        request(0x49,5,op("oep.wire.swd","attach"),fixed_attach+tlv(selector|CRITICAL,struct.pack("<I",0x01000002)),S),
+        rej(0x49,"unavailable",tlv(1,b"\1")+tlv(2,struct.pack("<H",1))))
 
     # oep.target.riscv-dm (debug §4)
     dm = {"6": "oep.target.riscv-dm"}
+    add("riscv-dm halt not offered by raw-only fn", "debug §4", dm, "fn 6 declares only dmi in ops",
+        request(0x5B,6,op("oep.target.riscv-dm","halt"),struct.pack("<I",1),S),rej(0x5B,"unknown_operation"))
+    add("riscv-dm write_block: memory written but cleanup lost the line", "debug §4", dm,
+        "two words completed; restoring saved DATA failed; response is sent then connection 1 and its streams close",
+        request(0x5C,6,op("oep.target.riscv-dm","write_block"),struct.pack("<IIHII",1,0x20000000,2,7,8),S),
+        answer(0x5C,COMPLETED,2,struct.pack("<HB",2,REG["status"]["line"])))
+    add("riscv-dm dmi: connection closed after incomplete cleanup", "debug §4, core §4.3", dm,
+        "connection 1 closed after the previous high-level op failed cleanup; no target access",
+        request(0x5D,6,op("oep.target.riscv-dm","dmi"),struct.pack("<IH",1,0),S),rej(0x5D,"no_resource"))
     add("riscv-dm halt: halted", "debug §4.2", dm, "session S; connection 1 open; the hart halts",
-        request(0x50, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<H", 1), S), ok(0x50, bytes([REG["status"]["ok"]])))
+        request(0x50, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<I", 1), S), ok(0x50, bytes([REG["status"]["ok"]])))
     add("riscv-dm halt on an unknown connection", "core §4.3", dm, "no connection 9",
-        request(0x51, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<H", 9), S), rej(0x51, "no_resource"))
-    add("riscv-dm run not offered", "debug §4, core §1.2", dm, "ops of fn 6: dmi, halt, resume (09 02 00 01 07)",
-        request(0x52, 6, op("oep.target.riscv-dm", "run"), struct.pack("<HIIBB", 1, 0x20000000, 100, 0, 0), S), rej(0x52, "unknown_operation"))
+        request(0x51, 6, op("oep.target.riscv-dm", "halt"), struct.pack("<I", 9), S), rej(0x51, "no_resource"))
+    add("riscv-dm run not offered", "debug §4, core §1.2", dm, "ops of fn 6: dmi only (07 02 00 10 01)",
+        request(0x52, 6, op("oep.target.riscv-dm", "run"), struct.pack("<IIIBB", 1, 0x20000000, 100, 0, 0), S), rej(0x52, "unknown_operation"))
     run_stopped = IFACE["oep.target.riscv-dm"]["enum"]["run_stopped"]
     add("riscv-dm run: the preparation fails, the hart is not run", "debug §4.4", dm,
         "session S; connection 1; run offered in ops; the hart is halted and writing a0 fails with no answer from the wire",
-        request(0x56, 6, op("oep.target.riscv-dm", "run"), struct.pack("<HIIB", 1, 0x20000000, 100, 1) + struct.pack("<HI", 0x100A, 7) + bytes([0]), S),
+        request(0x56, 6, op("oep.target.riscv-dm", "run"), struct.pack("<IIIB", 1, 0x20000000, 100, 1) + struct.pack("<HI", 0x100A, 7) + bytes([0]), S),
         failed(0x56, struct.pack("<BBIIB", REG["status"]["line"], run_stopped["not_run"], 0, 0, 0)))
     rd = op("oep.target.riscv-dm", "dmi")
     add("riscv-dm dmi: one read of DMSTATUS", "debug §4.1", dm, "session S; connection 1; DMSTATUS reads 0x00400382",
-        request(0x53, 6, rd, struct.pack("<HH", 1, 1) + bytes([IFACE["oep.target.riscv-dm"]["enum"]["dmi_step"]["read"], 0x11]), S),
+        request(0x53, 6, rd, struct.pack("<IH", 1, 1) + bytes([IFACE["oep.target.riscv-dm"]["enum"]["dmi_step"]["read"], 0x11]), S),
         ok(0x53, struct.pack("<HBHI", 1, 0, 1, 0x00400382)))
     add("riscv-dm dmi: n = 0", "debug §4", dm, "session S; connection 1",
-        request(0x54, 6, rd, struct.pack("<HH", 1, 0), S), ok(0x54, struct.pack("<HBH", 0, 0, 0)))
+        request(0x54, 6, rd, struct.pack("<IH", 1, 0), S), ok(0x54, struct.pack("<HBH", 0, 0, 0)))
     add("riscv-dm dmi: an unknown step kind", "debug §4.1, core §4.3", dm, "—",
-        request(0x55, 6, rd, struct.pack("<HH", 1, 1) + bytes([0x10, 0x11]), S), rej(0x55, "malformed"))
+        request(0x55, 6, rd, struct.pack("<IH", 1, 1) + bytes([0x10, 0x11]), S), rej(0x55, "unsupported", b"\x00"))
+    add("riscv-dm dmi: a known write before an unknown kind is not executed", "debug §4.1, core §4.3", dm,
+        "session S; connection 1; no target register is changed",
+        request(0x5A, 6, rd, struct.pack("<IH", 1, 2) + bytes([1, 0x04]) + struct.pack("<I", 7) + bytes([0x10]), S),
+        rej(0x5A, "unsupported", b"\x00"))
 
     add("riscv-dm step on a running hart: status state, moved and both dpc 0", "debug §4.2", dm,
         "session S; connection 1; step offered in ops; the hart is running",
-        request(0x57, 6, op("oep.target.riscv-dm", "step"), struct.pack("<H", 1), S),
+        request(0x57, 6, op("oep.target.riscv-dm", "step"), struct.pack("<I", 1), S),
         failed(0x57, struct.pack("<BBII", REG["status"]["state"], 0, 0, 0)))
     adi = {"15": "oep.target.arm-adi"}
     add("arm-adi transfer: n = 0", "debug §6", adi, "session S; connection 1 (swd) open",
-        request(0x58, 15, op("oep.target.arm-adi", "transfer"), struct.pack("<HH", 1, 0), S),
+        request(0x58, 15, op("oep.target.arm-adi", "transfer"), struct.pack("<IH", 1, 0), S),
         ok(0x58, struct.pack("<HBBH", 0, REG["status"]["ok"], 0, 0)))
+    add("arm-adi transfer: a connection ID above u16", "debug §6, core §9", adi,
+        "session S; connection 65536 (swd) open; zero transfers",
+        request(0x59, 15, op("oep.target.arm-adi", "transfer"), struct.pack("<IH", 65536, 0), S),
+        ok(0x59, struct.pack("<HBBH", 0, REG["status"]["ok"], 0, 0)))
+    add("arm-adi transfer: reserved req bits do not execute an earlier write", "debug §6, core §4.3", adi,
+        "session S; connection 1; no wire transfer is executed",
+        request(0x5B, 15, op("oep.target.arm-adi", "transfer"),
+                struct.pack("<IH", 1, 2) + bytes([0]) + struct.pack("<I", 7) + bytes([0x12]), S),
+        rej(0x5B, "unsupported", b"\x00"))
 
     # oep.target.console (console §1, common §1)
     con = {"7": "oep.target.console"}
+    console_ops = {op_name: op('oep.target.console', op_name) for op_name in ('open','read','marks','write')}
+    minimal_console = 'session S; connection 65536 (rvswd); fn 7 mechanisms SDI; ops open/read/close/streams; no marks or TX queue'
+    add('console open: RX-only SDI without flags', 'console §1', con, minimal_console,
+        request(0x6A,7,console_ops['open'],struct.pack('<IB',65536,0),S),ok(0x6A,struct.pack('<I',65537)))
+    add('console marks: absent on RX-only console', 'console §1, core §1.2', con,minimal_console,
+        request(0x6B,7,console_ops['marks'],struct.pack('<II',65537,0)),rej(0x6B,'unknown_operation'))
+    add('console write: absent on RX-only console', 'console §1, core §1.2', con,minimal_console,
+        request(0x6C,7,console_ops['write'],struct.pack('<IH',65537,1)+b'x',S),rej(0x6C,'unknown_operation'))
+    add('console read: from3 without marks is unsupported', 'console §1, common §1.2', con,minimal_console+'; stream 65537 open',
+        request(0x6D,7,console_ops['read'],struct.pack('<IBQH',65537,3,0,48)),rej(0x6D,'unsupported',b'\0'))
+    add('console write: SDI is unsupported even if other mechanisms can write', 'console §1', con,
+        'session S; stream 65537 is SDI; fn7 also provides dmseq and write',
+        request(0x6E,7,console_ops['write'],struct.pack('<IH',65537,1)+b'x',S),rej(0x6E,'unsupported',b'\0'))
     mark_kind = REG["common"]["enum"]["mark_kind"]
-    mark = struct.pack("<IQBQB", 0, 0, mark_kind["attach"], 1_000_000, 0)
+    mark = struct.pack("<IQBQB", 0, 0, mark_kind["host"], 1_000_000, 0)
     # connection 1 (the wire cases) and the stream share core §9's one number space: the stream opened on it is 2
-    add("console marks: one attach mark", "common §1.3, console §1", con, "stream 2 with one mark (serial 0, position 0, attach at 1 ms)",
-        request(0x60, 7, op("oep.target.console", "marks"), struct.pack("<HI", 2, 0)), ok(0x60, bytes([0, 1]) + mark))
+    add("console marks: one host mark", "common §1.3, console §1", con, "stream 2 with one explicit host mark (serial 0, position 0, value 0 at 1 ms); marks/mark offered",
+        request(0x60, 7, op("oep.target.console", "marks"), struct.pack("<II", 2, 0)), ok(0x60, bytes([0, 1]) + mark))
     # serial paging (common §1.3): marks 5 to 8 kept (1 to 4 pushed out), next 9; max_frame 64 fits 2 marks (5 + 2 + 2 x 22 = 51)
     hm = lambda n: struct.pack("<IQBQB", n, 10 * n, mark_kind["host"], 1_000_000 * n, n)
     kept = "stream 2; marks 5 to 8 kept (1 to 4 pushed out), the next mark gets serial 9; max_frame 64 (2 marks per answer)"
     mk = op("oep.target.console", "marks")
     add("console marks: from_serial included, more 1", "common §1.3 paging 1, 4", con, kept,
-        request(0x64, 7, mk, struct.pack("<HI", 2, 5)), ok(0x64, bytes([1, 2]) + hm(5) + hm(6)))
+        request(0x64, 7, mk, struct.pack("<II", 2, 5)), ok(0x64, bytes([1, 2]) + hm(5) + hm(6)))
     add("console marks: the next page from the last serial + 1", "common §1.3 paging 4", con, kept,
-        request(0x65, 7, mk, struct.pack("<HI", 2, 7)), ok(0x65, bytes([0, 2]) + hm(7) + hm(8)))
+        request(0x65, 7, mk, struct.pack("<II", 2, 7)), ok(0x65, bytes([0, 2]) + hm(7) + hm(8)))
     add("console marks: a pushed-out from_serial starts at the oldest kept", "common §1.3 paging 3", con, kept,
-        request(0x66, 7, mk, struct.pack("<HI", 2, 3)), ok(0x66, bytes([1, 2]) + hm(5) + hm(6)))
+        request(0x66, 7, mk, struct.pack("<II", 2, 3)), ok(0x66, bytes([1, 2]) + hm(5) + hm(6)))
     add("console marks: from_serial = next, no marks and more 0", "common §1.3 paging 2", con, kept,
-        request(0x67, 7, mk, struct.pack("<HI", 2, 9)), ok(0x67, bytes([0, 0])))
+        request(0x67, 7, mk, struct.pack("<II", 2, 9)), ok(0x67, bytes([0, 0])))
     st = IFACE["oep.target.console"]["enum"]
-    sentry = struct.pack("<HHB", 2, 1, st["mechanism"]["dmseq"])
+    sentry = struct.pack("<IIB", 2, 1, st["mechanism"]["dmseq"])
     add("console streams: one open stream", "console §1, core §9", con, "stream 2 on connection 1 (one number space: connection 1, then stream 2), dmseq, opened by the session",
         request(0x61, 7, op("oep.target.console", "streams"), struct.pack("<H", 0)), ok(0x61, bytes([0, 1]) + sentry))
+    add("console streams: resource IDs above u16", "console §1, core §9", con,
+        "stream 65537 on connection 65536; one open dmseq stream",
+        request(0x69, 7, op("oep.target.console", "streams"), struct.pack("<H", 0)),
+        ok(0x69, bytes([0, 1]) + struct.pack("<IIB", 65537, 65536, st["mechanism"]["dmseq"])))
     add("console streams: first(u16) beyond the count, the last page", "console §1, core §7.3 end of paging", con, "as above (one stream)",
         request(0x68, 7, op("oep.target.console", "streams"), struct.pack("<H", 1)), ok(0x68, bytes([0, 0])))
     add("console read: empty at the write position", "common §1.2", con, "stream 2, 5 bytes written (position 5)",
-        request(0x62, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 2, 0, 5, 64)),
+        request(0x62, 7, op("oep.target.console", "read"), struct.pack("<IBQH", 2, 0, 5, 64)),
         ok(0x62, struct.pack("<QBH", 5, 0, 0)))
     add("console read from 4", "common §1.2, core §4.3", con, "—",
-        request(0x63, 7, op("oep.target.console", "read"), struct.pack("<HBQH", 2, 4, 0, 64)), rej(0x63, "unsupported", b"\x00"))
+        request(0x63, 7, op("oep.target.console", "read"), struct.pack("<IBQH", 2, 4, 0, 64)), rej(0x63, "unsupported", b"\x00"))
 
-    # oep.probe.config (probe settings §3)
-    pc = {"8": "oep.probe.config"}
+    # oep.probe.config: counted settings records, separate extension TLVs.
+    pc = {"8":"oep.probe.config"}
     pce = IFACE["oep.probe.config"]["enum"]
-    add("probe.config state: no saved settings", "probe settings §3", pc,
-        "no save; presets do not own runtime resources",
-        request(0x70, 8, op("oep.probe.config", "state"), b""),
-        ok(0x70, struct.pack("<BIB", pce["storage_state"]["none"], 0, 0)))
-    add("probe.config save not offered", "probe settings §2, core §1.2", pc, "ops without save and erase; no storage tag",
-        request(0x71, 8, op("oep.probe.config", "save"), b"", S), rej(0x71, "unknown_operation"))
+    pc_set,pc_get,pc_unset = (op("oep.probe.config",n) for n in ("set","get","unset"))
     idle_tag = IFACE["oep.probe.config"]["tlv"]["item"]["idle"]
-    add("probe.config set: an idle value of 6 bytes (longer than its 4)", "probe settings §1, core §2.3", pc, "session S",
-        request(0x72, 8, op("oep.probe.config", "set"), tlv(idle_tag, struct.pack("<HBBH", 4, 3, 0, 0)), S), rej(0x72, "malformed"))
-    add("probe.config set: an idle value of 3 bytes", "probe settings §1, core §2.3", pc, "session S",
-        request(0x73, 8, op("oep.probe.config", "set"), tlv(idle_tag | CRITICAL, struct.pack("<HB", 4, 0)), S), rej(0x73, "malformed"))
-    # the wifi item (probe settings §1.4): the passphrase is write-only
-    wifi_tag = IFACE["oep.probe.config"]["tlv"]["item"]["wifi"]
-    hidden = pce["wifi_pass_len"]["hidden"]
-    pc_set, pc_get, pc_unset = (op("oep.probe.config", n) for n in ("set", "get", "unset"))
-    wifi_state = "items has wifi, wifi_max 4; "
+    label_tag = IFACE["oep.probe.config"]["tlv"]["item"]["label"]
+    disabled_tag = IFACE["oep.probe.config"]["tlv"]["item"]["disable"]
+    idle=tlv(idle_tag,struct.pack("<HB",4,0))
+    add("probe.config state: no saved settings", "settings §3", pc,"state offered; no saved settings",
+        request(0x70,8,op("oep.probe.config","state"),b""),ok(0x70,bytes(6)))
+    add("probe.config save not offered", "settings §2", pc,"get/set/unset only; no storage",
+        request(0x71,8,op("oep.probe.config","save"),b"",S),rej(0x71,"unknown_operation"))
+    add("probe.config state not offered", "settings §2", pc,"get/set/unset only; no storage/state",
+        request(0x7D,8,op("oep.probe.config","state"),b""),rej(0x7D,"unknown_operation"))
+    add("probe.config set: idle with obsolete drive byte is malformed", "settings §1", pc,"empty configuration, generation1 unchanged",
+        request(0x72,8,pc_set,b"\1"+tlv(idle_tag,struct.pack("<HBB",4,0,255)),S),rej(0x72,"malformed"))
+    add("probe.config set: item bit7 ignored for known idle", "settings §1", pc,"empty configuration generation1; supported idle0/channel4",
+        request(0x73,8,pc_set,b"\1"+tlv(idle_tag|CRITICAL,struct.pack("<HB",4,0)),S),ok(0x73,struct.pack("<I",2)))
+    for raw,corr in ((0x3E,0x74),(0xBE,0x75)):
+        add(f"probe.config set: unknown item {raw:02x} is not silently ignored", "settings §1", pc,"no settings/pin change",
+            request(corr,8,pc_set,b"\1"+tlv(raw,struct.pack("<H",4)),S),rej(corr,"unsupported",bytes([raw])))
+    add("probe.config set: unknown outer noncritical TLV ignored", "settings §1/2, core §2.3", pc,"empty configuration generation1",
+        request(0x76,8,pc_set,b"\1"+idle+tlv(0x3E,b"x"),S),ok(0x76,struct.pack("<I",2)))
+    add("probe.config get: count separates items from response extensions", "settings §2", pc,"one idle item, generation2",
+        request(0x77,8,pc_get,struct.pack("<H",0)),ok(0x77,struct.pack("<BIB",0,2,1)+idle+tlv(0x7F,b"x")))
+    add("probe.config get: final empty page still has count and generation", "settings §2", pc,"one item generation2; first1",
+        request(0x78,8,pc_get,struct.pack("<H",1)),ok(0x78,struct.pack("<BIB",0,2,0)))
+    add("probe.config unset: fixed channel key", "settings §2", pc,"disable channel4 present, generation2; becomes empty generation3",
+        request(0x79,8,pc_unset,struct.pack("<BBH",1,disabled_tag,4),S),ok(0x79,struct.pack("<I",3)))
+    add("probe.config set: longest label fits frame64", "settings §1/4", pc,"empty generation1; channel4 free",
+        request(0x7A,8,pc_set,b"\1"+tlv(label_tag,struct.pack("<H",4)+b"L"*32),S),ok(0x7A,struct.pack("<I",2)))
+    add("probe.config state: independent valid items restored despite invalid label", "settings §3", pc,
+        "CRC-valid saved blob; valid disable/idle applied, unsupported label omitted; current generation1",
+        request(0x7B,8,op("oep.probe.config","state"),b""),ok(0x7B,struct.pack("<BIB",pce["storage_state"]["partial"],0,pce["storage_unreadable"]["item"])))
+    add("probe.config set: changed contents at exhausted generation refused", "settings §2", pc,"generation0xFFFFFFFF unchanged; current contents retained",
+        request(0x7C,8,pc_set,b"\1"+idle,S),rej(0x7C,"unavailable",tlv(1,b"\2")))
 
-    def wifi_item(index: int, ssid: bytes, pass_len: int, passphrase: bytes = b"") -> bytes:
-        return tlv(wifi_tag, bytes([index, len(ssid)]) + ssid + bytes([pass_len]) + passphrase)
-
-    add("probe.config set: wifi entry 0 with a passphrase", "probe settings §1.4, §2", pc,
-        wifi_state + "session S; no settings; the probe's hash for the new settings is 0x5A5A0001",
-        request(0x74, 8, pc_set, wifi_item(0, b"lab", 9, b"password1"), S), ok(0x74, struct.pack("<I", 0x5A5A0001)))
-    add("probe.config get: the wifi entry without its passphrase", "probe settings §1.4, §2", pc,
-        wifi_state + "settings: the wifi entry of the case above, hash 0x5A5A0001",
-        request(0x75, 8, pc_get, struct.pack("<H", 0)), ok(0x75, struct.pack("<BI", 0, 0x5A5A0001) + wifi_item(0, b"lab", hidden)))
-    add("probe.config set: get's wifi item sent back keeps the passphrase", "probe settings §1.4", pc,
-        wifi_state + "session S; settings as above, hash 0x5A5A0001; nothing changes, so neither does the hash",
-        request(0x76, 8, pc_set, wifi_item(0, b"lab", hidden), S), ok(0x76, struct.pack("<I", 0x5A5A0001)))
-    add("probe.config set: pass_len 0xFF for an index with no entry", "probe settings §1.4", pc,
-        wifi_state + "session S; settings as above (no entry 1)",
-        request(0x77, 8, pc_set, wifi_item(1, b"field", hidden), S), rej(0x77, "malformed"))
-    add("probe.config set: a 7-byte passphrase", "probe settings §1.4", pc, wifi_state + "session S",
-        request(0x78, 8, pc_set, wifi_item(1, b"field", 7, b"secret7"), S), rej(0x78, "malformed"))
-    add("probe.config set: wifi index at wifi_max", "probe settings §1.4, core §4.3", pc, wifi_state + "session S",
-        request(0x79, 8, pc_set, wifi_item(4, b"field", 0), S), rej(0x79, "unsupported", bytes([wifi_tag])))
-    longest = request(0x7C, 8, pc_set, wifi_item(0, b"s" * REG["limits"]["wifi_ssid_max_bytes"], REG["limits"]["wifi_psk_hex_digits"],
-                                                 b"0123456789abcdef" * 4), S)
-    assert len(longest) == REG["limits"]["wifi_min_max_frame"]
-    add("probe.config set: the longest wifi item (32-byte ssid, 64 hex digits), a 112-byte request", "probe settings §1.4", pc,
-        wifi_state + "session S; no settings; max_frame 112 or more on this transport; the probe's hash for the new settings is 0x5A5A0003",
-        longest, ok(0x7C, struct.pack("<I", 0x5A5A0003)))
-    ws = pce["wifi_state"]
-    add("probe.config state: wifi connected on entry 0", "probe settings §3", pc,
-        wifi_state + "no save; connected through entry 0 at -52 dBm, address 192.168.1.23",
-        request(0x7A, 8, op("oep.probe.config", "state"), b"" ),
-        ok(0x7A, struct.pack("<BIB", pce["storage_state"]["none"], 0, 0)
-           + tlv(IFACE["oep.probe.config"]["tlv"]["state_answer"]["wifi"],
-                 struct.pack("<BBBb", ws["connected"], 0, pce["wifi_reason"]["none"], -52) + bytes([192, 168, 1, 23]))))
-    add("probe.config unset: wifi entry 0", "probe settings §1.4, §2", pc,
-        wifi_state + "session S; settings as above; the probe's hash for the empty settings is 0x5A5A0002",
-        request(0x7B, 8, pc_unset, bytes([1, 1, wifi_tag, 0]), S), ok(0x7B, struct.pack("<I", 0x5A5A0002)))
-
-    # subscribe / unsubscribe (core §11.3): ops of the interface that sends notifications, 0x01 / 0x02 in the common operation range, no target fn
+    # subscribe / unsubscribe (core §10.3): ops of the interface that sends notifications, 0x01 / 0x02 in the common operation range, no target fn
     sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]
     lgs = {"9": "oep.fixture.logic"}
-    add("logic subscribe: min_bytes 1024, max_delay_ms 20", "core §11.3; capture §3.4", lgs,
-        "session S holds the lock; subscribe and unsubscribe set in fn 9's ops",
+    add("logic subscribe: min_bytes 1024, max_delay_ms 20", "core §10.3; capture §3.4", lgs,
+        "session S holds the lock; max_frame2048; subscribe/unsubscribe declared in fn9 ops",
         request(0x82, 9, sub, struct.pack("<HI", 1024, 20), S), ok(0x82))
-    add("logic unsubscribe", "core §11.3", lgs, "session S; fn 9 subscribed",
+    add("logic unsubscribe", "core §10.3", lgs, "session S; fn 9 subscribed",
         request(0x83, 9, unsub, b"", S), ok(0x83))
-    add("logic unsubscribe without a subscription: success, nothing done", "core §11.3", lgs, "session S; fn 9 not subscribed",
+    add("logic unsubscribe without a subscription: success, nothing done", "core §10.3", lgs, "session S; fn 9 not subscribed",
         request(0x84, 9, unsub, b"", S), ok(0x84))
-    add("logic subscribe without a session: session_required", "core §4.1, §4.3 order 1, §11.3", lgs, "subscribe set in fn 9's ops",
+    add("logic subscribe without a session: session_required", "core §4.1, §4.3 order 1, §10.3", lgs, "subscribe set in fn 9's ops",
         request(0x85, 9, sub, struct.pack("<HI", 0, 0)), rej(0x85, "session_required"))
-    add("gpio subscribe: gpio sends no notifications (not in its ops)", "core §1.2, §11.3; fixture §1", {"2": "oep.fixture.gpio"},
+    add("gpio subscribe: gpio sends no notifications (not in its ops)", "core §1.2, §10.3; fixture §1", {"2": "oep.fixture.gpio"},
         "session S", request(0x86, 2, sub, struct.pack("<HI", 0, 0), S), rej(0x86, "unknown_operation"))
 
     # oep.fixture.logic (capture §2, §3.2)
@@ -747,7 +818,7 @@ def ops() -> dict:
     add("logic segments: one segment", "capture §2.2, §3.2", lg, "one-shot done, generation 1: 1000 samples from 5 ms, ±50 ns, no trigger",
         request(0x80, 9, op("oep.fixture.logic", "segments"), struct.pack("<I", 0)), ok(0x80, bytes([0, 1]) + seg))
     add("logic read: another generation", "capture §3.2", lg, "generation 1",
-        request(0x81, 9, op("oep.fixture.logic", "read"), struct.pack("<IQI", 2, 0, 64)),
+        request(0x81, 9, op("oep.fixture.logic", "read"), struct.pack("<IQH", 2, 0, 64)),
         rej(0x81, "unavailable", tlv(unav["cause"], bytes([cause["wrong_state"]]))))
     add("logic segments: from_serial = serial_done, no segments and more 0", "capture §3.2, common §1.3 paging 2", lg,
         "one-shot done, generation 1, serial_done 1",
@@ -762,7 +833,7 @@ def ops() -> dict:
         "session S holds the lock; roles 0 and 1 in fn 9's plan; 20 MHz exact, 200000 samples fit; the probe packs 2 bits per sample",
         request(0x88, 9, cfg, one_shot, S),
         ok(0x88, tlv(ca["actual_rate"], struct.pack("<II", 20_000_000, 1)) + tlv(ca["layout"], bytes([2, 2, 0, 1]))
-           + tlv(ca["actual_samples"], struct.pack("<I", 200_000)) + tlv(ca["blocking_ms"], struct.pack("<I", 0))))
+           + tlv(ca["actual_samples"], struct.pack("<I", 200_000))))
     add("logic configure without rate: malformed", "capture §3.3 contract", lg, "session S; as above",
         request(0x89, 9, cfg, tlv(lt["configure"]["mode"], bytes([mode["one_shot"]])) + tlv(lt["configure"]["samples"], struct.pack("<I", 200_000)), S),
         rej(0x89, "malformed"))
@@ -775,7 +846,7 @@ def ops() -> dict:
         request(0xA0, 9, qry, one_shot + tlv(lt["configure"]["trigger"],
                                             struct.pack("<BBI", IFACE["oep.fixture.logic"]["enum"]["trigger"]["immediate"], 5, 0))),
         ok(0xA0, tlv(ca["actual_rate"], struct.pack("<II", 20_000_000, 1)) + tlv(ca["layout"], bytes([2, 2, 0, 1]))
-           + tlv(ca["actual_samples"], struct.pack("<I", 200_000)) + tlv(ca["blocking_ms"], struct.pack("<I", 0))))
+           + tlv(ca["actual_samples"], struct.pack("<I", 200_000))))
 
     add("logic query: samples 0, a value the definition excludes: malformed", "capture §3.3 contract, core §2.3", lg, "as above",
         request(0xA2, 9, qry, tlv(lt["configure"]["mode"], bytes([mode["one_shot"]])) + tlv(lt["configure"]["rate"], struct.pack("<I", 20_000_000))
@@ -783,6 +854,35 @@ def ops() -> dict:
         rej(0xA2, "malformed"))
 
     # capture §2.2: a segment the probe could not keep seamless is not handed out; the track stops in error
+    minimal = {"19":"oep.fixture.logic"}
+    add("logic start: bounded CPU capture finishes before the reply", "capture §3.2", minimal,
+        "mode1, immediate, 16ms CPU capture, max_op_ms50; generation0 before; capture completes and request service resumes before this reply; lease uses core rules",
+        request(0xE0,19,op("oep.fixture.logic","start"),b"",S),ok(0xE0,struct.pack("<I",1)))
+    add("logic release: not offered by a one-shot-only fn", "capture §3.2", minimal,
+        "mode1 only; ops10,11,12,14,15,16; no release handler",
+        request(0xE1,19,op("oep.fixture.logic","release"),struct.pack("<II",1,0),S),rej(0xE1,"unknown_operation"))
+    add("logic release: old generation is refused before the one-shot no-op", "capture §3.2", minimal,
+        "release offered; mode1; current generation2; current data unchanged",
+        request(0xE2,19,op("oep.fixture.logic","release"),struct.pack("<II",1,0),S),rej(0xE2,"unavailable",tlv(1,b"\6")))
+    add("logic start: generation exhausted without clearing current data", "capture §0, §3.2", minimal,
+        "current generation0xFFFFFFFF, state4, previous data retained; no new generation until reboot",
+        request(0xE3,19,op("oep.fixture.logic","start"),b"",S),rej(0xE3,"unavailable",tlv(1,b"\2")))
+    add("logic read: maximum u16 request, response constrained by frame", "capture §3.2", minimal,
+        "generation1; 48 retained bytes at0; max_frame64; no marks/timing TLVs",
+        request(0xE4,19,op("oep.fixture.logic","read"),struct.pack("<IQH",1,0,65535)),
+        ok(0xE4,struct.pack("<QBH",0,0,48)+bytes(range(48))))
+    analog = {"20":"oep.fixture.analog"}
+    act = IFACE["oep.fixture.analog"]["tlv"]["configure_answer"]
+    for roles,skews,corr in (([0],[0],0xE5),([0,1],[1],0xE6)):
+        result=tlv(act["actual_rate"],struct.pack("<II",1000,1))+tlv(act["layout"],bytes([16,0,12,len(roles),*roles]))
+        result+=tlv(act["actual_samples"],struct.pack("<I",10))
+        result+=b"".join(tlv(act["scale"],struct.pack("<Bii",r,0,1000000)) for r in roles)
+        result+=b"".join(tlv(act["skew"],struct.pack("<BI",r,5)) for r in skews)
+        at=IFACE["oep.fixture.analog"]["tlv"]["configure"]
+        payload=tlv(at["mode"],b"\1")+tlv(at["rate"],struct.pack("<I",1000))+tlv(at["samples"],struct.pack("<I",10))
+        add(f"analog configure: {len(roles)} roles and one nonzero skew without optional diagnostics", "capture §3.3", analog,
+            "mode1; given plan roles; no calibration op; scale is pin-voltage estimate; frontend/reference diagnostics omitted",
+            request(corr,20,op("oep.fixture.analog","configure"),payload,S),ok(corr,result))
     lst = IFACE["oep.fixture.logic"]["enum"]
     drop = ("repeat, 1 channel w 1, samples 8000 (1000 bytes a segment), generation 1: serials 0 and 1 done, then the capture ring "
             "overflowed inside serial 2")
@@ -794,101 +894,27 @@ def ops() -> dict:
     add("logic segments: the dropped segment is not handed out", "capture §2.2, common §1.3", lg, drop,
         request(0x91, 9, op("oep.fixture.logic", "segments"), struct.pack("<I", 0)), ok(0x91, bytes([0, 2]) + b"".join(segs)))
     add("logic read: nothing of the dropped segment", "capture §2.2, §3.2", lg, drop + "; write_pos 2000",
-        request(0x92, 9, op("oep.fixture.logic", "read"), struct.pack("<IQI", 1, 2000, 64)), ok(0x92, struct.pack("<QBI", 2000, 0, 0)))
+        request(0x92, 9, op("oep.fixture.logic", "read"), struct.pack("<IQH", 1, 2000, 64)), ok(0x92, struct.pack("<QBH", 2000, 0, 0)))
 
-    # multirate (capture §5): fn 9 declares multirate; fn 16 is a logic fn that does not
-    mrf = {"9": "oep.fixture.logic"}
-    lo = IFACE["oep.fixture.logic"]
-    ld, lc, la = lo["tlv"]["describe"], lo["tlv"]["configure"], lo["tlv"]["configure_answer"]
-    pol = lo["enum"]["multirate_policy"]
-    trig = lo["enum"]["trigger"]
-    logic_ops = [o["code"] for o in lo["op"]]
-    mr_state = ("fn 9: roles 0-3 applied by plan_apply on channels 20-23 (the describe vector's role_channels: each role on channels 20-23); "
-                "describe as the describe vector (rate_range 1 kHz-100 MHz exact, max_samples 1000000, multirate "
-                "policies 7, d 2-128 (d 1 always), powers of 2 only); the virtual bench keeps 100 MHz unless every role is edge_latch (then 40 MHz) and always answers L 32")
-    add("logic describe: multirate declared", "capture §3.5, §5.1; core §7.3", mrf, mr_state,
-        request(0x93, 0, op("core", "describe"), struct.pack("<HH", 9, 0)),
-        ok(0x93, bytes([0]) + tlv(REG["describe_common"]["ops"], ops_value(logic_ops))
-           + b"".join(tlv(REG["describe_common"]["role_channels"], struct.pack("<BH", k, 20) + bytes([0x0F])) for k in range(4))
-           + tlv(ld["mode"], struct.pack("<BII", mode["one_shot"], 1_000_000, 1)) + tlv(ld["mode"], struct.pack("<BII", mode["repeat"], 1_000_000, 8))
-           + tlv(ld["rate_range"], struct.pack("<IIB", 1000, 100_000_000, 1)) + tlv(ld["channels"], bytes([4]))
-           + tlv(ld["trigger"], struct.pack("<II", 1 << trig["immediate"] | 1 << trig["level"] | 1 << trig["edge"], 1_000_000))
-           + tlv(ld["multirate"], struct.pack("<IIIB", 0b111, 2, 128, 1))))
-
-    def mr(role, policy, d, param):
-        return tlv(lc["multirate"] | CRITICAL, struct.pack("<BBII", role, pol[policy], d, param))
-
-    def mr_answer(rate, w, pos, L, samples):
-        return (tlv(la["actual_rate"], struct.pack("<II", rate, 1)) + tlv(la["layout"], bytes([w, len(pos)] + pos))
-                + tlv(la["block"], struct.pack("<I", L)) + tlv(la["actual_samples"], struct.pack("<I", samples))
-                + tlv(la["blocking_ms"], struct.pack("<I", 0)))
-
-    def base(samples, rate=100_000_000, m="one_shot"):
-        return (tlv(lc["mode"], bytes([mode[m]])) + tlv(lc["rate"], struct.pack("<I", rate))
-                + tlv(lc["samples"], struct.pack("<I", samples)))
-
-    example = mr(0, "any_active", 32, 0) + mr(3, "sample", 4, 1)
-    add("logic configure multirate: the capture §5.7 example", "capture §5.2, §5.3, §5.7", mrf, mr_state + "; session S holds the lock",
-        request(0x94, 9, cfg, base(96) + example, S), ok(0x94, mr_answer(100_000_000, 2, [0, 1], 32, 96)))
-    add("logic query multirate: the same answer, nothing changed", "capture §3.3, §5.3", mrf, mr_state + "; configured as the configure vector",
-        request(0x95, 9, qry, base(96) + example), ok(0x95, mr_answer(100_000_000, 2, [0, 1], 32, 96)))
-    add("logic configure multirate: samples 72 rounded up to a multiple of L", "capture §5.2", mrf, mr_state + "; session S",
-        request(0x96, 9, cfg, base(72) + example, S), ok(0x96, mr_answer(100_000_000, 2, [0, 1], 32, 96)))
-    heavy = b"".join(mr(k, "edge_latch", 2, 1) for k in range(4))
-    add("logic query multirate: rate = max_hz on a heavy combination answers the highest rate kept", "capture §5.2", mrf, mr_state,
-        request(0x97, 9, qry, base(96) + heavy), ok(0x97, mr_answer(40_000_000, 1, [], 32, 96)))
-    corr = 0x98
-    for name, body, reason, payload in (
-        ("d 0", mr(0, "sample", 0, 0), "malformed", b""),
-        ("sample with phase = d", mr(3, "sample", 4, 4), "malformed", b""),
-        ("any_active with param 2", mr(0, "any_active", 32, 2), "malformed", b""),
-        ("edge_latch with d 1", mr(0, "edge_latch", 1, 1), "malformed", b""),
-        ("the same role twice", mr(3, "sample", 4, 1) + mr(3, "sample", 8, 0), "malformed", b""),
-        ("a reserved policy (3)", tlv(lc["multirate"] | CRITICAL, struct.pack("<BBII", 0, 3, 4, 0)), "unsupported", bytes([lc["multirate"] | CRITICAL])),
-        ("d 3 where only powers of 2 are declared", mr(3, "sample", 3, 0), "unsupported", bytes([lc["multirate"] | CRITICAL])),
-        ("d 256 above max_d", mr(3, "sample", 256, 0), "unsupported", bytes([lc["multirate"] | CRITICAL])),
-        ("a role not in the plan", mr(4, "sample", 4, 0), "unavailable", tlv(unav["cause"], bytes([cause["wrong_state"]]))),
-    ):
-        add(f"logic configure multirate: {name}, {reason}", "capture §5.2", mrf, mr_state + "; session S",
-            request(corr, 9, cfg, base(96) + body, S), rej(corr, reason, payload))
-        corr += 1
-    add("logic configure multirate on a fn that does not declare it: unsupported with the critical tag", "capture §5.2, core §2.3",
-        {"16": "oep.fixture.logic"}, "session S; fn 16 is a logic fn whose describe has no multirate; plan roles 0-3",
-        request(corr, 16, cfg, base(96) + example, S), rej(corr, "unsupported", bytes([lc["multirate"] | CRITICAL])))
-    corr += 1
-    trig_cfg = (tlv(lc["trigger"], struct.pack("<BBI", trig["edge"], 0, 1)) + tlv(lc["pretrigger"], struct.pack("<I", 13)))
-    add("logic segments multirate: a stopped segment, trigger_index in base samples on the any_active role", "capture §2.2, §5, §5.7", mrf,
-        mr_state + "; configured as the configure vector plus trigger (edge, role 0, falling) and pretrigger 13; generation 1; role 0 fell at "
-        "base sample 13 of the segment, the host stopped at base sample 72 (the §5.7 input)",
-        request(corr, 9, op("oep.fixture.logic", "segments"), struct.pack("<I", 0)),
-        ok(corr, bytes([0, 1]) + struct.pack("<IQIQIIBI", 0, 0, 72, 5_000_000, 10, 13, lo["enum"]["segment_flag"]["short"], 1)))
-    corr += 1
-    trig_note = hx(trig_cfg)
-    add("capture-group bind: a multirate logic and an analog, the logic as trigger_track", "capture §4.1, §5.6",
-        {"12": "oep.fixture.capture-group", "9": "oep.fixture.logic", "13": "oep.fixture.analog"},
-        "session S; fn 9 configured multirate one-shot (the configure vector plus the TLVs " + trig_note + ": edge, role 0, falling, pretrigger "
-        "13 base samples); fn 13 configured one-shot with an immediate trigger; fn 12's tracks list both",
-        request(corr, 12, op("oep.fixture.capture-group", "bind"),
-                struct.pack("<BHH", 2, 9, 13) + tlv(IFACE["oep.fixture.capture-group"]["tlv"]["bind"]["trigger_track"], struct.pack("<H", 9)), S),
-        ok(corr))
-    corr += 1
-    # capture §4.1: the group's pretrigger is the trigger_track's, kept as a time by every track: P_k = ceil(P * num_k * den_t / (den_k * num_t))
-    p_k = -(-100_000 * 48_000 * 1 // (1 * 20_000_000))
-    add("capture-group bind: a track cannot keep the group's pretrigger", "capture §4.1",
-        {"12": "oep.fixture.capture-group", "9": "oep.fixture.logic", "13": "oep.fixture.analog"},
-        "session S; fn 9 configured one-shot at actual_rate 20000000/1 with an edge trigger and pretrigger 100000 (5 ms); fn 13 configured "
-        f"one-shot at actual_rate 48000/1, immediate, actual_samples 4800, max_pretrigger 128; fn 13 would keep P_k = {p_k} > 128",
-        request(corr, 12, op("oep.fixture.capture-group", "bind"),
-                struct.pack("<BHH", 2, 9, 13) + tlv(IFACE["oep.fixture.capture-group"]["tlv"]["bind"]["trigger_track"], struct.pack("<H", 9)), S),
-        rej(corr, "unavailable", tlv(unav["cause"], bytes([cause["limit"]])) + tlv(unav["fn"], struct.pack("<H", 13))))
-
+    add("capture-group bind: non-immediate track is refused", "capture §4.1",
+        {"12":"oep.fixture.capture-group","9":"oep.fixture.logic","13":"oep.fixture.analog"},
+        "fn9 configured edge trigger; fn13 immediate; prior binding unchanged",
+        request(0x8A,12,op("oep.fixture.capture-group","bind"),struct.pack("<BHH",2,9,13),S),
+        rej(0x8A,"unavailable",tlv(1,b"\6")+tlv(5,struct.pack("<H",9))))
+    add("capture-group bind: future critical selector is refused", "capture §4.1, core §2.3",
+        {"12":"oep.fixture.capture-group"},"both tracks immediate, v1 defines no bind tags; no effects",
+        request(0x8C,12,op("oep.fixture.capture-group","bind"),struct.pack("<BHH",2,9,13)+tlv(0x81,struct.pack("<H",9)),S),
+        rej(0x8C,"unsupported",b"\x81"))
     # oep.fixture.capture-group (capture §4): the group's generation, then n x (fn, generation) in bind order, in the fixed part
     grp = {"12": "oep.fixture.capture-group", "9": "oep.fixture.logic", "13": "oep.fixture.analog"}
+    add("capture-group status: immediate group has no unused trigger fields", "capture §4.1", grp,
+        "group generation5, started at7ms, both tracks capturing",
+        request(0x8D,12,op("oep.fixture.capture-group","status"),b""),ok(0x8D,struct.pack("<BQI",3,7000000,5)))
     add("capture-group start: the group's and each track's new generation", "capture §4.1", grp,
         "session S; fn 12 bound to fn 9 then fn 13, both one-shot with immediate triggers; generations before: group 4, fn 9 3, fn 13 1; "
         "acquisition starts at 7 ms",
         request(0x8B, 12, op("oep.fixture.capture-group", "start"), b"", S),
-        ok(0x8B, struct.pack("<IQIB", 0, 7_000_000, 5, 2) + struct.pack("<HI", 9, 4) + struct.pack("<HI", 13, 2)))
+        ok(0x8B, struct.pack("<QIB", 7_000_000, 5, 2) + struct.pack("<HI", 9, 4) + struct.pack("<HI", 13, 2)))
 
     # oep.fixture.spi-target (fixture §4): wire bit k goes to byte k // 8, bit 7 - k % 8 (MSB first) or k % 8 (LSB first); missing bits 0
     def spi_pack(wire_bits: list[int], lsb_first: bool) -> bytes:
@@ -898,6 +924,12 @@ def ops() -> dict:
         return bytes(out)
 
     spi = {"14": "oep.fixture.spi-target"}
+    add("spi-target configure: known but unsupported mode preserves state", "fixture §4", spi,
+        "fn 14 has plan and modes=1 (mode0 only); previous mode0 state, queue, counters and arm remain unchanged",
+        request(0xCE,14,op("oep.fixture.spi-target","configure"),b"\3\0",S),rej(0xCE,"unsupported",b"\0"))
+    add("spi-target arm: preparation failed with no fixed result", "fixture §4", spi,
+        "configured with plan; driver cannot prepare output; no arm or queue/counter changes",
+        request(0xCF,14,op("oep.fixture.spi-target","arm"),struct.pack("<HH",1,1)+b"x",S),failed(0xCF))
     wire = [1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1]
     for corr, lsb in ((0x8C, False), (0x8D, True)):
         add(f"spi-target read_rx: 12 bits, {'LSB' if lsb else 'MSB'} first, a partial last byte", "fixture §4", spi,
@@ -906,7 +938,7 @@ def ops() -> dict:
             request(corr, 14, op("oep.fixture.spi-target", "read_rx"), b"", S),
             ok(corr, struct.pack("<BIH", 0, len(wire), 2) + spi_pack(wire, lsb)))
 
-    # events (core §11.2): role, fn, seq, kind, the fixed part; every capture event carries its generation (capture §3.4, §4.2)
+    # events (core §10.2): role, fn, seq, kind, the fixed part; every capture event carries its generation (capture §3.4, §4.2)
     events, data = [], []
 
     def event(name, spec, fns, state, fn, seq, kind, fixed, generation):
@@ -916,7 +948,7 @@ def ops() -> dict:
     le, ge = IFACE["oep.fixture.logic"]["event"], IFACE["oep.fixture.capture-group"]["event"]
     reason = IFACE["oep.fixture.logic"]["enum"]["stopped_reason"]
     after = "fn 9 subscribed; start answered generation 4 while generation 3's stop was still queued"
-    event("logic stopped of the previous generation, after the start answer", "capture §3.4, core §11.4", lg, after, 9, 7, le["stopped"],
+    event("logic stopped of the previous generation, after the start answer", "capture §3.4, core §10.4", lg, after, 9, 7, le["stopped"],
           struct.pack("<BBI", reason["host"], 0, 3), 3)
     event("logic triggered of the new generation", "capture §3.4", lg, after + "; the edge at sample 1000 of serial 0, at 7.05 ms", 9, 8,
           le["triggered"], struct.pack("<IIQI", 0, 1000, 7_050_000, 4), 4)
@@ -925,24 +957,31 @@ def ops() -> dict:
           struct.pack("<BBI", reason["error"], IFACE["oep.fixture.logic"]["enum"]["error"]["storage"], 1), 1)
     # capture §2.1 rule 2, §2.2: data of a segment may be sent before it ends; when the track stops in error the host drops what it got at
     # or past status's write_pos (the start of the segment that was not kept)
-    sdrop = ("streaming, 1 channel w 8, the probe's segments 16 samples (16 bytes), generation 1: serials 0 and 1 done (bytes 0-31); "
-             "bytes 24-39 sent in one frame; then the capture ring overflowed inside serial 2")
-    data.append({"name": "logic data: a frame running into the segment that is then lost", "spec": "capture §2.2, §3.4; core §11.2",
-                 "fns": lg, "state": sdrop, "generation": 1, "keep": 8,
-                 "frame_hex": hx(struct.pack("<BHHQH", REG["roles"]["data"], 9, 10, 24, 16) + bytes(range(24, 40))
-                                 + tlv(IFACE["oep.fixture.logic"]["tlv"]["data"]["generation"], struct.pack("<I", 1)))})
+    sdrop = ("streaming, w8, generation1, 16 samples/segment; bytes24-31 and32-39 in separate frames; "
+             "serial2 later lost in error, write_pos32")
+    for label,pos,origin,samples,seq,keep in (("retained bytes of previous segment",24,16,16,10,8),
+                                             ("a frame of the segment that is then lost",32,32,8,11,0)):
+        tail=tlv(IFACE["oep.fixture.logic"]["tlv"]["data"]["generation"],struct.pack("<I",1))
+        tail+=tlv(IFACE["oep.fixture.logic"]["tlv"]["data"]["segment_info"],struct.pack("<QIQI",origin,samples,1000000+origin*1000000,50))
+        data.append({"name":"logic data: "+label,"spec":"capture §2.2/§3.4","fns":lg,"state":sdrop,"generation":1,"keep":keep,
+                     "frame_hex":hx(struct.pack("<BHHQH",REG["roles"]["data"],9,seq,pos,8)+bytes(range(pos,pos+8))+tail)})
+    packed=bytes.fromhex('d158')  # samples 1,2,3,4,5 as 3-bit little-endian words; last padding bit0.
+    for offset,seq in ((0,20),(1,21)):
+        tail=tlv(1,struct.pack("<I",1))+tlv(2,struct.pack("<QIQI",0,5,1000000,50))
+        data.append({"name":f"logic data: w3 byte{offset}, first frame may be lost","spec":"capture §3.4", "fns":lg,
+                     "state":"independent w3 capture, five samples1/2/3/4/5; one segment at0; first frame is lost in recovery test",
+                     "layout":{"w":3,"pos":[0,1,2]},"generation":1,
+                     "frame_hex":hx(struct.pack("<BHHQH",4,9,seq,offset,1)+packed[offset:offset+1]+tail)})
     add("logic status: streaming stopped in error, write_pos at the lost segment's start", "capture §2.2, §3.2", lg, sdrop,
         request(0xA1, 9, op("oep.fixture.logic", "status"), b""),
         ok(0xA1, struct.pack("<BIQBI", lst["state"]["error"], 2, 32, lst["status_flag"]["dropped"], 1)
            + tlv(lt["status_answer"]["error"], bytes([lst["error"]["storage"]]))))
-    event("capture-group triggered: the group's generation", "capture §4.2", grp, "fn 12 subscribed; group generation 5; fn 9's trigger at 7.05 ms",
-          12, 0, ge["triggered"], struct.pack("<HQI", 9, 7_050_000, 5), 5)
-    event("capture-group stopped: the group's generation", "capture §4.2", grp, "as above; every track done", 12, 1, ge["stopped"],
+    event("capture-group stopped: the group's generation", "capture §4.2", grp, "fn12 subscribed, generation5; every track done", 12, 1, ge["stopped"],
           struct.pack("<BBI", reason["complete"], 0, 5), 5)
     return {
         "about": "Per-op byte vectors. `fns` says which interface each fn number is in the example; `state` is the probe state the answer assumes. "
                  "Requests with session_id 0x11223344 come from the session that holds the lock; lock-free requests carry 0. "
-                 "`events` are notification frames (core §11.2) with the generation each carries; `data` are data frames, with `keep` the bytes "
+                 "`events` are notification frames (core §10.2) with the generation each carries; `data` are data frames, with `keep` the bytes "
                  "from the frame's start the host keeps.",
         "cases": cases,
         "events": events,
@@ -986,111 +1025,6 @@ def logic_layout() -> dict:
     }
 
 
-# ---- multirate (capture §5) ----------------------------------------------------------------------------------
-
-MR_POLICY = IFACE["oep.fixture.logic"]["enum"]["multirate_policy"]
-
-
-def mr_value(x: str, policy: int, d: int, param: int, k: int) -> int:
-    """Value k of a reduced channel (capture §5.4); x[n] is the channel's level at base sample n."""
-    if policy == MR_POLICY["sample"]:
-        return int(x[k * d + param])
-    a, interval = param, range(k * d, (k + 1) * d)
-    if policy == MR_POLICY["any_active"]:
-        return a if any(int(x[n]) == a for n in interval) else 1 - a
-    edge = any(n >= 1 and int(x[n - 1]) != a and int(x[n]) == a for n in interval)     # from the previous base sample; none at n = 0
-    return int(x[(k + 1) * d - 1]) | edge << 1
-
-
-def mr_count(policy: int, d: int, param: int, r: int) -> int:
-    """The values a block of r base samples holds (capture §5.5): only those whose base samples are all in it."""
-    if policy == MR_POLICY["sample"]:
-        return max(0, -(-(r - param) // d))
-    return r // d
-
-
-def mr_segment(chans: list[str], desc: list, w: int, L: int) -> bytes:
-    """One segment's stream (capture §5.5). desc[c] is (policy, d, param), or None for a role sent no multirate TLV."""
-    samples = len(chans[0])
-    raw = [c for c, x in enumerate(desc) if x is None or (x[0] == MR_POLICY["sample"] and x[1] == 1)]
-    pos = list(range(len(raw)))
-    reduced = [c for c in range(len(chans)) if c not in raw]
-    out = bytearray()
-    for start in range(0, samples, L):
-        r = min(L, samples - start)
-        if raw:
-            out += pack_samples([chans[c] for c in raw], w, pos, start, r)                  # the D = 1 part, 0 to the byte boundary
-        bits = nbits = 0
-        for c in reduced:
-            policy, d, param = desc[c]
-            width = 2 if policy == MR_POLICY["edge_latch"] else 1
-            for j in range(mr_count(policy, d, param, r)):
-                bits |= mr_value(chans[c], policy, d, param, start // d + j) << nbits
-                nbits += width
-        out += bits.to_bytes((nbits + 7) // 8, "little")                                    # the reduced part, 0 to the byte boundary
-    return bytes(out)
-
-
-def multirate() -> dict:
-    cases = []
-    names = {v: k for k, v in MR_POLICY.items()}
-
-    def add(name, spec, w, L, desc, segments):
-        """segments: the channels' levels of each segment, in order; each segment starts its own block grid."""
-        raw = [c for c, x in enumerate(desc) if x is None]
-        roles = [None if x is None else {"policy": names[x[0]], "d": x[1], "param": x[2]} for x in desc]
-        cases.append({"name": name, "spec": spec, "roles": roles, "layout": {"w": w, "pos": list(range(len(raw)))}, "L": L,
-                      "segments": [{"samples": len(chs[0]), "channels": chs, "stream_hex": hx(mr_segment(chs, desc, w, L))}
-                                   for chs in segments]})
-
-    S, A, E = MR_POLICY["sample"], MR_POLICY["any_active"], MR_POLICY["edge_latch"]
-    n = 72
-    four = [
-        "".join("0" if i in (13, 70) else "1" for i in range(n)),
-        levels(n, set(range(0, 5)) | set(range(20, 24)) | set(range(32, 64, 2)) | {64, 65}),
-        levels(n, set(range(8, 12)) | {33} | set(range(66, 72))),
-        levels(n, set(range(2, 10)) | set(range(26, 64)) | set(range(68, 72))),
-    ]
-    add("four channels: any_active, two D = 1, sample d 4 phase 1; a segment stopped at 72 (r = 8)",
-        "capture §5.5, §5.7 (a reduced channel crossing a byte, the reduced part's trailing 0 bits, the values of a short last block)",
-        2, 32, [(A, 32, 0), None, None, (S, 4, 1)], [four])
-    add("L*w not a multiple of 8: the D = 1 part padded with 0", "capture §5.5, §5.7", 1, 4, [None, (S, 4, 0)],
-        [[levels(8, (0, 1, 2, 5)), levels(8, (0,))]])
-    add("w 3: three D = 1 channels and two reduced", "capture §1.1, §5.5, §5.7", 3, 4, [None, None, None, (S, 4, 0), (A, 2, 0)],
-        [[levels(8, (0, 1, 2, 5)), levels(8, (1, 3)), levels(8, (7,)), levels(8, (0, 4, 5)), "".join("0" if i == 2 else "1" for i in range(8))]])
-    add("no D = 1 channel (C = 0): the reduced part only", "capture §5.3, §5.5", 1, 8, [(S, 2, 1), (S, 8, 0)],
-        [[levels(16, (1, 3, 5, 8, 9, 15)), levels(16, (0, 9))]])
-    add("a reduced channel crossing a byte, and the reduced part's trailing 0 bits", "capture §5.5", 1, 16, [None, (S, 4, 0), (S, 2, 0)],
-        [[levels(16, (0, 15)), levels(16, (0, 8, 12)), levels(16, (0, 2, 6, 8, 14))]])
-    add("sample phase 3, a last block of r = 2: no value (ceil((r - phase) / D) = 0)", "capture §5.4, §5.5", 1, 8, [None, (S, 4, 3)],
-        [[levels(10, (0, 9)), levels(10, (3, 7, 9))]])
-    add("sample phase 3, a last block of r = 4: one value (ceil((r - phase) / D) = 1)", "capture §5.4, §5.5", 1, 8, [None, (S, 4, 3)],
-        [[levels(12, (0, 11)), levels(12, (3, 7, 11))]])
-    add("any_active, active-high, d 8", "capture §5.4", 1, 16, [(A, 8, 1)],
-        [[levels(32, (5, 16, 17, 31))]])
-    add("edge_latch, d 8, active-high: the §5.7 example", "capture §5.4, §5.7", 1, 16, [(E, 8, 1)],
-        [[levels(48, set(range(0, 3)) | set(range(8, 11)) | set(range(16, 24)) | set(range(30, 34)))]])
-    add("edge_latch: a pulse that starts at an interval's first base sample", "capture §5.4", 1, 16, [(E, 8, 1)],
-        [[levels(16, (8, 9, 10))]])
-    add("edge_latch: a pulse that covers a whole interval", "capture §5.4", 1, 16, [(E, 8, 1)],
-        [[levels(24, range(8, 16))]])
-    add("edge_latch: a pulse across a block boundary rises once", "capture §5.4", 1, 16, [(E, 8, 1)],
-        [[levels(32, range(14, 18))]])
-    add("edge_latch: base sample 0 is compared with nothing (no edge)", "capture §5.4", 1, 16, [(E, 8, 1)],
-        [[levels(16, range(0, 10))]])
-    add("repeat: a first segment short of pretrigger (r = 4), then the next segment starts its own grid",
-        "capture §3.3, §5.5", 1, 8, [None, (A, 4, 0)],
-        [[levels(12, (0, 1, 2, 9)), "".join("0" if i in (2, 9) else "1" for i in range(12))],
-         [levels(16, (3, 4, 15)), "".join("0" if i in (0, 13) else "1" for i in range(16))]])
-    return {
-        "about": "Multirate logic capture streams (capture §5). `roles[c]` is role c's multirate TLV (policy, d, param; param is phase for sample "
-                 "and the active level for any_active and edge_latch), null for a role sent none. `layout` is the answer's layout of the D = 1 "
-                 "channels (pos in role order), `L` the answer's block. Each segment gives the channels' levels by base sample (character n = "
-                 "the level at base sample n of the segment, roles in order) and its whole stream; the block grid starts at each segment's "
-                 "base sample 0. The bits of the D = 1 part no pos names are undefined (none here); the padding of both parts is 0.",
-        "cases": cases,
-    }
-
 def interface_profiles() -> dict:
     """Small declaration examples, not complete probes or operation traces."""
     rows = []
@@ -1102,6 +1036,19 @@ def interface_profiles() -> dict:
         ('raw ARM target', [(8, 'oep.wire.swd', [0x11, 0x12, 0x13],
                             [(0x01, b'\x01\0\0\x01'), (0x01, b'\x02\0\0\x02')]),
                            (9, 'oep.target.arm-adi', [0x10], [])]),
+        ('raw RISC-V target', [(4, 'oep.wire.rvswd', [0x11,0x12,0x13], []),
+                                (6, 'oep.target.riscv-dm', [0x10], [])]),
+        ('mode0 SPI target', [(14,'oep.fixture.spi-target',[0x10,0x11,0x12,0x13],
+                              [(0x41,b'\1'),(0x40,b'\1'),(0x03,struct.pack('<I',50)),
+                               (0x02,struct.pack('<I',1000000))]+[(0x01,struct.pack('<BHB',k,20+k,1)) for k in range(1,5)])]),
+        ('volatile pin settings', [(22,'oep.probe.config',[0x10,0x11,0x14],[(0x41,b'\2\3\7')])]),
+        ('one-shot logic capture', [(19,'oep.fixture.logic',[0x10,0x11,0x12,0x14,0x15,0x16],
+                                    [(0x40,struct.pack('<BII',1,16,0)),(0x41,struct.pack('<II',1,1000)),
+                                     (0x44,b'\1'),(0x45,struct.pack('<II',1,0)),(0x01,struct.pack('<BHB',0,1,1))])]),
+        ('receive-only SDI console', [(4, 'oep.wire.rvswd', [0x11,0x12,0x13], []),
+                                     (7, 'oep.target.console', [0x10,0x11,0x16,0x17], [(0x40,b'\x01\0')])]),
+        ('receive-only dmseq console', [(4, 'oep.wire.rvswd', [0x11,0x12,0x13], []),
+                                       (7, 'oep.target.console', [0x10,0x11,0x16,0x17], [(0x40,b'\x01\x02')])]),
     ):
         body = struct.pack('<HB', len(entries), len(entries))
         declarations = []
@@ -1114,7 +1061,7 @@ def interface_profiles() -> dict:
         listed = answer(1, COMPLETED, 0, body)
         assert len(listed) <= 64
         rows.append({'name': label, 'list_answer_hex': hx(listed), 'entries': declarations})
-    return {'about': 'Declaration byte examples for core-only, independent, minimal UART and raw ARM profiles. '
+    return {'about': 'Declaration byte examples for core-only, independent, minimal UART, raw ARM/RISC-V and console profiles. '
             'List entries have no flags byte. Each describe reply has more=0 and ops plus selected pin/format tags. '
             'These are not complete endpoint identity/capability dumps or runtime conformance traces.', 'profiles': rows}
 
@@ -1122,7 +1069,7 @@ def interface_profiles() -> dict:
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
          "refusals.json": refusals, "core_extensions.json": core_extensions,
          "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding,
-         "logic_layout.json": logic_layout, "multirate.json": multirate, "interface_profiles.json": interface_profiles}
+         "logic_layout.json": logic_layout, "interface_profiles.json": interface_profiles}
 
 
 def render(build) -> str:

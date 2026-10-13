@@ -1,5 +1,5 @@
 {
-  "about": "Declaration byte examples for core-only, independent, minimal UART and raw ARM profiles. List entries have no flags byte. Each describe reply has more=0 and ops plus selected pin/format tags. These are not complete endpoint identity/capability dumps or runtime conformance traces.",
+  "about": "Declaration byte examples for core-only, independent, minimal UART, raw ARM/RISC-V and console profiles. List entries have no flags byte. Each describe reply has more=0 and ops plus selected pin/format tags. These are not complete endpoint identity/capability dumps or runtime conformance traces.",
   "profiles": [
     {
       "name": "core only",
@@ -65,6 +65,154 @@
             16
           ],
           "describe_answer_hex": "0209000100000702001001"
+        }
+      ]
+    },
+    {
+      "name": "raw RISC-V target",
+      "list_answer_hex": "020100010002000204000000010e6f65702e776972652e72767377640600000001136f65702e7461726765742e72697363762d646d",
+      "entries": [
+        {
+          "fn": 4,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.wire.rvswd",
+          "ops": [
+            17,
+            18,
+            19
+          ],
+          "describe_answer_hex": "020400010000070200100e"
+        },
+        {
+          "fn": 6,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.target.riscv-dm",
+          "ops": [
+            16
+          ],
+          "describe_answer_hex": "0206000100000702001001"
+        }
+      ]
+    },
+    {
+      "name": "mode0 SPI target",
+      "list_answer_hex": "02010001000100010e00000001166f65702e666978747572652e7370692d746172676574",
+      "entries": [
+        {
+          "fn": 14,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.fixture.spi-target",
+          "ops": [
+            16,
+            17,
+            18,
+            19
+          ],
+          "describe_answer_hex": "020e00010000070200100f41010001400100010304003200000002040040420f0001040001150001010400021600010104000317000101040004180001"
+        }
+      ]
+    },
+    {
+      "name": "volatile pin settings",
+      "list_answer_hex": "02010001000100011600000001106f65702e70726f62652e636f6e666967",
+      "entries": [
+        {
+          "fn": 22,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.probe.config",
+          "ops": [
+            16,
+            17,
+            20
+          ],
+          "describe_answer_hex": "0216000100000702001013410300020307"
+        }
+      ]
+    },
+    {
+      "name": "one-shot logic capture",
+      "list_answer_hex": "02010001000100011300000001116f65702e666978747572652e6c6f676963",
+      "entries": [
+        {
+          "fn": 19,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.fixture.logic",
+          "ops": [
+            16,
+            17,
+            18,
+            20,
+            21,
+            22
+          ],
+          "describe_answer_hex": "021300010000070200107740090001100000000000000041080001000000e803000044010001450800010000000000000001040000010001"
+        }
+      ]
+    },
+    {
+      "name": "receive-only SDI console",
+      "list_answer_hex": "020100010002000204000000010e6f65702e776972652e72767377640700000001126f65702e7461726765742e636f6e736f6c65",
+      "entries": [
+        {
+          "fn": 4,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.wire.rvswd",
+          "ops": [
+            17,
+            18,
+            19
+          ],
+          "describe_answer_hex": "020400010000070200100e"
+        },
+        {
+          "fn": 7,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.target.console",
+          "ops": [
+            16,
+            17,
+            22,
+            23
+          ],
+          "describe_answer_hex": "02070001000007020010c34002000100"
+        }
+      ]
+    },
+    {
+      "name": "receive-only dmseq console",
+      "list_answer_hex": "020100010002000204000000010e6f65702e776972652e72767377640700000001126f65702e7461726765742e636f6e736f6c65",
+      "entries": [
+        {
+          "fn": 4,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.wire.rvswd",
+          "ops": [
+            17,
+            18,
+            19
+          ],
+          "describe_answer_hex": "020400010000070200100e"
+        },
+        {
+          "fn": 7,
+          "instance": 0,
+          "revision": 1,
+          "name": "oep.target.console",
+          "ops": [
+            16,
+            17,
+            22,
+            23
+          ],
+          "describe_answer_hex": "02070001000007020010c34002000102"
         }
       ]
     }

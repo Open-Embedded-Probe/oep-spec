@@ -87,11 +87,11 @@ def check(reg: dict) -> list[str]:
             sub, unsub = reg["constants"]["op_subscribe"], reg["constants"]["op_unsubscribe"]
             for c, want in ((sub, "subscribe"), (unsub, "unsubscribe")):
                 if c in codes and codes[c] != want:
-                    errors.append(f"{n}: op {codes[c]} = {c:#x} uses the number reserved for {want} (core §11.3)")
+                    errors.append(f"{n}: op {codes[c]} = {c:#x} uses the number reserved for {want} (core §10.3)")
                 if want in codes.values() and codes.get(c) != want:
-                    errors.append(f"{n}: op {want} must be {c:#x} (core §11.3)")
+                    errors.append(f"{n}: op {want} must be {c:#x} (core §10.3)")
             if (codes.get(sub) == "subscribe") != (codes.get(unsub) == "unsubscribe"):
-                errors.append(f"{n}: subscribe and unsubscribe go together (core §11.3)")
+                errors.append(f"{n}: subscribe and unsubscribe go together (core §10.3)")
         for context, tags in iface.get("tlv", {}).items():
             seen = {}
             for tag_name, tag in tags.items():

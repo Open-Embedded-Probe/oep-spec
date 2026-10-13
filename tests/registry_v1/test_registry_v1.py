@@ -36,7 +36,7 @@ def test_the_link_test_and_port_speed_are_oep_probe_link():
     assert not {o["name"] for o in reg["core"]["op"]} & {"link_source", "link_sink", "port_speed"}
     link = next(i for i in reg["interface"] if i["name"] == "oep.probe.link")
     assert {o["name"]: (o["code"], o["lock"]) for o in link["op"]} == {
-        "source": (0x10, False), "sink": (0x11, False), "port_speed": (0x12, True)}
+        "source": (0x10, False), "sink": (0x11, False), "port_speed": (0x12, True), "port_state": (0x13,False)}
     assert link["enum"]["port_speed_step"] == {"try": 0, "commit": 1, "revert": 2}
 
 
@@ -60,7 +60,7 @@ def test_the_core_has_no_name_and_keeps_only_what_is_mandatory():
 
 
 def test_target_family_is_a_string_when_present():
-    """core §13 rule 8: the target family is in the registry, not in the name."""
+    """core §12 rule 8: the target family is in the registry, not in the name."""
     reg, _ = gen.load()
     assert next(i for i in reg["interface"] if i["name"] == "oep.wire.rvswd")["target"]
     assert "target" not in next(i for i in reg["interface"] if i["name"] == "oep.fixture.gpio")
@@ -78,7 +78,11 @@ def test_common_tables_are_generated():
     reg, digest = gen.load()
     assert "kUsbVendorBulkSubclass = 0x4F" in gen.cpp(reg, digest)
     assert "kUsbProjectVid = 0x1209" in gen.cpp(reg, digest) and "kUsbProjectPid = 0x4F45" in gen.cpp(reg, digest)
-    assert '"mark_detail_closed"' in gen.py(reg, digest) and "COMMON" in gen.js(reg, digest)
+    assert '"mark_detail_lost"' in gen.py(reg, digest) and "COMMON" in gen.js(reg, digest)
+    assert reg['common']['enum']['mark_kind'] == {'lost':1,'clear':2,'host':3}
+    console = next(i for i in reg['interface'] if i['name'] == 'oep.target.console')
+    assert console['enum']['mark_kind'] == {'reset':0x40,'restart':0x41}
+    assert 'mark_detail_closed' not in reg['common']['enum']
 
 
 def test_a_broken_rule_is_reported():
@@ -126,11 +130,14 @@ def test_a_private_line_name_in_the_registry_is_reported():
     assert any("not a standard name" in e for e in gen.check(reg))
 
 
-def test_the_longest_wifi_set_is_wifi_min_max_frame():
-    """oep-if-probe-config §1.4: request header 10 + TLV header 3 + index, ssid_len, pass_len + 32-byte ssid + 64 hex digits."""
-    reg, _ = gen.load()
-    lim = reg["limits"]
-    assert lim["request_header_bytes"] + 3 + 3 + lim["wifi_ssid_max_bytes"] + lim["wifi_psk_hex_digits"] == lim["wifi_min_max_frame"]
+def test_settings_v1_contains_only_pin_items():
+    reg,_ = gen.load()
+    settings=next(i for i in reg['interface'] if i['name']=='oep.probe.config')
+    assert settings['tlv']['item']=={'label':2,'idle':3,'disable':7}
+    assert set(settings['tlv']['describe'])=={'storage','items'}
+    assert not any(key.startswith('wifi_') for key in reg['limits'])
+    gpio=next(i for i in reg['interface'] if i['name']=='oep.fixture.gpio')
+    assert 'drive_levels' not in gpio['tlv']['describe']
 
 
 def test_interface_operation_and_tlv_boundaries():
