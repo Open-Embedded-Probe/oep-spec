@@ -51,7 +51,8 @@ fixture UART の速さは別（そのインターフェースの configure と�
   - **決める**（step 1、試しの状態で、同じ baud、新しい速さで受ける）: **決めた**になる。
   - **戻す**（step 2、試し・決めたのどちらでも）: 応答（baud は起動時の速さ）を今の速さで送ってから起動時の速さに戻る。
   - 状態に合わない step（起動時の状態で決める、決めた後に決める、起動時の状態で戻す、試し・決めたの口で試す、試している baud と違う baud で
-    決める）は rejected unavailable（cause 6）。probe は同時に 1 つの口だけ上げる: 上げている口がある間の、別の口の試すも rejected unavailable（cause 6）。
+    決める、復帰保留中のstep 0/1/2）は rejected unavailable（cause 6）。ただし、下のidle復帰の保留を取り消す条件を満たした場合は、先に状態を「決めた」へ戻し、その状態でstepを判定する。
+    probe は同時に 1 つの口だけ上げる: 上げている口がある間の、別の口の試すも rejected unavailable（cause 6）。
 - **probe が自分で起動時の速さに戻る条件**（戻ったことは知らせない）:
   1. 試しのまま verify_ms が過ぎた。
   2. 決めた後、その口に正常なフレームが `port_speed_idle_ms`（3000 ms）来ない。正常なフレームを受けた時と応答を送った時から数え直す（要求を実行して
@@ -60,7 +61,9 @@ fixture UART の速さは別（そのインターフェースの configure と�
 - verify/idleのtimerは要求の処理中は進めない。復帰条件を満たしても、送受信中のframeや要求の応答を途中で速さを変えて壊さない。
   復帰が保留になったら新しい通知frameを始めず、現在の送信frameと受信frameの終了（または受信のgap/resync）を待って戻す。
   決めた状態で、元の所有sessionが残る間に正常な要求frameを受けた場合だけidle復帰の保留を取り消し、timerを数え直す。
-  session終了による復帰は、別sessionのframeで取り消さない。
+  この取消後のstep 0/1はcause 6で断り、step 2は「決めた」状態の戻す手順として受け付ける。
+  試しのverify期限切れ、またはsession終了による保留は取り消さず、step 0/1/2をcause 6で断る。拒否によって復帰条件やbaudを変えない。
+  いずれもcoreの見出し・再送・sessionの判定を先に行う（例えば終了済みsessionの新しい要求はno_session）。
   試し中のcommit要求がverify期限までに届かなければ、unavailable cause 6で断り、応答後のframe境界で戻す。
 - 試しと決めるの間、セッションの資源とロックは変わらない。通知の欠落は通常のseq/positionで扱い、保持量を増やす義務はない。
 

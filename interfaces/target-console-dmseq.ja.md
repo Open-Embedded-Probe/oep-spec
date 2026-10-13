@@ -45,7 +45,7 @@ debug moduleのDATA0とDATA1を使う（[コンソール](oep-if-console.ja.md) 
 
 ## CRC-8
 
-poly 0x07、init 0xFF、反転なし、最終 XOR なし。byte0 と payload（1+N または 1+M byte）にかけ、その直後に置く。
+poly 0x07、init 0xFF、反転なし、最終 XOR なし。byte0からpayloadの末尾までの合計1+N byte（target→host）または1+M byte（host→target）にかけ、payloadの直後にCRCを置く。
 
 計算方法は問わない（同じ値が出れば適合）。
 検査値: ASCII の 9 byte "123456789" → 0xFB。1 byte の 0x00 → 0xF3。

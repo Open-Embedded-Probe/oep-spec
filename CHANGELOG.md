@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- port_speedの復帰保留中は、取消可能なidle保留を先に解除してからstepを判定する。試行期限切れ・session終了の保留は全stepをcause 6で断る。短い処理上限とmax_op_msは、別経路を含む先行要求待ちを除くと明記する。
+- 設定のdisable/idleの併存はcause 5で副作用前に断り、malformedを重複キー・書式の誤りと区別する。criticalの例、共通マーク、CRC範囲、brokerと適合要件の参照、registryの任意op注記を現行の定義へ揃える。
+
 - keepalive / lock_state / clock の要求全体に min(max_op_ms, 1000 ms) の処理上限を定め、host の lease 選択に1要求の欠落と再送の余裕を含める。open / end の後始末は従来の max_op_ms のまま。
 - 出力 idle の取得はインターフェースが明記する場合だけ許し、それ以外は cause 5 で断る。同時使用の資源・処理能力不足は core の共通規則として cause 2 で断る。
 - 動作中の plan 判定を (role, channel) の集合に揃え、通信を止める capture の受信条件を明記する。raw DMI の reset/halt 待ちを1要求にまとめ、reset後の dmseq と block転送後の後始末失敗を明確にする。

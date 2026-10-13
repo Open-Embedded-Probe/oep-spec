@@ -28,7 +28,8 @@ Wi-Fiなどの経路設定は別の定義で扱う。設定はRAM上でもよく
   線の役目として名前を使うHostの慣行は[Hostガイド](../docs/host-development-guide.ja.md) §5.3。
 - disableはそのchannelの駆動/設定を行わない指定で、起動時と解放時の空き状態の設定より先に効く。
   firmwareの宣言を広げず、無効なchannelを使う要求はunavailable cause 5。
-  使用中のchannelをdisableするsetはunavailable cause 1。idleとdisableを同じchannelに持つ設定はmalformed。
+  使用中のchannelをdisableするsetはunavailable cause 1。変更後の設定で同じchannelにidleとdisableが併存するsetは、設定の使用制限との競合としてunavailable cause 5で断る。
+  設定・世代・ピンは変えない。併存を解くには、先に競合する項目をunsetする。重複キーや項目の長さの誤りはmalformedのままである。
   disableをunsetしたchannelは、ただちに空き状態へ戻す。
 - idleは空きのchannelの状態（core §8）。空きのchannelへの変更はただちに効き、使用中なら次に空きになったときに効く。
   idleが無いchannelはHi-Z。mode 3/4の出力の強さはProbeが決める。

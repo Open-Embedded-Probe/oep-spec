@@ -165,7 +165,8 @@ session終了時は使用中の資源を解放するが、boot内の割当カウ
 IDを消費するのは番号を割り当てる作成で、すべての要求ではない。例えばplan_applyは番号を返さず、接続を維持したread/writeも番号を増やさない。
 作成失敗で予約済み番号が欠番になる場合はある。同時に使える資源数と、boot中のID作成総数を分けて考える。
 
-**max_op_ms**（0x4D、必須）: 1 つの要求にかかる最長の時間。save、flash のローダー、attach、scan、reset も含む。1〜`max_op_ms_max`（600000 ms）。
+**max_op_ms**（0x4D、必須）: 1つの要求自身の検証・内部の再試行・実行・後始末・応答生成を含む最長の処理時間。
+同じ経路・別経路の先行要求待ちと経路の転送時間は除く。save、flashのローダー、attach、scan、resetも含む。1〜`max_op_ms_max`（600000 ms）。
 引数がそれを超えうる op は unsupported で断る。host は来ない応答を max_op_ms + `host_wait_add_ms` 待つので、要る分よりずっと大きく宣言しない。
 keepalive / lock_state / clock は、max_op_ms が大きくても min(max_op_ms, core_quick_op_max_ms) 内で要求全体を処理する（core §4.4）。
 

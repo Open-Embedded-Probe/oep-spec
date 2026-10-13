@@ -603,6 +603,22 @@ def ops() -> dict:
         "UART bridge at921600, previous owner ended; frame in progress; normal requests cannot cancel session-ended fallback",
         request(0x26,1,op("oep.probe.link","port_state"),b""),ok(0x26,struct.pack("<IB",921600,3)))
 
+    for step in (0, 1, 2):
+        corr = 0x110 + step
+        add(f'link port_speed: verify fallback pending refuses step {step}', 'link §3', link,
+            'session S live on this route; phase3 at921600 after try verify expiry; old notification frame still draining; refusal does not cancel fallback or change baud',
+            request(corr,1,op('oep.probe.link','port_speed'),struct.pack('<IBH',921600,step,2000),S),
+            rej(corr,'unavailable',tlv(1,bytes([6]))))
+        corr = 0x113 + step
+        add(f'link port_speed: idle fallback pending applies step {step} after cancellation', 'link §3', link,
+            'session S remains original owner; phase3 at921600 due only to committed idle expiry; normal request cancels pending fallback before step check; phase2 is restored',
+            request(corr,1,op('oep.probe.link','port_speed'),struct.pack('<IBH',921600,step,2000),S),
+            ok(corr,struct.pack('<I',115200)) if step == 2 else rej(corr,'unavailable',tlv(1,bytes([6]))))
+    add('link port_speed: ended session checked before pending phase', 'core §4.3, link §3', link,
+        'session S ended; phase3 waits for old frame; no session owner; no state or baud change',
+        request(0x116,1,op('oep.probe.link','port_speed'),struct.pack('<IBH',921600,2,2000),S),
+        rej(0x116,'no_session'))
+
     # oep.fixture.gpio (fixture §1)
     gpio = {"2": "oep.fixture.gpio"}
     gset, gread = op("oep.fixture.gpio", "set"), op("oep.fixture.gpio", "read")
@@ -818,6 +834,16 @@ def ops() -> dict:
         request(0x7B,8,op("oep.probe.config","state"),b""),ok(0x7B,struct.pack("<BIB",pce["storage_state"]["partial"],0,pce["storage_unreadable"]["item"])))
     add("probe.config set: changed contents at exhausted generation refused", "settings §2", pc,"generation0xFFFFFFFF unchanged; current contents retained",
         request(0x7C,8,pc_set,b"\1"+idle,S),rej(0x7C,"unavailable",tlv(1,b"\2")))
+
+    for corr, name, before, records in (
+        (0x117, 'disable conflicts with existing idle', 'idle channel4 exists, generation2', [tlv(disabled_tag,struct.pack('<H',4))]),
+        (0x118, 'idle conflicts with existing disable', 'disable channel4 exists, generation2', [idle]),
+        (0x119, 'disable and idle conflict in one set', 'empty generation1', [idle,tlv(disabled_tag,struct.pack('<H',4))]),
+    ):
+        add(f'probe.config set: {name}', 'settings §1/2, core §4.3', pc,
+            f'{before}; channel4 not in use; both item types supported; retain configuration, generation and pins',
+            request(corr,8,pc_set,bytes([len(records)])+b''.join(records),S),
+            rej(corr,'unavailable',tlv(1,bytes([5]))+tlv(2,struct.pack('<H',4))))
 
     # subscribe / unsubscribe (core §10.3): ops of the interface that sends notifications, 0x01 / 0x02 in the common operation range, no target fn
     sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]

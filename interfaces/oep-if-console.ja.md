@@ -135,4 +135,4 @@ mechanism 1 はこの郵便受けの並びだけで、connection の線には依
 
 | 仕様 | 使う部分 |
 |---|---|
-| RISC-V Debug Specification 0.13.2 と 1.0（DMSTATUS.version 2 と 3） | debug module の DATA0（DMI 0x04）、DATA1（DMI 0x05）、DMSTATUS（allhalted、allrunning、havereset）と、DATA0 と DATA1 も使う抽象コマンド |
+| RISC-V Debug Specification 0.13.2 と 1.0（DMSTATUS.version 2 と 3） | debug module の DATA0（DMI 0x04）、DATA1（DMI 0x05）、DMSTATUS（停止判定は§3のanyhalted、havereset）と、DATA0 と DATA1 も使う抽象コマンド |

@@ -277,6 +277,76 @@
       "answer_hex": "022600010000100e0003"
     },
     {
+      "name": "link port_speed: verify fallback pending refuses step 0",
+      "spec": "link §3",
+      "fns": {
+        "1": "oep.probe.link"
+      },
+      "state": "session S live on this route; phase3 at921600 after try verify expiry; old notification frame still draining; refusal does not cancel fallback or change baud",
+      "request_hex": "0110010100124433221100100e0000d007",
+      "answer_hex": "021001000401010006"
+    },
+    {
+      "name": "link port_speed: idle fallback pending applies step 0 after cancellation",
+      "spec": "link §3",
+      "fns": {
+        "1": "oep.probe.link"
+      },
+      "state": "session S remains original owner; phase3 at921600 due only to committed idle expiry; normal request cancels pending fallback before step check; phase2 is restored",
+      "request_hex": "0113010100124433221100100e0000d007",
+      "answer_hex": "021301000401010006"
+    },
+    {
+      "name": "link port_speed: verify fallback pending refuses step 1",
+      "spec": "link §3",
+      "fns": {
+        "1": "oep.probe.link"
+      },
+      "state": "session S live on this route; phase3 at921600 after try verify expiry; old notification frame still draining; refusal does not cancel fallback or change baud",
+      "request_hex": "0111010100124433221100100e0001d007",
+      "answer_hex": "021101000401010006"
+    },
+    {
+      "name": "link port_speed: idle fallback pending applies step 1 after cancellation",
+      "spec": "link §3",
+      "fns": {
+        "1": "oep.probe.link"
+      },
+      "state": "session S remains original owner; phase3 at921600 due only to committed idle expiry; normal request cancels pending fallback before step check; phase2 is restored",
+      "request_hex": "0114010100124433221100100e0001d007",
+      "answer_hex": "021401000401010006"
+    },
+    {
+      "name": "link port_speed: verify fallback pending refuses step 2",
+      "spec": "link §3",
+      "fns": {
+        "1": "oep.probe.link"
+      },
+      "state": "session S live on this route; phase3 at921600 after try verify expiry; old notification frame still draining; refusal does not cancel fallback or change baud",
+      "request_hex": "0112010100124433221100100e0002d007",
+      "answer_hex": "021201000401010006"
+    },
+    {
+      "name": "link port_speed: idle fallback pending applies step 2 after cancellation",
+      "spec": "link §3",
+      "fns": {
+        "1": "oep.probe.link"
+      },
+      "state": "session S remains original owner; phase3 at921600 due only to committed idle expiry; normal request cancels pending fallback before step check; phase2 is restored",
+      "request_hex": "0115010100124433221100100e0002d007",
+      "answer_hex": "021501010000c20100"
+    },
+    {
+      "name": "link port_speed: ended session checked before pending phase",
+      "spec": "core §4.3, link §3",
+      "fns": {
+        "1": "oep.probe.link"
+      },
+      "state": "session S ended; phase3 waits for old frame; no session owner; no state or baud change",
+      "request_hex": "0116010100124433221100100e0002d007",
+      "answer_hex": "0216010007"
+    },
+    {
       "name": "gpio set: channel 3 output high",
       "spec": "fixture §1",
       "fns": {
@@ -905,6 +975,36 @@
       "state": "generation0xFFFFFFFF unchanged; current contents retained",
       "request_hex": "017c000800114433221101030300040000",
       "answer_hex": "027c00000401010002"
+    },
+    {
+      "name": "probe.config set: disable conflicts with existing idle",
+      "spec": "settings §1/2, core §4.3",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "idle channel4 exists, generation2; channel4 not in use; both item types supported; retain configuration, generation and pins",
+      "request_hex": "01170108001144332211010702000400",
+      "answer_hex": "0217010004010100050202000400"
+    },
+    {
+      "name": "probe.config set: idle conflicts with existing disable",
+      "spec": "settings §1/2, core §4.3",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "disable channel4 exists, generation2; channel4 not in use; both item types supported; retain configuration, generation and pins",
+      "request_hex": "0118010800114433221101030300040000",
+      "answer_hex": "0218010004010100050202000400"
+    },
+    {
+      "name": "probe.config set: disable and idle conflict in one set",
+      "spec": "settings §1/2, core §4.3",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "empty generation1; channel4 not in use; both item types supported; retain configuration, generation and pins",
+      "request_hex": "01190108001144332211020303000400000702000400",
+      "answer_hex": "0219010004010100050202000400"
     },
     {
       "name": "logic subscribe: min_bytes 1024, max_delay_ms 20",

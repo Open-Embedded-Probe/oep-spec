@@ -26,7 +26,7 @@ mark を提供する場合は marks も提供する。marks を提供しない�
   1. あふれ（古いものから押し出す。target や相手を待たせない）。
   2. host の明示の消去（clear）。
   3. ストリームの解放、または probe の再起動。
-- target のリセットでは捨てない（リセット直前の出力が最も見たいことが多い）。マークの機能を持つ場合は、代わりにマークを付ける（§1.3）。
+- target のリセットでは捨てない（リセット直前の出力が最も見たいことが多い）。リセットのマークの有無と契機は、採用するインターフェースが定める（§1.3）。
 
 ### 1.2 read
 
@@ -63,8 +63,9 @@ mark : serial(u32)、position(u64)、kind(u8)、time_ns(u64)、detail(u8)       
 | 0x03 | host | host が付けた印 | host の値 |
 
 - マークの position は、probe がそのマークを付けた時の書き込みの位置である。position 以降のバイトはすべて、そのマークの出来事より後に受けた。
-- kind の空間: 0x01〜0x3F 標準、0x40〜0x7F インターフェース固有。detail の値は registry（`common.enum.mark_detail_*`）。0x40 以降は
-  インターフェース固有。resetやrestartなどの機能固有の契機とdetailは、採用するインターフェースが自分の範囲で定める。
+- kind の空間: 0x01〜0x3F 標準、0x40〜0x7F インターフェース固有。共通のlostのdetailはregistryの `common.enum.mark_detail_lost`。
+  インターフェース固有のdetailは、その定義とregistryの該当する `interface.enum.mark_detail_*` で定める。
+  共通kindのdetailの0x40以降もインターフェース固有。resetやrestartなどの機能固有の契機とdetailは、採用するインターフェースが定める。
 - `serial` はストリームごとのマークの通し番号（u32、一周する。core §2.6）。同じ位置に複数のマークが付いても、serial で
   落ちも重複もなく読める。
 - `time_ns` は probe の時計（起動からの ns、u64、core §2.7）。バイトごとの時刻は持たない。

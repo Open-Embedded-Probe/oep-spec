@@ -168,7 +168,7 @@ labelを線の役目に使う場合、`nrst`、`power_hi`、`power_lo`を慣行�
     その場で奪ってよい。
   - **transport が複数の probe**: lock_state で残り時間を読み、残りだけ待つ（上限は数秒）。持ち主が lease を更新し続けているなら、
     待たずに「使用中」とする。force は利用者が明示したときだけ使う（force は認証ではなく、TCP は信頼できる接続でだけ使う。transports §1、
-    §6.4）。
+    core §6.4）。
 - leaseは、要求1つの欠落を再送で回復する余裕を含めて選ぶ。最後の同じSIDの新規要求から次のkeepaliveまでの間隔をH、
   core §4.4のkeepalive再送待ちをW、再送要求がprobeへ届く転送時間をTとして、H + W + T + hostのスケジューリングの余裕を、受理されたleaseより十分小さくする。
   Wは min(max_op_ms, core_quick_op_max_ms) + host_wait_add_ms + 転送の時間で、最大の処理分は1000 msである。
@@ -245,8 +245,9 @@ rejected は要求が受け付けられなかったこと、completed failed / p
 - **応答の読み方**: 固定部分の後ろは TLV の並び。知らない tag は読み飛ばす。繰り返さない tag は最初のものを使う。並びは要素に長さの
   無い `count × element` なので、要素は定義のとおりにフィールドごとに読む。固定の形は末尾を延ばされない。長さが定義と違う TLV の値は
   壊れている（core §2.3）。新しい情報は新しい tag で来る。応答の中で bit 7 の立った TLV は知らない tag として扱う。
-- **要求の送り方**: 効かなければ意味の無い TLV か、効かないと害のある TLV（pins、速さの上限など）には critical の bit を立てる（core §2.3）。
+- **要求の送り方**: 効かなければ意味の無い TLV か、効かないと害のある TLV（attachのreset、scanのmax_speedなど）には critical の bit を立てる（core §2.3）。
   その tag を実装しない probe は critical なら断り、そうでなければ黙って無視する。実装する probe は bit によらず値を確かめる。
+  attachのpinsとmax_speedは固定部分なので、このcriticalの規則ではなく固定部分の検証で扱う。
   要求の TLV の値を後ろに延ばさない（core §2.3）。繰り返さない tag を繰り返さない。
 - **応答の知らない値**: 知らない resolution、outcome、status、reason は失敗。知らない kind の出来事は捨てる（seq は数える）。ほかの enum
   の知らない値（cause、scan の種類）は不明として見せる。flags の予約の bit は無視する（core §2.4）。
@@ -256,6 +257,8 @@ rejected は要求が受け付けられなかったこと、completed failed / p
 
 - どの op も 1 つの応答で終わる。時間のかかる op（run、キャプチャの configure、save、attach、scan、reset）は、応答が来るまで待つ。
   待ちはmax_op_ms + host_wait_add_ms + 転送の時間を基本にする（core §4.4）。操作が要求全体の短い上限を定める場合だけ、その上限を使う。
+- 別経路の先行要求を待つ時間は処理上限へ含めない。短い上限のclock等も、別経路の長いopを待つ場合は、送信からその上限までに応答が届く保証ではない。
+  別経路の未解決要求が分かるhostはその待ちも考慮し、分からない場合も、時間切れだけで再起動や二重実行を判断せずcore §5.1で復旧する。
 - run の間、probe はほかの要求に答えない（[OEP core](oep-core.ja.md) §4.4）。実行・準備・後始末はmax_op_msに含まれ、実行中はleaseを数えない。
 - 書き込みのように多くの要求を送る処理は、lease が切れないよう、普段の要求か keepalive でロックを保つ。
 

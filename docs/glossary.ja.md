@@ -15,8 +15,8 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | probe | probe | OEP を話す装置。OEP の要求に自分で答える端点もすべて | core §1、transports §1 |
 | host | host | probe を使うソフトウェア | core §1 |
 | target | target | probe がつながる相手（開発中の MCU） | core §1 |
-| ブローカー | broker | 複数の道具を 1 つのセッションに束ねる host の側のソフトウェア。probe に対しては host | transports §1 |
-| 中継のブローカー | relaying broker | セッションの op に自分で答え、ほかを 1 つの probe に中継するブローカー | transports §1、core §5.1 |
+| ブローカー | broker | 複数の道具の利用を束ねるソフトウェア。OEPの要求に自分で答える端点としてはprobe、下流のprobeを使う側としてはhost | transports §1 |
+| 中継のブローカー | relaying broker | OEPの要求へ自分では答えず、下流のprobeへ要求と応答を中継するブローカー。下流に対してはhost | transports §1 |
 | core（本体） | core | どの probe と host も実装するもの。名前を持たず fn 0 で話し、list に載らない。版はプロトコルの revision | core §0 |
 | oep インターフェース | oep interface | 名前が `oep.` で始まるインターフェースの略。project 自身のもので、逆 DNS の名前の代わりに短い `oep.` の名前を持つ。ほかのどのインターフェースとも同じに扱う | core §12 |
 | 独自のインターフェース | third-party interface | 逆 DNS の名前で、それを定めた者の文書が定めるインターフェース。OEP を伸ばす者は誰でもこれを使う。ほかのどのインターフェースとも同じに扱う | core §12 |
@@ -121,7 +121,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | unit_id | unit_id | 個体の識別子。`a-z 0-9 -` の 1〜32、USB の serial number と等しい | core §7.5 |
 | `x-` の unit_id | `x-` unit_id | 一意でない unit_id。まとめにも名指しにも使わない | core §7.5 |
 | model、chip、firmware | model, chip, firmware | probe の種類、その MCU、firmware の自由な文字列 | core §7.5 |
-| max_op_ms | max_op_ms | probe が 1 つの要求にかける最長の時間 | core §7.5 |
+| max_op_ms | max_op_ms | 1つの要求自身の検証・内部の再試行・実行・後始末・応答生成を含む最長の処理時間。同じ経路・別経路の先行要求待ちと経路の転送時間は除く | core §4.4、§7.5 |
 | label | label (firmware) | firmware の固定の channel の名前 | core §7.5 |
 | アドレス | address | `oep://<unit_id>[/<Hostのprofile name>]` | host ガイド §5.3 |
 | 線の試験 | link test | `oep.probe.link` の source と sink の op。経路を測る | link §2 |

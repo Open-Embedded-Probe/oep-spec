@@ -107,7 +107,7 @@ tag(u8) | len(u16) | value(len byte)
   **応答の固定部分の形は (op, resolution, outcome) ごとに
   op の定義が決める**（成功と失敗で形が違ってよい。インターフェースの共通部品 §3）。
 - **出来事とデータ**（§10.2）も応答と同じ: 固定部分の後ろは TLV の並び。
-- **要求**: 要求の後ろに足せるのは TLV の並びだけ。host は、効かなければ要求に意味が無いか、害がある項目（速さの上限、pins など）に
+- **要求**: 要求の後ろに足せるのは TLV の並びだけ。host は、効かなければ要求に意味が無いか、害があるTLV（attachのreset、scanのmax_speedなど）に
   **critical の bit を付ける**。
 - **知らない TLV**（この probe が実装しない tag）: critical なら、probe は要求を rejected unsupported（payload に受け取ったままの tag）で断る。
   critical でなければ無視する。
@@ -273,7 +273,10 @@ unsupported の payload の tag は、固定部分の値なら 0x00、TLV につ
   + 1000 ms（`host_wait_add_ms`）+ 転送の時間（[経路](oep-transports.ja.md) §6）。処理時間の上限は max_op_ms（§7.5）。操作の定義が、
   検証・内部の再試行・実行・後始末を含む要求全体について、それより短い上限を定める場合だけ、その上限を使ってよい。
   fn 0 の keepalive / lock_state / clock の要求全体の処理上限は、max_op_ms と `core_quick_op_max_ms`（1000 ms）の小さい方である。
-  この上限には検証と応答の組立ても含み、経路の転送時間と先行要求を待つ時間は含まない（§7.5 と同じ）。open / end の後始末にはこの短い上限を課さない。
+  この上限には検証と応答の組立ても含み、経路の転送時間と、同じ経路・別の経路の先行要求の処理が終わるのを待つ時間は含まない（§7.5 と同じ）。
+  起算はその要求自身の検証を始める時点で、検証後の内部待ちや後始末は含む。別経路の要求に割り込む処理や並列処理は要求しない。
+  別経路の先行要求待ちがある場合、送信から応答までがこの処理上限に収まる保証ではない。
+  open / end の後始末にはこの短い上限を課さない。
   引数の待ち時間だけを要求全体の上限として使わない。host は状態を変える要求の前に fn 0 の describe で max_op_ms を取得する。
   まだ取得していない間の confirm / list / describe / clock / lock_state は、1000 ms と転送の時間を待ってから再試行してよい。
   待ちは、要求を書き終えた時から始める。同じ経路に先の要求が未解決の間は、その 1 つ前の要求の応答が届いた時から始める（probe は順に答える）。
@@ -461,7 +464,7 @@ role の番号はインターフェースが定める。これらの値は固定
 | 0x46 | label | channel(u16)、text。**firmware（配線の profile）が持つ固定の** channel の名前（NRST など）。設定で付けた名前は、その設定を定めるインターフェースの op で読む（describe は宣言だけ、§7.3） |
 | 0x49 | transport | index(u8)、kind(u8)、interface(u8): USB CDC（kind 2）は CDC の通信の interface の bInterfaceNumber（その機能の最初の interface）。内蔵の USB シリアル（kind 3）は、ハードウェアが見せるその同じ番号、probe が知れなければ 0xFF。vendor bulk と HID はその interface の番号。UART bridge（kind 1）と TCP は 0xFF。probe の経路ごとに 1 つ。**必須** |
 | 0x4C | chip | text。probe の MCU の型番とリビジョン（任意） |
-| 0x4D | max_op_ms | u32。probe が1つの要求の検証・内部の再試行・実行・後始末を終えて応答を生成するまでの最長の時間。**必須**。1〜600000（`max_op_ms_max`、10 分）。明示的な待ちの引数がこれを超える要求は rejected unsupported（どの op かはインターフェースの文書が定める）。実行中は lease を数えない（§6.1）。値は probe が決める。host は §4.4 のとおり待つ |
+| 0x4D | max_op_ms | u32。probe が1つの要求自身の検証を始め、内部の再試行・実行・後始末を終えて応答を生成するまでの最長の処理時間。同じ経路・別経路の先行要求を待つ時間と経路の転送時間は含まない。**必須**。1〜600000（`max_op_ms_max`、10 分）。明示的な待ちの引数がこれを超える要求は rejected unsupported（どの op かはインターフェースの文書が定める）。実行中は lease を数えない（§6.1）。値は probe が決める。host は §4.4 のとおり待つ |
 
 - transport の kind: 1 UART bridge、2 USB CDC、3 内蔵の USB シリアル（MCU のハードウェアが持つ USB のシリアルの口で、serial number を含む USB の記述子を probe が選べないもの）、4 vendor bulk、5 HID、6 TCP（registry の `transport_kind`）。
   1〜3 がシリアルの口（[経路](oep-transports.ja.md) §4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を

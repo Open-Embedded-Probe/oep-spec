@@ -641,6 +641,39 @@ def test_raw_reset_halt_wait_is_one_frame_with_haltreq_preserved():
     assert struct.unpack('<HBHI', result[5:]) == (count, 0, 1, 1 << 9)
 
 
+def test_pending_port_speed_step_boundaries():
+    cases = {case['name']: case for case in load('ops.json')['cases']}
+    for step in (0, 1, 2):
+        for reason in ('verify', 'idle'):
+            name = (f'link port_speed: verify fallback pending refuses step {step}' if reason == 'verify'
+                    else f'link port_speed: idle fallback pending applies step {step} after cancellation')
+            case = cases[name]
+            request, result = bytes.fromhex(case['request_hex']), bytes.fromhex(case['answer_hex'])
+            assert struct.unpack_from('<IBH', request, 10) == (921600, step, 2000)
+            if reason == 'idle' and step == 2:
+                assert result[3:5] == bytes([1, 0])
+                assert struct.unpack('<I', result[5:]) == (115200,)
+            else:
+                assert result[3:5] == bytes([0, REG['reject_reasons']['unavailable']])
+                assert tlvs(result[5:]) == [(1, bytes([6]))]
+    ended = bytes.fromhex(cases['link port_speed: ended session checked before pending phase']['answer_hex'])
+    assert ended[3:] == bytes([0, REG['reject_reasons']['no_session']])
+
+
+def test_config_item_conflicts_are_usage_restrictions():
+    cases = {case['name']: case for case in load('ops.json')['cases']}
+    for name in ('disable conflicts with existing idle', 'idle conflicts with existing disable', 'disable and idle conflict in one set'):
+        case = cases[f'probe.config set: {name}']
+        request, result = bytes.fromhex(case['request_hex']), bytes.fromhex(case['answer_hex'])
+        count = request[10]
+        items = tlvs(request[11:])
+        assert len(items) == count and count in (1, 2)
+        assert len({(tag, struct.unpack_from('<H', value)[0]) for tag, value in items}) == count
+        assert all(len(value) == (3 if tag == 3 else 2) for tag, value in items)
+        assert result[3:5] == bytes([0, REG['reject_reasons']['unavailable']])
+        assert tlvs(result[5:]) == [(1, bytes([5])), (2, struct.pack('<H', 4))]
+
+
 def test_capture_events_carry_their_generation():
     """ops.json events: the capture events' fixed parts end with generation(u32) (oep-if-capture §3.4, §4.2)."""
     iface = {i["name"]: i for i in REG["interface"]}

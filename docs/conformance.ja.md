@@ -37,9 +37,9 @@ probe は、自分が出す transport とインターフェースについてこ
 
 **transport とフレーム**
 
-- transports §1 の transport を少なくとも一つ、そのフレームとともに（§1.2）。
-- シリアルの口: 両側を 0x00 で囲んだ COBS + CRC-16 のフレーム（transports §1）、受け方と生バイトの規則（transports §4）、UART ブリッジの
-  回線と起動時の速さ（transports §4）、DTR / RTS で何も決めない（transports §4）、セッションが口を持つ間の生転送の停止（transports §4）。
+- transports §1 の transport を少なくとも一つ、そのフレームとともに（core §1.2）。
+- シリアルの口: 両側を 0x00 で囲んだ COBS + CRC-16 のフレームとその受け方（transports §1）、途切れの規則（transports §2）、生バイトの規則（transports §4）、UART ブリッジの
+  回線と起動時の速さ（transports §4）、DTR / RTS で何も決めない（transports §4）。OEPのシリアル経路には、sessionの有無によらず生データ・ログ・起動メッセージを混ぜない（transports §4）。
 - vendor bulk と TCP: `length(u16) message`（transports §1）、vendor bulk の長さ 0 の転送の規則（transports §1）、TCP では途切れで読み直さない（transports §2）。
 - フレームの区切りを書き込み、転送、report、TCP の segment の区切りに頼らない。TCP 以外では、送るフレームの途中で `probe_frame_gap_ms` 止めない（transports §2）。
 - 経路（TCP の接続を含む）が閉じても、セッション、ロック、購読、送り直しの表は残し、閉じた経路への応答と通知は捨てる（transports §3）。
@@ -48,7 +48,8 @@ probe は、自分が出す transport とインターフェースについてこ
 - confirm の前でも 64 バイトまでのメッセージを受ける（transports §3）。max_frame を超えて送らない（transports §3）。
 - TCP で待ち受けて自分を広告するなら、DNS-SD の `_oep._tcp` を mDNS で広告し、TXT に `unit_id=<unit_id>` を載せる（port は SRV、transports §3）。
 - USB: probe が選べる口では シリアル番号 = unit_id（transports §3）。vendor bulk と HID は transports §3 の形で、それぞれ一つまで。
-- 自分で OEP の要求に答える端点は、後ろに何があっても probe である。中継する broker は transports §1 と core §5.1 に従う（probe への transport が無くなったら終わることを含む）。
+- 自分で OEP の要求に答える端点は、後ろに何があっても probe である（transports §1）。
+  下流probeへの経路を失った場合の、自分で答えるbrokerの資源の無効化と再生成はtransports §1に従う。
 
 **メッセージ、断り方、TLV**
 
