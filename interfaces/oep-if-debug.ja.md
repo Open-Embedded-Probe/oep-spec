@@ -282,6 +282,8 @@ raw dmiに、Probe自身の復元や追加の読み書きを挟まない。
 失敗時も、要求全体のmax_op_msのうちに後始末を試みる。戻す必要のある値やhaltreqを戻せない場合は、
 completed failed / partialを返してから、そのconnectionと依存streamを閉じる（共通部品 §2）。
 statusは後始末の失敗を表し、doneは済んだ手順・語の数のまま。targetが元の状態とは保証しない。
+read_block / write_block は、後始末が失敗した場合も done > 0 なら partial、done = 0 なら failed とする。
+全語の転送が済んだ done = count > 0 の場合も partial であり、転送の完了だけでは success にしない。
 復旧のためのreset/resumeは行わず、次のopやセッション終了まで復元を持ち越す表も要求しない。
 Hostは必要ならattachし直し、targetの状態を確かめて復旧する。
 
@@ -340,6 +342,9 @@ probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ�
   走っている間に要求が max_op_ms に達したら、probe はその手順で要求を終え、status timeout で答える（done = その手順の番号）。
 - **host は抽象コマンドの一連（data1 / data0 の書き込み、command、data0 の読み）を 1 つの dmi 要求に入れる**（probe が
   要求の間にコンソールの読みを挟んでも壊れない。`oep.target.console` §3）。
+- **haltreq / havereset を扱う一連の手順も、待ちの手順を使って 1 つの dmi 要求に入れる**。
+  例えばresetしてhaltを待つ場合は、haltreqを保ったresetの解除とhaveresetの確認応答、停止の確認、haltreqの解除までを同じ要求で行う。
+  consoleの読みが要求の間にhaveresetを確認応答するとDMCONTROLを書き、haltreqを下ろすため、要求をまたいでその保持に頼らない。
 
 ### 4.2 halt、resume、step
 
@@ -415,7 +420,8 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
 - attach は保留中の havereset を先に確認応答する（確認応答するまで DMSTATUS の halt / running を固定する DM がある）。
 - **haveresetの自動確認応答**は高水準のopとコンソールの読みで行う。raw dmiのopには追加の読み書きや確認応答を挟まず、Hostが指定した手順だけを実行する。
   自動確認応答の後、同じconnectionのdmseqを未同期へ戻す。marksを提供するconsole fnにはrestart（kind 0x41、detail 1）のマークを付ける。
-  probe自身のreset opが成功した場合はreset（kind 0x40、detail 1）を1つ付け、同じresetについてrestartを重ねない。
+  probe自身のreset opによるhaveresetの確認応答の後も、同じconnectionのdmseqを未同期へ戻す。
+  reset opが成功した場合はreset（kind 0x40、detail 1）を1つ付け、同じresetについてrestartを重ねない。
   attach時にはstreamが無いためマークを付けない。marksを提供しないfnにはマークの保持を要求しない。
   Hostがraw dmiでtargetをresetしたりhaveresetを確認応答したりする場合、必要なconsoleの同期初期化はstreamのclose/openで明示する。
 

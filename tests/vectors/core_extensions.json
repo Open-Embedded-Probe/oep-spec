@@ -3,7 +3,7 @@
   "cases": [
     {
       "name": "open with unknown response TLV",
-      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "spec": "core §2.3/4.2/4.3/6.4/7.6",
       "operation": "open",
       "fixed_answer_bytes": 8,
       "request_hex": "01010000001044332211b80b000000",
@@ -11,7 +11,7 @@
     },
     {
       "name": "keepalive with unknown response TLV",
-      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "spec": "core §2.3/4.2/4.3/6.4/7.6",
       "operation": "keepalive",
       "fixed_answer_bytes": 0,
       "request_hex": "01020000001244332211",
@@ -19,7 +19,7 @@
     },
     {
       "name": "end with unknown response TLV",
-      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "spec": "core §2.3/4.2/4.3/6.4/7.6",
       "operation": "end",
       "fixed_answer_bytes": 0,
       "request_hex": "01030000001144332211",
@@ -27,7 +27,7 @@
     },
     {
       "name": "clock with unknown response TLV",
-      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "spec": "core §2.3/4.2/4.3/6.4/7.6",
       "operation": "clock",
       "fixed_answer_bytes": 12,
       "request_hex": "01040000000400000000",
@@ -35,7 +35,7 @@
     },
     {
       "name": "no_session with unknown response TLV",
-      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "spec": "core §2.3/4.2/4.3/6.4/7.6",
       "operation": "keepalive",
       "fixed_answer_bytes": 0,
       "request_hex": "01050000001244332211",
@@ -43,7 +43,7 @@
     },
     {
       "name": "result_lost with unknown response TLV",
-      "spec": "core §2.3/4.2/4.3/6.4/7.7",
+      "spec": "core §2.3/4.2/4.3/6.4/7.6",
       "operation": "clock",
       "fixed_answer_bytes": 0,
       "request_hex": "01060000000444332211",

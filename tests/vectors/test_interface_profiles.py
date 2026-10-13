@@ -45,6 +45,8 @@ def test_minimal_declaration_bytes(profile):
     listed = bytes.fromhex(profile['list_answer_hex'])
     assert len(listed) <= 64
     assert list_entries(listed) == [(row['fn'], 0, 1, row['name']) for row in profile['entries']]
+    if any(row['name'].startswith('oep.fixture.') for row in profile['entries']):
+        assert any(row['name'] == 'oep.probe.plan' for row in profile['entries'])
     for row in profile['entries']:
         decoded = description(bytes.fromhex(row['describe_answer_hex']), row['fn'])
         bitmap = next(value for tag, value in decoded if tag == 7)
@@ -77,6 +79,8 @@ def test_minimal_declaration_bytes(profile):
             assert offered == {0x10,0x11,0x14}
             assert next(v for t,v in decoded if t==0x41)==b'\2\3\7'
             assert all(t!=0x40 for t,_ in decoded)
+        elif row['name'] == 'oep.probe.plan':
+            assert offered == {0x10, 0x11}
         elif row['name'] == 'oep.target.console':
             assert offered == {0x10,0x11,0x16,0x17}  # No marks or TX queue required.
             value = next(value for tag,value in decoded if tag == 0x40)

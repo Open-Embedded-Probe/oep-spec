@@ -45,7 +45,7 @@ fixture UART の速さは別（そのインターフェースの configure と�
 - UART が作れる最も近い速さが要求と `port_speed_tolerance_pct`（2 %）より大きく違えば rejected unsupported。応答の baud は実際に掛けた速さ。
   step 0/1の実際のbaudは起動時より高い値だけ。上げられない要求はunsupported（固定部分の印0）。
   step 0（試す）の verify_ms 0 は rejected malformed。step 1（決める）と step 2（戻す）では verify_ms に意味は無く、どの値も受ける。
-- 状態は口ごとに **起動時 / 試し / 決めた** の 3 つ。
+- port_stateが返す状態は口ごとに **起動時 / 試し / 決めた / 復帰保留** の 4 つ。復帰保留は、下の復帰条件を満たした後、frameの完了を待っている状態である。
   - **試す**（step 0、起動時の状態で受ける）: 応答を今の速さで送り終えてから、応答の baud に切り替えて**試し**になる。verify_ms を
     この要求の値で始める。
   - **決める**（step 1、試しの状態で、同じ baud、新しい速さで受ける）: **決めた**になる。

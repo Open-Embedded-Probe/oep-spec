@@ -67,8 +67,8 @@ wireへは決められた順とlittle endianでfieldごとに符号化する。p
 
 - UART bridge の probe は、いつも `uart_bridge_boot_baud`（115200 bps）8N1、流れの制御なしで起動する（transports §4）。起動時の速さを
   設定にしない: 設定を忘れると入れなくなり、未確認の速さの自動検出は避ける。
-- セッションの間だけ速くするのは port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3、任意）: `oep.probe.link` を list に出し、3 つの状態と戻る
-  条件を実装し、その describe の ops に op 0x12 を立てる。戻り先はいつも起動時の速さ。
+- セッションの間だけ速くするのは port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3、任意）: `oep.probe.link` を list に出し、復帰保留を含む4つの状態と戻る
+  条件を実装し、その describe の ops に port_speed（0x12）と port_state（0x13）を立てる。port_stateは今の速さと状態を返す。戻り先はいつも起動時の速さ。
 - USB CDC と内蔵の USB シリアルでは、線の設定は数字が渡るだけで速さに関係しない。無視する（transports §4）。
 
 ## 6. シリアルのフレーム専用の作り
@@ -167,11 +167,7 @@ IDを消費するのは番号を割り当てる作成で、すべての要求で
 
 **max_op_ms**（0x4D、必須）: 1 つの要求にかかる最長の時間。save、flash のローダー、attach、scan、reset も含む。1〜`max_op_ms_max`（600000 ms）。
 引数がそれを超えうる op は unsupported で断る。host は来ない応答を max_op_ms + `host_wait_add_ms` 待つので、要る分よりずっと大きく宣言しない。
-
-**boot_id**（core §6.5）: 起動のたびに新しい値。次の好ましい順に取る: ハードウェアの乱数。不揮発の記憶に置き、起動ごとに変える値
-（数え上げ、または保存した乱数）。どちらも無ければ、起動ごとに変わる値を混ぜたもの（初期化していない RAM、ADC の変換の雑音、
-最初の USB や UART の動きが来たときに読んだ止まらないタイマー）。起動のコードの決まった場所で読んだタイマーは毎回同じ値を返し、
-そうした値ではない。定数にしない。毎回同じになるライブラリの既定のままにもしない。
+keepalive / lock_state / clock は、max_op_ms が大きくても min(max_op_ms, core_quick_op_max_ms) 内で要求全体を処理する（core §4.4）。
 
 **時計**（core §2.7）: 起動からの ns（u64）。同じ boot_id の間、減らず、一周しない。ハードウェアの数え器が 64 bit より狭ければ
 （32 bit の µs の数え器は約 71.6 分で一周する）、一周の数でソフトウェアで広げ、一周を見逃さないだけの頻度で（main loop から）読む。

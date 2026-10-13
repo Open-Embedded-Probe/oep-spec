@@ -169,10 +169,15 @@ labelを線の役目に使う場合、`nrst`、`power_hi`、`power_lo`を慣行�
   - **transport が複数の probe**: lock_state で残り時間を読み、残りだけ待つ（上限は数秒）。持ち主が lease を更新し続けているなら、
     待たずに「使用中」とする。force は利用者が明示したときだけ使う（force は認証ではなく、TCP は信頼できる接続でだけ使う。transports §1、
     §6.4）。
-- lease は、対話的な道具は短く（2〜3 秒）、試験のセッションのように長く握る道具は長く（10 秒、keepalive で更新）。
+- leaseは、要求1つの欠落を再送で回復する余裕を含めて選ぶ。最後の同じSIDの新規要求から次のkeepaliveまでの間隔をH、
+  core §4.4のkeepalive再送待ちをW、再送要求がprobeへ届く転送時間をTとして、H + W + T + hostのスケジューリングの余裕を、受理されたleaseより十分小さくする。
+  Wは min(max_op_ms, core_quick_op_max_ms) + host_wait_add_ms + 転送の時間で、最大の処理分は1000 msである。
+  速い経路の対話的な道具は、例えばlease 5秒、keepalive間隔1秒から始める。遅い経路や大きいframeでは転送時間も計算し、必要ならleaseを伸ばす。
+  lease_max_msでも余裕を確保できない構成では、1frameの欠落からセッションを保ったまま回復する保証はない。
 
 再送で受け取るsuccessは、元の要求の結果である。leaseが既に切れていても保持した結果は返りうるが、ロックや資源は復活せず、再送でleaseも延びない（core §5.1/§9）。
 復旧時にはboot_idと状態を確認する。例えば同じSIDの新しいkeepaliveで所有を確認でき、no_sessionならそのSIDは終了済みである。
+再送したkeepaliveのsuccessだけで次の更新を遅らせず、新しいcorrのkeepaliveで更新する。
 別SIDの新しいセッションを開いたときは以前の資源を引き継がず、必要な接続やplanを明示的に作り直す。
 
 ## 7. ブローカー
@@ -215,7 +220,7 @@ rejected は要求が受け付けられなかったこと、completed failed / p
 | unknown_function（0x01） | その fn が無い（payload の中で指した fn も） | 手元の fn の対応表が古いか誤り。list し直す（fn の番号は boot_id が同じ間だけ有効、core §7.2）。そのインターフェースは使わない |
 | unknown_operation（0x02） | その fn にその op が無い | probe が実装していない任意の op（core §1.2）。任意の op は describe の ops（0x07）を見てから使う。ops を確かめて送らないときは、この応答と同じ失敗を報告し、呼び出し側がどちらでも 1 つのエラーを見るようにする |
 | malformed（0x03） | 要求の形が誤り | 自分の符号化の誤りか、どの revision でも除かれる値。そのまま送り直さず、要求を直す。要求のバイト列をログに残す |
-| unavailable（0x04） | 今の状態か今の資源ではできない | TLV を読む: cause（1 ピンが使用中、2 数の上限、3 保存の容量が足りない、4 グループに束ねられている、5 設定が持っている、6 状態が違う）、channel、fn。利用者に見せ、自分の資源を解くか順を変える。cause 5 は probe の設定（disable、出力の idle）が持っているので、要求ではなく設定を変える（どれが持つかは probe の設定の get で見る）。知らない cause は不明として見せる（core §2.4） |
+| unavailable（0x04） | 今の状態か今の資源ではできない | TLV を読む: cause（1 ピンが使用中、2 数・処理能力の上限、3 保存の容量が足りない、4 グループに束ねられている、5 設定が持っている、6 状態が違う）、channel、fn。利用者に見せ、自分の資源を解くか順を変える。cause 5 は probe の設定（disable、出力の idle）が持っているので、要求ではなく設定を変える（どれが持つかは probe の設定の get で見る）。知らない cause は不明として見せる（core §2.4） |
 | window_exceeded（0x06） | window / max_inflight を超えた | この経路の probe の上限を超えて先送りした。応答を待ち、新しい corr で送り直す（core §5.1: 直した要求は新しい corr で送る） |
 | no_session（0x07） | どのセッションもロックを持っていない: 自分のセッションが終わった（end、lease の期限切れ、force）か、probe が再起動した | セッションが作ったものはすべて解放された（core §9）。新しいセッションを開き、plan、attach、購読を張り直す。黙って続けない（§5）。再起動は open の boot_id で分かる |
 | locked（0x08） | 別のセッションがロックを持っている | payload に残りの ms と、あれば持ち主の文字列。待つか、持ち主を添えて「使用中」とするか、利用者が頼んだときだけ force で奪う（§6） |
@@ -254,6 +259,10 @@ rejected は要求が受け付けられなかったこと、completed failed / p
 - run の間、probe はほかの要求に答えない（[OEP core](oep-core.ja.md) §4.4）。実行・準備・後始末はmax_op_msに含まれ、実行中はleaseを数えない。
 - 書き込みのように多くの要求を送る処理は、lease が切れないよう、普段の要求か keepalive でロックを保つ。
 
+debugの高水準opで後始末が失敗すると、connectionと依存console streamが閉じ、未読の出力も失われる。
+必要なログは操作の前と実行の合間にconsole readでhostへ移しておく。線の故障直前のcrashログまで回収できる保証はない。
+raw dmiで抽象コマンドやresetからhalt待ちを組む場合は、待ちを含む一連を1要求に入れる（debug §4.1）。
+
 ## 12. 通知
 
 - 購読にはロックが要り、購読はセッションと一緒に終わる。監視だけの host はロック不要の read を使う。
@@ -284,6 +293,9 @@ rejected は要求が受け付けられなかったこと、completed failed / p
   probe は区画が終わる前にその区画のデータを送ることがある。トラックがエラーで止まったら（stopped reason 3、state 6）、status を読み、
   受けたデータのうち write_pos から先を捨てる（区画の中で落とした区画は、データではない。キャプチャ §2.2）。受けている
   間はロックを保つ。
+
+captureの世代は同じboot内で使い回さない。0xFFFFFFFFを使い切ると、既存データの読出し・解放はできるが、新しいstartは再起動までcause 2で断られる。
+再起動後はboot_idを確かめ、新しいsessionとplanから設定し直す（capture §0）。
 
 ## 13. plan とピン
 

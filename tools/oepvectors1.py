@@ -245,7 +245,7 @@ def core_extensions() -> dict:
         ("result_lost", "clock", b"", s, b"", REJECTED, REASON["result_lost"]),
     ]
     for corr, (name, operation, payload, sid, fixed, resolution, detail) in enumerate(cases, 1):
-        rows.append({"name": name + " with unknown response TLV", "spec": "core §2.3/4.2/4.3/6.4/7.7",
+        rows.append({"name": name + " with unknown response TLV", "spec": "core §2.3/4.2/4.3/6.4/7.6",
                      "operation": operation, "fixed_answer_bytes": len(fixed),
                      "request_hex": hx(request(corr, 0, op("core", operation), payload, sid)),
                      "answer_hex": hx(answer(corr, resolution, detail, fixed + tail))})
@@ -541,13 +541,13 @@ def ops() -> dict:
     add("plan_apply: gpio role 1 on channel 3", "oep-if-plan §2.1", pl,
         "session S holds the lock; channel 3 free and in gpio's role_channels for role 1; plan_roles not exceeded",
         request(0x14, 10, apply_, tlv(ra, struct.pack("<HBH", 2, 1, 3)), S), ok(0x14))
-    add("plan_apply naming fn 0: malformed", "oep-if-plan §2.5, core §4.3", pl, "session S",
+    add("plan_apply naming fn 0: malformed", "oep-if-plan §2.4, core §4.3", pl, "session S",
         request(0x15, 10, apply_, tlv(ra, struct.pack("<HBH", 0, 1, 3)), S), rej(0x15, "malformed"))
-    add("plan_apply naming a fn the probe does not have: unknown_function", "oep-if-plan §2.5, core §4.3", pl, "session S; no fn 12",
+    add("plan_apply naming a fn the probe does not have: unknown_function", "oep-if-plan §2.4, core §4.3", pl, "session S; no fn 12",
         request(0x16, 10, apply_, tlv(ra, struct.pack("<HBH", 12, 1, 3)), S), rej(0x16, "unknown_function"))
     add("plan_release: fn 2", "oep-if-plan §2.2", pl, "session S; fn 2 has the plan above",
         request(0x17, 10, release, bytes([1]) + struct.pack("<H", 2), S), ok(0x17))
-    add("plan_release: n = 2 with one fn", "oep-if-plan §2.5, core §4.3", pl, "session S",
+    add("plan_release: n = 2 with one fn", "oep-if-plan §2.4, core §4.3", pl, "session S",
         request(0x18, 10, release, bytes([2]) + struct.pack("<H", 2), S), rej(0x18, "malformed"))
     add("plan_apply without a session: session_required", "core §4.1, §4.3 order 1", pl, "—",
         request(0x19, 10, apply_, tlv(ra, struct.pack("<HBH", 2, 1, 3))), rej(0x19, "session_required"))
@@ -558,12 +558,27 @@ def ops() -> dict:
     add('plan_apply: identical configured UART is unchanged','plan §2.1, fixture §2',up,
         'session S; fn5 RX on channel3 at 9600 baud, bytes retained; preserve baud and buffer',
         request(0x1B,10,apply_,tlv(ra,struct.pack('<HBH',5,1,3)),S),ok(0x1B))
-    add('plan_apply: configured UART role change is refused','plan §2.1, fixture §2',up,
+    add('plan_apply: configured UART channel change is refused','plan §2.1, fixture §2',up,
         'session S; fn5 RX on channel3 at 9600 baud; channel4 allowed; all old state remains',
         request(0x1C,10,apply_,tlv(ra,struct.pack('<HBH',5,1,4)),S),rej(0x1C,'unavailable',tlv(1,b'\x06')))
-    add('plan_apply: active capture role change is refused','plan §2.1, capture §3.2',
+    add('plan_apply: active capture channel change is refused','plan §2.1, capture §3.2',
         {'10':'oep.probe.plan','9':'oep.fixture.logic'},'session S; fn9 state3, role0 channel1; preserve capture and data',
         request(0x1D,10,apply_,tlv(ra,struct.pack('<HBH',9,0,2)),S),rej(0x1D,'unavailable',tlv(1,b'\x06')))
+
+    add('plan_apply: active capture identical assignment is unchanged','plan §2.1, capture §3.2',
+        {'10':'oep.probe.plan','9':'oep.fixture.logic'},'session S; fn9 state3, role0 channel1; preserve capture and data',
+        request(0x1E,10,apply_,tlv(ra,struct.pack('<HBH',9,0,1)),S),ok(0x1E))
+    for corr, name, roles in ((0xF0,'oep.fixture.uart',[1]),
+                              (0xF1,'oep.fixture.i2c-target',[1,2]),
+                              (0xF2,'oep.fixture.spi-target',[1,2,3,4])):
+        bindings = b''.join(tlv(ra,struct.pack('<HBH',5,role,role+2)) for role in roles)
+        add(f'plan_apply: {name} refuses output idle','core §8, plan §2.1',
+            {'10':'oep.probe.plan','5':name},
+            'session S; all roles/channels supported and otherwise free; channel3 idle high in volatile config; no pin changes',
+            request(corr,10,apply_,bindings,S),rej(corr,'unavailable',tlv(1,bytes([5]))+tlv(2,struct.pack('<H',3))))
+    add('plan_apply: GPIO accepts output idle without changing level','core §8, fixture §1',pl,
+        'session S; channel3 idle high in volatile config; role1 channel3 supported; keep idle high until set',
+        request(0xF3,10,apply_,tlv(ra,struct.pack('<HBH',2,1,3)),S),ok(0xF3))
 
     # oep.probe.link (oep-if-link §1, §2)
     link = {"1": "oep.probe.link"}
@@ -663,6 +678,13 @@ def ops() -> dict:
     dm = {"6": "oep.target.riscv-dm"}
     add("riscv-dm halt not offered by raw-only fn", "debug §4", dm, "fn 6 declares only dmi in ops",
         request(0x5B,6,op("oep.target.riscv-dm","halt"),struct.pack("<I",1),S),rej(0x5B,"unknown_operation"))
+    reset_halt = (struct.pack('<BBI',1,0x10,0x80000003) + struct.pack('<BBI',1,0x10,0x80000001)
+                  + struct.pack('<BBI',1,0x10,0x90000001)
+                  + struct.pack('<BBIIH',3,0x11,0x200,0x200,16) + struct.pack('<BBI',1,0x10,1))
+    add('riscv-dm dmi: reset and halt wait in one request','debug §4.1, §4.6',dm,
+        'connection1; dmseq console open; raw-only fn; host acknowledges havereset while keeping haltreq; allhalted observed on first wait read with DMSTATUS0x200; no console poll inside request; host reopens console to resync',
+        request(0xF4,6,op('oep.target.riscv-dm','dmi'),struct.pack('<IH',1,5)+reset_halt,S),
+        ok(0xF4,struct.pack('<HBHI',5,0,1,0x200)))
     add("riscv-dm write_block: memory written but cleanup lost the line", "debug §4", dm,
         "two words completed; restoring saved DATA failed; response is sent then connection 1 and its streams close",
         request(0x5C,6,op("oep.target.riscv-dm","write_block"),struct.pack("<IIHII",1,0x20000000,2,7,8),S),
@@ -854,9 +876,9 @@ def ops() -> dict:
         rej(0xA2, "malformed"))
 
     # capture §2.2: a segment the probe could not keep seamless is not handed out; the track stops in error
-    minimal = {"19":"oep.fixture.logic"}
+    minimal = {"19":"oep.fixture.logic", "20":"oep.probe.plan"}
     add("logic start: bounded CPU capture finishes before the reply", "capture §3.2", minimal,
-        "mode1, immediate, 16ms CPU capture, max_op_ms50; generation0 before; capture completes and request service resumes before this reply; lease uses core rules",
+        "one route, max_inflight1, role0 channel1 allocated through fn20 plan; mode1, immediate, 16ms CPU capture, max_op_ms50; generation0 before; capture completes and request service resumes before this reply; lease uses core rules",
         request(0xE0,19,op("oep.fixture.logic","start"),b"",S),ok(0xE0,struct.pack("<I",1)))
     add("logic release: not offered by a one-shot-only fn", "capture §3.2", minimal,
         "mode1 only; ops10,11,12,14,15,16; no release handler",
@@ -1032,7 +1054,8 @@ def interface_profiles() -> dict:
         ('core only', []),
         ('independent extension', [(3, 'io.example.echo', [0x10], [])]),
         ('receive-only UART', [(7, 'oep.fixture.uart', [0x10, 0x11, 0x16],
-                               [(0x01, b'\x01\0\0\x01'), (0x40, b'\x01\0')])]),
+                               [(0x01, b'\x01\0\0\x01'), (0x40, b'\x01\0')]),
+                              (20,'oep.probe.plan',[0x10,0x11],[])]),
         ('raw ARM target', [(8, 'oep.wire.swd', [0x11, 0x12, 0x13],
                             [(0x01, b'\x01\0\0\x01'), (0x01, b'\x02\0\0\x02')]),
                            (9, 'oep.target.arm-adi', [0x10], [])]),
@@ -1040,11 +1063,13 @@ def interface_profiles() -> dict:
                                 (6, 'oep.target.riscv-dm', [0x10], [])]),
         ('mode0 SPI target', [(14,'oep.fixture.spi-target',[0x10,0x11,0x12,0x13],
                               [(0x41,b'\1'),(0x40,b'\1'),(0x03,struct.pack('<I',50)),
-                               (0x02,struct.pack('<I',1000000))]+[(0x01,struct.pack('<BHB',k,20+k,1)) for k in range(1,5)])]),
+                               (0x02,struct.pack('<I',1000000))]+[(0x01,struct.pack('<BHB',k,20+k,1)) for k in range(1,5)]),
+                              (20,'oep.probe.plan',[0x10,0x11],[])]),
         ('volatile pin settings', [(22,'oep.probe.config',[0x10,0x11,0x14],[(0x41,b'\2\3\7')])]),
         ('one-shot logic capture', [(19,'oep.fixture.logic',[0x10,0x11,0x12,0x14,0x15,0x16],
                                     [(0x40,struct.pack('<BII',1,16,0)),(0x41,struct.pack('<II',1,1000)),
-                                     (0x44,b'\1'),(0x45,struct.pack('<II',1,0)),(0x01,struct.pack('<BHB',0,1,1))])]),
+                                     (0x44,b'\1'),(0x45,struct.pack('<II',1,0)),(0x01,struct.pack('<BHB',0,1,1))]),
+                                    (20,'oep.probe.plan',[0x10,0x11],[])]),
         ('receive-only SDI console', [(4, 'oep.wire.rvswd', [0x11,0x12,0x13], []),
                                      (7, 'oep.target.console', [0x10,0x11,0x16,0x17], [(0x40,b'\x01\0')])]),
         ('receive-only dmseq console', [(4, 'oep.wire.rvswd', [0x11,0x12,0x13], []),

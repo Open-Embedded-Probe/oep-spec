@@ -44,7 +44,7 @@
     },
     {
       "name": "plan_apply naming fn 0: malformed",
-      "spec": "oep-if-plan §2.5, core §4.3",
+      "spec": "oep-if-plan §2.4, core §4.3",
       "fns": {
         "10": "oep.probe.plan",
         "2": "oep.fixture.gpio"
@@ -55,7 +55,7 @@
     },
     {
       "name": "plan_apply naming a fn the probe does not have: unknown_function",
-      "spec": "oep-if-plan §2.5, core §4.3",
+      "spec": "oep-if-plan §2.4, core §4.3",
       "fns": {
         "10": "oep.probe.plan",
         "2": "oep.fixture.gpio"
@@ -77,7 +77,7 @@
     },
     {
       "name": "plan_release: n = 2 with one fn",
-      "spec": "oep-if-plan §2.5, core §4.3",
+      "spec": "oep-if-plan §2.4, core §4.3",
       "fns": {
         "10": "oep.probe.plan",
         "2": "oep.fixture.gpio"
@@ -120,7 +120,7 @@
       "answer_hex": "021b000100"
     },
     {
-      "name": "plan_apply: configured UART role change is refused",
+      "name": "plan_apply: configured UART channel change is refused",
       "spec": "plan §2.1, fixture §2",
       "fns": {
         "10": "oep.probe.plan",
@@ -131,7 +131,7 @@
       "answer_hex": "021c00000401010006"
     },
     {
-      "name": "plan_apply: active capture role change is refused",
+      "name": "plan_apply: active capture channel change is refused",
       "spec": "plan §2.1, capture §3.2",
       "fns": {
         "10": "oep.probe.plan",
@@ -140,6 +140,61 @@
       "state": "session S; fn9 state3, role0 channel1; preserve capture and data",
       "request_hex": "011d000a0010443322111005000900000200",
       "answer_hex": "021d00000401010006"
+    },
+    {
+      "name": "plan_apply: active capture identical assignment is unchanged",
+      "spec": "plan §2.1, capture §3.2",
+      "fns": {
+        "10": "oep.probe.plan",
+        "9": "oep.fixture.logic"
+      },
+      "state": "session S; fn9 state3, role0 channel1; preserve capture and data",
+      "request_hex": "011e000a0010443322111005000900000100",
+      "answer_hex": "021e000100"
+    },
+    {
+      "name": "plan_apply: oep.fixture.uart refuses output idle",
+      "spec": "core §8, plan §2.1",
+      "fns": {
+        "10": "oep.probe.plan",
+        "5": "oep.fixture.uart"
+      },
+      "state": "session S; all roles/channels supported and otherwise free; channel3 idle high in volatile config; no pin changes",
+      "request_hex": "01f0000a0010443322111005000500010300",
+      "answer_hex": "02f0000004010100050202000300"
+    },
+    {
+      "name": "plan_apply: oep.fixture.i2c-target refuses output idle",
+      "spec": "core §8, plan §2.1",
+      "fns": {
+        "10": "oep.probe.plan",
+        "5": "oep.fixture.i2c-target"
+      },
+      "state": "session S; all roles/channels supported and otherwise free; channel3 idle high in volatile config; no pin changes",
+      "request_hex": "01f1000a00104433221110050005000103001005000500020400",
+      "answer_hex": "02f1000004010100050202000300"
+    },
+    {
+      "name": "plan_apply: oep.fixture.spi-target refuses output idle",
+      "spec": "core §8, plan §2.1",
+      "fns": {
+        "10": "oep.probe.plan",
+        "5": "oep.fixture.spi-target"
+      },
+      "state": "session S; all roles/channels supported and otherwise free; channel3 idle high in volatile config; no pin changes",
+      "request_hex": "01f2000a0010443322111005000500010300100500050002040010050005000305001005000500040600",
+      "answer_hex": "02f2000004010100050202000300"
+    },
+    {
+      "name": "plan_apply: GPIO accepts output idle without changing level",
+      "spec": "core §8, fixture §1",
+      "fns": {
+        "10": "oep.probe.plan",
+        "2": "oep.fixture.gpio"
+      },
+      "state": "session S; channel3 idle high in volatile config; role1 channel3 supported; keep idle high until set",
+      "request_hex": "01f3000a0010443322111005000200010300",
+      "answer_hex": "02f3000100"
     },
     {
       "name": "link source: 8 bytes, byte k = k & 0xFF",
@@ -410,6 +465,16 @@
       "state": "fn 6 declares only dmi in ops",
       "request_hex": "015b000600114433221101000000",
       "answer_hex": "025b000002"
+    },
+    {
+      "name": "riscv-dm dmi: reset and halt wait in one request",
+      "spec": "debug §4.1, §4.6",
+      "fns": {
+        "6": "oep.target.riscv-dm"
+      },
+      "state": "connection1; dmseq console open; raw-only fn; host acknowledges havereset while keeping haltreq; allhalted observed on first wait read with DMSTATUS0x200; no console poll inside request; host reopens console to resync",
+      "request_hex": "01f40006001044332211010000000500011003000080011001000080011001000090031100020000000200001000011001000000",
+      "answer_hex": "02f4000100050000010000020000"
     },
     {
       "name": "riscv-dm write_block: memory written but cleanup lost the line",
@@ -975,9 +1040,10 @@
       "name": "logic start: bounded CPU capture finishes before the reply",
       "spec": "capture §3.2",
       "fns": {
-        "19": "oep.fixture.logic"
+        "19": "oep.fixture.logic",
+        "20": "oep.probe.plan"
       },
-      "state": "mode1, immediate, 16ms CPU capture, max_op_ms50; generation0 before; capture completes and request service resumes before this reply; lease uses core rules",
+      "state": "one route, max_inflight1, role0 channel1 allocated through fn20 plan; mode1, immediate, 16ms CPU capture, max_op_ms50; generation0 before; capture completes and request service resumes before this reply; lease uses core rules",
       "request_hex": "01e00013001144332211",
       "answer_hex": "02e000010001000000"
     },
@@ -985,7 +1051,8 @@
       "name": "logic release: not offered by a one-shot-only fn",
       "spec": "capture §3.2",
       "fns": {
-        "19": "oep.fixture.logic"
+        "19": "oep.fixture.logic",
+        "20": "oep.probe.plan"
       },
       "state": "mode1 only; ops10,11,12,14,15,16; no release handler",
       "request_hex": "01e100130017443322110100000000000000",
@@ -995,7 +1062,8 @@
       "name": "logic release: old generation is refused before the one-shot no-op",
       "spec": "capture §3.2",
       "fns": {
-        "19": "oep.fixture.logic"
+        "19": "oep.fixture.logic",
+        "20": "oep.probe.plan"
       },
       "state": "release offered; mode1; current generation2; current data unchanged",
       "request_hex": "01e200130017443322110100000000000000",
@@ -1005,7 +1073,8 @@
       "name": "logic start: generation exhausted without clearing current data",
       "spec": "capture §0, §3.2",
       "fns": {
-        "19": "oep.fixture.logic"
+        "19": "oep.fixture.logic",
+        "20": "oep.probe.plan"
       },
       "state": "current generation0xFFFFFFFF, state4, previous data retained; no new generation until reboot",
       "request_hex": "01e30013001144332211",
@@ -1015,7 +1084,8 @@
       "name": "logic read: maximum u16 request, response constrained by frame",
       "spec": "capture §3.2",
       "fns": {
-        "19": "oep.fixture.logic"
+        "19": "oep.fixture.logic",
+        "20": "oep.probe.plan"
       },
       "state": "generation1; 48 retained bytes at0; max_frame64; no marks/timing TLVs",
       "request_hex": "01e40013001500000000010000000000000000000000ffff",

@@ -72,7 +72,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - open / end / keepalive / lock_state / force / owner（§6.4）。lease は 1000〜60000 ms に丸める（§6.4）。session_id 0 は断る（§6.1）。
 - 再送の順序状態は必須、byte記録は0件でもよい。rejectedの新規要求も最後のcorrを更新し、記録が無い旧要求はresult_lostで断る。
   異なるIDの新規openが成功したときだけ順序状態を置き換える。同じIDのopenは履歴を保つ、probeに一つ（§5.1）。
-- ロック不要の op は状態を変えない（§6.3）。boot_id は起動のたびに変わるように、§6.5 の素をその順に使って選ぶ（§6.5）。
+- ロック不要の op は状態を変えない（§6.3）。boot_id は起動のたびに変わるように選ぶ（§6.5）。生成方法の優先順位は要求しない。
 - 時計: 起動からの ns で、同じ boot_id の間、減らず一周しない（§2.7）。
 - セッションが作ったものはすべて、そのロックが終わるとき end、期限切れ、force のどれでも同じに解放し、再送された open では残す（§9）。再開は無い（§6.4）。資源の番号（u32、1〜0xFFFFFFFF、起動後の最初は 1、0 は割り当てない、§9）。閉じたコンソールの stream とバッファは解放し、番号は同じ boot_id の間に再利用しない（コンソール §2）。
 
@@ -88,11 +88,15 @@ probe は、自分が出す transport とインターフェースについてこ
   ロックを持っていても答え、セッション、ロック、lease に触れない。broker 自身の OEP 端点も同じ契約を実装する（§7.6、transports §1）。
 - fn 0 の describe の必須の tag: unit_id、transport（transport ごとに一つ、interface の欄は §7.5 のとおり）、channel を持つなら channels（番号は 0〜channels − 1）、max_op_ms（1〜
   `max_op_ms_max`）（§1.2、§7.5）。unit_id の一意性と不変性、transport の index の不変性（§7.5）。
-- channel: 解放したピンは空きの状態へ、起動したら最初の答えの前に自分で使う channel を除くすべての channel を空きの状態へ、ピンを取ってもピンは変わらない、資源の取り合いは何も変えずに断る（§8、§8.1）。
+- channel: 解放したピンは空きの状態へ、起動したら最初の答えの前に自分で使う channel と設定が使用・設定を禁止する channel を除くすべての channel を空きの状態へ。
+  ピンを取ってもピンは変わらない。出力idleの取得はインターフェースが明記する場合だけ許す（それ以外はcause 5）。同時使用の資源・処理能力不足は何も変えずにcause 2で断る（ピンの取り合いはcause 1。§8、§8.1）。
 - 通知（送り出すインターフェースがあれば）: その fn の subscribe（0x01）/ unsubscribe（0x02）を ops に立てる、送り出さない fn は持たない、seq、データだけをまとめ出来事は先の答えの後すぐ送る、答えを先に送ることと溜める量の上限（§10.2〜§10.4）。
 - 購読の保持量不足はunavailable cause2で断り、以前の購読の条件・送り先・seqを保つ。通知保持量の上限を必須queue容量として扱わず、送り始めたframeには別frameを挟まない（§10.3〜§10.4）。
 - 購読の置換/解除では旧購読の未送信通知を捨て、送り始めたframeは同じ経路への操作の応答前に完了する。別経路の応答は待たず、閉じた経路の残りを新経路へ持ち越さない（§10.3〜§10.4、transports §3）。
 **時間の上限**（値は `registry/oep-v1.toml`）
+
+- fn 0 の keepalive / lock_state / clock は、要求全体を min(max_op_ms, core_quick_op_max_ms) 内で処理する。
+  hostの再送待ちはこの上限 + host_wait_add_ms + 転送の時間。open / endにはmax_op_msを使う（§4.4）。
 
 - `probe_frame_gap_ms`（transports §2）。宣言した max_op_ms より長い要求はなく、超えうる op は断る（§7.5）。lease の範囲
   （§6.4）。port_speed の verify_ms、`port_speed_idle_ms` と戻る条件（[リンク](../interfaces/oep-if-link.ja.md) §3）。attach、scan、riscv-dm の reset は max_op_ms のうちに答える
@@ -145,7 +149,7 @@ probe は、自分が出す transport とインターフェースについてこ
 | `oep.fixture.spi-target`（§4） | §4 の op。data のビットの置き方（バイトの途中で終わった転送も、来なかったビットは 0）、bits は 0xFFFFFFFF で止める、nsの任意TLVはCSが無効になった時刻。modesで1つ以上の対応modeを宣言し、非対応configureはunsupportedで状態不変。同時負荷で保証を保てなければ後からの操作を副作用前にunavailableで断れる。MISOをソフトウェアで駆動するならcs_setup_ns | LSB first（features bit0） |
 | `oep.fixture.logic`、`oep.fixture.analog`（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1〜§3） | §3.2の必須op。releaseはmode2で必須、calibrationはアナログで任意。§3.3 の configure と query の契約（mode と rate は必須、mode ごとに送れる TLV、type 0 の trigger の role は見ない、0 の samples / segments / rate は malformed、mode 3 の pretrigger は max_pretrigger で縛る、挙げていない値は unsupported、応答の必須の行（アナログのfrontend_used/referenceは任意））。区画の通し番号のページング（[共通部品](../interfaces/oep-if-common.ja.md) §1.3）。出来事の世代。世代は1〜0xFFFFFFFFを再利用せず、枯渇したstartは副作用前に拒否。区画を連続に保てなければその区画を出さず、エラーで止まる（§2.2。隙間は置き場が無くて区画を丸ごと取らないときだけ、state 6 に入るときは必ず stopped reason 3、エラーの後の write_pos はその区画の先頭）。host はエラーの後、受けたデータの write_pos から先を捨てる。§3.5 の describe。readのmax/lenはu16。開始で通信を止める有限な処理はstart要求の中に含め、max_op_ms/leaseの通常規則で扱う。 | query、force、アナログのcalibration（ops）。通知: subscribe / unsubscribe（ops）。mode3のdataは毎frameにgeneration/segment_infoを付け、1区画内だけに収める。未確定の末尾byteを返さない |
 | `oep.fixture.capture-group`（§4） | bind/start/stop/status、ops/tracks宣言。全trackは即時triggerかつ同じmode。bindの全検証とstart応答のframe容量、全世代の空きを開始前に確認。開始/停止/エラーとgroup/track世代の区別。 | 通知subscribe/unsubscribeとstoppedだけ。連動trigger/pretrigger/force/multirateはv1に含めない。 |
-| `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)） | planの役割を持つインターフェースがあればlistに出す。plan_applyは要求全体を検証し、残る割当・機能状態を保つ。動作中の役割変更/束ねられた資源変更は拒否。plan_releaseも全対象を先に検証。上限があればplan_roles | — |
+| `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)） | planの役割を持つインターフェースがあればlistに出す。plan_applyは要求全体を検証し、残る割当・機能状態を保つ。動作中の割り当て（role, channel）の集合の変更/束ねられた資源変更は拒否。plan_releaseも全対象を先に検証。上限があればplan_roles | — |
 | `oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)） | restart。describe の restart_max_ms。ロックの要る op として断る。答えは completed success で、それを先に送る。答えの後は再起動するまでどのtransportの要求にも答えず、意図したtargetのreset/resumeは行わない。MCUのリセット状態と外部回路によるtarget変化は保証しない。再起動の後は電源を入れたときと同じ（新しい boot_id、保存した設定だけが残る）。答えがtransportを出てからrestart_max_msのうちにProbe内部が通信を受けられる状態へ戻る。OSの列挙/ネットワーク接続/Hostの開き直しは別 | — |
 | `oep.probe.link`（[リンク](../interfaces/oep-if-link.ja.md)） | source、sink | port_speedとport_state（ops）。frame境界で変更し、pipelineを先に解決。通知だけのHostも正常要求でidleを延長する。要求処理中のtimerと所有session終了後の取消禁止（§3） |
 | `oep.probe.config`（[設定](../interfaces/oep-if-probe-config.ja.md)） | get/set/unsetとitems宣言。count付き項目と末尾TLVの区別。変更カウンタはboot内非再利用、no-opは世代/ピン不変。変更は全検証の後に適用。 | disable/idle/labelの対応範囲。save/erase/stateは保存とともに採用しmax_bytesを宣言。起動時に有効項目だけを適用しdisableを先に掛け、部分適用はstateで示す。 |

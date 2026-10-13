@@ -79,8 +79,8 @@ RXを割り当てて受信を保持するbufferと位置管理に対し、マー
   （境目が要るなら host が mark を付ける）。**位置とマークの serial は、plan を解いて再び作っても起動の中で戻らない**
   （[共通部品](oep-if-common.ja.md) §1.1）。marksを提供する場合、受信の誤りはmark lost（detail 2 framing、3 parity）とする。
   marksを提供しない場合は、マークの記録とserialの管理を要求しない。streamの位置は同じboot内で保持する。
-- 同じ役割の集合のplan_applyはbaud/format・buffer・位置・マークを保つ。configure済みの役割変更はunavailable（cause 6）で断り、
-  Hostは必要なデータを読んでplan_releaseしてから作り直す。未configureの役割変更は、bufferとマークを解き、未configureのまま置き換える。
+- 同じ割り当て（role, channel）の集合のplan_applyはbaud/format・buffer・位置・マークを保つ。configure済みの割り当て変更はunavailable（cause 6）で断り、
+  Hostは必要なデータを読んでplan_releaseしてから作り直す。未configureの割り当て変更は、bufferとマークを解き、未configureのまま置き換える。
   位置とマークのserialは、その変更でも戻さない。
 - **TX の線は、plan で割り当てている間（configure の前も）UART の休止（high）に保つ**: plan を取ることが TX を使い始めることである（core §8）（相手の受信が雑音を拾わないため）。plan を
   解いたら UART の駆動をやめ、core §8 の空きの状態にする。解いた後も相手の入力を浮かせたくない治具は、`oep.probe.config` の idle で
@@ -101,7 +101,7 @@ read_rx で取り出す。
 | 0x14 | stretch | stretch_us(u32) | — | 必要 |
 
 - このfnのplanはrole 1と2をちょうど1つずつ、別々のchannelで持つ。満たさない組のplan_applyはunsupported（role_assignmentのtag）で断る。
-  動作中（state 1）の役割変更はunavailable（cause 6）。同じ集合は状態を保つ。planを解くか未設定の役割を置き換えると初期状態へ戻る（state 0、
+  動作中（state 1）の割り当て（role, channel）の集合の変更はunavailable（cause 6）。同じ集合は状態を保つ。planを解くか未設定の役割を置き換えると初期状態へ戻る（state 0、
   列・置き場・累計を消し、stretch の値は 0）。
 - SDA と SCL は**オープンドレインだけ**で駆動する: probe は low に引くか離すかで、high に駆動しない。
 - **内部のプルアップ**: configure されている間 SDA / SCL に自分のプルアップを入れる probe は、features の bit2（内部プルアップ）でそれを宣言する。
@@ -148,7 +148,7 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   各ビットはそのクロック周期の最初のエッジで変わり、2 番目のエッジで取り込まれる。最初のエッジは、CPOL の level から離れるエッジである。バイトは、
   両方向とも、bit_order のとおり MSB を先か LSB を先に送る。
 - このfnのplanはrole 1〜4をちょうど1つずつ、別々のchannelで持つ。満たさない組のplan_applyはunsupported（role_assignmentのtag）で断る。
-  動作中（state 1）の役割変更はunavailable（cause 6）。同じ集合は状態を保つ。planを解くか未設定の役割を置き換えると初期状態へ戻る（state 0、
+  動作中（state 1）の割り当て（role, channel）の集合の変更はunavailable（cause 6）。同じ集合は状態を保つ。planを解くか未設定の役割を置き換えると初期状態へ戻る（state 0、
   mode と bit_order は 0、列・待ち・累計を消す）。
 - configure は target を作り直す（積んだ転送、待ち、transactions と errors は消える）。この fn の plan が無いときは rejected unavailable
   （cause 6）。mode が 3 を超える、bit_order が 1 を超える は rejected malformed。features の bit0 が無いのに bit_order 1 は rejected
@@ -180,7 +180,7 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
 - **cs_setup_ns**（describe の tag 0x43、u32、ns）: CS が有効になってから最初の SCK のエッジまでの時間で、MISO が最初のビットで駆動されていることを
   probeが保証する最短のもの。保証は受け付けた資源の組合せで保つ。
   ほかのfnとの同時使用でmax_clock_hzやcs_setup_nsを保てないProbeは、後から来たconfigure/attach/startなどを、
-  副作用の前にunavailable（cause 6。必要ならfnの診断TLV）で断ってよい。
+  core §8.1に従い、副作用の前にunavailable（cause 2。必要ならfnの診断TLV）で断る。
   SPIのconfigureを後から受ける場合も同じ。すべてのfnの任意の組合せの同時実行は要求しない。
   CS が有効になってからその時間の間、MISO は駆動されていないか、最初のビットを駆動しているかのどちらかで、ほかの値になることはない。CS が無効になった後は、
   同じ時間のうちに MISO は駆動されなくなる。CS が有効になったらすぐ最初のビットで MISO を駆動する probe は、この tag を付けないか 0 を宣言する。CS が有効に

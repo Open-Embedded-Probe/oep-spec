@@ -586,8 +586,8 @@ def test_plan_lifetime_and_explicit_uart_initialization_vectors():
                  'plan_apply: identical configured UART is unchanged'):
         result=bytes.fromhex(cases[name]['answer_hex'])
         assert result[3:] == b'\x01\x00'
-    for name in ('plan_apply: configured UART role change is refused',
-                 'plan_apply: active capture role change is refused'):
+    for name in ('plan_apply: configured UART channel change is refused',
+                 'plan_apply: active capture channel change is refused'):
         result=bytes.fromhex(cases[name]['answer_hex'])
         assert result[3:5] == bytes([0,REG['reject_reasons']['unavailable']])
         assert tlvs(result[5:]) == [(1,b'\x06')]
@@ -597,6 +597,48 @@ def test_plan_lifetime_and_explicit_uart_initialization_vectors():
     assert struct.unpack('<QBH',empty[5:]) == (7,0,0)
     zero=bytes.fromhex(cases['UART configure: zero baud is malformed']['answer_hex'])
     assert zero[3:] == bytes([0,REG['reject_reasons']['malformed']])
+
+
+def test_output_idle_admission_vectors():
+    cases = {case['name']: case for case in load('ops.json')['cases']}
+    for interface in ('oep.fixture.uart', 'oep.fixture.i2c-target', 'oep.fixture.spi-target'):
+        case = cases[f'plan_apply: {interface} refuses output idle']
+        request = bytes.fromhex(case['request_hex'])
+        assignments = [struct.unpack('<HBH', value) for tag, value in tlvs(request[10:]) if tag == 0x10]
+        assert (5, 1, 3) in assignments
+        result = bytes.fromhex(case['answer_hex'])
+        assert result[3:5] == bytes([0, REG['reject_reasons']['unavailable']])
+        assert tlvs(result[5:]) == [(1, bytes([5])), (2, struct.pack('<H', 3))]
+    result = bytes.fromhex(cases['plan_apply: GPIO accepts output idle without changing level']['answer_hex'])
+    assert result[3:] == bytes([1, 0])
+
+
+def test_raw_reset_halt_wait_is_one_frame_with_haltreq_preserved():
+    case = next(c for c in load('ops.json')['cases'] if c['name'] == 'riscv-dm dmi: reset and halt wait in one request')
+    request = bytes.fromhex(case['request_hex'])
+    assert len(request) <= 64
+    connection, count = struct.unpack_from('<IH', request, 10)
+    assert connection == 1
+    at, control, waited = 16, 0, False
+    for _ in range(count):
+        kind, address = struct.unpack_from('<BB', request, at)
+        if kind == 1:
+            _, _, control = struct.unpack_from('<BBI', request, at)
+            assert address == 0x10
+            if control & (1 << 28):  # ackhavereset must preserve haltreq before the wait.
+                assert control & (1 << 31) and not waited
+            at += 6
+        else:
+            assert kind == 3 and address == 0x11
+            _, _, mask, value, reads = struct.unpack_from('<BBIIH', request, at)
+            assert mask == value == (1 << 9) and reads > 0  # allhalted.
+            assert control & (1 << 31) and not control & 2  # haltreq, ndmreset released.
+            waited = True
+            at += 12
+    assert at == len(request) and waited and control == 1
+    result = bytes.fromhex(case['answer_hex'])
+    assert result[3:5] == bytes([1, 0])
+    assert struct.unpack('<HBHI', result[5:]) == (count, 0, 1, 1 << 9)
 
 
 def test_capture_events_carry_their_generation():

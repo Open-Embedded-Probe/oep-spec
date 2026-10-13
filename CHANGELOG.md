@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- keepalive / lock_state / clock の要求全体に min(max_op_ms, 1000 ms) の処理上限を定め、host の lease 選択に1要求の欠落と再送の余裕を含める。open / end の後始末は従来の max_op_ms のまま。
+- 出力 idle の取得はインターフェースが明記する場合だけ許し、それ以外は cause 5 で断る。同時使用の資源・処理能力不足は core の共通規則として cause 2 で断る。
+- 動作中の plan 判定を (role, channel) の集合に揃え、通信を止める capture の受信条件を明記する。raw DMI の reset/halt 待ちを1要求にまとめ、reset後の dmseq と block転送後の後始末失敗を明確にする。
+
 - planは残る割当とGPIOの出力を保ち、動作中の配線変更を拒否する。captureの設定は役割変更で無効にし、UARTは明示configureから受信する。consoleはopen/read/close/streamsだけの実装を許し、マークと送信を任意にする。読めない終了マークと未使用open flagsを削除し、debug固有のマークをconsoleの番号空間へ移す。
 
 - 凍結前レビューに基づき、資源番号だけをu32へ広げ、起動中の非再利用を維持する。connection/streamを参照する固定形と共有ベクタを更新し、65536以降の番号を検査する。corr/fnと要求10byte・応答5byteの見出しは維持する。
