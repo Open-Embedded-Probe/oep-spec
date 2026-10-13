@@ -1117,10 +1117,101 @@ def interface_profiles() -> dict:
             'These are not complete endpoint identity/capability dumps or runtime conformance traces.', 'profiles': rows}
 
 
+def core_lifecycle() -> dict:
+    """Lifecycle traces with explicit receive/processing/send boundaries."""
+    rows = []
+    sid = 0x12345678
+    def add(name, events):
+        rows.append({'name': name, 'spec': 'core §4.4/5.1/6.1/6.3', 'events': events})
+    def receive(corr, session=sid, operation='keepalive', route=0, expect='queued', extra=b''):
+        payload = struct.pack('<IB', 5000, 0) if operation == 'open' else struct.pack('<HH',0,0) if operation == 'describe' else b''
+        fn, opcode = (3, 0x10) if operation == 'slow_read' else (0, op('core',operation))
+        return {'action': 'receive', 'route': route, 'request_hex': hx(request(corr,fn,opcode,payload+extra,session)), 'expect': expect}
+    opened = [receive(1, operation='open'), {'action': 'process', 'route': 0, 'duration_ms': 0},
+              {'action': 'sent', 'route': 0}, {'action': 'check', 'owner': sid, 'remaining_ms': 5000}]
+    add('owner processing pauses lease but transmission does not', opened + [
+        {'action': 'advance', 'ms': 1000}, receive(2,operation='open'),
+        {'action': 'process', 'route': 0, 'duration_ms': 7000},
+        {'action': 'check', 'owner': sid, 'remaining_ms': 5000, 'executions': 2},
+        {'action': 'advance', 'ms': 5001},
+        {'action': 'check', 'owner': 0, 'remaining_ms': 0},
+        {'action': 'sent', 'route': 0},
+    ])
+    add('observer processing does not pause an owner lease', opened + [
+        {'action': 'advance', 'ms': 1000}, receive(2,0,'slow_read',1),
+        {'action': 'process', 'route': 1, 'duration_ms': 7000},
+        {'action': 'check', 'owner': 0, 'remaining_ms': 0},
+    ])
+    add('pending retries use one credit and one execution without cache', opened + [
+        receive(2), receive(2,expect='coalesced'), receive(2,expect='coalesced'),
+        {'action': 'check', 'credits': {'0': 1}, 'executions': 1},
+        {'action': 'process', 'route': 0, 'duration_ms': 2},
+        receive(2,expect='coalesced'), {'action': 'check', 'executions': 2},
+        {'action': 'sent', 'route': 0}, receive(2),
+        {'action': 'process', 'route': 0, 'duration_ms': 2, 'reason': 'result_lost'},
+        {'action': 'check', 'executions': 2},
+    ])
+    add('SID zero pending copies can coalesce but completed requests run again', [
+        receive(1,0,'clock'), receive(1,0,'clock',expect='coalesced'),
+        {'action': 'process', 'route': 0, 'duration_ms': 1}, {'action': 'sent', 'route': 0},
+        receive(1,0,'clock'), {'action': 'process', 'route': 0, 'duration_ms': 1},
+        {'action': 'check', 'owner': 0, 'executions': 2},
+    ])
+    add('route closure can discard an unexecuted request without ending ownership', opened + [
+        receive(2), {'action': 'close', 'route': 0}, {'action': 'check', 'owner': sid, 'executions': 1},
+        receive(2,route=1), {'action': 'process', 'route': 1, 'duration_ms': 1},
+        {'action': 'check', 'owner': sid, 'executions': 2},
+    ])
+    add('wrong owner and SID zero observations cannot renew the lease', opened + [
+        {'action': 'advance', 'ms': 4000}, receive(2,0,'lock_state'),
+        {'action': 'process', 'route': 0, 'duration_ms': 1}, {'action': 'sent', 'route': 0},
+        receive(3,sid+1), {'action': 'process', 'route': 0, 'duration_ms': 1, 'reason': 'locked'},
+        {'action': 'sent', 'route': 0}, {'action': 'advance', 'ms': 1000},
+        {'action': 'check', 'owner': 0, 'executions': 2},
+    ])
+    add('rejected fresh owner request renews from generation', opened + [
+        {'action': 'advance', 'ms': 4000}, receive(2,extra=tlv(0xBE,b'x')),
+        {'action': 'process', 'route': 0, 'duration_ms': 2, 'reject': 'unsupported', 'reason': 'unsupported'},
+        {'action': 'check', 'owner': sid, 'remaining_ms': 5000, 'executions': 1},
+    ])
+    add('a queued heartbeat cannot revive an expired owner', opened + [
+        {'action': 'advance', 'ms': 4000}, receive(2),
+        {'action': 'advance', 'ms': 1001}, {'action': 'process', 'route': 0, 'duration_ms': 1, 'reason': 'no_session'},
+        {'action': 'check', 'owner': 0, 'executions': 1},
+    ])
+    return {'about': 'Time is probe processing/transport time in ms. This is a contract model: max_op_ms=10000, no replay byte cache, per-route max_inflight=1 and window=64. '
+            'receive queues one unique request or coalesces a pending retry; process generates an answer; sent releases route credit. '
+            'Fn3 is an optional io.example.slow-query revision1 with op0x10: a side-effect-free read with empty fixed request/result, bounded by max_op_ms. '
+            'Opaque durations model scheduler work, not a measured MCU or clock implementation. Zero-cache replay produces result_lost without executing.',
+            'scenarios': rows}
+
+
+def core_policy() -> dict:
+    """Optional policy admission, with opaque downstream responses."""
+    ok = lambda corr, payload=b"": answer(corr, COMPLETED, 0, payload)
+    rej = lambda corr, reason, payload=b"": answer(corr, REJECTED, REASON[reason], payload)
+    sid, other = 0x12345678, 0x87654321
+    rows = []
+    def add(name, req, expected, **extra):
+        rows.append(dict(name=name, request_hex=hx(req), expected_response_hex=hx(expected), allowed=False, **extra))
+    denied = tlv(1, bytes([7]))
+    query, cached = request(12,2,0x10,b'',sid), ok(12,b'secret')
+    add('revoked read cannot replay a secret', query, rej(12,'unavailable',denied), cache_response_hex=hx(cached))
+    add('denied force preserves resources', request(1,0,op('core','open'),struct.pack('<IB',5000,1),other), rej(1,'unavailable',denied))
+    add('denied fresh heartbeat preserves lease and corr', request(13,0,op('core','keepalive'),b'',sid), rej(13,'unavailable',denied))
+    add('bad corr precedes policy', request(0,2,0x10,b'',sid), rej(0,'malformed'))
+    add('unknown op precedes policy', request(13,2,0x11,b'',sid), rej(13,'unknown_operation'))
+    for name, payload in [('confirm',b'OEP'+bytes([1])),('list',struct.pack('<H',0)),('describe',struct.pack('<HH',0,0)),('clock',b''),('lock_state',b'')]:
+        add('public '+name, request(13,0,op('core',name),payload), ok(13), downstream_response_hex=hx(ok(13)))
+    rows.append(dict(name='allowed replay remains historical',request_hex=hx(query),expected_response_hex=hx(cached),allowed=True,cache_response_hex=hx(cached)))
+    return dict(about='Optional admission harness, not authentication or an endpoint. Owner 0x12345678, last_corr12, lease remaining1000ms, resource42. Fn2 is optional io.example.query revision1, readonly op0x10. Downstream op results are opaque sentinels; operation execution has separate vectors.',scenarios=rows)
+
+
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
          "refusals.json": refusals, "core_extensions.json": core_extensions,
          "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding,
-         "logic_layout.json": logic_layout, "interface_profiles.json": interface_profiles}
+         "logic_layout.json": logic_layout, "interface_profiles.json": interface_profiles,
+         "core_lifecycle.json": core_lifecycle, "core_policy.json": core_policy}
 
 
 def render(build) -> str:

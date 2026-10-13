@@ -110,7 +110,13 @@ host は transport の数でロックの奪い方を決める（host ガイド �
 
 - transport の一覧を正しく出す（シリアルの口が 1 つだけの probe は、そう見えるように）;
 - lease が切れたらロックを空け（後始末をし、core §9）、lock_state の残り時間を正しく返す;
+  持ち主の新規要求自身の処理だけをleaseの停止区間とし、応答生成から再開する。通信の送信待ちやsession_id 0の照会では止めない（core §6.1）。
+  送信先が止まってもleaseの期限検査・後始末を止めない。送信とtimerの進め方は実装が選び、別threadを要求するものではない。
 - `lease_min_ms`〜`lease_max_ms` の lease の要求はそのまま受け、ほかはその範囲に丸める（core §6.4）。
+
+
+任意の方針判定を持つ実装は、見出しの検査後、再送のbyte記録を返す前に判定する（core §4.3）。
+方針が不要な最小実装には、認証の操作・状態表・追加RAMを要求しない。
 
 ## 10. 識別子と宣言の選び方
 
@@ -168,7 +174,7 @@ IDを消費するのは番号を割り当てる作成で、すべての要求で
 **max_op_ms**（0x4D、必須）: 1つの要求自身の検証・内部の再試行・実行・後始末・応答生成を含む最長の処理時間。
 同じ経路・別経路の先行要求待ちと経路の転送時間は除く。save、flashのローダー、attach、scan、resetも含む。1〜`max_op_ms_max`（600000 ms）。
 引数がそれを超えうる op は unsupported で断る。host は来ない応答を max_op_ms + `host_wait_add_ms` 待つので、要る分よりずっと大きく宣言しない。
-keepalive / lock_state / clock は、max_op_ms が大きくても min(max_op_ms, core_quick_op_max_ms) 内で要求全体を処理する（core §4.4）。
+confirm / list / describe / clock / keepalive / lock_stateは、max_op_ms が大きくても min(max_op_ms, core_quick_op_max_ms) 内で要求全体を処理する（core §4.4）。
 
 **時計**（core §2.7）: 起動からの ns（u64）。同じ boot_id の間、減らず、一周しない。ハードウェアの数え器が 64 bit より狭ければ
 （32 bit の µs の数え器は約 71.6 分で一周する）、一周の数でソフトウェアで広げ、一周を見逃さないだけの頻度で（main loop から）読む。

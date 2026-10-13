@@ -1,0 +1,78 @@
+{
+  "about": "Optional admission harness, not authentication or an endpoint. Owner 0x12345678, last_corr12, lease remaining1000ms, resource42. Fn2 is optional io.example.query revision1, readonly op0x10. Downstream op results are opaque sentinels; operation execution has separate vectors.",
+  "scenarios": [
+    {
+      "name": "revoked read cannot replay a secret",
+      "request_hex": "010c0002001078563412",
+      "expected_response_hex": "020c00000401010007",
+      "allowed": false,
+      "cache_response_hex": "020c000100736563726574"
+    },
+    {
+      "name": "denied force preserves resources",
+      "request_hex": "010100000010214365878813000001",
+      "expected_response_hex": "020100000401010007",
+      "allowed": false
+    },
+    {
+      "name": "denied fresh heartbeat preserves lease and corr",
+      "request_hex": "010d0000001278563412",
+      "expected_response_hex": "020d00000401010007",
+      "allowed": false
+    },
+    {
+      "name": "bad corr precedes policy",
+      "request_hex": "01000002001078563412",
+      "expected_response_hex": "0200000003",
+      "allowed": false
+    },
+    {
+      "name": "unknown op precedes policy",
+      "request_hex": "010d0002001178563412",
+      "expected_response_hex": "020d000002",
+      "allowed": false
+    },
+    {
+      "name": "public confirm",
+      "request_hex": "010d00000001000000004f455001",
+      "expected_response_hex": "020d000100",
+      "allowed": false,
+      "downstream_response_hex": "020d000100"
+    },
+    {
+      "name": "public list",
+      "request_hex": "010d00000002000000000000",
+      "expected_response_hex": "020d000100",
+      "allowed": false,
+      "downstream_response_hex": "020d000100"
+    },
+    {
+      "name": "public describe",
+      "request_hex": "010d000000030000000000000000",
+      "expected_response_hex": "020d000100",
+      "allowed": false,
+      "downstream_response_hex": "020d000100"
+    },
+    {
+      "name": "public clock",
+      "request_hex": "010d0000000400000000",
+      "expected_response_hex": "020d000100",
+      "allowed": false,
+      "downstream_response_hex": "020d000100"
+    },
+    {
+      "name": "public lock_state",
+      "request_hex": "010d0000001300000000",
+      "expected_response_hex": "020d000100",
+      "allowed": false,
+      "downstream_response_hex": "020d000100"
+    },
+    {
+      "name": "allowed replay remains historical",
+      "request_hex": "010c0002001078563412",
+      "expected_response_hex": "020c000100736563726574",
+      "allowed": true,
+      "cache_response_hex": "020c000100736563726574"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 # The spec text is docs/oep-core.ja.md and docs/oep-transports.ja.md (the core) and interfaces/*.ja.md (the interfaces whose names begin with oep.). tools/oepgen1.py generates
 # the C++ header, the C header and the Python and JS modules from this file; `oepgen1.py --check` fails when the committed outputs drift.
 # Numbers only: payload layouts stay in the spec tables. TLV tags live in the context of one (interface, op) or one
-# declaration; the same value in another context is another tag (core §2.2).
+# declaration or notification; response reason and event kind may also define distinct contexts (core §2.2).
 # Per op: `lock` = needs the session lock, not whether the op is mandatory. Listing an op here does not require its implementation;
 # required/optional adoption is defined by the interface operation table, and each endpoint declares its offered ops in describe.
 # The key `fields` is reserved on ops for
@@ -99,8 +99,8 @@ state = 5
 probe_frame_gap_ms = 200        # no sender pauses this long inside a frame, and a probe's reader restarts after such a pause (not on TCP; transports §2); a host waits longer than this before a resync's confirm (transports §5)
 uart_bridge_boot_baud = 115200  # a UART bridge's boot speed, 8N1 without flow control (transports §4)
 port_speed_idle_ms = 3000       # a committed port_speed goes back to the boot speed after this long without a good frame (oep-if-link §3)
-host_wait_add_ms = 1000         # host: waits at least max_op_ms (or an explicitly shorter whole-request bound) plus this plus transfer time; discovery before max_op_ms uses this plus transfer time (core §4.4)
-core_quick_op_max_ms = 1000     # whole processing bound for fn 0 keepalive/lock_state/clock: min(this, max_op_ms), excluding transport and preceding requests on the same or other routes (core §4.4)
+host_wait_add_ms = 1000         # host: waits at least max_op_ms (or an explicitly shorter whole-request bound) plus this plus transfer time; discovery before max_op_ms also includes core_quick_op_max_ms (core §4.4)
+core_quick_op_max_ms = 1000     # whole processing bound for fn 0 confirm/list/describe/clock/keepalive/lock_state: min(this, max_op_ms), excluding transport and preceding requests on the same or other routes (core §4.4)
 notify_pending_max_frames = 2   # probe: at most max_frame x this of notifications waiting in one transport's send buffer; beyond it they are dropped (core §10.4)
 port_speed_switch_wait_ms = 20  # host: after the answer to try, at least this long before the next request at the new speed (oep-if-link §3 host 1)
 
@@ -130,7 +130,7 @@ corr_max = 0xFFFF
 corr_half_range = 0x8000       # modulo-65536 forward distance must be smaller than this (core §4.1, §5.1)
 resource_id_bytes = 4         # u32 resource references; fn and corr remain u16 (core §9)
 resource_id_max = 0xFFFFFFFF  # boot-scoped nonreuse; zero is not a resource ID (core §9)
-lease_min_ms = 1000
+lease_min_ms = 1000             # owner processing pauses lease; response generation renews it, transport waits/replay/observers do not (core §6.1)
 lease_max_ms = 60000
 owner_max_bytes = 32
 unit_id_max_bytes = 32
@@ -189,24 +189,24 @@ fn = 0x05                       # u16: the fn the refusal is about; usable by ev
 supported = 0x01                # confirm only: min(u8) max(u8), the protocol revisions the probe handles (core §7.1)
 channel = 0x02                  # u16
 fn = 0x05                       # u16: the fn the refusal is about; usable by every interface
-index = 0x40                    # u8: the position in the request's list (gpio set, wire scan)
 [core.tlv.describe]             # the probe itself (fn 0); declarations only (core §7.3)
-firmware = 0x40
+firmware = 0x40                 # optional text diagnostic/version information (core §7.5)
 model = 0x41
 unit_id = 0x42
 channels = 0x43                 # u16; channel numbers are 0 .. channels - 1; required when the probe has channels, absent = none (core §7.5)
-label = 0x46                    # repeats, one per channel: channel(u16) text: the firmware's fixed channel names (settings' labels: probe.config get)
+label = 0x46                    # optional, repeats, one per channel: channel(u16) text: the firmware's fixed channel names (settings' labels: probe.config get)
 transport = 0x49                # repeats, one per transport: index(u8) kind(u8) interface(u8, 0xFF not USB); required
 chip = 0x4C                     # text: the probe MCU's part and revision (optional)
 max_op_ms = 0x4D                # u32, required: validation, internal retries, execution, cleanup and response generation for one request;
                                # excludes transfer and waits for preceding requests on the same or other routes (core §4.4, §7.5)
-[core.enum.unavailable_cause]
+[core.enum.unavailable_cause]   # 0x01-0x3F core; 0x40-0x7F interface of the request fn; 0x80+ unallocated (core §2.5, §4.3)
 pin_in_use = 1
 limit = 2                      # count, resource or processing-capacity limit (core §4.3, §8.1)
 storage_full = 3
 bound_in_group = 4
 held_by_settings = 5            # the settings' disable or output idle (core §4.3)
 wrong_state = 6
+policy_denied = 7              # optional admission policy before replay/session; five public discovery ops exempt (core §4.3)
 [core.enum.transport_kind] # describe transport (core §7.5); 1-3 are serial ports (transports §4)
 uart_bridge = 1
 usb_cdc = 2
@@ -297,6 +297,12 @@ reset = 3                       # a channel attach's reset TLV may take; no defa
 high = 0
 low = 1
 
+
+[interface.tlv.unavailable_payload] # scan candidate diagnostic; interface-owned tag
+index = 0x40                    # u8: zero-based candidate index
+[interface.tlv.unsupported_payload]
+index = 0x40                    # same diagnostic after the unsupported fixed tag
+
 [[interface]]
 name = "oep.wire.swio"
 revision = 1
@@ -332,6 +338,12 @@ halt = 1
 [interface.enum.pin_role]       # the roles of the pins in describe's channel_group / role_channels
 swdio = 1
 reset = 3
+
+
+[interface.tlv.unavailable_payload] # scan candidate diagnostic; interface-owned tag
+index = 0x40                    # u8: zero-based candidate index
+[interface.tlv.unsupported_payload]
+index = 0x40                    # same diagnostic after the unsupported fixed tag
 
 [[interface]]
 name = "oep.wire.swd"
@@ -369,6 +381,12 @@ run = 0                         # halt (1) is rejected unsupported on swd
 swdio = 1
 swclk = 2
 reset = 3
+
+
+[interface.tlv.unavailable_payload] # scan candidate diagnostic; interface-owned tag
+index = 0x40                    # u8: zero-based candidate index
+[interface.tlv.unsupported_payload]
+index = 0x40                    # same diagnostic after the unsupported fixed tag
 
 [[interface]]
 name = "oep.target.riscv-dm"
@@ -470,6 +488,10 @@ output_low = 3
 output_high = 4
 open_drain_low = 5
 open_drain_release = 6
+
+[interface.tlv.unsupported_payload]
+index = 0x40                    # u8: zero-based set/read list index; same as unavailable
+
 [[interface]]
 name = "oep.fixture.uart"
 revision = 1

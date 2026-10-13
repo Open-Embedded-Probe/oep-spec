@@ -18,15 +18,16 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   targetのflash手順、メモリ配置、チップの識別子の解釈はHostの知識として扱う。Probeが実装する高水準の操作は、宣言したtarget操作の範囲に限る。
   connectionはwireのpin/target選択を保持し、各target要求が先頭のconnection番号でその接続を選ぶ。wireとtargetのfn番号が一致する必要はない。
 
-## 0. すべての wire が共有するもの、新しい wire が定めるもの
+## 0. 本書の wire が共有する規則、別の wire が定めるもの
 
-すべての `oep.wire.*` のインターフェースは:
+本書の `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd` は:
 
 1. op 0x10 scan、0x11 attach、0x12 detach、0x13 connections を §1〜§2.1 の意味で使う（wire は 0x14 から op を足してよい）。attach、detach、connections は必須。scan は任意で、ops で宣言する;
 2. §1 と §2 に従う。swdio / swclk は「ピンの役 1 / 2 の channel」と読み替える;
 3. `oep.target.*` のインターフェースが使う [共通部品](oep-if-common.ja.md) §2 の connection を作る。
 
-新しい wire の文書は、ほかに次を定める:
+別のwireを定義するときは、次を明記する。本書の2ピンのattachやconnectionsの要素の固定形は、一律には要求しない。
+使う役割数・接続先の選択が異なるwireは、別の名前と固定形をcore §12に従って定義してよい。
 
 - ピンの役と、速さの選び方;
 - wake / 設定の手順と、それが target をリセットしうるか（§2）、scratch のレジスタ（§1）;
@@ -35,7 +36,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 - 使う target_id の scheme（§1 の 1 つの空間から）と、線切れの見え方;
 - その connection を受ける `oep.target.*` のインターフェースと、コンソールを使えるかどうか。
 
-## 1. attach の規範（全 wire）
+## 1. attach の規範（本書の3つのwire）
 
 - **速さを確かめる前の書き込み.** 線の速さを確かめ終えるまで、probe が target に書くのは次だけである:
   1. その wire の節が定める wake / 設定の手順（たとえば wake のパターン、line reset、target の選択、または debug module が答える前に要る
@@ -55,6 +56,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   応答の tried は要求の先頭から試した数。候補が残る間は 1 以上。host は未試行の候補を次の要求に載せる。
   同じ候補を重複して載せる要求は malformed。skip や probe 内部の暗黙の候補一覧は持たない。
 - 宣言が許さない組は unsupported。使用中のピンを含む組は unavailable（cause 1）、disable または出力 idle のピンなら cause 5。
+  scanのunavailable/unsupportedの診断TLV 0x40 index（u8）は、要求の候補の0起点の番号を任意に示す。これは各wireの固有tagである。
   scan は候補全体を副作用の前に検証する。実行中の connection のピンを探索に使わない。
   試したピンは各候補の後で空きの状態に戻す。探索自体は connection を作らない。
 - **時間**: attach と scan の応答は、max_op_ms（core §7.5）のうちに返す。速さの探索と再試行をいつ諦めるかは probe が決める。attach で
@@ -79,7 +81,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   1 その debug module の DMI 0x7F の u32、2 swd の DPIDR）。各 wire は、どの scheme を使うかを書く。probe は読めなかったとき（scheme が「無い」と定める値だったときを含む）
   は付けない。値の意味（どのビットが系統で、どれがリビジョンか）は host が知っている。probe は解釈しない。
 
-## 2. connection の寿命（全 wire）
+## 2. connection の寿命（本書の3つのwire）
 
 [共通部品](oep-if-common.ja.md) §2 に加えて:
 
@@ -419,8 +421,9 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
 
 - attach は保留中の havereset を先に確認応答する（確認応答するまで DMSTATUS の halt / running を固定する DM がある）。
 - **haveresetの自動確認応答**は高水準のopとコンソールの読みで行う。raw dmiのopには追加の読み書きや確認応答を挟まず、Hostが指定した手順だけを実行する。
-  自動確認応答の後、同じconnectionのdmseqを未同期へ戻す。marksを提供するconsole fnにはrestart（kind 0x41、detail 1）のマークを付ける。
-  probe自身のreset opによるhaveresetの確認応答の後も、同じconnectionのdmseqを未同期へ戻す。
+  同じconnectionにdmseqのconsole streamがある場合、自動確認応答の後はそのstreamを未同期へ戻す。
+  console streamがありmarksを提供する場合はrestart（kind 0x41、detail 1）のマークを付ける。
+  probe自身のreset opによるhaveresetの確認応答の後も、存在するdmseq streamだけを未同期へ戻す。consoleを提供しないprobeに同期状態やマークの保持は要求しない。
   reset opが成功した場合はreset（kind 0x40、detail 1）を1つ付け、同じresetについてrestartを重ねない。
   attach時にはstreamが無いためマークを付けない。marksを提供しないfnにはマークの保持を要求しない。
   Hostがraw dmiでtargetをresetしたりhaveresetを確認応答したりする場合、必要なconsoleの同期初期化はstreamのclose/openで明示する。

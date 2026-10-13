@@ -46,7 +46,8 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **OEP の要求に自分で答える端点は probe である**。何が運び、後ろに何があるかによらない（たとえば TCP で OEP を出し、別のデバッガを動かすプログラム）。probe の規則はすべてそれに掛かる。要求を OEP の probe に中継するだけのブローカーは、その probe に対しては host である。
 - **broker が OEP の要求へ自分で答える場合**は、独立した OEP の端点として、発見、経路の宣言、セッション、再送、資源の寿命をすべて実装する。
   上流のセッションや資源との対応付けは broker の内部で行う。client 向けに core の一部だけを例外扱いしない。
-- **broker の上流が失われた場合**は、影響する資源を無効にする。端点を再生成するなら boot_id を変える。
+- **brokerが使う下流のprobe/target側の接続が失われた場合**は、影響する資源を無効にする。client向けの端点を再生成するならboot_idを変える。
+  client側の経路が閉じる場合は§3に従い、それだけでsessionや資源を終了しない。
 - **TCP の経路**: TCP で待ち受ける probe は、待ち受けの socket 1 つを fn 0 の describe の経路 1 つとして並べる（kind 6、interface 0xFF）。その socket で受けた接続はどれも、confirm の transport TLV でその index を返す。§3、core §4.4、core §7.1、core §10.4 が経路ごとに掛ける規則（セッションの要求は 1 つの経路で、max_frame / window / max_inflight、使っている revision、通知の送り先）は、受けた接続ごとに別々に掛かる。
   待ち受ける port は probe が決める。host が TCP の probe を見つける方法は §3。
   probe は同時接続数に上限を置いてよく、1 接続だけでもよい。上限を超える新しい接続は受け付けないか閉じる。
@@ -66,6 +67,8 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   ものとして扱い、応答はその要求の来た経路に返す。通知は subscribe が来た経路に送る（core §10.4）。
 - **経路が閉じても**（TCP の接続が閉じた、USB の device が外れた）、セッション、ロック、購読、core §5.1 の表は残る: それらが終わるのは core §9 の出来事だけである。
   閉じた経路に送るはずの応答と通知は捨てる。
+  実行中の要求は通常の後始末まで処理する。まだ実行していない要求は捨ててもよい。
+  hostからはどちらも結果不明であり、再接続後の状態確認と再送はcore §5.1に従う。再送の順序状態を巻き戻さない。
 - **1 つのセッションの id を持つ要求は 1 つの経路で送る**（core §5.1 の順序の判定が経路の遅れで誤らないため）。session_id 0 の要求は
   別の経路から送ってよい。host が 1 つのセッションの要求を 2 つの経路から送ったときの誤判定は host の責任で、probe は確かめない。
 - host は、同じ probe に複数の経路があれば、自分が対応する経路を vendor bulk、HID、シリアルの口の順に試す（§4）。
@@ -83,7 +86,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   明示して選んだものだけを開く。
 - **探りの規則**: host が見分けずに開く device と口（名指した device、利用者の選んだ口、host が自分で扱う device）では、
   host が最初に送るのは confirm（core §7.1）とその送り直し（core §5.1）だけである。confirm の待ち時間
-  （core §4.4。max_op_ms の取得前は 1000 ms（`host_wait_add_ms`）と転送の時間）が過ぎても正しい confirm の応答が来なければ（送り直したときは、最後の送り直しの待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。
+  （core §4.4。max_op_msの取得前はcore_quick_op_max_ms + host_wait_add_ms（計2000 ms）と転送の時間）が過ぎても正しい confirm の応答が来なければ（送り直したときは、最後の送り直しの待ち時間が過ぎても来なければ）、host はその device か口を閉じ、ほかに何も送らない。
   任意の port_speed を扱う host は、UART bridge の口で §4 の条件に従って confirm を繰り返してもよい。port_speed を扱わない host にこの手順は要求しない。正しい confirm の応答とは、送った
   confirm と同じ corr の completed で、payload が core §7.1 の形（`OEP!` で始まる）のものをいう。正しい応答が来た device と口は OEP の
   probe として扱う。

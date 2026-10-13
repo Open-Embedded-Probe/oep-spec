@@ -252,11 +252,9 @@ planの割り当て（role, channel）の集合が変わるplan_applyは、state
 plan_release（[plan](oep-if-plan.ja.md)）か、セッションの終わり（end、lease の期限切れ、force、core §9）で plan が解けたら state 0 に戻り、データも区画も消える（read は空）。mode 3（ストリーミング）の
 start は、その fn の購読が無ければ rejected unavailable（cause 6）。取得中に購読が消えたら取り続け、送れない分は捨てる（position が飛ぶ）。
 
-**startの時間**: 取得が始まってからも、応答を送った後は通常の要求処理とleaseの規則に従う。
+**startの時間**: 取得が始まってからも、応答を生成した後は通常の要求処理とleaseの規則に従う。
 通信を処理できない有限な取得は、その処理をstart要求の中に含め、受付を再開できてから答えてよい。
-その間も、各経路の window / max_inflight を守った要求を失わずに受けられることが前提である（core §4.4）。
-経路が1つで max_inflight=1 なら、hostはstartの応答まで次の要求を送らない。
-複数経路や max_inflight>1 の構成では、受信の保持や経路の流量制御などで合法な入力を保てる場合だけ、この方式を使える。
+その間もcore §4.4の一般の受信保証を保つ。経路が1つでmax_inflight=1なら、hostはstartの応答まで次の新規要求を送らない。
 hostがほかの経路も静かにすることを前提にしてはならない。この条件を満たせない値の組も、configure/queryで副作用前にunsupportedとして断る。
 例えば割込みを使わない即時ワンショットは、取得完了後に答えられる。全処理はmax_op_msのうちに終える。
 その上限に収まる開始/受付再開を実現できない値の組は、configure/queryでunsupportedとして副作用前に断る。

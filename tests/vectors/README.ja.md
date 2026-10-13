@@ -8,6 +8,7 @@
 | `headers.json`、`confirm.json` | メッセージヘッダと接続確認 |
 | `refusals.json` | 要求の拒否とエラー応答 |
 | `discovery.json`、`sessions.json` | 機能の発見とセッション |
+| `core_lifecycle.json` | 未完了再送のcredit、leaseの処理/送信の境界、監視と経路喪失 |
 | `ops.json`、`ops_encoding.json` | 各 op の要求・応答と encoding |
 | `logic_layout.json` | logic capture の区画内の layout |
 | `interface_profiles.json` | 名前付き機能なし、独自拡張、受信専用UART、生のARM転送の小さい宣言例。動作traceではない |
@@ -26,3 +27,5 @@ uv run pytest vectors
 ```
 
 `test_vectors.py` は encoding の復号、独立した checksum 計算、規範で定めた値などで出力を検査する。`test_replay_state.py` は独立した状態モデルで、再送履歴、open の再送、終了したセッション、16 bit の境界を検査する。実装側の unit test と実機試験は、それぞれの実装リポジトリで行う。
+
+- `core_policy.json`: 任意の方針判定と再送/force/公開発見の順序。認証方式や本番endpointは実装しない。

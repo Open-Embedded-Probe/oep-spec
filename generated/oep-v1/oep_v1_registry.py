@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "13457dbc37f527ff"
+REGISTRY_HASH = "25f8110c0d118945"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -26,7 +26,7 @@ COMMON = _NS(enum={"target_id_scheme": {"dmi_7f": 0x01, "dpidr": 0x02}, "read_fr
 
 INTERFACES = {}
 CORE = _NS(op={"confirm": 0x01, "list": 0x02, "describe": 0x03, "clock": 0x04, "open": 0x10, "end": 0x11, "keepalive": 0x12, "lock_state": 0x13}, lock_free={0x01, 0x02, 0x03, 0x04, 0x10, 0x13},
-    tlv={"confirm_answer": {"transport": 0x01}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "unavailable_payload": {"cause": 0x01, "channel": 0x02, "fn": 0x05}, "unsupported_payload": {"supported": 0x01, "channel": 0x02, "fn": 0x05, "index": 0x40}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "label": 0x46, "transport": 0x49, "chip": 0x4C, "max_op_ms": 0x4D}}, event={}, enum={"unavailable_cause": {"pin_in_use": 0x01, "limit": 0x02, "storage_full": 0x03, "bound_in_group": 0x04, "held_by_settings": 0x05, "wrong_state": 0x06}, "transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}}, own={},
+    tlv={"confirm_answer": {"transport": 0x01}, "open": {"owner": 0x01}, "lock_state_answer": {"owner": 0x01}, "locked_payload": {"owner": 0x01}, "unavailable_payload": {"cause": 0x01, "channel": 0x02, "fn": 0x05}, "unsupported_payload": {"supported": 0x01, "channel": 0x02, "fn": 0x05}, "describe": {"firmware": 0x40, "model": 0x41, "unit_id": 0x42, "channels": 0x43, "label": 0x46, "transport": 0x49, "chip": 0x4C, "max_op_ms": 0x4D}}, event={}, enum={"unavailable_cause": {"pin_in_use": 0x01, "limit": 0x02, "storage_full": 0x03, "bound_in_group": 0x04, "held_by_settings": 0x05, "wrong_state": 0x06, "policy_denied": 0x07}, "transport_kind": {"uart_bridge": 0x01, "usb_cdc": 0x02, "usb_serial_jtag": 0x03, "vendor_bulk": 0x04, "hid": 0x05, "tcp": 0x06}}, own={},
     line_names={})
 PROBE_PLAN = _NS(name="oep.probe.plan", revision=1, target=None, op={"plan_apply": 0x10, "plan_release": 0x11}, lock_free=set(),
     tlv={"plan_apply": {"role_assignment": 0x10}, "describe": {"plan_roles": 0x40}}, event={}, enum={}, own={},
@@ -41,15 +41,15 @@ PROBE_LINK = _NS(name="oep.probe.link", revision=1, target=None, op={"source": 0
     line_names={})
 INTERFACES["oep.probe.link"] = PROBE_LINK
 WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, target="RISC-V targets whose debug module is reached over the two-wire RVSWD line", op={"scan": 0x10, "attach": 0x11, "detach": 0x12, "connections": 0x13}, lock_free={0x13},
-    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "idle_clock": 0x04}, "attach": {"idle_clock": 0x04, "reset": 0x05}, "attach_answer": {"target_id": 0x10, "dpc": 0x11}}, event={}, enum={"scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "halted": 0x08}, "features": {"attach_halt": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}, "idle_clock": {"high": 0x00, "low": 0x01}}, own={},
+    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "idle_clock": 0x04}, "attach": {"idle_clock": 0x04, "reset": 0x05}, "attach_answer": {"target_id": 0x10, "dpc": 0x11}, "unavailable_payload": {"index": 0x40}, "unsupported_payload": {"index": 0x40}}, event={}, enum={"scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "halted": 0x08}, "features": {"attach_halt": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}, "idle_clock": {"high": 0x00, "low": 0x01}}, own={},
     line_names={})
 INTERFACES["oep.wire.rvswd"] = WIRE_RVSWD
 WIRE_SWIO = _NS(name="oep.wire.swio", revision=1, target="RISC-V targets whose debug module is reached over the one-wire SWIO line", op={"scan": 0x10, "attach": 0x11, "detach": 0x12, "connections": 0x13}, lock_free={0x13},
-    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01}, "attach": {"reset": 0x05}, "attach_answer": {"target_id": 0x10, "dpc": 0x11}}, event={}, enum={"scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "halted": 0x08}, "features": {"attach_halt": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "reset": 0x03}}, own={},
+    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01}, "attach": {"reset": 0x05}, "attach_answer": {"target_id": 0x10, "dpc": 0x11}, "unavailable_payload": {"index": 0x40}, "unsupported_payload": {"index": 0x40}}, event={}, enum={"scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "halted": 0x08}, "features": {"attach_halt": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "reset": 0x03}}, own={},
     line_names={})
 INTERFACES["oep.wire.swio"] = WIRE_SWIO
 WIRE_SWD = _NS(name="oep.wire.swd", revision=1, target="ARM targets with an SWD debug port", op={"scan": 0x10, "attach": 0x11, "detach": 0x12, "connections": 0x13}, lock_free={0x13},
-    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "targetsel": 0x06}, "attach": {"targetsel": 0x02, "reset": 0x05}, "attach_answer": {"target_id": 0x10}, "connections_answer": {"selected_target": 0x01}}, event={}, enum={"scan_kind": {"arm_adi": 0x02}, "attach_flags": {"dormant_woken": 0x04}, "features": {}, "attach_method": {"run": 0x00}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}}, own={},
+    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "targetsel": 0x06}, "attach": {"targetsel": 0x02, "reset": 0x05}, "attach_answer": {"target_id": 0x10}, "connections_answer": {"selected_target": 0x01}, "unavailable_payload": {"index": 0x40}, "unsupported_payload": {"index": 0x40}}, event={}, enum={"scan_kind": {"arm_adi": 0x02}, "attach_flags": {"dormant_woken": 0x04}, "features": {}, "attach_method": {"run": 0x00}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}}, own={},
     line_names={})
 INTERFACES["oep.wire.swd"] = WIRE_SWD
 TARGET_RISCV_DM = _NS(name="oep.target.riscv-dm", revision=1, target="RISC-V targets with a RISC-V Debug Module", op={"dmi": 0x10, "halt": 0x11, "resume": 0x12, "reset": 0x13, "read_block": 0x14, "write_block": 0x15, "run": 0x16, "step": 0x17}, lock_free=set(),
@@ -65,7 +65,7 @@ TARGET_CONSOLE = _NS(name="oep.target.console", revision=1, target=None, op={"op
     line_names={})
 INTERFACES["oep.target.console"] = TARGET_CONSOLE
 FIXTURE_GPIO = _NS(name="oep.fixture.gpio", revision=1, target=None, op={"set": 0x10, "read": 0x11}, lock_free={0x11},
-    tlv={"describe": {"modes": 0x40}, "unavailable_payload": {"index": 0x40}}, event={}, enum={"role": {"line": 0x01}, "mode": {"input": 0x00, "input_pullup": 0x01, "input_pulldown": 0x02, "output_low": 0x03, "output_high": 0x04, "open_drain_low": 0x05, "open_drain_release": 0x06}}, own={},
+    tlv={"describe": {"modes": 0x40}, "unavailable_payload": {"index": 0x40}, "unsupported_payload": {"index": 0x40}}, event={}, enum={"role": {"line": 0x01}, "mode": {"input": 0x00, "input_pullup": 0x01, "input_pulldown": 0x02, "output_low": 0x03, "output_high": 0x04, "open_drain_low": 0x05, "open_drain_release": 0x06}}, own={},
     line_names={})
 INTERFACES["oep.fixture.gpio"] = FIXTURE_GPIO
 FIXTURE_UART = _NS(name="oep.fixture.uart", revision=1, target=None, op={"configure": 0x10, "read": 0x11, "marks": 0x12, "clear": 0x13, "mark": 0x14, "write": 0x15, "status": 0x16}, lock_free={0x11, 0x12, 0x16},

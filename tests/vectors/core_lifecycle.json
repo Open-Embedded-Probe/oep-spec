@@ -1,0 +1,467 @@
+{
+  "about": "Time is probe processing/transport time in ms. This is a contract model: max_op_ms=10000, no replay byte cache, per-route max_inflight=1 and window=64. receive queues one unique request or coalesces a pending retry; process generates an answer; sent releases route credit. Fn3 is an optional io.example.slow-query revision1 with op0x10: a side-effect-free read with empty fixed request/result, bounded by max_op_ms. Opaque durations model scheduler work, not a measured MCU or clock implementation. Zero-cache replay produces result_lost without executing.",
+  "scenarios": [
+    {
+      "name": "owner processing pauses lease but transmission does not",
+      "spec": "core §4.4/5.1/6.1/6.3",
+      "events": [
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "010100000010785634128813000000",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 0
+        },
+        {
+          "action": "sent",
+          "route": 0
+        },
+        {
+          "action": "check",
+          "owner": 305419896,
+          "remaining_ms": 5000
+        },
+        {
+          "action": "advance",
+          "ms": 1000
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "010200000010785634128813000000",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 7000
+        },
+        {
+          "action": "check",
+          "owner": 305419896,
+          "remaining_ms": 5000,
+          "executions": 2
+        },
+        {
+          "action": "advance",
+          "ms": 5001
+        },
+        {
+          "action": "check",
+          "owner": 0,
+          "remaining_ms": 0
+        },
+        {
+          "action": "sent",
+          "route": 0
+        }
+      ]
+    },
+    {
+      "name": "observer processing does not pause an owner lease",
+      "spec": "core §4.4/5.1/6.1/6.3",
+      "events": [
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "010100000010785634128813000000",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 0
+        },
+        {
+          "action": "sent",
+          "route": 0
+        },
+        {
+          "action": "check",
+          "owner": 305419896,
+          "remaining_ms": 5000
+        },
+        {
+          "action": "advance",
+          "ms": 1000
+        },
+        {
+          "action": "receive",
+          "route": 1,
+          "request_hex": "01020003001000000000",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 1,
+          "duration_ms": 7000
+        },
+        {
+          "action": "check",
+          "owner": 0,
+          "remaining_ms": 0
+        }
+      ]
+    },
+    {
+      "name": "pending retries use one credit and one execution without cache",
+      "spec": "core §4.4/5.1/6.1/6.3",
+      "events": [
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "010100000010785634128813000000",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 0
+        },
+        {
+          "action": "sent",
+          "route": 0
+        },
+        {
+          "action": "check",
+          "owner": 305419896,
+          "remaining_ms": 5000
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01020000001278563412",
+          "expect": "queued"
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01020000001278563412",
+          "expect": "coalesced"
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01020000001278563412",
+          "expect": "coalesced"
+        },
+        {
+          "action": "check",
+          "credits": {
+            "0": 1
+          },
+          "executions": 1
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 2
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01020000001278563412",
+          "expect": "coalesced"
+        },
+        {
+          "action": "check",
+          "executions": 2
+        },
+        {
+          "action": "sent",
+          "route": 0
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01020000001278563412",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 2,
+          "reason": "result_lost"
+        },
+        {
+          "action": "check",
+          "executions": 2
+        }
+      ]
+    },
+    {
+      "name": "SID zero pending copies can coalesce but completed requests run again",
+      "spec": "core §4.4/5.1/6.1/6.3",
+      "events": [
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01010000000400000000",
+          "expect": "queued"
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01010000000400000000",
+          "expect": "coalesced"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 1
+        },
+        {
+          "action": "sent",
+          "route": 0
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01010000000400000000",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 1
+        },
+        {
+          "action": "check",
+          "owner": 0,
+          "executions": 2
+        }
+      ]
+    },
+    {
+      "name": "route closure can discard an unexecuted request without ending ownership",
+      "spec": "core §4.4/5.1/6.1/6.3",
+      "events": [
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "010100000010785634128813000000",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 0
+        },
+        {
+          "action": "sent",
+          "route": 0
+        },
+        {
+          "action": "check",
+          "owner": 305419896,
+          "remaining_ms": 5000
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01020000001278563412",
+          "expect": "queued"
+        },
+        {
+          "action": "close",
+          "route": 0
+        },
+        {
+          "action": "check",
+          "owner": 305419896,
+          "executions": 1
+        },
+        {
+          "action": "receive",
+          "route": 1,
+          "request_hex": "01020000001278563412",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 1,
+          "duration_ms": 1
+        },
+        {
+          "action": "check",
+          "owner": 305419896,
+          "executions": 2
+        }
+      ]
+    },
+    {
+      "name": "wrong owner and SID zero observations cannot renew the lease",
+      "spec": "core §4.4/5.1/6.1/6.3",
+      "events": [
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "010100000010785634128813000000",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 0
+        },
+        {
+          "action": "sent",
+          "route": 0
+        },
+        {
+          "action": "check",
+          "owner": 305419896,
+          "remaining_ms": 5000
+        },
+        {
+          "action": "advance",
+          "ms": 4000
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01020000001300000000",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 1
+        },
+        {
+          "action": "sent",
+          "route": 0
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01030000001279563412",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 1,
+          "reason": "locked"
+        },
+        {
+          "action": "sent",
+          "route": 0
+        },
+        {
+          "action": "advance",
+          "ms": 1000
+        },
+        {
+          "action": "check",
+          "owner": 0,
+          "executions": 2
+        }
+      ]
+    },
+    {
+      "name": "rejected fresh owner request renews from generation",
+      "spec": "core §4.4/5.1/6.1/6.3",
+      "events": [
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "010100000010785634128813000000",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 0
+        },
+        {
+          "action": "sent",
+          "route": 0
+        },
+        {
+          "action": "check",
+          "owner": 305419896,
+          "remaining_ms": 5000
+        },
+        {
+          "action": "advance",
+          "ms": 4000
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01020000001278563412be010078",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 2,
+          "reject": "unsupported",
+          "reason": "unsupported"
+        },
+        {
+          "action": "check",
+          "owner": 305419896,
+          "remaining_ms": 5000,
+          "executions": 1
+        }
+      ]
+    },
+    {
+      "name": "a queued heartbeat cannot revive an expired owner",
+      "spec": "core §4.4/5.1/6.1/6.3",
+      "events": [
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "010100000010785634128813000000",
+          "expect": "queued"
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 0
+        },
+        {
+          "action": "sent",
+          "route": 0
+        },
+        {
+          "action": "check",
+          "owner": 305419896,
+          "remaining_ms": 5000
+        },
+        {
+          "action": "advance",
+          "ms": 4000
+        },
+        {
+          "action": "receive",
+          "route": 0,
+          "request_hex": "01020000001278563412",
+          "expect": "queued"
+        },
+        {
+          "action": "advance",
+          "ms": 1001
+        },
+        {
+          "action": "process",
+          "route": 0,
+          "duration_ms": 1,
+          "reason": "no_session"
+        },
+        {
+          "action": "check",
+          "owner": 0,
+          "executions": 1
+        }
+      ]
+    }
+  ]
+}
