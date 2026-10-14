@@ -141,7 +141,8 @@ number と等しい（transports §3）。
 
 **model**（0x41、任意）: 自由な文字列。同じ種類のハードウェアに同じ firmware なら同じ値にし、個体ごとに変えない。
 
-**firmware**（0x40）: 自由な文字列（ふつうは版）。describe は宣言だけなので、起動ごとに変わる情報（前の起動の終わり方など）を入れない。
+**firmware**（0x40）: 任意の版・診断情報の文字列。describeの値は同じboot_idの間固定する（core §7.3/§7.5）。
+起動時に確定した診断情報は含められるが、動作中に変わる状態は状態照会opで返す。
 **chip**（0x4C、任意）: 自由な文字列。MCU の型番とリビジョン（キャプチャの記録に、どのチップで取ったかを残すのに使われる）。
 
 **インターフェースの識別**（core §7.2）: probe が起動している間 fn は変わらない。instance は同じ (name, revision) の中で重複しない固定識別子で、欠番を許す。
@@ -151,9 +152,9 @@ firmware に定数として割り当ててよく、動的な割当表を要求�
 **ピン**（core §7.4）: ピンを集合のどれにでも割り当てられる機能は role_channels を、組が決まっている機能は組ごとに channel_group を
 宣言する。両方を使ってもよい。probe 自身が使う channel はどの宣言にも載せず（インターフェースに割り当てない）、配線の固定の名前は `label`（0x46）に置く。plan に
 上限があれば `oep.probe.plan` の describe に plan_roles を宣言する（[plan](../interfaces/oep-if-plan.ja.md) §1）。
-片方向だけの UART（RX だけ、TX だけ）は、host が `oep.fixture.uart` の plan で片方の role だけを割り当てて使う。ピンの組が決まっている
-probe は、RX と TX の組のほかに、RX だけの組と TX だけの組も channel_group に別々に書く（channel_group は完全一致なので、書かないと片方だけの
-plan を受けられない）（[fixture](../interfaces/oep-if-fixture.ja.md) §2）。
+片方向だけのUARTは、提供するRXまたはTXのroleだけをplanで割り当てて使う。固定のRX/TX組をchannel_groupで宣言するprobeが
+片方向のplanも受け付けるなら、その片方向に一致するgroupも宣言する。RX専用のprobeにはTXの宣言・実装は要らない
+（[fixture](../interfaces/oep-if-fixture.ja.md) §2）。
 
 **max_frame、window、max_inflight**（confirm、core §4.4）、経路ごと:
 
@@ -200,22 +201,19 @@ clock（core §7.6）の応答の uptime_ns は、その要求を処理する中
 
 target を扱う probe に共通する実装上の注意。
 
-- **止まるまで走らせる**: host が渡したコードを走らせる前に、どの特権のモードでも ebreak が debug モードに入るようにする debug の制御の
-  bit を立て、いちばん強い特権のモードで走らせる。最後の ebreak が trap のベクタに飛ばずに止まるようにするため。割り込みは host が
-  渡すレジスタで止める。
-- **連続した語**: ブロックの読み書きには debug module の autoexec を使い、それが残すアドレスで実行の回数を数える（取りこぼしや
-  二重の実行を見つけるため）。
+- **runを提供する場合**: riscv-dmのrunは、dcsrのebreakmとprv=Mを設定してhostのコードを走らせる
+  （[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.4）。target固有の割込み制御などはhostの手順で扱う。
+- **ブロック転送の実装方法**: 対応するdebug moduleではautoexecなどでまとめて処理できる。
+  転送方法によらず、doneの計測点、書込みの再実行禁止、後始末は線とデバッグ §2/§4/§6に従う。autoexecの採用自体は適合条件ではない。
 - **線の速さは、確かめたときの target のクロックでしか保証されない。** リセットで target が遅いクロックに戻ると、先に選んだ速さでは
   書き込みが化ける。リセットは最も遅い速さで行い、hart が止まってから速さを選び直す。リセットをかけながらの attach も同じで、リセットを
   放す前に最も遅い速さにする。wake が target をリセットする線では、wake を使わずに遅い速さから速めて測り直す。化けた読み出しで
   DMSTATUS が「走っている」に見えることがある: version の欄が合わない値は雑音として扱う。
 - **フレームの間の線の休み方は線の定義の一部**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §3.1、§3.2、§5）で、idle_clock が許す所では target
   ごとに host が選ぶ。線の節に従い、やり取りが失敗した後は線を駆動しないで休ませる（debug §2）。
-- **debug の線は、線のタイミングが許すいちばん弱い出力の強さで駆動する。** debug の線の鋭いエッジは、隣の fixture の線に乗る（コンソールを
-  読む間、近くの SPI や UART の target が bit を落とす・ずらす）。どの PHY、どの移植でも設定する。線と fixture の線の強さは probe が
-  決める（fixture §1.1）。
-- **debug の線が忙しいときだけ壊れる fixture** は、CPU より先に線のエッジを疑う。線が休んでいるときと忙しいときで同じ手順を回し、まず
-  出力の強さを見て、直ったかは前後を同じ手順で測る。
+- **debugとfixtureの同時動作でだけ起きる不具合**では、処理負荷に加えて線の干渉も確認する。
+  出力の強さを調整できるhardwareなら、線のタイミングを保てる範囲で弱めて比較する方法がある。
+  強さを変更する機能や特定の段階を、すべてのPHY・移植へ要求するものではない。
 - **問題を直したら、同じ仕組みの箇所を探す**（ほかの PHY、ほかの SoC、線を駆動する fixture、client と仮想ベンチ）。どこが大丈夫で、どこが
   未確認かを記録に残す。
 - **resume と run は出し直さない**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.2、§4.4）。resume の要求が 2 回要る target や、すべて再開したと
