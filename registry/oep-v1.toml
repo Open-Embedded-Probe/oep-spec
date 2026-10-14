@@ -5,10 +5,8 @@
 # declaration or notification; response reason and event kind may also define distinct contexts (core §2.2).
 # Per op: `lock` = needs the session lock, not whether the op is mandatory. Listing an op here does not require its implementation;
 # required/optional adoption is defined by the interface operation table, and each endpoint declares its offered ops in describe.
-# The key `fields` is reserved on ops for
-# payload layouts later (encoders / decoders generated from here). Shared enums live under [common.enum.*]; USB
-# descriptor constants under [usb]; text and value limits the spec states under [limits] (2026-10-01). After the freeze keys are
-# never renamed, only added (versioning §5);
+# Shared enums live under [common.enum.*]; USB descriptor constants under [usb];
+# text and value limits under [limits]. After the freeze keys are never renamed, only added (versioning §5);
 # the hash tells only whether generated code matches this file, nothing about wire compatibility.
 # The hash embedded in the generated files is the sha256 of this file with line endings normalized to LF.
 # Per interface: `retired.<enum or "op">` = ranges [[lo, hi]] no value may use; `status` / `reject_reasons` = the
@@ -33,7 +31,7 @@
 #   [[interface]]      one per interface, with these keys and sub-tables only:
 #     name = string, revision = integer, fn = integer (u16; only where the fn is fixed: none in v1),
 #     target = string (optional: the target family the interface is for, core §12 rule 8; absent = any family),
-#     op = array of inline tables { code = integer (u8), name = string, lock = bool } (`fields` is reserved on ops);
+#     op = array of inline tables { code = integer (u8), name = string, lock = bool };
 #     [interface.tlv.<context>]   name = integer: a TLV tag (u8, low 7 bits) in that op, answer, payload or declaration;
 #     [interface.enum.<enum>]     name = integer: a value of a field, or a bit mask for a bit set (the width is the field's);
 #     [interface.event]           name = integer: an event kind (u8, 0x01-0x7F);

@@ -72,8 +72,8 @@ def check(reg: dict) -> list[str]:
             codes[c] = op["name"]
             if not 0x01 <= c <= 0xFF:
                 errors.append(f"{n}: op {op['name']} = {c:#x} outside 0x01-0xFF")
-            if set(op) - {"code", "name", "lock", "fields"}:
-                errors.append(f"{n}: op {op['name']} has unknown keys {sorted(set(op) - {'code', 'name', 'lock', 'fields'})}")
+            if set(op) - {"code", "name", "lock"}:
+                errors.append(f"{n}: op {op['name']} has unknown keys {sorted(set(op) - {'code', 'name', 'lock'})}")
         if iface is reg["core"]:
             ranges = [(0x01, 0x0F), (0x10, 0x1F)]
             for c, opname in codes.items():

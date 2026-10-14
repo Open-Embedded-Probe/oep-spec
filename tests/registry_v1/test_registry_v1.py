@@ -3,6 +3,8 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("oepgen1", ROOT / "tools" / "oepgen1.py")
 gen = importlib.util.module_from_spec(spec)
@@ -22,11 +24,11 @@ def test_generated_files_match_the_registry():
     assert (gen.OUT / "oep_v1_registry.js").read_text() == gen.js(reg, digest)
 
 
-def test_no_op_has_an_open_ended_form():
-    """Every form is counted (core §2.3): the op key closed_tail is gone and the generator refuses it."""
+@pytest.mark.parametrize("key", ["closed_tail", "fields"])
+def test_undefined_op_schema_keys_are_rejected(key):
+    """Only documented registry keys are accepted; layouts live in normative text."""
     reg, _ = gen.load()
-    assert not [o for i in reg["interface"] for o in i["op"] if "closed_tail" in o]
-    reg["interface"][0]["op"][0]["closed_tail"] = True
+    reg["interface"][0]["op"][0][key] = True
     assert any("unknown keys" in e for e in gen.check(reg))
 
 
