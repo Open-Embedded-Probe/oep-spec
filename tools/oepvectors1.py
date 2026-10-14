@@ -639,11 +639,47 @@ def ops() -> dict:
     add('UART status: unconfigured has no implicit baud','fixture §2',uart,
         'RX plan exists; configure not called; no UART reception or hidden preset application',
         request(0x35,5,op('oep.fixture.uart','status'),b''),ok(0x35,bytes(5)))
-    add('UART read: unconfigured is empty at its retained position','fixture §2, common §1.2',uart,
+    add('UART read: unconfigured uses the normal read, nothing retained','fixture §2, common §1.2',uart,
         'RX plan exists; not configured; boot-scoped write position7, no retained bytes',
         request(0x36,5,op('oep.fixture.uart','read'),struct.pack('<BQH',1,0,48)),ok(0x36,struct.pack('<QBH',7,0,0)))
     add('UART configure: zero baud is malformed','fixture §2',uart,'session S; RX plan exists; state unchanged',
         request(0x37,5,op('oep.fixture.uart','configure'),bytes(4),S),rej(0x37,'malformed'))
+    # configure failure (fixture §0, §2): completed failed with baud 0, never partial; the plan, retained data and positions stay
+    add('UART configure: initialization failure answers baud 0','fixture §0, §2',uart,
+        'session S; RX plan exists; configured at 9600 8N1; baud 115200 accepted but the driver fails to start; '
+        'reception stops, unsent TX is dropped, the plan stays; afterwards unconfigured',
+        request(0x38,5,op('oep.fixture.uart','configure'),struct.pack('<I',115200),S),failed(0x38,struct.pack('<I',0)))
+    add('UART status: after a failed configure, baud 0 and format 0','fixture §2',uart,
+        'the configure above failed; no new configure',
+        request(0x39,5,op('oep.fixture.uart','status'),b''),ok(0x39,bytes(5)))
+    add('UART read: retained bytes stay readable after a failed configure','fixture §2, common §1.2',uart,
+        'the configure above failed; "abcd" received before it at positions 3 to 6 (3 pushed out before), write position 7',
+        request(0x3A,5,op('oep.fixture.uart','read'),struct.pack('<BQH',1,0,48)),ok(0x3A,struct.pack('<QBH',3,0,4)+b'abcd'))
+    add('UART read: unconfigured, from 0 at a pushed-out position sets gap','fixture §2, common §1.2',uart,
+        'TX-only plan, not receiving; the earlier RX plan received 7 bytes and was released; write position 7, no retained bytes',
+        request(0x3B,5,op('oep.fixture.uart','read'),struct.pack('<BQH',0,2,48)),ok(0x3B,struct.pack('<QBH',7,2,0)))
+    add('UART configure: undeclared format is refused, configuration unchanged','fixture §0, §2',uart,
+        'session S; RX plan exists; configured at 9600 8N1; formats declares 8N1 only; no setting, queue or pin changes',
+        request(0x3C,5,op('oep.fixture.uart','configure'),struct.pack('<I',9600)+tlv(IFACE['oep.fixture.uart']['tlv']['configure']['format'],b'\x10'),S),
+        rej(0x3C,'unsupported',bytes([IFACE['oep.fixture.uart']['tlv']['configure']['format']])))
+
+    # oep.fixture.i2c-target configure (fixture §0, §3): no fixed part either way; a failure leaves state 0 with emptied queues and counters
+    i2c = {"3": "oep.fixture.i2c-target"}
+    i2c_cfg = op("oep.fixture.i2c-target", "configure")
+    add("i2c-target configure: success has no fixed part", "fixture §3", i2c,
+        "session S; fn 3 has its SDA/SCL plan; address 0x42; state 1 once answered",
+        request(0x93, 3, i2c_cfg, bytes([0x42]), S), ok(0x93))
+    add("i2c-target configure: initialization failure, no fixed part", "fixture §0, §3", i2c,
+        "session S; running with 2 frames queued, rx_frames 5, 1 slot preloaded, errors 1, stretch 50 us; the driver fails to start; "
+        "back to state 0, queue and slots emptied, rx_frames and errors 0, stretch kept, plan kept",
+        request(0x94, 3, i2c_cfg, bytes([0x42]), S), failed(0x94))
+    add("i2c-target status: after a failed configure, state 0 and everything cleared", "fixture §3", i2c,
+        "the configure above failed",
+        request(0x95, 3, op("oep.fixture.i2c-target", "status"), b""), ok(0x95, struct.pack("<BBIBI", 0, 0, 0, 0, 0)))
+    add("i2c-target read_rx: state 0 after a failed configure is unavailable", "fixture §3", i2c,
+        "session S; the configure above failed",
+        request(0x96, 3, op("oep.fixture.i2c-target", "read_rx"), b"", S),
+        rej(0x96, "unavailable", tlv(unav["cause"], bytes([6]))))
 
     # oep.wire.rvswd (debug §1 to §3)
     rv = {"4": "oep.wire.rvswd"}
@@ -931,6 +967,20 @@ def ops() -> dict:
         add(f"analog configure: {len(roles)} roles and one nonzero skew without optional diagnostics", "capture §3.3", analog,
             "mode1; given plan roles; no calibration op; scale is pin-voltage estimate; frontend/reference diagnostics omitted",
             request(corr,20,op("oep.fixture.analog","configure"),payload,S),ok(corr,result))
+    # calibration (capture §3.7): everything held or rejected unsupported (0x00) when it does not fit max_frame; never cut, failed or partial
+    cal, ct = op("oep.fixture.analog", "calibration"), IFACE["oep.fixture.analog"]["tlv"]["calibration_answer"]
+    scheme = b"com.example.adc"
+    factory = lambda raw: tlv(ct["factory"], bytes([0xFF, len(scheme)]) + scheme + struct.pack("<H", len(raw)) + raw)
+    held = factory(bytes(range(4))) + tlv(ct["vrefint"], struct.pack("<IQI", 1500, 7_000_000, 1200))
+    add("analog calibration: everything held fits in one answer", "capture §3.7", analog,
+        "calibration offered in ops; max_frame 64; factory raw 4 bytes (frontend 0xFF), vrefint measured at the last start",
+        request(0xE7, 20, cal, b""), ok(0xE7, held))
+    add("analog calibration: nothing held, empty success", "capture §3.7", analog,
+        "calibration offered in ops; no factory value and no vrefint",
+        request(0xE8, 20, cal, b""), ok(0xE8))
+    add("analog calibration: factory raw beyond max_frame is refused, not cut", "capture §3.7, core §4.4", analog,
+        "calibration offered in ops; max_frame 64; factory raw 60 bytes; no ADC or capture state changes",
+        request(0xE9, 20, cal, b""), rej(0xE9, "unsupported", b"\0"))
     lst = IFACE["oep.fixture.logic"]["enum"]
     drop = ("repeat, 1 channel w 1, samples 8000 (1000 bytes a segment), generation 1: serials 0 and 1 done, then the capture ring "
             "overflowed inside serial 2")
@@ -978,6 +1028,21 @@ def ops() -> dict:
     add("spi-target arm: preparation failed with no fixed result", "fixture §4", spi,
         "configured with plan; driver cannot prepare output; no arm or queue/counter changes",
         request(0xCF,14,op("oep.fixture.spi-target","arm"),struct.pack("<HH",1,1)+b"x",S),failed(0xCF))
+    spi_cfg = op("oep.fixture.spi-target", "configure")
+    add("spi-target configure: success has no fixed part", "fixture §4", spi,
+        "session S; fn 14 has its plan; modes declares mode 0; state 1 once answered",
+        request(0xD0, 14, spi_cfg, b"\0\0", S), ok(0xD0))
+    add("spi-target configure: initialization failure, no fixed part", "fixture §0, §4", spi,
+        "session S; running in mode 0 with 1 transaction queued, armed, transactions 4, errors 1; the driver fails to start; "
+        "back to state 0, queue and arm data dropped, channels free (core §8), plan kept",
+        request(0xD1, 14, spi_cfg, b"\0\0", S), failed(0xD1))
+    add("spi-target status: after a failed configure, state 0 and everything 0", "fixture §4", spi,
+        "the configure above failed; a CS transfer came afterwards and was neither queued nor counted",
+        request(0xD2, 14, op("oep.fixture.spi-target", "status"), b""), ok(0xD2, struct.pack("<BBBBBII", 0, 0, 0, 0, 0, 0, 0)))
+    add("spi-target arm: state 0 after a failed configure is unavailable", "fixture §4", spi,
+        "session S; the configure above failed; nothing armed",
+        request(0xD3, 14, op("oep.fixture.spi-target", "arm"), struct.pack("<HH", 1, 1) + b"x", S),
+        rej(0xD3, "unavailable", tlv(unav["cause"], bytes([6]))))
     wire = [1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1]
     for corr, lsb in ((0x8C, False), (0x8D, True)):
         add(f"spi-target read_rx: 12 bits, {'LSB' if lsb else 'MSB'} first, a partial last byte", "fixture §4", spi,
@@ -1233,6 +1298,21 @@ def interface_boundaries() -> dict:
         reception.append(dict(name=name, spec="capture §2.1", generation=1, write_pos=48,
                               spans=spans, expected_tail_reached=at_end, expected_complete=complete))
 
+    # common §1.3/§1.5: a forward serial jump counts as lost only within one stream (capture: one generation) and the core §2.6 range
+    serial_loss = []
+    for name, same, last, first, lost in (
+        ("contiguous", True, 6, 7, 0),
+        ("forward jump in one stream", True, 4, 9, 4),
+        ("jump across the u32 wrap", True, 0xFFFFFFFE, 2, 3),
+        ("another boot's serials", False, 4, 9, None),
+        ("another generation", False, 4, 9, None),
+        ("no earlier serial: an arbitrary from_serial", True, None, 300, None),
+        ("backwards is not a forward jump", True, 9, 4, None),
+        ("beyond a quarter of the space", True, 0, 0x40000001, None),
+    ):
+        serial_loss.append(dict(name=name, spec="common §1.3 paging 3, core §2.6", same_stream=same,
+                                last_serial=last, first_serial=first, expected_lost=lost))
+
     storage = []
     for action, result, observed, before, after in (
         ("save", "success", "new", [1, 4, 0], [1, 5, 0]),
@@ -1273,7 +1353,7 @@ def interface_boundaries() -> dict:
                     counter_before=0xFFFFFFFE, increments=3, expected_counter=0xFFFFFFFF,
                     spi_empty_answer_hex=hx(answer(1, COMPLETED, 0, struct.pack("<BIH", 0, 0, 0))))
     return dict(about="Independent boundary scenarios, not a complete endpoint. Batching has one w8 segment, required 49-byte data overhead, available output and no pending responses; listed chunks are one legal split, not required frame sizes. Storage tuples are storage_state/saved_generation/reason; current generation and pins never change. Group vectors assume a binding, valid session/resources and generation space, no interleaving; only the listed track failure occurs. Fixture reads are consecutive controller transactions. Power-cut tolerance requires separate storage fault-injection tests.",
-                batching=batching, reception=reception, storage=storage, groups=groups, fixtures=fixtures)
+                batching=batching, reception=reception, serial_loss=serial_loss, storage=storage, groups=groups, fixtures=fixtures)
 
 
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,

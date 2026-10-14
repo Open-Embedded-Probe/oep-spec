@@ -407,7 +407,7 @@
       "answer_hex": "02350001000000000000"
     },
     {
-      "name": "UART read: unconfigured is empty at its retained position",
+      "name": "UART read: unconfigured uses the normal read, nothing retained",
       "spec": "fixture §2, common §1.2",
       "fns": {
         "5": "oep.fixture.uart"
@@ -425,6 +425,96 @@
       "state": "session S; RX plan exists; state unchanged",
       "request_hex": "0137000500104433221100000000",
       "answer_hex": "0237000003"
+    },
+    {
+      "name": "UART configure: initialization failure answers baud 0",
+      "spec": "fixture §0, §2",
+      "fns": {
+        "5": "oep.fixture.uart"
+      },
+      "state": "session S; RX plan exists; configured at 9600 8N1; baud 115200 accepted but the driver fails to start; reception stops, unsent TX is dropped, the plan stays; afterwards unconfigured",
+      "request_hex": "0138000500104433221100c20100",
+      "answer_hex": "023800010100000000"
+    },
+    {
+      "name": "UART status: after a failed configure, baud 0 and format 0",
+      "spec": "fixture §2",
+      "fns": {
+        "5": "oep.fixture.uart"
+      },
+      "state": "the configure above failed; no new configure",
+      "request_hex": "01390005001600000000",
+      "answer_hex": "02390001000000000000"
+    },
+    {
+      "name": "UART read: retained bytes stay readable after a failed configure",
+      "spec": "fixture §2, common §1.2",
+      "fns": {
+        "5": "oep.fixture.uart"
+      },
+      "state": "the configure above failed; \"abcd\" received before it at positions 3 to 6 (3 pushed out before), write position 7",
+      "request_hex": "013a00050011000000000100000000000000003000",
+      "answer_hex": "023a000100030000000000000000040061626364"
+    },
+    {
+      "name": "UART read: unconfigured, from 0 at a pushed-out position sets gap",
+      "spec": "fixture §2, common §1.2",
+      "fns": {
+        "5": "oep.fixture.uart"
+      },
+      "state": "TX-only plan, not receiving; the earlier RX plan received 7 bytes and was released; write position 7, no retained bytes",
+      "request_hex": "013b00050011000000000002000000000000003000",
+      "answer_hex": "023b0001000700000000000000020000"
+    },
+    {
+      "name": "UART configure: undeclared format is refused, configuration unchanged",
+      "spec": "fixture §0, §2",
+      "fns": {
+        "5": "oep.fixture.uart"
+      },
+      "state": "session S; RX plan exists; configured at 9600 8N1; formats declares 8N1 only; no setting, queue or pin changes",
+      "request_hex": "013c00050010443322118025000001010010",
+      "answer_hex": "023c00000b01"
+    },
+    {
+      "name": "i2c-target configure: success has no fixed part",
+      "spec": "fixture §3",
+      "fns": {
+        "3": "oep.fixture.i2c-target"
+      },
+      "state": "session S; fn 3 has its SDA/SCL plan; address 0x42; state 1 once answered",
+      "request_hex": "0193000300104433221142",
+      "answer_hex": "0293000100"
+    },
+    {
+      "name": "i2c-target configure: initialization failure, no fixed part",
+      "spec": "fixture §0, §3",
+      "fns": {
+        "3": "oep.fixture.i2c-target"
+      },
+      "state": "session S; running with 2 frames queued, rx_frames 5, 1 slot preloaded, errors 1, stretch 50 us; the driver fails to start; back to state 0, queue and slots emptied, rx_frames and errors 0, stretch kept, plan kept",
+      "request_hex": "0194000300104433221142",
+      "answer_hex": "0294000101"
+    },
+    {
+      "name": "i2c-target status: after a failed configure, state 0 and everything cleared",
+      "spec": "fixture §3",
+      "fns": {
+        "3": "oep.fixture.i2c-target"
+      },
+      "state": "the configure above failed",
+      "request_hex": "01950003001300000000",
+      "answer_hex": "02950001000000000000000000000000"
+    },
+    {
+      "name": "i2c-target read_rx: state 0 after a failed configure is unavailable",
+      "spec": "fixture §3",
+      "fns": {
+        "3": "oep.fixture.i2c-target"
+      },
+      "state": "session S; the configure above failed",
+      "request_hex": "01960003001144332211",
+      "answer_hex": "029600000401010006"
     },
     {
       "name": "rvswd connections: one connection with a target_id",
@@ -1212,6 +1302,36 @@
       "answer_hex": "02e6000100500800e80300000100000051060010000c0200015204000a000000550900000000000040420f00550900010000000040420f005705000105000000"
     },
     {
+      "name": "analog calibration: everything held fits in one answer",
+      "spec": "capture §3.7",
+      "fns": {
+        "20": "oep.fixture.analog"
+      },
+      "state": "calibration offered in ops; max_frame 64; factory raw 4 bytes (frontend 0xFF), vrefint measured at the last start",
+      "request_hex": "01e70014001900000000",
+      "answer_hex": "02e7000100011700ff0f636f6d2e6578616d706c652e616463040000010203021000dc050000c0cf6a0000000000b0040000"
+    },
+    {
+      "name": "analog calibration: nothing held, empty success",
+      "spec": "capture §3.7",
+      "fns": {
+        "20": "oep.fixture.analog"
+      },
+      "state": "calibration offered in ops; no factory value and no vrefint",
+      "request_hex": "01e80014001900000000",
+      "answer_hex": "02e8000100"
+    },
+    {
+      "name": "analog calibration: factory raw beyond max_frame is refused, not cut",
+      "spec": "capture §3.7, core §4.4",
+      "fns": {
+        "20": "oep.fixture.analog"
+      },
+      "state": "calibration offered in ops; max_frame 64; factory raw 60 bytes; no ADC or capture state changes",
+      "request_hex": "01e90014001900000000",
+      "answer_hex": "02e900000b00"
+    },
+    {
       "name": "logic status: data dropped inside a segment, state 6 and error 2",
       "spec": "capture §2.2, §3.2",
       "fns": {
@@ -1306,6 +1426,46 @@
       "state": "configured with plan; driver cannot prepare output; no arm or queue/counter changes",
       "request_hex": "01cf000e0011443322110100010078",
       "answer_hex": "02cf000101"
+    },
+    {
+      "name": "spi-target configure: success has no fixed part",
+      "spec": "fixture §4",
+      "fns": {
+        "14": "oep.fixture.spi-target"
+      },
+      "state": "session S; fn 14 has its plan; modes declares mode 0; state 1 once answered",
+      "request_hex": "01d0000e0010443322110000",
+      "answer_hex": "02d0000100"
+    },
+    {
+      "name": "spi-target configure: initialization failure, no fixed part",
+      "spec": "fixture §0, §4",
+      "fns": {
+        "14": "oep.fixture.spi-target"
+      },
+      "state": "session S; running in mode 0 with 1 transaction queued, armed, transactions 4, errors 1; the driver fails to start; back to state 0, queue and arm data dropped, channels free (core §8), plan kept",
+      "request_hex": "01d1000e0010443322110000",
+      "answer_hex": "02d1000101"
+    },
+    {
+      "name": "spi-target status: after a failed configure, state 0 and everything 0",
+      "spec": "fixture §4",
+      "fns": {
+        "14": "oep.fixture.spi-target"
+      },
+      "state": "the configure above failed; a CS transfer came afterwards and was neither queued nor counted",
+      "request_hex": "01d2000e001300000000",
+      "answer_hex": "02d200010000000000000000000000000000"
+    },
+    {
+      "name": "spi-target arm: state 0 after a failed configure is unavailable",
+      "spec": "fixture §4",
+      "fns": {
+        "14": "oep.fixture.spi-target"
+      },
+      "state": "session S; the configure above failed; nothing armed",
+      "request_hex": "01d3000e0011443322110100010078",
+      "answer_hex": "02d300000401010006"
     },
     {
       "name": "spi-target read_rx: 12 bits, MSB first, a partial last byte",

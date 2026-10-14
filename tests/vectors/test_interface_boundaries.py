@@ -34,6 +34,16 @@ def test_tail_reached_is_not_complete_coverage(row):
     assert (max((b for _, b in spans), default=0) == row["write_pos"]) == row["expected_tail_reached"]
 
 
+@pytest.mark.parametrize("row", DATA["serial_loss"], ids=lambda row: row["name"])
+def test_serial_jump_is_loss_only_within_one_stream(row):
+    lost = None
+    if row["same_stream"] and row["last_serial"] is not None:
+        diff = (row["first_serial"] - row["last_serial"]) % (1 << 32)
+        if 0 < diff < 1 << 30:                                       # forward, inside the held range (core §2.6)
+            lost = diff - 1
+    assert lost == row["expected_lost"]
+
+
 @pytest.mark.parametrize("row", DATA["storage"], ids=lambda row: row["name"])
 def test_storage_outcomes_and_fixed_payloads(row):
     req = bytes.fromhex(row["request_hex"])

@@ -192,6 +192,72 @@
       "expected_complete": false
     }
   ],
+  "serial_loss": [
+    {
+      "name": "contiguous",
+      "spec": "common §1.3 paging 3, core §2.6",
+      "same_stream": true,
+      "last_serial": 6,
+      "first_serial": 7,
+      "expected_lost": 0
+    },
+    {
+      "name": "forward jump in one stream",
+      "spec": "common §1.3 paging 3, core §2.6",
+      "same_stream": true,
+      "last_serial": 4,
+      "first_serial": 9,
+      "expected_lost": 4
+    },
+    {
+      "name": "jump across the u32 wrap",
+      "spec": "common §1.3 paging 3, core §2.6",
+      "same_stream": true,
+      "last_serial": 4294967294,
+      "first_serial": 2,
+      "expected_lost": 3
+    },
+    {
+      "name": "another boot's serials",
+      "spec": "common §1.3 paging 3, core §2.6",
+      "same_stream": false,
+      "last_serial": 4,
+      "first_serial": 9,
+      "expected_lost": null
+    },
+    {
+      "name": "another generation",
+      "spec": "common §1.3 paging 3, core §2.6",
+      "same_stream": false,
+      "last_serial": 4,
+      "first_serial": 9,
+      "expected_lost": null
+    },
+    {
+      "name": "no earlier serial: an arbitrary from_serial",
+      "spec": "common §1.3 paging 3, core §2.6",
+      "same_stream": true,
+      "last_serial": null,
+      "first_serial": 300,
+      "expected_lost": null
+    },
+    {
+      "name": "backwards is not a forward jump",
+      "spec": "common §1.3 paging 3, core §2.6",
+      "same_stream": true,
+      "last_serial": 9,
+      "first_serial": 4,
+      "expected_lost": null
+    },
+    {
+      "name": "beyond a quarter of the space",
+      "spec": "common §1.3 paging 3, core §2.6",
+      "same_stream": true,
+      "last_serial": 0,
+      "first_serial": 1073741825,
+      "expected_lost": null
+    }
+  ],
   "storage": [
     {
       "name": "save success, observed new, before [1, 4, 0]",

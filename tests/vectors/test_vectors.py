@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 REG = tomllib.loads((ROOT / "registry" / "oep-v1.toml").read_text(encoding="utf-8"))
 CORE = REG["core"]                  # fn 0: the core has no name and is not in list (core §0)
+REG_IF = {i["name"]: i for i in REG["interface"]}
 
 
 def load(name: str) -> dict:
@@ -521,6 +522,49 @@ def test_debug_fixed_attach_selection_and_cleanup_failure_shapes():
     assert len(response)==5 and response[3:]==b'\1\1'
 
 
+def test_fixture_configure_failure_shapes():
+    """fixture §0/§2/§3/§4: configure fails as completed failed (never partial); the state after it is unconfigured."""
+    cases = {row['name']: row for row in load('ops.json')['cases']}
+    ans = lambda name: bytes.fromhex(cases[name]['answer_hex'])
+    failed, partial = REG['outcomes']['failed'], REG['outcomes'].get('partial')
+    # UART: failed keeps the baud field, 0; status then reads as never configured
+    a = ans('UART configure: initialization failure answers baud 0')
+    assert a[3:5] == bytes([1, failed]) and a[5:] == bytes(4) and failed != partial
+    assert ans('UART status: after a failed configure, baud 0 and format 0')[3:] == b'\1\0' + bytes(5)
+    a = ans('UART read: retained bytes stay readable after a failed configure')
+    start, flags, n = struct.unpack_from('<QBH', a, 5)
+    assert (flags, n, len(a)) == (0, 4, 5 + 11 + 4) and start + n == 7         # ends at the write position
+    a = ans('UART read: unconfigured, from 0 at a pushed-out position sets gap')
+    assert struct.unpack_from('<QBH', a, 5) == (7, 2, 0) and len(a) == 16      # gap, nothing retained (common §1.2)
+    fmt = REG_IF['oep.fixture.uart']['tlv']['configure']['format']
+    assert ans('UART configure: undeclared format is refused, configuration unchanged')[3:] == bytes([0, REG['reject_reasons']['unsupported'], fmt])
+    # I2C and SPI targets: no fixed part either way; afterwards state 0, counters 0, other ops unavailable (cause 6)
+    for kind, status_len in (('i2c-target', 11), ('spi-target', 13)):
+        assert ans(f'{kind} configure: success has no fixed part')[3:] == b'\1\0'
+        assert ans(f'{kind} configure: initialization failure, no fixed part')[3:] == bytes([1, failed])
+        s = next(v for k, v in cases.items() if k.startswith(f'{kind} status: after a failed configure'))
+        assert bytes.fromhex(s['answer_hex'])[3:] == b'\1\0' + bytes(status_len)
+        r = next(v for k, v in cases.items() if k.startswith(f'{kind} ') and 'state 0 after a failed configure' in k)
+        assert bytes.fromhex(r['answer_hex'])[3:] == bytes([0, REG['reject_reasons']['unavailable'], 1, 1, 0, 6])
+
+
+def test_analog_calibration_is_whole_or_refused():
+    """capture §3.7: the success holds every value held; one that does not fit max_frame is rejected unsupported 0x00, not cut."""
+    cases = {row['name']: row for row in load('ops.json')['cases']}
+    ans = lambda name: bytes.fromhex(cases[name]['answer_hex'])
+    ct = REG_IF['oep.fixture.analog']['tlv']['calibration_answer']
+    a = ans('analog calibration: everything held fits in one answer')
+    got = dict(tlvs(a[5:]))
+    assert a[3:5] == b'\1\0' and set(got) == {ct['factory'], ct['vrefint']} and len(a) <= 64
+    f = got[ct['factory']]
+    raw_len = struct.unpack_from('<H', f, 2 + f[1])[0]
+    assert len(f) == 2 + f[1] + 2 + raw_len and len(got[ct['vrefint']]) == 16
+    assert ans('analog calibration: nothing held, empty success')[3:] == b'\1\0'
+    # 60 raw bytes need at least 5 + 3 + 2 + 15 + 2 + 60 bytes, more than max_frame 64
+    assert 5 + 3 + 2 + len('com.example.adc') + 2 + 60 > 64
+    assert ans('analog calibration: factory raw beyond max_frame is refused, not cut')[3:] == bytes([0, REG['reject_reasons']['unsupported'], 0])
+
+
 def test_capture_minimal_reply_and_analog_diagnostics_fit_frame64():
     cases={row['name']:row for row in load('ops.json')['cases']}
     response=bytes.fromhex(cases['logic start: bounded CPU capture finishes before the reply']['answer_hex'])
@@ -593,7 +637,7 @@ def test_plan_lifetime_and_explicit_uart_initialization_vectors():
         assert tlvs(result[5:]) == [(1,b'\x06')]
     status=bytes.fromhex(cases['UART status: unconfigured has no implicit baud']['answer_hex'])
     assert status[5:] == bytes(5)
-    empty=bytes.fromhex(cases['UART read: unconfigured is empty at its retained position']['answer_hex'])
+    empty=bytes.fromhex(cases['UART read: unconfigured uses the normal read, nothing retained']['answer_hex'])
     assert struct.unpack('<QBH',empty[5:]) == (7,0,0)
     zero=bytes.fromhex(cases['UART configure: zero baud is malformed']['answer_hex'])
     assert zero[3:] == bytes([0,REG['reject_reasons']['malformed']])
