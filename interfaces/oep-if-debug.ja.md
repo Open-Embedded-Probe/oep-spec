@@ -1,6 +1,6 @@
 # OEP インターフェース: 線とデバッグ v1
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。本体は [OEP core](../docs/oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§2 debug の
+状態: **規範**（v1）。凍結状態と言語・互換性の方針は[版と安定性](../docs/versioning.ja.md)を参照。本体は [OEP core](../docs/oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§2 debug の
 connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`。
 
 | 名前 | revision | 役割 | 対象の系統 |
@@ -15,7 +15,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   attach の前から list に出し、connection の無い要求は rejected no_resource。
 - connections 以外の op はすべてロックが要る。
 - 最小のwireはattach/detach/connectionsと1接続だけでよく、scan・複数接続・consoleを要求しない。
-  targetのflash手順、メモリ配置、チップの識別子の解釈はHostの知識として扱う。Probeが実装する高水準の操作は、宣言したtarget操作の範囲に限る。
+  targetのflash手順、メモリ配置、チップの識別子の解釈はhostの知識として扱う。probeが実装する高水準の操作は、宣言したtarget操作の範囲に限る。
   connectionはwireのpin/target選択を保持し、各target要求が先頭のconnection番号でその接続を選ぶ。wireとtargetのfn番号が一致する必要はない。
 
 ## 0. 本書の wire が共有する規則、別の wire が定めるもの
@@ -33,7 +33,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 - wake / 設定の手順と、それが target をリセットしうるか（§2）、scratch のレジスタ（§1）;
 - やり取りと、やり取りの間の線の休み方（§2）;
 - 「見つかった」の基準と、scan_kind の値;
-- 使う target_id の scheme（§1 の 1 つの空間から）と、線切れの見え方;
+- 共通target_idを採用する場合のscheme（§1の空間から）と、線切れの見え方;
 - その connection を受ける `oep.target.*` のインターフェースと、コンソールを使えるかどうか。
 
 ## 1. attach の規範（本書の3つのwire）
@@ -66,7 +66,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 - **attach は新しい connection を作る。** 既存の接続へ暗黙に加わらない。既存の接続のピンを含む場合は unavailable（cause 1）。
   host は取得済みの番号を使うか、明示的に detach して作り直す。
 - 接続数の上限を超える attach は unavailable（cause 2）。probe は空きを作るために別の接続を閉じない。
-- 失敗したattachはconnectionを作らず、既存のProbe資源を変えない。新しく試したピンは空きの状態へ戻す。
+- 失敗したattachはconnectionを作らず、既存のprobe資源を変えない。新しく試したピンは空きの状態へ戻す。
   targetへ届いた書込みやresetの効果は取り消せるとは限らない。
 - `speed_hz` は probe が選んだ線の速さ（1 ビットの周期の逆数の目安）。
 - max_speed（u32 Hz）: probeはこれを超える速さを選ばない。0はmalformed。probeのmin_clock_hzより小さければunsupported
@@ -80,6 +80,8 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   scheme は識別子の取り方。target_id の scheme の番号は probe 全体で 1 つの空間である（registry `[common.enum.target_id_scheme]`:
   1 その debug module の DMI 0x7F の u32、2 swd の DPIDR）。各 wire は、どの scheme を使うかを書く。probe は読めなかったとき（scheme が「無い」と定める値だったときを含む）
   は付けない。値の意味（どのビットが系統で、どれがリビジョンか）は host が知っている。probe は解釈しない。
+  このscheme空間への追加はOEPがregistryで割り当てる。独自インターフェースは自己の固定形/TLVで独自の識別情報を返してよく、
+  共通target_idを採用しない機能にこのscheme空間を要求しない（core §12）。
 
 ## 2. connection の寿命（本書の3つのwire）
 
@@ -87,7 +89,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 
 - **reset後のDMの待ち**: attachのreset線またはreset opのndmresetを解いた後、DMSTATUSが線からの応答を得るまで読み直して待つ。
   attachではwireの最も遅い速さで読む。待ちの間だけwireのwake/設定手順（§1）を送り直してよい。
-  待ちと後始末を含め要求全体のmax_op_msのうちに終える。Hostの待ちはcore §4.4。
+  待ちと後始末を含め要求全体のmax_op_msのうちに終える。hostの待ちはcore §4.4。
 - **detach は connection と、その上の stream を解放する。** force の TLV は持たない。
 - **target の reset では connection を閉じない**。probe は、reset の後も同じ connection で使えるように保つ（wire ごとの手順は
   §4.6 など、target を扱うインターフェースの節）。
@@ -139,7 +141,7 @@ entry: connection(u32)、swdio(u16)、swclk(u16)、speed_hz(u32)、tid_scheme(u8
 - tidはattach時に読んだtarget_id（無ければtid_scheme 0、tid_len 0）。swdはtid_scheme 2、tid_len 4、tidはDPIDR。
   swdでTARGETSELを指定したentryには、応答TLV 0x01 selected_target（entry_index(u8)、targetsel(u32)）を付ける。
   entry_indexはこのページの0起点の番号。このTLVはentryごとに繰り返せる。必要なTLVまで1frameに入るentryだけ返す。
-  selectorはHostが与えた選択値で、読出した識別子と区別する。指定無しと値0の指定も区別する。
+  selectorはhostが与えた選択値で、読出した識別子と区別する。指定無しと値0の指定も区別する。
 
 ## 3. `oep.wire.rvswd` / `oep.wire.swio`
 
@@ -155,7 +157,7 @@ entry: connection(u32)、swdio(u16)、swclk(u16)、speed_hz(u32)、tid_scheme(u8
 - method 0は必須。method 1はdescribeのfeatures bit0（attach_halt）を宣言するときだけ提供する。
   提供しないmethodと未知のmethodはunsupported（固定部分の印0）。method 1はhartselを0にし、hart 0が止まってhaltreqを下ろせた場合だけ成功。
 - **attach の flags**（3 線共通、registry の `attach_flags`）: bit0 保留中の havereset を確認応答した（riscv）、bit1 未割当、
-  bit2 dormantから起こした（swd）、bit3 Probeがhart 0の停止を確認した（0は未確認）。
+  bit2 dormantから起こした（swd）、bit3 probeがhart 0の停止を確認した（0は未確認）。
   method 0に、hart選択の変更や停止状態の確認は要求しない。dpc TLVは任意のRV32診断値で、bit3が立ち、読めた場合だけ付ける。
 - **wake / 設定の手順**（§1 の 1）: rvswd: wake のパターン（§3.1）、続けて DMI 0x7E と DMI 0x7D にそれぞれ 0x5AA50400 を書く。その組を 2 回。
   swio: DMI 0x7E と DMI 0x7D にそれぞれ 0x5AA50400 を書く。その組を 2 回。両方の線のフレームは §3.1 と §3.2。
@@ -278,8 +280,8 @@ low の駆動をやめた後と、0 を読んだ後に、probe は 1 回 30 ns �
   host が dmi で扱う。
 
 **opの後始末**: 高水準opのsuccessは、下表の後始末がすべて済んだ場合だけ返す。
-戻すのは、そのopが一時的に使った値である。Hostが求めたhalt/resume/resetやメモリへの書込みの効果は残る。
-raw dmiに、Probe自身の復元や追加の読み書きを挟まない。
+戻すのは、そのopが一時的に使った値である。hostが求めたhalt/resume/resetやメモリへの書込みの効果は残る。
+raw dmiに、probe自身の復元や追加の読み書きを挟まない。
 
 失敗時も、要求全体のmax_op_msのうちに後始末を試みる。戻す必要のある値やhaltreqを戻せない場合は、
 completed failed / partialを返してから、そのconnectionと依存streamを閉じる（共通部品 §2）。
@@ -287,7 +289,7 @@ statusは後始末の失敗を表し、doneは済んだ手順・語の数のま�
 read_block / write_block は、後始末が失敗した場合も done > 0 なら partial、done = 0 なら failed とする。
 全語の転送が済んだ done = count > 0 の場合も partial であり、転送の完了だけでは success にしない。
 復旧のためのreset/resumeは行わず、次のopやセッション終了まで復元を持ち越す表も要求しない。
-Hostは必要ならattachし直し、targetの状態を確かめて復旧する。
+hostは必要ならattachし直し、targetの状態を確かめて復旧する。
 
 | op | probe が触るもの | 応答の前に |
 |---|---|---|
@@ -342,11 +344,13 @@ probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ�
 - 0x04 の手順の wait_us と 0x05 の手順の max_us の和は max_op_ms を超えてはならない（rejected unsupported）。0x03 の手順は時間ではなく回数で抑える。
   この和は明示的な待ちの量であり、内部の再試行・転送・後始末を含む要求全体の上限ではない。host の待ちは core §4.4 に従う。
   走っている間に要求が max_op_ms に達したら、probe はその手順で要求を終え、status timeout で答える（done = その手順の番号）。
-- **host は抽象コマンドの一連（data1 / data0 の書き込み、command、data0 の読み）を 1 つの dmi 要求に入れる**（probe が
+- **同じconnectionのconsole streamを開いているhostは、抽象コマンドの一連（data1 / data0 の書き込み、command、data0 の読み）を1つのdmi要求に入れる**（probe が
   要求の間にコンソールの読みを挟んでも壊れない。`oep.target.console` §3）。
-- **haltreq / havereset を扱う一連の手順も、待ちの手順を使って 1 つの dmi 要求に入れる**。
+- **同じ場合、haltreq / haveresetを扱う一連の手順も、待ちの手順を使って1つのdmi要求に入れる**。
   例えばresetしてhaltを待つ場合は、haltreqを保ったresetの解除とhaveresetの確認応答、停止の確認、haltreqの解除までを同じ要求で行う。
   consoleの読みが要求の間にhaveresetを確認応答するとDMCONTROLを書き、haltreqを下ろすため、要求をまたいでその保持に頼らない。
+  同じconnectionのconsole streamを閉じ、hostが競合する別のtarget操作を挟まなければ、raw手順を複数のdmi要求へ分けてよい。
+  この分割に原子性はなく、session終了や通信失敗で途中まで作用した場合はhostが状態を確認して復旧する。
 
 ### 4.2 halt、resume、step
 
@@ -361,7 +365,7 @@ probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ�
   hart が debug mode に戻らなければ、probe は haltreq を立てて待つ。hart が止まれば、dcsr.step を下ろし、
   DATA1 / DATA0 を戻して status state で答える。止まらなければ、haltreq を下ろし、応答の TLV 0x01 step_left
   （長さ0）を付けてstatus stateで答える。dcsr.stepが立ったままかもしれず、hartは走っている。
-  後始末を完了できないためconnectionを閉じる。Hostはattachし直して止め、dcsr.stepを下ろす。
+  後始末を完了できないためconnectionを閉じる。hostはattachし直して止め、dcsr.stepを下ろす。
 - step の moved、dpc_before、dpc_after は status ok のときだけ意味を持つ。ok でなければ、probe はどれも 0 にし、host は読まない（hart が
   止まっていれば、host は dpc を dmi で読む）。
 
@@ -397,7 +401,7 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
   host の待ちは core §4.4 に従い、timeout_ms だけから決めない。
   止まったらstopped = 1（後始末も済んだ場合はsuccess）。上限に達したら probe は hart を止めてから dpc と値を読み、stopped = 0、status timeout、outcome
   failed で返す（dpc と値はすべて有効）。止められなければ stopped = 2、status timeout、outcome failed、nvals = 0（dpc は無効）。
-  走らせる前の準備（レジスタ、dcsr、pcの設定）が失敗したら、Probeはresumeを出さずにstopped = 3、statusはその失敗、outcome failed、
+  走らせる前の準備（レジスタ、dcsr、pcの設定）が失敗したら、probeはresumeを出さずにstopped = 3、statusはその失敗、outcome failed、
   nvals = 0（dpc は無効）で返す。応答の形はいつも同じ（`run_stopped`: 0 時間切れで止めた、1 止まった、2 止められなかった、3 走らせなかった）。
   無効な dpc は 0。
 - **elapsed_us** は、probe が hart を走らせた書き込み（resumereq）から、止まったのを見た（stopped 1）、上限で止めた（0）、止めるのを
@@ -420,13 +424,13 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
 ### 4.6 RISC-V の connection の扱い
 
 - attach は保留中の havereset を先に確認応答する（確認応答するまで DMSTATUS の halt / running を固定する DM がある）。
-- **haveresetの自動確認応答**は高水準のopとコンソールの読みで行う。raw dmiのopには追加の読み書きや確認応答を挟まず、Hostが指定した手順だけを実行する。
+- **haveresetの自動確認応答**は高水準のopとコンソールの読みで行う。raw dmiのopには追加の読み書きや確認応答を挟まず、hostが指定した手順だけを実行する。
   同じconnectionにdmseqのconsole streamがある場合、自動確認応答の後はそのstreamを未同期へ戻す。
   console streamがありmarksを提供する場合はrestart（kind 0x41、detail 1）のマークを付ける。
   probe自身のreset opによるhaveresetの確認応答の後も、存在するdmseq streamだけを未同期へ戻す。consoleを提供しないprobeに同期状態やマークの保持は要求しない。
   reset opが成功した場合はreset（kind 0x40、detail 1）を1つ付け、同じresetについてrestartを重ねない。
   attach時にはstreamが無いためマークを付けない。marksを提供しないfnにはマークの保持を要求しない。
-  Hostがraw dmiでtargetをresetしたりhaveresetを確認応答したりする場合、必要なconsoleの同期初期化はstreamのclose/openで明示する。
+  hostがraw dmiでtargetをresetしたりhaveresetを確認応答したりする場合、必要なconsoleの同期初期化はstreamのclose/openで明示する。
 
 ## 5. `oep.wire.swd`
 
@@ -442,7 +446,7 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
 - **wake / 設定の手順**（§1 の 1）: JTAG から SWD への切り替え、dormant からの wake、与えられたときの TARGETSEL。swd は scratch のレジスタを名指さない。
 - **速さの確認**: max_speed以下でDPIDRの読みがACK OKと正しいパリティで終わる速さを選ぶ。
   scratchの書込み/読戻しは行わない。読出しとACKだけでは書込みデータの正しさを保証しないため、
-  target固有の書込み確認はHostが必要に応じてtransferで行う。
+  target固有の書込み確認はhostが必要に応じてtransferで行う。
 - attach は JTAG から SWD への切り替えを試し、答えがなければ dormant から起こす（flags bit2）。電源投入（CTRL/STAT の CDBGPWRUPREQ /
   CSYSPWRUPREQ）は host が DP の書き込みで行う。
 - **線と packet**: この wire の線は SWDIO（ピンの役 1）と SWCLK（ピンの役 2）の 2 本で、Arm Debug Interface（ADIv5 / ADIv6）の SWD の手順を使う。
@@ -463,8 +467,8 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
 ## 6. `oep.target.arm-adi`
 
 要求の先頭は connection(u32)。transferは必須。read_block/write_blockは組で提供する任意opで、opsに宣言する。
-最小の実装はtransferだけでよく、HostがAPの選択、CSW/TARの設定、posted readの回収を生の転送で組む。
-read_block/write_blockはその手順をProbe内でまとめるための操作で、提供しなければunknown_operation。任意opのためのfeaturesは追加しない。
+最小の実装はtransferだけでよく、hostがAPの選択、CSW/TARの設定、posted readの回収を生の転送で組む。
+read_block/write_blockはその手順をprobe内でまとめるための操作で、提供しなければunknown_operation。任意opのためのfeaturesは追加しない。
 
 | op | 名前 | 要求（connectionの後ろ） | 応答 | ロック | 要否 |
 |---:|---|---|---|---|---|

@@ -1,6 +1,6 @@
 # OEP インターフェース: plan v1
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作る。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。本体は [OEP core](../docs/oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。
+状態: **規範**（v1）。凍結状態と言語・互換性の方針は[版と安定性](../docs/versioning.ja.md)を参照。本体は [OEP core](../docs/oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。
 
 | 名前 | revision | 役割 | 対象の系統 |
 |---|---:|---|---|
@@ -11,7 +11,7 @@
   plan の role ではない。
 - plan の role を持つインターフェースを list に出す probe は、`oep.probe.plan` を list に出す。plan の role を持つインターフェースが 1 つも
   無い probe は、出さない。probe が list に出す `oep.probe.plan` は高々 1 つ。
-- plan はセッションの資源である（core §9）。保存した割り当ての再適用はHostが明示的に行う。
+- plan はセッションの資源である（core §9）。保存した割り当ての再適用はhostが明示的に行う。
 
 ## 1. 操作
 

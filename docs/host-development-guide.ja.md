@@ -77,7 +77,7 @@ TCP で待ち受ける probe が自分を広告するときは、DNS-SD の serv
 
 - open のたびに新しい、予測できない 32 bit の乱数の session_id を選ぶ。0、連番、固定値にしない（core §6.1）。
 - **one-shot CLI はコマンドごとに新しいセッションを開く。** 前のセッションの connection や stream を再利用しない。
-  Hostに保存した配線の設定を読み、pinsと速さを明示してattachする。複数コマンドで出力や接続を保つ場合は、それらを同じセッションで実行する。
+  hostに保存した配線の設定を読み、pinsと速さを明示してattachする。複数コマンドで出力や接続を保つ場合は、それらを同じセッションで実行する。
   必要なコンソール出力は end の前に read して host のログへ保存する。
   unit_id ごとに boot_id を記録し、変わったら fn の対応を list から作り直す。
 - **発見の手順**: USB の device を列挙し、プロジェクトの VID:PID を持つもの（§4）と、名指した unit_id と serial
@@ -114,8 +114,8 @@ TCP で待ち受ける probe が自分を広告するときは、DNS-SD の serv
 
 `oep.probe.restart` の restart（[再起動](../interfaces/oep-if-restart.ja.md)）は、口を抜き差しせずに probe を起動し直す。おかしな状態になった
 probe の立て直しと、host 自身の「probe が再起動した」ときの道筋の試験に使う。任意のインターフェースなので、list で `oep.probe.restart` を
-見つけてから使う。そのdescribeのrestart_max_msはProbe内部の復帰までの上限で、OSの列挙やネットワークの接続時間を含まない。
-restartの前に読み、開き直しの期限はそれに外部の待ちを加えてHostが決める。
+見つけてから使う。そのdescribeのrestart_max_msはprobe内部の復帰までの上限で、OSの列挙やネットワークの接続時間を含まない。
+restartの前に読み、開き直しの期限はそれに外部の待ちを加えてhostが決める。
 
 1. ロックを取る（restart はロックの要る op。session_id 0 なら session_required）。保存したい設定があれば先に save する:
    保存していない設定は再起動で無くなる（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2）。
@@ -125,38 +125,38 @@ restartの前に読み、開き直しの期限はそれに外部の待ちを加�
 4. 少し（目安 100 ms）待つ。probe はこの間に再起動を始める。
 5. 新しく開くのと同じに開き直す（§4、transports §3 の探りの規則: 最初は confirm。UART bridge では起動時の速さ）。USB では device が bus から外れて列挙し直す:
    OS の口の名前が変わることがあるので、serial number（= unit_id）で探し直す。開けないか confirm に答えが無ければ、応答を受けてから
-   Hostが決めた期限まで開き直しとconfirmを繰り返す（confirmの応答はcore §4.4のとおり待つ）。restart_max_msの経過だけでは、
-   外部の経路が復帰したことやProbeの違反を判断できない。期限までに正しい
+   hostが決めた期限まで開き直しとconfirmを繰り返す（confirmの応答はcore §4.4のとおり待つ）。restart_max_msの経過だけでは、
+   外部の経路が復帰したことやprobeの違反を判断できない。期限までに正しい
    confirm の応答が無ければ、probe は無くなったものとして扱う: その probe の経路を閉じて利用者に知らせ、利用者が開き直すまで何も送らない。
    利用者が前もって頼んだ開き直し（道具の option で、閉じた後も一定の時間開き直しを続ける、など）は、利用者が開き直すことに当たる。
    UART bridge と TCP の口は閉じずに残ることもあるが、同じ手順でよい。TCP では、アドレスが変わりうるので unit_id で browse し直す（§4.1）。
 6. confirm の boot_id を restart の前のものと比べる。違えば再起動した: 覚えた fn の対応、資源の番号、ストリームの位置、セッションを
    すべて捨て（core §6.5）、list し直し、要るなら新しいセッションを開く。前のセッションの id の要求は no_session で断られる。同じなら
    restart は実行されなかったものとして扱う。
-7. 応答が来なかったときも5〜6と同じに確かめる。Hostの開き直しの期限はrestartの応答の待ちが過ぎた時から数える。
+7. 応答が来なかったときも5〜6と同じに確かめる。hostの開き直しの期限はrestartの応答の待ちが過ぎた時から数える。
    同じcorrのrestartがno_sessionで断られた場合も5〜6へ進み、その応答を基準に開き直しの期限を決める。
 
 **中継する host**（transports §1 の中継のブローカー）は、restart をほかのロックの要る op と同じに中継し、応答を道具に返した後は、上と同じに
 probe への経路を閉じる。ブローカーの probe への経路が無くなれば（ブローカーが閉じた、USB で列挙し直した、TCP が閉じた）ブローカーは終わり、
 道具への接続も閉じる（transports §1）: 道具は新しく開くのと同じにやり直す。
 
-再起動の後、保存した設定は通常の起動と同じに掛かる（配線の設定はHostが再適用する）。
+再起動の後、保存した設定は通常の起動と同じに掛かる（配線の設定はhostが再適用する）。
 再起動の手順はtargetのreset/resumeを意図して行わないが、ピンのリセット状態や外部回路の影響は別に確認する（[再起動](../interfaces/oep-if-restart.ja.md) §2）。
 
-### 5.3 probeとHostの接続プロファイルの名指し方
+### 5.3 probeとhostの接続プロファイルの名指し方
 
 - **アドレス**: host が probeと接続プロファイルを文字で名指すときは `oep://<unit_id>[/<profile name>]` と書く。authority は unit_id（core §7.5、小文字）、
-  path はHost側の接続プロファイルの名前1 つだけ。path の無い `oep://<unit_id>` は probe 自身。
+  path はhost側の接続プロファイルの名前1 つだけ。path の無い `oep://<unit_id>` は probe 自身。
   IDE や設定のファイルが probe を覚えるときはこの形で覚える（VID:PID や口の名前ではなく）。unit_idとプロファイルの名前は、どちらも URL の中で
   encode の要らない文字だけを使う。
 - **インターフェース**: 文字で 1 つのインターフェースを指すとき（CLI、設定のファイル、ログ）は `name#instance` と書く（instance は list の値、
   0 も有効で、`#0` は省いてよい）。例: `oep.fixture.uart#1` は instance=1 の `oep.fixture.uart` であり、list の2番目という意味ではない。
   revision は別に明示して保存・選択し、(name, instance, revision) を解決する。欠番なら未提供として扱う。
 
-接続プロファイルはHostが持つ配線/速さ/target選択の記述で、Probeの標準設定項目ではない。
-labelを線の役目に使う場合、`nrst`、`power_hi`、`power_lo`を慣行にできる。複数の接続先にはHostのプロファイル名Sを用い、
+接続プロファイルはhostが持つ配線/速さ/target選択の記述で、probeの標準設定項目ではない。
+labelを線の役目に使う場合、`nrst`、`power_hi`、`power_lo`を慣行にできる。複数の接続先にはhostのプロファイル名Sを用い、
 `S.N`の設定label、単一接続先なら`N`の設定label、最後にfirmwareの`N`の順で探す。ASCIIの大小文字を区別せず、
-同じ段で複数channelが見つかれば曖昧として使用しない。Probeはこの名前から線を動かさない。
+同じ段で複数channelが見つかれば曖昧として使用しない。probeはこの名前から線を動かさない。
 
 ## 6. 排他とロックの奪い方
 
@@ -194,7 +194,7 @@ client 向けに実装し、上流の probe との対応は内部で管理する
 
 
 任意の方針によるunavailable cause 7は、認証した経路や在席確認などの製品条件を満たしていないことを表す（core §4.3）。
-Hostは同じ要求やforceを繰り返して回避せず、その製品の接続・認可手順へ進む。過去の成功応答は現在の許可の証明にしない。
+hostは同じ要求やforceを繰り返して回避せず、その製品の接続・認可手順へ進む。過去の成功応答は現在の許可の証明にしない。
 
 ## 8. 応答の対応付けと送り直し（transports §5 と core §5.1 が求めること）
 
@@ -251,7 +251,7 @@ rejected は要求が受け付けられなかったこと、completed failed / p
 - **インターフェースの revision**: list は fn ごとに (name, instance, revision) を返す。知らない revision のインターフェースは使わない
   （core §2.8）。probe は古い revision を別の fn で出してよいので、知っているほうを選ぶ。instance は (name, revision) ごとの識別子で、欠番を許す
   （core §7.2）。
-- **応答の読み方**: 固定部分の後ろは TLV の並び。知らない tag は読み飛ばす。繰り返さない tag は最初のものを使う。並びは要素に長さの
+- **応答の読み方**: 固定部分の後ろは TLV の並び。知らない tag は読み飛ばす。繰り返さないtagは最初のものを使い、後続も構造と既知の長さを検証する（core §2.3）。並びは要素に長さの
   無い `count × element` なので、要素は定義のとおりにフィールドごとに読む。固定の形は末尾を延ばされない。長さが定義と違う TLV の値は
   壊れている（core §2.3）。新しい情報は新しい tag で来る。応答の中で bit 7 の立った TLV は知らない tag として扱う。
 - **要求の送り方**: 効かなければ意味の無い TLV か、効かないと害のある TLV（attachのreset、scanのmax_speedなど）には critical の bit を立てる（core §2.3）。
@@ -319,12 +319,12 @@ captureの世代は同じboot内で使い回さない。0xFFFFFFFFを使い切�
 - ほかの fn や connection が持つピンを取ろうとすると rejected unavailable で、何も変わらない（core §8.1）。
 - 解いたピンは空きの状態になる: probe の設定の idle か、Hi-Z（core §8）。治具の配線で相手の入力が浮くピン（DUT の RX につながる
   TX など）は、`oep.probe.config` の idle で pull-up の入力にして保存する（§15）。
-- planはセッションの資源で、end、leaseの期限切れ、forceで解放される（core §9）。Hostの配線設定は残せるが、実行中のplanを引き継がない。
+- planはセッションの資源で、end、leaseの期限切れ、forceで解放される（core §9）。hostの配線設定は残せるが、実行中のplanを引き継がない。
 
 ## 14. コンソール
 
 - marksを提供するconsoleでは、from 3のargにresetのkind 0x40を置いて最後のresetマークから読める（common §1.2、console §2）。
-  marksを提供しない構成では、Hostが保持する位置からfrom 0で読み、操作の区切りをHost側のログに記録する。
+  marksを提供しない構成では、hostが保持する位置からfrom 0で読み、操作の区切りをhost側のログに記録する。
 - モニターが一度閉じて戻るときは、前回読んだ位置から読む。
 - 応答の start が要求した位置より進んでいたら、その差が失われた量である。表示に残す。
 - 表示用の時刻は受け取った時刻を使う（probe は byte ごとの時刻を持たない）。
@@ -343,19 +343,19 @@ captureの世代は同じboot内で使い回さない。0xFFFFFFFFを使い切�
 
 ## 15. probeの設定
 
-`oep.probe.config`はdisable/idle/labelを扱う。配線、UART、ネットワークの設定はHostまたは別の定義で管理する。
+`oep.probe.config`はdisable/idle/labelを扱う。配線、UART、ネットワークの設定はhostまたは別の定義で管理する。
 
 1. list/describeで対応itemsとopsを読む。saveがあればstorage.max_bytesは1以上で、無ければ保存を提供しない。
 2. getのcount個の項目を読み、末尾の拡張TLVを別に読む。moreならcountをfirstへ加えて続ける。
-   途中でgenerationが変われば最初から読み直す。generationはboot内の変更カウンタで、Hostが計算するhashではない。
+   途中でgenerationが変われば最初から読み直す。generationはboot内の変更カウンタで、hostが計算するhashではない。
 3. 欲しい内容とキーごとに比べ、同じなら何もしない。変更はロックを取り、count付きset/unsetを送る。
    外側のTLVと項目のtag bit7は別の規則なので、項目はbit7=0で送る。
 4. 保存したい場合だけsaveする。stateが提供され、saved_generationが現在のgenerationと等しければ保存済み。
-   内容が同じならProbeは不要な書込みを省く。eraseは保存だけを消す。
-5. firmware更新後に部分適用/読めない状態になったら、getで効いている項目を確認し、保存したHost設定と比べて修復する。
+   内容が同じならprobeは不要な書込みを省く。eraseは保存だけを消す。
+5. firmware更新後に部分適用/読めない状態になったら、getで効いている項目を確認し、保存したhost設定と比べて修復する。
    無効なlabelなどを理由に独立したdisable/idleが全て消えたと決め付けない。
 
-idle出力はHostが去った後も空きのpinで効く。保存前に配線とlevelを確認する。
+idle出力はhostが去った後も空きのpinで効く。保存前に配線とlevelを確認する。
 保存を提供しない最小構成ではstateも必須ではない。
 
 ## 16. wireとtargetの操作を組み合わせる
@@ -363,7 +363,7 @@ idle出力はHostが去った後も空きのpinで効く。保存前に配線と
 wireのattachが返したconnection番号を、対応するtargetのfnへの要求で明示する。wireのfn番号をtargetのfn番号として使わない。
 接続を複数持つ場合も、保存した番号を要求ごとに選び、最後の接続を暗黙に使わない。
 
-arm-adiの最小Probeはtransferだけを提供する。read_block/write_blockがopsに無ければ、HostがAPの選択・設定・posted readの回収をtransferで組む。
+arm-adiの最小probeはtransferだけを提供する。read_block/write_blockがopsに無ければ、hostがAPの選択・設定・posted readの回収をtransferで組む。
 ブロック操作があれば、そのmax_lengthの範囲で使う。未実装の任意操作からの組み替えと、実行した操作が失敗した後の再実行は区別する。
 失敗した書き込みやdone 0はtargetへの作用が無かった保証にならないため、失敗後に別の操作で同じ書き込みを自動的に繰り返さない。
-生のtransfer/dmiで扱うチップ固有の手順と復旧は、Host側のプロジェクトが管理する。
+生のtransfer/dmiで扱うチップ固有の手順と復旧は、host側のプロジェクトが管理する。

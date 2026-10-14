@@ -1,6 +1,6 @@
 # OEP インターフェース: fixture v1
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。本体は [OEP core](../docs/oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
+状態: **規範**（v1）。凍結状態と言語・互換性の方針は[版と安定性](../docs/versioning.ja.md)を参照。本体は [OEP core](../docs/oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
 ストリーム）。番号の唯一の定義は `registry/oep-v1.toml`。キャプチャは [キャプチャ](oep-if-capture.ja.md)。
 
 | 名前 | revision | 役割 | plan の role | 対象の系統 |
@@ -10,7 +10,7 @@
 | `oep.fixture.i2c-target` | 1 | I2C の target（被制御側）。DUT の I2C controller を試す | 1 = SDA、2 = SCL | どの系統にも使う |
 | `oep.fixture.spi-target` | 1 | SPI の target。DUT の SPI controller を試す | 1 = SCK、2 = MOSI、3 = MISO、4 = CS | どの系統にも使う |
 
-どれも plan（[plan](oep-if-plan.ja.md)）で割り当てたチャンネルだけを扱う。下の表の op は、その節が任意と書かない限り、すべて必須（core §1.2）。
+どれも[plan](oep-if-plan.ja.md)で割り当てたチャンネルだけを扱う。同じ割り当ての状態不変はplan §2.1に従う。下の表の op は、その節が任意と書かない限り、すべて必須（core §1.2）。
 
 ## 1. `oep.fixture.gpio`
 
@@ -39,11 +39,11 @@ GPIOのpin割り当てにはplanを使う。planを持たない他の独自拡�
 - 扱える mode は describe の modes（tag 0x40、u32 のビット集合、bit n = mode n）で宣言する。0（入力）は必須。
 - **plan で取ったチャンネルは、最初の set までそれまでの状態を保つ**（空きの状態のまま。出力の idle なら、その level の駆動を続ける）。
   取ったことで level は変わらない。
-- GPIOのplanは出力のidleのchannelも受け付ける。同じ割り当てを残すplan_applyはGPIOのmode・level・出力の強さを変えない。
+- GPIOのplanは出力のidleのchannelも受け付ける。
 - readは現在のlevelを観測するだけで、入力へ切り替えたり、出力・プル・出力の強さを変更したりしない。
   planの解放・セッション終了では、そのplanによるGPIOの設定を解き、core §8/§9の空きの状態へ戻す。
 
-出力の強さはProbeが決める。v1では段の切替えを定義せず、必要な場合は新しい任意機能のTLVで定義する。
+出力の強さはprobeが決める。v1では段の切替えを定義せず、必要な場合は新しい任意機能のTLVで定義する。
 hostが指定した強さに動作が依存する場合は、その要求TLVをcriticalで送り、非対応のprobeに黙って無視させない（core §2.3）。
 
 ## 2. `oep.fixture.uart`
@@ -74,14 +74,14 @@ RXを割り当てて受信を保持するbufferと位置管理に対し、マー
 - **status**（ロック不要）: configure済みなら実際のbaud/format。planを作ってから最初のconfigureまで、baud 0、format 0を返す。
   0は未configureの印であり、0 baudで通信しない。対応できない既定のbaudを暗黙に掛ける必要はない。
 - **ストリームはplanが作り、planを解くと消える**。セッションのconfigureもplanを解くと消える。
-  受信はHostが明示的にconfigureしてから始める。Hostに保存した値があっても、受信は暗黙に始めない。
-  configure済みのplanを持つ間は、読むHostや要求のsession_idによらず受信を貯める。
+  受信はhostが明示的にconfigureしてから始める。hostに保存した値があっても、受信は暗黙に始めない。
+  configure済みのplanを持つ間は、読むhostや要求のsession_idによらず受信を貯める。
   configure をやり直しても貯めた分と位置はそのまま
   （境目が要るなら host が mark を付ける）。**位置とマークの serial は、plan を解いて再び作っても起動の中で戻らない**
   （[共通部品](oep-if-common.ja.md) §1.1）。marksを提供する場合、受信の誤りはmark lost（detail 2 framing、3 parity）とする。
   marksを提供しない場合は、マークの記録とserialの管理を要求しない。streamの位置は同じboot内で保持する。
-- 同じ割り当て（role, channel）の集合のplan_applyはbaud/format・buffer・位置・マークを保つ。configure済みの割り当て変更はunavailable（cause 6）で断り、
-  Hostは必要なデータを読んでplan_releaseしてから作り直す。未configureの割り当て変更は、bufferとマークを解き、未configureのまま置き換える。
+- configure済みの割り当て変更はunavailable（cause 6）で断り、
+  hostは必要なデータを読んでplan_releaseしてから作り直す。未configureの割り当て変更は、bufferとマークを解き、未configureのまま置き換える。
   位置とマークのserialは、その変更でも戻さない。
 - **TX の線は、plan で割り当てている間（configure の前も）UART の休止（high）に保つ**: plan を取ることが TX を使い始めることである（core §8）（相手の受信が雑音を拾わないため）。plan を
   解いたら UART の駆動をやめ、core §8 の空きの状態にする。解いた後も相手の入力を浮かせたくない治具は、`oep.probe.config` の idle で
@@ -102,7 +102,7 @@ read_rx で取り出す。
 | 0x14 | stretch | stretch_us(u32) | — | 必要 |
 
 - このfnのplanはrole 1と2をちょうど1つずつ、別々のchannelで持つ。満たさない組のplan_applyはunsupported（role_assignmentのtag）で断る。
-  動作中（state 1）の割り当て（role, channel）の集合の変更はunavailable（cause 6）。同じ集合は状態を保つ。planを解くか未設定の役割を置き換えると初期状態へ戻る（state 0、
+  動作中（state 1）の割り当て（role, channel）の集合の変更はunavailable（cause 6）。planを解くか未設定の役割を置き換えると初期状態へ戻る（state 0、
   列・置き場・累計を消し、stretch の値は 0）。
 - SDA と SCL は**オープンドレインだけ**で駆動する: probe は low に引くか離すかで、high に駆動しない。
 - **内部のプルアップ**: configure されている間 SDA / SCL に自分のプルアップを入れる probe は、features の bit2（内部プルアップ）でそれを宣言する。
@@ -119,13 +119,14 @@ read_rx で取り出す。
   列もあふれた書き込みも 1）。
 - **読み出し**: controller の読み出しには、preload_tx で置いた順に、置き場から答える。count は 1〜max_length（0 は malformed）。未読の置き場は
   queue_depth 個まで。すべて埋まっているときの preload_tx は何も置かずに rejected unavailable（cause 2）。state 0 では rejected unavailable（cause 6）。controller が
-  読んだバイト数が置いた長さと違っても、次の読み出しは次の置き場から答える。**置き場が空のときは 0xFF を出す**。
+  読んだバイト数が置いた長さと違っても、次の読み出しは次の置き場から答える。**置き場が空のときと、同じ読み出しで置いた長さを使い切った後は0xFFを出す**。
+  同じ読み出しの途中で次の置き場を消費しない。
 - preload_tx の success は、置いたデータがその後に始まる controller の読み出しで使える状態になってから返す。
 - status: state 0 未設定、1 動いている。queued は積んだフレームの数（255 で止める）。rx_frames は列に積んだフレームの累計（あふれて捨てたものは
   数えない）、tx_slots は preload_tx で置いて未読の置き場の数、errors はあふれか max_length 超過のあった書き込みの数の累計（u32）。
+  rx_framesとerrorsは0xFFFFFFFFで飽和し、configureまたはplan解放で0へ戻る。
 - stretch は、受けたデータの byte ごとに、8 bit 目の後、ACK を出した状態で ACK の clock の前に SCL を low に保つ時間（µs、0 = しない）。
-  read では、アドレスが一致した後に同じだけ保つ。write のアドレスの byte では保たない。stretch は任意で、describe の ops で宣言する
-  （core §1.2）。持たない probe は unknown_operation で答える。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け
+  read では、アドレスが一致した後に同じだけ保つ。write のアドレスの byte では保たない。stretchは任意（core §1.2）。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け
   （state 0 でも）、値は次に受ける byte から効く。configure は値を変えない。
 - describe: ops、role_channels、max_length（1 フレームの最大 byte）、max_clock_hz（確かめた SCL の上限）、features（bit2 内部プルアップ）、
   queue_depth（tag 0x40、u8: 積めるフレームの数と、未読の置き場の数の上限）、
@@ -149,12 +150,12 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   各ビットはそのクロック周期の最初のエッジで変わり、2 番目のエッジで取り込まれる。最初のエッジは、CPOL の level から離れるエッジである。バイトは、
   両方向とも、bit_order のとおり MSB を先か LSB を先に送る。
 - このfnのplanはrole 1〜4をちょうど1つずつ、別々のchannelで持つ。満たさない組のplan_applyはunsupported（role_assignmentのtag）で断る。
-  動作中（state 1）の割り当て（role, channel）の集合の変更はunavailable（cause 6）。同じ集合は状態を保つ。planを解くか未設定の役割を置き換えると初期状態へ戻る（state 0、
+  動作中（state 1）の割り当て（role, channel）の集合の変更はunavailable（cause 6）。planを解くか未設定の役割を置き換えると初期状態へ戻る（state 0、
   mode と bit_order は 0、列・待ち・累計を消す）。
 - configure は target を作り直す（積んだ転送、待ち、transactions と errors は消える）。この fn の plan が無いときは rejected unavailable
   （cause 6）。mode が 3 を超える、bit_order が 1 を超える は rejected malformed。features の bit0 が無いのに bit_order 1 は rejected
   unsupported。describeのmodesに無いmodeもunsupported（固定部分の印0）で、状態を変えない。
-  mode 0〜3のすべての実装は要求せず、1つ以上を提供する。**CS は low で有効**（high で有効は後から TLV で）。
+  mode 0〜3のすべての実装は要求せず、1つ以上を提供する。**CS は low で有効**。
 - state 0（未設定）への arm は rejected unavailable（cause 6）で答え、状態を変えない。
 - arm は次の 1 回の転送を待つ: length は受ける最大 byte（1〜max_length。0 は malformed、超過は unsupported）、tx はその転送で MISO に
   出すバイト（count ≤ length。count > length は rejected malformed。足りない分は 0）。待っている間の arm は rejected unavailable（1 回に 1 つ）。**arm していない間の転送は
@@ -169,10 +170,11 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   割って切り上げた数で、length で止める。線の k 番目（0 から）のビットは、data の byte floor(k / 8) の、MSB が先ならビット 7 − (k mod 8)、
   LSB が先ならビット k mod 8 に置く（バイトの途中で終わった転送も同じ）。最後の byte の、来なかったビットは 0。length を超えた分は捨て、errors を 1 増やす（その転送は、bits を実際に来た数のまま、data を
   length までにして積む）。列に queue_depth 個あるときに終わった転送は積まずに捨て、errors を 1 増やす（transactions には数える）。
-  errors は転送 1 回につき多くても 1 増える。read_rx はいちばん古いものを返す（無ければ count 0）。state 0 では rejected
+  errors は転送 1 回につき多くても 1 増える。read_rx はいちばん古いものを返す（無ければpending/bits/countはすべて0、dataは空でtimestampを付けない）。state 0 では rejected
   unavailable（cause 6）。pending は取り出した後の残り（255 で止める）。
 - status: state 0 未設定、1 動いている。armed は転送を待っているか。queued（255 で止める）、transactions（終わった転送の累計）、
   errors（あふれ、未 arm、length 超過のどれかがあった転送の数の累計、u32）。
+  transactionsとerrorsは0xFFFFFFFFで飽和し、configureまたはplan解放で0へ戻る。
 - describe: ops、role_channels、max_length（1回の転送の最大byte）、max_clock_hz（確かめたSCKの上限）、features（bit0 LSBが先）、
   queue_depth（tag 0x40、u8）、modes（tag 0x41、u8。必須。bit kがmode kの対応を表す。bits 4〜7は0、値は1以上）、
   cs_setup_ns（tag 0x43、u32、下）。
@@ -180,7 +182,7 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   どの経路のmax_frameにも収まる値にする。外部controllerの転送をread_rxで分割できるとは仮定しない。任意のtimestamp TLVは収まる場合だけ付ける。
 - **cs_setup_ns**（describe の tag 0x43、u32、ns）: CS が有効になってから最初の SCK のエッジまでの時間で、MISO が最初のビットで駆動されていることを
   probeが保証する最短のもの。保証は受け付けた資源の組合せで保つ。
-  ほかのfnとの同時使用でmax_clock_hzやcs_setup_nsを保てないProbeは、後から来たconfigure/attach/startなどを、
+  ほかのfnとの同時使用でmax_clock_hzやcs_setup_nsを保てないprobeは、後から来たconfigure/attach/startなどを、
   core §8.1に従い、副作用の前にunavailable（cause 2。必要ならfnの診断TLV）で断る。
   SPIのconfigureを後から受ける場合も同じ。すべてのfnの任意の組合せの同時実行は要求しない。
   CS が有効になってからその時間の間、MISO は駆動されていないか、最初のビットを駆動しているかのどちらかで、ほかの値になることはない。CS が無効になった後は、

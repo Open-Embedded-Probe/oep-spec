@@ -1207,11 +1207,81 @@ def core_policy() -> dict:
     return dict(about='Optional admission harness, not authentication or an endpoint. Owner 0x12345678, last_corr12, lease remaining1000ms, resource42. Fn2 is optional io.example.query revision1, readonly op0x10. Downstream op results are opaque sentinels; operation execution has separate vectors.',scenarios=rows)
 
 
+def interface_boundaries() -> dict:
+    """Finite boundary examples; observations are supplied by the endpoint test adapter."""
+    batching = []
+    for name, minimum, delay, age, pending, ending, frame, chunks in (
+        ("running tail waits", 32, 0, 1000, 8, False, 128, []),
+        ("stop flushes tail without a timer", 32, 0, 1000, 8, True, 128, [8]),
+        ("timer releases tail", 32, 20, 20, 8, False, 128, [8]),
+        ("threshold spans frames including the last tail", 64, 0, 0, 64, False, 64, [15, 15, 15, 15, 4]),
+        ("both zero sends immediately", 0, 0, 0, 8, False, 128, [8]),
+        ("empty stop creates no data frame", 32, 0, 1000, 0, True, 128, []),
+    ):
+        batching.append(dict(name=name, spec="core §10.3/§10.4; capture §2.1/§3.4",
+                             min_bytes=minimum, max_delay_ms=delay, age_ms=age, pending_bytes=pending,
+                             stopped=ending, max_frame=frame, expected_data_lengths=chunks))
+
+    reception = []
+    for name, spans, at_end, complete in (
+        ("middle notification lost", [[1, 0, 16], [1, 32, 48]], True, False),
+        ("contiguous reception", [[1, 0, 16], [1, 16, 32], [1, 32, 48]], True, True),
+        ("read recovers a gap", [[1, 0, 16], [1, 32, 48], [1, 8, 36]], True, True),
+        ("old generation cannot fill a gap", [[1, 0, 16], [0, 16, 32], [1, 32, 48]], True, False),
+        ("last notification lost", [[1, 0, 32]], False, False),
+    ):
+        reception.append(dict(name=name, spec="capture §2.1", generation=1, write_pos=48,
+                              spans=spans, expected_tail_reached=at_end, expected_complete=complete))
+
+    storage = []
+    for action, result, observed, before, after in (
+        ("save", "success", "new", [1, 4, 0], [1, 5, 0]),
+        ("save", "failed", "old", [1, 4, 0], [1, 4, 0]),
+        ("save", "failed", "old", [3, 0, 2], [3, 0, 2]),
+        ("save", "failed", "none", [0, 0, 0], [0, 0, 0]),
+        ("save", "failed", "unreadable", [1, 4, 0], [2, 0, 1]),
+        ("erase", "success", "none", [1, 4, 0], [0, 0, 0]),
+        ("erase", "failed", "old", [1, 4, 0], [1, 4, 0]),
+        ("erase", "failed", "none", [1, 4, 0], [0, 0, 0]),
+        ("erase", "failed", "unreadable", [1, 4, 0], [2, 0, 1]),
+    ):
+        payload = struct.pack("<I", 5) if action == "save" else b""
+        storage.append(dict(name=f"{action} {result}, observed {observed}, before {before}",
+                            spec="probe.config §3", action=action, result=result, observed=observed,
+                            before=before, expected_state=after, generation=5,
+                            request_hex=hx(request(1, 8, op("oep.probe.config", action), b"", 0x11223344)),
+                            answer_hex=hx(answer(1, COMPLETED, REG["outcomes"][result], payload)),
+                            state_answer_hex=hx(answer(2, COMPLETED, 0, struct.pack("<BIB", *after)))))
+
+    groups = []
+    for states in ([3, 3], [3, 5], [5, 5], [4, 3]):
+        groups.append(dict(name=f"group start refuses states {states}", spec="capture §4.1",
+                           states=states, generations=[4, 3, 1], expected_generations=[4, 3, 1],
+                           request_hex=hx(request(1, 12, op("oep.fixture.capture-group", "start"), b"", 0x11223344)),
+                           answer_hex=hx(answer(1, REJECTED, REASON["unavailable"], tlv(1, b"\6")))))
+    for failed_index, completed_first, states_after in ((0, False, [6, 1]), (1, False, [1, 6]), (1, True, [4, 6])):
+        groups.append(dict(name=f"group start failure {failed_index}, first completed {completed_first}",
+                           spec="capture §4.1", states=[4, 6], generations=[4, 3, 1],
+                           failed_index=failed_index, completed_first=completed_first,
+                           expected_states=states_after, expected_generations=[5, 4, 2],
+                           request_hex=hx(request(1, 12, op("oep.fixture.capture-group", "start"), b"", 0x11223344)),
+                           answer_hex=hx(answer(1, COMPLETED, REG["outcomes"]["failed"],
+                                                struct.pack("<QIBHIHI", 7000000, 5, 2, 9, 4, 13, 2)))))
+
+    fixtures = dict(spec="fixture §3/§4", i2c_slots_hex=["1122", "33"], i2c_read_lengths=[4, 1, 2],
+                    expected_i2c_reads_hex=["1122ffff", "33", "ffff"],
+                    counter_before=0xFFFFFFFE, increments=3, expected_counter=0xFFFFFFFF,
+                    spi_empty_answer_hex=hx(answer(1, COMPLETED, 0, struct.pack("<BIH", 0, 0, 0))))
+    return dict(about="Independent boundary scenarios, not a complete endpoint. Batching has one w8 segment, required 49-byte data overhead, available output and no pending responses; listed chunks are one legal split, not required frame sizes. Storage tuples are storage_state/saved_generation/reason; current generation and pins never change. Group vectors assume a binding, valid session/resources and generation space, no interleaving; only the listed track failure occurs. Fixture reads are consecutive controller transactions. Power-cut tolerance requires separate storage fault-injection tests.",
+                batching=batching, reception=reception, storage=storage, groups=groups, fixtures=fixtures)
+
+
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
          "refusals.json": refusals, "core_extensions.json": core_extensions,
          "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding,
          "logic_layout.json": logic_layout, "interface_profiles.json": interface_profiles,
-         "core_lifecycle.json": core_lifecycle, "core_policy.json": core_policy}
+         "core_lifecycle.json": core_lifecycle, "core_policy.json": core_policy,
+         "interface_boundaries.json": interface_boundaries}
 
 
 def render(build) -> str:

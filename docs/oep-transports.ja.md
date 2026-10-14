@@ -1,6 +1,6 @@
 # Open Embedded Probe — 経路とフレーム（OEP transports）v1
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作る。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](versioning.ja.md) §6）。
+状態: **規範**（v1）。凍結状態と言語・互換性の方針は[版と安定性](versioning.ja.md)を参照。
 この文書は、OEP のメッセージをどう運ぶかを定める: 経路とそのフレーム、host が probe の口を見つけて開くやり方（USB の見分け方、TCP の probe の見つけ方、探りの規則、口の選び方）、
 1 つの probe の複数の経路、OEP 専用のシリアルの口、長さつきのフレームの区切りの立て直し、host の待ちが数える転送の時間。
 メッセージ、セッション、そのほかは [OEP core](oep-core.ja.md) が定める。この文書は本体の層に属し、本体の適合（core §1.2）とプロトコルの
@@ -123,9 +123,9 @@ OEP のシリアル経路はフレーム専用である。コンソールの生�
 その endpoint の識別と接続先の設定は OEP core の外で明示する。CDC の列挙だけで raw endpoint に confirm を送らない。
 
 - **UART bridge の回線**: データ 8 bit、パリティなし、ストップ 1 bit、フロー制御なし。起動時の速さは **115200 bps**（registry の `uart_bridge_boot_baud`）。port_speed（[リンク](../interfaces/oep-if-link.ja.md) §3）が変えるのは速さだけ。
-- **任意の速さ変更を扱うHost**: [port_speed](../interfaces/oep-if-link.ja.md)を使った/使う可能性のある口では、起動時の速さに戻るまで
-  confirmを再試行してよい。待ちの期限は以前の要求の処理時間とframeの転送時間も含めてHostが決める。
-  `port_speed_idle_ms + host_wait_add_ms`だけを復帰の上限とはしない。未対応Hostへ一律の4秒待ちを要求しない。
+- **任意の速さ変更を扱うhost**: [port_speed](../interfaces/oep-if-link.ja.md)を使った/使う可能性のある口では、起動時の速さに戻るまで
+  confirmを再試行してよい。待ちの期限は以前の要求の処理時間とframeの転送時間も含めてhostが決める。
+  `port_speed_idle_ms + host_wait_add_ms`だけを復帰の上限とはしない。未対応hostへ一律の4秒待ちを要求しない。
 - **USB のシリアルの口**（USB CDC、内蔵の USB シリアル）: probe は、host がどんな line coding を設定しても OEP を受けて送り、line coding を何にも掛けない。
 - **制御線**: probe は、OEP を受けるか送るかを DTR、RTS、回線の状態で決めない。host は口を開いている間 DTR と RTS を立てておく（UART bridge はそれを probe のリセットにつないでいることがある）。
 - probe は `0x00 <COBS(message | CRC)> 0x00` の候補だけを処理する。CRC 不一致、解けない候補、途中の timeout は捨てる。

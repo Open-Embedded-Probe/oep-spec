@@ -1,6 +1,6 @@
 # OEP インターフェース: 再起動 v1
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作る。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。本体は [OEP core](../docs/oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。
+状態: **規範**（v1）。凍結状態と言語・互換性の方針は[版と安定性](../docs/versioning.ja.md)を参照。本体は [OEP core](../docs/oep-core.ja.md)。番号の唯一の定義は `registry/oep-v1.toml`。
 
 | 名前 | revision | 役割 | 対象の系統 |
 |---|---:|---|---|
@@ -19,7 +19,7 @@ describe（core §7.4 の共通の tag のほか）:
 
 | tag | 名前 | 値 |
 |---:|---|---|
-| 0x40 | restart_max_ms | u32。**必須**。応答が経路を出てから、Probe内部の再起動・初期化が済み、元の経路でメッセージを受けられる内部状態になるまでの上限（ms）。USBのdescriptor/endpointの準備、ネットワークstack/待受けの準備を含む。OSの列挙、ネットワーク接続/IP取得、Hostの再接続・confirm送信を待つ時間は含まない |
+| 0x40 | restart_max_ms | u32。**必須**。応答が経路を出てから、probe内部の再起動・初期化が済み、元の経路でメッセージを受けられる内部状態になるまでの上限（ms）。USBのdescriptor/endpointの準備、ネットワークstack/待受けの準備を含む。OSの列挙、ネットワーク接続/IP取得、hostの再接続・confirm送信を待つ時間は含まない |
 
 ## 2. restart
 
@@ -31,7 +31,7 @@ describe（core §7.4 の共通の tag のほか）:
 - **再起動の後**は、OEP については電源を入れたときの起動と同じである: boot_id は新しい値（core §6.5）で、前の起動のものは何も残らない（core §9 の
   「probe の再起動」の行）。シリアルの口の速さは起動時の速さ（[経路](../docs/oep-transports.ja.md) §4）。
 - **経路**: 再起動のあいだ probe は経路に答えない。USB の経路では device が bus から外れて列挙し直してよく、TCP の接続は閉じてよい。
-- **内部の復帰**: Probeはrestart_max_msのうちに上記の内部状態になる。外部の経路が使用可能になって要求を受けた後の
-  confirm応答はcore §4.4の待ちの規則に従う。Host側の開き直しの期限はHostが別に決める。
+- **内部の復帰**: probeはrestart_max_msのうちに上記の内部状態になる。外部の経路が使用可能になって要求を受けた後の
+  confirm応答はcore §4.4の待ちの規則に従う。host側の開き直しの期限はhostが別に決める。
 
 host の待ち方と開き直し方は [host 開発ガイド](../docs/host-development-guide.ja.md) §5.2。

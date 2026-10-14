@@ -1,6 +1,6 @@
 # OEP インターフェース: キャプチャ v1
 
-状態: **規範**（v1、凍結の前: v1 の凍結までは、規則も数もまだ変わりうる）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。凍結の前は、revision 1 だけでは形が一つに決まらない: 実装は、自分が実装する仕様のタグを示す（[版と安定性](../docs/versioning.ja.md) §6）。本体は [OEP core](../docs/oep-core.ja.md)。
+状態: **規範**（v1）。凍結状態と言語・互換性の方針は[版と安定性](../docs/versioning.ja.md)を参照。本体は [OEP core](../docs/oep-core.ja.md)。
 番号の唯一の定義は `registry/oep-v1.toml`。基本と別の定義の線引きは §3.6。
 
 | 名前 | revision | 役割 | 対象の系統 |
@@ -94,7 +94,7 @@ configure の応答で probe が返す値:
    C = 2、orderは[1,3]または[3,1]。scale、skew、frontend_usedとtriggerのroleも同じ番号を使う。
 3. 区画の長さは `N·C·s/8` バイト。
 4. チャネル k の電圧 = （値 − `zero[k]`）× `scale_nv[k]`。`zero` と `scale_nv`（nV / 1 値）は configure の応答でチャネルごとに返す（1 次式。曲線の較正は
-   別の定義）。**この電圧はProbeの入力ピンの電圧**。前段の減衰を含めて換算した値で、Hostは重ねて減衰を掛けない。
+   別の定義）。**この電圧はprobeの入力ピンの電圧**。前段の減衰を含めて換算した値で、hostは重ねて減衰を掛けない。
 5. チャネル k の時刻は、サンプルの時刻から `skew_ns[k]` 遅れる（順番に切り替える ADC の場合）。
 6. 値 0（変換器の最小コード）と 2^b − 1（最大コード）は、入力が frontend の変換する範囲のその端か、その外にあったことを表す。
    入力の実際の電圧はわからない。host はこの値を電圧としてではなく、振り切れ（クリップ）として示す: 低い端以下、または高い端以上。
@@ -133,13 +133,17 @@ configure の応答で probe が返す値:
 
 - triggerは最初の区画の取得を確定する条件である。非即時なら、start後からpretriggerを残すための取得を始めてよい。
   条件成立後の区画には再適用しない。
-- Probeはstart後にだけ取得し、start前の先回り取得を行わない。
+- probeはstart後にだけ取得し、start前の先回り取得を行わない。
 
 **ストリーミングの規則**:
 
 1. 送る余地が無いとき、probe は**新しい**区画を丸ごと捨てる（すでに積んだデータは送る。§2.2）。捨てた量は、次のデータのフレームの position の飛びと、
    status の flags bit0 に現れる。
-2. stop の後も、probe は stop の前に取った分を送る。受け取った position の末尾が、stop の後の status の write_pos に等しくなれば、host はすべて受け取っている。
+2. stopの後も、probeは停止前に取った未送信データを送信対象にする。残りがmin_bytes未満でもmax_delay_msを待たず、
+   core §10.4の応答優先・有限の送信保持量の規則で送り出す。エラー終了時も、下のwrite_posより前の残りは同じに扱う。
+   受信したpositionの末尾と停止後のstatusのwrite_posの一致は、末尾へ到達したことだけを示す。
+   hostが全量受信と判断できるのは、同じgenerationの必要な位置範囲を欠落なく受信またはreadで回収した場合だけである。
+   通知や区画の欠落は許され、末尾の通知が届く保証もない。停止したこと自体はstatusで確認する。
    エラーで止まったとき（state 6）は、受け取ったデータのうち write_pos から先を捨てる（§2.2）。
 3. ストリーミングでは区画の出来事を送らない（stopped は送る）。
 4. 通知で送ったデータはreadで読めないことがある。要求位置の後にも読めるデータが無い場合は、position=write_pos、gap=1、len=0（§3.2）。
@@ -180,7 +184,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
     status の flags bit0 も立つ。status の write_pos はその区画の先頭（その区画の分を数えない）。read は write_pos から先を返さない。
 - trigger待ちのpretrigger ringは公開streamではない。trigger/forceで最初の区画の保持範囲を選ぶまでは
   write_pos=0とし、read/通知へそのringを返さない。同じ公開positionのbyteを待ち中に差し替えない。
-- Probeは区画が終わる前に、確定した完全なbyteをread/通知で返してよい。
+- probeは区画が終わる前に、確定した完全なbyteをread/通知で返してよい。
   wが8の倍数でないlogicでも、まだ後のsampleで変わる末尾byteは返さず、区画終了時だけpaddingを含む最後のbyteを返す。
   区画が終わるまで、そのデータが区画として出るかは決まっていない: **トラックがエラーで止まったら、host は受け取ったデータのうち
   write_pos から先（position が write_pos 以上のバイト）を捨てる**。区画として出た（segments に載った、出来事 segment が来た）区画の
@@ -213,7 +217,6 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | 0x01 | subscribe | core §10.3 | — | 必要 | 任意（mode 3では必須、unsubscribeと組） |
 | 0x02 | unsubscribe | core §10.3 | — | 必要 | subscribeと組 |
 
-- opの採用は上表に従い、describeのopsで宣言する。提供しないopはunknown_operation（core §1.2）。
 - state: 0 未設定、1 設定済み、2 トリガ待ち、3 取得中、4 完了（ワンショット）、5 止まっている（リピートで空き区画なし）、
   6 エラー。
 - `serial_done` は次に終わる区画の serial（start から終わった区画の数を 2^32 で割った余り）、`write_pos` は取り終えたバイト位置（position の空間。**捨てた分を含む**: 次に書くバイトの位置）。
@@ -248,7 +251,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 出来事 stopped を reason 3 と、status の error と同じ error で送る（購読していれば。§3.4）。
 
 planの割り当て（role, channel）の集合が変わるplan_applyは、state 2/3/5ではunavailable（cause 6）で断る。ほかのstateでは設定・データ・区画を無効にしstate 0へ戻す。
-同じ集合の再指定は状態とデータを保つ。いずれもgenerationは戻さず、次のstartで進める。
+同じ集合の再指定はplan §2.1に従う。いずれもgenerationは戻さず、次のstartで進める。
 plan_release（[plan](oep-if-plan.ja.md)）か、セッションの終わり（end、lease の期限切れ、force、core §9）で plan が解けたら state 0 に戻り、データも区画も消える（read は空）。mode 3（ストリーミング）の
 start は、その fn の購読が無ければ rejected unavailable（cause 6）。取得中に購読が消えたら取り続け、送れない分は捨てる（position が飛ぶ）。
 
@@ -309,7 +312,7 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
   要求値がrate_rangeの外か、この構成で範囲内の値を1つも保てなければunsupported（rateのtag）。
 - probe が持てる量を超える samples は、その上限に切り下げ、応答の actual_samples（0x52）
   が正である。host は送った値を仮定せず、actual_samples と actual_segments を読む。
-- mode 2のsegmentsも、実際のsamplesと役割数で持てる上限へ切り下げる。省略時はProbeが決め、actual_segmentsは常に1以上。
+- mode 2のsegmentsも、実際のsamplesと役割数で持てる上限へ切り下げる。省略時はprobeが決め、actual_segmentsは常に1以上。
   samples/segmentsの切り下げだけでは断らない。切り下げ後にpretriggerなどの条件を満たせなければ、その条件のtagで断る。
 
 **応答のTLV**: successはactual_rate/layoutを必ず返す。actual_samplesはmode 1/2、actual_segmentsはmode 2で必須。
@@ -343,10 +346,10 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 positionは区画の先頭、samplesはそのframeを作った時点で取得済みのsample数（1以上）。取得中は後のframeで増え、終了後は最終値。
 時刻/不確かさは§2.2の区画と同じ。そのframeのdataはこの1区画の中だけで、区画の境目をまたがない。
 未確定の末尾byteを送らない上の規則に従う。終了時のpaddingはsamplesとlayoutから区別する。
-Hostはdataの絶対positionと区画の起点から区画内のbit/sampleを求め、失った前frameの断片でsampleを補わない。
+hostはdataの絶対positionと区画の起点から区画内のbit/sampleを求め、失った前frameの断片でsampleを補わない。
 毎frameに起点と時刻があるので、最初のframe/区画情報が失われても後のframeを解釈できる。GENが違うframeは別の取得である。
 frame64では固定見出し15+GEN TLV7+segment_info TLV27を引き、dataは15byteまで。
-Probeはより大きい経路を使え、mode 3を提供しない最小構成にこの情報/取得bufferを要求しない。
+probeはより大きい経路を使え、mode 3を提供しない最小構成にこの情報/取得bufferを要求しない。
 
 - **出来事はどれも、それが生まれた世代を持つ**（segment は区画の情報の generation）。start の応答の後に前の世代の出来事が届きうる
   （core §10.4）。host は今の世代と違う出来事を前の世代のものとして扱う。
@@ -368,23 +371,19 @@ Probeはより大きい経路を使え、mode 3を提供しない最小構成に
   アナログはfrontendも1つ以上宣言する。featuresは値0なら省略できる。
   triggerの番号はlogic/analog各インターフェースの空間で、両方とも即時（type 0）を含める。
 - modeは少なくとも1つ宣言する。1/2/3を全部宣言する必要はなく、対応するmodeだけを載せる。
-  max_segmentsはmode 2の置き場の上限。mode 1/3では0を送り、Hostは使わない。
+  max_segmentsはmode 2の置き場の上限。mode 1/3では0を送り、hostは使わない。
   宣言したmodeでの値の組合せや実現可能量は、下の目安とconfigure/queryの規則に従う。
 - **宣言は目安、configure の応答が正。** 宣言に出ていない組み合わせは query で確かめる。
 
-### 3.6 別の定義に残すもの
+### 3.6 拡張の境界
 
-基本は、どの host も全部実装でき、その中で probe が選んだものに分岐なしでついていける量にする。時間軸やデータの意味を変えるもの、
-1 つの実装でしか意味がないものは、別の定義（別の名前のインターフェース、または独立した features のビットと文書）に残す。知らない host は
-それを無視でき、基本の動作は変わらない。基本の外: 複数トラックの同時開始（別のインターフェースの capture-group、§4）、外部クロック、
-多段トリガの段と条件、トリガ出力、役割の 0xC0〜（外部クロック、修飾、トリガ入出力）。別の定義を書くときに、そちらで番号を振る。
+mode、role、TLVなどの未割当値はcore §2.5/§12に従う。`oep.`の定義への追加はOEPが行い、第三者は自分の名前のインターフェースを定義する。
+用途を予想した番号範囲は予約しない。triggerのtypeは現行describeのu32ビット集合に収まる0〜31であり、
+32以上が必要なら宣言の形も含めた別インターフェースまたは新revisionで扱う。
 
-- モードは 0x40 以降を別の定義に残す。トリガの type は describe の u32 ビット集合で表せる 0〜31 の範囲で割り当てる。
-  未割当の type は別の定義を書くときに振る。32 以上を必要とする定義は、宣言の形も拡張した別のインターフェースまたは revision で扱う。
-- configure（要求と応答）と describe の TLV は 0x60〜0x7F を別の定義に残す。layout（§1）と違う data の形は、別の定義が自分の応答の TLV で示す
-  （layout の値に形式の番号は無い）。
-- チャネルごとの縮約は基本に含めない。0x60〜0x7Fは将来の別定義へ残す。
-- probe がデコードまでするもの（プロトコルアナライザ）は、このインターフェースを広げず、別のインターフェースにする。
+外部clock、多段trigger、signed/32 bitのsampleや整数nVで表せない換算などは、既存hostが現行layoutとして誤読しない定義で追加する。
+現行layoutには形式番号がないため、別形式のdataを任意TLVだけで黙って置き換えない。時間軸やdataの意味を変える場合もcore §2.8に従う。
+複数trackの即時開始はcapture-group（§4）を使い、プロトコル解析など異なる意味の結果は別インターフェースで定義する。
 
 ### 3.7 calibration（アナログ）
 
@@ -403,7 +402,7 @@ ADC の値を電圧に換算するための、probe が持っている情報を*
 ## 4. `oep.fixture.capture-group`（即時の一括開始）
 
 別々のlogic/analogトラックを同じ要求で即時開始する任意のインターフェース。
-時間の正確な一致を保証せず、各区画のstart_ns/不確かさでHostが並べる。連動trigger/pretriggerと時刻からのtrigger_index写像は定義しない。
+時間の正確な一致を保証せず、各区画のstart_ns/不確かさでhostが並べる。連動trigger/pretriggerと時刻からのtrigger_index写像は定義しない。
 
 ### 4.1 操作
 
@@ -425,11 +424,14 @@ ADC の値を電圧に換算するための、probe が持っている情報を*
   束ねはsessionの資源（core §9）。束ねたtrackのconfigure/start/stop/forceとplanの変更/解放はcause 4で拒否。
   同じplanの割り当て（role, channel）の集合はno-op、query/read/status/segments/releaseは各trackの通常規則で使える。
 - bindは、同じ経路のstart成功応答（18+6×n byte）がframeへ収まることも確かめ、収まらなければunsupported（固定部分の印0）。
-- startは組/全trackの世代の空き、mode/資源/購読などをすべて確かめてから、新しい世代を割り当てて全trackを開始する。
+- startは束ねがあり、全trackがstate 1/4/6のときだけ受け付ける。それ以外は副作用前にunavailable cause 6で断り、世代・状態・データを保つ。
+  組/全trackの世代の空き、mode/資源/購読などをすべて確かめてから、新しい世代を割り当てて全trackの旧データ/区画を消し、開始する。
   組の世代も冒頭と同じ非再利用の規則。nとfnの順はbindと同じ。start_nsは最初のtrackを開始する時点の推定値。
   start前のstart_nsは全bit1。全処理/受付再開は§3.2のstartと同じ時間規則。
 - 初期化/取得の失敗でtrackがstate 6になれば組も6とし、ほかのtrackをstopと同じに止める。
   完了済みのtrackはdata/区画を保持する。start自体が開始に失敗した場合はcompleted failedで同じ固定形を返す。
+  このstartで未開始のtrackはstate 1、開始済みのtrackは§3.2のstop後のstateとなる。失敗したtrackは6を保つ。
+  未開始を含め、割当済みの世代は戻さない。次のstartは上の開始可能状態と通常の資源検証に従う。
 - stopは全trackへ適用し、短い区画とpadは各trackの規則に従う。束ねなしのstopはno-op。startは束ねなしならcause 6。
 - statusのstate: 束ねなし0、どれかが6なら6、開始後に全部4なら4、どれかが3/5なら3、それ以外1。
   groupのgenerationはbind変更では戻さず、次のstartで進める。groupを起動しない段階のtrack世代も変えない。

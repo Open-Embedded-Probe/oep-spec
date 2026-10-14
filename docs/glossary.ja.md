@@ -1,6 +1,6 @@
 # OEP v1 の用語集
 
-状態: **ガイド**（規範ではない）。凍結までは、この日本語の文（.ja.md）が作業の文である。英語版は凍結のときにこれから作り直し、そのときから英語版が正になる。仕様が定める用語と、決まった意味で使う用語を、定めた節と、英語と日本語の対応と一緒に並べる。
+状態: **ガイド**（規範ではない）。仕様が定める用語と、決まった意味で使う用語を、定めた節と、英語と日本語の対応と一緒に並べる。
 ここの意味は短いまとめで、定義はリンク先の節。食い違えば規範が正しい。
 
 文書: core = [OEP core](oep-core.ja.md)、common = [共通部品](../interfaces/oep-if-common.ja.md)、debug = [線とデバッグ](../interfaces/oep-if-debug.ja.md)、
@@ -123,9 +123,9 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | model、chip、firmware | model, chip, firmware | probe の種類、その MCU、firmware の自由な文字列 | core §7.5 |
 | max_op_ms | max_op_ms | 1つの要求自身の検証・内部の再試行・実行・後始末・応答生成を含む最長の処理時間。同じ経路・別経路の先行要求待ちと経路の転送時間は除く | core §4.4、§7.5 |
 | label | label (firmware) | firmware の固定の channel の名前 | core §7.5 |
-| アドレス | address | `oep://<unit_id>[/<Hostのprofile name>]` | host ガイド §5.3 |
+| アドレス | address | `oep://<unit_id>[/<hostのprofile name>]` | host ガイド §5.3 |
 | 線の試験 | link test | `oep.probe.link` の source と sink の op。経路を測る | link §2 |
-| restart | restart | `oep.probe.restart`のop。応答を先に送り、restart_max_msのうちにProbe内部を初期化する。OSの列挙やHostの再接続待ちは別 | restart §2 |
+| restart | restart | `oep.probe.restart`のop。応答を先に送り、restart_max_msのうちにprobe内部を初期化する。OSの列挙やhostの再接続待ちは別 | restart §2 |
 
 ## plan とピン
 
@@ -192,7 +192,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | label | label (item) | 設定で付けた channel の名前 | settings §1 |
 | idle | idle (item) | channel の空きの状態: Hi-Z、pull、出力 low / high | settings §1 |
 | disable | disable | probe が決して使わない channel | settings §1 |
-| 線の名前 | line names | `nrst`、`power_hi`、`power_lo`。ほかは `x-` | Hostガイド §5.3 |
+| 線の名前 | line names | `nrst`、`power_hi`、`power_lo`。ほかは `x-` | hostガイド §5.3 |
 | 保存、消去 | save, erase | 保存の写しを書く / 消す | settings §3 |
 | storage_state、読めない理由 | storage_state, unreadable reason | 保存があり、掛かっているか | settings §3 |
 | 設定の世代 | settings generation | boot内で再利用しないu32変更カウンタ。getページとsave済みの状態の等値に使う | settings §2/§3 |
