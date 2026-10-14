@@ -12,6 +12,11 @@
 
 どれも[plan](oep-if-plan.ja.md)で割り当てたチャンネルだけを扱う。同じ割り当ての状態不変はplan §2.1に従う。下の表の op は、その節が任意と書かない限り、すべて必須（core §1.2）。
 
+UART / I2C / SPIのconfigureは、書式・対応値・資源を副作用前に検証する。rejectedでは既存の設定・queue・ピンを変更しない
+（非同期の送受信の進行はcore §6.3）。受理後の初期化に失敗した場合はcompleted failedとし、partialは返さない。
+成功・失敗ともplanは保ち、失敗後は各節が定める未設定状態から、hostの新しいconfigureで回復する。
+以前のハードウェア設定へのロールバックは要求しない。後始末までcoreのmax_op_msに含める。
+
 ## 1. `oep.fixture.gpio`
 
 最小の実装はset/readとmode 0でよく、出力modeとプルは対応するものだけを宣言する。
@@ -53,7 +58,7 @@ RXを割り当てて受信を保持するbufferと位置管理に対し、マー
 
 | op | 名前 | 要求 | 応答 | ロック | 必須 |
 |---:|---|---|---|---|---|
-| 0x10 | configure | baud(u32)、[TLV] | baud(u32、実際の値)、[TLV] | 必要 | 必須 |
+| 0x10 | configure | baud(u32)、[TLV] | baud(u32、成功は実際の値、failedは0)、[TLV] | 必要 | 必須 |
 | 0x11 | read | from(u8)、arg(u64)、max(u16)、[TLV] | start(u64)、flags(u8)、len(u16)、data、[TLV] | 不要 | 必須 |
 | 0x12 | marks | from_serial(u32) | more(u8)、count(u8)、count × mark、[TLV] | 不要 | 任意 |
 | 0x13 | clear | — | — | 必要 | 任意 |
@@ -66,24 +71,27 @@ RXを割り当てて受信を保持するbufferと位置管理に対し、マー
   clearはmarksなしでも提供でき、その場合はclearのマークを要求しない。任意opをfeaturesの新しいbitで宣言しない。
 - writeを提供しないfnは、planのTX roleを受け付けず、そのroleのrole_channels/channel_groupを宣言しない。
   writeを提供するfnでも、現在のplanにTXが無いか未configureならwriteはunavailable（cause 6）。TXだけのplanと未configureのplanでは受信しない。
-  その間のreadは、現在の書き込み位置をstartとしlen 0、flags 0で返す。ただしfrom 0が押し出された位置を指す場合はgapを立てる。
+  その間も保持済みの受信データは、共通部品 §1.2の通常のreadで読める。保持データが無い場合の位置とgapも同じ規則で返す。
 - RXもTXもない、plan未作成の状態では、提供する上記opの有効な要求をunavailable（cause 6）で断る。coreの見出し・セッション・書式の規則は先に適用する。
 - configure の TLV 0x01 format（u8）: bit0-1 データ長（0 = 8、1 = 7）、bit2-3 パリティ（0 なし、1 偶数、2 奇数）、bit4 ストップ
   ビット（0 = 1、1 = 2）。無ければ 8N1。宣言（formats）に無い値は rejected unsupported（受け取ったままの tag）。baud は実現できる値を返し、要求から
   ±5%（registry の `uart_baud_tolerance_pct`）を超えて外れれば rejected unsupported（payload `0x00`）。baud 0はmalformed。
-- **status**（ロック不要）: configure済みなら実際のbaud/format。planを作ってから最初のconfigureまで、baud 0、format 0を返す。
+- configureは割り当てたRX/TXを、決めた実際のbaudと指定のformatで使える状態になってからsuccessを返す。初期化に失敗したら送受信を停止し、
+  未configureへ戻してbaud 0のcompleted failedを返す。RXはcore §8の空きの状態へ戻し、割り当てたTXは下の休止highを保つ。
+  受理したconfigureは成功・失敗とも未送信のTXを捨て、新しい設定へ持ち越さない。既に線へ出た分は取り消せず、相手へ届いた量は保証しない。
+- **status**（ロック不要）: configure済みなら実際のbaud/format。最初のconfigure前とconfigure失敗後は、baud 0、format 0を返す。
   0は未configureの印であり、0 baudで通信しない。対応できない既定のbaudを暗黙に掛ける必要はない。
 - **ストリームはplanが作り、planを解くと消える**。セッションのconfigureもplanを解くと消える。
   受信はhostが明示的にconfigureしてから始める。hostに保存した値があっても、受信は暗黙に始めない。
   configure済みのplanを持つ間は、読むhostや要求のsession_idによらず受信を貯める。
-  configure をやり直しても貯めた分と位置はそのまま
+  configureをやり直しても、成功・失敗によらず、ストリームへ収めた受信データ・マークと位置・serialは保つ
   （境目が要るなら host が mark を付ける）。**位置とマークの serial は、plan を解いて再び作っても起動の中で戻らない**
   （[共通部品](oep-if-common.ja.md) §1.1）。marksを提供する場合、受信の誤りはmark lost（detail 2 framing、3 parity）とする。
   marksを提供しない場合は、マークの記録とserialの管理を要求しない。streamの位置は同じboot内で保持する。
 - configure済みの割り当て変更はunavailable（cause 6）で断り、
   hostは必要なデータを読んでplan_releaseしてから作り直す。未configureの割り当て変更は、bufferとマークを解き、未configureのまま置き換える。
   位置とマークのserialは、その変更でも戻さない。
-- **TX の線は、plan で割り当てている間（configure の前も）UART の休止（high）に保つ**: plan を取ることが TX を使い始めることである（core §8）（相手の受信が雑音を拾わないため）。plan を
+- **TX の線は、plan で割り当てている間（configure の前も）、送信中を除きUARTの休止（high）に保つ**: plan を取ることが TX を使い始めることである（core §8）（相手の受信が雑音を拾わないため）。plan を
   解いたら UART の駆動をやめ、core §8 の空きの状態にする。解いた後も相手の入力を浮かせたくない治具は、`oep.probe.config` の idle で
   そのピンをプルアップの入力に決めて保存する。
 - 扱える format は describe の formats（tag 0x40、n(u8)、n × u8。configure の TLV 0x01 の値）で宣言する。8N1（0）は必須。
@@ -107,9 +115,12 @@ read_rx で取り出す。
 - SDA と SCL は**オープンドレインだけ**で駆動する: probe は low に引くか離すかで、high に駆動しない。
 - **内部のプルアップ**: configure されている間 SDA / SCL に自分のプルアップを入れる probe は、features の bit2（内部プルアップ）でそれを宣言する。
   宣言しない probe はプルアップを入れない。
-- state 0 では probe はどのアドレスにも ACK せず、両方の線を離しておく（low に引かず、プルアップも入れない。configure までは channel は core §8 の空きの状態のまま）。
+- state 0ではどのアドレスにもACKせず、I2C機能としての駆動・内部プルアップをやめ、channelをcore §8の空きの状態にする。
+  空きの状態として設定されたpullは、I2C機能による内部プルアップとは区別する。
 - configure は target を作り直す（積んだフレーム、置き場、rx_frames と errors は消える。stretch の値は保つ）。この fn の plan が
   無いときは rejected unavailable（cause 6）。address が 0x7F を超えるなら rejected malformed。0x00〜0x07 と 0x78〜0x7F のアドレス（I2C の仕様が予約するもの: general call、start byte、10 bit の前置きなど）は rejected unsupported（payload `0x00`）。
+- configureの成功はstate 1となってから返す。初期化に失敗したらstate 0へ戻し、受信の列と送信の置き場を空にしてrx_frames・errorsを0にする。
+  stretchの値は失敗でも保つ。成功・failedとも応答の固定部分はなく、末尾は[TLV]。
 - **書き込み**: controller の書き込みは 1 回のトランザクション（START から STOP または次の START まで）を単位に扱い、各 byte に ACK を返す。データの
   ある書き込み 1 回が 1 フレームで、列に積む。max_length を超えた分は捨て（フレームは max_length までの data で積む）、errors を 1 増やす。
   データの無い書き込み（アドレスの byte だけのもの）は何も積まず、何も数えない。
@@ -156,6 +167,9 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   （cause 6）。mode が 3 を超える、bit_order が 1 を超える は rejected malformed。features の bit0 が無いのに bit_order 1 は rejected
   unsupported。describeのmodesに無いmodeもunsupported（固定部分の印0）で、状態を変えない。
   mode 0〜3のすべての実装は要求せず、1つ以上を提供する。**CS は low で有効**。
+- configureの成功はstate 1となってから返す。初期化に失敗したらstate 0へ戻し、mode・bit_order・armed・queued・transactions・errorsを0にする。
+  受信の列とarmの送信データを捨て、SPI機能としての駆動をやめ、channelをcore §8の空きの状態へ戻す。
+  成功・failedとも応答の固定部分はなく、末尾は[TLV]。state 0の外部転送は受信・計数せず、armも消費しない。
 - state 0（未設定）への arm は rejected unavailable（cause 6）で答え、状態を変えない。
 - arm は次の 1 回の転送を待つ: length は受ける最大 byte（1〜max_length。0 は malformed、超過は unsupported）、tx はその転送で MISO に
   出すバイト（count ≤ length。count > length は rejected malformed。足りない分は 0）。待っている間の arm は rejected unavailable（1 回に 1 つ）。**arm していない間の転送は
@@ -163,9 +177,10 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   1 回も来ずに無効に戻ったもの（0 ビット）は転送とみなさない: 何も積まず、transactions も errors も数えず、arm は待ち続ける。
 - arm の success は、次の転送に tx を出せる状態になってから返す。その後に始まる転送（cs_setup_ns を守るもの）は、この arm で答えられる。
   設定済みでもその状態にできなければ何もarmせずにcompleted failedで答える（固定部分なし、[TLV]）。
-- **configure から plan を解くまで、probe は CS が有効な間だけ MISO を駆動する。** CS が無効な間は MISO を駆動しない（プルの無い入力）。
+- **state 1の間、probe は CS が有効な間だけ MISO を駆動する。** CS が無効な間は MISO を駆動しない（プルの無い入力）。
   ただし CS が無効になってから cs_setup_ns の間は除く（下）。
-  「MISO は tx の外では 0」は、CS が有効な間の転送のビットのことである。SCK、MOSI、CS は常に入力。configure の前は channel は空きの状態のまま（core §8）。
+  「MISO は tx の外では 0」は、state 1でCSが有効な間の転送のビットのことである。state 1のSCK、MOSI、CSは常に入力。
+  state 0（configure前・初期化失敗後）ではchannelは空きの状態である（core §8）。
 - 転送が CS で終わると、MOSI のバイトと、実際に来たビット数（bits、0xFFFFFFFF で止める）を列に積み、transactions を 1 増やす。data の byte 数は bits を 8 で
   割って切り上げた数で、length で止める。線の k 番目（0 から）のビットは、data の byte floor(k / 8) の、MSB が先ならビット 7 − (k mod 8)、
   LSB が先ならビット k mod 8 に置く（バイトの途中で終わった転送も同じ）。最後の byte の、来なかったビットは 0。length を超えた分は捨て、errors を 1 増やす（その転送は、bits を実際に来た数のまま、data を
