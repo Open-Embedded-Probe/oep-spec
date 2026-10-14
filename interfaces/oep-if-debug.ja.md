@@ -394,8 +394,9 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
 ### 4.4 run
 
 - host のローダーを呼ぶためのもの。probe は dcsr の ebreakm と prv = M を立て、pc から走らせ、止まるのを待つ。**probe は run を
-  出し直さない**（止まった位置が開始位置のままでも、走って戻った場合と区別できない）。走らなかったかどうかは host が dpc で
-  判断し、ローダーを二度走らせてよいときだけやり直す。**デバッガの continue には使わない**（prv と ebreakm を変える）。
+  出し直さない**（止まった位置が開始位置のままでも、走って戻った場合と区別できない）。hostもdpcだけで未実行と判断しない。
+  dpcは停止位置の情報として扱い、再実行してよいことをtarget固有の状態などで確認できる場合だけ、新しい要求を送る。
+  **デバッガの continue には使わない**（prv と ebreakm を変える）。
 - timeout_ms が core の max_op_ms を超えれば rejected unsupported。要求全体は準備と後始末を含め max_op_ms のうちに終える。
   timeout_ms は実行の待ちの上限であり、要求全体の残り時間がそれより短い場合は、その残り時間の中で停止と後始末を試みる。
   host の待ちは core §4.4 に従い、timeout_ms だけから決めない。
