@@ -1153,7 +1153,7 @@ def interface_profiles() -> dict:
         ('raw RISC-V target', [(4, 'oep.wire.rvswd', [0x11,0x12,0x13], []),
                                 (6, 'oep.target.riscv-dm', [0x10], [])]),
         ('mode0 SPI target', [(14,'oep.fixture.spi-target',[0x10,0x11,0x12,0x13],
-                              [(0x41,b'\1'),(0x40,b'\1'),(0x03,struct.pack('<I',50)),
+                              [(0x41,b'\1'),(0x40,b'\1'),(0x03,struct.pack('<H',50)),
                                (0x02,struct.pack('<I',1000000))]+[(0x01,struct.pack('<BHB',k,20+k,1)) for k in range(1,5)]),
                               (20,'oep.probe.plan',[0x10,0x11],[])]),
         ('volatile pin settings', [(22,'oep.probe.config',[0x10,0x11,0x14],[(0x41,b'\2\3\7')])]),
