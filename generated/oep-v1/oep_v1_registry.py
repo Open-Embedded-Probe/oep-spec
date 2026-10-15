@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "f9a249e722cddeef"
+REGISTRY_HASH = "704af98c2a6979d9"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -93,6 +93,6 @@ FIXTURE_CAPTURE_GROUP = _NS(name="oep.fixture.capture-group", revision=1, target
     line_names={})
 INTERFACES["oep.fixture.capture-group"] = FIXTURE_CAPTURE_GROUP
 PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, target=None, op={"get": 0x10, "set": 0x11, "save": 0x12, "erase": 0x13, "unset": 0x14, "state": 0x15}, lock_free={0x10, 0x15},
-    tlv={"item": {"label": 0x02, "idle": 0x03, "passthrough": 0x05, "disable": 0x07}, "describe": {"storage": 0x40, "items": 0x41}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02, "output_low": 0x03, "output_high": 0x04}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02, "partial": 0x03}, "storage_unreadable": {"none": 0x00, "form": 0x01, "item": 0x02, "capacity": 0x03}}, own={},
+    tlv={"item": {"label": 0x02, "idle": 0x03, "passthrough": 0x05, "console_passthrough": 0x06, "disable": 0x07}, "describe": {"storage": 0x40, "items": 0x41}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02, "output_low": 0x03, "output_high": 0x04}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02, "partial": 0x03}, "storage_unreadable": {"none": 0x00, "form": 0x01, "item": 0x02, "capacity": 0x03}}, own={},
     line_names={'nrst': 'the target reset line (Host only)', 'power_hi': 'target power on when high (Host only)', 'power_lo': 'target power on when low (Host only)'})
 INTERFACES["oep.probe.config"] = PROBE_CONFIG

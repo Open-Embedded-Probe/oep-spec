@@ -21,6 +21,7 @@ Wi-Fiなどの経路設定は別の定義で扱う。設定はRAM上でもよく
 | 0x02 | label | channel(u16)、text（1〜32byte、coreのtext） | channel |
 | 0x03 | idle | channel(u16)、mode(u8: 0 Hi-Z、1 pull-up入力、2 pull-down入力、3 出力low、4 出力high) | channel |
 | 0x05 | passthrough | port(u8)、fn(u16)、rx(u16)、baud(u32)、format(u8) | port |
+| 0x06 | console_passthrough | port(u8)、wire_fn(u16)、swdio(u16)、swclk(u16)、max_speed(u32)、console_fn(u16)、mechanism(u8) | port |
 | 0x07 | disable | channel(u16) | channel |
 
 - channelはfn 0のchannels未満で、firmware自身が使うchannelではない。違えばunsupported（項目tag）。
@@ -51,6 +52,24 @@ UART bridge しか口の無い probe でも、普通のシリアルモニタで 
 - 素通しで受けたバイトは OEP のストリーム（fixture UART の read）に入れず、保持しない。口へ送れなかった分は捨てる。
 - 口からフレームの外で来たバイトを target へ送ることは定めない（入力は OEP の write を使う）。
 - キーは port。unset ではその channel(u16) の欄に port を置く。
+- 1 つの口には passthrough と console_passthrough のどちらか 1 つだけを置ける（両方は unavailable cause 5）。
+
+### 1.2 console_passthrough（debug のコンソールの素通し）
+
+UART を空けられない target（debug の郵便受けで出力するもの）の出力を、セッションの無い間も口へ流す任意の項目。§1.1 と同じく、
+セッションと独立に適用する設定である。
+
+- wire_fn は `oep.wire.rvswd` か `oep.wire.swio`、(swdio, swclk) はその宣言が許すピンの組、max_speed は debug §1 の attach と同じ値と規則。
+  console_fn はその wire の connection を受ける `oep.target.console`、mechanism はその describe の mechanisms にある方式。違えば unsupported（項目 tag）。
+  ピンのどれかが disable なら、または出力の idle を持てば unavailable cause 5。
+- **素通しの条件**: その口からセッションの要求が来ていない、セッションの接続・plan がそのピンを取っていない、のすべてが成り立つ間、probe はその wire で
+  method 0（止めない、reset しない）の attach をして、その方式でコンソールを読み、target の出力を §1.1 と同じに口へフレームの外で送る。
+  attach が成らなかったときの試し直しは、wake / 設定の手順が target をリセットしない wire（swio）でだけ、probe が決める間隔で行う。
+  wake が target をリセットしうる wire（rvswd、debug §3）では、条件が成り立つたびに 1 回だけ試す（debug §2 の「target の状態を変えない」）。
+- 条件が成り立たなくなったら、probe はその接続を target に触れずに閉じ（debug §2）、ピンを空きの状態に戻す。セッションの attach は、
+  素通しの接続を理由に断らない（素通しが先に退く）。
+- 素通しの接続とコンソールは OEP の資源ではない: connections と streams に現れず、番号を使わず、マークを付けない。target への入力は送らない。
+- 線切れ（debug §2）と target の自己リセットは、素通しを止めずに試し直しで扱う。
 
 ## 2. 操作と変更の世代
 

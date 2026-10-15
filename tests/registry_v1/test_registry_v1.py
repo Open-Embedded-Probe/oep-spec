@@ -136,7 +136,7 @@ def test_settings_v1_contains_pin_items_and_the_pass_through():
     reg,_ = gen.load()
     settings=next(i for i in reg['interface'] if i['name']=='oep.probe.config')
     # the pin items, and the serial port's pass-through (config §1.1): no plan, slot, bind of streams or wifi
-    assert settings['tlv']['item']=={'label':2,'idle':3,'passthrough':5,'disable':7}
+    assert settings['tlv']['item']=={'label':2,'idle':3,'passthrough':5,'console_passthrough':6,'disable':7}
     assert set(settings['tlv']['describe'])=={'storage','items'}
     assert not any(key.startswith('wifi_') for key in reg['limits'])
     gpio=next(i for i in reg['interface'] if i['name']=='oep.fixture.gpio')
