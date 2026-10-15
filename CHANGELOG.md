@@ -16,6 +16,7 @@ OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装
 - hostガイドの購読の送り先を core §6.2/§10.3 に合わせる（同じ id の open では移らず、経路を開き直したら subscribe し直す）。走り直す host の後始末に、前の実行より先の corr の保存が要ることを書く。
 - 共有ベクタ interface_profiles の spi-target の max_length を core §7.4 の u16 で生成する。
 - port_speed の phase 3（復帰保留）は理由によらず取り消さない。受信中の frame とその応答を終えた境界で戻り、新しい要求を受け続けても復帰を延ばさない（idle の保留だけを取り消す規則と、その取消後の step の扱いを削除）。
+- probe.config に任意の項目 passthrough（シリアルの口の素通し）を足す。セッションがその口・fn・ピンを使っていない間、fixture UART が受けたバイトをフレームの外で口へ送る（transports §4 で許す）。UART bridge しか口の無い probe で、普通のシリアルモニタが target の出力を見られる。
 - riscv-dm に、結果を確かめられなかったときに host がやり直してよい dmi の群を定める（hart の停止中に DM の作業用レジスタと、値のほかに作用の無いレジスタ（GPR、dpc、dcsr）だけを読み書きする群）。common §3 の再実行の禁止はそれ以外に掛かる。
 - registryの未使用の`fields`予約を削除し、生成器も文書化したopキーだけを受け付ける。registryの値は変更せず、注記変更に伴う生成物のhashを更新する。
 

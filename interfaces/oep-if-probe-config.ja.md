@@ -4,7 +4,7 @@
 
 | 名前 | revision | 役割 | 対象の系統 |
 |---|---:|---|---|
-| `oep.probe.config` | 1 | channelのdisable/idle/labelと任意の保存 | どの系統にも使う |
+| `oep.probe.config` | 1 | channelのdisable/idle/label、シリアルの口の素通し、任意の保存 | どの系統にも使う |
 
 このインターフェース自体も、各項目の採用も任意である。実行時のplan、接続、UART設定は各操作で明示し、ここには保存しない。
 Wi-Fiなどの経路設定は別の定義で扱う。設定はRAM上でもよく、保存のための不揮発領域を一律に要求しない。
@@ -20,6 +20,7 @@ Wi-Fiなどの経路設定は別の定義で扱う。設定はRAM上でもよく
 |---:|---|---|---|
 | 0x02 | label | channel(u16)、text（1〜32byte、coreのtext） | channel |
 | 0x03 | idle | channel(u16)、mode(u8: 0 Hi-Z、1 pull-up入力、2 pull-down入力、3 出力low、4 出力high) | channel |
+| 0x05 | passthrough | port(u8)、fn(u16)、rx(u16)、baud(u32)、format(u8) | port |
 | 0x07 | disable | channel(u16) | channel |
 
 - channelはfn 0のchannels未満で、firmware自身が使うchannelではない。違えばunsupported（項目tag）。
@@ -34,6 +35,21 @@ Wi-Fiなどの経路設定は別の定義で扱う。設定はRAM上でもよく
 - idleは空きのchannelの状態（core §8）。空きのchannelへの変更はただちに効き、使用中なら次に空きになったときに効く。
   idleが無いchannelはHi-Z。mode 3/4の出力の強さはprobeが決める。
   対応しないpull/出力/未知のmodeはunsupported（項目tag）。出力idleを取得できる機能は各インターフェースに従う。
+
+### 1.1 passthrough（シリアルの口の素通し）
+
+UART bridge しか口の無い probe でも、普通のシリアルモニタで target の出力を見られるようにする任意の項目。
+ここでの作用はセッションと独立に適用する設定である（core §9）。
+
+- port は fn 0 の describe の経路の index で、シリアルの口（kind 1〜3）。fn はその probe の `oep.fixture.uart`、rx はその fn の role 1（RX）として
+  宣言された channel。baud と format は fixture §2 の configure と同じ値と規則（baud 0 は malformed、作れない baud と宣言に無い format は
+  unsupported）。違う port、fn、rx は unsupported（項目 tag）。rx が disable なら、または出力の idle を持てば unavailable cause 5。
+- **素通しの条件**: その口からセッションの要求が来ていない、その fn の plan が無い、rx をほかの plan・接続・設定が取っていない、のすべてが成り立つ間、
+  probe はその UART を rx だけで受け（TX は使わない。rx を駆動しない）、受けたバイトを [経路](../docs/oep-transports.ja.md) §4 のとおり口へフレームの外で送る。
+  どれかが成り立たなくなったら、受けるのをやめて rx を空きの状態に戻す。条件がまた成り立てば再開する。
+- 素通しはセッションの資源と取り合わない: セッションの plan、接続、口の使用は、素通しを止めて先に通る（素通しを理由に断らない）。
+- 素通しで受けたバイトは OEP のストリーム（fixture UART の read）に入れず、保持しない。口へ送れなかった分は捨てる。
+- 口からフレームの外で来たバイトを target へ送ることは定めない（入力は OEP の write を使う）。
 
 ## 2. 操作と変更の世代
 

@@ -778,6 +778,7 @@ op = [
 [interface.tlv.item]            # counted settings records; bit7 ignored, unknown items always refused
 label = 0x02                    # channel(u16), text; key channel
 idle = 0x03                     # channel(u16), mode(u8); 3 bytes; Probe selects output strength
+passthrough = 0x05              # port(u8), fn(u16), rx(u16), baud(u32), format(u8); key port; a serial port's pass-through (config §1.1, transports §4)
 disable = 0x07                  # channel(u16); key channel
 [interface.tlv.describe]
 storage = 0x40                  # max_bytes(u32>=1), canonical item bytes; only with save/erase

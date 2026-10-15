@@ -351,7 +351,8 @@ captureの世代は同じboot内で使い回さない。0xFFFFFFFFを使い切�
 
 ## 15. probeの設定
 
-`oep.probe.config`はdisable/idle/labelを扱う。配線、UART、ネットワークの設定はhostまたは別の定義で管理する。
+`oep.probe.config`はdisable/idle/labelと、任意のシリアルの口の素通し（passthrough、§1.1）を扱う。配線、UART、ネットワークの設定はhostまたは別の定義で管理する。
+素通しの口を開いた host は、フレームの外のバイト（target の出力）を雑音として読み捨てる。セッションの要求をその口から送れば、そのセッションの間は素通しが止まる。
 
 1. list/describeで対応itemsとopsを読む。saveがあればstorage.max_bytesは1以上で、無ければ保存を提供しない。
 2. getのcount個の項目を読み、末尾の拡張TLVを別に読む。moreならcountをfirstへ加えて続ける。
