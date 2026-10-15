@@ -134,5 +134,6 @@ readで回収できるかは、インターフェースの保持規則とreadの
   `done`（進んだ手順・語の数）と `status` で分かる。書式の誤りは rejected malformed。
 - failedやdone 0は、targetへ書き込みが届かなかった保証ではない。doneの計測点は各opが定める。
   応答を失った書き込みなどは外部への作用が不明になりうるため、新しいcorrによる自動再実行や、線の無条件な再試行で同じ書き込みを繰り返さない。
+  何度実行しても1回と同じ状態にしかならない手順の群をインターフェースが定める場合だけ、その定義に従ってやり直してよい（riscv-dm は[線とデバッグ](oep-if-debug.ja.md) §4.1）。
 - 成功の形に done / status が無い op（scan、attach、detach）の失敗は、completed failed と payload `status(u8)、[TLV]`（core §2.3:
   固定部分は (op, resolution, outcome) ごとに定める）。

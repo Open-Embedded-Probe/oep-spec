@@ -374,4 +374,7 @@ wireのattachが返したconnection番号を、対応するtargetのfnへの要�
 arm-adiの最小probeはtransferだけを提供する。read_block/write_blockがopsに無ければ、hostがAPの選択・設定・posted readの回収をtransferで組む。
 ブロック操作があれば、そのmax_lengthの範囲で使う。未実装の任意操作からの組み替えと、実行した操作が失敗した後の再実行は区別する。
 失敗した書き込みやdone 0はtargetへの作用が無かった保証にならないため、失敗後に別の操作で同じ書き込みを自動的に繰り返さない。
+例外は、何度実行しても1回と同じ状態にしかならないと定義された群だけである（riscv-dm では hart が止まっている間の DM の作業用レジスタと、
+値のほかに作用の無いレジスタの読み書き、[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.1）。落ちやすい線では、書き込みの後に同じ群で
+読み戻して確かめ、確かめられなければその群をやり直す。
 生のtransfer/dmiで扱うチップ固有の手順と復旧は、host側のプロジェクトが管理する。

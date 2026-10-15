@@ -351,6 +351,16 @@ probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ�
   consoleの読みが要求の間にhaveresetを確認応答するとDMCONTROLを書き、haltreqを下ろすため、要求をまたいでその保持に頼らない。
   同じconnectionのconsole streamを閉じ、hostが競合する別のtarget操作を挟まなければ、raw手順を複数のdmi要求へ分けてよい。
   この分割に原子性はなく、session終了や通信失敗で途中まで作用した場合はhostが状態を確認して復旧する。
+- **やり直してよい群**（[共通部品](oep-if-common.ja.md) §3 の例外）: hart が止まっている間に host が送る dmi の群で、書き込みが次だけのものは、
+  何度実行しても target を 1 回実行したときと同じ状態にしか変えない。host は、その群の結果を確かめられなかったとき（応答が無い、status line /
+  wait / timeout、host が群に入れた確かめ（DMSTATUS の読み、読み戻し）が合わない）、新しい corr で群全体をやり直してよい。
+  1. ABSTRACTCS への cmderr の消去と、DATA0 / DATA1 への書き込み;
+  2. aarsize 2（32 bit）、transfer 1、postexec 0 の access register で、値のほかに作用を持たないレジスタ（GPR、dpc、dcsr）を読むもの（write 0）、
+     または同じ群でその前に DATA0 へ置いた値を書くもの（write 1）。
+  ほかの書き込み（メモリ、ほかの CSR、program buffer の実行、abstractauto、haltreq / resumereq / ndmreset）を含む群はやり直さない。
+  hart が止まっている間、probe はコンソールのために DATA0 / DATA1 を使わない（[コンソール](oep-if-console.ja.md) §3）ので、やり直しが郵便受けと
+  ぶつかることは無い。やり直しの回数と間隔は有限にし、群の書き込みが置いた DATA0 / DATA1 は §4 のとおり hart を走らせる前に戻す。
+  （参考）書き込みの後に同じ群で読み戻すと、前後の DMSTATUS の読みが通る線のちらつき（書き込み 1 つの取りこぼし）も見つけられる。
 
 ### 4.2 halt、resume、step
 
