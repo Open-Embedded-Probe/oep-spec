@@ -881,6 +881,44 @@ def ops() -> dict:
             request(corr,8,pc_set,bytes([len(records)])+b''.join(records),S),
             rej(corr,'unavailable',tlv(1,bytes([5]))+tlv(2,struct.pack('<H',4))))
 
+    # network settings (config §1.3-§1.5) and the probe's own items (§1.6)
+    items = IFACE["oep.probe.config"]["tlv"]["item"]
+    wifi_tag, ipv4_tag = items["wifi"], items["ipv4"]
+    net = "items has wifi and ipv4; wifi_max 4; netifs [wifi]"
+    longest = tlv(wifi_tag, bytes([0, 32]) + b"S"*32 + bytes([64]) + b"a"*64)
+    add("probe.config set: the longest wifi item fits wifi_min_max_frame", "settings §1.4", pc, f"{net}; empty generation1",
+        request(0x11A,8,pc_set,b"\1"+longest,S),ok(0x11A,struct.pack("<I",2)))
+    add("probe.config get: wifi passphrase is write-only", "settings §1.4", pc,
+        f"{net}; wifi entry 0 ssid lab passphrase password1, generation2",
+        request(0x11B,8,pc_get,struct.pack("<H",0)),
+        ok(0x11B,struct.pack("<BIB",0,2,1)+tlv(wifi_tag,bytes([0,3])+b"lab"+b"\xff")))
+    add("probe.config set: pass_len 0xFF without the entry is malformed", "settings §1.4", pc, f"{net}; empty generation1",
+        request(0x11C,8,pc_set,b"\1"+tlv(wifi_tag,bytes([0,3])+b"lab"+b"\xff"),S),rej(0x11C,"malformed"))
+    ipv4 = lambda netif, mode, a, pfx, gw, dns: tlv(ipv4_tag, bytes([netif, mode]) + bytes(a) + bytes([pfx]) + bytes(gw) + bytes(dns))
+    add("probe.config set: ipv4 dhcp with an address is malformed", "settings §1.5", pc, f"{net}; empty generation1",
+        request(0x11D,8,pc_set,b"\1"+ipv4(0,0,[192,168,1,23],24,[0]*4,[0]*4),S),rej(0x11D,"malformed"))
+    add("probe.config set: ipv4 static on wifi", "settings §1.5", pc, f"{net}; empty generation1",
+        request(0x11E,8,pc_set,b"\1"+ipv4(0,1,[192,168,1,23],24,[192,168,1,1],[192,168,1,1]),S),ok(0x11E,struct.pack("<I",2)))
+    add("probe.config set: ipv4 on an undeclared netif is unsupported", "settings §1.5", pc, f"{net}; empty generation1",
+        request(0x11F,8,pc_set,b"\1"+ipv4(1,0,[0]*4,0,[0]*4,[0]*4),S),rej(0x11F,"unsupported",bytes([ipv4_tag])))
+    add("probe.config set: ipv4 gateway outside the prefix is malformed", "settings §1.5", pc, f"{net}; empty generation1",
+        request(0x120,8,pc_set,b"\1"+ipv4(0,1,[192,168,1,23],24,[10,0,0,1],[0]*4),S),rej(0x120,"malformed"))
+    add("probe.config unset: wifi index in the channel field", "settings §1.5, §2", pc,
+        f"{net}; wifi entry 0 ssid lab passphrase password1, generation2",
+        request(0x121,8,pc_unset,struct.pack("<BBH",1,wifi_tag,0),S),ok(0x121,struct.pack("<I",3)))
+    ne = pce["network_state"]
+    add("probe.config network: wifi connected", "settings §2 network", pc,
+        f"{net}; entry 0 connected, 192.168.1.23/24, gateway and dns 192.168.1.1, -52 dBm; TCP listening on 4242",
+        request(0x122,8,op("oep.probe.config","network"),b""),
+        ok(0x122,struct.pack("<HB",4242,1)+bytes([pce["netif"]["wifi"],ne["up"],0,0,(-52)&0xFF,192,168,1,23,24,192,168,1,1,192,168,1,1])))
+    ext = "ext_item 0x40 text max_entries 1 max_len 32 flags 0 name com.example.ntp-server"
+    add("probe.config set: a probe's own text item", "settings §1.6", pc, f"{ext}; empty generation1",
+        request(0x123,8,pc_set,b"\1"+tlv(0x40,b"\0pool.ntp.org"),S),ok(0x123,struct.pack("<I",2)))
+    add("probe.config set: an own text item with no text is malformed", "settings §1.6", pc, f"{ext}; empty generation1",
+        request(0x124,8,pc_set,b"\1"+tlv(0x40,b"\0"),S),rej(0x124,"malformed"))
+    add("probe.config set: an own item number not declared", "settings §1.6", pc, f"{ext}; empty generation1",
+        request(0x125,8,pc_set,b"\1"+tlv(0x41,b"\0\1"),S),rej(0x125,"unsupported",bytes([0x41])))
+
     # subscribe / unsubscribe (core §10.3): ops of the interface that sends notifications, 0x01 / 0x02 in the common operation range, no target fn
     sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]
     lgs = {"9": "oep.fixture.logic"}

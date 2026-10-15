@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "704af98c2a6979d9"
+REGISTRY_HASH = "dc58c67ad1939764"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -21,7 +21,7 @@ STATUS = {"ok": 0x00, "wait": 0x01, "line": 0x02, "fault": 0x03, "timeout": 0x04
 DESCRIBE_COMMON = {"role_channels": 0x01, "max_clock_hz": 0x02, "max_length": 0x03, "min_clock_hz": 0x04, "features": 0x05, "channel_group": 0x06, "ops": 0x07}
 TIMING = {"probe_frame_gap_ms": 0xC8, "uart_bridge_boot_baud": 0x1C200, "port_speed_idle_ms": 0xBB8, "host_wait_add_ms": 0x3E8, "core_quick_op_max_ms": 0x3E8, "notify_pending_max_frames": 0x02, "port_speed_switch_wait_ms": 0x14}
 USB = {"project_vid": 0x1209, "project_pid": 0x4F45, "vendor_bulk_class": 0xFF, "vendor_bulk_subclass": 0x4F, "vendor_bulk_protocol": 0x45, "hid_usage_page": 0xFF4F, "hid_usage": 0x45}
-LIMITS = {"request_header_bytes": 0x0A, "result_header_bytes": 0x05, "corr_max": 0xFFFF, "corr_half_range": 0x8000, "resource_id_bytes": 0x04, "resource_id_max": 0xFFFFFFFF, "lease_min_ms": 0x3E8, "lease_max_ms": 0xEA60, "owner_max_bytes": 0x20, "unit_id_max_bytes": 0x20, "label_max_bytes": 0x20, "interface_name_max_bytes": 0x30, "port_speed_tolerance_pct": 0x02, "uart_baud_tolerance_pct": 0x05, "max_op_ms_max": 0x927C0}
+LIMITS = {"request_header_bytes": 0x0A, "result_header_bytes": 0x05, "corr_max": 0xFFFF, "corr_half_range": 0x8000, "resource_id_bytes": 0x04, "resource_id_max": 0xFFFFFFFF, "lease_min_ms": 0x3E8, "lease_max_ms": 0xEA60, "owner_max_bytes": 0x20, "unit_id_max_bytes": 0x20, "wifi_ssid_max_bytes": 0x20, "wifi_min_max_frame": 0x71, "ext_item_first": 0x40, "ext_item_last": 0x7F, "label_max_bytes": 0x20, "interface_name_max_bytes": 0x30, "port_speed_tolerance_pct": 0x02, "uart_baud_tolerance_pct": 0x05, "max_op_ms_max": 0x927C0}
 COMMON = _NS(enum={"target_id_scheme": {"dmi_7f": 0x01, "dpidr": 0x02}, "read_from": {"position": 0x00, "oldest": 0x01, "now": 0x02, "last_mark": 0x03}, "read_flags": {"more": 0x01, "gap": 0x02}, "mark_kind": {"lost": 0x01, "clear": 0x02, "host": 0x03}, "mark_detail_lost": {"overflow": 0x01, "framing": 0x02, "parity": 0x03}})
 
 INTERFACES = {}
@@ -92,7 +92,7 @@ FIXTURE_CAPTURE_GROUP = _NS(name="oep.fixture.capture-group", revision=1, target
     tlv={"bind": {}, "describe": {"tracks": 0x40}}, event={"stopped": 0x02}, enum={"features": {}, "state": {"unconfigured": 0x00, "configured": 0x01, "capturing": 0x03, "done": 0x04, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "error": 0x03}}, own={},
     line_names={})
 INTERFACES["oep.fixture.capture-group"] = FIXTURE_CAPTURE_GROUP
-PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, target=None, op={"get": 0x10, "set": 0x11, "save": 0x12, "erase": 0x13, "unset": 0x14, "state": 0x15}, lock_free={0x10, 0x15},
-    tlv={"item": {"label": 0x02, "idle": 0x03, "passthrough": 0x05, "console_passthrough": 0x06, "disable": 0x07}, "describe": {"storage": 0x40, "items": 0x41}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02, "output_low": 0x03, "output_high": 0x04}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02, "partial": 0x03}, "storage_unreadable": {"none": 0x00, "form": 0x01, "item": 0x02, "capacity": 0x03}}, own={},
+PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, target=None, op={"get": 0x10, "set": 0x11, "save": 0x12, "erase": 0x13, "unset": 0x14, "state": 0x15, "network": 0x16}, lock_free={0x10, 0x15, 0x16},
+    tlv={"item": {"label": 0x02, "idle": 0x03, "passthrough": 0x05, "console_passthrough": 0x06, "disable": 0x07, "wifi": 0x08, "ipv4": 0x09}, "describe": {"storage": 0x40, "items": 0x41, "wifi_max": 0x42, "netifs": 0x43, "ext_item": 0x44}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02, "output_low": 0x03, "output_high": 0x04}, "netif": {"wifi": 0x00, "ethernet": 0x01}, "ipv4_mode": {"dhcp": 0x00, "static": 0x01}, "network_state": {"off": 0x00, "connecting": 0x01, "up": 0x02, "waiting": 0x03}, "network_reason": {"none": 0x00, "not_found": 0x01, "auth": 0x02, "no_address": 0x03, "other": 0x04}, "ext_form": {"bytes": 0x00, "text": 0x01, "u32": 0x02, "ipv4": 0x03, "bool": 0x04}, "ext_flag": {"secret": 0x01, "restart": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02, "partial": 0x03}, "storage_unreadable": {"none": 0x00, "form": 0x01, "item": 0x02, "capacity": 0x03}}, own={},
     line_names={'nrst': 'the target reset line (Host only)', 'power_hi': 'target power on when high (Host only)', 'power_lo': 'target power on when low (Host only)'})
 INTERFACES["oep.probe.config"] = PROBE_CONFIG

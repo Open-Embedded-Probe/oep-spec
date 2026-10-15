@@ -73,6 +73,19 @@ TCP で待ち受ける probe が自分を広告するときは、DNS-SD の serv
 - 広告は同じネットワークの誰でも出せ、describe の unit_id も偽れる。TCP は信頼できるネットワークか、認証したトンネルの中でだけ使う
   （transports §1）。
 
+### 4.2 TCP の経路を設定する
+
+- probe を Wi-Fi や有線の IPv4 に載せる設定は、どの probe でも probe.config の wifi と ipv4 の項目（設定 §1.3〜§1.5）で行う。
+  同じ項目を送れば、どの probe でも同じ意味になる。項目の無い netif は DHCP、wifi の項目が無ければ Wi-Fi は使わない。
+- 手順の目安: USB でつなぎ、describe の items と netifs で扱えるものを確かめ、wifi（と必要なら ipv4）を set する。network で state 2 と
+  アドレス、tcp_port を確かめ、TCP で届く（§4.1 で unit_id を見つけて confirm が通る）ことを確かめてから save する。
+  save する前なら、再起動で保存の内容へ戻る。
+- passphrase は書くだけで、get は pass_len 0xFF を返す。get の項目をそのまま set で送り返しても passphrase は変わらない。passphrase を表示もログもしない。
+- mDNS が届かない所では、network の address と tcp_port を利用者へ示し、明示の接続先として使う。
+- **設定の一覧**: probe 独自の設定は describe の ext_item（設定 §1.6）に、名前と形で並ぶ。host は意味を知らなくても、名前を表示し、
+  形に合わせて入力を受けて get / set / save できる。名前を知っている項目（たとえば自分の扱う `com.example.ntp-server`）は名前で見分け、
+  番号は probe ごとに読む。
+
 ## 5. session_id と発見
 
 - open のたびに新しい、予測できない 32 bit の乱数の session_id を選ぶ。0、連番、固定値にしない（core §6.1）。

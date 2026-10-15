@@ -132,13 +132,16 @@ def test_a_private_line_name_in_the_registry_is_reported():
     assert any("not a standard name" in e for e in gen.check(reg))
 
 
-def test_settings_v1_contains_pin_items_and_the_pass_through():
+def test_settings_v1_contains_pin_items_the_pass_through_and_the_network():
     reg,_ = gen.load()
     settings=next(i for i in reg['interface'] if i['name']=='oep.probe.config')
-    # the pin items, and the serial port's pass-through (config §1.1): no plan, slot, bind of streams or wifi
-    assert settings['tlv']['item']=={'label':2,'idle':3,'passthrough':5,'console_passthrough':6,'disable':7}
-    assert set(settings['tlv']['describe'])=={'storage','items'}
-    assert not any(key.startswith('wifi_') for key in reg['limits'])
+    # the pin items, the serial port's pass-through (config §1.1, §1.2), the network (§1.3-§1.5): no plan, slot or bind
+    assert settings['tlv']['item']=={'label':2,'idle':3,'passthrough':5,'console_passthrough':6,'disable':7,'wifi':8,'ipv4':9}
+    assert set(settings['tlv']['describe'])=={'storage','items','wifi_max','netifs','ext_item'}
+    # the longest wifi item in one set: request header 10, count 1, item header 3, value 3 + 32 + 64
+    assert reg['limits']['wifi_min_max_frame'] == 10 + 1 + 3 + 3 + reg['limits']['wifi_ssid_max_bytes'] + 64
+    # the probe's own items (§1.6) above every standard item
+    assert max(settings['tlv']['item'].values()) < reg['limits']['ext_item_first'] <= reg['limits']['ext_item_last'] == 0x7F
     gpio=next(i for i in reg['interface'] if i['name']=='oep.fixture.gpio')
     assert 'drive_levels' not in gpio['tlv']['describe']
 

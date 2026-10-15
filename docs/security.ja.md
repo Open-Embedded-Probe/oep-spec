@@ -12,6 +12,8 @@
 - USB とシリアルの経路は、PC のほかの手元の装置と同じく信頼する。**TCP は信頼できる手元の接続か、認証したトンネルの中でだけ使う**
   （transports §1）。
 - targetのメモリやコンソールに秘密が含まれる場合も、OEPのpayloadは暗号化されない。TCPでの保護は上記のトンネル等で行う。
+- Wi-Fiのpassphraseとsecretのext_item（probe.config §1.4、§1.6）は書くだけで、probeはどの応答とログにも出さない。
+  暗号化されずに経路を通るので、hostはUSBなど信頼できる経路で設定する。
 - OEP の要求に自分で答える端点は、後ろに何があっても probe で、probe の規則すべてに従う。中継するだけのブローカーは probe に対して
   host（transports §1）。
 - probe自身のfirmware更新の方式は本体の外（core §0）。標準OEPはimage形式や署名方式を定めない。
@@ -130,5 +132,5 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
 - **owner**（open の TLV 0x01）は、lock_state と locked の断りで、どの host にも返る: 秘密を入れない（core §6.4、参考）。
 - **unit_id** はどの host も読め、USB の serial number でもある。チップの固有の番号から作れば、その番号を見せる（core §7.5。代わりの
   作り方は probe ガイド §10）。
-- describe、list、設定の get と state、connections、streams、位置つきのストリームの read はロック不要: 方針による制限がなければ、口を開けるプログラムが読める（core §6.3）。
+- describe、list、設定の get、state と network（Wi-Fi の passphrase は返さない）、connections、streams、位置つきのストリームの read はロック不要: 方針による制限がなければ、口を開けるプログラムが読める（core §6.3）。
   公開発見5操作で返す能力・識別・ownerには、方針で隠す必要のある秘密を置かない。

@@ -132,6 +132,10 @@ lease_min_ms = 1000             # owner processing pauses lease; response genera
 lease_max_ms = 60000
 owner_max_bytes = 32
 unit_id_max_bytes = 32
+wifi_ssid_max_bytes = 32        # probe.config wifi ssid (oep-if-probe-config §1.4)
+wifi_min_max_frame = 113        # max_frame floor for a probe declaring item wifi: 10 + count 1 + 3 + 99 (§1.4)
+ext_item_first = 0x40           # probe-own config items (oep-if-probe-config §1.6)
+ext_item_last = 0x7F
 label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
 interface_name_max_bytes = 48   # a list answer with one entry is 5 + 3 + 6 + 48 = 62 bytes, within min_max_frame (core §7.2, §12)
 port_speed_tolerance_pct = 2    # port_speed: the nearest speed the UART can make may differ from the request by at most this percent (oep-if-link §3)
@@ -774,6 +778,7 @@ op = [
   { code = 0x13, name = "erase", lock = true },  # required with save (ops); config §2
   { code = 0x14, name = "unset", lock = true },
   { code = 0x15, name = "state", lock = false },  # required with save, optional otherwise (ops); config §2
+  { code = 0x16, name = "network", lock = false },  # required with describe netifs, not offered otherwise; config §2
 ]
 [interface.tlv.item]            # counted settings records; bit7 ignored, unknown items always refused
 label = 0x02                    # channel(u16), text; key channel
@@ -781,9 +786,14 @@ idle = 0x03                     # channel(u16), mode(u8); 3 bytes; Probe selects
 passthrough = 0x05              # port(u8), fn(u16), rx(u16), baud(u32), format(u8); key port; a serial port's pass-through (config §1.1, transports §4)
 console_passthrough = 0x06      # port(u8), wire_fn(u16), swdio(u16), swclk(u16), max_speed(u32), console_fn(u16), mechanism(u8); key port (config §1.2)
 disable = 0x07                  # channel(u16); key channel
+wifi = 0x08                     # index(u8), ssid_len(u8), ssid, pass_len(u8), passphrase; key index; passphrase write-only (config §1.4)
+ipv4 = 0x09                     # netif(u8), mode(u8), address(4), prefix(u8), gateway(4), dns(4); 15 bytes; key netif (config §1.5)
 [interface.tlv.describe]
 storage = 0x40                  # max_bytes(u32>=1), canonical item bytes; only with save/erase
 items = 0x41                    # nonempty u8 item-tag list
+wifi_max = 0x42                 # u8>=1, wifi entries; only with item wifi
+netifs = 0x43                   # nonempty u8 netif list; with wifi / ipv4 (and the network op)
+ext_item = 0x44                 # repeats: tag(u8 0x40-0x7F), form(u8), max_entries(u8>=1), max_len(u8), flags(u8), name(text) (config §1.6)
 [interface.line_names]          # Host conventions only (host-development-guide §5.3)
 nrst = "the target reset line (Host only)"
 power_hi = "target power on when high (Host only)"
@@ -794,6 +804,32 @@ pull_up = 1
 pull_down = 2
 output_low = 3
 output_high = 4
+[interface.enum.netif]
+wifi = 0
+ethernet = 1
+[interface.enum.ipv4_mode]
+dhcp = 0
+static = 1
+[interface.enum.network_state]
+off = 0
+connecting = 1
+up = 2
+waiting = 3
+[interface.enum.network_reason]
+none = 0
+not_found = 1
+auth = 2
+no_address = 3
+other = 4
+[interface.enum.ext_form]
+bytes = 0
+text = 1
+u32 = 2
+ipv4 = 3
+bool = 4
+[interface.enum.ext_flag]
+secret = 0x01
+restart = 0x02
 [interface.enum.storage_state]
 none = 0
 applied = 1

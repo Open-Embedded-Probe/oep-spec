@@ -1097,6 +1097,126 @@
       "answer_hex": "0219010004010100050202000400"
     },
     {
+      "name": "probe.config set: the longest wifi item fits wifi_min_max_frame",
+      "spec": "settings §1.4",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi and ipv4; wifi_max 4; netifs [wifi]; empty generation1",
+      "request_hex": "011a010800114433221101086300002053535353535353535353535353535353535353535353535353535353535353534061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161",
+      "answer_hex": "021a01010002000000"
+    },
+    {
+      "name": "probe.config get: wifi passphrase is write-only",
+      "spec": "settings §1.4",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi and ipv4; wifi_max 4; netifs [wifi]; wifi entry 0 ssid lab passphrase password1, generation2",
+      "request_hex": "011b01080010000000000000",
+      "answer_hex": "021b01010000020000000108060000036c6162ff"
+    },
+    {
+      "name": "probe.config set: pass_len 0xFF without the entry is malformed",
+      "spec": "settings §1.4",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi and ipv4; wifi_max 4; netifs [wifi]; empty generation1",
+      "request_hex": "011c01080011443322110108060000036c6162ff",
+      "answer_hex": "021c010003"
+    },
+    {
+      "name": "probe.config set: ipv4 dhcp with an address is malformed",
+      "spec": "settings §1.5",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi and ipv4; wifi_max 4; netifs [wifi]; empty generation1",
+      "request_hex": "011d010800114433221101090f000000c0a80117180000000000000000",
+      "answer_hex": "021d010003"
+    },
+    {
+      "name": "probe.config set: ipv4 static on wifi",
+      "spec": "settings §1.5",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi and ipv4; wifi_max 4; netifs [wifi]; empty generation1",
+      "request_hex": "011e010800114433221101090f000001c0a8011718c0a80101c0a80101",
+      "answer_hex": "021e01010002000000"
+    },
+    {
+      "name": "probe.config set: ipv4 on an undeclared netif is unsupported",
+      "spec": "settings §1.5",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi and ipv4; wifi_max 4; netifs [wifi]; empty generation1",
+      "request_hex": "011f010800114433221101090f00010000000000000000000000000000",
+      "answer_hex": "021f01000b09"
+    },
+    {
+      "name": "probe.config set: ipv4 gateway outside the prefix is malformed",
+      "spec": "settings §1.5",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi and ipv4; wifi_max 4; netifs [wifi]; empty generation1",
+      "request_hex": "0120010800114433221101090f000001c0a80117180a00000100000000",
+      "answer_hex": "0220010003"
+    },
+    {
+      "name": "probe.config unset: wifi index in the channel field",
+      "spec": "settings §1.5, §2",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi and ipv4; wifi_max 4; netifs [wifi]; wifi entry 0 ssid lab passphrase password1, generation2",
+      "request_hex": "0121010800144433221101080000",
+      "answer_hex": "022101010003000000"
+    },
+    {
+      "name": "probe.config network: wifi connected",
+      "spec": "settings §2 network",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "items has wifi and ipv4; wifi_max 4; netifs [wifi]; entry 0 connected, 192.168.1.23/24, gateway and dns 192.168.1.1, -52 dBm; TCP listening on 4242",
+      "request_hex": "01220108001600000000",
+      "answer_hex": "022201010092100100020000ccc0a8011718c0a80101c0a80101"
+    },
+    {
+      "name": "probe.config set: a probe's own text item",
+      "spec": "settings §1.6",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "ext_item 0x40 text max_entries 1 max_len 32 flags 0 name com.example.ntp-server; empty generation1",
+      "request_hex": "0123010800114433221101400d0000706f6f6c2e6e74702e6f7267",
+      "answer_hex": "022301010002000000"
+    },
+    {
+      "name": "probe.config set: an own text item with no text is malformed",
+      "spec": "settings §1.6",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "ext_item 0x40 text max_entries 1 max_len 32 flags 0 name com.example.ntp-server; empty generation1",
+      "request_hex": "012401080011443322110140010000",
+      "answer_hex": "0224010003"
+    },
+    {
+      "name": "probe.config set: an own item number not declared",
+      "spec": "settings §1.6",
+      "fns": {
+        "8": "oep.probe.config"
+      },
+      "state": "ext_item 0x40 text max_entries 1 max_len 32 flags 0 name com.example.ntp-server; empty generation1",
+      "request_hex": "01250108001144332211014102000001",
+      "answer_hex": "022501000b41"
+    },
+    {
       "name": "logic subscribe: min_bytes 1024, max_delay_ms 20",
       "spec": "core §10.3; capture §3.4",
       "fns": {
