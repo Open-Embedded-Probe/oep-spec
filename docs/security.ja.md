@@ -12,7 +12,7 @@
 - USB とシリアルの経路は、PC のほかの手元の装置と同じく信頼する。**TCP は信頼できる手元の接続か、認証したトンネルの中でだけ使う**
   （transports §1）。
 - targetのメモリやコンソールに秘密が含まれる場合も、OEPのpayloadは暗号化されない。TCPでの保護は上記のトンネル等で行う。
-- Wi-Fiのpassphraseとsecretのext_item（probe.config §1.4、§1.6）は書くだけで、probeはどの応答とログにも出さない。
+- Wi-Fiのpassphraseとsecretの項目（probe.config §1.4、§1.7）は書くだけで、probeはどの応答とログにも出さない。
   暗号化されずに経路を通るので、hostはUSBなど信頼できる経路で設定する。
 - OEP の要求に自分で答える端点は、後ろに何があっても probe で、probe の規則すべてに従う。中継するだけのブローカーは probe に対して
   host（transports §1）。

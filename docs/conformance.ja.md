@@ -169,7 +169,7 @@ fn 0のconfirm / list / describe / clock / lock_stateは方針の対象から除
 | `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)） | planの役割を持つインターフェースがあればlistに出す。plan_applyは要求全体を検証し、残る割当・機能状態を保つ。動作中の割り当て（role, channel）の集合の変更/束ねられた資源変更は拒否。plan_releaseも全対象を先に検証。上限があればplan_roles | — |
 | `oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)） | restart。describe の restart_max_ms。ロックの要る op として断る。答えは completed success で、それを先に送る。答えの後は再起動するまでどのtransportの要求にも答えず、意図したtargetのreset/resumeは行わない。MCUのリセット状態と外部回路によるtarget変化は保証しない。再起動の後は電源を入れたときと同じ（新しい boot_id、保存した設定だけが残る）。答えがtransportを出てからrestart_max_msのうちにprobe内部が通信を受けられる状態へ戻る。OSの列挙/ネットワーク接続/hostの開き直しは別 | — |
 | `oep.probe.link`（[リンク](../interfaces/oep-if-link.ja.md)） | source、sink | port_speedとport_state（ops）。frame境界で変更し、pipelineを先に解決。通知だけのhostも正常要求でidleを延長する。要求処理中のtimerとphase 3の取消禁止（§3） |
-| `oep.probe.config`（[設定](../interfaces/oep-if-probe-config.ja.md)） | get/set/unsetとitems宣言。count付き項目と末尾TLVの区別。変更カウンタはboot内非再利用、no-opは世代/ピン不変。変更は全検証の後に適用。 | disable/idle/labelの対応範囲。save/erase/stateは保存とともに採用しmax_bytesを宣言。起動時に有効項目だけを適用しdisableを先に掛け、部分適用はstateで示す。wifi/ipv4はnetifsとnetworkとともに採用し、wifiはmax_frame 113以上でpassphraseを返さない。独自の項目はext_itemで宣言した番号と形だけを受ける。 |
+| `oep.probe.config`（[設定](../interfaces/oep-if-probe-config.ja.md)） | get/set/unsetとsetting宣言（k番目が項目番号k、名前の重複なし）。count付き項目と末尾TLVの区別。変更カウンタはboot内非再利用、no-opは世代/ピン不変。変更は全検証の後に適用。 | disable/idle/labelの対応範囲。save/erase/stateは保存とともに採用しmax_bytesを宣言。起動時に有効項目だけを適用しdisableを先に掛け、部分適用はstateで示す。wifi/ipv4はnetifsとnetworkとともに採用し、wifiはmax_frame 114以上でpassphraseを返さない。独自の項目は逆DNSの名前とform 1〜5で宣言し、その形だけを受ける。保存は名前で読み戻す。 |
 
 ### 終了・失敗時の境界検査
 

@@ -589,16 +589,16 @@ def test_settings_counted_container_and_change_counter_shapes():
     response=bytes.fromhex(cases['probe.config get: count separates items from response extensions']['answer_hex'])
     more,generation,count=struct.unpack_from('<BIB',response,5)
     assert (more,generation,count)==(0,2,1)
-    # Decode count records, then the extension tail separately.
-    tag,size=struct.unpack_from('<BH',response,11)
-    assert tag==3 and size==3 and struct.unpack_from('<HB',response,14)==(4,0)
+    # Decode count records (number len key data, config §1), then the extension tail separately: idle is number 2
+    number,size,key=struct.unpack_from('<BHH',response,11)
+    assert (number,size,key)==(2,3,4) and response[16]==0
     assert tlvs(response[17:])==[(0x7f,b'x')]
-    request=bytes.fromhex(cases['probe.config set: item bit7 ignored for known idle']['request_hex'])
-    assert request[10:]==bytes.fromhex('01830300040000')
-    request=bytes.fromhex(cases['probe.config unset: fixed channel key']['request_hex'])
-    assert request[10:]==bytes.fromhex('01070400')
+    request=bytes.fromhex(cases['probe.config unset: number and key']['request_hex'])
+    assert request[10:]==bytes.fromhex('01030400')
     request=bytes.fromhex(cases['probe.config set: longest label fits frame64']['request_hex'])
     assert len(request)==48 and request[10]==1 and request[-32:]==b'L'*32
+    request=bytes.fromhex(cases['probe.config set: the longest wifi item fits wifi_min_max_frame']['request_hex'])
+    assert len(request)==REG['limits']['wifi_min_max_frame']
     response=bytes.fromhex(cases['probe.config state: independent valid items restored despite invalid label']['answer_hex'])
     assert struct.unpack_from('<BIB',response,5)==(3,0,2)
 
@@ -704,11 +704,14 @@ def test_config_item_conflicts_are_usage_restrictions():
     for name in ('disable conflicts with existing idle', 'idle conflicts with existing disable', 'disable and idle conflict in one set'):
         case = cases[f'probe.config set: {name}']
         request, result = bytes.fromhex(case['request_hex']), bytes.fromhex(case['answer_hex'])
-        count = request[10]
-        items = tlvs(request[11:])
+        count, at, items = request[10], 11, []
+        while at < len(request):                   # number len key data (config §1)
+            number, size, key = struct.unpack_from('<BHH', request, at)
+            items.append((number, key, request[at + 5:at + 3 + size]))
+            at += 3 + size
         assert len(items) == count and count in (1, 2)
-        assert len({(tag, struct.unpack_from('<H', value)[0]) for tag, value in items}) == count
-        assert all(len(value) == (3 if tag == 3 else 2) for tag, value in items)
+        assert len({(number, key) for number, key, _ in items}) == count
+        assert all(len(data) == (1 if number == 2 else 0) for number, key, data in items)   # idle 2, disable 3
         assert result[3:5] == bytes([0, REG['reject_reasons']['unavailable']])
         assert tlvs(result[5:]) == [(1, bytes([5])), (2, struct.pack('<H', 4))]
 

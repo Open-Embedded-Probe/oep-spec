@@ -132,16 +132,17 @@ def test_a_private_line_name_in_the_registry_is_reported():
     assert any("not a standard name" in e for e in gen.check(reg))
 
 
-def test_settings_v1_contains_pin_items_the_pass_through_and_the_network():
+def test_settings_are_named_not_numbered():
     reg,_ = gen.load()
     settings=next(i for i in reg['interface'] if i['name']=='oep.probe.config')
-    # the pin items, the serial port's pass-through (config §1.1, §1.2), the network (§1.3-§1.5): no plan, slot or bind
-    assert settings['tlv']['item']=={'label':2,'idle':3,'passthrough':5,'console_passthrough':6,'disable':7,'wifi':8,'ipv4':9}
-    assert set(settings['tlv']['describe'])=={'storage','items','wifi_max','netifs','ext_item'}
-    # the longest wifi item in one set: request header 10, count 1, item header 3, value 3 + 32 + 64
-    assert reg['limits']['wifi_min_max_frame'] == 10 + 1 + 3 + 3 + reg['limits']['wifi_ssid_max_bytes'] + 64
-    # the probe's own items (§1.6) above every standard item
-    assert max(settings['tlv']['item'].values()) < reg['limits']['ext_item_first'] <= reg['limits']['ext_item_last'] == 0x7F
+    # the standard items by name (config §1); the probe numbers them in its describe setting order: no item numbers here
+    assert list(settings['setting_names'])==['label','idle','disable','passthrough','console-passthrough','wifi','ipv4']
+    assert 'item' not in settings['tlv']
+    assert set(settings['tlv']['describe'])=={'storage','setting','netifs'}
+    # the longest wifi item in one set: request header 10, count 1, item header 3, key 2, data 1 + 32 + 1 + 64
+    assert reg['limits']['wifi_min_max_frame'] == 10 + 1 + 3 + 2 + 1 + reg['limits']['wifi_ssid_max_bytes'] + 1 + 64
+    # a setting TLV with the longest name fits the core's 64-byte describe value (55 bytes)
+    assert 5 + reg['limits']['interface_name_max_bytes'] <= reg['constants']['min_max_frame'] - 9
     gpio=next(i for i in reg['interface'] if i['name']=='oep.fixture.gpio')
     assert 'drive_levels' not in gpio['tlv']['describe']
 

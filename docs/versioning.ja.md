@@ -74,7 +74,7 @@ OEP v1 は凍結前である。凍結までは、壊す変更も **どの revisi
 | 新しい enum の値と予約の bit | 要求では: 定義が使っていなかった値は、それを知らない probe が unsupported で断る（core §2.5、§4.3）。応答、出来事、データでは: どのフィールドのあるなし、長さ、位置もその値に依らず、core §2.4 の知らない値の扱いが安全で、意味がその値に依るフィールドはどれも、その値を知らない読み手が無視するか生のまま見せるときだけ足せる（core §2.5）。そうでなければ新しい TLV、revision、インターフェース |
 | インターフェースの断りの理由、unavailableのcauseとstatusの値 | 0x40〜0x7F（core §2.5、common §3） |
 | describe の tag | 共通 0x01〜0x3F、インターフェース 0x40〜0x7F。どの固定の形とも同じく、describe の値は延ばさない（core §2.3、§7.4） |
-| probe.config の項目と線の名前 | 新しい項目の tag（項目の形は固定、probe の設定 §1）。標準の線の名前はregistryとhostガイド §5.3に（hostの慣行） |
+| probe.config の項目と線の名前 | 新しい標準の項目の名前（registry。項目の形は固定、番号は probe が describe の setting の順で振る、probe の設定 §1）。probe 独自の項目は逆 DNS の名前で誰でも（§1.6）。標準の線の名前はregistryとhostガイド §5.3に（hostの慣行） |
 | 新しいインターフェース | `oep.` の名前はこのリポジトリを通して。逆 DNS の名前は誰でも登録なしに（core §12） |
 | 新しい共通操作 | coreが未割当の0x03〜0x0Fへ割り当て、対応するfnがopsで宣言する（core §12.1） |
 | 新しい経路 | フレームの方式と一緒に新しい transport の kind を（transports §1） |

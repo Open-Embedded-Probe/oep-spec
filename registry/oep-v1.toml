@@ -133,9 +133,7 @@ lease_max_ms = 60000
 owner_max_bytes = 32
 unit_id_max_bytes = 32
 wifi_ssid_max_bytes = 32        # probe.config wifi ssid (oep-if-probe-config §1.4)
-wifi_min_max_frame = 113        # max_frame floor for a probe declaring item wifi: 10 + count 1 + 3 + 99 (§1.4)
-ext_item_first = 0x40           # probe-own config items (oep-if-probe-config §1.6)
-ext_item_last = 0x7F
+wifi_min_max_frame = 114        # max_frame floor for a probe taking wifi: request 10 + count 1 + item header 3 + key 2 + data 98 (§1.4)
 label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
 interface_name_max_bytes = 48   # a list answer with one entry is 5 + 3 + 6 + 48 = 62 bytes, within min_max_frame (core §7.2, §12)
 port_speed_tolerance_pct = 2    # port_speed: the nearest speed the UART can make may differ from the request by at most this percent (oep-if-link §3)
@@ -780,20 +778,18 @@ op = [
   { code = 0x15, name = "state", lock = false },  # required with save, optional otherwise (ops); config §2
   { code = 0x16, name = "network", lock = false },  # required with describe netifs, not offered otherwise; config §2
 ]
-[interface.tlv.item]            # counted settings records; bit7 ignored, unknown items always refused
-label = 0x02                    # channel(u16), text; key channel
-idle = 0x03                     # channel(u16), mode(u8); 3 bytes; Probe selects output strength
-passthrough = 0x05              # port(u8), fn(u16), rx(u16), baud(u32), format(u8); key port; a serial port's pass-through (config §1.1, transports §4)
-console_passthrough = 0x06      # port(u8), wire_fn(u16), swdio(u16), swclk(u16), max_speed(u32), console_fn(u16), mechanism(u8); key port (config §1.2)
-disable = 0x07                  # channel(u16); key channel
-wifi = 0x08                     # index(u8), ssid_len(u8), ssid, pass_len(u8), passphrase; key index; passphrase write-only (config §1.4)
-ipv4 = 0x09                     # netif(u8), mode(u8), address(4), prefix(u8), gateway(4), dns(4); 15 bytes; key netif (config §1.5)
 [interface.tlv.describe]
 storage = 0x40                  # max_bytes(u32>=1), canonical item bytes; only with save/erase
-items = 0x41                    # nonempty u8 item-tag list
-wifi_max = 0x42                 # u8>=1, wifi entries; only with item wifi
-netifs = 0x43                   # nonempty u8 netif list; with wifi / ipv4 (and the network op)
-ext_item = 0x44                 # repeats: tag(u8 0x40-0x7F), form(u8), max_entries(u8>=1), max_len(u8), flags(u8), name(text) (config §1.6)
+setting = 0x41                  # repeats, one per item it takes: form(u8), keys(u16>=1), max_len(u8), flags(u8), name(text); the k-th is item number k (config §1, §4)
+netifs = 0x42                   # nonempty u8 netif list; with wifi / ipv4 (and the network op)
+[interface.setting_names]       # the standard items (config §1): item = number(u8, the probe's setting order) len(u16) key(u16) data; no registry numbers
+label = "key channel; text 1-32 bytes"
+idle = "key channel; mode(u8)"
+disable = "key channel; no data"
+passthrough = "key port; fn(u16) rx(u16) baud(u32) format(u8)"
+console-passthrough = "key port; wire_fn(u16) swdio(u16) swclk(u16) max_speed(u32) console_fn(u16) mechanism(u8)"
+wifi = "key entry; ssid_len(u8) ssid pass_len(u8) passphrase; passphrase write-only"
+ipv4 = "key netif; mode(u8) address(4) prefix(u8) gateway(4) dns(4)"
 [interface.line_names]          # Host conventions only (host-development-guide §5.3)
 nrst = "the target reset line (Host only)"
 power_hi = "target power on when high (Host only)"
@@ -821,13 +817,14 @@ not_found = 1
 auth = 2
 no_address = 3
 other = 4
-[interface.enum.ext_form]
-bytes = 0
-text = 1
-u32 = 2
-ipv4 = 3
-bool = 4
-[interface.enum.ext_flag]
+[interface.enum.setting_form]
+named = 0                       # the layout the standard name defines
+bytes = 1
+text = 2
+u32 = 3
+ipv4 = 4
+bool = 5
+[interface.enum.setting_flag]
 secret = 0x01
 restart = 0x02
 [interface.enum.storage_state]

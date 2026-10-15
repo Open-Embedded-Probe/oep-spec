@@ -41,7 +41,7 @@ host は list で見つけて要るものだけを使う。
 | RISC-V target | dmiだけ | halt/resume/reset/block/run/step、チップ固有flash手順 |
 | ARM target | transferだけ | read_block/write_block |
 | console | open/read/close/streams、1connection/1stream、対応mechanismだけ | marks/clear/mark/write、送信queue、全mechanism |
-| probe.config | 対応項目だけ、RAM上の設定 | save/erase/state、不揮発領域。preset/ネットワーク設定は別の定義へ |
+| probe.config | 対応項目だけ、RAM上の設定 | save/erase/state、不揮発領域、wifi/ipv4とnetwork、独自の項目 |
 | link / restart | 提供する場合だけ採用 | coreへの一律の採用、linkのport_speed |
 
 有限buffer、同じboot内で再利用しない資源ID、session終了時の解放はcoreの共通契約である。

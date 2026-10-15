@@ -834,90 +834,91 @@ def ops() -> dict:
     add("console read from 4", "common §1.2, core §4.3", con, "—",
         request(0x63, 7, op("oep.target.console", "read"), struct.pack("<IBQH", 2, 4, 0, 64)), rej(0x63, "unsupported", b"\x00"))
 
-    # oep.probe.config: counted settings records, separate extension TLVs.
+    # oep.probe.config: named items, numbered by the probe's describe setting order (config §1, §4); counted records,
+    # separate extension TLVs. Every case's probe declares the same settings, in this order:
+    SET_ORDER = ["label", "idle", "disable", "wifi", "ipv4", "com.example.ntp-server"]
+    NUM = {name: k + 1 for k, name in enumerate(SET_ORDER)}
+    decl = ("settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, "
+            "max_len 32); netifs [wifi]")
     pc = {"8":"oep.probe.config"}
     pce = IFACE["oep.probe.config"]["enum"]
     pc_set,pc_get,pc_unset = (op("oep.probe.config",n) for n in ("set","get","unset"))
-    idle_tag = IFACE["oep.probe.config"]["tlv"]["item"]["idle"]
-    label_tag = IFACE["oep.probe.config"]["tlv"]["item"]["label"]
-    disabled_tag = IFACE["oep.probe.config"]["tlv"]["item"]["disable"]
-    idle=tlv(idle_tag,struct.pack("<HB",4,0))
-    add("probe.config state: no saved settings", "settings §3", pc,"state offered; no saved settings",
+    def it(name, key, data=b""):
+        number = NUM[name] if isinstance(name, str) else name
+        return struct.pack("<BHH", number, 2 + len(data), key) + data
+    idle = it("idle", 4, b"\0")
+    add("probe.config state: no saved settings", "settings §3", pc,f"{decl}; state offered; no saved settings",
         request(0x70,8,op("oep.probe.config","state"),b""),ok(0x70,bytes(6)))
-    add("probe.config save not offered", "settings §2", pc,"get/set/unset only; no storage",
+    add("probe.config save not offered", "settings §2", pc,f"{decl}; get/set/unset only; no storage",
         request(0x71,8,op("oep.probe.config","save"),b"",S),rej(0x71,"unknown_operation"))
-    add("probe.config state not offered", "settings §2", pc,"get/set/unset only; no storage/state",
+    add("probe.config state not offered", "settings §2", pc,f"{decl}; get/set/unset only; no storage/state",
         request(0x7D,8,op("oep.probe.config","state"),b""),rej(0x7D,"unknown_operation"))
-    add("probe.config set: idle with obsolete drive byte is malformed", "settings §1", pc,"empty configuration, generation1 unchanged",
-        request(0x72,8,pc_set,b"\1"+tlv(idle_tag,struct.pack("<HBB",4,0,255)),S),rej(0x72,"malformed"))
-    add("probe.config set: item bit7 ignored for known idle", "settings §1", pc,"empty configuration generation1; supported idle0/channel4",
-        request(0x73,8,pc_set,b"\1"+tlv(idle_tag|CRITICAL,struct.pack("<HB",4,0)),S),ok(0x73,struct.pack("<I",2)))
-    for raw,corr in ((0x3E,0x74),(0xBE,0x75)):
-        add(f"probe.config set: unknown item {raw:02x} is not silently ignored", "settings §1", pc,"no settings/pin change",
-            request(corr,8,pc_set,b"\1"+tlv(raw,struct.pack("<H",4)),S),rej(corr,"unsupported",bytes([raw])))
-    add("probe.config set: unknown outer noncritical TLV ignored", "settings §1/2, core §2.3", pc,"empty configuration generation1",
+    add("probe.config set: idle with an extra byte is malformed", "settings §1", pc,f"{decl}; empty configuration, generation1 unchanged",
+        request(0x72,8,pc_set,b"\1"+it("idle",4,b"\0\xff"),S),rej(0x72,"malformed"))
+    add("probe.config set: item number 0 is malformed", "settings §1", pc,f"{decl}; empty configuration generation1",
+        request(0x73,8,pc_set,b"\1"+it(0,4,b"\0"),S),rej(0x73,"malformed"))
+    for number,corr in ((7,0x74),(0x87,0x75)):
+        add(f"probe.config set: item number {number} past the settings is unsupported", "settings §1", pc,f"{decl}; no settings/pin change",
+            request(corr,8,pc_set,b"\1"+it(number,4),S),rej(corr,"unsupported",bytes([number])))
+    add("probe.config set: unknown outer noncritical TLV ignored", "settings §1/2, core §2.3", pc,f"{decl}; empty configuration generation1",
         request(0x76,8,pc_set,b"\1"+idle+tlv(0x3E,b"x"),S),ok(0x76,struct.pack("<I",2)))
-    add("probe.config get: count separates items from response extensions", "settings §2", pc,"one idle item, generation2",
+    add("probe.config get: count separates items from response extensions", "settings §2", pc,f"{decl}; one idle item, generation2",
         request(0x77,8,pc_get,struct.pack("<H",0)),ok(0x77,struct.pack("<BIB",0,2,1)+idle+tlv(0x7F,b"x")))
-    add("probe.config get: final empty page still has count and generation", "settings §2", pc,"one item generation2; first1",
+    add("probe.config get: final empty page still has count and generation", "settings §2", pc,f"{decl}; one item generation2; first1",
         request(0x78,8,pc_get,struct.pack("<H",1)),ok(0x78,struct.pack("<BIB",0,2,0)))
-    add("probe.config unset: fixed channel key", "settings §2", pc,"disable channel4 present, generation2; becomes empty generation3",
-        request(0x79,8,pc_unset,struct.pack("<BBH",1,disabled_tag,4),S),ok(0x79,struct.pack("<I",3)))
-    add("probe.config set: longest label fits frame64", "settings §1/4", pc,"empty generation1; channel4 free",
-        request(0x7A,8,pc_set,b"\1"+tlv(label_tag,struct.pack("<H",4)+b"L"*32),S),ok(0x7A,struct.pack("<I",2)))
+    add("probe.config unset: number and key", "settings §2", pc,f"{decl}; disable channel4 present, generation2; becomes empty generation3",
+        request(0x79,8,pc_unset,struct.pack("<BBH",1,NUM["disable"],4),S),ok(0x79,struct.pack("<I",3)))
+    add("probe.config set: longest label fits frame64", "settings §1/4", pc,f"{decl}; empty generation1; channel4 free",
+        request(0x7A,8,pc_set,b"\1"+it("label",4,b"L"*32),S),ok(0x7A,struct.pack("<I",2)))
     add("probe.config state: independent valid items restored despite invalid label", "settings §3", pc,
-        "CRC-valid saved blob; valid disable/idle applied, unsupported label omitted; current generation1",
+        f"{decl}; CRC-valid saved blob; valid disable/idle applied, unsupported label omitted; current generation1",
         request(0x7B,8,op("oep.probe.config","state"),b""),ok(0x7B,struct.pack("<BIB",pce["storage_state"]["partial"],0,pce["storage_unreadable"]["item"])))
-    add("probe.config set: changed contents at exhausted generation refused", "settings §2", pc,"generation0xFFFFFFFF unchanged; current contents retained",
+    add("probe.config set: changed contents at exhausted generation refused", "settings §2", pc,f"{decl}; generation0xFFFFFFFF unchanged; current contents retained",
         request(0x7C,8,pc_set,b"\1"+idle,S),rej(0x7C,"unavailable",tlv(1,b"\2")))
 
     for corr, name, before, records in (
-        (0x117, 'disable conflicts with existing idle', 'idle channel4 exists, generation2', [tlv(disabled_tag,struct.pack('<H',4))]),
+        (0x117, 'disable conflicts with existing idle', 'idle channel4 exists, generation2', [it("disable",4)]),
         (0x118, 'idle conflicts with existing disable', 'disable channel4 exists, generation2', [idle]),
-        (0x119, 'disable and idle conflict in one set', 'empty generation1', [idle,tlv(disabled_tag,struct.pack('<H',4))]),
+        (0x119, 'disable and idle conflict in one set', 'empty generation1', [idle,it("disable",4)]),
     ):
         add(f'probe.config set: {name}', 'settings §1/2, core §4.3', pc,
-            f'{before}; channel4 not in use; both item types supported; retain configuration, generation and pins',
+            f'{decl}; {before}; channel4 not in use; retain configuration, generation and pins',
             request(corr,8,pc_set,bytes([len(records)])+b''.join(records),S),
             rej(corr,'unavailable',tlv(1,bytes([5]))+tlv(2,struct.pack('<H',4))))
 
-    # network settings (config §1.3-§1.5) and the probe's own items (§1.6)
-    items = IFACE["oep.probe.config"]["tlv"]["item"]
-    wifi_tag, ipv4_tag = items["wifi"], items["ipv4"]
-    net = "items has wifi and ipv4; wifi_max 4; netifs [wifi]"
-    longest = tlv(wifi_tag, bytes([0, 32]) + b"S"*32 + bytes([64]) + b"a"*64)
-    add("probe.config set: the longest wifi item fits wifi_min_max_frame", "settings §1.4", pc, f"{net}; empty generation1",
+    # network settings (config §1.3-§1.5) and a probe's own item (§1.6)
+    longest = it("wifi", 0, bytes([32]) + b"S"*32 + bytes([64]) + b"a"*64)
+    add("probe.config set: the longest wifi item fits wifi_min_max_frame", "settings §1.4", pc, f"{decl}; empty generation1",
         request(0x11A,8,pc_set,b"\1"+longest,S),ok(0x11A,struct.pack("<I",2)))
-    add("probe.config get: wifi passphrase is write-only", "settings §1.4", pc,
-        f"{net}; wifi entry 0 ssid lab passphrase password1, generation2",
+    lab = f"{decl}; wifi entry 0 ssid lab passphrase password1, generation2"
+    add("probe.config get: wifi passphrase is write-only", "settings §1.4", pc, lab,
         request(0x11B,8,pc_get,struct.pack("<H",0)),
-        ok(0x11B,struct.pack("<BIB",0,2,1)+tlv(wifi_tag,bytes([0,3])+b"lab"+b"\xff")))
-    add("probe.config set: pass_len 0xFF without the entry is malformed", "settings §1.4", pc, f"{net}; empty generation1",
-        request(0x11C,8,pc_set,b"\1"+tlv(wifi_tag,bytes([0,3])+b"lab"+b"\xff"),S),rej(0x11C,"malformed"))
-    ipv4 = lambda netif, mode, a, pfx, gw, dns: tlv(ipv4_tag, bytes([netif, mode]) + bytes(a) + bytes([pfx]) + bytes(gw) + bytes(dns))
-    add("probe.config set: ipv4 dhcp with an address is malformed", "settings §1.5", pc, f"{net}; empty generation1",
+        ok(0x11B,struct.pack("<BIB",0,2,1)+it("wifi",0,bytes([3])+b"lab"+b"\xff")))
+    add("probe.config set: pass_len 0xFF without the entry is malformed", "settings §1.4", pc, f"{decl}; empty generation1",
+        request(0x11C,8,pc_set,b"\1"+it("wifi",0,bytes([3])+b"lab"+b"\xff"),S),rej(0x11C,"malformed"))
+    ipv4 = lambda netif, mode, a, pfx, gw, dns: it("ipv4", netif, bytes([mode]) + bytes(a) + bytes([pfx]) + bytes(gw) + bytes(dns))
+    add("probe.config set: ipv4 dhcp with an address is malformed", "settings §1.5", pc, f"{decl}; empty generation1",
         request(0x11D,8,pc_set,b"\1"+ipv4(0,0,[192,168,1,23],24,[0]*4,[0]*4),S),rej(0x11D,"malformed"))
-    add("probe.config set: ipv4 static on wifi", "settings §1.5", pc, f"{net}; empty generation1",
+    add("probe.config set: ipv4 static on wifi", "settings §1.5", pc, f"{decl}; empty generation1",
         request(0x11E,8,pc_set,b"\1"+ipv4(0,1,[192,168,1,23],24,[192,168,1,1],[192,168,1,1]),S),ok(0x11E,struct.pack("<I",2)))
-    add("probe.config set: ipv4 on an undeclared netif is unsupported", "settings §1.5", pc, f"{net}; empty generation1",
-        request(0x11F,8,pc_set,b"\1"+ipv4(1,0,[0]*4,0,[0]*4,[0]*4),S),rej(0x11F,"unsupported",bytes([ipv4_tag])))
-    add("probe.config set: ipv4 gateway outside the prefix is malformed", "settings §1.5", pc, f"{net}; empty generation1",
+    add("probe.config set: ipv4 on a netif not in netifs is unsupported", "settings §1.5", pc, f"{decl}; empty generation1",
+        request(0x11F,8,pc_set,b"\1"+ipv4(1,0,[0]*4,0,[0]*4,[0]*4),S),rej(0x11F,"unsupported",bytes([NUM["ipv4"]])))
+    add("probe.config set: ipv4 gateway outside the prefix is malformed", "settings §1.5", pc, f"{decl}; empty generation1",
         request(0x120,8,pc_set,b"\1"+ipv4(0,1,[192,168,1,23],24,[10,0,0,1],[0]*4),S),rej(0x120,"malformed"))
-    add("probe.config unset: wifi index in the channel field", "settings §1.5, §2", pc,
-        f"{net}; wifi entry 0 ssid lab passphrase password1, generation2",
-        request(0x121,8,pc_unset,struct.pack("<BBH",1,wifi_tag,0),S),ok(0x121,struct.pack("<I",3)))
+    add("probe.config unset: a wifi entry", "settings §2", pc, lab,
+        request(0x121,8,pc_unset,struct.pack("<BBH",1,NUM["wifi"],0),S),ok(0x121,struct.pack("<I",3)))
     ne = pce["network_state"]
     add("probe.config network: wifi connected", "settings §2 network", pc,
-        f"{net}; entry 0 connected, 192.168.1.23/24, gateway and dns 192.168.1.1, -52 dBm; TCP listening on 4242",
+        f"{decl}; entry 0 connected, 192.168.1.23/24, gateway and dns 192.168.1.1, -52 dBm; TCP listening on 4242",
         request(0x122,8,op("oep.probe.config","network"),b""),
-        ok(0x122,struct.pack("<HB",4242,1)+bytes([pce["netif"]["wifi"],ne["up"],0,0,(-52)&0xFF,192,168,1,23,24,192,168,1,1,192,168,1,1])))
-    ext = "ext_item 0x40 text max_entries 1 max_len 32 flags 0 name com.example.ntp-server"
-    add("probe.config set: a probe's own text item", "settings §1.6", pc, f"{ext}; empty generation1",
-        request(0x123,8,pc_set,b"\1"+tlv(0x40,b"\0pool.ntp.org"),S),ok(0x123,struct.pack("<I",2)))
-    add("probe.config set: an own text item with no text is malformed", "settings §1.6", pc, f"{ext}; empty generation1",
-        request(0x124,8,pc_set,b"\1"+tlv(0x40,b"\0"),S),rej(0x124,"malformed"))
-    add("probe.config set: an own item number not declared", "settings §1.6", pc, f"{ext}; empty generation1",
-        request(0x125,8,pc_set,b"\1"+tlv(0x41,b"\0\1"),S),rej(0x125,"unsupported",bytes([0x41])))
+        ok(0x122,struct.pack("<HB",4242,1)+bytes([pce["netif"]["wifi"],ne["up"]])+struct.pack("<H",0)
+           +bytes([0,(-52)&0xFF,192,168,1,23,24,192,168,1,1,192,168,1,1])))
+    add("probe.config set: a probe's own text item", "settings §1.6", pc, f"{decl}; empty generation1",
+        request(0x123,8,pc_set,b"\1"+it("com.example.ntp-server",0,b"pool.ntp.org"),S),ok(0x123,struct.pack("<I",2)))
+    add("probe.config set: an own text item with no text is malformed", "settings §1.6", pc, f"{decl}; empty generation1",
+        request(0x124,8,pc_set,b"\1"+it("com.example.ntp-server",0),S),rej(0x124,"malformed"))
+    add("probe.config set: a key past the setting's keys is unsupported", "settings §1", pc, f"{decl}; empty generation1",
+        request(0x125,8,pc_set,b"\1"+it("com.example.ntp-server",1,b"x"),S),rej(0x125,"unsupported",bytes([NUM["com.example.ntp-server"]])))
 
     # subscribe / unsubscribe (core §10.3): ops of the interface that sends notifications, 0x01 / 0x02 in the common operation range, no target fn
     sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]

@@ -77,14 +77,13 @@ TCP で待ち受ける probe が自分を広告するときは、DNS-SD の serv
 
 - probe を Wi-Fi や有線の IPv4 に載せる設定は、どの probe でも probe.config の wifi と ipv4 の項目（設定 §1.3〜§1.5）で行う。
   同じ項目を送れば、どの probe でも同じ意味になる。項目の無い netif は DHCP、wifi の項目が無ければ Wi-Fi は使わない。
-- 手順の目安: USB でつなぎ、describe の items と netifs で扱えるものを確かめ、wifi（と必要なら ipv4）を set する。network で state 2 と
+- 手順の目安: USB でつなぎ、describe の setting（名前 `wifi`、`ipv4`）と netifs で扱えるものを確かめ、wifi（と必要なら ipv4）を set する。network で state 2 と
   アドレス、tcp_port を確かめ、TCP で届く（§4.1 で unit_id を見つけて confirm が通る）ことを確かめてから save する。
   save する前なら、再起動で保存の内容へ戻る。
 - passphrase は書くだけで、get は pass_len 0xFF を返す。get の項目をそのまま set で送り返しても passphrase は変わらない。passphrase を表示もログもしない。
 - mDNS が届かない所では、network の address と tcp_port を利用者へ示し、明示の接続先として使う。
-- **設定の一覧**: probe 独自の設定は describe の ext_item（設定 §1.6）に、名前と形で並ぶ。host は意味を知らなくても、名前を表示し、
-  形に合わせて入力を受けて get / set / save できる。名前を知っている項目（たとえば自分の扱う `com.example.ntp-server`）は名前で見分け、
-  番号は probe ごとに読む。
+- **設定の一覧**: 標準の項目も probe 独自の設定も describe の setting（設定 §1、§4）に名前と形で並ぶ。host は意味を知らない独自の項目も、
+  名前を表示し、form に合わせて入力を受けて get / set / save できる。項目は名前で見分け、番号は probe ごとに describe で引く。
 
 ## 5. session_id と発見
 
@@ -367,14 +366,14 @@ captureの世代は同じboot内で使い回さない。0xFFFFFFFFを使い切�
 
 ## 15. probeの設定
 
-`oep.probe.config`はdisable/idle/labelと、任意のシリアルの口の素通し（passthrough、§1.1）を扱う。配線、UART、ネットワークの設定はhostまたは別の定義で管理する。
+`oep.probe.config`はdisable/idle/label、任意のシリアルの口の素通し（§1.1、§1.2）、ネットワークの経路（§1.3〜§1.5、§4.2）、probe独自の設定（§1.6）を扱う。配線とUARTの設定はhostが管理する。
 素通しの口を開いた host は、フレームの外のバイト（target の出力）を雑音として読み捨てる。セッションの要求をその口から送れば、そのセッションの間は素通しが止まる。
 
-1. list/describeで対応itemsとopsを読む。saveがあればstorage.max_bytesは1以上で、無ければ保存を提供しない。
+1. list/describeでopsとsettingを読む。settingのk番目が項目番号kで、名前から番号を引く（番号はboot_idごとに引き直す）。saveがあればstorage.max_bytesは1以上で、無ければ保存を提供しない。
 2. getのcount個の項目を読み、末尾の拡張TLVを別に読む。moreならcountをfirstへ加えて続ける。
    途中でgenerationが変われば最初から読み直す。generationはboot内の変更カウンタで、hostが計算するhashではない。
 3. 欲しい内容とキーごとに比べ、同じなら何もしない。変更はロックを取り、count付きset/unsetを送る。
-   外側のTLVと項目のtag bit7は別の規則なので、項目はbit7=0で送る。
+   項目は`number、len、key、data`で、外側のTLVとは別の容器である。
 4. 保存したい場合だけsaveする。stateが提供され、saved_generationが現在のgenerationと等しければ保存済み。
    内容が同じならprobeは不要な書込みを省く。eraseは保存だけを消す。
 5. firmware更新後に部分適用/読めない状態になったら、getで効いている項目を確認し、保存したhost設定と比べて修復する。
