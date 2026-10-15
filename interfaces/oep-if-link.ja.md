@@ -45,7 +45,6 @@ fixture UART の速さは別（そのインターフェースの configure と�
   step 0/1の実際のbaudは起動時より高い値だけ。上げられない要求はunsupported（固定部分の印0）。
   step 0（試す）の verify_ms 0 は rejected malformed。step 1（決める）と step 2（戻す）では verify_ms に意味は無く、どの値も受ける。
 - port_stateが返すphaseは口ごとに管理する。stepの受理は次の表に従う。「拒否」はunavailable cause 6で、状態を変えない。
-  idle復帰を取り消せる要求は、先に下の条件でphase 2へ戻してから表を適用する。
   同時に上げる口は1つだけで、別の口がphase 1/2/3の間はstep 0をcause 6で断る。
 
 | 現在のphase | step 0 試す | step 1 決める | step 2 戻す |
@@ -64,9 +63,9 @@ step 1のbaudが試した値と違う場合もcause 6。phase 3は復帰条件�
   3. セッションが終わった（end、lease の期限切れ、force で持ち主が替わった）。end と force は応答を送ってから戻る。
 - verify/idleのtimerは要求の処理中は進めない。復帰条件を満たしても、送受信中のframeや要求の応答を途中で速さを変えて壊さない。
   復帰が保留になったら新しい通知frameを始めず、現在の送信frameと受信frameの終了（または受信のgap/resync）を待って戻す。
-  決めた状態で、元の所有sessionが残る間に正常な要求frameを受けた場合だけidle復帰の保留を取り消し、timerを数え直す。
-  この取消後のstep 0/1はcause 6で断り、step 2は「決めた」状態の戻す手順として受け付ける。
-  試しのverify期限切れ、またはsession終了による保留は取り消さず、step 0/1/2をcause 6で断る。拒否によって復帰条件やbaudを変えない。
+  phase 3は理由によらず取り消さない。phase 3の間のstep 0/1/2はcause 6で断り、拒否によって復帰条件やbaudを変えない。
+  phase 3に入った時に受信中のframeは、その要求の応答まで今の速さで終え、その境界で戻す。境界の後に始まる受信は戻した速さで扱い、
+  新しい要求を受け続けても復帰を延ばさない。
   いずれもcoreの見出し・再送・sessionの判定を先に行う（例えば終了済みsessionの新しい要求はno_session）。
   試し中のcommit要求がverify期限までに届かなければ、unavailable cause 6で断り、応答後のframe境界で戻す。
 - 試しと決めるの間、セッションの資源とロックは変わらない。通知の欠落は通常のseq/positionで扱い、保持量を増やす義務はない。

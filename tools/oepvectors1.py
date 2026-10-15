@@ -600,7 +600,7 @@ def ops() -> dict:
         "UART bridge, expired try, now boot baud; old try success921600 exists in replay cache",
         request(0x25,1,op("oep.probe.link","port_state"),b""),ok(0x25,struct.pack("<IB",115200,0)))
     add("link port_state: session-ended fallback waits for old frame", "link §3", link,
-        "UART bridge at921600, previous owner ended; frame in progress; normal requests cannot cancel session-ended fallback",
+        "UART bridge at921600, previous owner ended; frame in progress; phase3 is never cancelled",
         request(0x26,1,op("oep.probe.link","port_state"),b""),ok(0x26,struct.pack("<IB",921600,3)))
 
     for step in (0, 1, 2):
@@ -610,10 +610,10 @@ def ops() -> dict:
             request(corr,1,op('oep.probe.link','port_speed'),struct.pack('<IBH',921600,step,2000),S),
             rej(corr,'unavailable',tlv(1,bytes([6]))))
         corr = 0x113 + step
-        add(f'link port_speed: idle fallback pending applies step {step} after cancellation', 'link §3', link,
-            'session S remains original owner; phase3 at921600 due only to committed idle expiry; normal request cancels pending fallback before step check; phase2 is restored',
+        add(f'link port_speed: idle fallback pending refuses step {step}', 'link §3', link,
+            'session S remains original owner; phase3 at921600 due only to committed idle expiry; phase3 is never cancelled; refusal does not change baud',
             request(corr,1,op('oep.probe.link','port_speed'),struct.pack('<IBH',921600,step,2000),S),
-            ok(corr,struct.pack('<I',115200)) if step == 2 else rej(corr,'unavailable',tlv(1,bytes([6]))))
+            rej(corr,'unavailable',tlv(1,bytes([6]))))
     add('link port_speed: ended session checked before pending phase', 'core §4.3, link §3', link,
         'session S ended; phase3 waits for old frame; no session owner; no state or baud change',
         request(0x116,1,op('oep.probe.link','port_speed'),struct.pack('<IBH',921600,2,2000),S),

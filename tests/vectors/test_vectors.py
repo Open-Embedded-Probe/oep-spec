@@ -689,17 +689,12 @@ def test_pending_port_speed_step_boundaries():
     cases = {case['name']: case for case in load('ops.json')['cases']}
     for step in (0, 1, 2):
         for reason in ('verify', 'idle'):
-            name = (f'link port_speed: verify fallback pending refuses step {step}' if reason == 'verify'
-                    else f'link port_speed: idle fallback pending applies step {step} after cancellation')
-            case = cases[name]
+            case = cases[f'link port_speed: {reason} fallback pending refuses step {step}']
             request, result = bytes.fromhex(case['request_hex']), bytes.fromhex(case['answer_hex'])
             assert struct.unpack_from('<IBH', request, 10) == (921600, step, 2000)
-            if reason == 'idle' and step == 2:
-                assert result[3:5] == bytes([1, 0])
-                assert struct.unpack('<I', result[5:]) == (115200,)
-            else:
-                assert result[3:5] == bytes([0, REG['reject_reasons']['unavailable']])
-                assert tlvs(result[5:]) == [(1, bytes([6]))]
+            # phase 3 is never cancelled, whatever its reason (link §3): every step is refused cause 6
+            assert result[3:5] == bytes([0, REG['reject_reasons']['unavailable']])
+            assert tlvs(result[5:]) == [(1, bytes([6]))]
     ended = bytes.fromhex(cases['link port_speed: ended session checked before pending phase']['answer_hex'])
     assert ended[3:] == bytes([0, REG['reject_reasons']['no_session']])
 

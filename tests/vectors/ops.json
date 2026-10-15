@@ -272,7 +272,7 @@
       "fns": {
         "1": "oep.probe.link"
       },
-      "state": "UART bridge at921600, previous owner ended; frame in progress; normal requests cannot cancel session-ended fallback",
+      "state": "UART bridge at921600, previous owner ended; frame in progress; phase3 is never cancelled",
       "request_hex": "01260001001300000000",
       "answer_hex": "022600010000100e0003"
     },
@@ -287,12 +287,12 @@
       "answer_hex": "021001000401010006"
     },
     {
-      "name": "link port_speed: idle fallback pending applies step 0 after cancellation",
+      "name": "link port_speed: idle fallback pending refuses step 0",
       "spec": "link §3",
       "fns": {
         "1": "oep.probe.link"
       },
-      "state": "session S remains original owner; phase3 at921600 due only to committed idle expiry; normal request cancels pending fallback before step check; phase2 is restored",
+      "state": "session S remains original owner; phase3 at921600 due only to committed idle expiry; phase3 is never cancelled; refusal does not change baud",
       "request_hex": "0113010100124433221100100e0000d007",
       "answer_hex": "021301000401010006"
     },
@@ -307,12 +307,12 @@
       "answer_hex": "021101000401010006"
     },
     {
-      "name": "link port_speed: idle fallback pending applies step 1 after cancellation",
+      "name": "link port_speed: idle fallback pending refuses step 1",
       "spec": "link §3",
       "fns": {
         "1": "oep.probe.link"
       },
-      "state": "session S remains original owner; phase3 at921600 due only to committed idle expiry; normal request cancels pending fallback before step check; phase2 is restored",
+      "state": "session S remains original owner; phase3 at921600 due only to committed idle expiry; phase3 is never cancelled; refusal does not change baud",
       "request_hex": "0114010100124433221100100e0001d007",
       "answer_hex": "021401000401010006"
     },
@@ -327,14 +327,14 @@
       "answer_hex": "021201000401010006"
     },
     {
-      "name": "link port_speed: idle fallback pending applies step 2 after cancellation",
+      "name": "link port_speed: idle fallback pending refuses step 2",
       "spec": "link §3",
       "fns": {
         "1": "oep.probe.link"
       },
-      "state": "session S remains original owner; phase3 at921600 due only to committed idle expiry; normal request cancels pending fallback before step check; phase2 is restored",
+      "state": "session S remains original owner; phase3 at921600 due only to committed idle expiry; phase3 is never cancelled; refusal does not change baud",
       "request_hex": "0115010100124433221100100e0002d007",
-      "answer_hex": "021501010000c20100"
+      "answer_hex": "021501000401010006"
     },
     {
       "name": "link port_speed: ended session checked before pending phase",
