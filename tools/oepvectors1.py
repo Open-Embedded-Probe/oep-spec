@@ -291,8 +291,9 @@ def refusals() -> dict:
         request(0x0018, 5, uart_read, bytes([4]) + struct.pack("<QH", 0, 64)), "unsupported", b"\x00")
     add("riscv-dm reset mode 3", "core §2.5, §4.3; debug §4.3", {"6": "oep.target.riscv-dm"},
         request(0x0019, 6, dm_reset, struct.pack("<IB", 1, 3), s), "unsupported", b"\x00")
-    add("riscv-dm reset mode 1 is undefined", "debug §4.3", {"6":"oep.target.riscv-dm"},
-        request(0x001C,6,dm_reset,struct.pack("<IB",1,1),s),"unsupported",b"\x00")
+    undefined_mode = max(IFACE["oep.target.riscv-dm"]["enum"]["reset_mode"].values()) + 1
+    add("riscv-dm reset mode past the defined ones", "debug §4.3", {"6":"oep.target.riscv-dm"},
+        request(0x001C,6,dm_reset,struct.pack("<IB",1,undefined_mode),s),"unsupported",b"\x00")
     add("attach max_speed zero", "debug §1", {"4":"oep.wire.rvswd"},
         request(0x001D,4,rv_attach,struct.pack("<BHHI",0,1,2,0),s),"malformed")
     add("attach halt method is not offered", "debug §3", {"4":"oep.wire.rvswd"},

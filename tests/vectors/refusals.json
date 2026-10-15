@@ -92,12 +92,12 @@
       "answer_hex": "021900000b00"
     },
     {
-      "name": "riscv-dm reset mode 1 is undefined",
+      "name": "riscv-dm reset mode past the defined ones",
       "spec": "debug §4.3",
       "fns": {
         "6": "oep.target.riscv-dm"
       },
-      "request_hex": "011c00060013443322110100000001",
+      "request_hex": "011c00060013443322110100000002",
       "answer": "unsupported",
       "answer_hex": "021c00000b00"
     },
