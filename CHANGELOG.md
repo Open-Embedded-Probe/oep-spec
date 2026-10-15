@@ -16,6 +16,7 @@ OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装
 - hostガイドの購読の送り先を core §6.2/§10.3 に合わせる（同じ id の open では移らず、経路を開き直したら subscribe し直す）。走り直す host の後始末に、前の実行より先の corr の保存が要ることを書く。
 - 共有ベクタ interface_profiles の spi-target の max_length を core §7.4 の u16 で生成する。
 - port_speed の phase 3（復帰保留）は理由によらず取り消さない。受信中の frame とその応答を終えた境界で戻り、新しい要求を受け続けても復帰を延ばさない（idle の保留だけを取り消す規則と、その取消後の step の扱いを削除）。
+- 適合の確かめ方に、OEP の要求に自分で答えるブリッジやブローカーも probe として検査の対象であること、host が任意の op を前提にしないことを最小構成の probe で確かめることを明記する。
 - 適合のチェックリストと host ガイドに、任意の op はその fn の describe の ops に立っているときだけ使う、を host の項目として明記する（ch32rv のブローカーとモニタで、最小構成の console で止まった事例）。
 - probe.config に任意の項目 console_passthrough を足す。セッションの無い間、probe が止めない attach で debug のコンソールを読み、target の出力を口へ素通しする（UART を空けられない target のため）。
 - probe.config に任意の項目 passthrough（シリアルの口の素通し）を足す。セッションがその口・fn・ピンを使っていない間、fixture UART が受けたバイトをフレームの外で口へ送る（transports §4 で許す）。UART bridge しか口の無い probe で、普通のシリアルモニタが target の出力を見られる。
