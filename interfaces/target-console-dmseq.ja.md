@@ -1,9 +1,9 @@
-# OEP コンソールの mechanism 2: dmseq
+# OEP コンソールの方式 dmseq
 
-状態: **規範**（v1）。凍結状態と言語・互換性の方針は[版と安定性](../docs/versioning.ja.md)を参照。この文書は `oep.target.console` の mechanism 2（dmseq、[コンソール](oep-if-console.ja.md) §3）の framing を規定する。
+状態: **規範**（v1）。凍結状態と言語・互換性の方針は[版と安定性](../docs/versioning.ja.md)を参照。この文書は `oep.target.console` の方式 `dmseq`（[コンソール](oep-if-console.ja.md) §3）の framing を規定する。
 
 dmseqは両方向に1bitの通し番号とCRC-8を持たせ、同期中の再読フレームと新しいフレームを区別する。
-この文書のtarget側の規則（20ms/1sの待ちを含む）は、mechanism 2を採用するtarget firmwareへの要件である。
+この文書のtarget側の規則（20ms/1sの待ちを含む）は、dmseqを採用するtarget firmwareへの要件である。
 全OEP probe/hostへtarget firmwareや常時pollを要求するものではない。targetの再起動や同期状態喪失の制限は下記のとおり。
 
 ## 搬送と所有権

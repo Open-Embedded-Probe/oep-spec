@@ -1,5 +1,5 @@
 {
-  "about": "Independent examples, not a sequential session. Successful calls have a valid session where needed; no_session has no active session; result_lost has discarded replay bytes. Unknown tag 0x7F adds no behavior, and follows both empty and nonempty fixed result payloads (core §2.3).",
+  "about": "Independent examples, not a sequential session. Successful calls have a valid session where needed; no_session has no active session; result_lost has discarded replay bytes. A named extension TLV (0x7F) of a name the reader does not know adds no behavior, and follows both empty and nonempty fixed result payloads (core §2.3).",
   "cases": [
     {
       "name": "open with unknown response TLV",
@@ -7,7 +7,7 @@
       "operation": "open",
       "fixed_answer_bytes": 8,
       "request_hex": "01010000001044332211b80b000000",
-      "answer_hex": "0201000100b80b0000785634127f010078"
+      "answer_hex": "0201000100b80b0000785634127f11000f696f2e6578616d706c652e6e6f746578"
     },
     {
       "name": "keepalive with unknown response TLV",
@@ -15,7 +15,7 @@
       "operation": "keepalive",
       "fixed_answer_bytes": 0,
       "request_hex": "01020000001244332211",
-      "answer_hex": "02020001007f010078"
+      "answer_hex": "02020001007f11000f696f2e6578616d706c652e6e6f746578"
     },
     {
       "name": "end with unknown response TLV",
@@ -23,7 +23,7 @@
       "operation": "end",
       "fixed_answer_bytes": 0,
       "request_hex": "01030000001144332211",
-      "answer_hex": "02030001007f010078"
+      "answer_hex": "02030001007f11000f696f2e6578616d706c652e6e6f746578"
     },
     {
       "name": "clock with unknown response TLV",
@@ -31,7 +31,7 @@
       "operation": "clock",
       "fixed_answer_bytes": 12,
       "request_hex": "01040000000400000000",
-      "answer_hex": "02040001007856341264000000000000007f010078"
+      "answer_hex": "02040001007856341264000000000000007f11000f696f2e6578616d706c652e6e6f746578"
     },
     {
       "name": "no_session with unknown response TLV",
@@ -39,7 +39,7 @@
       "operation": "keepalive",
       "fixed_answer_bytes": 0,
       "request_hex": "01050000001244332211",
-      "answer_hex": "02050000077f010078"
+      "answer_hex": "02050000077f11000f696f2e6578616d706c652e6e6f746578"
     },
     {
       "name": "result_lost with unknown response TLV",
@@ -47,7 +47,7 @@
       "operation": "clock",
       "fixed_answer_bytes": 0,
       "request_hex": "01060000000444332211",
-      "answer_hex": "020600000c7f010078"
+      "answer_hex": "020600000c7f11000f696f2e6578616d706c652e6e6f746578"
     }
   ]
 }

@@ -180,7 +180,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
     flags bit0 を立て、取得は続く。
   - **区画の中の落とし**（エラー）: それ以外の理由（取り込みのキューやリングのあふれ、DMA やペリフェラルの失敗）で落としたサンプルは、
     区画の境目にあっても、そのサンプルを含むはずの区画の中の落としである。その区画はデータではない: segments に載せず、出来事 segment を
-    送らない。トラックはエラーで止まる（state 6、stopped reason 3）。error は、あふれなら 2（置き場）、DMA やペリフェラルの失敗なら 1。
+    送らない。トラックはエラーで止まる（state 6、stopped reason 2）。error は、あふれなら 2（置き場）、DMA やペリフェラルの失敗なら 1。
     status の flags bit0 も立つ。status の write_pos はその区画の先頭（その区画の分を数えない）。read は write_pos から先を返さない。
 - trigger待ちのpretrigger ringは公開streamではない。trigger/forceで最初の区画の保持範囲を選ぶまでは
   write_pos=0とし、read/通知へそのringを返さない。同じ公開positionのbyteを待ち中に差し替えない。
@@ -222,7 +222,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 - `serial_done` は次に終わる区画の serial（start から終わった区画の数を 2^32 で割った余り）、`write_pos` は取り終えたバイト位置（position の空間。**捨てた分を含む**: 次に書くバイトの位置）。
 - status の `flags`: bit0 データを落とした（ストリーミングで丸ごと捨てた区画（§2.1 の規則 1）か、区画の中の落とし（§2.2））、bit1 時間の基準が曲がった
   （区画の flags の bit2 と同じ）。ほかのビットは予約（0）。**start で 0 に戻し、その回の累積**。state 6 のときは応答の TLV 0x01 error（u8:
-  1 DMA / ペリフェラル、2 置き場、3 時計、0x40〜 probe 固有。registry の enum `error`）で理由を返す。
+  1 DMA / ペリフェラル、2 置き場、3 時計。registry の enum `error`）で理由を返す。probe の詳しい理由は、名前つきの拡張 TLV（core §2.2）で足してよい。
 - **generation**: readと、提供するreleaseは今の世代を要求に置く。違えばunavailable（cause 6）。start前は0。
   releaseのmode別no-opより先に世代を検証する。世代は半周の新旧比較を行わない（core §2.6）。
 - readの要求位置が使い回された/押し出された場合、次の読める位置へ進めてgapを立てる。
@@ -248,7 +248,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | 6 エラー | → 1 | → 2 / 3（世代 +1） | → 1 | — | — | |
 
 **エラー**: トラックが state 6 に入るのは取得の失敗（§2.2 の区画の中の落としを含む）のときだけで、そのときは理由によらず必ず
-出来事 stopped を reason 3 と、status の error と同じ error で送る（購読していれば。§3.4）。
+出来事 stopped を reason 2 と、status の error と同じ error で送る（購読していれば。§3.4）。
 
 planの割り当て（role, channel）の集合が変わるplan_applyは、state 2/3/5ではunavailable（cause 6）で断る。ほかのstateでは設定・データ・区画を無効にしstate 0へ戻す。
 同じ集合の再指定はplan §2.1に従う。いずれもgenerationは戻さず、次のstartで進める。
@@ -273,13 +273,13 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 
 | tag | 名前 | 値 | 対象 | 送るか（省略したとき） |
 |---|---|---|---|---|
-| 0x40 | mode | u8: 1 ワンショット、2 リピート、3 ストリーミング | 両方 | 必須 |
-| 0x42 | rate | rate_hz(u32)（アナログはチャネルあたり。1 Hz 以上） | 両方 | 必須 |
-| 0x43 | samples | u32（1 区画のサンプル数。1 以上） | 両方 | mode 1 / 2 で必須。mode 3 では送らない |
-| 0x44 | segments | u32（リピートの区画の数。1 以上） | 両方 | mode 2 だけ（probe が決める） |
-| 0x45 | trigger | type(u8)、role(u8)、value(u32) | 両方 | 任意（type 0 即時） |
-| 0x46 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 | trigger の type が 0 でないときだけ（0） |
-| 0x47 | frontend | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。繰り返す（core §2.3）。同じ role に 2 つあれば rejected malformed | アナログ | 任意（そのチャネルは probe が選ぶ） |
+| 0x01 | mode | u8: 1 ワンショット、2 リピート、3 ストリーミング | 両方 | 必須 |
+| 0x02 | rate | rate_hz(u32)（アナログはチャネルあたり。1 Hz 以上） | 両方 | 必須 |
+| 0x03 | samples | u32（1 区画のサンプル数。1 以上） | 両方 | mode 1 / 2 で必須。mode 3 では送らない |
+| 0x04 | segments | u32（リピートの区画の数。1 以上） | 両方 | mode 2 だけ（probe が決める） |
+| 0x05 | trigger | type(u8)、role(u8)、value(u32) | 両方 | 任意（type 0 即時） |
+| 0x06 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 | trigger の type が 0 でないときだけ（0） |
+| 0x07 | frontend | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。繰り返す（core §2.3）。同じ role に 2 つあれば rejected malformed | アナログ | 任意（そのチャネルは probe が選ぶ） |
 
 - **契約**（configure と query で同じ）: 必須の TLV が無ければ rejected malformed。表の「だけ」「送らない」に反する TLV（mode 3 の
   samples と segments、mode 1 の segments、type 0 または trigger 無しの pretrigger）は、値によらず rejected unsupported（受け取ったままの tag）。
@@ -310,7 +310,7 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 - **rate**: 宣言したrate_rangeの中で、その役割/モード/設定で保てる最も近い値を使う（同距離はどちらでもよい）。
   役割数などで上限が下がる場合も、この集合で丸めてactual_rateを返す。
   要求値がrate_rangeの外か、この構成で範囲内の値を1つも保てなければunsupported（rateのtag）。
-- probe が持てる量を超える samples は、その上限に切り下げ、応答の actual_samples（0x52）
+- probe が持てる量を超える samples は、その上限に切り下げ、応答の actual_samples（0x03）
   が正である。host は送った値を仮定せず、actual_samples と actual_segments を読む。
 - mode 2のsegmentsも、実際のsamplesと役割数で持てる上限へ切り下げる。省略時はprobeが決め、actual_segmentsは常に1以上。
   samples/segmentsの切り下げだけでは断らない。切り下げ後にpretriggerなどの条件を満たせなければ、その条件のtagで断る。
@@ -321,14 +321,14 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 
 | tag | 名前 | 値 | 対象 |
 |---|---|---|---|
-| 0x50 | actual_rate | num(u32)、den(u32)（実際のレート = num / den Hz。どちらも 1 以上） | 両方 |
-| 0x51 | layout | ロジック: w(u8)、C(u8)、pos[C](u8)。アナログ: s(u8)、o(u8)、b(u8)、C(u8)、order[C](u8)（§1） | 両方 |
-| 0x52 | actual_samples | u32 | 両方 |
-| 0x53 | actual_segments | u32 | 両方 |
-| 0x55 | scale | role(u8)、zero(i32、値)、scale_nv(i32、1 値あたりの nV。負は反転する frontend)。チャネルごとに 1 つ。probe の入力ピンの電圧への 1 次式（§1.2） | アナログ |
-| 0x57 | skew | role(u8)、skew_ns(u32)。チャネルごとに1つ（遅れが0の役割は省いてよい） | アナログ |
-| 0x58 | frontend_used | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。値の意味（入力範囲）はそのfrontendの宣言で決まる | アナログ |
-| 0x59 | reference | source(u8、enum `reference_source`: 0 電源、1 内部、2 外部)、mv(u32)、how(u8、enum `reference_how`: 0 公称、1 測った)。ADC の基準電圧。電源が基準の ADC では、同じ生の値の意味が電源電圧で変わる。scale の 1 次式はこの電圧を前提にした換算 | アナログ |
+| 0x01 | actual_rate | num(u32)、den(u32)（実際のレート = num / den Hz。どちらも 1 以上） | 両方 |
+| 0x02 | layout | ロジック: w(u8)、C(u8)、pos[C](u8)。アナログ: s(u8)、o(u8)、b(u8)、C(u8)、order[C](u8)（§1） | 両方 |
+| 0x03 | actual_samples | u32 | 両方 |
+| 0x04 | actual_segments | u32 | 両方 |
+| 0x05 | scale | role(u8)、zero(i32、値)、scale_nv(i32、1 値あたりの nV。負は反転する frontend)。チャネルごとに 1 つ。probe の入力ピンの電圧への 1 次式（§1.2） | アナログ |
+| 0x06 | skew | role(u8)、skew_ns(u32)。チャネルごとに1つ（遅れが0の役割は省いてよい） | アナログ |
+| 0x07 | frontend_used | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。値の意味（入力範囲）はそのfrontendの宣言で決まる | アナログ |
+| 0x08 | reference | source(u8、enum `reference_source`: 0 電源、1 内部、2 外部)、mv(u32)、how(u8、enum `reference_how`: 0 公称、1 測った)。ADC の基準電圧。電源が基準の ADC では、同じ生の値の意味が電源電圧で変わる。scale の 1 次式はこの電圧を前提にした換算 | アナログ |
 
 ### 3.4 通知（core §10）
 
@@ -338,7 +338,7 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 | 送るもの | いつ | 中身 |
 |---|---|---|
 | 出来事 kind 0x01 segment | 区画が終わった（ワンショットの完了も。ストリーミングでは送らない） | 区画の情報（§2）、[TLV] |
-| 出来事 kind 0x02 stopped | 取得が止まった | reason(u8: 0 完了、1 stop（host の stop。組（§4）が止めたときも）、3 エラー（state 6 に入るときは必ずこれ、§3.2）)、error(u8: reason 3 の理由、status の error と同じ値)、generation(u32)、[TLV] |
+| 出来事 kind 0x02 stopped | 取得が止まった | reason(u8: 0 完了、1 stop（host の stop。組（§4）が止めたときも）、2 エラー（state 6 に入るときは必ずこれ、§3.2）)、error(u8: reason 2 の理由、status の error と同じ値)、generation(u32)、[TLV] |
 | 出来事 kind 0x03 triggered | トリガが立った | serial(u32)、trigger_index(u32)、trigger_ns(u64: probe の時計でトリガが立った時刻の推定値)、generation(u32)、[TLV] |
 | データ（role 0x04） | ストリーミングの間だけ | core §10.2の形。readと同じbyte位置。必須TLV 0x01 generation(u32)と0x02 segment_info（下）を毎frameへ付ける |
 
@@ -363,9 +363,9 @@ probeはより大きい経路を使え、mode 3を提供しない最小構成に
 | 0x05 | features | revision 1はビットを定めない |
 | 0x40 | mode | mode(u8)、max_samples(u32、1 区画)、max_segments(u32)（モードごとに 1 つ。**最大**の置き場で答える。describe は宣言だけなので、その時点の空きでは答えない） |
 | 0x41 | rate_range | min_hz(u32)、max_hz(u32)。どちらも1以上、min ≤ max |
-| 0x44 | channels | max(u8)。チャネル数の上限 |
-| 0x45 | trigger | types(u32: type のビット集合)、max_pretrigger(u32) |
-| 0x46 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)。入力ピンの範囲の候補ごとに1つ（アナログ）。番号はconfigureのfrontendで選ぶ |
+| 0x42 | channels | max(u8)。チャネル数の上限 |
+| 0x43 | trigger | types(u32: type のビット集合)、max_pretrigger(u32) |
+| 0x44 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)。入力ピンの範囲の候補ごとに1つ（アナログ）。番号はconfigureのfrontendで選ぶ |
 
 - 必須の宣言はops、1つ以上のmode、rate_range、channels、trigger、およびplanで使うrole_channels/channel_group。
   アナログはfrontendも1つ以上宣言する。featuresは値0なら省略できる。
@@ -413,7 +413,7 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
 
 | op | 名前 | 要求 | 応答 | ロック | 要否 |
 |---:|---|---|---|---|---|
-| 0x10 | bind | n(u8)、n × fn(u16)、[TLV] | — | 必要 | 必須 |
+| 0x1A | bind | n(u8)、n × fn(u16)、[TLV] | — | 必要 | 必須 |
 | 0x11 | start | [TLV] | start_ns(u64)、generation(u32)、n(u8)、n × (fn(u16)、generation(u32))、[TLV] | 必要 | 必須 |
 | 0x12 | stop | [TLV] | — | 必要 | 必須 |
 | 0x14 | status | [TLV] | state(u8)、start_ns(u64)、generation(u32)、[TLV] | 不要 | 必須 |
@@ -444,7 +444,7 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
 ### 4.2 通知
 
 採用したsubscribeへはstopped（kind 0x02）だけを送る。
-`reason(u8: 0 全track完了、1 stop、3 error)、error(u8: reason3のtrack error、ほかは0)、generation(u32)、[TLV]`。
+`reason(u8: 0 全track完了、1 stop、2 error)、error(u8: reason 2のtrack error、ほかは0)、generation(u32)、[TLV]`。
 組がerrorならtrackのどれか1つのerrorを返す。過去の通知を区別するため、groupの世代は省略しない。
 即時のgroup/trackからtriggeredを送らない。各trackの通知はそのfnの購読へ送り、group購読で代用しない。
 

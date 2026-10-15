@@ -234,7 +234,7 @@ def confirm() -> dict:
 def core_extensions() -> dict:
     """Empty and nonempty fixed results share the same TLV extension rule."""
     s = 0x11223344
-    tail = tlv(0x7F, b"x")
+    tail = tlv(0x7F, bytes([15]) + b"io.example.note" + b"x")   # a named extension the reader does not know (core §2.2)
     rows = []
     cases = [
         ("open", "open", struct.pack("<IB", 3000, 0), s, struct.pack("<II", 3000, 0x12345678), COMPLETED, 0),
@@ -249,7 +249,7 @@ def core_extensions() -> dict:
                      "operation": operation, "fixed_answer_bytes": len(fixed),
                      "request_hex": hx(request(corr, 0, op("core", operation), payload, sid)),
                      "answer_hex": hx(answer(corr, resolution, detail, fixed + tail))})
-    return {"about": "Independent examples, not a sequential session. Successful calls have a valid session where needed; no_session has no active session; result_lost has discarded replay bytes. Unknown tag 0x7F adds no behavior, and follows both empty and nonempty fixed result payloads (core §2.3).", "cases": rows}
+    return {"about": "Independent examples, not a sequential session. Successful calls have a valid session where needed; no_session has no active session; result_lost has discarded replay bytes. A named extension TLV (0x7F) of a name the reader does not know adds no behavior, and follows both empty and nonempty fixed result payloads (core §2.3).", "cases": rows}
 
 
 def refusals() -> dict:
@@ -789,9 +789,9 @@ def ops() -> dict:
     # oep.target.console (console §1, common §1)
     con = {"7": "oep.target.console"}
     console_ops = {op_name: op('oep.target.console', op_name) for op_name in ('open','read','marks','write')}
-    minimal_console = 'session S; connection 65536 (rvswd); fn 7 mechanisms SDI; ops open/read/close/streams; no marks or TX queue'
+    minimal_console = 'session S; connection 65536 (rvswd); fn 7 mechanism list [sdi] (sdi = 1); ops open/read/close/streams; no marks or TX queue'
     add('console open: RX-only SDI without flags', 'console §1', con, minimal_console,
-        request(0x6A,7,console_ops['open'],struct.pack('<IB',65536,0),S),ok(0x6A,struct.pack('<I',65537)))
+        request(0x6A,7,console_ops['open'],struct.pack('<IB',65536,1),S),ok(0x6A,struct.pack('<I',65537)))
     add('console marks: absent on RX-only console', 'console §1, core §1.2', con,minimal_console,
         request(0x6B,7,console_ops['marks'],struct.pack('<II',65537,0)),rej(0x6B,'unknown_operation'))
     add('console write: absent on RX-only console', 'console §1, core §1.2', con,minimal_console,
@@ -818,14 +818,15 @@ def ops() -> dict:
         request(0x66, 7, mk, struct.pack("<II", 2, 3)), ok(0x66, bytes([1, 2]) + hm(5) + hm(6)))
     add("console marks: from_serial = next, no marks and more 0", "common §1.3 paging 2", con, kept,
         request(0x67, 7, mk, struct.pack("<II", 2, 9)), ok(0x67, bytes([0, 0])))
-    st = IFACE["oep.target.console"]["enum"]
-    sentry = struct.pack("<IIB", 2, 1, st["mechanism"]["dmseq"])
-    add("console streams: one open stream", "console §1, core §9", con, "stream 2 on connection 1 (one number space: connection 1, then stream 2), dmseq, opened by the session",
+    # the console's mechanism list (core §7.7): [sdi, dmdata, dmseq], so dmseq is 3
+    DMSEQ = 1 + list(IFACE["oep.target.console"]["names"]["mechanism"]).index("dmseq")
+    sentry = struct.pack("<IIB", 2, 1, DMSEQ)
+    add("console streams: one open stream", "console §1, core §9", con, "fn 7 mechanism list [sdi, dmdata, dmseq]; stream 2 on connection 1 (one number space: connection 1, then stream 2), dmseq, opened by the session",
         request(0x61, 7, op("oep.target.console", "streams"), struct.pack("<H", 0)), ok(0x61, bytes([0, 1]) + sentry))
     add("console streams: resource IDs above u16", "console §1, core §9", con,
-        "stream 65537 on connection 65536; one open dmseq stream",
+        "fn 7 mechanism list [sdi, dmdata, dmseq]; stream 65537 on connection 65536; one open dmseq stream",
         request(0x69, 7, op("oep.target.console", "streams"), struct.pack("<H", 0)),
-        ok(0x69, bytes([0, 1]) + struct.pack("<IIB", 65537, 65536, st["mechanism"]["dmseq"])))
+        ok(0x69, bytes([0, 1]) + struct.pack("<IIB", 65537, 65536, DMSEQ)))
     add("console streams: first(u16) beyond the count, the last page", "console §1, core §7.3 end of paging", con, "as above (one stream)",
         request(0x68, 7, op("oep.target.console", "streams"), struct.pack("<H", 1)), ok(0x68, bytes([0, 0])))
     add("console read: empty at the write position", "common §1.2", con, "stream 2, 5 bytes written (position 5)",
@@ -839,7 +840,7 @@ def ops() -> dict:
     SET_ORDER = ["label", "idle", "disable", "wifi", "ipv4", "com.example.ntp-server"]
     NUM = {name: k + 1 for k, name in enumerate(SET_ORDER)}
     decl = ("settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, "
-            "max_len 32); netifs [wifi]")
+            "max_len 32); netif list [wifi] (wifi = 1)")
     pc = {"8":"oep.probe.config"}
     pce = IFACE["oep.probe.config"]["enum"]
     pc_set,pc_get,pc_unset = (op("oep.probe.config",n) for n in ("set","get","unset"))
@@ -863,7 +864,7 @@ def ops() -> dict:
     add("probe.config set: unknown outer noncritical TLV ignored", "settings §1/2, core §2.3", pc,f"{decl}; empty configuration generation1",
         request(0x76,8,pc_set,b"\1"+idle+tlv(0x3E,b"x"),S),ok(0x76,struct.pack("<I",2)))
     add("probe.config get: count separates items from response extensions", "settings §2", pc,f"{decl}; one idle item, generation2",
-        request(0x77,8,pc_get,struct.pack("<H",0)),ok(0x77,struct.pack("<BIB",0,2,1)+idle+tlv(0x7F,b"x")))
+        request(0x77,8,pc_get,struct.pack("<H",0)),ok(0x77,struct.pack("<BIB",0,2,1)+idle+tlv(0x7F,bytes([15])+b"io.example.note"+b"x")))
     add("probe.config get: final empty page still has count and generation", "settings §2", pc,f"{decl}; one item generation2; first1",
         request(0x78,8,pc_get,struct.pack("<H",1)),ok(0x78,struct.pack("<BIB",0,2,0)))
     add("probe.config unset: number and key", "settings §2", pc,f"{decl}; disable channel4 present, generation2; becomes empty generation3",
@@ -898,20 +899,20 @@ def ops() -> dict:
         request(0x11C,8,pc_set,b"\1"+it("wifi",0,bytes([3])+b"lab"+b"\xff"),S),rej(0x11C,"malformed"))
     ipv4 = lambda netif, mode, a, pfx, gw, dns: it("ipv4", netif, bytes([mode]) + bytes(a) + bytes([pfx]) + bytes(gw) + bytes(dns))
     add("probe.config set: ipv4 dhcp with an address is malformed", "settings §1.5", pc, f"{decl}; empty generation1",
-        request(0x11D,8,pc_set,b"\1"+ipv4(0,0,[192,168,1,23],24,[0]*4,[0]*4),S),rej(0x11D,"malformed"))
+        request(0x11D,8,pc_set,b"\1"+ipv4(1,0,[192,168,1,23],24,[0]*4,[0]*4),S),rej(0x11D,"malformed"))
     add("probe.config set: ipv4 static on wifi", "settings §1.5", pc, f"{decl}; empty generation1",
-        request(0x11E,8,pc_set,b"\1"+ipv4(0,1,[192,168,1,23],24,[192,168,1,1],[192,168,1,1]),S),ok(0x11E,struct.pack("<I",2)))
-    add("probe.config set: ipv4 on a netif not in netifs is unsupported", "settings §1.5", pc, f"{decl}; empty generation1",
-        request(0x11F,8,pc_set,b"\1"+ipv4(1,0,[0]*4,0,[0]*4,[0]*4),S),rej(0x11F,"unsupported",bytes([NUM["ipv4"]])))
+        request(0x11E,8,pc_set,b"\1"+ipv4(1,1,[192,168,1,23],24,[192,168,1,1],[192,168,1,1]),S),ok(0x11E,struct.pack("<I",2)))
+    add("probe.config set: ipv4 on a netif not in the list is unsupported", "settings §1.5", pc, f"{decl}; empty generation1",
+        request(0x11F,8,pc_set,b"\1"+ipv4(2,0,[0]*4,0,[0]*4,[0]*4),S),rej(0x11F,"unsupported",bytes([NUM["ipv4"]])))
     add("probe.config set: ipv4 gateway outside the prefix is malformed", "settings §1.5", pc, f"{decl}; empty generation1",
-        request(0x120,8,pc_set,b"\1"+ipv4(0,1,[192,168,1,23],24,[10,0,0,1],[0]*4),S),rej(0x120,"malformed"))
+        request(0x120,8,pc_set,b"\1"+ipv4(1,1,[192,168,1,23],24,[10,0,0,1],[0]*4),S),rej(0x120,"malformed"))
     add("probe.config unset: a wifi entry", "settings §2", pc, lab,
         request(0x121,8,pc_unset,struct.pack("<BBH",1,NUM["wifi"],0),S),ok(0x121,struct.pack("<I",3)))
     ne = pce["network_state"]
     add("probe.config network: wifi connected", "settings §2 network", pc,
         f"{decl}; entry 0 connected, 192.168.1.23/24, gateway and dns 192.168.1.1, -52 dBm; TCP listening on 4242",
         request(0x122,8,op("oep.probe.config","network"),b""),
-        ok(0x122,struct.pack("<HB",4242,1)+bytes([pce["netif"]["wifi"],ne["up"]])+struct.pack("<H",0)
+        ok(0x122,struct.pack("<HB",4242,1)+bytes([1,ne["up"]])+struct.pack("<H",0)
            +bytes([0,(-52)&0xFF,192,168,1,23,24,192,168,1,1,192,168,1,1])))
     add("probe.config set: a probe's own text item", "settings §1.6", pc, f"{decl}; empty generation1",
         request(0x123,8,pc_set,b"\1"+it("com.example.ntp-server",0,b"pool.ntp.org"),S),ok(0x123,struct.pack("<I",2)))

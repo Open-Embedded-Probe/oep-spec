@@ -32,9 +32,9 @@ TCPの経路（transports §1）へ届くためのWi-Fiの接続先とIPv4の決
 | `passthrough` | port | fn(u16)、rx(u16)、baud(u32)、format(u8) | §1.1 |
 | `console-passthrough` | port | wire_fn(u16)、swdio(u16)、swclk(u16)、max_speed(u32)、console_fn(u16)、mechanism(u8) | §1.2 |
 | `wifi` | entry | ssid_len(u8)、ssid、pass_len(u8)、passphrase | §1.4 |
-| `ipv4` | netif | mode(u8)、address(4)、prefix(u8)、gateway(4)、dns(4) | §1.5 |
+| `ipv4` | netif（§1.3の番号） | mode(u8)、address(4)、prefix(u8)、gateway(4)、dns(4) | §1.5 |
 
-- keyの範囲（settingのkeys）は、channelの項目ではfn 0のchannels、portの項目ではfn 0の経路の数、wifiではentryの数、ipv4ではnetifの数（registryの`netif`の数）。
+- keyの範囲（settingのkeys）は、channelの項目ではfn 0のchannels、portの項目ではfn 0の経路の数、wifiではentryの数、ipv4ではdescribeのnetifの数 + 1（keyはnetifの番号で、0はunsupported）。
   channelはfirmware自身が使うchannelでもunsupported（受け取った番号）。
 - 標準の項目のdataの長さが表の形と違えばmalformed。値を後ろへ伸ばさず、新しい情報は新しい名前の項目で定義する。
 - labelは設定の名前で、firmwareのdescribeのlabelを変えない。probeは名前で線を動かさない。
@@ -70,7 +70,7 @@ UART を空けられない target（debug の郵便受けで出力するもの�
 セッションと独立に適用する設定である。
 
 - wire_fn は `oep.wire.rvswd` か `oep.wire.swio`、(swdio, swclk) はその宣言が許すピンの組、max_speed は debug §1 の attach と同じ値と規則。
-  console_fn はその wire の connection を受ける `oep.target.console`、mechanism はその describe の mechanisms にある方式。違えば unsupported（受け取った番号）。port は §1.1 と同じ。
+  console_fn はその wire の connection を受ける `oep.target.console`、mechanism はその describe の mechanism の並びの位置（core §7.7）。違えば unsupported（受け取った番号）。port は §1.1 と同じ。
   ピンのどれかが disable なら、または出力の idle を持てば unavailable cause 5。
 - **素通しの条件**: その口からセッションの要求が来ていない、セッションの接続・plan がそのピンを取っていない、のすべてが成り立つ間、probe はその wire で
   method 0（止めない、reset しない）の attach をして、その方式でコンソールを読み、target の出力を §1.1 と同じに口へフレームの外で送る。
@@ -89,7 +89,8 @@ TCPの経路はhostが同じ手順でどのprobeにも設定できなければ�
 OEPで設定させるprobeは、§1.4のwifiと§1.5のipv4を使う。同じ目的の独自の項目や拡張を代わりに出さない
 （firmware自身の画面、ボタン、出荷時の値は別にあってよい）。
 
-- **netif**（registryの`netif`）: 0 Wi-Fiのstation、1 有線のEthernet。probeが持つnetifはdescribeのnetifs（§4）で宣言する。
+- **netif**は名前の並び（core §7.7）: probeはネットワークの口ごとに、describeのnetif（§4）に名前を1つ並べ、その位置（1から）を番号とする。
+  標準の名前は`wifi`（Wi-Fiのstation、§1.4のwifiが使う）と`ethernet`（有線）。ほかの口（携帯回線など）は逆DNSの名前で、下の共通の既定とipv4はそれにも掛かる。
 - **共通の既定**: wifiの項目が1つも無ければ、probeはWi-Fiを使わない。ipv4の項目が無いnetifはDHCPでアドレスを得る。
   有線は、項目が無くても線がつながればDHCPで使う。hostは同じ項目をどのprobeへ送っても同じ意味になると考えてよい。
 - **probeが決めるもの**: つなぎ直しの間隔、mDNSのinstanceの名前、TCPで待ち受けるport（§2のnetworkで読める）、NTPを使うかとそのサーバ。
@@ -123,7 +124,7 @@ probeは動く場所によって違うネットワークに会うので、entry�
 
 ### 1.5 ipv4（IPv4のアドレスの決め方）
 
-keyは§1.3のnetif。describeのnetifsに無いnetifはunsupported（受け取った番号）。
+keyは§1.3のnetifの番号。並びに無い番号はunsupported（受け取った番号）。
 
 | フィールド | 意味 |
 |---|---|
@@ -166,7 +167,7 @@ keyは§1.3のnetif。describeのnetifsに無いnetifはunsupported（受け取�
 | 0x13 | erase | [TLV] | — | 必要 | saveと組 |
 | 0x14 | unset | count(u8)、count × (number(u8)、key(u16))、[TLV] | generation(u32)、[TLV] | 必要 | 必須 |
 | 0x15 | state | [TLV] | storage_state(u8)、saved_generation(u32)、reason(u8)、[TLV] | 不要 | saveがあれば必須、ほかでは任意 |
-| 0x16 | network | [TLV] | tcp_port(u16)、count(u8)、count × 様子、[TLV] | 不要 | describeにnetifsがあれば必須、ほかでは提供しない |
+| 0x16 | network | [TLV] | tcp_port(u16)、count(u8)、count × 様子、[TLV] | 不要 | describeにnetifがあれば必須、ほかでは提供しない |
 
 - 設定は最大65535項目。probeはさらに小さい有限量にしてよく、保持できない変更はunavailable（cause 2/3）で断れる。
 - setは(番号、key)ごとに置換し、送らないキーは保つ。unsetは指定キーを消し、無いキーはno-op。
@@ -184,11 +185,11 @@ keyは§1.3のnetif。describeのnetifsに無いnetifはunsupported（受け取�
 
 ### network の答え
 
-tcp_portはTCPで待ち受けているport（待ち受けていなければ0）。続いて、describeのnetifsの順に、netifごとの様子（19byte）を返す。
+tcp_portはTCPで待ち受けているport（待ち受けていなければ0）。続いて、describeのnetifの並びの順に、netifごとの様子（19byte）を返す。
 
 | フィールド | 意味 |
 |---|---|
-| netif(u8) | §1.3のnetif |
+| netif(u8) | §1.3のnetifの番号 |
 | state(u8) | 0 使わない（wifiの項目が無い、有線の線がつながっていない）、1 つなごうとしている、2 つながっている、3 つながらず、やり直しを待っている |
 | entry(u16) | Wi-Fiで、state 1では試している、state 2では使っているwifiのkey。ほかは0xFFFF |
 | reason(u8) | 最後の失敗の理由: 0 なし、1 ネットワークが見つからない（APが無い、線のlinkが無い）、2 認証の失敗、3 アドレスが得られない（DHCPの時間切れ、固定のアドレスの重複）、4 そのほか。つながれば0 |
@@ -244,7 +245,7 @@ saveの応答のgenerationだけでは保存成功を意味しない。応答喪
 |---:|---|---|---|
 | 0x40 | storage | max_bytes(u32、1以上)。項目の見出し込みの合計byte数で、いつでも保存できる上限 | save/eraseを提供するときだけ必須 |
 | 0x41 | setting | form(u8)、keys(u16、1以上)、max_len(u8)、flags(u8)、name（text）。扱う項目ごとに1つ、名前の重複なし。k番目が項目番号k | 1つ以上必須 |
-| 0x42 | netifs | netif（u8）の並び。1つ以上、重複なし | wifiかipv4を扱うときだけ必須 |
+| 0x42 | netif | text: ネットワークの口の名前。口ごとに1つ繰り返す。名前の重複なし（§1.3） | wifiかipv4を扱うときだけ必須 |
 
 storageのmax_bytesには保存管理の領域を含めない。これを超えるsaveは副作用前にunavailable cause 3。
 保存を提供しないprobeはstorageを宣言しない。

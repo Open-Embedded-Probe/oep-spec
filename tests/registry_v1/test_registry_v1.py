@@ -136,9 +136,9 @@ def test_settings_are_named_not_numbered():
     reg,_ = gen.load()
     settings=next(i for i in reg['interface'] if i['name']=='oep.probe.config')
     # the standard items by name (config §1); the probe numbers them in its describe setting order: no item numbers here
-    assert list(settings['setting_names'])==['label','idle','disable','passthrough','console-passthrough','wifi','ipv4']
+    assert list(settings['names']['setting'])==['label','idle','disable','passthrough','console-passthrough','wifi','ipv4']
     assert 'item' not in settings['tlv']
-    assert set(settings['tlv']['describe'])=={'storage','setting','netifs'}
+    assert set(settings['tlv']['describe'])=={'storage','setting','netif'}
     # the longest wifi item in one set: request header 10, count 1, item header 3, key 2, data 1 + 32 + 1 + 64
     assert reg['limits']['wifi_min_max_frame'] == 10 + 1 + 3 + 2 + 1 + reg['limits']['wifi_ssid_max_bytes'] + 1 + 64
     # a setting TLV with the longest name fits the core's 64-byte describe value (55 bytes)
@@ -153,8 +153,11 @@ def test_interface_operation_and_tlv_boundaries():
     iface['op'].append({'code': 0x0F, 'name': 'private_common', 'lock': True})
     assert any('common-operation range' in e for e in gen.check(reg))
     iface['op'][-1]['code'] = 0xFF
-    iface.setdefault('tlv', {})['future'] = {'last': 0x7F}
+    iface.setdefault('tlv', {})['future'] = {'last': 0x7E}
     assert gen.check(reg) == []
+    iface['tlv']['future']['named'] = 0x7F               # every context's named extension (core §2.2)
+    assert any('named extension' in e for e in gen.check(reg))
+    del iface['tlv']['future']['named']
     iface['tlv']['future']['zero'] = 0
     assert any('is reserved' in e for e in gen.check(reg))
 
@@ -173,3 +176,19 @@ def test_common_describe_prefix_cannot_be_used_for_private_tags():
     reg, _ = gen.load()
     reg['interface'][0].setdefault('tlv', {}).setdefault('describe', {})['private'] = 0x3F
     assert any('common describe range' in e for e in gen.check(reg))
+
+
+def test_numbering_rules():
+    """core §2.5: a family's interfaces give one name one number and one number one name; no interface uses 0x7F (the
+    named extension); the named lists are in the registry as names (core §7.7)."""
+    reg,_ = gen.load()
+    assert gen.check(reg) == []
+    fams = {}
+    for i in reg['interface']:
+        if 'family' in i:
+            fams.setdefault(i['family'], []).append(i['name'])
+    assert sorted(fams) == ['capture', 'wire']
+    console = next(i for i in reg['interface'] if i['name'] == 'oep.target.console')
+    assert list(console['names']['mechanism']) == ['sdi', 'dmdata', 'dmseq'] and 'mechanism' not in console.get('enum', {})
+    config = next(i for i in reg['interface'] if i['name'] == 'oep.probe.config')
+    assert list(config['names']['netif']) == ['wifi', 'ethernet'] and 'netif' not in config['enum']

@@ -26,7 +26,7 @@ def test_empty_and_nonempty_result_layouts_allow_response_tlvs(case):
     assert req[1:3] == ans[1:3] and req[3:5] == b'\0\0'
     fixed = 0 if ans[3] == 0 else {'open': 8, 'keepalive': 0, 'end': 0, 'clock': 12}[case['operation']]
     assert fixed == case['fixed_answer_bytes']
-    assert tail(ans[5 + fixed:]) == [(127, b'x')]
+    assert tail(ans[5 + fixed:]) == [(127, bytes([15]) + b'io.example.note' + b'x')]   # a named extension (core §2.2)
     if ans[3] == 1 and case['operation'] == 'open':
         assert struct.unpack_from('<II', ans, 5) == (3000, 0x12345678)
     if ans[3] == 1 and case['operation'] == 'clock':

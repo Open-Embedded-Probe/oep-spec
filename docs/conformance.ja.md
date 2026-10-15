@@ -127,7 +127,7 @@ fn 0のconfirm / list / describe / clock / lock_stateは方針の対象から除
   インターフェースは使わない（§2.8）。
 - **任意の op と機能**: 任意の op は、その fn の describe の ops に立っているときだけ送る。立っていなければ、その op を使わない道を取る
   （例: console の marks が無ければ read の from 3 を使わず host 側で位置を覚える、write が無ければ入力を送らない）。op でない任意の機能も、
-  describe（features、mechanisms、modes など）が宣言するものだけを使う（core §1.2、§2.8、§7.4）。必須の op は describe を待たずに使ってよい。
+  describe（features、mechanism、modes など）が宣言するものだけを使う（core §1.2、§2.8、§7.4）。必須の op は describe を待たずに使ってよい。
 - **待ち**: すべての要求に §4.4 の下限、自分のリンクの要求も含む。UART ブリッジでの転送時間、その transport での最初の confirm の
   答えまでは `min_max_frame` で（§4.4）。状態変更前にmax_op_msを取得し、操作が要求全体の短い上限を定めない限りmax_op_msを使う。
   DMIの明示的な待ちの和やrunのtimeout_msだけで内部再試行・準備・後始末の時間を省かない（§4.4）。
@@ -159,7 +159,7 @@ fn 0のconfirm / list / describe / clock / lock_stateは方針の対象から除
 | `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（[線とデバッグ](../interfaces/oep-if-debug.ja.md)） | attach（固定部分method/pins/max_speed、method 0必須）、detach、connections。資源はセッション所有。暗黙の join / eviction をしない。§1 の attach の規範と max_op_ms。§2 の再試行と寿命 | scan（候補count ≥ 1、有限探索）、attachのreset TLV、RISC-Vのmethod 1（features bit0） |
 | `oep.target.riscv-dm`（§4） | dmi | halt/resume/reset、read_block / write_block、run/step: ops。reset があれば、ndmreset を解いた後に DM を待つ（§4.3、max_op_ms のうち）。read_block / write_block があれば max_length。successは一時的な値の後始末を済ませた場合だけ。失敗時もmax_op_msのうちに試み、後始末できなければ失敗を返してconnectionとstreamを閉じる（§4）。step が ok でなければ moved と dpc を 0、run の elapsed_us は resumereq から（§4.2、§4.4） |
 | `oep.target.arm-adi`（§6） | transfer（n = 0 は success、ack 0）。対応するwireのconnectionを明示して使う | read_block/write_blockは組でopsへ宣言。提供時だけmax_lengthが必須 |
-| `oep.target.console`（[コンソール](../interfaces/oep-if-console.ja.md)） | open/read/close/streams。describeのmechanismsはcount付きで必須。§3の読みの順と採用方式のframing | marks/clear/mark/writeはops。marksなしでもdmseqの同期・重複排除を行う。writeなしでは空の答えだけを返し、SDIへのwriteはunsupported |
+| `oep.target.console`（[コンソール](../interfaces/oep-if-console.ja.md)） | open/read/close/streams。describeのmechanism（方式の名前の並び、core §7.7）は1つ以上必須。§3の読みの順と採用方式のframing | marks/clear/mark/writeはops。marksなしでもdmseqの同期・重複排除を行う。writeなしでは空の答えだけを返し、SDIへのwriteはunsupported |
 | `oep.fixture.gpio`（[fixture](../interfaces/oep-if-fixture.ja.md) §1） | set、read。describe の modes に mode 0 | — |
 | `oep.fixture.uart`（§2） | configure/read/status。describeのformatsに8N1。明示configureまでstatusはbaud 0で受信しない。planの解放時にbufferと設定を解放し、同boot内の位置は戻さない。同じplanを再指定しても設定を変えない | marks/clear/mark/write、ほかのformat。markはmarksが必要。writeなしではTX roleを宣言しない |
 | `oep.fixture.i2c-target`（§3） | stretch を除く §3 の op（書き込み 1 回が 1 フレーム、読み出しは preload_tx の置き場から、ns はフレームを終えた STOP か次の START の時刻） | stretch（ops、max_stretch_us とともに）。プルアップ（features bit2） |
@@ -169,7 +169,7 @@ fn 0のconfirm / list / describe / clock / lock_stateは方針の対象から除
 | `oep.probe.plan`（[plan](../interfaces/oep-if-plan.ja.md)） | planの役割を持つインターフェースがあればlistに出す。plan_applyは要求全体を検証し、残る割当・機能状態を保つ。動作中の割り当て（role, channel）の集合の変更/束ねられた資源変更は拒否。plan_releaseも全対象を先に検証。上限があればplan_roles | — |
 | `oep.probe.restart`（[再起動](../interfaces/oep-if-restart.ja.md)） | restart。describe の restart_max_ms。ロックの要る op として断る。答えは completed success で、それを先に送る。答えの後は再起動するまでどのtransportの要求にも答えず、意図したtargetのreset/resumeは行わない。MCUのリセット状態と外部回路によるtarget変化は保証しない。再起動の後は電源を入れたときと同じ（新しい boot_id、保存した設定だけが残る）。答えがtransportを出てからrestart_max_msのうちにprobe内部が通信を受けられる状態へ戻る。OSの列挙/ネットワーク接続/hostの開き直しは別 | — |
 | `oep.probe.link`（[リンク](../interfaces/oep-if-link.ja.md)） | source、sink | port_speedとport_state（ops）。frame境界で変更し、pipelineを先に解決。通知だけのhostも正常要求でidleを延長する。要求処理中のtimerとphase 3の取消禁止（§3） |
-| `oep.probe.config`（[設定](../interfaces/oep-if-probe-config.ja.md)） | get/set/unsetとsetting宣言（k番目が項目番号k、名前の重複なし）。count付き項目と末尾TLVの区別。変更カウンタはboot内非再利用、no-opは世代/ピン不変。変更は全検証の後に適用。 | disable/idle/labelの対応範囲。save/erase/stateは保存とともに採用しmax_bytesを宣言。起動時に有効項目だけを適用しdisableを先に掛け、部分適用はstateで示す。wifi/ipv4はnetifsとnetworkとともに採用し、wifiはmax_frame 114以上でpassphraseを返さない。独自の項目は逆DNSの名前とform 1〜5で宣言し、その形だけを受ける。保存は名前で読み戻す。 |
+| `oep.probe.config`（[設定](../interfaces/oep-if-probe-config.ja.md)） | get/set/unsetとsetting宣言（並びの位置が項目番号、core §7.7、名前の重複なし）。count付き項目と末尾TLVの区別。変更カウンタはboot内非再利用、no-opは世代/ピン不変。変更は全検証の後に適用。 | disable/idle/labelの対応範囲。save/erase/stateは保存とともに採用しmax_bytesを宣言。起動時に有効項目だけを適用しdisableを先に掛け、部分適用はstateで示す。wifi/ipv4はnetifの並びとnetworkとともに採用し、wifiはmax_frame 114以上でpassphraseを返さない。独自の項目は逆DNSの名前とform 1〜5で宣言し、その形だけを受ける。保存は名前で読み戻す。 |
 
 ### 終了・失敗時の境界検査
 

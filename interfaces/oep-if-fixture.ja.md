@@ -113,7 +113,7 @@ read_rx で取り出す。
   動作中（state 1）の割り当て（role, channel）の集合の変更はunavailable（cause 6）。planを解くか未設定の役割を置き換えると初期状態へ戻る（state 0、
   列・置き場・累計を消し、stretch の値は 0）。
 - SDA と SCL は**オープンドレインだけ**で駆動する: probe は low に引くか離すかで、high に駆動しない。
-- **内部のプルアップ**: configure されている間 SDA / SCL に自分のプルアップを入れる probe は、features の bit2（内部プルアップ）でそれを宣言する。
+- **内部のプルアップ**: configure されている間 SDA / SCL に自分のプルアップを入れる probe は、features の bit0（内部プルアップ）でそれを宣言する。
   宣言しない probe はプルアップを入れない。
 - state 0ではどのアドレスにもACKせず、I2C機能としての駆動・内部プルアップをやめ、channelをcore §8の空きの状態にする。
   空きの状態として設定されたpullは、I2C機能による内部プルアップとは区別する。
@@ -139,7 +139,7 @@ read_rx で取り出す。
 - stretch は、受けたデータの byte ごとに、8 bit 目の後、ACK を出した状態で ACK の clock の前に SCL を low に保つ時間（µs、0 = しない）。
   read では、アドレスが一致した後に同じだけ保つ。write のアドレスの byte では保たない。stretchは任意（core §1.2）。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け
   （state 0 でも）、値は次に受ける byte から効く。configure は値を変えない。
-- describe: ops、role_channels、max_length（1 フレームの最大 byte）、max_clock_hz（確かめた SCL の上限）、features（bit2 内部プルアップ）、
+- describe: ops、role_channels、max_length（1 フレームの最大 byte）、max_clock_hz（確かめた SCL の上限）、features（bit0 内部プルアップ）、
   queue_depth（tag 0x40、u8: 積めるフレームの数と、未読の置き場の数の上限）、
   max_stretch_us（tag 0x41、u32: stretch が受ける最大の µs。1 以上。stretch を持つ probe は必ず載せる）。
 - max_lengthは、preload_txの要求（見出し10 + count 2 + data）とread_rxの応答（見出し5 + pending 1 + count 2 + data）が
@@ -192,10 +192,10 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   transactionsとerrorsは0xFFFFFFFFで飽和し、configureまたはplan解放で0へ戻る。
 - describe: ops、role_channels、max_length（1回の転送の最大byte）、max_clock_hz（確かめたSCKの上限）、features（bit0 LSBが先）、
   queue_depth（tag 0x40、u8）、modes（tag 0x41、u8。必須。bit kがmode kの対応を表す。bits 4〜7は0、値は1以上）、
-  cs_setup_ns（tag 0x43、u32、下）。
+  cs_setup_ns（tag 0x42、u32、下）。
 - max_lengthは、最大長のarm要求（見出し10 + length 2 + count 2 + tx）とread_rx応答（見出し5 + pending 1 + bits 4 + count 2 + data）が
   どの経路のmax_frameにも収まる値にする。外部controllerの転送をread_rxで分割できるとは仮定しない。任意のtimestamp TLVは収まる場合だけ付ける。
-- **cs_setup_ns**（describe の tag 0x43、u32、ns）: CS が有効になってから最初の SCK のエッジまでの時間で、MISO が最初のビットで駆動されていることを
+- **cs_setup_ns**（describe の tag 0x42、u32、ns）: CS が有効になってから最初の SCK のエッジまでの時間で、MISO が最初のビットで駆動されていることを
   probeが保証する最短のもの。保証は受け付けた資源の組合せで保つ。
   ほかのfnとの同時使用でmax_clock_hzやcs_setup_nsを保てないprobeは、後から来たconfigure/attach/startなどを、
   core §8.1に従い、副作用の前にunavailable（cause 2。必要ならfnの診断TLV）で断る。

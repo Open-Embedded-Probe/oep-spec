@@ -24,15 +24,15 @@ UART の素通しは `oep.fixture.uart`（[fixture](oep-if-fixture.ja.md)）で�
 | 0x16 | close | stream(u32) | — | 必要 | 必須 |
 | 0x17 | streams | first(u16) | more(u8)、count(u8)、count × (stream(u32)、connection(u32)、mechanism(u8))、[TLV] | 不要 | 必須 |
 
-方式はdescribeのmechanisms、操作はopsで宣言する。最小はopen/read/close/streamsで、marksのリングや送信queueを持たなくてよい。
+方式はdescribeのmechanism、操作はopsで宣言する。最小はopen/read/close/streamsで、marksのリングや送信queueを持たなくてよい。
 marksが無ければreadのfrom 3はunsupported。writeを提供しないfnは、DMDATA/dmseqでも入力を供給せず、targetへ空の答えを返す。
-writeを提供するfnはmechanism 1または2を少なくとも1つ提供する。SDIのstreamへのwriteはunsupported（固定部分の印0）で断る。
+writeを提供するfnは`dmdata`か`dmseq`を少なくとも1つ提供する。`sdi`のstreamへのwriteはunsupported（固定部分の印0）で断る。
 
 - read、marks、clear、mark、write は [共通部品](oep-if-common.ja.md) §1 の形（先頭に stream）。
-- mechanism: 0 SDI、1 DMDATA、2 dmseq（framing は [target-console-dmseq](target-console-dmseq.ja.md)）。**mechanism の番号が方式を
-  正確に決める**（版を持たない）。知らない mechanism と、
-  describe の mechanisms に無い mechanism は rejected unsupported（payload `0x00`、core §4.3）。
-- describe: tag 0x40 mechanisms（n(u8)、n × mechanism(u8)。そのprobeが開ける方式。nは1以上、重複なし）。必ず出す。
+- **方式は名前の並び**（core §7.7）: describe の tag 0x40 mechanism（text: 方式の名前）を、その probe が開ける方式ごとに 1 つ並べる。
+  1 つ以上、名前の重複なし。必ず出す。要求と応答の mechanism(u8) は、その並びの位置（1 から）である。
+- 標準の方式の名前は `sdi`、`dmdata`、`dmseq`（§3）。**名前が方式を正確に決める**（版を持たない）。ほかの者の方式は逆 DNS の名前で、
+  その名前の持ち主が運び方と規則を決める。並びに無い位置の mechanism は rejected unsupported（payload `0x00`、core §4.3）。
 - 知らない stream は rejected no_resource（core §4.3）。別の種類の資源の番号（connection の番号を stream に）は rejected unavailable
   cause 6。arm-adi（swd）の connection への open も rejected unavailable cause 6（[線とデバッグ](oep-if-debug.ja.md) §5）。
 - ストリームの番号（u32）は core §9 に従い、同じ boot_id の間は再利用しない。
@@ -40,7 +40,7 @@ writeを提供するfnはmechanism 1または2を少なくとも1つ提供する
 
 ## 2. ストリームの規則
 
-- openはセッション所有の新しいstreamを作る。mechanism 0〜2では同じconnectionに生きているstreamは1つで、別方式を含む2つ目のopenはunavailable（cause 6）。
+- openはセッション所有の新しいstreamを作る。標準の方式では同じconnectionに生きているstreamは1つで、別方式を含む2つ目のopenはunavailable（cause 6）。
   閉じた stream の番号、バッファ、位置やマークを再び使わない。
 - close、connection の解放、セッションの終了で stream とそのバッファ・送信列を解放する。
   失う前に必要な出力を host が read で読み、ログへ保存する。
@@ -66,7 +66,7 @@ writeを提供するfnはmechanism 1または2を少なくとも1つ提供する
   フレームの有効性・重複・再同期は [dmseq の host の規則](target-console-dmseq.ja.md#host-の規則bit-7-が-1-の-word-を読んだとき)で判定する。
 
 
-- **送りの列**: writeを提供するfnは、mechanism 1/2のstreamごとに送りの列を持つ（有限の大きさはprobeが決める）。
+- **送りの列**: writeを提供するfnは、`dmdata`/`dmseq`のstreamごとに送りの列を持つ（有限の大きさはprobeが決める）。
   write は data を先頭から、列の空きに入る分だけ列の終わりに入れる。**accepted は列に入れたバイトの数**（count と列の空きの小さい方）で、
   target が受け取ったことは意味しない。count > 0でaccepted 0（completed failed）は列が満ちているときだけ。count 0はaccepted 0のsuccess。
   0 < accepted < count は completed partial。残り（data の accepted 番目から）は host が後で送る（列は probe が target に渡した分だけ空く）
@@ -78,22 +78,22 @@ writeを提供するfnはmechanism 1または2を少なくとも1つ提供する
 
 ## 3. 方式（mechanism）
 
-mechanism 0、1、2 は debug module の DATA0（DMI 0x04）と DATA1（0x05）を郵便受けに使う。hart は止めない。probe は DATA0 を読んで、方式の
+標準の 3 つの方式は debug module の DATA0（DMI 0x04）と DATA1（0x05）を郵便受けに使う。hart は止めない。probe は DATA0 を読んで、方式の
 規則で受け取る。
 
 - probe は、**その connection の riscv-dm の要求を実行している間と、hart が止まっている間**（DMSTATUS の anyhalted が 1）は、コンソールのために
   DATA0 / DATA1 を読み書きしない。probe は、その connection の riscv-dm の要求に答えた後、次にコンソールのために DATA0 を読む前に DMSTATUS を読む。
   hart がまた走れば、probe は読みを再開する。抽象コマンドの一連の扱いは [線とデバッグ](oep-if-debug.ja.md) §4.1。
 
-| mechanism | 名前 | 向き | 定義 |
-|---:|---|---|---|
-| 0 | SDI | target → host | 下の 3.1 |
-| 1 | DMDATA | 両方向 | 下の 3.2 |
-| 2 | dmseq | 両方向 | [target-console-dmseq](target-console-dmseq.ja.md)（通番と CRC つき） |
+| 名前 | 向き | 定義 |
+|---|---|---|
+| `sdi` | target → host | 下の 3.1 |
+| `dmdata` | 両方向 | 下の 3.2 |
+| `dmseq` | 両方向 | [target-console-dmseq](target-console-dmseq.ja.md)（通番と CRC つき） |
 
 ### 3.1 SDI
 
-mechanism 0 はこの郵便受けの並びだけで、connection の線には依らない。target から host へバイトを運ぶ。
+`sdi` はこの郵便受けの並びだけで、connection の線には依らない。target から host へバイトを運ぶ。
 
 - **郵便受けの中のバイト**: バイト 0 は DATA0 の bit 8〜15、バイト 1 は bit 16〜23、バイト 2 は bit 24〜31。バイト 3 は DATA1 の bit 0〜7、バイト 4
   は bit 8〜15、バイト 5 は bit 16〜23、バイト 6 は bit 24〜31。DATA0 の下位 byte（bit 0〜7）は長さ L。
@@ -105,7 +105,7 @@ mechanism 0 はこの郵便受けの並びだけで、connection の線には依
 
 ### 3.2 DMDATA
 
-mechanism 1 はこの郵便受けの並びだけで、connection の線には依らない。両方向にバイトを運び、両側は DATA0 を交代で
+`dmdata` はこの郵便受けの並びだけで、connection の線には依らない。両方向にバイトを運び、両側は DATA0 を交代で
 使う。
 
 - **状態の byte** は DATA0 の下位 byte（bit 0〜7）。bit 7 は T: 1 = **target の枠**（target が書いた）、0 = probe が書いた、または開始時の

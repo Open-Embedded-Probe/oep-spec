@@ -501,7 +501,7 @@ def test_resource_ids_cross_u16_without_changing_function_or_correlation_width()
     streams = bytes.fromhex(cases['console streams: resource IDs above u16']['answer_hex'])
     assert streams[5:7] == b'\x00\x01'
     assert streams[7:11] == b'\x01\x00\x01\x00' and streams[11:15] == b'\x00\x00\x01\x00'
-    assert len(streams) == 16 and streams[15] == 2
+    assert len(streams) == 16 and streams[15] == 3   # dmseq, third in the mechanism list [sdi, dmdata, dmseq]
     assert REG['limits']['resource_id_bytes'] == 4 and REG['limits']['resource_id_max'] == 0xFFFFFFFF
 
 
@@ -577,9 +577,9 @@ def test_capture_minimal_reply_and_analog_diagnostics_fit_frame64():
     for count,size in ((1,51),(2,64)):
         response=bytes.fromhex(cases[f'analog configure: {count} roles and one nonzero skew without optional diagnostics']['answer_hex'])
         decoded=tlvs(response[5:]);assert len(response)==size
-        assert {tag for tag,_ in decoded}=={0x50,0x51,0x52,0x55,0x57}
-        assert [struct.unpack('<Bii',value) for tag,value in decoded if tag==0x55]==[(role,0,1000000) for role in range(count)]
-        assert len([v for t,v in decoded if t==0x57])==1
+        assert {tag for tag,_ in decoded}=={0x01,0x02,0x03,0x05,0x06}   # actual_rate layout actual_samples scale skew
+        assert [struct.unpack('<Bii',value) for tag,value in decoded if tag==0x05]==[(role,0,1000000) for role in range(count)]
+        assert len([v for t,v in decoded if t==0x06])==1
     row=cases['logic start: generation exhausted without clearing current data']
     assert bytes.fromhex(row['answer_hex'])[5:]==bytes.fromhex('01010002')
 
@@ -592,7 +592,7 @@ def test_settings_counted_container_and_change_counter_shapes():
     # Decode count records (number len key data, config §1), then the extension tail separately: idle is number 2
     number,size,key=struct.unpack_from('<BHH',response,11)
     assert (number,size,key)==(2,3,4) and response[16]==0
-    assert tlvs(response[17:])==[(0x7f,b'x')]
+    assert tlvs(response[17:])==[(0x7f,bytes([15])+b'io.example.note'+b'x')]   # a named extension (core §2.2)
     request=bytes.fromhex(cases['probe.config unset: number and key']['request_hex'])
     assert request[10:]==bytes.fromhex('01030400')
     request=bytes.fromhex(cases['probe.config set: longest label fits frame64']['request_hex'])

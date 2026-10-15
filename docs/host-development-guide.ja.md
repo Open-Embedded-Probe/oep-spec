@@ -77,7 +77,7 @@ TCP で待ち受ける probe が自分を広告するときは、DNS-SD の serv
 
 - probe を Wi-Fi や有線の IPv4 に載せる設定は、どの probe でも probe.config の wifi と ipv4 の項目（設定 §1.3〜§1.5）で行う。
   同じ項目を送れば、どの probe でも同じ意味になる。項目の無い netif は DHCP、wifi の項目が無ければ Wi-Fi は使わない。
-- 手順の目安: USB でつなぎ、describe の setting（名前 `wifi`、`ipv4`）と netifs で扱えるものを確かめ、wifi（と必要なら ipv4）を set する。network で state 2 と
+- 手順の目安: USB でつなぎ、describe の setting（名前 `wifi`、`ipv4`）と netif で扱えるものを確かめ、wifi（と必要なら ipv4）を set する。network で state 2 と
   アドレス、tcp_port を確かめ、TCP で届く（§4.1 で unit_id を見つけて confirm が通る）ことを確かめてから save する。
   save する前なら、再起動で保存の内容へ戻る。
 - passphrase は書くだけで、get は pass_len 0xFF を返す。get の項目をそのまま set で送り返しても passphrase は変わらない。passphrase を表示もログもしない。
@@ -328,7 +328,7 @@ raw dmiで抽象コマンドやresetからhalt待ちを組む場合は、待ち�
   （seq は 0 から。間に失った分は seq と position の飛びで分かる）。
 - キャプチャの流し続けには独自の規則がある: 送る余地が無いと probe は新しい区画を丸ごと捨て、stop の前に取った分は送り続け、stop の後で
   受けた位置の終わりが status の write_pos と等しくなれば host はすべてを持っている（[キャプチャ](../interfaces/oep-if-capture.ja.md) §2.1）。
-  probe は区画が終わる前にその区画のデータを送ることがある。トラックがエラーで止まったら（stopped reason 3、state 6）、status を読み、
+  probe は区画が終わる前にその区画のデータを送ることがある。トラックがエラーで止まったら（stopped reason 2、state 6）、status を読み、
   受けたデータのうち write_pos から先を捨てる（区画の中で落とした区画は、データではない。キャプチャ §2.2）。受けている
   間はロックを保つ。
 

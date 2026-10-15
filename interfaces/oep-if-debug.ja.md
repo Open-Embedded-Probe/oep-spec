@@ -76,7 +76,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   max_speed 以下で読むことで速さを選んでよい。dmactive は立てたまま残す。「見つかった」は DMSTATUS.version が 2 以上で 15 でないこと（0 = DM が無い、1 = このインターフェースが
   扱わない版、15 = 適合しない DM）。swd は DPIDR が読めたこと。外れた組のピンは core §8 の
   空きの状態に戻す。
-- **target の識別子**: attach の応答の後ろに、probe が読めた target の識別子を TLV 0x10 target_id（scheme(u8)、値）で付けてよい。
+- **target の識別子**: attach の応答の後ろに、probe が読めた target の識別子を TLV 0x01 target_id（scheme(u8)、値）で付けてよい。
   scheme は識別子の取り方。target_id の scheme の番号は probe 全体で 1 つの空間である（registry `[common.enum.target_id_scheme]`:
   1 その debug module の DMI 0x7F の u32、2 swd の DPIDR）。各 wire は、どの scheme を使うかを書く。probe は読めなかったとき（scheme が「無い」と定める値だったときを含む）
   は付けない。値の意味（どのビットが系統で、どれがリビジョンか）は host が知っている。probe は解釈しない。
@@ -163,10 +163,10 @@ entry: connection(u32)、swdio(u16)、swclk(u16)、speed_hz(u32)、tid_scheme(u8
   swio: DMI 0x7E と DMI 0x7D にそれぞれ 0x5AA50400 を書く。その組を 2 回。両方の線のフレームは §3.1 と §3.2。
 - **scratch**（§1）: PROGBUF0（DMI 0x20）。それを空ける書き込み: ABSTRACTAUTO（DMI 0x18）= 0。これは戻さない（前のセッションが残した autoexec は、
   アクセスのたびに走る）。
-- **reset をかけながらの attach**: TLV 0x05 reset（critical: `channel(u16)、hold_ms(u16)`）を付けると、probe はリセットの線（channel）を
+- **reset をかけながらの attach**: TLV 0x04 reset（critical: `channel(u16)、hold_ms(u16)`）を付けると、probe はリセットの線（channel）を
   hold_ms 保ってから離す。method 1 なら離しながら halt を打ち続け、できるだけ早く止める（flags bit3、dpc TLV）。**最初の命令の前で
   止まる保証は無い**（reset の線の解放から halt が効くまでに走った分がある）。reset の直後の位置で
-  止める保証が要るときは、riscv-dm の reset mode 2（ndmreset を haltreq を保ったまま解く）を使う。method 0はhalt要求を出さない。任意の機能で、role_channels の role 3（reset）で宣言する。持たない probe は reset の TLV を rejected unsupported で断る（受け取ったままの tag、0x85、core §2.3）。使用中のピンとの競合は reset 前に断る。hold_ms は
+  止める保証が要るときは、riscv-dm の reset mode 1（ndmreset を haltreq を保ったまま解く）を使う。method 0はhalt要求を出さない。任意の機能で、role_channels の role 3（reset）で宣言する。持たない probe は reset の TLV を rejected unsupported で断る（受け取ったままの tag、0x84、core §2.3）。使用中のピンとの競合は reset 前に断る。hold_ms は
   core の max_op_ms の対象。
 - resetの線を離した後の待ちは§2。DMが答えてから速さを確認する（§1）。
 - **reset の線に既定は無い**: どの線を reset に使うかは host が毎回 channel で明示する（線を取り違えた reset は target や治具を
@@ -176,16 +176,19 @@ entry: connection(u32)、swdio(u16)、swclk(u16)、speed_hz(u32)、tid_scheme(u8
   ほかの driver と短絡しない）。channel は op の間だけ持つ。持たない probe では、host は `oep.fixture.gpio` の解放と attach をまとめて
   送って再試行する。
 
-TLV:
+TLV（wire の一族で 1 つの空間。rvswd、swio、swd は、この表のうち自分が使うものを同じ番号で使う。core §2.5 の 4）:
 
 | op | tag | 名前 | 値 |
 |---|---:|---|---|
 | scan | 0x01 | max_speed | u32 Hz（無ければその wire の最も遅い速さ） |
-| scan（rvswd だけ） | 0x04 | idle_clock | u8。scan の間の休ませ方（下） |
-| attach（rvswd だけ） | 0x04 | idle_clock | u8。線を休ませる間の SWCLK: 0 = high（省略時も high）、1 = low。critical |
-| attach | 0x05 | reset | channel(u16)、hold_ms(u16)。critical。上 |
-| attach の応答 | 0x10 | target_id | scheme(u8)、値 |
-| attach の応答 | 0x11 | dpc | u32。任意。hart 0が止まっている（flags bit3）ときのRV32 dpc |
+| scan、attach（swd だけ） | 0x02 | targetsel | u32。§3 の swd |
+| scan、attach（rvswd だけ） | 0x03 | idle_clock | u8。線を休ませる間の SWCLK: 0 = high（省略時も high）、1 = low。attach では critical。scan では scan の間の休ませ方（下） |
+| attach | 0x04 | reset | channel(u16)、hold_ms(u16)。critical。上 |
+| attach の応答 | 0x01 | target_id | scheme(u8)、値 |
+| attach の応答 | 0x02 | dpc | u32。任意。hart 0が止まっている（flags bit3）ときのRV32 dpc |
+
+pin の role（1 swdio、2 swclk、3 reset）、scan の kind（1 riscv-dm、2 arm-adi）、attach の method（0 止めない、1 止める）、attach の flags のビットも
+一族で 1 つの空間である。swio は swclk を持たないので role 1 と 3 を使う。
 
 これらの wire が使う target_id の scheme（`target_id_scheme`、probe で 1 つの空間、§1）: 1 = DMI のアドレス 0x7F を読んだ u32（長さ 4）。0 と 0xFFFFFFFF は「無い」（付けない）。
 2 = swdのDPIDR（u32、長さ4）。
@@ -296,7 +299,7 @@ hostは必要ならattachし直し、targetの状態を確かめて復旧する�
 | halt | haltreq | allhaltedを確かめてからhaltreqを下ろす。待ち切れたときも下ろすことを試みる |
 | resume | haltreq = 0、resumereq = 1 を 1 回 | 何も覚えず、何も戻さない |
 | step | dcsr.step、DATA0 / DATA1（dcsr の読み書き）、haltreq | dcsr.step を下ろし、DATA1、DATA0 を戻し、haltreq を下ろす。hart をもう一度止められなければ、応答が step_left を示す（§4.2） |
-| reset | haltreq、ndmreset、havereset の確認応答 | ndmresetを解き、haveresetを確認応答し、haltreqを下ろす。mode 2のhartは止めたまま |
+| reset | haltreq、ndmreset、havereset の確認応答 | ndmresetを解き、haveresetを確認応答し、haltreqを下ろす。mode 1のhartは止めたまま |
 | read_block / write_block | GPR（s0、s1、a0、a1）、DATA1 / DATA0、abstractauto、program buffer、sysbus | GPR、DATA1、DATA0、abstractauto を戻す。program buffer と SBCS / SBADDRESS は戻さない（host が使うなら設定し直す） |
 | run | pc、host が指定した GPR、dcsr（ebreakm、prv）、haltreq | **host の指示どおりに変えたまま返す**（host の責任）。abstractauto と haltreq は戻す |
 | dmi | host が書いたもの | 何も触らず、何も戻さない（host が DATA を使ったら host が戻す） |
@@ -315,7 +318,7 @@ probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ�
 | 0x10 | dmi | n(u16)、n個の手順 | done(u16)、status(u8)、nvals(u16)、nvals × value(u32)、[TLV] | 必要 | 必須 |
 | 0x11 | halt | — | status(u8)、[TLV] | 必要 | 任意 |
 | 0x12 | resume | — | status(u8)、[TLV] | 必要 | 任意 |
-| 0x13 | reset | mode(u8)、[TLV] | status(u8)、flags(u8)、pc(u32)（mode 2ではdpc）、[TLV] | 必要 | 任意 |
+| 0x13 | reset | mode(u8)、[TLV] | status(u8)、flags(u8)、pc(u32)（mode 1ではdpc）、[TLV] | 必要 | 任意 |
 | 0x14 | read_block | address(u32)、count(u16)、[TLV] | done(u16)、status(u8)、done × word(u32)、[TLV] | 必要 | 任意（writeと組） |
 | 0x15 | write_block | address(u32)、count(u16)、count個の語、[TLV] | done(u16)、status(u8)、[TLV] | 必要 | 任意（readと組） |
 | 0x16 | run | pc(u32)、timeout_ms(u32)、n(u8)、n × (regno(u16)、value(u32))、n_out(u8)、n_out × regno(u16)、[TLV] | status(u8)、stopped(u8)、dpc(u32)、elapsed_us(u32)、nvals(u8)、nvals × value(u32)、[TLV] | 必要 | 任意 |
@@ -390,14 +393,14 @@ probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ�
 
 | フィールド | 意味 |
 |---|---|
-| flags bit0 | 要求したmodeの状態を確認した（mode 0は走っている、mode 2は止まっていてdpcが読めた） |
-| pc | flags bit0が立ったmode 2ではdpc。ほかは0 |
+| flags bit0 | 要求したmodeの状態を確認した（mode 0は走っている、mode 1は止まっていてdpcが読めた） |
+| pc | flags bit0が立ったmode 1ではdpc。ほかは0 |
 
-- mode 0と2だけを定める。ほかはunsupported（固定部分の印0）。successはflags bit0が立ち、後始末も済んだ場合だけ。
+- mode 0と1だけを定める。ほかはunsupported（固定部分の印0）。successはflags bit0が立ち、後始末も済んだ場合だけ。
   flags bit0は後始末の成功を意味しない。満たさなければcompleted failed（形は同じ。statusは
   止まらない/走らない = timeout、DMが応えない = line、cmderr = fault）。待ちと後始末はmax_op_msのうちに行う。
 - ndmresetを解いた後の待ちは§2。DMが答えなければstatus lineのcompleted failed。必要な後始末が済まなければconnectionを閉じる（§4）。
-- flags のほかの bit は 0。reset の後は havereset を確認応答し、haltreq を下ろす（mode 2 は止めたまま）。
+- flags のほかの bit は 0。reset の後は havereset を確認応答し、haltreq を下ろす（mode 1 は止めたまま）。
 
 reset は ndmreset を使う。**reset の op はリセットの線を動かさない**: リセットの線が動くのは、attach の reset TLV（§3）か、host が自分で治具のインターフェースを使うときだけ。
 
@@ -453,7 +456,7 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
 | 0x13 | connections | first(u8) | §2.1 | 不要 | 必須 |
 
 - scanのkindは2 = arm-adi。idはscan、attachともDPIDR。要求と応答の形は§3と同じ。
-- scanのTLVは0x01 max_speed、0x06 targetsel。attachのTLVは0x02 targetsel、0x05 reset（任意、§3）。
+- scanのTLVは0x01 max_speed、0x02 targetsel。attachのTLVは0x02 targetsel、0x04 reset（任意、§3）。
 - **wake / 設定の手順**（§1 の 1）: JTAG から SWD への切り替え、dormant からの wake、与えられたときの TARGETSEL。swd は scratch のレジスタを名指さない。
 - **速さの確認**: max_speed以下でDPIDRの読みがACK OKと正しいパリティで終わる速さを選ぶ。
   scratchの書込み/読戻しは行わない。読出しとACKだけでは書込みデータの正しさを保証しないため、
@@ -472,7 +475,7 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
   connectionは指定の有無と値を保持する。v1では同じピンの組に1接続だけを持ち、targetselが同じでも違っても、
   そのピンを含むattachはunavailable（cause 1）。切替えはdetach後にattachする。
   scan は targetsel なしで試す（TARGETSEL が要る multidrop の
-  target は scan に出ない。scan の TLV 0x06 targetsel で 1 つだけ指定して試せる）。
+  target は scan に出ない。scan の TLV 0x02 targetsel で 1 つだけ指定して試せる）。
 - swdのconnectionにはコンソールは乗らない。
 
 ## 6. `oep.target.arm-adi`

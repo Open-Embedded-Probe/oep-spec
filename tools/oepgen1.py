@@ -40,7 +40,7 @@ def check(reg: dict) -> list[str]:
         errors.append(f"unknown table kinds {sorted(set(reg) - top)} (registry header)")
     if set(reg.get("common", {})) - {"enum"}:
         errors.append(f"unknown common tables {sorted(set(reg['common']) - {'enum'})} (registry header)")
-    iface_keys = {"name", "revision", "fn", "target", "op", "tlv", "enum", "event", "status", "reject_reasons", "retired", "line_names", "setting_names"}
+    iface_keys = {"name", "revision", "fn", "target", "op", "tlv", "enum", "event", "status", "reject_reasons", "retired", "line_names", "names", "family"}
     core_keys = {"op", "tlv", "enum", "event", "status", "reject_reasons", "retired"}
     for iface in reg.get("interface", []):
         if set(iface) - iface_keys:
@@ -132,12 +132,33 @@ def check(reg: dict) -> list[str]:
         for line in iface.get("line_names", {}):
             if line.startswith("x-") or "." in line or not 1 <= len(line.encode()) <= 32 or not re.fullmatch(r"[a-z0-9_-]+", line):
                 errors.append(f"{n}: line name {line!r} is not a standard name (1-32 of a-z 0-9 _ -, no x- prefix, no '.')")
-        for name in iface.get("setting_names", {}):
-            if "." in name or not 1 <= len(name.encode()) <= 48 or not re.fullmatch(r"[a-z0-9-]+", name):
-                errors.append(f"{n}: setting name {name!r} is not a standard name (1-48 of a-z 0-9 -, no '.')")
+        for context, tags in iface.get("tlv", {}).items():
+            for tag_name, tag in tags.items():
+                if tag & 0x7F == 0x7F:
+                    errors.append(f"{n}: tlv.{context} {tag_name} uses 0x7F, the named extension in every context (core §2.2)")
+        for lst, listed in iface.get("names", {}).items():
+            for name in listed:
+                if "." in name or not 1 <= len(name.encode()) <= 48 or not re.fullmatch(r"[a-z0-9-]+", name):
+                    errors.append(f"{n}: names.{lst} {name!r} is not a standard name (1-48 of a-z 0-9 -, no '.', core §7.7)")
         for kind_name, kind in iface.get("event", {}).items():
             if not 0x01 <= kind <= 0x7F:
                 errors.append(f"{n}: event {kind_name} = {kind:#x} outside the interface range 0x01-0x7F")
+    families: dict[str, dict] = {}
+    for iface in reg["interface"]:
+        fam = iface.get("family")
+        if not fam:
+            continue
+        spaces = families.setdefault(fam, {})
+        groups = [(f"tlv.{c}", t) for c, t in iface.get("tlv", {}).items() if c not in ("describe", "unavailable_payload", "unsupported_payload")]
+        groups += [(f"enum.{e}", v) for e, v in iface.get("enum", {}).items()]
+        groups += [("op", {o["name"]: o["code"] for o in iface.get("op", []) if o["code"] >= 0x10})]
+        for space, values in groups:
+            by_name, by_value = spaces.setdefault(space, ({}, {}))
+            for k, v in values.items():
+                if by_name.setdefault(k, v) != v:
+                    errors.append(f"family {fam}: {space} {k} is {v:#x} in {iface['name']}, {by_name[k]:#x} elsewhere (core §2.5 rule 4)")
+                if by_value.setdefault(v, k) != k:
+                    errors.append(f"family {fam}: {space} {v:#x} is {k} in {iface['name']}, {by_value[v]} elsewhere (core §2.5 rule 4)")
     for enum, values in reg.get("common", {}).get("enum", {}).items():
         if enum == "mark_kind":
             for k, v in values.items():
@@ -217,8 +238,9 @@ def cpp(reg: dict, digest: str) -> str:
                 L.append(f'constexpr const char *kLineName{camel(k)} = "{k}";')
             L.append("constexpr const char *const kLineNames[] = {" + ", ".join(f'"{k}"' for k in names) + "};")
             L.append(f"constexpr unsigned kLineNameCount = {len(names)};")
-        for k in iface.get("setting_names", {}):
-            L.append(f'constexpr const char *kSetting{camel(k)} = "{k}";')
+        for lst, names in iface.get("names", {}).items():
+            for k in names:
+                L.append(f'constexpr const char *kName{camel(lst)}{camel(k)} = "{k}";')
         L.append(f"}}  // namespace {ns}")
     L += ["", "}  // namespace reg", "}  // namespace v1", "}  // namespace oep", ""]
     return "\n".join(L)
@@ -270,8 +292,9 @@ def c(reg: dict, digest: str) -> str:
                 L.append(d(up(ns, enum, k), v))
         for k in iface.get("line_names", {}):
             L.append(d(up(ns, "LINE_NAME", k), k))
-        for k in iface.get("setting_names", {}):
-            L.append(d(up(ns, "SETTING", k), k))
+        for lst, names in iface.get("names", {}).items():
+            for k in names:
+                L.append(d(up(ns, "NAME", lst, k), k))
     L += ["", "#endif  // OEP_V1_REGISTRY_C_H", ""]
     return "\n".join(L)
 
@@ -300,13 +323,13 @@ def py(reg: dict, digest: str) -> str:
                        for e, vals in iface.get("enum", {}).items())
         own = ", ".join(f'"{k}": 0x{v:02X}' for g in ("status", "reject_reasons") for k, v in iface.get(g, {}).items())
         lines = ", ".join(f"{k!r}: {v!r}" for k, v in iface.get("line_names", {}).items())
-        settings = ", ".join(f"{k!r}: {v!r}" for k, v in iface.get("setting_names", {}).items())
+        names = ", ".join(f"{lst!r}: {{" + ", ".join(f"{k!r}: {v!r}" for k, v in d.items()) + "}" for lst, d in iface.get("names", {}).items())
         head = (f'name="{iface["name"]}", revision={iface["revision"]}, target={json.dumps(iface.get("target")) if "target" in iface else "None"}, '
                 if "name" in iface else "")
         lock_free = f"{{{free}}}" if free else "set()"
         L += [f'{var} = _NS({head}op={{{ops}}}, lock_free={lock_free},',
               f"    tlv={{{tlv}}}, event={{{ev}}}, enum={{{en}}}, own={{{own}}},",
-              f"    line_names={{{lines}}}, setting_names={{{settings}}})"]
+              f"    line_names={{{lines}}}, names={{{names}}})"]
         if "name" in iface:
             L.append(f'INTERFACES["{iface["name"]}"] = {var}')
     return "\n".join(L) + "\n"
@@ -344,7 +367,7 @@ def js(reg: dict, digest: str) -> str:
               f"  tlv: {tlv},",
               f"  event: {obj(iface.get('event', {}))}, enum: {en}, own: {obj(own)},",
               "  line_names: Object.freeze({" + ", ".join(f"{k}: {json.dumps(v)}" for k, v in iface.get("line_names", {}).items()) + "}),",
-              "  setting_names: Object.freeze({" + ", ".join(f"{json.dumps(k)}: {json.dumps(v)}" for k, v in iface.get("setting_names", {}).items()) + "}),",
+              "  names: Object.freeze({" + ", ".join(f"{json.dumps(lst)}: Object.freeze({{" + ", ".join(f"{json.dumps(k)}: {json.dumps(v)}" for k, v in d.items()) + "})" for lst, d in iface.get("names", {}).items()) + "}),",
               "};"]
         if "name" in iface:
             L.append(f"INTERFACES['{iface['name']}'] = {var};")
