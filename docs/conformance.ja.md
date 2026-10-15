@@ -125,6 +125,9 @@ fn 0のconfirm / list / describe / clock / lock_stateは方針の対象から除
   transport を試す順（transports §3）。排他で開く（transports §3）。DTR / RTS を立てる（transports §4）。
 - **confirm と revision**: 扱える範囲を送り、その後は使っている revision を `min_rev = max_rev` で送る（§7.1）。revision を知らない
   インターフェースは使わない（§2.8）。
+- **任意の op と機能**: 任意の op は、その fn の describe の ops に立っているときだけ送る。立っていなければ、その op を使わない道を取る
+  （例: console の marks が無ければ read の from 3 を使わず host 側で位置を覚える、write が無ければ入力を送らない）。op でない任意の機能も、
+  describe（features、mechanisms、modes など）が宣言するものだけを使う（core §1.2、§2.8、§7.4）。必須の op は describe を待たずに使ってよい。
 - **待ち**: すべての要求に §4.4 の下限、自分のリンクの要求も含む。UART ブリッジでの転送時間、その transport での最初の confirm の
   答えまでは `min_max_frame` で（§4.4）。状態変更前にmax_op_msを取得し、操作が要求全体の短い上限を定めない限りmax_op_msを使う。
   DMIの明示的な待ちの和やrunのtimeout_msだけで内部再試行・準備・後始末の時間を省かない（§4.4）。

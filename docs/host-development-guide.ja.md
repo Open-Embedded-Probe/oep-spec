@@ -253,6 +253,9 @@ rejected は要求が受け付けられなかったこと、completed failed / p
 
 - **プロトコルの revision**: 経路の最初の confirm で扱える範囲を送り、その後は `min_rev = max_rev =` 使っている revision を送る
   （core §7.1）。rejected unsupported なら、TLV 0x01 が probe の扱える revision を示す。revision は経路ごと（TCP は接続ごと）。
+- **任意の op**: 任意の op（console の marks / clear / mark / write、riscv-dm の halt など）は、その fn の describe の ops に立っているときだけ
+  使う。立っていない op を送ると unknown_operation で、最小の構成の probe（たとえば open / read / close / streams だけの console）でも動くよう、
+  代わりの道を用意する（core §1.2）。
 - **インターフェースの revision**: list は fn ごとに (name, instance, revision) を返す。知らない revision のインターフェースは使わない
   （core §2.8）。probe は古い revision を別の fn で出してよいので、知っているほうを選ぶ。instance は (name, revision) ごとの識別子で、欠番を許す
   （core §7.2）。
