@@ -370,11 +370,18 @@ raw dmiで抽象コマンドやresetからhalt待ちを組む場合は、待ち�
   subscribe のし直しだけである（core §10.3）。経路を閉じて開き直したとき（TCP の開き直し、USB の挿し直し、§8）も、購読は閉じた
   経路へ送り続け、その分は捨てられる（transports §3）。host は新しい経路で、続けたい fn をすべて同じ条件で subscribe し直す
   （seq は 0 から。間に失った分は seq と position の飛びで分かる）。
-- キャプチャの流し続けには独自の規則がある: 送る余地が無いと probe は新しい区画を丸ごと捨て、stop の前に取った分は送り続け、stop の後で
-  受けた位置の終わりが status の write_pos と等しくなれば host はすべてを持っている（[キャプチャ](../interfaces/oep-if-capture.ja.md) §2.1）。
+- キャプチャの流し続けには独自の規則がある: 送る余地が無いと probe は新しい区画を丸ごと捨て、stop の前に取った分は送り続ける。stop の後で
+  受けた位置の終わりが status の write_pos と等しくなっても、それは末尾に着いたことだけを示す。全部を受けたと言えるのは、位置の飛び
+  （欠落）無く受けたか、欠けた所を read で回収したときだけである（[キャプチャ](../interfaces/oep-if-capture.ja.md) §2.1 の規則 2）。
   probe は区画が終わる前にその区画のデータを送ることがある。トラックがエラーで止まったら（stopped reason 2、state 6）、status を読み、
   受けたデータのうち write_pos から先を捨てる（区画の中で落とした区画は、データではない。キャプチャ §2.2）。受けている
   間はロックを保つ。
+
+- **キャプチャの帯域と形式**（キャプチャ §1、§1.3〜§1.4、§3.9、§3.10）: host は configure の応答（layout、block、carriage、rate）から最悪の帯域を
+  計算し、OEP の経路（通知）に収まるかを自分で判断する（probe は host 側の帯域を知らない。overflow は外部の経路だけ）。形式 1 / 2 は
+  ブロックの長さが可変なので、区画の先頭から順にブロックを読む（途中から読まない）。外部の経路は start の前から読み始め、OEPX の印で
+  世代に同期し、stop か完了の後の status の write_pos のバイトの数で世代を終える（制御の経路との到着順は保証されない）。rearm 1 では、
+  triggered の record の飛びを見て、op triggers で記録を読み直す（通知は落ちうる）。
 
 captureの世代は同じboot内で使い回さない。0xFFFFFFFFを使い切ると、既存データの読出し・解放はできるが、新しいstartは再起動までcause 2で断られる。
 再起動後はboot_idを確かめ、新しいsessionとplanから設定し直す（capture §0）。

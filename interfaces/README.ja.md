@@ -36,7 +36,7 @@ host は list で見つけて要るものだけを使う。
 | I2C target | 1つの7bit address、小さいframe/queue | stretch、内部pull-up、受信timestampのTLV |
 | SPI target | 1つの対応mode、1回のarm、小さいframe/queue | 全mode、LSB先、受信timestamp、全fnとの同時使用 |
 | capture | 1トラック/1役割/ワンショットmode1、即時trigger、polling | query/force/calibration/通知/group、mode2を採らない場合のrelease、残るmode。別modeを選ぶ場合はそのmodeの契約を満たす |
-| capture-group | 必要なトラックだけを宣言し、bind/start/stop/statusで組を扱う | 通知、全トラックの組合せ。連動trigger/pretriggerは将来の定義へ |
+| capture-group | 必要なトラックだけを宣言し、bind/start/stop/statusで組を扱う | 通知、全トラックの組合せ、出来事の元（トリガの式、§4.4、features bit 0）とforce |
 | wire | attach method0/detach/connections、1接続 | scan、複数接続、console、RISC-Vのattach method1 |
 | RISC-V target | dmiだけ | halt/resume/reset/block/run/step、チップ固有flash手順 |
 | ARM target | transferだけ | read_block/write_block |
