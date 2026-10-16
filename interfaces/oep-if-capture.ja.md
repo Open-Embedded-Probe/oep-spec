@@ -43,9 +43,13 @@ status、区画の情報、出来事、ストリーミングのデータの TLV 
 
 **データの形式（format）**: 区画とストリームのバイトの並びは、形式の番号（registry `data_format`）で決まる。configure の応答の format
 （§3.3）がその番号で、無ければ 0。0 は §1.1 / §1.2 の詰め方（全チャネルを全サンプルで同じビット数）。1 はロジックのブロック（§1.3）、
-2 はアナログのブロック（§1.4）。番号は OEP が足す。
+2 はアナログのブロック（§1.4）。番号は OEP が足す。0xFF は**名前付きの形式**: 形式を逆 DNS の名前（`a-z 0-9 - .`、1〜64 byte）で表し、
+その名前の持ち主が並びの中身、可逆か要約か、最悪の帯域の計算を決める（市販の機材の FPGA の形式など）。名前は revision を持たない
+（形を変えるなら新しい名前、core §2.2 の名前付き拡張と同じ考え方）。名前付きの形式でも、下の「形式によらないもの」は守る（数を知る手段が
+無い機材は、その名前の形式を出さない）。
 
-- probe は、host が configure の format で求めた番号だけを使い、求めが無ければ 0 を使う（host が知らない形式を黙って送らない）。
+- probe は、host が configure の format で求めた番号（0xFF なら format_name の名前）だけを使い、求めが無ければ 0 を使う
+  （host が知らない形式を黙って送らない）。
   使える番号は describe の formats（§3.5）で宣言する。宣言は目安で、その設定で使えるかは query と configure の応答が正（rate とチャネルの
   数によって使えないことがある）。
 - host は、知っている形式だけを読む。
@@ -342,6 +346,8 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 | 0x06 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 | trigger の type が 0 でないときだけ（0） |
 | 0x07 | frontend | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。繰り返す（core §2.3）。同じ role に 2 つあれば rejected malformed | アナログ | 任意（そのチャネルは probe が選ぶ） |
 | 0x08 | format | u8: データの形式（§1、registry `data_format`）。describe の formats に無い番号は unsupported（受け取った tag） | 両方 | 任意（0）。0 以外は critical で送る |
+| 0x10 | format_name | 名前（text、1〜64 byte、§1 の名前付きの形式）。describe の format_names に無い名前は unsupported | 両方 | format 0xFF のときだけ。critical で送る |
+| 0x11 | data_path | u8: 0 OEP の通知と read、1 外部の経路（§3.9） | 両方 | 任意（0）。1 は critical で送る |
 | 0x09 | carriage | role(u8)、kind(u8)、d(u32)。チャネルの運び方と分解能（§1.3 / §1.4）。ロジックの kind は enum `logic_carriage`（0 raw、1 events）、アナログは `analog_carriage`（0 packed、1 minmax、2 mean）。役割ごとに 1 つ、繰り返す | 両方 | format 1 / 2 のときだけ（無い役割は raw / packed、d 1）。critical で送る |
 | 0x0A | trigger_pulse | level(u8: パルスの間のレベル)、cond(u8: 0 長い、1 短い、2 範囲)、min(u32)、max(u32)（元のサンプルの数。cond 0 は min より長い、1 は max より短い、2 は min 以上 max 以下） | ロジック | trigger の type 5（pulse）のときだけ |
 | 0x0B | trigger_pattern | edge_role(u8: 0xFF なし)、edge(u8: trigger の edge の value)、n(u8)、mask(n byte)、value(n byte)（ビット k が役割 k。mask の立つ役割がすべて value のレベルのとき。edge_role がなければその間ずっと、あればその役割のエッジの瞬間） | ロジック | trigger の type 6（pattern）のときだけ。1 つだけ（並べた OR は予約。2 つ以上は unsupported） |
@@ -404,6 +410,7 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 | 0x08 | reference | source(u8、enum `reference_source`: 0 電源、1 内部、2 外部)、mv(u32)、how(u8、enum `reference_how`: 0 公称、1 測った)。ADC の基準電圧。電源が基準の ADC では、同じ生の値の意味が電源電圧で変わる。scale の 1 次式はこの電圧を前提にした換算 | アナログ |
 | 0x09 | format | u8: 使うデータの形式（§1）。0 以外では必ず返す。0 では省いてよい | 両方 |
 | 0x0A | block | L(u32)。形式 1 / 2 のブロックの元のサンプルの数（§1.3 / §1.4）。形式 1 / 2 で必ず返す | 両方 |
+| 0x0E | format_name | 使う名前付きの形式の名前（format 0xFF のとき必ず返す） | 両方 |
 
 ### 3.4 通知（core §10）
 
@@ -443,6 +450,8 @@ probeはより大きい経路を使え、mode 3を提供しない最小構成に
 | 0x44 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)。入力ピンの範囲の候補ごとに1つ（アナログ）。番号はconfigureのfrontendで選ぶ |
 | 0x45 | formats | u8 の列: 0 のほかに使えるデータの形式（§1）。無ければ 0 だけ |
 | 0x46 | carriage | kinds(u8: kind のビット集合)、min_d(u32)、max_d(u32)（D > 1 で使える範囲。D = 1 はいつも使える）。形式 1 / 2 を宣言するとき |
+| 0x4A | format_names | 名前（text）。使える名前付きの形式ごとに 1 つ、繰り返す |
+| 0x4B | external_data | kind(u8)、値。外部の経路（§3.9）。kind 1 = USB の bulk IN: interface(u8)、endpoint(u8)。kind 2 = TCP: port(u16)。経路ごとに 1 つ |
 
 - 必須の宣言はops、1つ以上のmode、rate_range、channels、trigger、およびplanで使うrole_channels/channel_group。
   アナログはfrontendも1つ以上宣言する。featuresは値0なら省略できる。
@@ -519,6 +528,24 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
 - 結合とオフセット: scale の 1 次式（§1.2 規則 4）は、offset を含めた入力ピンの電圧への換算。AC では直流の成分が無いので、host は平均の値を
   電圧の照合に使わない。
 - 外部クロック（clock）: 番号と形だけを予約する（サンプルをその役割の線のエッジで取る）。規則は追加の定義で決め、それまでは unsupported。
+
+### 3.9 データの外部の経路（任意）
+
+**制御は OEP の経路のまま、データだけを別の経路に OEP の見出しなしで出す**（external binding、[構想](../docs/project-concept.ja.md)）。データが CPU を
+通らない機材（GPIF などから USB へ直接出す）や、見出しの費用が間に合わない速さのための任意の定義。describe の external_data で経路を宣言する。
+
+- configure の data_path 1（critical）で選ぶ。v1 では **1 つの経路は 1 つのトラック**（複数のトラックを 1 つの経路に混ぜる形は、後で
+  名前付きの形式か kind で足す）。
+- data_path 1 のトラックは、OEP のデータの通知を出さず、read は rejected unavailable（cause 6）。制御（configure、start、stop、status、segments、
+  release）と出来事は OEP の経路のまま。
+- **世代の始まりの印**: start の後、probe は経路に**最初に 16 byte の印**を出す: magic "OEPX"（4 byte）、generation(u32)、fn(u16)、format(u8)、
+  予約（5 byte、0）。position はその印の後のバイトから 0 で数える（§1 のバイトの並び）。host は印で世代に同期する（読み残しや再接続の後も）。
+- **世代の終わり**: 制御の経路と外部の経路の到着順は保証されないので、境目はバイトの数で決める。probe は stop か完了で、その世代の
+  データを送り切るか（端数のパケットも送る）捨て、status の write_pos を**実際に経路へ送ったバイトの数**（印を除く）にする。host は write_pos
+  まで読んでその世代を終える。その後のバイトは、次の印から読む。
+- **落とし**: 経路（bulk、TCP）そのものは落とさない。probe の中のあふれは、§2.2 の区画の隙間、status の dropped、segments の gap で知らせる。
+- **経路が切れたら**（USB の切断、TCP の切断）、そのトラックはエラーで止まる（state 6、stopped reason 2）。
+- 費用: 1 世代に 16 byte。データごとの見出しは無い。
 
 ## 4. `oep.fixture.capture-group`（一括開始と出来事の元）
 

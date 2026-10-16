@@ -612,6 +612,8 @@ trigger_pulse = 0x0A            # level(u8) cond(u8: 0 longer, 1 shorter, 2 with
 trigger_pattern = 0x0B          # edge_role(u8, 0xFF none) edge(u8) n(u8) mask[n] value[n], trigger type pattern
 threshold = 0x0C                # critical: group(u8) mv(i32) hysteresis_mv(u32) (oep-if-capture §3.8)
 clock = 0x0F                    # reserved: role(u8) edge(u8), external clock (oep-if-capture §3.8)
+format_name = 0x10             # critical: the named format (oep-if-capture §1), with format 0xFF
+data_path = 0x11               # u8: 0 OEP, 1 external (oep-if-capture §3.9); 1 critical
 [interface.tlv.configure_answer]  # the answer of configure and query
 actual_rate = 0x01
 layout = 0x02                   # w(u8, 1-128, any integer) C(u8) pos[C](u8)
@@ -620,6 +622,7 @@ actual_segments = 0x04
 format = 0x09                   # u8: the data format in use; required when not 0
 block = 0x0A                    # L(u32): original samples a block, formats 1 / 2
 threshold_used = 0x0B           # group(u8) mv(i32) hysteresis_mv(u32)
+format_name = 0x0E             # the named format in use, with format 0xFF
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error: why state is 6
 [interface.tlv.data]            # the data frame's TLV tail (core §10.2)
@@ -633,14 +636,23 @@ trigger = 0x43                  # types(u32 bit set) max_pretrigger(u32)
 formats = 0x45                  # u8 list: the data formats besides 0
 carriage = 0x46                 # kinds(u8 bits) min_d(u32) max_d(u32): the carriages and the d range above 1
 threshold = 0x47                # group min_mv max_mv step_mv n presets m channels (oep-if-capture §3.8)
+format_names = 0x4A             # text, repeated: the named formats
+external_data = 0x4B            # kind(u8) value: 1 USB bulk IN interface(u8) endpoint(u8), 2 TCP port(u16) (oep-if-capture §3.9)
 [interface.event]               # every event carries its generation (oep-if-capture §3.4)
 segment = 0x01                  # the segment record (oep-if-capture §2)
 stopped = 0x02                  # reason(u8) error(u8) generation(u32)
 triggered = 0x03                # serial(u32) trigger_index(u32) trigger_ns(u64) generation(u32)
+[interface.enum.external_kind]  # oep-if-capture §3.9
+usb_bulk_in = 1
+tcp = 2
+[interface.enum.data_path]
+oep = 0
+external = 1
 [interface.enum.data_format]     # oep-if-capture §1; OEP adds numbers
 packed = 0                      # §1.1 / §1.2
 logic_blocks = 1                # §1.3: per-channel D, raw / events
 analog_blocks = 2               # §1.4: per-channel packed / minmax / mean
+named = 0xFF                    # a reverse-DNS name in format_name (oep-if-capture §1)
 [interface.enum.logic_carriage] # oep-if-capture §1.3
 raw = 0
 events = 1
@@ -711,6 +723,8 @@ format = 0x08                   # u8: the data format (oep-if-capture §1; data_
 carriage = 0x09                 # critical: role(u8) kind(u8) d(u32) with format 1 / 2 (oep-if-capture §1.3 / §1.4)
 coupling = 0x0D                 # critical: role(u8) kind(u8: 0 DC, 1 AC, 2 GND) (oep-if-capture §3.8)
 offset = 0x0E                   # critical: role(u8) mv(i32)
+format_name = 0x10             # critical: the named format (oep-if-capture §1), with format 0xFF
+data_path = 0x11               # u8: 0 OEP, 1 external (oep-if-capture §3.9); 1 critical
 [interface.tlv.configure_answer]  # the answer of configure and query
 actual_rate = 0x01
 layout = 0x02                   # s(u8) o(u8) b(u8, 1-31) C(u8) order[C](u8)
@@ -724,6 +738,7 @@ format = 0x09                   # u8: the data format in use; required when not 
 block = 0x0A                    # L(u32): original samples a block, formats 1 / 2
 coupling_used = 0x0C            # role(u8) kind(u8)
 offset_used = 0x0D              # role(u8) mv(i32)
+format_name = 0x0E             # the named format in use, with format 0xFF
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error
 [interface.tlv.data]
@@ -742,14 +757,23 @@ formats = 0x45                  # u8 list: the data formats besides 0
 carriage = 0x46                 # kinds(u8 bits) min_d(u32) max_d(u32): the carriages and the d range above 1
 coupling = 0x48                 # frontend(u8) kinds(u8 bits) (oep-if-capture §3.8)
 offset = 0x49                   # frontend(u8) min_mv(i32) max_mv(i32) step_mv(u32)
+format_names = 0x4A             # text, repeated: the named formats
+external_data = 0x4B            # kind(u8) value: 1 USB bulk IN interface(u8) endpoint(u8), 2 TCP port(u16) (oep-if-capture §3.9)
 [interface.event]               # as oep.fixture.logic: every event carries its generation
 segment = 0x01
 stopped = 0x02                  # reason(u8) error(u8) generation(u32)
 triggered = 0x03                # serial(u32) trigger_index(u32) trigger_ns(u64) generation(u32)
+[interface.enum.external_kind]  # oep-if-capture §3.9
+usb_bulk_in = 1
+tcp = 2
+[interface.enum.data_path]
+oep = 0
+external = 1
 [interface.enum.data_format]     # oep-if-capture §1; OEP adds numbers
 packed = 0
 logic_blocks = 1
 analog_blocks = 2
+named = 0xFF                    # a reverse-DNS name in format_name (oep-if-capture §1)
 [interface.enum.analog_carriage] # oep-if-capture §1.4
 packed = 0
 minmax = 1

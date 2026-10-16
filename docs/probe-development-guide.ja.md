@@ -230,6 +230,8 @@ target を扱う probe に共通する実装上の注意。
 - **resume と run は出し直さない**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.2、§4.4）。resume の要求が 2 回要る target や、すべて再開したと
   知らせない target は host が扱う: 汎用の名前のインターフェースに target 固有の知識を入れると core §12 の規則 8 に反する。
 - **ブロックのループを速くする変更は、線の上のタイミングを変えうる。** 残す前に複数の target で測る。
+- **キャプチャのストリーミングをするなら max_frame は 256 以上を勧める**（[キャプチャ](../interfaces/oep-if-capture.ja.md) §3.4）。データの通知の
+  見出しは 17 byte で、max_frame 64 では 27%、256 で 7%、1024 で 2% になる。遅いリンクほど、データの形式 1 の events（§1.3）が効く。
 - **コンソールの送りの列**（[コンソール](../interfaces/oep-if-console.ja.md) §2）: write は列の空きに入る分をすぐ受けて答え、target へは列から mechanism の
   運び方で渡す（targetの受け取りを待ってから答えない）。writeを提供する場合の有限な列の大きさはprobeが決める。
   小さい列でもよく、hostはacceptedから未受付の残りを送る。writeなしならTX queueは不要。
