@@ -123,7 +123,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | model、chip、firmware | model, chip, firmware | probe の種類、その MCU、firmware の自由な文字列 | core §7.5 |
 | max_op_ms | max_op_ms | 1つの要求自身の検証・内部の再試行・実行・後始末・応答生成を含む最長の処理時間。同じ経路・別経路の先行要求待ちと経路の転送時間は除く | core §4.4、§7.5 |
 | label | label (firmware) | firmware の固定の channel の名前 | core §7.5 |
-| アドレス | address | `oep://<unit_id>[/<hostのprofile name>]` | host ガイド §5.3 |
+| アドレス | address | `oep://<probe>[/<port>[/<target>]]`。probeはunit_id、portは設定のlabel `S.N`の`S`、targetはhostが決める個体の名前。`any`は明示した「どれでも」 | host ガイド §5.3 |
 | 線の試験 | link test | `oep.probe.link` の source と sink の op。経路を測る | link §2 |
 | restart | restart | `oep.probe.restart`のop。応答を先に送り、restart_max_msのうちにprobe内部を初期化する。OSの列挙やhostの再接続待ちは別 | restart §2 |
 

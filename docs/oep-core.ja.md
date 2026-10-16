@@ -522,7 +522,7 @@ role の番号はインターフェースが定める。これらの値は固定
   1〜3 がシリアルの口（[経路](oep-transports.ja.md) §4）。index は probe の中で経路を指す番号（0 から）で、probe の設定がシリアルの口を指すときもこの番号を
   使う。probe の起動の間は変わらない。
 - **経路の index の不変性**: 経路は、同じ model の firmware の版を越えて index を保つ。経路を足す firmware は、それまで使っていない index を付け、外した index は使い直さない。
-- **unit_id の一意性**: unit_id は個体ごとに違う値にする（チップの固有の番号、など）。保存はあるが固有の番号の無い probe は、最初の起動で乱数から unit_id を作って保存する。
+- **unit_id の一意性**: unit_id は個体ごとに違う値にする（チップの固有の番号、など）。`any` は使わない（host のアドレスで「どれでも」を表す、[hostガイド](host-development-guide.ja.md) §5.3）。保存はあるが固有の番号の無い probe は、最初の起動で乱数から unit_id を作って保存する。
   どちらも無い probe は `x-` で始まる unit_id を使う（一意ではない）。host は `x-` で始まる unit_id で経路をまとめず、それで probe を名指さず、セッションを越えて持つもの（たとえば口のリンクの速さの記録）のキーにしない。同じ口のほかの個体が何も引き継がないためである。
 - **unit_id の不変性**: unit_id は個体の値（チップの固有の番号、保存した乱数。`x-` の unit_id だけは例外）だけから作り、firmware の版、profile、ビルド、経路の種類で
   変えない。接尾辞を足さない。host と OS は unit_id（= USB の serial number、[経路](oep-transports.ja.md) §3）で probe を覚える。

@@ -159,20 +159,64 @@ probe への経路を閉じる。ブローカーの probe への経路が無く�
 再起動の後、保存した設定は通常の起動と同じに掛かる（配線の設定はhostが再適用する）。
 再起動の手順はtargetのreset/resumeを意図して行わないが、ピンのリセット状態や外部回路の影響は別に確認する（[再起動](../interfaces/oep-if-restart.ja.md) §2）。
 
-### 5.3 probeとhostの接続プロファイルの名指し方
+### 5.3 probe、口、targetの名指し方
 
-- **アドレス**: host が probeと接続プロファイルを文字で名指すときは `oep://<unit_id>[/<profile name>]` と書く。authority は unit_id（core §7.5、小文字）、
-  path はhost側の接続プロファイルの名前1 つだけ。path の無い `oep://<unit_id>` は probe 自身。
-  IDE や設定のファイルが probe を覚えるときはこの形で覚える（VID:PID や口の名前ではなく）。unit_idとプロファイルの名前は、どちらも URL の中で
-  encode の要らない文字だけを使う。
-- **インターフェース**: 文字で 1 つのインターフェースを指すとき（CLI、設定のファイル、ログ）は `name#instance` と書く（instance は list の値、
-  0 も有効で、`#0` は省いてよい）。例: `oep.fixture.uart#1` は instance=1 の `oep.fixture.uart` であり、list の2番目という意味ではない。
-  revision は別に明示して保存・選択し、(name, instance, revision) を解決する。欠番なら未提供として扱う。
+**アドレス**: hostが接続先を文字で名指すとき（CLI、IDE、設定のファイル、ログ）は次の形で書く。
 
-接続プロファイルはhostが持つ配線/速さ/target選択の記述で、probeの標準設定項目ではない。
-labelを線の役目に使う場合、`nrst`、`power_hi`、`power_lo`を慣行にできる。複数の接続先にはhostのプロファイル名Sを用い、
-`S.N`の設定label、単一接続先なら`N`の設定label、最後にfirmwareの`N`の順で探す。ASCIIの大小文字を区別せず、
-同じ段で複数channelが見つかれば曖昧として使用しない。probeはこの名前から線を動かさない。
+```text
+oep://<probe>[/<port>[/<target>]]
+```
+
+| 段 | 何を指すか | 値 |
+|---|---|---|
+| probe | probeの個体 | unit_id（core §7.5）。口の名前やVID:PIDでは覚えない |
+| port | probeのどのピンの組か | probeの設定のlabel `S.N` の `S`（下の「口の名前」） |
+| target | 線の先の実際のチップ | hostが決めるtargetの名前（下の「targetの名前」） |
+
+- どの段も`a-z 0-9 - .`だけを使い、URLのencodeを要らない。`:`（URLのportの欄）と`*`（シェルのglob）は使わない。
+- `any`は「どれでも」を表す予約語で、unit_id、口の名前、targetの名前に使わない。全部を指定するのが基本で、`any`は利用者が明示して書いたときだけ探す。
+- 段を書かないのは「指定しない」ではなく、場所を言い切ったことを表す: `oep://<probe>`はprobe自身、`oep://<probe>/<port>`はその口で、先のチップを確かめない。
+
+**口の名前**: 口はprobeに保存した設定のlabelで名付ける（[設定](../interfaces/oep-if-probe-config.ja.md) §1）。`S.swdio`、`S.swclk`、`S.swio`、`S.nrst`のように
+`S.N`の形のlabelを持つchannelの組が、名前`S`の口である。probeに保存されるので、どのhostからも同じ名前で見える。
+名前つきの口を1つも持たないprobeは、名前の無い口を1つ持つとみなす（`any`でだけ選べる）。
+口の名前はwireの種類を決めない（rvswdとswdは同じ線の名前を使いうる）。どのwireでつなぐかは、targetの名前の系統、hostの設定、利用者の指定で決める。
+
+線の役目としてのlabelの探し方: 口`S`の線`N`は、`S.N`の設定label、口が1つだけなら`N`の設定label、最後にfirmwareの`N`の順で探す。
+ASCIIの大小文字を区別せず、同じ段で複数channelが見つかれば曖昧として使用しない。probeはこの名前から線を動かさない。
+`nrst`、`power_hi`、`power_lo`を慣行にできる。
+
+**targetの名前**: チップの個体を表す。attachの応答のtarget_id（debug §1）は系統と版の値で、個体を見分けない。
+個体の値（CH32のUIDなど）の読み方はチップの知識なのでhostが持ち、名前は`<系統>-<個体の値の16進>`（例`ch32v003-0123456789abcdef`）とする。
+hostの設定で別名を付けてよい。
+
+**解決**:
+
+1. probeと口の段を、attachせずに分かる情報だけで絞る: ディスカバリーで見えるprobe（unit_id）、その口の名前、targetの名前の系統が使うwireの有無。
+2. 残りが1つでなければ止める（0なら見つからない、2つ以上なら曖昧）。どれかを選んで進まない。
+3. targetの段があれば、その口で作業に使う接続を作り、書込みなどの副作用より前に、その接続でtargetの名前を照合する。違えば何もせずに止める。
+
+targetの段は、探す鍵ではなく、作業の前に照合する値である:
+
+- 個体の値の多くはメモリにあり、読むにはhartを止める（riscv-dmのread_blockはhaltが前提、debug §4.5）。rvswdではattachのwake自体がtargetをリセットしうる（debug §3）。
+  だから照合は、もともとtargetを止める作業（書込み、デバッグ）のついでに、同じ接続で行う。別の接続で確かめてから使うと、その間の差し替えを見逃す。
+- コンソールの監視のようにtargetを止めない作業では、targetの段の照合を既定では行わず、断る。利用者が停止を許したときだけ照合する。
+- 候補の口を1つずつattachしてtargetを探すことは、アドレスの解決に含めない。利用者が明示して実行する道具の機能とし、rvswdの口は既定で飛ばす。
+
+| 書き方 | 意味 |
+|---|---|
+| `oep://<probe>` | probe自身 |
+| `oep://<probe>/<port>` | その口。先のチップは確かめない |
+| `oep://<probe>/<port>/<target>` | その口で、作業の前にそのチップかを照合する |
+| `oep://<probe>/any/<target>` | そのprobeで候補の口が1つに決まれば、そこで照合する |
+| `oep://any/any/<target>` | 見えるprobeと口で候補が1つに決まれば（probe 1台、口1つなど）、そこで照合する |
+| `oep://any/<port>` | その名前の口を持つprobeが1つなら、それを使う |
+
+**インターフェース**: 文字で1つのインターフェースを指すとき（CLI、設定のファイル、ログ）は`name#instance`と書く（instanceはlistの値、
+0も有効で、`#0`は省いてよい）。例: `oep.fixture.uart#1`はinstance=1の`oep.fixture.uart`であり、listの2番目という意味ではない。
+revisionは別に明示して保存・選択し、(name, instance, revision)を解決する。欠番なら未提供として扱う。
+
+wireの速さやtargetの選び方など、つなぎ方の記述はhostが持つ。probeの標準設定項目ではない。
 
 ## 6. 排他とロックの奪い方
 
