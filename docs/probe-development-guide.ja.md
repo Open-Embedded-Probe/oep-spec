@@ -211,7 +211,8 @@ target を扱う probe に共通する実装上の注意。
   DMSTATUS が「走っている」に見えることがある: version の欄が合わない値は雑音として扱う。
 - **フレームの間の線の休み方は線の定義の一部**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §3.1、§3.2、§5）で、idle_clock が許す所では target
   ごとに host が選び、rvswd では host が選ばなければ probe が target_id から決める（debug §3.1、設定 `rvswd-rest` で口ごとに OFF）。線の節に従い、
-  やり取りが失敗した後は線を駆動しないで休ませる（debug §2）。
+  やり取りが失敗した後は線を駆動しないで休ませる（debug §2）。接続を閉じた後は、線切れでなければその休みの状態を保持する（debug §2、設定
+  `wire-hold` で口ごとに OFF）。target によっては駆動が止まると数 ms でデバッグの状態を失う（CH32L103 は約 5 ms）。
 - **target ごとに違う設定は、基本は host が判定する。タイミングに関わるものなどは probe の自動の判定を足せる**（core §12 規則 8）。考える順:
   1. **host から間に合うか**: 設定を誤ると数 ms 以内に target の状態が壊れるもの（例: CH32L103 は rvswd の線を high で休ませると約 1 ms で
      debug module がリセットされ、halt が外れる。CH32X035 は逆に low で休ませると attach できない）は、host が接続先を確かめてから設定を直す

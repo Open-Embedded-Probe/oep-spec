@@ -22,7 +22,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 
 本書の `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd` は:
 
-1. op 0x10 scan、0x11 attach、0x12 detach、0x13 connections を §1〜§2.1 の意味で使う（wire は 0x14 から op を足してよい）。attach、detach、connections は必須。scan は任意で、ops で宣言する;
+1. op 0x10 scan、0x11 attach、0x12 detach、0x13 connections、0x14 holds を §1〜§2.2 の意味で使う（wire は 0x15 から op を足してよい）。attach、detach、connections、holds は必須。scan は任意で、ops で宣言する;
 2. §1 と §2 に従う。swdio / swclk は「ピンの役 1 / 2 の channel」と読み替える;
 3. `oep.target.*` のインターフェースが使う [共通部品](oep-if-common.ja.md) §2 の connection を作る。
 
@@ -113,7 +113,31 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   pull 無しか、その connection でのその線の休みの level に向けた pull とする。idle_clock 1（low）を使う connection のクロックの線では、
   pull 無しか pull-down で、pull-up にはしない。やり取りがまた成功したら、probe は次のやり取りの前に connection の休み方（クロックの線は
   idle_clock の level、データの線はその休み方: rvswd は §3.1、swio は §3.2、swd は §5）に戻す。やり取りが成功している間の、やり取りの間の休み方は wire の節が定めるとおりで、この規則では変わらない。
-- **connectionを閉じる手順はtargetをreset/resumeしない**。ピンの解放や外部回路によるtargetの状態変化までは保証しない。
+- **connectionを閉じる手順はtargetをreset/resumeしない**。外部回路によるtargetの状態変化までは保証しない。
+- **閉じた後の線（保持）**: 線切れ以外で connection が閉じたら（detach、セッションの end / lease の期限切れ / force、core §9）、probe はその線のピンを
+  その connection の休みの状態（rvswd は §3.1 の休ませ方、swio は §3.2、swd は §5）で駆動したまま**保持**する。target によっては、線が駆動されなくなると
+  数 ms でデバッグの状態を失う（CH32L103 は約 5 ms で halt を失い、hart がリセットされる）。host から間に合わないので probe が自動で保つ
+  （core §12 規則 8）。
+  - **OFF にできる**: 設定 `wire-hold`（[設定](oep-if-probe-config.ja.md) §1、key はその口の SWDIO の channel）が off なら保持せず、core §8 の空きの状態にする。
+    項目が無ければ on。ピンに設定の idle か disable があれば、保持せずにそれに従う。
+  - **保持は空きの状態の一種**（core §8）: 保持中のピンは、どのインターフェースも空きのピンと同じに取れる（attach、plan、scan。保持を理由に cause 1
+    にも cause 5 にもしない）。取ったインターフェースが線を引き継ぎ、その組の保持は終わる。attach は wake から始め（2 本とも high から始まる）、
+    休ませ方はその接続で決め直す（§3.1）。口の target が差し替わっていても同じである。
+  - **保持が終わるとき**: ピンが取られた、`wire-hold` が off になった、そのピンに idle か disable の項目が置かれた、probe が再起動した。終わったピンは
+    空きの状態にする。
+  - **線切れでは保持しない**: 線切れで閉じたら、上の「線が応えない間の線」のとおり駆動せず、空きの状態にする。
+  - **見える**: 保持中の口は holds（§2.2）で読める。保持は connection ではなく、connections には出ない。
+
+### 2.2 holds（保持中の口の一覧）
+
+```text
+要求: first(u8)
+応答: more(u8)、count(u8)、count × entry、[TLV]（core §2.3）
+entry: swdio(u16)、swclk(u16)、rest(u8)
+```
+
+- そのインターフェースが §2 の保持で駆動している口を、first 番目から 1 フレームに入る分だけ返す（ページは §2.1 と同じ）。ロックなしで使える。
+- swio は swclk = 0xFFFF。rest は rvswd ではその休ませ方（idle_clock の値: 0 high、1 low）、ほかの wire では 0。
 - connection が閉じたら、その組の channel は core §8 の空きの状態になる（idle_clock の駆動もやめる）。
 
 **connection と hart の状態機械**:
@@ -151,6 +175,7 @@ entry: connection(u32)、swdio(u16)、swclk(u16)、speed_hz(u32)、tid_scheme(u8
 | 0x11 | attach | method(u8: 0 止めない / 1 止める)、swdio(u16)、swclk(u16)、max_speed(u32)、[TLV] | connection(u32)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] | 必要 | 必須 |
 | 0x12 | detach | connection(u32)、[TLV] | — | 必要 | 必須 |
 | 0x13 | connections | first(u8) | §2.1 | 不要 | 必須 |
+| 0x14 | holds | first(u8) | §2.2 | 不要 | 必須 |
 
 - swio の組は swclk = 0xFFFF（1 本の線。swclk ≠ 0xFFFF は宣言が許さない組で、scan でも attach でも §1 のとおり rejected unsupported）。rvswd と swio の scan の entry の kind は 1（riscv-dm）、
   idはscan、attachともDMSTATUS。その connection を使うのは `oep.target.riscv-dm` と `oep.target.console`。
@@ -468,6 +493,7 @@ reset は ndmreset を使う。**reset の op はリセットの線を動かさ�
 | 0x11 | attach | method(u8: 0だけ。ほかはunsupported、固定部分の印0)、swdio(u16)、swclk(u16)、max_speed(u32)、[TLV] | connection(u32)、id(u32)、flags(u8)、speed_hz(u32)、[TLV] | 必要 | 必須 |
 | 0x12 | detach | connection(u32)、[TLV] | — | 必要 | 必須 |
 | 0x13 | connections | first(u8) | §2.1 | 不要 | 必須 |
+| 0x14 | holds | first(u8) | §2.2 | 不要 | 必須 |
 
 - scanのkindは2 = arm-adi。idはscan、attachともDPIDR。要求と応答の形は§3と同じ。
 - scanのTLVは0x01 max_speed、0x02 targetsel。attachのTLVは0x02 targetsel、0x04 reset（任意、§3）。

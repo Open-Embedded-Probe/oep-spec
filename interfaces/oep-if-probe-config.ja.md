@@ -34,6 +34,7 @@ TCPの経路（transports §1）へ届くためのWi-Fiの接続先とIPv4の決
 | `wifi` | entry | ssid_len(u8)、ssid、pass_len(u8)、passphrase | §1.4 |
 | `ipv4` | netif（§1.3の番号） | mode(u8)、address(4)、prefix(u8)、gateway(4)、dns(4) | §1.5 |
 | `rvswd-rest` | channel（その口の SWCLK） | mode(u8: 0 auto、1 high、2 low) | 下 |
+| `wire-hold` | channel（その口の SWDIO） | mode(u8: 0 off、1 on) | 下 |
 
 - keyの範囲（settingのkeys）は、channelの項目ではfn 0のchannels、portの項目ではfn 0の経路の数、wifiではentryの数、ipv4ではdescribeのnetifの数 + 1（keyはnetifの番号で、0はunsupported）。
   channelはfirmware自身が使うchannelでもunsupported（受け取った番号）。
@@ -43,6 +44,9 @@ TCPの経路（transports §1）へ届くためのWi-Fiの接続先とIPv4の決
   channel。high / low はその値に固定し（自動の判定をしない）、auto と項目が無いことは自動の判定を表す。attach の idle_clock の TLV がいつも優先する。
   自動の判定をする probe は、この項目を setting に並べる。
   3 以上の mode は unsupported（受け取った番号）。
+- `wire-hold` は、debug の線の接続を閉じた後の保持（debug §2）を口ごとに止める項目。key はその口の SWDIO の channel。off なら閉じたピンを
+  core §8 の空きの状態にし、on と項目が無いことは保持を表す。debug の線を持つ probe は、この項目を setting に並べる。2 以上の mode は unsupported
+  （受け取った番号）。
   線の役目として名前を使うhostの慣行は[hostガイド](../docs/host-development-guide.ja.md) §5.3。
 - disableはそのchannelの駆動/設定を行わない指定で、起動時と解放時の空き状態の設定より先に効く。
   firmwareの宣言を広げず、無効なchannelを使う要求はunavailable cause 5。
