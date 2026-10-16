@@ -611,9 +611,9 @@ carriage = 0x09                 # critical: role(u8) kind(u8) d(u32) with format
 trigger_pulse = 0x0A            # level(u8) cond(u8: 0 longer, 1 shorter, 2 within) min(u32) max(u32), original samples, trigger type pulse
 trigger_pattern = 0x0B          # edge_role(u8, 0xFF none) edge(u8) n(u8) mask[n] value[n], trigger type pattern
 threshold = 0x0C                # critical: group(u8) mv(i32) hysteresis_mv(u32) (oep-if-capture §3.8)
-clock = 0x0F                    # reserved: role(u8) edge(u8), external clock (oep-if-capture §3.8)
+clock = 0x0F                    # critical: role(u8) edge(u8) qualifier_role(u8) qualifier_level(u8), external clock (oep-if-capture §3.8)
 format_name = 0x10             # critical: the named format (oep-if-capture §1), with format 0xFF
-data_path = 0x11               # u8: 0 OEP, 1 external (oep-if-capture §3.9); 1 critical
+data_path = 0x11               # path(u8: 0 OEP, 1 external) mux(u8) kind(u8) (oep-if-capture §3.9); path 1 critical
 [interface.tlv.configure_answer]  # the answer of configure and query
 actual_rate = 0x01
 layout = 0x02                   # w(u8, 1-128, any integer) C(u8) pos[C](u8)
@@ -623,6 +623,7 @@ format = 0x09                   # u8: the data format in use; required when not 
 block = 0x0A                    # L(u32): original samples a block, formats 1 / 2
 threshold_used = 0x0B           # group(u8) mv(i32) hysteresis_mv(u32)
 format_name = 0x0E             # the named format in use, with format 0xFF
+timebase = 0x0F                 # num(u32) den(u32): the rate of format 3's delta ticks (oep-if-capture §3.8)
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error: why state is 6
 [interface.tlv.data]            # the data frame's TLV tail (core §10.2)
@@ -637,7 +638,8 @@ formats = 0x45                  # u8 list: the data formats besides 0
 carriage = 0x46                 # kinds(u8 bits) min_d(u32) max_d(u32): the carriages and the d range above 1
 threshold = 0x47                # group min_mv max_mv step_mv n presets m channels (oep-if-capture §3.8)
 format_names = 0x4A             # text, repeated: the named formats
-external_data = 0x4B            # kind(u8) value: 1 USB bulk IN interface(u8) endpoint(u8), 2 TCP port(u16) (oep-if-capture §3.9)
+external_data = 0x4B            # kind(u8) muxes(u8 bits) value: 1 USB bulk IN, 2 TCP, 3 UDP, 4 USB isochronous IN (oep-if-capture §3.9)
+external_clock = 0x4C           # max_hz(u32) edges(u8 bits) qualifier(u8) (oep-if-capture §3.8)
 [interface.event]               # every event carries its generation (oep-if-capture §3.4)
 segment = 0x01                  # the segment record (oep-if-capture §2)
 stopped = 0x02                  # reason(u8) error(u8) generation(u32)
@@ -645,6 +647,11 @@ triggered = 0x03                # serial(u32) trigger_index(u32) trigger_ns(u64)
 [interface.enum.external_kind]  # oep-if-capture §3.9
 usb_bulk_in = 1
 tcp = 2
+udp = 3                         # each packet a 16-byte header (position, generation, fn)
+usb_iso_in = 4                  # likewise
+[interface.enum.external_mux]
+single = 0
+chunks = 1                      # fn(u16) len(u16) chunks
 [interface.enum.data_path]
 oep = 0
 external = 1
@@ -652,6 +659,7 @@ external = 1
 packed = 0                      # §1.1 / §1.2
 logic_blocks = 1                # §1.3: per-channel D, raw / events
 analog_blocks = 2               # §1.4: per-channel packed / minmax / mean
+state_timed = 3                 # §3.8: per sample delta(u32 timebase ticks) + state, with an external clock
 named = 0xFF                    # a reverse-DNS name in format_name (oep-if-capture §1)
 [interface.enum.logic_carriage] # oep-if-capture §1.3
 raw = 0
@@ -724,7 +732,7 @@ carriage = 0x09                 # critical: role(u8) kind(u8) d(u32) with format
 coupling = 0x0D                 # critical: role(u8) kind(u8: 0 DC, 1 AC, 2 GND) (oep-if-capture §3.8)
 offset = 0x0E                   # critical: role(u8) mv(i32)
 format_name = 0x10             # critical: the named format (oep-if-capture §1), with format 0xFF
-data_path = 0x11               # u8: 0 OEP, 1 external (oep-if-capture §3.9); 1 critical
+data_path = 0x11               # path(u8: 0 OEP, 1 external) mux(u8) kind(u8) (oep-if-capture §3.9); path 1 critical
 [interface.tlv.configure_answer]  # the answer of configure and query
 actual_rate = 0x01
 layout = 0x02                   # s(u8) o(u8) b(u8, 1-31) C(u8) order[C](u8)
@@ -758,7 +766,7 @@ carriage = 0x46                 # kinds(u8 bits) min_d(u32) max_d(u32): the carr
 coupling = 0x48                 # frontend(u8) kinds(u8 bits) (oep-if-capture §3.8)
 offset = 0x49                   # frontend(u8) min_mv(i32) max_mv(i32) step_mv(u32)
 format_names = 0x4A             # text, repeated: the named formats
-external_data = 0x4B            # kind(u8) value: 1 USB bulk IN interface(u8) endpoint(u8), 2 TCP port(u16) (oep-if-capture §3.9)
+external_data = 0x4B            # kind(u8) muxes(u8 bits) value: 1 USB bulk IN, 2 TCP, 3 UDP, 4 USB isochronous IN (oep-if-capture §3.9)
 [interface.event]               # as oep.fixture.logic: every event carries its generation
 segment = 0x01
 stopped = 0x02                  # reason(u8) error(u8) generation(u32)
@@ -766,6 +774,11 @@ triggered = 0x03                # serial(u32) trigger_index(u32) trigger_ns(u64)
 [interface.enum.external_kind]  # oep-if-capture §3.9
 usb_bulk_in = 1
 tcp = 2
+udp = 3                         # each packet a 16-byte header (position, generation, fn)
+usb_iso_in = 4                  # likewise
+[interface.enum.external_mux]
+single = 0
+chunks = 1                      # fn(u16) len(u16) chunks
 [interface.enum.data_path]
 oep = 0
 external = 1
@@ -773,6 +786,7 @@ external = 1
 packed = 0
 logic_blocks = 1
 analog_blocks = 2
+state_timed = 3                 # §3.8: per sample delta(u32 timebase ticks) + state, with an external clock
 named = 0xFF                    # a reverse-DNS name in format_name (oep-if-capture §1)
 [interface.enum.analog_carriage] # oep-if-capture §1.4
 packed = 0
@@ -834,9 +848,13 @@ op = [
   { code = 0x02, name = "unsubscribe", lock = true },    # optional (ops), with subscribe
 ]
 [interface.tlv.bind]            # behavioral selectors are sent critical
-trigger_source = 0x01           # kind(u8) value: kind 1 fn(u16) - the track whose configure trigger is the condition (oep-if-capture §4.4)
+trigger_source = 0x01           # stages(u8) holdoff_ns(u64): the trigger expression (oep-if-capture §4.4)
+stage = 0x02                    # stage(u8) count(u32) within_ns(u64) on_timeout(u8)
+cond = 0x03                     # stage(u8) part(u8: 0 term, 1 abort) term(u8) src(u8: 1 track, 2 external) fn(u16) role(u8) type(u8) args
+trigger_out = 0x04              # role(u8) width_ns(u32) polarity(u8)
 [interface.tlv.describe]        # plus required ops 0x07 and features 0x05
 tracks = 0x40                   # n(u8) n x fn(u16): the tracks it can bind
+trigger_caps = 0x41             # max_stages(u8) max_terms(u8) max_conds(u8) cross_track(u8) types(u32) protocols(u8) trigger_out_latency_ns(u32)
 [interface.tlv.status_answer]
 trigger = 0x02                  # fn(u16) ns(u64) uncertainty_ns(u32), once the event happened (oep-if-capture §4.4)
 [interface.event]               # numbered as the tracks' events; the group's generation (start answer, status) in each
@@ -844,8 +862,28 @@ stopped = 0x02                  # reason(u8) error(u8) generation(u32): as the t
 triggered = 0x03                # trigger_fn(u16) trigger_ns(u64) trigger_uncertainty_ns(u32) generation(u32) (oep-if-capture §4.4)
 [interface.enum.features]       # bits; others are OEP's to allocate (subscribe and unsubscribe are declared by ops)
 trigger_source = 0x01           # oep-if-capture §4.4
-[interface.enum.trigger_source_kind]
-track = 1                       # value fn(u16)
+[interface.enum.trigger_cond]   # the cond TLV's type (oep-if-capture §4.4)
+level = 1
+edge = 2
+cross_up = 3
+cross_down = 4
+pulse = 5
+pattern = 6
+above = 7
+below = 8
+analog_pulse = 9
+timer = 10
+serial = 11
+[interface.enum.cond_src]
+track = 1
+external = 2
+[interface.enum.serial_protocol]
+uart = 1
+i2c = 2
+spi = 3
+[interface.enum.pin_role]       # this group's plan roles (oep-if-capture §4.4)
+trig_in = 1
+trig_out = 2
 
 [interface.enum.state]          # as the tracks'
 unconfigured = 0
