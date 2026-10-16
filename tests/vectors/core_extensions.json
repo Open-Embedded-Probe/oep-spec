@@ -1,5 +1,5 @@
 {
-  "about": "Independent examples, not a sequential session. Successful calls have a valid session where needed; no_session has no active session; result_lost has discarded replay bytes. A named extension TLV (0x7F) of a name the reader does not know adds no behavior, and follows both empty and nonempty fixed result payloads (core §2.3).",
+  "about": "Independent examples, not a sequential session. Successful calls have a valid session where needed; no_session has no active session; result_lost has discarded replay bytes. A named extension TLV (0x7F) of a name the reader does not know adds no behavior, and follows both empty and nonempty fixed result payloads (core §2.3). request_cases: in a request, an unknown name is ignored, or refused unsupported (0xFF) when critical, and a name_len past its value is malformed (core §2.2).",
   "cases": [
     {
       "name": "open with unknown response TLV",
@@ -48,6 +48,40 @@
       "fixed_answer_bytes": 0,
       "request_hex": "01060000000444332211",
       "answer_hex": "020600000c7f11000f696f2e6578616d706c652e6e6f746578"
+    }
+  ],
+  "request_cases": [
+    {
+      "name": "clock with an unknown named extension in the request",
+      "spec": "core §2.2/2.3/7.6",
+      "operation": "clock",
+      "fixed_answer_bytes": 12,
+      "request_hex": "010700000004000000007f11000f696f2e6578616d706c652e6e6f746578",
+      "answer_hex": "0207000100785634126400000000000000"
+    },
+    {
+      "name": "clock with an unknown critical named extension in the request",
+      "spec": "core §2.2/2.3/7.6",
+      "operation": "clock",
+      "fixed_answer_bytes": 12,
+      "request_hex": "01080000000400000000ff11000f696f2e6578616d706c652e6e6f746578",
+      "answer_hex": "020800000bff"
+    },
+    {
+      "name": "clock with a named extension whose name_len passes its value",
+      "spec": "core §2.2/2.3/7.6",
+      "operation": "clock",
+      "fixed_answer_bytes": 12,
+      "request_hex": "010900000004000000007f100010696f2e6578616d706c652e6e6f7465",
+      "answer_hex": "0209000003"
+    },
+    {
+      "name": "clock with a critical named extension whose name_len passes its value",
+      "spec": "core §2.2/2.3/7.6",
+      "operation": "clock",
+      "fixed_answer_bytes": 12,
+      "request_hex": "010a0000000400000000ff100010696f2e6578616d706c652e6e6f7465",
+      "answer_hex": "020a000003"
     }
   ]
 }

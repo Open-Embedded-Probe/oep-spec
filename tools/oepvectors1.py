@@ -234,7 +234,8 @@ def confirm() -> dict:
 def core_extensions() -> dict:
     """Empty and nonempty fixed results share the same TLV extension rule."""
     s = 0x11223344
-    tail = tlv(0x7F, bytes([15]) + b"io.example.note" + b"x")   # a named extension the reader does not know (core §2.2)
+    named = REG["constants"]["tag_named_extension"]
+    tail = tlv(named, bytes([15]) + b"io.example.note" + b"x")   # a named extension the reader does not know (core §2.2)
     rows = []
     cases = [
         ("open", "open", struct.pack("<IB", 3000, 0), s, struct.pack("<II", 3000, 0x12345678), COMPLETED, 0),
@@ -249,7 +250,26 @@ def core_extensions() -> dict:
                      "operation": operation, "fixed_answer_bytes": len(fixed),
                      "request_hex": hx(request(corr, 0, op("core", operation), payload, sid)),
                      "answer_hex": hx(answer(corr, resolution, detail, fixed + tail))})
-    return {"about": "Independent examples, not a sequential session. Successful calls have a valid session where needed; no_session has no active session; result_lost has discarded replay bytes. A named extension TLV (0x7F) of a name the reader does not know adds no behavior, and follows both empty and nonempty fixed result payloads (core §2.3).", "cases": rows}
+    # In a request (core §2.2): a name the probe does not know is ignored, or refused unsupported naming the tag as
+    # received (0xFF) when critical; a name_len past the value is malformed, critical or not (the form before anything).
+    clock = op("core", "clock")
+    note = bytes([15]) + b"io.example.note" + b"x"
+    broken = bytes([16]) + b"io.example.note"   # name_len 16, 15 bytes of name left
+    requests = [
+        ("clock with an unknown named extension in the request", tlv(named, note),
+         answer(7, COMPLETED, 0, struct.pack("<IQ", 0x12345678, 100))),
+        ("clock with an unknown critical named extension in the request", tlv(named | CRITICAL, note),
+         answer(8, REJECTED, REASON["unsupported"], bytes([named | CRITICAL]))),
+        ("clock with a named extension whose name_len passes its value", tlv(named, broken),
+         answer(9, REJECTED, REASON["malformed"])),
+        ("clock with a critical named extension whose name_len passes its value", tlv(named | CRITICAL, broken),
+         answer(10, REJECTED, REASON["malformed"])),
+    ]
+    request_rows = []
+    for corr, (name, tail_in, ans) in enumerate(requests, len(cases) + 1):
+        request_rows.append({"name": name, "spec": "core §2.2/2.3/7.6", "operation": "clock", "fixed_answer_bytes": 12,
+                     "request_hex": hx(request(corr, 0, clock, tail_in, 0)), "answer_hex": hx(ans)})
+    return {"about": "Independent examples, not a sequential session. Successful calls have a valid session where needed; no_session has no active session; result_lost has discarded replay bytes. A named extension TLV (0x7F) of a name the reader does not know adds no behavior, and follows both empty and nonempty fixed result payloads (core §2.3). request_cases: in a request, an unknown name is ignored, or refused unsupported (0xFF) when critical, and a name_len past its value is malformed (core §2.2).", "cases": rows, "request_cases": request_rows}
 
 
 def refusals() -> dict:

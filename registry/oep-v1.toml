@@ -53,6 +53,7 @@ confirm_request_magic = "OEP?"
 confirm_result_magic = "OEP!"
 tag_critical = 0x80             # bit 7 of a TLV tag in a request: a probe that does not implement the tag refuses (core §2.3)
 tag_reserved_zero = 0x00        # never a TLV tag; the rejected unsupported payload's "fixed-part value" marker (core §4.3)
+tag_named_extension = 0x7F      # the named extension TLV in every context: name_len(u8) name data (core §2.2); no definition uses it otherwise
 min_max_frame = 64              # every probe takes messages this long; a host sends no longer message before confirm answers (transports §3)
 op_subscribe = 0x01             # common-operation range in every interface's op space: subscribe of the interface that sends notifications (core §10.3)
 op_unsubscribe = 0x02           # common-operation range in every interface's op space: unsubscribe (core §10.3)

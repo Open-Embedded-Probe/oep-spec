@@ -134,8 +134,8 @@ def check(reg: dict) -> list[str]:
                 errors.append(f"{n}: line name {line!r} is not a standard name (1-32 of a-z 0-9 _ -, no x- prefix, no '.')")
         for context, tags in iface.get("tlv", {}).items():
             for tag_name, tag in tags.items():
-                if tag & 0x7F == 0x7F:
-                    errors.append(f"{n}: tlv.{context} {tag_name} uses 0x7F, the named extension in every context (core §2.2)")
+                if tag == reg["constants"]["tag_named_extension"]:
+                    errors.append(f"{n}: tlv.{context} {tag_name} uses {tag:#x}, the named extension in every context (core §2.2)")
         for lst, listed in iface.get("names", {}).items():
             for name in listed:
                 if "." in name or not 1 <= len(name.encode()) <= 48 or not re.fullmatch(r"[a-z0-9-]+", name):
