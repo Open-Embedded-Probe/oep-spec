@@ -128,24 +128,14 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   - **線切れでは保持しない**: 線切れで閉じたら、上の「線が応えない間の線」のとおり駆動せず、空きの状態にする。
   - **見える**: 保持中の口は holds（§2.2）で読める。保持は connection ではなく、connections には出ない。
 
-### 2.2 holds（保持中の口の一覧）
-
-```text
-要求: first(u8)
-応答: more(u8)、count(u8)、count × entry、[TLV]（core §2.3）
-entry: swdio(u16)、swclk(u16)、rest(u8)
-```
-
-- そのインターフェースが §2 の保持で駆動している口を、first 番目から 1 フレームに入る分だけ返す（ページは §2.1 と同じ）。ロックなしで使える。
-- swio は swclk = 0xFFFF。rest は rvswd ではその休ませ方（idle_clock の値: 0 high、1 low）、ほかの wire では 0。
-- connection が閉じたら、その組の channel は core §8 の空きの状態になる（idle_clock の駆動もやめる）。
+- connection が閉じたら、その組の channel は上の保持になるか、core §8 の空きの状態になる（保持しないときは idle_clock の駆動もやめる）。
 
 **connection と hart の状態機械**:
 
 | 出来事 | connection | hart | ストリーム |
 |---|---|---|---|
-| detach / end / lease 切れ / force | 解放 | 触らない | 解放 |
-| 線切れ | 解放 | — | 解放 |
+| detach / end / lease 切れ / force | 解放（線は保持、§2） | 触らない | 解放 |
+| 線切れ | 解放（線は空き） | — | 解放 |
 | targetの自己リセット | 保つ | targetの状態 | 保つ（marks提供時はrestart mark） |
 | probeの再起動 | 無効 | 手順ではreset/resumeしない。ピンのリセット状態による変化は保証しない | 無効 |
 
@@ -166,6 +156,17 @@ entry: connection(u32)、swdio(u16)、swclk(u16)、speed_hz(u32)、tid_scheme(u8
   swdでTARGETSELを指定したentryには、応答TLV 0x01 selected_target（entry_index(u8)、targetsel(u32)）を付ける。
   entry_indexはこのページの0起点の番号。このTLVはentryごとに繰り返せる。必要なTLVまで1frameに入るentryだけ返す。
   selectorはhostが与えた選択値で、読出した識別子と区別する。指定無しと値0の指定も区別する。
+
+### 2.2 holds（保持中の口の一覧）
+
+```text
+要求: first(u8)
+応答: more(u8)、count(u8)、count × entry、[TLV]（core §2.3）
+entry: swdio(u16)、swclk(u16)、rest(u8)
+```
+
+- そのインターフェースが §2 の保持で駆動している口を、first 番目から 1 フレームに入る分だけ返す（ページは §2.1 と同じ）。ロックなしで使える。
+- swio は swclk = 0xFFFF。rest は rvswd ではその休ませ方（idle_clock の値: 0 high、1 low）、ほかの wire では 0。
 
 ## 3. `oep.wire.rvswd` / `oep.wire.swio`
 
