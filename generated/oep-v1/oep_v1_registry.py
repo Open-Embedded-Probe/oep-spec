@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "0aaae1a1afbb5b02"
+REGISTRY_HASH = "15cf712663eaa527"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -95,5 +95,5 @@ FIXTURE_CAPTURE_GROUP = _NS(name="oep.fixture.capture-group", revision=1, target
 INTERFACES["oep.fixture.capture-group"] = FIXTURE_CAPTURE_GROUP
 PROBE_CONFIG = _NS(name="oep.probe.config", revision=1, target=None, op={"get": 0x10, "set": 0x11, "save": 0x12, "erase": 0x13, "unset": 0x14, "state": 0x15, "network": 0x16}, lock_free={0x10, 0x15, 0x16},
     tlv={"describe": {"storage": 0x40, "setting": 0x41, "netif": 0x42}}, event={}, enum={"idle_mode": {"hi_z": 0x00, "pull_up": 0x01, "pull_down": 0x02, "output_low": 0x03, "output_high": 0x04}, "ipv4_mode": {"dhcp": 0x00, "static": 0x01}, "network_state": {"off": 0x00, "connecting": 0x01, "up": 0x02, "waiting": 0x03}, "network_reason": {"none": 0x00, "not_found": 0x01, "auth": 0x02, "no_address": 0x03, "other": 0x04}, "setting_form": {"named": 0x00, "bytes": 0x01, "text": 0x02, "u32": 0x03, "ipv4": 0x04, "bool": 0x05}, "setting_flag": {"secret": 0x01, "restart": 0x02}, "storage_state": {"none": 0x00, "applied": 0x01, "unreadable": 0x02, "partial": 0x03}, "storage_unreadable": {"none": 0x00, "form": 0x01, "item": 0x02, "capacity": 0x03}}, own={},
-    line_names={'nrst': 'the target reset line (Host only)', 'power_hi': 'target power on when high (Host only)', 'power_lo': 'target power on when low (Host only)'}, names={'setting': {'label': 'key channel; text 1-32 bytes', 'idle': 'key channel; mode(u8)', 'disable': 'key channel; no data', 'passthrough': 'key port; fn(u16) rx(u16) baud(u32) format(u8)', 'console-passthrough': 'key port; wire_fn(u16) swdio(u16) swclk(u16) max_speed(u32) console_fn(u16) mechanism(u8)', 'wifi': 'key entry; ssid_len(u8) ssid pass_len(u8) passphrase; passphrase write-only', 'ipv4': 'key netif; mode(u8) address(4) prefix(u8) gateway(4) dns(4)'}, 'netif': {'wifi': 'Wi-Fi station', 'ethernet': 'wired Ethernet'}})
+    line_names={'swdio': 'the debug data line (2 wires: rvswd, swd) (Host only)', 'swclk': 'the debug clock line (2 wires: rvswd, swd) (Host only)', 'swio': 'the one debug wire (swio) (Host only)', 'rx': 'the fixture UART receive, wired to the target TX (Host only)', 'tx': 'the fixture UART transmit, wired to the target RX (Host only)', 'nrst': 'the target reset line (Host only)', 'power_hi': 'target power on when high (Host only)', 'power_lo': 'target power on when low (Host only)'}, names={'setting': {'label': 'key channel; text 1-32 bytes', 'idle': 'key channel; mode(u8)', 'disable': 'key channel; no data', 'passthrough': 'key port; fn(u16) rx(u16) baud(u32) format(u8)', 'console-passthrough': 'key port; wire_fn(u16) swdio(u16) swclk(u16) max_speed(u32) console_fn(u16) mechanism(u8) idle_clock(u8)', 'wifi': 'key entry; ssid_len(u8) ssid pass_len(u8) passphrase; passphrase write-only', 'ipv4': 'key netif; mode(u8) address(4) prefix(u8) gateway(4) dns(4)'}, 'netif': {'wifi': 'Wi-Fi station', 'ethernet': 'wired Ethernet'}})
 INTERFACES["oep.probe.config"] = PROBE_CONFIG

@@ -387,7 +387,7 @@ probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ�
 | mode | 意味 |
 |---:|---|
 | 0 | 走らせる |
-| 2 | 最初の命令の前で止める（haltreq を保ったまま ndmreset を解く） |
+| 1 | 最初の命令の前で止める（haltreq を保ったまま ndmreset を解く） |
 
 応答:
 

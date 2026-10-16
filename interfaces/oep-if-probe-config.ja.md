@@ -30,7 +30,7 @@ TCPの経路（transports §1）へ届くためのWi-Fiの接続先とIPv4の決
 | `idle` | channel | mode(u8: 0 Hi-Z、1 pull-up入力、2 pull-down入力、3 出力low、4 出力high) | §1 |
 | `disable` | channel | なし | §1 |
 | `passthrough` | port | fn(u16)、rx(u16)、baud(u32)、format(u8) | §1.1 |
-| `console-passthrough` | port | wire_fn(u16)、swdio(u16)、swclk(u16)、max_speed(u32)、console_fn(u16)、mechanism(u8) | §1.2 |
+| `console-passthrough` | port | wire_fn(u16)、swdio(u16)、swclk(u16)、max_speed(u32)、console_fn(u16)、mechanism(u8)、idle_clock(u8) | §1.2 |
 | `wifi` | entry | ssid_len(u8)、ssid、pass_len(u8)、passphrase | §1.4 |
 | `ipv4` | netif（§1.3の番号） | mode(u8)、address(4)、prefix(u8)、gateway(4)、dns(4) | §1.5 |
 
@@ -71,6 +71,8 @@ UART を空けられない target（debug の郵便受けで出力するもの�
 
 - wire_fn は `oep.wire.rvswd` か `oep.wire.swio`、(swdio, swclk) はその宣言が許すピンの組、max_speed は debug §1 の attach と同じ値と規則。
   console_fn はその wire の connection を受ける `oep.target.console`、mechanism はその describe の mechanism の並びの位置（core §7.7）。違えば unsupported（受け取った番号）。port は §1.1 と同じ。
+  idle_clock は debug §3 の attach の idle_clock TLV と同じ値（0 = high、1 = low）で、素通しの attach はそれで線を休ませる（休み方を target が決める: CH32L103 は low でないと debug module がリセットされる）。
+  1 は rvswd でだけ使え、swio の 1 と 2 以上は unsupported（受け取った番号）。
   ピンのどれかが disable なら、または出力の idle を持てば unavailable cause 5。
 - **素通しの条件**: その口からセッションの要求が来ていない、セッションの接続・plan がそのピンを取っていない、のすべてが成り立つ間、probe はその wire で
   method 0（止めない、reset しない）の attach をして、その方式でコンソールを読み、target の出力を §1.1 と同じに口へフレームの外で送る。

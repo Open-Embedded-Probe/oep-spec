@@ -184,7 +184,7 @@ oep://<probe>[/<port>[/<target>]]
 
 線の役目としてのlabelの探し方: 口`S`の線`N`は、`S.N`の設定label、口が1つだけなら`N`の設定label、最後にfirmwareの`N`の順で探す。
 ASCIIの大小文字を区別せず、同じ段で複数channelが見つかれば曖昧として使用しない。probeはこの名前から線を動かさない。
-`nrst`、`power_hi`、`power_lo`を慣行にできる。
+線の名前は`swdio`、`swclk`、`swio`（debugの線）、`rx`（fixture UARTの受信。targetのTXにつなぐ）、`tx`（fixture UARTの送信）、`nrst`、`power_hi`、`power_lo`を慣行にできる。
 
 **targetの名前**: チップの個体を表す。attachの応答のtarget_id（debug §1）は系統と版の値で、個体を見分けない。
 個体の値（CH32のUIDなど）の読み方はチップの知識なのでhostが持ち、名前は`<系統>-<個体の値の16進>`（例`ch32v003-0123456789abcdef`）とする。
