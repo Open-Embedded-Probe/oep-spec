@@ -666,6 +666,7 @@ packed = 0                      # §1.1 / §1.2
 logic_blocks = 1                # §1.3: per-channel D, raw / events
 analog_blocks = 2               # §1.4: per-channel packed / minmax / mean
 state_timed = 3                 # §3.8: per sample delta(u32 timebase ticks) + state, with an external clock
+test_counter = 4                # §1: byte k is k & 0xFF, at the format 0 volume and rate (measures the path)
 named = 0xFF                    # a reverse-DNS name in format_name (oep-if-capture §1)
 [interface.enum.logic_carriage] # oep-if-capture §1.3
 raw = 0
@@ -806,6 +807,7 @@ packed = 0
 logic_blocks = 1
 analog_blocks = 2
 state_timed = 3                 # §3.8: per sample delta(u32 timebase ticks) + state, with an external clock
+test_counter = 4                # §1: byte k is k & 0xFF, at the format 0 volume and rate (measures the path)
 named = 0xFF                    # a reverse-DNS name in format_name (oep-if-capture §1)
 [interface.enum.analog_carriage] # bits (oep-if-capture §1.4): packed alone, minmax and sum together
 packed = 0x01
