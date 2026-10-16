@@ -182,10 +182,12 @@ TLV（wire の一族で 1 つの空間。rvswd、swio、swd は、この表の�
 |---|---:|---|---|
 | scan | 0x01 | max_speed | u32 Hz（無ければその wire の最も遅い速さ） |
 | scan、attach（swd だけ） | 0x02 | targetsel | u32。§3 の swd |
-| scan、attach（rvswd だけ） | 0x03 | idle_clock | u8。線を休ませる間の SWCLK: 0 = high（省略時も high）、1 = low。attach では critical。scan では scan の間の休ませ方（下） |
+| scan、attach（rvswd だけ） | 0x03 | idle_clock | u8。線を休ませる間の SWCLK: 0 = high、1 = low。attach では critical で、無ければ probe が target_id から決める（§3.1）。scan では scan の間の休ませ方（省略時は high、下） |
 | attach | 0x04 | reset | channel(u16)、hold_ms(u16)。critical。上 |
 | attach の応答 | 0x01 | target_id | scheme(u8)、値 |
 | attach の応答 | 0x02 | dpc | u32。任意。hart 0が止まっている（flags bit3）ときのRV32 dpc |
+| attach の応答（rvswd だけ） | 0x03 | idle_clock | u8。その接続が使う休ませ方（0 high、1 low）。rvswd は必ず付ける |
+| connections の応答（rvswd だけ） | 0x02 | idle_clock | entry_index(u8)、idle_clock(u8)。rvswd は entry ごとに付ける（§2.1 の selected_target と同じ数え方） |
 
 pin の role（1 swdio、2 swclk、3 reset）、scan の kind（1 riscv-dm、2 arm-adi）、attach の method（0 止めない、1 止める）、attach の flags のビットも
 一族で 1 つの空間である。swio は swclk を持たないので role 1 と 3 を使う。
@@ -227,6 +229,13 @@ pin の role（1 swdio、2 swclk、3 reset）、scan の kind（1 riscv-dm、2 a
 - data のパリティが合わない読み出しは、失敗した読み出しである（§2 のとおり再試行する）。書き込みに確認応答は無い: 書く経路は読み戻しでしか確かめられない（§1）。
 - **休ませ方**（フレームの間）: idle_clock 0 では 2 本とも high のまま。idle_clock 1 では SWCLK low、SWDIO high で、どちらも probe が駆動する。フレームは 2 本
   とも high から始まる: idle_clock 1 では、START の T 以上前に、SWDIO high のまま SWCLK が上がる。
+- **休ませ方の決め方**: 必要な休ませ方は target の系統で決まり、系統どうしで逆になる（CH32L103 は high で休むと約 1 ms で debug module がリセットされ、
+  CH32X035 は low で休むと attach できない）。どちらにも安全な既定は無い。attach は 2 本とも high から始まるので、どの系統でも target_id
+  （scheme 1、DMI 0x7F）までは読める。だから attach に idle_clock の TLV が無ければ、probe は wake から target_id を読むまでを high で行い、
+  読んだ target_id の bit 31〜20（系統）が registry `oep.wire.rvswd` の `idle_low_family` にあれば low、無ければ（target_id が読めないときも）high に
+  する。TLV があればそれに従う（host の明示が優先）。どちらでも、使う休ませ方を attach の応答と connections の TLV idle_clock で返す。
+  probe は休ませ方を黙って変えない: 接続の間は attach で決めた値のままにする。表は target の知識なので registry に置き、各実装が名前で引く
+  （系統の追加は registry の変更）。method 0 の attach（素通しを含む、[設定](oep-if-probe-config.ja.md) §1.2）も同じに決める。
 
 **wake のパターン**（wake / 設定の手順の最初の部分、§3）:
 
