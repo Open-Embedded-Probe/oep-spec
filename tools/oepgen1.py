@@ -24,6 +24,11 @@ REGISTRY = ROOT / "registry" / "oep-v1.toml"
 OUT = ROOT / "generated" / "oep-v1"
 
 
+
+def cpp_uint(v: int) -> str:
+    """The narrowest unsigned type that holds an enum value (one past 0xFF was cut to uint8_t)."""
+    return "uint8_t" if v <= 0xFF else "uint16_t" if v <= 0xFFFF else "uint32_t"
+
 def load() -> tuple[dict, str]:
     # the hash is over the file with line endings normalized to LF (a CRLF checkout must give the same value)
     raw = REGISTRY.read_bytes().replace(b"\r\n", b"\n")
@@ -208,7 +213,7 @@ def cpp(reg: dict, digest: str) -> str:
     L += ["", "namespace common {"]
     for enum, values in reg.get("common", {}).get("enum", {}).items():
         for k, v in values.items():
-            L.append(f"constexpr uint8_t k{camel(enum)}{camel(k)} = 0x{v:02X};")
+            L.append(f"constexpr {cpp_uint(v)} k{camel(enum)}{camel(k)} = 0x{v:02X};")
     L.append("}  // namespace common")
     for unit, iface in units(reg):
         ns = ident(unit)
@@ -231,7 +236,7 @@ def cpp(reg: dict, digest: str) -> str:
                 L.append(f"constexpr uint8_t k{prefix}{camel(k)} = 0x{v:02X};")
         for enum, values in iface.get("enum", {}).items():
             for k, v in values.items():
-                L.append(f"constexpr uint8_t k{camel(enum)}{camel(k)} = 0x{v:02X};")
+                L.append(f"constexpr {cpp_uint(v)} k{camel(enum)}{camel(k)} = 0x{v:02X};")
         names = list(iface.get("line_names", {}))
         if names:
             for k in names:

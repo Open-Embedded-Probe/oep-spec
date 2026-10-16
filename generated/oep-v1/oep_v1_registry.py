@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "848579ccc9d72aec"
+REGISTRY_HASH = "532b6f347b2cfd93"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -42,7 +42,7 @@ PROBE_LINK = _NS(name="oep.probe.link", revision=1, target=None, op={"source": 0
     line_names={}, names={})
 INTERFACES["oep.probe.link"] = PROBE_LINK
 WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, target="RISC-V targets whose debug module is reached over the two-wire RVSWD line", op={"scan": 0x10, "attach": 0x11, "detach": 0x12, "connections": 0x13}, lock_free={0x13},
-    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "idle_clock": 0x03}, "attach": {"idle_clock": 0x03, "reset": 0x04}, "attach_answer": {"target_id": 0x01, "dpc": 0x02, "idle_clock": 0x03}, "connections_answer": {"idle_clock": 0x02}, "unavailable_payload": {"index": 0x40}, "unsupported_payload": {"index": 0x40}}, event={}, enum={"scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "halted": 0x08}, "features": {"attach_halt": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}, "idle_clock": {"high": 0x00, "low": 0x01}, "target_id_family": {"shift": 0x14}, "idle_low_family": {"ch32l103": 0x103}}, own={},
+    tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "idle_clock": 0x03}, "attach": {"idle_clock": 0x03, "reset": 0x04}, "attach_answer": {"target_id": 0x01, "dpc": 0x02}, "unavailable_payload": {"index": 0x40}, "unsupported_payload": {"index": 0x40}}, event={}, enum={"scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "halted": 0x08}, "features": {"attach_halt": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}, "idle_clock": {"high": 0x00, "low": 0x01}}, own={},
     line_names={}, names={})
 INTERFACES["oep.wire.rvswd"] = WIRE_RVSWD
 WIRE_SWIO = _NS(name="oep.wire.swio", revision=1, target="RISC-V targets whose debug module is reached over the one-wire SWIO line", op={"scan": 0x10, "attach": 0x11, "detach": 0x12, "connections": 0x13}, lock_free={0x13},

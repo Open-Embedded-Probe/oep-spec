@@ -276,14 +276,11 @@ max_speed = 0x01                # u32 Hz (absent: the wire's slowest speed)
 idle_clock = 0x03               # u8: SWCLK while the line rests during the scan, 0 high / 1 low
 
 [interface.tlv.attach]          # fixed body: method(u8), swdio(u16), swclk(u16), max_speed(u32)
-idle_clock = 0x03               # critical, u8: SWCLK while the line rests, 0 high / 1 low; absent: from target_id (oep-if-debug §3.1)
+idle_clock = 0x03               # critical, u8: SWCLK while the line rests, 0 high / 1 low (oep-if-debug §3)
 reset = 0x04                    # critical: channel(u16) hold_ms(u16) - hold the reset line, then attach (oep-if-debug §3)
 [interface.tlv.attach_answer]   # the attach result's tail
 target_id = 0x01                # scheme(u8) value: what the probe read of the target's identity (oep-if-debug §1)
 dpc = 0x02                      # optional u32 RV32 dpc, only when flags halted is set
-idle_clock = 0x03               # u8, always: the rest the connection uses, 0 high / 1 low (oep-if-debug §3.1)
-[interface.tlv.connections_answer]
-idle_clock = 0x02               # every entry: entry_index(u8) idle_clock(u8) (oep-if-debug §2.1, §3.1)
 [interface.enum.scan_kind]      # the kind byte of a scan entry; on rvswd only riscv-dm (oep-if-debug §3)
 riscv_dm = 1
 [interface.enum.attach_flags]   # the attach answer's flags, every wire
@@ -301,10 +298,6 @@ reset = 3                       # a channel attach's reset TLV may take; no defa
 [interface.enum.idle_clock]     # the RVSWD idle_clock TLV
 high = 0
 low = 1
-[interface.enum.target_id_family] # target_id scheme 1 (DMI 0x7F) >> shift = the chip family (oep-if-debug §3.1)
-shift = 20
-[interface.enum.idle_low_family] # families whose debug module needs SWCLK low at rest; an attach without idle_clock rests them low (oep-if-debug §3.1)
-ch32l103 = 0x103
 
 
 [interface.tlv.unavailable_payload] # scan candidate diagnostic; interface-owned tag

@@ -71,7 +71,6 @@ UART を空けられない target（debug の郵便受けで出力するもの�
 
 - wire_fn は `oep.wire.rvswd` か `oep.wire.swio`、(swdio, swclk) はその宣言が許すピンの組、max_speed は debug §1 の attach と同じ値と規則。
   console_fn はその wire の connection を受ける `oep.target.console`、mechanism はその describe の mechanism の並びの位置（core §7.7）。違えば unsupported（受け取った番号）。port は §1.1 と同じ。
-  rvswd の素通しの attach は、線の休ませ方を debug §3.1 の決め方（target_id から）で決める。
   ピンのどれかが disable なら、または出力の idle を持てば unavailable cause 5。
 - **素通しの条件**: その口からセッションの要求が来ていない、セッションの接続・plan がそのピンを取っていない、のすべてが成り立つ間、probe はその wire で
   method 0（止めない、reset しない）の attach をして、その方式でコンソールを読み、target の出力を §1.1 と同じに口へフレームの外で送る。
