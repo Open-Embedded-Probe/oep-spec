@@ -682,7 +682,9 @@ def test_raw_reset_halt_wait_is_one_frame_with_haltreq_preserved():
     assert at == len(request) and waited and control == 1
     result = bytes.fromhex(case['answer_hex'])
     assert result[3:5] == bytes([1, 0])
-    assert struct.unpack('<HBHI', result[5:]) == (count, 0, 1, 1 << 9)
+    done, status, nvals, dmstatus = struct.unpack('<HBHI', result[5:])
+    assert (done, status, nvals) == (count, 0, 1) and dmstatus & mask == value
+    assert 2 <= dmstatus & 0xF < 15  # a live link's DMSTATUS: a debug module this interface handles (debug §1)
 
 
 def test_pending_port_speed_step_boundaries():

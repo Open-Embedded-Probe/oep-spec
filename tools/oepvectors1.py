@@ -735,9 +735,9 @@ def ops() -> dict:
                   + struct.pack('<BBI',1,0x10,0x90000001)
                   + struct.pack('<BBIIH',3,0x11,0x200,0x200,16) + struct.pack('<BBI',1,0x10,1))
     add('riscv-dm dmi: reset and halt wait in one request','debug §4.1, §4.6',dm,
-        'connection1; dmseq console open; raw-only fn; host acknowledges havereset while keeping haltreq; allhalted observed on first wait read with DMSTATUS0x200; no console poll inside request; host reopens console to resync',
+        'connection1; dmseq console open; raw-only fn; host acknowledges havereset while keeping haltreq; allhalted observed on first wait read with DMSTATUS0x00000382 (version 2, authenticated, all/anyhalted: a live link never reads version 0); no console poll inside request; host reopens console to resync',
         request(0xF4,6,op('oep.target.riscv-dm','dmi'),struct.pack('<IH',1,5)+reset_halt,S),
-        ok(0xF4,struct.pack('<HBHI',5,0,1,0x200)))
+        ok(0xF4,struct.pack('<HBHI',5,0,1,0x00000382)))
     add("riscv-dm write_block: memory written but cleanup lost the line", "debug §4", dm,
         "two words completed; restoring saved DATA failed; response is sent then connection 1 and its streams close",
         request(0x5C,6,op("oep.target.riscv-dm","write_block"),struct.pack("<IIHII",1,0x20000000,2,7,8),S),

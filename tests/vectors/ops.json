@@ -632,9 +632,9 @@
       "fns": {
         "6": "oep.target.riscv-dm"
       },
-      "state": "connection1; dmseq console open; raw-only fn; host acknowledges havereset while keeping haltreq; allhalted observed on first wait read with DMSTATUS0x200; no console poll inside request; host reopens console to resync",
+      "state": "connection1; dmseq console open; raw-only fn; host acknowledges havereset while keeping haltreq; allhalted observed on first wait read with DMSTATUS0x00000382 (version 2, authenticated, all/anyhalted: a live link never reads version 0); no console poll inside request; host reopens console to resync",
       "request_hex": "01f40006001044332211010000000500011003000080011001000080011001000090031100020000000200001000011001000000",
-      "answer_hex": "02f4000100050000010000020000"
+      "answer_hex": "02f4000100050000010082030000"
     },
     {
       "name": "riscv-dm write_block: memory written but cleanup lost the line",
