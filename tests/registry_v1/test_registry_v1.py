@@ -136,7 +136,7 @@ def test_settings_are_named_not_numbered():
     reg,_ = gen.load()
     settings=next(i for i in reg['interface'] if i['name']=='oep.probe.config')
     # the standard items by name (config §1); the probe numbers them in its describe setting order: no item numbers here
-    assert list(settings['names']['setting'])==['label','idle','disable','passthrough','console-passthrough','wifi','ipv4']
+    assert list(settings['names']['setting'])==['label','idle','disable','passthrough','console-passthrough','wifi','ipv4','rvswd-rest']
     assert 'item' not in settings['tlv']
     assert set(settings['tlv']['describe'])=={'storage','setting','netif'}
     # the longest wifi item in one set: request header 10, count 1, item header 3, key 2, data 1 + 32 + 1 + 64

@@ -33,11 +33,16 @@ TCPの経路（transports §1）へ届くためのWi-Fiの接続先とIPv4の決
 | `console-passthrough` | port | wire_fn(u16)、swdio(u16)、swclk(u16)、max_speed(u32)、console_fn(u16)、mechanism(u8) | §1.2 |
 | `wifi` | entry | ssid_len(u8)、ssid、pass_len(u8)、passphrase | §1.4 |
 | `ipv4` | netif（§1.3の番号） | mode(u8)、address(4)、prefix(u8)、gateway(4)、dns(4) | §1.5 |
+| `rvswd-rest` | channel（その口の SWCLK） | mode(u8: 0 auto、1 high、2 low) | 下 |
 
 - keyの範囲（settingのkeys）は、channelの項目ではfn 0のchannels、portの項目ではfn 0の経路の数、wifiではentryの数、ipv4ではdescribeのnetifの数 + 1（keyはnetifの番号で、0はunsupported）。
   channelはfirmware自身が使うchannelでもunsupported（受け取った番号）。
 - 標準の項目のdataの長さが表の形と違えばmalformed。値を後ろへ伸ばさず、新しい情報は新しい名前の項目で定義する。
 - labelは設定の名前で、firmwareのdescribeのlabelを変えない。probeは名前で線を動かさない。
+- `rvswd-rest` は、`oep.wire.rvswd` の線の休ませ方を probe が自動で判定するのを、口ごとに止める項目（debug §3.1）。key はその口の SWCLK の
+  channel。high / low はその値に固定し（自動の判定をしない）、auto と項目が無いことは自動の判定を表す。attach の idle_clock の TLV がいつも優先する。
+  自動の判定をする probe は、この項目を setting に並べる。
+  3 以上の mode は unsupported（受け取った番号）。
   線の役目として名前を使うhostの慣行は[hostガイド](../docs/host-development-guide.ja.md) §5.3。
 - disableはそのchannelの駆動/設定を行わない指定で、起動時と解放時の空き状態の設定より先に効く。
   firmwareの宣言を広げず、無効なchannelを使う要求はunavailable cause 5。
