@@ -721,7 +721,7 @@ def test_config_item_conflicts_are_usage_restrictions():
 def test_capture_events_carry_their_generation():
     """ops.json events: the capture events' fixed parts end with generation(u32) (oep-if-capture §3.4, §4.2)."""
     iface = {i["name"]: i for i in REG["interface"]}
-    fixed = {("oep.fixture.logic", "stopped"): 6, ("oep.fixture.logic", "triggered"): 20,
+    fixed = {("oep.fixture.logic", "stopped"): 6, ("oep.fixture.logic", "triggered"): 36,   # serial index record sample(u64) ns(u64) uncertainty generation
              ("oep.fixture.capture-group", "stopped"): 6}
     events = load("ops.json")["events"]
     assert events

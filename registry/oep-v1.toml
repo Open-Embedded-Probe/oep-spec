@@ -701,10 +701,12 @@ clock = 3
 [interface.enum.status_flag]    # status flags, reset on start
 dropped = 0x01
 slipped = 0x02
+rearm_waiting = 0x04               # rearm 1, repeat: between segments, waiting for the next trigger (state 3)
 [interface.enum.segment_flag]      # segment flags (oep-if-capture §2)
-gap = 0x01
+gap = 0x01                         # not straight after the segment before (no room, or a rearm wait)
 short = 0x02
 slipped = 0x04                     # the time base bent inside the segment (a sample taken one sample period or more late)
+rearm = 0x08                       # rearm 1: the segment began at its own trigger
 
 [[interface]]
 name = "oep.fixture.analog"
@@ -850,10 +852,12 @@ measured = 1
 [interface.enum.status_flag]
 dropped = 0x01
 slipped = 0x02
+rearm_waiting = 0x04               # rearm 1, repeat: between segments, waiting for the next trigger (state 3)
 [interface.enum.segment_flag]      # segment flags (oep-if-capture §2)
-gap = 0x01
+gap = 0x01                         # not straight after the segment before (no room, or a rearm wait)
 short = 0x02
 slipped = 0x04                     # the time base bent inside the segment (a sample taken one sample period or more late)
+rearm = 0x08                       # rearm 1: the segment began at its own trigger
 
 [[interface]]
 name = "oep.fixture.capture-group"

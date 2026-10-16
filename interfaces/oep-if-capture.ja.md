@@ -56,7 +56,7 @@ status、区画の情報、出来事、ストリーミングのデータの TLV 
 - **形式によらないもの**: 区画、position（その形式のバイト列での位置）、read、通知、世代の意味。区画の samples、trigger_index、pretrigger は
   **元のサンプル**で数える。元のサンプルは、トラックの rate のサンプル（オーバーサンプリングの後の出てくる値、§3.8。縮約の前）で、トリガの
   判定もこれで行う。どのブロックも、それだけで（前のブロック無しに）復元できる。
-- **試験の並び（形式 4）**: 経路の実際の速さを測るための形式。ピンを読まず、区画の position k のバイトを `k & 0xFF` とし、その設定の
+- **試験の並び（形式 4）**: 経路の実際の速さを測るための形式。ピンを読まず、ストリームの position k（世代で通し。外部の経路では OEPX の印の後から、§3.9）のバイトを `k & 0xFF` とし、その設定の
   rate とチャネルの数が形式 0 で出す量を、そのとおりの速さで出す（ストリーミングでは通知、外部の経路、mux をそのまま通る）。host は
   値の並びで欠落と化けを、届いた量で速さを測る。サンプルの数と区画の規則は形式 0 と同じ。probe はカウンタを流すだけで、宣言は formats。
 - **確かさ**: 形式とチャネルの運び方ごとに、可逆（値と時刻が確か）か要約（何が確かかを §1.3 / §1.4 が決める）かが決まっている。
@@ -148,7 +148,7 @@ L は configure の応答の block で返し、**8 の倍数で、どの D の�
 | raw の部分 | ceil(r · w_b / 8) byte | サンプルごとに w_b ビット（R + そのブロックの fallback の数）。ビット j（j < R）は raw のチャネル j（役割の順）、ビット R + f は fallback の f 番目のチャネル（e の順）。サンプル i はビット `i · w_b` から（§1 のビットの定義）。区画の最後のブロックでは後ろを次のバイトの境目まで 0 で埋める |
 | 出来事 | n × 4 byte | tick(u16)、ch(u8: e)、state(u8: bit 7 = 刻みの後のレベル、bit 0〜6 = 刻みの中の変化の数、127 で飽和) |
 
-- 形式 1 の応答の layout は w = R、C = R、pos = 0 … R−1（raw のチャネルの並び）。L は 8 の倍数なので、raw の部分は w_b によらずバイトの境目で終わる。
+- 形式 1 の応答の layout は w = R、C = R、pos = 0 … R−1（raw のチャネルの並び）。全部が events なら w = C = 0（§1.1 の w の範囲の例外。host は分岐なしに読める）。L は 8 の倍数なので、raw の部分は w_b によらずバイトの境目で終わる。
 - **start_level**: 直前のサンプルが同じ世代にあり、隙間なく続いている（区画の境目でも flags bit0 が 0）なら、そのサンプルのレベル。そうでなければ
   （世代の最初の区画、隙間の後の区画）、ブロックの最初のサンプルのレベル。これで、ブロックと区画の境目の変化も、どれかの刻みで数える。
 - **刻み**: チャネル e の刻み t はブロックの元のサンプル `[t · D_e, min((t+1) · D_e, r))`。区画の最後のブロックで r が D_e の倍数でなければ、
@@ -214,6 +214,12 @@ host は configure でチャネル（役割）ごとに**運び方**（`carriage
   trigger_opts の rearm（§3.3）が 0（既定）なら最初の区画だけに効き、条件成立後の区画には再適用しない。1 なら区画ごとにかけ直す
   （リピートの各区画がトリガで始まる segmented の取得）。ストリーミングで rearm 1 なら、データは切らずに出来事ごとに triggered を送り、
   トリガの記録（§3.10）に残す。
+- **rearm 1 のリピート**: 区画が終わると、次の区画のトリガを、その区画の終わりから見始める（アームし直す。arm 1 なら pretrigger が
+  溜まってから）。区画の間で待つ間も state は 3（release を受ける）で、status の flags bit2 が立つ。force はこの待ちにも効く。
+  トリガで始まった区画は flags bit3 を持ち、前の区画の直後でなければ bit0 も立つ（落としではない: status の dropped は立てない）。
+  level の条件が真のまま続けば、区画は続けて立つ。
+- **when 1** はアームのたびに効く（rearm 1 のリピートでは区画ごと）。ストリーミングの rearm 1 では、立った後は条件が一度偽になってから
+  次が立つ（level が毎サンプル立たない）。
 - probeはstart後にだけ取得し、start前の先回り取得を行わない。
 
 **ストリーミングの規則**:
@@ -251,13 +257,13 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 | start_ns | 区画の最初のサンプルの時刻の推定値（probe の時計: 起動からの ns、u64 で一周しない）。probe が知っている補正を済ませた値 |
 | start_uncertainty_ns | start_ns の不確かさ（±ns）。probe が見積もれる範囲の目安で、保証ではない |
 | trigger_index | 区画の中でトリガが立ったサンプルの番号。トリガを含まない区画は 0xFFFFFFFF |
-| flags | bit0 前の区画との間が空いた（リピートで空き区画がなかった、ストリーミングで押し出された）、bit1 短い（stop で終わった）、bit2 時間の基準が曲がった（予定の時刻を 1 サンプル周期以上過ぎて取ったサンプルがある） |
+| flags | bit0 前の区画の直後から続いていない（理由によらない: リピートで空き区画がなかった、ストリーミングで押し出された、rearm 1 で次のトリガを待った）、bit1 短い（stop で終わった）、bit2 時間の基準が曲がった（予定の時刻を 1 サンプル周期以上過ぎて取ったサンプルがある）、bit3 トリガで始まった（rearm 1、§2.1） |
 | generation | この区画の世代（冒頭の非再利用の規則） |
 
 - 区画の中は連続を約束する。リピートとストリーミングでは、flags bit0 が立っていない限り、区画は前の区画の直後から続く。
 - **区画の隙間と、区画の中の落とし**を、落とした理由で分ける:
-  - **隙間**（flags bit0）: 置き場（リピートの空き区画、ストリーミングの送る余地）が無くて、probe が区画を丸ごと取らない（捨てる）とき
-    だけ。probe はそれを区画の始まりで決める: 区画は、その全部を置ける場所があるときだけ始める。取らなかった区画の次に取る区画に
+  - **隙間**（flags bit0）: 置き場（リピートの空き区画、ストリーミングの送る余地）が無くて、probe が区画を丸ごと取らない（捨てる）とき。
+    rearm 1 の待ち（§2.1）も bit0 を立てるが、それは予定どおりの間で、bit3 で分かり、status の dropped を立てない。probe はそれを区画の始まりで決める: 区画は、その全部を置ける場所があるときだけ始める。取らなかった区画の次に取る区画に
     flags bit0 を立て、取得は続く。
   - **区画の中の落とし**（エラー）: それ以外の理由（取り込みのキューやリングのあふれ、DMA やペリフェラルの失敗）で落としたサンプルは、
     区画の境目にあっても、そのサンプルを含むはずの区画の中の落としである。その区画はデータではない: segments に載せず、出来事 segment を
@@ -302,7 +308,7 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
   6 エラー。
 - `serial_done` は次に終わる区画の serial（start から終わった区画の数を 2^32 で割った余り）、`write_pos` は取り終えたバイト位置（position の空間。**捨てた分を含む**: 次に書くバイトの位置）。
 - status の `flags`: bit0 データを落とした（ストリーミングで丸ごと捨てた区画（§2.1 の規則 1）か、区画の中の落とし（§2.2））、bit1 時間の基準が曲がった
-  （区画の flags の bit2 と同じ）。ほかのビットは予約（0）。**start で 0 に戻し、その回の累積**。state 6 のときは応答の TLV 0x01 error（u8:
+  （区画の flags の bit2 と同じ）、bit2 区画の間で次のトリガを待っている（rearm 1 のリピート、§2.1。今の様子で、累積しない）。ほかのビットは予約（0）。**start で 0 に戻し、その回の累積**。state 6 のときは応答の TLV 0x01 error（u8:
   1 DMA / ペリフェラル、2 置き場、3 時計。registry の enum `error`）で理由を返す。probe の詳しい理由は、名前つきの拡張 TLV（core §2.2）で足してよい。
 - **generation**: readと、提供するreleaseは今の世代を要求に置く。違えばunavailable（cause 6）。start前は0。
   releaseのmode別no-opより先に世代を検証する。世代は半周の新旧比較を行わない（core §2.6）。
@@ -396,7 +402,9 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
   0 と 7 は両方。パルス幅、パターン、多段、シリアルの値、トラックをまたぐ条件は、1 トラックの組のトリガの式（§4.4）で表す。
   宣言に無い type は rejected unsupported。
 - **アーム**: trigger_opts の arm 1（既定）では、probe は pretrigger のサンプルが溜まってから条件を見始める（区画のトリガの前はいつも
-  pretrigger の長さ）。**即時でないトリガを持つ probe は、どれも arm 1 を実装する**（溜まるまで比較しないだけ）。arm 0 は任意（describe の
+  pretrigger の長さ）。最初に見るのはサンプル pretrigger（rearm ではアームし直した位置から数える）で、edge はその前のサンプルと
+  比べる（溜まった区間の中の比較）。よって arm 1 では、トリガで始まった区画の trigger_index は pretrigger に等しい（force を除く）。host は
+  それを前提にトリガの前の長さを決め打ちしてよい。**即時でないトリガを持つ probe は、どれも arm 1 を実装する**（溜まるまで比較しないだけ）。arm 0 は任意（describe の
   trigger の opts bit 0）で、start からすぐ見て、早く立てば区画は短い（trigger_index はそのまま小さい）。
 - **トリガは元のサンプルで判定する**: 形式 1 / 2 で縮約するチャネル（D > 1、minmax、sum）でも、条件は縮約の前の値で判定し、パルスの幅も
   元のサンプルで数える。
@@ -467,7 +475,7 @@ probeはより大きい経路を使え、mode 3を提供しない最小構成に
 | 0x40 | mode | mode(u8)、max_samples(u32、1 区画)、max_segments(u32)（モードごとに 1 つ。**最大**の置き場で答える。describe は宣言だけなので、その時点の空きでは答えない） |
 | 0x41 | rate_range | min_hz(u32)、max_hz(u32)。どちらも1以上、min ≤ max |
 | 0x42 | channels | max(u8)。チャネル数の上限 |
-| 0x43 | trigger | types(u32: type のビット集合)、max_pretrigger(u32)、opts(u8: trigger_opts で持つもの: bit 0 arm 0、bit 1 rearm 1、bit 2 when 1、bit 3 hysteresis) |
+| 0x43 | trigger | types(u32: type のビット集合)、max_pretrigger(u32)、opts(u8: trigger_opts で持つもの: bit 0 arm 0、bit 1 rearm 1、bit 2 when 1、bit 3 hysteresis（アナログだけ。ロジックでは立てない: ロジックのヒステリシスは前段の threshold、§3.8）) |
 | 0x44 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)。入力ピンの範囲の候補ごとに1つ（アナログ）。番号はconfigureのfrontendで選ぶ |
 | 0x45 | formats | u8 の列: 0 のほかに使えるデータの形式（§1）。無ければ 0 だけ |
 | 0x46 | carriage | kinds(u8: kind のビット集合)、min_d(u32)、max_d(u32)（D > 1 で使える範囲。D = 1 はいつも使える）。形式 1 / 2 を宣言するとき |
@@ -604,9 +612,9 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
 rearm 1（§2.1、trigger_opts）では、出来事ごとに probe は記録を 1 つ作り、リングに残す。通知の triggered は落ちうる（§3.4）ので、host は
 記録の serial の飛びで落ちを知り、op triggers で読み直す。
 
-| op | 名前 | 要求 | 応答 | ロック |
-|---:|---|---|---|---|
-| 0x1B | triggers | generation(u32)、from_serial(u32) | more(u8)、count(u8)、count × 記録、[TLV] | 不要 |
+| op | 名前 | 要求 | 応答 | ロック | 要否 |
+|---:|---|---|---|---|---|
+| 0x1B | triggers | generation(u32)、from_serial(u32) | more(u8)、count(u8)、count × 記録、[TLV] | 不要 | describe の trigger の opts bit 1（rearm 1）を宣言するなら、triggers と trigger_records は必須。ほかでは任意 |
 
 - 記録: serial(u32: 世代の中で 0 から)、sample(u64: 世代の始まりからの元のサンプルの番号)、trigger_ns(u64)、uncertainty_ns(u32)。24 byte。
 - 持つ記録の数は describe の trigger_records（0x52、u16）で宣言する。古いものから上書きし、from_serial が残っていなければ、残っている最も古い
