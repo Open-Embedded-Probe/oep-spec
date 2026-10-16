@@ -673,7 +673,7 @@ features の bit 0（`trigger_source`）は §4.4 の出来事の元を持つこ
 | tag | 名前 | 値 |
 |---:|---|---|
 | 0x01 | trigger_source | stages(u8: 1 以上)、holdoff_ns(u64: 出来事の後、次の出来事を受けない時間。0 は無し。rearm 1 で出来事ごとに効く)、arm(u8: 0 すぐ、1 全トラックの pretrigger が溜まってから)、rearm(u8: 0 最初の出来事だけ、1 出来事ごと)。arm と rearm の意味はトラックの trigger_opts（§2.1、§3.3）と同じ |
-| 0x02 | stage | stage(u8)、count(u32: その段の OR が成り立つ回数、1 以上)、within_ns(u64: 段に入ってからの時間の上限。0 は無し)、on_timeout(u8: 0 段 0 に戻る、1 段が成り立ったものとする) |
+| 0x02 | stage | stage(u8)、count(u32: その段の OR が成り立つ回数、1 以上)、within_ns(u64: 段に入ってからの時間の上限。0 は無し)、on_timeout(u8: 0 時間を越えたら段 0 に戻る。1 「来るべきものが来ない」の段: 段の OR が時間内に真になったら段 0 に戻り、時間を越えたら段が成り立つ) |
 | 0x03 | cond | stage(u8)、part(u8: 0 条件の項、1 abort の項)、term(u8)、src(u8: 1 トラック、2 外部の入力)、fn(u16: src 1 の束ねた fn、src 2 では 0)、role(u8: src 1 はその fn の plan の役割、src 2 はこの組の plan の役割 trig_in)、type(u8)、引数（type による） |
 | 0x04 | trigger_out | role(u8: この組の plan の役割 trig_out)、width_ns(u32)、polarity(u8: 0 low のパルス、1 high のパルス)。出来事でパルスを出す |
 
@@ -699,7 +699,9 @@ features の bit 0（`trigger_source`）は §4.4 の出来事の元を持つこ
 - **評価**: 状態の条件は最後の値を保ち、瞬間の条件はその瞬間だけ立つ。**1 つの項に入る瞬間の条件は 1 つまで**（ほかは状態の条件。
   レートの違うトラックの瞬間どうしは一致しないので、edge AND edge は表さない。越える式は rejected unsupported）。AND は、項に参加するトラックのうち最も速いもの（外部の入力では
   probe の判定の速さ）の各サンプルで判定する。**判定は元のサンプルで**（§3.3、縮約の前）。段の count は、その段の OR が偽から真になった
-  回数。within_ns を越えたら on_timeout に従う（1 なら「時間内に来なかったこと」がその段の条件になる: ACK が来ない、など）。abort の項が段の
+  回数。within_ns の扱いは on_timeout による: 0 では、段の OR が時間内に真になれば（count 回で）段が成り立ち、越えたら段 0 に戻る。1 では、段の
+  OR が「来るべきもの」で、時間内に来たら段 0 に戻り（来るべきものが来た: 出来事にしない）、時間を越えたら段が成り立つ（ACK が来ない、
+  IRQ の後に CS が来ない）。on_timeout 1 の段は within_ns が 0 でない（0 なら rejected malformed）。abort の項が段の
   間に成り立ったら段 0 に戻る（ラント: 段 0 cross_up(low) → 段 1 cross_down(low)、段 1 の abort は cross_up(high)）。
 - **宣言**（capture-group の describe）: 0x41 trigger_caps: max_stages(u8)、max_terms(u8: 1 段の項)、max_conds(u8: 1 項の条件)、cross_track(u8: 0 / 1、
   トラックをまたぐ AND)、types(u32: 条件の type のビット集合)、protocols(u8: serial のビット集合)、trigger_out_latency_ns(u32: 出来事から

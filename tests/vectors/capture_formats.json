@@ -345,7 +345,7 @@
   ],
   "trigger_expressions": [
     {
-      "name": "two stages: CS falls while VDD is below, then the ACK must come within 100 us (on_timeout 1) unless aborted",
+      "name": "two stages: CS falls while VDD is below; the event is the ACK not coming within 100 us (stage 1, on_timeout 1), the stage aborted while the abort term holds",
       "spec": "capture §4.4",
       "fns": {
         "9": "oep.fixture.logic",

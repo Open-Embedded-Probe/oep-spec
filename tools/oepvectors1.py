@@ -1588,7 +1588,7 @@ def capture_formats() -> dict:
             + tlv(bt["stage"] | crit, struct.pack("<BIQB", 1, 1, 100_000, 1))
             + cond(1, 0, 0, 1, 9, 3, ce["edge"], bytes([1]))
             + cond(1, 1, 0, 1, 9, 4, ce["level"], bytes([1, 0])))
-    tx.append({"name": "two stages: CS falls while VDD is below, then the ACK must come within 100 us (on_timeout 1) unless aborted",
+    tx.append({"name": "two stages: CS falls while VDD is below; the event is the ACK not coming within 100 us (stage 1, on_timeout 1), the stage aborted while the abort term holds",
                "spec": "capture §4.4", "fns": {"9": "oep.fixture.logic", "13": "oep.fixture.analog"}, "bind_tlvs_hex": hx(expr), "accepted": True})
     two = (tlv(bt["trigger_source"] | crit, struct.pack("<BQBB", 1, 0, 1, 0)) + tlv(bt["stage"] | crit, struct.pack("<BIQB", 0, 1, 0, 0))
            + cond(0, 0, 0, 1, 9, 2, ce["edge"], bytes([1])) + cond(0, 0, 0, 1, 13, 0, ce["cross_up"], struct.pack("<II", 2000, 8)))
