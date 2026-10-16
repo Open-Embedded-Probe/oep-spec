@@ -522,9 +522,9 @@
       "fns": {
         "4": "oep.wire.rvswd"
       },
-      "state": "connection 1 on channels 1 / 2 at 1 MHz, owned by the session, target_id scheme 1 = 0x00203500",
+      "state": "connection 1 on channels 1 / 2 at 1 MHz, owned by the session, target_id scheme 1 = 0x00203500, resting high",
       "request_hex": "0140000400130000000000",
-      "answer_hex": "02400001000001010000000100020040420f00010400352000"
+      "answer_hex": "02400001000001010000000100020040420f000104003520000202000000"
     },
     {
       "name": "rvswd connections: first beyond the count",
@@ -574,7 +574,7 @@
       },
       "state": "session S owns connection 1 on pins 1 / 2; max_connections 2; pins 3 / 4 allowed and free; next resource 2",
       "request_hex": "01450004001144332211000300040040420f00",
-      "answer_hex": "024500010002000000820340000040420f00"
+      "answer_hex": "024500010002000000820340000040420f0003010000"
     },
     {
       "name": "rvswd attach: a resource ID above u16",
@@ -584,7 +584,7 @@
       },
       "state": "session S; 65535 resources were created and closed; next resource 65536; pins 3 / 4 allowed and free",
       "request_hex": "01470004001144332211000300040040420f00",
-      "answer_hex": "024700010000000100820340000040420f00"
+      "answer_hex": "024700010000000100820340000040420f0003010000"
     },
     {
       "name": "rvswd attach: busy pins never join or evict",

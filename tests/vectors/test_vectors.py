@@ -442,7 +442,7 @@ def test_per_op_vectors_decode_exactly():
             assert len(req) == (10 + 6 if opc == sub else 10), c["name"]                            # no target fn in the request
     assert pay("logic subscribe: min_bytes 1024, max_delay_ms 20") == b""
     p = pay("rvswd connections: one connection with a target_id")
-    assert p[0] == 0 and 1 + _fixed_sequence(p[1:], lambda b, i: 14 + b[i + 13]) == len(p)        # entry 14 bytes + tid; connection u32
+    assert p[0] == 0 and 1 + _fixed_sequence(p[1:], lambda b, i: 14 + b[i + 13]) + 3 + 2 == len(p)  # entry 14 bytes + tid; then TLV idle_clock (index, rest)
     p = pay("rvswd scan: one combination listed and found")
     assert p[0] == 1 and 1 + _fixed_sequence(p[1:], lambda b, i: 9) == len(p)                       # kind swdio swclk id
     assert pay("rvswd scan: count 0 is malformed") == b""                  # tried 0, count 0 (debug §1)
@@ -494,7 +494,7 @@ def test_resource_ids_cross_u16_without_changing_function_or_correlation_width()
     cases = {case['name']: case for case in load('ops.json')['cases']}
     attach = bytes.fromhex(cases['rvswd attach: a resource ID above u16']['answer_hex'])
     assert attach[5:9] == b'\x00\x00\x01\x00'  # 65536, little endian u32.
-    assert len(attach) == 18 and attach[9:13] == bytes.fromhex('82034000')
+    assert len(attach) == 18 + 3 + 1 and attach[9:13] == bytes.fromhex('82034000')   # then TLV idle_clock (debug §3.1)
     transfer = bytes.fromhex(cases['arm-adi transfer: a connection ID above u16']['request_hex'])
     assert transfer[1:3] == b'\x59\x00' and transfer[3:5] == b'\x0f\x00'
     assert transfer[10:] == b'\x00\x00\x01\x00\x00\x00'  # Connection, then u16 n.

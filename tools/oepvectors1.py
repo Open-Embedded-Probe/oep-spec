@@ -706,9 +706,14 @@ def ops() -> dict:
     rv = {"4": "oep.wire.rvswd"}
     scheme = REG["common"]["enum"]["target_id_scheme"]["dmi_7f"]
     entry = struct.pack("<IHHIBB", 1, 0x0001, 0x0002, 1_000_000, scheme, 4) + struct.pack("<I", 0x00203500)
+    # every rvswd answer says how the connection rests (debug §3.1): these targets' families are not in idle_low_family
+    rest_tags = IFACE["oep.wire.rvswd"]["tlv"]
+    high = bytes([IFACE["oep.wire.rvswd"]["enum"]["idle_clock"]["high"]])
+    rest_entry0 = tlv(rest_tags["connections_answer"]["idle_clock"], bytes([0]) + high)
+    rest_attach = tlv(rest_tags["attach_answer"]["idle_clock"], high)
     add("rvswd connections: one connection with a target_id", "debug §2.1", rv,
-        "connection 1 on channels 1 / 2 at 1 MHz, owned by the session, target_id scheme 1 = 0x00203500",
-        request(0x40, 4, op("oep.wire.rvswd", "connections"), bytes([0])), ok(0x40, bytes([0, 1]) + entry))
+        "connection 1 on channels 1 / 2 at 1 MHz, owned by the session, target_id scheme 1 = 0x00203500, resting high",
+        request(0x40, 4, op("oep.wire.rvswd", "connections"), bytes([0])), ok(0x40, bytes([0, 1]) + entry + rest_entry0))
     add("rvswd connections: first beyond the count", "core §7.3 end of paging, debug §2.1", rv, "as above",
         request(0x41, 4, op("oep.wire.rvswd", "connections"), bytes([1])), ok(0x41, bytes([0, 0])))
     kind = IFACE["oep.wire.rvswd"]["enum"]["scan_kind"]["riscv_dm"]
@@ -723,11 +728,11 @@ def ops() -> dict:
     add("rvswd attach: a second target on separate pins", "debug §1", rv,
         "session S owns connection 1 on pins 1 / 2; max_connections 2; pins 3 / 4 allowed and free; next resource 2",
         request(0x45, 4, op("oep.wire.rvswd", "attach"), struct.pack("<BHHI", 0, 3, 4, 1_000_000), S),
-        ok(0x45, struct.pack("<IIBI", 2, 0x00400382, 0, 1_000_000)))
+        ok(0x45, struct.pack("<IIBI", 2, 0x00400382, 0, 1_000_000) + rest_attach))
     add("rvswd attach: a resource ID above u16", "debug §1, core §9", rv,
         "session S; 65535 resources were created and closed; next resource 65536; pins 3 / 4 allowed and free",
         request(0x47, 4, op("oep.wire.rvswd", "attach"), struct.pack("<BHHI", 0, 3, 4, 1_000_000), S),
-        ok(0x47, struct.pack("<IIBI", 65536, 0x00400382, 0, 1_000_000)))
+        ok(0x47, struct.pack("<IIBI", 65536, 0x00400382, 0, 1_000_000) + rest_attach))
     add("rvswd attach: busy pins never join or evict", "debug §1, core §8.1", rv,
         "session S owns connection 1 on pins 1 / 2; connection remains unchanged",
         request(0x46, 4, op("oep.wire.rvswd", "attach"), fixed_attach, S),
