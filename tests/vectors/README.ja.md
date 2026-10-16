@@ -11,6 +11,7 @@
 | `core_lifecycle.json` | 未完了再送のcredit、leaseの処理/送信の境界、監視と経路喪失 |
 | `ops.json`、`ops_encoding.json` | 各 op の要求・応答と encoding |
 | `logic_layout.json` | logic capture の区画内の layout |
+| `capture_formats.json` | キャプチャのデータの形式（§1.3 ロジックのブロック、§1.4 アナログのブロック、§3.8 時刻つきのステート）、外部の経路の印と見出し（§3.9）、トリガの式（§4.4）。ベクタでは fallback を必須のブロックだけにする |
 | `interface_profiles.json` | 名前付き機能なし、独自拡張、受信専用UART、生のARM転送の小さい宣言例。動作traceではない |
 | `interface_boundaries.json` | 通知の閾値・停止端数・frame分割、欠落時の受信範囲、serialの飛びを欠落数とする条件、保存失敗の応答/state、group開始の拒否/失敗、I2C/SPIの境界。前提と外部観測を伴う例 |
 

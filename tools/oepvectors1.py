@@ -1422,12 +1422,190 @@ def interface_boundaries() -> dict:
                 batching=batching, reception=reception, serial_loss=serial_loss, storage=storage, groups=groups, fixtures=fixtures)
 
 
+
+# ---- capture data formats (capture §1.3 / §1.4 / §3.8 / §3.9 / §4.4) --------------------------------------------------------
+def _bits_to_bytes(bits: list[int]) -> bytes:
+    """Bits in stream order (capture §1: bit j is byte j // 8, bit j % 8) -> bytes, the tail to a byte boundary with 0."""
+    out = bytearray((len(bits) + 7) // 8)
+    for j, b in enumerate(bits):
+        out[j // 8] |= (b & 1) << (j % 8)
+    return bytes(out)
+
+
+def _uint_bits(v: int, n: int) -> list[int]:
+    return [(v >> k) & 1 for k in range(n)]
+
+
+def logic_block(raw_chans, ev_chans, ev_d, prev_level, first, r, L):
+    """One format 1 block (capture §1.3) for samples [first, first + r) of the segment's channel strings. raw_chans: the raw
+    channels' level strings (role order); ev_chans / ev_d: the events channels and their D; prev_level[e]: the level of
+    the sample before the block (start_level). fallback only where it is required (events > L / 8 bytes)."""
+    E = len(ev_chans)
+    events, fallback = [], []
+    for e, ch in enumerate(ev_chans):
+        D = ev_d[e]
+        mine = []
+        last = prev_level[e]
+        t = 0
+        while t * D < r:
+            lo, hi = t * D, min((t + 1) * D, r)
+            n = 0
+            for i in range(lo, hi):
+                v = int(ch[first + i])
+                if v != last:
+                    n += 1
+                last = v
+            if n:
+                mine.append((t, e, (last << 7) | min(n, 127)))
+            t += 1
+        fb = len(mine) * 4 > L // 8
+        fallback.append(fb)
+        if not fb:
+            events += mine
+    head = bytearray(_bits_to_bytes([1 if f else 0 for f in fallback]).ljust((E + 7) // 8, b"\0"))
+    head += _bits_to_bytes(prev_level).ljust((E + 7) // 8, b"\0")
+    head += struct.pack("<I", len(events))
+    fb_chans = [ch for ch, f in zip(ev_chans, fallback) if f]
+    cols = list(raw_chans) + fb_chans
+    bits = []
+    for i in range(r):
+        for ch in cols:
+            bits.append(int(ch[first + i]))
+    raw = _bits_to_bytes(bits)
+    body = b"".join(struct.pack("<HBB", t, e, st) for t, e, st in events)
+    return bytes(head) + raw + body, fallback
+
+
+def logic_segment(raw_chans, ev_chans, ev_d, L, start_levels):
+    """A segment's blocks; start_levels: the level before the segment per events channel (contiguous with the segment
+    before) or None (the segment's first sample)."""
+    n = len((raw_chans + ev_chans)[0])
+    prev = [int(ch[0]) for ch in ev_chans] if start_levels is None else list(start_levels)
+    out, fbs = b"", []
+    for first in range(0, n, L):
+        r = min(L, n - first)
+        blk, fb = logic_block(raw_chans, ev_chans, ev_d, prev, first, r, L)
+        out += blk
+        fbs.append(fb)
+        prev = [int(ch[first + r - 1]) for ch in ev_chans]
+    return out, fbs
+
+
+def analog_block(chans, kinds, ds, b, first, r):
+    """One format 2 block (capture §1.4): channels in order, each part padded to a byte."""
+    out = b""
+    for vals, kind, D in zip(chans, kinds, ds):
+        bits = []
+        if kind == ["packed"]:
+            for i in range(r):
+                bits += _uint_bits(vals[first + i], b)
+        else:
+            sw = b + max(0, (D - 1).bit_length())
+            for lo in range(0, r, D):
+                seg = vals[first + lo:first + min(lo + D, r)]
+                if "minmax" in kind:
+                    bits += _uint_bits(min(seg), b) + _uint_bits(max(seg), b)
+                if "sum" in kind:
+                    bits += _uint_bits(sum(seg), sw)
+        out += _bits_to_bytes(bits)
+    return out
+
+
+def capture_formats() -> dict:
+    lc = []
+
+    def add_logic(name, spec, raw, ev, ev_d, L, segments):
+        """segments: [(contiguous_with_before, {chan strings})]"""
+        streams, prev_end = [], None
+        for contiguous, (raws, evs) in segments:
+            start = prev_end if contiguous else None
+            data, fbs = logic_segment(raws, evs, ev_d, L, start)
+            streams.append({"contiguous": contiguous, "raw": raws, "events": evs, "fallback": fbs, "stream_hex": hx(data)})
+            prev_end = [int(ch[-1]) for ch in evs]
+        lc.append({"name": name, "spec": spec, "L": L, "R": len(raw), "events_d": ev_d, "segments": streams})
+
+    raw0 = levels(128, range(0, 128, 2))
+    slow = levels(128, (3, 4, 5, 9, 70))
+    add_logic("raw and events mixed: a raw channel and a D 4 events channel", "capture §1.3", [raw0], [slow], [4], 128,
+              [(False, ([raw0], [slow]))])
+    busy = levels(128, range(0, 128, 2))
+    add_logic("D 1 events past L / 8 bytes: fallback required", "capture §1.3 fallback", [], [busy], [1], 128,
+              [(False, ([], [busy]))])
+    busyd = levels(128, range(0, 128, 4))
+    add_logic("D 2 events past L / 8 bytes: fallback for D > 1", "capture §1.3 fallback (any D)", [], [busyd], [2], 128,
+              [(False, ([], [busyd]))])
+    a = levels(128, range(100, 128)); b2 = levels(128, ())
+    add_logic("start_level across contiguous segments: the change at the boundary is counted in the next segment", "capture §1.3 start_level",
+              [], [a], [1], 128, [(False, ([], [a])), (True, ([], [b2]))])
+    add_logic("start_level after a gap is the segment's first sample: no change counted at the boundary", "capture §1.3 start_level",
+              [], [a], [1], 128, [(False, ([], [a])), (False, ([], [b2]))])
+    part = levels(136, (5, 130))
+    add_logic("a partial last block (r 8) and a partial last tick (D 16)", "capture §1.3 刻み", [], [part], [16], 128,
+              [(False, ([], [part]))])
+    sat = levels(512, range(0, 512, 2))
+    add_logic("a count saturates at 127 (D 256)", "capture §1.3 出来事", [], [sat], [256], 512, [(False, ([], [sat]))])
+
+    ac = []
+
+    def add_analog(name, spec, chans, kinds, ds, b, L):
+        n = len(chans[0])
+        data = b"".join(analog_block(chans, kinds, ds, b, first, min(L, n - first)) for first in range(0, n, L))
+        ac.append({"name": name, "spec": spec, "b": b, "L": L, "kinds": kinds, "d": ds, "channels": chans, "stream_hex": hx(data)})
+
+    vals10 = [1, 1023, 512, 3, 7, 600, 2, 900, 5, 44]
+    add_analog("packed 10 bit, no frame", "capture §1.4 packed", [vals10[:8]], [["packed"]], [1], 10, 8)
+    ramp = list(range(100, 140))
+    add_analog("minmax and sum together, D 16, a partial interval", "capture §1.4 minmax + sum (sum width b + ceil(log2 D))",
+               [ramp], [["minmax", "sum"]], [16], 12, 32)
+
+    st = []
+    tb = [(5, 0b01), (0xFFFFFFFF, 0), (7, 0b10), (1, 0b11)]
+    raw = b"".join(struct.pack("<I", d) + bytes([v]) for d, v in tb)
+    st.append({"name": "format 3 with a long stop (delta 0xFFFFFFFF advances time only)", "spec": "capture §3.8 形式 3",
+               "w": 2, "entries": [{"delta": d, "state": v} for d, v in tb], "samples": 3, "stream_hex": hx(raw)})
+
+    ext = []
+    mark = b"OEPX" + struct.pack("<IHB", 7, 9, 1) + bytes(5)
+    ext.append({"name": "the generation's start mark", "spec": "capture §3.9", "generation": 7, "fn": 9, "format": 1, "bytes_hex": hx(mark)})
+    chunk = struct.pack("<HH", 9, 3) + b"\x01\x02\x03"
+    ext.append({"name": "a mux 1 chunk", "spec": "capture §3.9 mux 1", "fn": 9, "data_hex": "010203", "bytes_hex": hx(chunk)})
+    pkt = struct.pack("<QIHH", 4096, 7, 9, 0) + b"\xaa\xbb"
+    ext.append({"name": "a UDP / isochronous packet header", "spec": "capture §3.9 kind 3 / 4", "position": 4096, "generation": 7, "fn": 9,
+                "data_hex": "aabb", "bytes_hex": hx(pkt)})
+
+    tx = []
+    G = IFACE["oep.fixture.capture-group"]
+    bt, ce = G["tlv"]["bind"], G["enum"]["trigger_cond"]
+    crit = REG["constants"]["tag_critical"]
+
+    def cond(stage, part, term, src, fn, role, ctype, args):
+        return tlv(bt["cond"] | crit, struct.pack("<BBBBHBB", stage, part, term, src, fn, role, ctype) + args)
+
+    expr = (tlv(bt["trigger_source"] | crit, struct.pack("<BQBB", 2, 1000, 1, 0))
+            + tlv(bt["stage"] | crit, struct.pack("<BIQB", 0, 1, 0, 0))
+            + cond(0, 0, 0, 1, 9, 2, ce["edge"], bytes([1]))
+            + cond(0, 0, 0, 1, 13, 0, ce["below"], struct.pack("<IIB", 2000, 8, 0))
+            + tlv(bt["stage"] | crit, struct.pack("<BIQB", 1, 1, 100_000, 1))
+            + cond(1, 0, 0, 1, 9, 3, ce["edge"], bytes([1]))
+            + cond(1, 1, 0, 1, 9, 4, ce["level"], bytes([1, 0])))
+    tx.append({"name": "two stages: CS falls while VDD is below, then the ACK must come within 100 us (on_timeout 1) unless aborted",
+               "spec": "capture §4.4", "fns": {"9": "oep.fixture.logic", "13": "oep.fixture.analog"}, "bind_tlvs_hex": hx(expr), "accepted": True})
+    two = (tlv(bt["trigger_source"] | crit, struct.pack("<BQBB", 1, 0, 1, 0)) + tlv(bt["stage"] | crit, struct.pack("<BIQB", 0, 1, 0, 0))
+           + cond(0, 0, 0, 1, 9, 2, ce["edge"], bytes([1])) + cond(0, 0, 0, 1, 13, 0, ce["cross_up"], struct.pack("<II", 2000, 8)))
+    tx.append({"name": "two instantaneous conditions in one term are refused", "spec": "capture §4.4 評価",
+               "fns": {"9": "oep.fixture.logic", "13": "oep.fixture.analog"}, "bind_tlvs_hex": hx(two), "accepted": False,
+               "refusal": "unsupported"})
+    return {"about": "capture data formats and the trigger expression. Vectors fix fallback to the required blocks only (a probe may fall back "
+                     "earlier; a host reads the header). logic: per segment the raw / events channels' levels, the fallback chosen per block, "
+                     "the stream. analog: values per channel, the stream. external: marks and headers. trigger: bind TLVs.",
+            "logic_blocks": lc, "analog_blocks": ac, "state_timed": st, "external": ext, "trigger_expressions": tx}
+
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
          "refusals.json": refusals, "core_extensions.json": core_extensions,
          "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding,
          "logic_layout.json": logic_layout, "interface_profiles.json": interface_profiles,
          "core_lifecycle.json": core_lifecycle, "core_policy.json": core_policy,
-         "interface_boundaries.json": interface_boundaries}
+         "interface_boundaries.json": interface_boundaries, "capture_formats.json": capture_formats}
 
 
 def render(build) -> str:

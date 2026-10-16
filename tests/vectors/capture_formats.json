@@ -1,0 +1,369 @@
+{
+  "about": "capture data formats and the trigger expression. Vectors fix fallback to the required blocks only (a probe may fall back earlier; a host reads the header). logic: per segment the raw / events channels' levels, the fallback chosen per block, the stream. analog: values per channel, the stream. external: marks and headers. trigger: bind TLVs.",
+  "logic_blocks": [
+    {
+      "name": "raw and events mixed: a raw channel and a D 4 events channel",
+      "spec": "capture §1.3",
+      "L": 128,
+      "R": 1,
+      "events_d": [
+        4
+      ],
+      "segments": [
+        {
+          "contiguous": false,
+          "raw": [
+            "10101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010"
+          ],
+          "events": [
+            "00011100010000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000"
+          ],
+          "fallback": [
+            [
+              false
+            ]
+          ],
+          "stream_hex": "0000040000005555555555555555555555555555555500000081010000010200000211000002"
+        }
+      ]
+    },
+    {
+      "name": "D 1 events past L / 8 bytes: fallback required",
+      "spec": "capture §1.3 fallback",
+      "L": 128,
+      "R": 0,
+      "events_d": [
+        1
+      ],
+      "segments": [
+        {
+          "contiguous": false,
+          "raw": [],
+          "events": [
+            "10101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010"
+          ],
+          "fallback": [
+            [
+              true
+            ]
+          ],
+          "stream_hex": "01010000000055555555555555555555555555555555"
+        }
+      ]
+    },
+    {
+      "name": "D 2 events past L / 8 bytes: fallback for D > 1",
+      "spec": "capture §1.3 fallback (any D)",
+      "L": 128,
+      "R": 0,
+      "events_d": [
+        2
+      ],
+      "segments": [
+        {
+          "contiguous": false,
+          "raw": [],
+          "events": [
+            "10001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000"
+          ],
+          "fallback": [
+            [
+              true
+            ]
+          ],
+          "stream_hex": "01010000000011111111111111111111111111111111"
+        }
+      ]
+    },
+    {
+      "name": "start_level across contiguous segments: the change at the boundary is counted in the next segment",
+      "spec": "capture §1.3 start_level",
+      "L": 128,
+      "R": 0,
+      "events_d": [
+        1
+      ],
+      "segments": [
+        {
+          "contiguous": false,
+          "raw": [],
+          "events": [
+            "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111"
+          ],
+          "fallback": [
+            [
+              false
+            ]
+          ],
+          "stream_hex": "00000100000064000081"
+        },
+        {
+          "contiguous": true,
+          "raw": [],
+          "events": [
+            "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          "fallback": [
+            [
+              false
+            ]
+          ],
+          "stream_hex": "00010100000000000001"
+        }
+      ]
+    },
+    {
+      "name": "start_level after a gap is the segment's first sample: no change counted at the boundary",
+      "spec": "capture §1.3 start_level",
+      "L": 128,
+      "R": 0,
+      "events_d": [
+        1
+      ],
+      "segments": [
+        {
+          "contiguous": false,
+          "raw": [],
+          "events": [
+            "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111"
+          ],
+          "fallback": [
+            [
+              false
+            ]
+          ],
+          "stream_hex": "00000100000064000081"
+        },
+        {
+          "contiguous": false,
+          "raw": [],
+          "events": [
+            "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          "fallback": [
+            [
+              false
+            ]
+          ],
+          "stream_hex": "000000000000"
+        }
+      ]
+    },
+    {
+      "name": "a partial last block (r 8) and a partial last tick (D 16)",
+      "spec": "capture §1.3 刻み",
+      "L": 128,
+      "R": 0,
+      "events_d": [
+        16
+      ],
+      "segments": [
+        {
+          "contiguous": false,
+          "raw": [],
+          "events": [
+            "0000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000"
+          ],
+          "fallback": [
+            [
+              false
+            ],
+            [
+              false
+            ]
+          ],
+          "stream_hex": "0000010000000000000200000100000000000002"
+        }
+      ]
+    },
+    {
+      "name": "a count saturates at 127 (D 256)",
+      "spec": "capture §1.3 出来事",
+      "L": 512,
+      "R": 0,
+      "events_d": [
+        256
+      ],
+      "segments": [
+        {
+          "contiguous": false,
+          "raw": [],
+          "events": [
+            "10101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010"
+          ],
+          "fallback": [
+            [
+              false
+            ]
+          ],
+          "stream_hex": "0001020000000000007f0100007f"
+        }
+      ]
+    }
+  ],
+  "analog_blocks": [
+    {
+      "name": "packed 10 bit, no frame",
+      "spec": "capture §1.4 packed",
+      "b": 10,
+      "L": 8,
+      "kinds": [
+        [
+          "packed"
+        ]
+      ],
+      "d": [
+        1
+      ],
+      "channels": [
+        [
+          1,
+          1023,
+          512,
+          3,
+          7,
+          600,
+          2,
+          900
+        ]
+      ],
+      "stream_hex": "01fc0fe00007602900e1"
+    },
+    {
+      "name": "minmax and sum together, D 16, a partial interval",
+      "spec": "capture §1.4 minmax + sum (sum width b + ceil(log2 D))",
+      "b": 12,
+      "L": 32,
+      "kinds": [
+        [
+          "minmax",
+          "sum"
+        ]
+      ],
+      "d": [
+        16
+      ],
+      "channels": [
+        [
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135,
+          136,
+          137,
+          138,
+          139
+        ]
+      ],
+      "stream_hex": "643007b806743008b80784b0083c04"
+    }
+  ],
+  "state_timed": [
+    {
+      "name": "format 3 with a long stop (delta 0xFFFFFFFF advances time only)",
+      "spec": "capture §3.8 形式 3",
+      "w": 2,
+      "entries": [
+        {
+          "delta": 5,
+          "state": 1
+        },
+        {
+          "delta": 4294967295,
+          "state": 0
+        },
+        {
+          "delta": 7,
+          "state": 2
+        },
+        {
+          "delta": 1,
+          "state": 3
+        }
+      ],
+      "samples": 3,
+      "stream_hex": "0500000001ffffffff0007000000020100000003"
+    }
+  ],
+  "external": [
+    {
+      "name": "the generation's start mark",
+      "spec": "capture §3.9",
+      "generation": 7,
+      "fn": 9,
+      "format": 1,
+      "bytes_hex": "4f455058070000000900010000000000"
+    },
+    {
+      "name": "a mux 1 chunk",
+      "spec": "capture §3.9 mux 1",
+      "fn": 9,
+      "data_hex": "010203",
+      "bytes_hex": "09000300010203"
+    },
+    {
+      "name": "a UDP / isochronous packet header",
+      "spec": "capture §3.9 kind 3 / 4",
+      "position": 4096,
+      "generation": 7,
+      "fn": 9,
+      "data_hex": "aabb",
+      "bytes_hex": "00100000000000000700000009000000aabb"
+    }
+  ],
+  "trigger_expressions": [
+    {
+      "name": "two stages: CS falls while VDD is below, then the ACK must come within 100 us (on_timeout 1) unless aborted",
+      "spec": "capture §4.4",
+      "fns": {
+        "9": "oep.fixture.logic",
+        "13": "oep.fixture.analog"
+      },
+      "bind_tlvs_hex": "810b0002e8030000000000000100820e000001000000000000000000000000830900000000010900020201831100000000010d000008d00700000800000000820e000101000000a08601000000000001830900010000010900030201830a0001010001090004010100",
+      "accepted": true
+    },
+    {
+      "name": "two instantaneous conditions in one term are refused",
+      "spec": "capture §4.4 評価",
+      "fns": {
+        "9": "oep.fixture.logic",
+        "13": "oep.fixture.analog"
+      },
+      "bind_tlvs_hex": "810b000100000000000000000100820e000001000000000000000000000000830900000000010900020201831000000000010d000003d007000008000000",
+      "accepted": false,
+      "refusal": "unsupported"
+    }
+  ]
+}
