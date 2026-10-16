@@ -96,6 +96,7 @@ tag(u8) | len(u16) | value(len byte)
 - **名前つきの拡張 TLV（tag 0x7F）**: どの文脈でも、tag 0x7F は名前つきの拡張に予約する。値は
   `name_len(u8)、name、data`。name は §12 規則 1 のインターフェースの名前と同じ形の逆 DNS の名前で、data の形と意味は
   その名前を持つ者が決める（§12 規則 7）。どの定義も tag 0x7F に別の意味を与えない。
+  - 名前は revision を持たない。同じ名前の data は、どの文脈、どの probe でも同じ形と意味を持つ。形か意味を変えるときは、新しい名前にする。
   - 繰り返してよい。同じ名前を 2 つ置けるかは、その名前の定義が決める。
   - 要求で、知らない名前の拡張は、critical（0xFF）なら rejected unsupported（payload の tag は 0xFF）、そうでなければ無視する。
     name_len が値に収まらない拡張は malformed。
