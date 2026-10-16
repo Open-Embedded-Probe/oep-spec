@@ -825,7 +825,9 @@ def test_basic_group_has_only_immediate_start_and_future_selector_refusal():
     future=bytes.fromhex(rows['capture-group bind: future critical selector is refused']['answer_hex'])
     assert future[3:]==bytes([0,REG['reject_reasons']['unsupported'],0x81])
     group=next(i for i in REG['interface'] if i['name']=='oep.fixture.capture-group')
-    assert 'force' not in {op['name'] for op in group['op']} and group['event']=={'stopped':2}
+    # the trigger source is optional (capture §4.4): a probe without features trigger_source refuses bind's critical TLV
+    assert group['tlv']['bind']['trigger_source'] | REG['constants']['tag_critical'] == future[5]
+    assert group['enum']['features']['trigger_source'] and group['event']['triggered'] == 3
 
 
 def test_capture_request_tlvs_are_plain_and_zero_counts_are_malformed():
@@ -833,9 +835,13 @@ def test_capture_request_tlvs_are_plain_and_zero_counts_are_malformed():
     samples 0 is a value the definition excludes (malformed)."""
     iface = {i["name"]: i for i in REG["interface"]}
     cases = load("ops.json")["cases"]
-    plain = {("oep.fixture.logic", 0x10): set(iface["oep.fixture.logic"]["tlv"]["configure"].values()) - {0x60},
-             ("oep.fixture.logic", 0x18): set(iface["oep.fixture.logic"]["tlv"]["configure"].values()) - {0x60},
-             ("oep.fixture.capture-group", 0x10): set(iface["oep.fixture.capture-group"]["tlv"]["bind"].values())}
+    logic = iface["oep.fixture.logic"]
+    lop = {o["name"]: o["code"] for o in logic["op"]}
+    gop = {o["name"]: o["code"] for o in iface["oep.fixture.capture-group"]["op"]}
+    # the base settings are plain; format 1+ and carriage (§1.3) and bind's trigger_source (§4.4) are sent critical
+    base = set(logic["tlv"]["configure"].values()) - {logic["tlv"]["configure"][k] for k in ("format", "carriage")}
+    plain = {("oep.fixture.logic", lop["configure"]): base, ("oep.fixture.logic", lop["query"]): base,
+             ("oep.fixture.capture-group", gop["bind"]): set()}
     seen = 0
     for c in cases:
         req = bytes.fromhex(c["request_hex"])

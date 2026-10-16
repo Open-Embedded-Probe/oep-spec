@@ -1066,7 +1066,7 @@ def ops() -> dict:
         request(0x8A,12,op("oep.fixture.capture-group","bind"),struct.pack("<BHH",2,9,13),S),
         rej(0x8A,"unavailable",tlv(1,b"\6")+tlv(5,struct.pack("<H",9))))
     add("capture-group bind: future critical selector is refused", "capture §4.1, core §2.3",
-        {"12":"oep.fixture.capture-group"},"both tracks immediate, v1 defines no bind tags; no effects",
+        {"12":"oep.fixture.capture-group"},"both tracks immediate; the probe declares no features trigger_source (capture §4.4), so bind's critical trigger_source is refused; no effects",
         request(0x8C,12,op("oep.fixture.capture-group","bind"),struct.pack("<BHH",2,9,13)+tlv(0x81,struct.pack("<H",9)),S),
         rej(0x8C,"unsupported",b"\x81"))
     # oep.fixture.capture-group (capture §4): the group's generation, then n x (fn, generation) in bind order, in the fixed part

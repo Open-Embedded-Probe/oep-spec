@@ -11,8 +11,8 @@
 
 logic と analog は**操作の番号と形が同じ**で、違うのは configure の中身（§3.3）、データの layout（§1）、アナログだけの
 calibration（§3.7）だけ。複数トラックの同時開始と時刻合わせは、この 2 つを広げず、トラックを束ねる別のインターフェース
-（capture-group、§4）にする。外部クロック、多段トリガなどは別の定義（§3.6）。チャネルごとに縮約して取るロジックは、logic の別の定義
-（将来のmultirateなど）。
+（capture-group、§4）にする。チャネルごとの分解能と変化点での運び方はデータの形式（§1.3 / §1.4）、トラックをまたぐ起点は出来事の元（§4.4）。
+外部クロックなどは追加の定義（§3.6）。
 
 **時刻**: どのトラックの時刻も、probe の 1 本の時計（起動からの ns、u64 で一周しない）で表す。インターフェースが違っても同じ
 時計なので、host は時刻の引き算でトラックを並べられる。時刻は**推定値と不確かさ**で返す。probe は知っている補正（ドライバが最初の
@@ -40,6 +40,19 @@ status、区画の情報、出来事、ストリーミングのデータの TLV 
 用語: **ストリーム**は、1 世代のキャプチャで probe が返すバイトの並び。位置は世代の中で 0 から通して数え、区画ごとには戻さない（§2.2）。
 §1 のサンプル配置は、各区画の先頭を 0 とした区画内のビット位置で表す。ストリーム全体でのビット位置は、区画の position × 8 を足した値である。
 **区画内のビット j** は、区画内のバイト `floor(j / 8)` のビット `j mod 8`（ビット 0 = LSB）と定める。
+
+**データの形式（format）**: 区画とストリームのバイトの並びは、形式の番号（registry `data_format`）で決まる。configure の応答の format
+（§3.3）がその番号で、無ければ 0。0 は §1.1 / §1.2 の詰め方（全チャネルを全サンプルで同じビット数）。1 はロジックのブロック（§1.3）、
+2 はアナログのブロック（§1.4）。番号は OEP が足す。
+
+- probe は、host が configure の format で求めた番号だけを使い、求めが無ければ 0 を使う（host が知らない形式を黙って送らない）。
+  使える番号は describe の formats（§3.5）で宣言する。宣言は目安で、その設定で使えるかは query と configure の応答が正（rate とチャネルの
+  数によって使えないことがある）。
+- host は、知っている形式だけを読む。
+- **形式によらないもの**: 区画、position（その形式のバイト列での位置）、read、通知、世代の意味。区画の samples、trigger_index、pretrigger は
+  元のサンプル（トラックの rate のサンプル）で数える。どのブロックも、それだけで（前のブロック無しに）復元できる。
+- **確かさ**: 形式とチャネルの運び方ごとに、可逆（値と時刻が確か）か要約（何が確かかを §1.3 / §1.4 が決める）かが決まっている。
+- **最悪の帯域**は configure の応答から start の前に計算できる（§1.3 / §1.4 の式）。
 
 ### 1.1 ロジック
 
@@ -108,6 +121,54 @@ configure の応答で probe が返す値:
 | 2 バイトのレコードをそのまま送る 12 ビット ADC | 16 | 0 | 12 | 上位 4 ビット（チャネル番号）は未定義 |
 | FIFO の 16 ビットをそのまま送る 12 ビット ADC | 16 | 0 | 12 | |
 | 8 ビットに縮めた ADC | 8 | 0 | 8 | |
+
+### 1.3 ロジックのブロック（形式 1）
+
+host は configure でチャネル（役割）ごとに**分解能 D**（元のサンプルの数、1 以上）と**運び方**（`carriage`: raw か events）を選ぶ（§3.3 の
+carriage。選ばない役割は raw、D = 1）。D > 1 は events だけ（間引きは短い変化を黙って消すので持たない）。
+
+**ブロック**: 区画のデータはブロックの並び。ブロックは元のサンプル L 個を表す（区画の最後のブロックは r = samples mod L 個、r ≥ 1 のとき）。
+L は configure の応答の block で返し、**8 の倍数で、どの D の倍数でもあり、L / D ≤ 65536**。ブロックの格子は区画ごとに、区画の
+サンプル 0 から始まる。1 つのブロックは、次をこの順に並べる（E は events のチャネルの数、役割の番号の小さい順に e = 0 … E−1）:
+
+| 部分 | 長さ | 中身 |
+|---|---|---|
+| fallback | ceil(E / 8) byte | ビット e が 1: events のチャネル e（D = 1 のものだけ）を、このブロックでは raw の部分で運ぶ |
+| start_level | ceil(E / 8) byte | ビット e: events のチャネル e の、ブロックの最初のサンプルのレベル |
+| n | u16 | 出来事の数 |
+| raw の部分 | ceil(r · w_b / 8) byte | サンプルごとに w_b ビット（R + そのブロックの fallback の数）。ビット j（j < R）は raw のチャネル j（役割の順）、ビット R + f は fallback の f 番目のチャネル（e の順）。サンプル i はビット `i · w_b` から（§1 のビットの定義） |
+| 出来事 | n × 4 byte | tick(u16)、ch(u8: e)、state(u8: bit 7 = 刻みの後のレベル、bit 0〜6 = 刻みの中の変化の数、127 で飽和) |
+
+- R は raw のチャネルの数。L は 8 の倍数なので、raw の部分は w_b によらずバイトの境目で終わる。区画の最後のブロック（r 個）では、
+  raw の部分の後ろを次のバイトの境目まで 0 で埋める。形式 1 の応答の layout は w = R、C = R、pos = 0 … R−1（raw のチャネルの並び）。
+- **出来事**: チャネル e の刻み t はブロックの元のサンプル `[t · D_e, (t+1) · D_e)`。**その刻みの中でレベルが 1 回以上変わったときだけ**、
+  刻みの順に（同じ刻みはチャネルの順に）1 つ出す。変化は前のサンプルとの比較で、刻みの最初のサンプルは前の刻み（ブロックの最初の刻みでは
+  start_level）と比べる。fallback のチャネルの出来事は出さない。
+- fallback にするかは probe が決める（出来事の方が raw より大きいブロックで使う）。host は見出しのとおりに読む。
+- **確かさ**: D = 1 のチャネルは可逆。D > 1 のチャネルは、変化の時刻が刻みの中まで、刻みの後のレベルと変化の数が確か（数が 127 なら
+  「少なくとも 127」）。刻みの中の位置と、変化の数の偶奇以外の途中のレベルは分からない。
+- **最悪の帯域**（byte / ブロック）: `2·ceil(E/8) + 2 + L·R/8 + Σ_{D_e = 1} L/8 + Σ_{D_e > 1} (L / D_e)·4`。D = 1 の events の
+  チャネルは、出来事が L/8 byte（raw で運ぶ大きさ）を超えるブロックで probe が fallback にするので、その分で頭打ちになる。
+  例: 16 チャネル、125 MHz、速い 4 本を raw、遅い 12 本を D = 64 の events、L = 4096: 見出し 6 byte、raw 2048 byte、出来事は最悪
+  12 · 64 · 4 = 3072 byte。最悪 5126 byte / 32.8 µs = 156 MB/s、遅い線が UART 115200 程度なら約 63.6 MB/s（形式 0 では 250 MB/s）。
+  ESP32-P4 のように出来事をソフトで作る probe は、32 bit の語で比べて変化の無い語を飛ばせば、アイドルの多い線で間に合う。間に合わない
+  rate やチャネルの数は configure / query で断る。
+
+### 1.4 アナログのブロック（形式 2）
+
+host は configure でチャネル（役割）ごとに**運び方**（`carriage`: packed、minmax、mean）と区間 D を選ぶ（選ばない役割は packed）。
+
+**ブロック**: 区画のデータはブロックの並び。ブロックは元のサンプル L 個を表す（区画の最後は r 個）。L は configure の応答の block で返し、
+8 の倍数で、どの D の倍数でもある。1 つのブロックは、layout の order の順に各チャネルの部分を並べ、各部分の後ろを次のバイトの境目まで 0 で埋める:
+
+| 運び方 | チャネルの部分の中身（ビットで詰める、§1 のビットの定義） | 確かさ |
+|---|---|---|
+| packed | r 個の値（layout の b ビットずつ、枠なし） | 可逆 |
+| minmax | 区間ごと（`[k·D, (k+1)·D)`、区画の中の D 点のそろう区間だけ）に min、max の順（b ビットずつ） | 要約: 区間の最小と最大は確か。時刻は区間の中まで |
+| mean | 区間ごとに平均（b ビット、元の値の和を D で割って切り捨て） | 要約: 区間の平均（切り捨て）。任意の運び方 |
+
+- 値は §1.2 の規則 1 の値（offset binary を含む）、規則 4〜6 は同じ。
+- **最悪の帯域**は固定の大きさ: 各チャネルの部分の byte 数の和。
 
 **ピンの共有**（core §8.1）: ロジックのキャプチャは聞くだけなので、ほかの機能のピンと共有してよい。アナログの入力は
 チップによっては pad をアナログの機能に切り替え、そのピンのデジタルの入出力を切る。
@@ -280,6 +341,10 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 | 0x05 | trigger | type(u8)、role(u8)、value(u32) | 両方 | 任意（type 0 即時） |
 | 0x06 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 | trigger の type が 0 でないときだけ（0） |
 | 0x07 | frontend | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。繰り返す（core §2.3）。同じ role に 2 つあれば rejected malformed | アナログ | 任意（そのチャネルは probe が選ぶ） |
+| 0x08 | format | u8: データの形式（§1、registry `data_format`）。describe の formats に無い番号は unsupported（受け取った tag） | 両方 | 任意（0）。0 以外は critical で送る |
+| 0x09 | carriage | role(u8)、kind(u8)、d(u32)。チャネルの運び方と分解能（§1.3 / §1.4）。ロジックの kind は enum `logic_carriage`（0 raw、1 events）、アナログは `analog_carriage`（0 packed、1 minmax、2 mean）。役割ごとに 1 つ、繰り返す | 両方 | format 1 / 2 のときだけ（無い役割は raw / packed、d 1）。critical で送る |
+| 0x0A | trigger_pulse | level(u8: パルスの間のレベル)、cond(u8: 0 長い、1 短い、2 範囲)、min(u32)、max(u32)（元のサンプルの数。cond 0 は min より長い、1 は max より短い、2 は min 以上 max 以下） | ロジック | trigger の type 5（pulse）のときだけ |
+| 0x0B | trigger_pattern | edge_role(u8: 0xFF なし)、edge(u8: trigger の edge の value)、n(u8)、mask(n byte)、value(n byte)（ビット k が役割 k。mask の立つ役割がすべて value のレベルのとき。edge_role がなければその間ずっと、あればその役割のエッジの瞬間） | ロジック | trigger の type 6（pattern）のときだけ。1 つだけ（並べた OR は予約。2 つ以上は unsupported） |
 
 - **契約**（configure と query で同じ）: 必須の TLV が無ければ rejected malformed。表の「だけ」「送らない」に反する TLV（mode 3 の
   samples と segments、mode 1 の segments、type 0 または trigger 無しの pretrigger）は、値によらず rejected unsupported（受け取ったままの tag）。
@@ -303,8 +368,16 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
   取得中の設定・データ・区画・group bindを変えず、要求値も適用しない。planがなければunavailable cause 6。
   取得の時間経過による進行は続く（照会の前後で時刻が進めば、新しいsampleが取られてよい）。
 - trigger の type: 0 即時（省略時）、1 レベル（value 0 / 1）、2 エッジ（value 0 立ち上がり / 1 立ち下がり / 2 両方）、
-  3 しきい値を上向きに横切る、4 下向きに横切る（value は o / b で切り出した後の ADC の値）。1〜2 はロジック、3〜4 はアナログ。
-  宣言に無い type は rejected unsupported。
+  3 しきい値を上向きに横切る、4 下向きに横切る（value は o / b で切り出した後の ADC の値）、5 パルス幅（trigger_pulse、role の線）、
+  6 パターン（trigger_pattern。role と value は使わない）、7 linked（組の出来事の元に従う、§4.4。role と value は使わない）。
+  1、2、5、6 はロジック、3、4 はアナログ、0 と 7 は両方。宣言に無い type は rejected unsupported。
+- **トリガは元のサンプルで判定する**: 形式 1 / 2 で縮約するチャネル（D > 1、minmax、mean）でも、条件は縮約の前の値で判定し、パルスの幅も
+  元のサンプルで数える。
+- **carriage**（形式 1 / 2）: d = 0、ロジックの raw で d > 1、同じ role に 2 つ、format 1 / 2 の無い要求の carriage は rejected malformed。
+  describe の carriage に無い kind か範囲の外の d は rejected unsupported（受け取った tag）。plan に無い role は rejected unavailable（cause 6）。
+  L の条件（§1.3 / §1.4）を満たせない d の組み合わせ、その rate とチャネルの数で間に合わない設定は rejected unsupported（carriage の tag）。
+- linked の trigger は、出来事の元を持つ組（§4.4）に束ねたときだけ使える。束ねずに start すれば rejected unavailable（cause 6）。pretrigger を
+  付けてよい（そのトラックの元のサンプルの数）。
 - **samplesは区画のsample総数**（pretriggerを含む）。トリガが早く立ってプリトリガの分が足りなければ、区画は短く、trigger_indexはそのまま
   小さい。force で始めたときは trigger_index = その瞬間のサンプルで triggered を送る。type 0（即時）では triggered を送らない。
 - **rate**: 宣言したrate_rangeの中で、その役割/モード/設定で保てる最も近い値を使う（同距離はどちらでもよい）。
@@ -329,6 +402,8 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 | 0x06 | skew | role(u8)、skew_ns(u32)。チャネルごとに1つ（遅れが0の役割は省いてよい） | アナログ |
 | 0x07 | frontend_used | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。値の意味（入力範囲）はそのfrontendの宣言で決まる | アナログ |
 | 0x08 | reference | source(u8、enum `reference_source`: 0 電源、1 内部、2 外部)、mv(u32)、how(u8、enum `reference_how`: 0 公称、1 測った)。ADC の基準電圧。電源が基準の ADC では、同じ生の値の意味が電源電圧で変わる。scale の 1 次式はこの電圧を前提にした換算 | アナログ |
+| 0x09 | format | u8: 使うデータの形式（§1）。0 以外では必ず返す。0 では省いてよい | 両方 |
+| 0x0A | block | L(u32)。形式 1 / 2 のブロックの元のサンプルの数（§1.3 / §1.4）。形式 1 / 2 で必ず返す | 両方 |
 
 ### 3.4 通知（core §10）
 
@@ -366,6 +441,8 @@ probeはより大きい経路を使え、mode 3を提供しない最小構成に
 | 0x42 | channels | max(u8)。チャネル数の上限 |
 | 0x43 | trigger | types(u32: type のビット集合)、max_pretrigger(u32) |
 | 0x44 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)。入力ピンの範囲の候補ごとに1つ（アナログ）。番号はconfigureのfrontendで選ぶ |
+| 0x45 | formats | u8 の列: 0 のほかに使えるデータの形式（§1）。無ければ 0 だけ |
+| 0x46 | carriage | kinds(u8: kind のビット集合)、min_d(u32)、max_d(u32)（D > 1 で使える範囲。D = 1 はいつも使える）。形式 1 / 2 を宣言するとき |
 
 - 必須の宣言はops、1つ以上のmode、rate_range、channels、trigger、およびplanで使うrole_channels/channel_group。
   アナログはfrontendも1つ以上宣言する。featuresは値0なら省略できる。
@@ -381,8 +458,24 @@ mode、role、TLVなどの未割当値はcore §2.5/§12に従う。`oep.`の定
 用途を予想した番号範囲は予約しない。triggerのtypeは現行describeのu32ビット集合に収まる0〜31であり、
 32以上が必要なら宣言の形も含めた別インターフェースまたは新revisionで扱う。
 
-外部clock、多段trigger、signed/32 bitのsampleや整数nVで表せない換算などは、既存hostが現行layoutとして誤読しない定義で追加する。
-現行layoutには形式番号がないため、別形式のdataを任意TLVだけで黙って置き換えない。時間軸やdataの意味を変える場合もcore §2.8に従う。
+外部clock、signed/32 bitのsampleや整数nVで表せない換算などは、既存hostが誤読しない定義で追加する。
+別の並びのdataはデータの形式（§1）の番号で足す（hostが求めた番号だけが使われる）。時間軸やdataの意味を変える場合もcore §2.8に従う。
+
+**OEP が revision を上げずに足すもの**（どれも任意で、持つかは describe で分かる）:
+
+| 足すもの | 宣言 | 知らない側 |
+|---|---|---|
+| 前段・取り方の設定 | describe の TLV | host は知らない describe の TLV を読み飛ばす。probe は知らない configure の TLV を、印なしなら無視し、critical なら unsupported で断る（core §2.3）。動作を変える設定は critical で送る |
+| データの並び | describe の formats、registry `data_format` | probe は host が求めた形式だけを使う。host は知らない形式を読まない |
+| トリガの種類 | describe の trigger の types のビット | probe は宣言しない type を unsupported で断る |
+| 出来事の元の種類（kind） | capture-group の bind の trigger_source | 持たない probe は unsupported で断る |
+| 組の機能 | capture-group の features のビット | host は知らないビットを無視する |
+| 応答や区画・出来事の情報 | 応答の TLV | host は知らない TLV を読み飛ばす |
+
+**数の上限と、その先**: レートは u32 の Hz（約 4.29 GHz）、1 区画は u32 のサンプル、時刻は ns、チャネルは u8、トリガの type は 32 種類、
+message は u16 の長さ。商用の USB ロジックアナライザや MSO のロジック（1 GS/s 前後、数十チャネル、数 G サンプルの深さ）はこの中に収まる。
+これを超える計測器（GSa/s 級のアナログ、数百チャネル、message の数が上限になる速さ）は、別のインターフェースか external binding
+（[構想](../docs/project-concept.ja.md)、生のデータを別の経路で運ぶ）で扱う。ストリーミングの位置は u64 で、欠落は seq ではなく位置で判定する。
 複数trackの即時開始はcapture-group（§4）を使い、プロトコル解析など異なる意味の結果は別インターフェースで定義する。
 
 ### 3.7 calibration（アナログ）
@@ -404,10 +497,34 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
 - frontend ごとの減衰と測れる範囲は describe の frontend（§3.5）、チャネルごとに選ばれた frontend は configure の応答の
   frontend_used、基準電圧は reference（§3.3）。
 
-## 4. `oep.fixture.capture-group`（即時の一括開始）
+### 3.8 前段と外部クロック（任意）
 
-別々のlogic/analogトラックを同じ要求で即時開始する任意のインターフェース。
-時間の正確な一致を保証せず、各区画のstart_ns/不確かさでhostが並べる。連動trigger/pretriggerと時刻からのtrigger_index写像は定義しない。
+商用の計測器に一般的な前段の設定。どれも任意で、describe の宣言を持つ probe だけが受ける。configure の TLV は動作を変えるので critical で
+送り（持たない probe は unsupported）、応答で使った値を返す。費用は configure の数 byte で、サンプルごとの費用は無い。
+
+| 置き場 | tag | 名前 | 値 | 対象 |
+|---|---:|---|---|---|
+| describe | 0x47 | threshold | group(u8)、min_mv(i32)、max_mv(i32)、step_mv(u32: 0 は候補だけ)、n(u8)、n × preset_mv(i32)、m(u8)、m × channel(u16)。入力のしきい値を共有するチャネルの群ごとに 1 つ。固定の probe は min = max で、記録のために宣言してよい | ロジック |
+| configure | 0x0C | threshold | group(u8)、mv(i32)、hysteresis_mv(u32: 0 は無し)。群ごとに 1 つ | ロジック |
+| 応答 | 0x0B | threshold_used | group(u8)、mv(i32)、hysteresis_mv(u32) | ロジック |
+| describe | 0x48 | coupling | frontend(u8)、kinds(u8: ビット 0 DC、1 AC、2 GND) | アナログ |
+| describe | 0x49 | offset | frontend(u8)、min_mv(i32)、max_mv(i32)、step_mv(u32) | アナログ |
+| configure | 0x0D | coupling | role(u8)、kind(u8: 0 DC、1 AC、2 GND) | アナログ |
+| configure | 0x0E | offset | role(u8)、mv(i32: 入力から引く電圧) | アナログ |
+| 応答 | 0x0C | coupling_used | role(u8)、kind(u8) | アナログ |
+| 応答 | 0x0D | offset_used | role(u8)、mv(i32) | アナログ |
+| configure | 0x0F | clock | role(u8)、edge(u8: 0 立ち上がり、1 立ち下がり、2 両方) | ロジック（予約） |
+
+- しきい値: probe は mv に最も近い使える値（step か preset）を使い、threshold_used で返す。範囲の外は unsupported。
+- 結合とオフセット: scale の 1 次式（§1.2 規則 4）は、offset を含めた入力ピンの電圧への換算。AC では直流の成分が無いので、host は平均の値を
+  電圧の照合に使わない。
+- 外部クロック（clock）: 番号と形だけを予約する（サンプルをその役割の線のエッジで取る）。規則は追加の定義で決め、それまでは unsupported。
+
+## 4. `oep.fixture.capture-group`（一括開始と出来事の元）
+
+別々のlogic/analogトラックを同じ要求で開始する任意のインターフェース。即時に始めるのが基本で、出来事の元（§4.4、任意）を持てば、その出来事を
+起点に全トラックが取る（ロジックの出来事でアナログを見る、電源の落ち込みでロジックを見る）。単独のトラックの高度なトリガも、1 トラックの組で表す。
+時間の正確な一致を保証せず、各区画のstart_ns/不確かさでhostが並べる。
 
 ### 4.1 操作
 
@@ -416,11 +533,12 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
 | 0x1A | bind | n(u8)、n × fn(u16)、[TLV] | — | 必要 | 必須 |
 | 0x11 | start | [TLV] | start_ns(u64)、generation(u32)、n(u8)、n × (fn(u16)、generation(u32))、[TLV] | 必要 | 必須 |
 | 0x12 | stop | [TLV] | — | 必要 | 必須 |
+| 0x13 | force | [TLV] | —（出来事を待っていれば、今すぐ起きたものとする。§4.4） | 必要 | 任意（§4.4 を持つときだけ） |
 | 0x14 | status | [TLV] | state(u8)、start_ns(u64)、generation(u32)、[TLV] | 不要 | 必須 |
 | 0x01 | subscribe | core §10.3 | — | 必要 | 任意（unsubscribeと組） |
 | 0x02 | unsubscribe | core §10.3 | — | 必要 | subscribeと組 |
 
-- bindは設定済みのlogic/analogのfnを束ねる。全trackは同じmodeで、triggerは即時だけ。
+- bindは設定済みのlogic/analogのfnを束ねる。全trackは同じmodeで、triggerは即時だけ（出来事の元を持つ組は§4.4）。
   新しい組へ入れるtrackはstate 1/4/6で、単独取得や別の組で使用中ならcause 6/4で断る。
   同じfnリストの再指定は状態を保つno-op。異なるリストへの変更は組がstate 3の間cause 6で断る。
   重複fnはmalformed、tracksに無いfnはunsupported（固定部分の印0）。状態/trigger/modeが合わない場合はunavailable cause 6、
@@ -438,7 +556,7 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
   このstartで未開始のtrackはstate 1、開始済みのtrackは§3.2のstop後のstateとなる。失敗したtrackは6を保つ。
   未開始を含め、割当済みの世代は戻さない。次のstartは上の開始可能状態と通常の資源検証に従う。
 - stopは全trackへ適用し、短い区画とpadは各trackの規則に従う。束ねなしのstopはno-op。startは束ねなしならcause 6。
-- statusのstate: 束ねなし0、どれかが6なら6、開始後に全部4なら4、どれかが3/5なら3、それ以外1。
+- statusのstate: 束ねなし0、どれかが6なら6、開始後に全部4なら4、出来事を待っていれば2（§4.4）、どれかが3/5なら3、それ以外1。
   groupのgenerationはbind変更では戻さず、次のstartで進める。groupを起動しない段階のtrack世代も変えない。
 
 ### 4.2 通知
@@ -446,9 +564,34 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
 採用したsubscribeへはstopped（kind 0x02）だけを送る。
 `reason(u8: 0 全track完了、1 stop、2 error)、error(u8: reason 2のtrack error、ほかは0)、generation(u32)、[TLV]`。
 組がerrorならtrackのどれか1つのerrorを返す。過去の通知を区別するため、groupの世代は省略しない。
-即時のgroup/trackからtriggeredを送らない。各trackの通知はそのfnの購読へ送り、group購読で代用しない。
+即時のgroup/trackからtriggeredを送らない（出来事の元を持つ組は§4.4のtriggeredを送る）。各trackの通知はそのfnの購読へ送り、group購読で代用しない。
 
 ### 4.3 describe
 
 必須はopsとtracks（tag 0x40: n(u8)、n × fn(u16)、n≥1）。個々の組合せが実現可能かはbindで確かめる。
-featuresのbitはv1で定めない。force、trigger_track、連動pretriggerはv1に含めない。
+features の bit 0（`trigger_source`）は §4.4 の出来事の元を持つことを表す。ほかの bit は OEP が後から割り当てる（host は知らない bit を無視する）。
+
+### 4.4 出来事の元（任意: features bit 0）
+
+**出来事の元（trigger_source）は、組の全トラックの起点になる 1 つの出来事を決める。**
+
+- **bind の TLV** 0x01 trigger_source: kind(u8)、値。host は critical の bit を付けて送る（tag 0x81）。持たない probe は rejected unsupported
+  （受け取ったままの tag）で断り、即時の組として黙って始めない。
+  - kind 1（トラックの条件）: fn(u16)。束ねる fn のどれか（元のトラック）。そのトラックの configure の trigger（edge、level、pulse、pattern、cross
+    など、そのインターフェースの type）が出来事の条件。束ねない fn は malformed。
+  - kind 2（外部の入力）、多段（出来事の並び）、タイマ、トリガ出力（出来事をピンに出す）は、kind と役割の番号を追加の定義で足す
+    （それまでは unsupported）。
+- **元以外のトラック**の trigger は type 7（linked）で、pretrigger はそのトラック自身の元のサンプルの数で持つ（§3.3）。元のトラックの
+  trigger が即時（type 0）か linked、元以外のトラックの trigger が linked 以外なら、bind は unavailable（cause 6、payload の TLV fn はそのトラック）。
+  トリガが二重にならない。
+- **start** で全トラックが取得（pretrigger のリングを含む）を始め、組は出来事を待つ state 2 になる。start_ns は取得を始めた時刻。出来事が
+  起きると全トラックが自分の pretrigger と samples で区画を切り、組は state 3 になる。**force**（持つときだけ）は、待っている組で出来事が今
+  起きたものとする（待っていなければ何もせず成功）。
+- **判定は元のサンプルで**（§3.3）: 元のトラックが縮約する形式でも、条件は縮約の前の値で判定する。
+- **各トラックの trigger_index**: 出来事の時刻に最も近い、そのトラックのサンプル。各区画の不確かさは start_uncertainty_ns。
+- **出来事の時刻**: trigger_ns（probe の時計での推定値）と trigger_uncertainty_ns（元のトラックのサンプル周期や判定の遅れから来る、±ns。
+  区画の start_uncertainty_ns とは別）を、status の応答の TLV 0x02 trigger（fn(u16: force では 0)、ns(u64)、uncertainty_ns(u32)）と出来事
+  triggered で返す。起きるまでは TLV を付けない。例: 元がアナログの 1 Msps で、ロジックが 125 MHz なら、uncertainty は 1 µs 前後で、ロジックの
+  trigger_index は ±125 サンプルずれうる。
+- **出来事** kind 0x03 triggered: trigger_fn(u16)、trigger_ns(u64)、trigger_uncertainty_ns(u32)、generation(u32: 組の世代)、[TLV]。
+- 費用: bind の数 byte、status の TLV 17 byte、出来事 1 つ。サンプルごとの費用は無い。持たない probe は何も払わない。

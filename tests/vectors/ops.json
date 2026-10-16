@@ -1499,7 +1499,7 @@
       "fns": {
         "12": "oep.fixture.capture-group"
       },
-      "state": "both tracks immediate, v1 defines no bind tags; no effects",
+      "state": "both tracks immediate; the probe declares no features trigger_source (capture §4.4), so bind's critical trigger_source is refused; no effects",
       "request_hex": "018c000c001a443322110209000d008102000900",
       "answer_hex": "028c00000b81"
     },
