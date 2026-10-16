@@ -759,6 +759,8 @@ coupling_used = 0x0C            # role(u8) kind(u8)
 offset_used = 0x0D              # role(u8) mv(i32)
 format_name = 0x0E             # the named format in use, with format 0xFF
 bandwidth_used = 0x11           # role(u8) hz(u32)
+resolution_used = 0x12          # bits(u8)
+oversample_used = 0x13          # ratio(u16)
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error
 [interface.tlv.data]
