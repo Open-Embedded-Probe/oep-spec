@@ -15,9 +15,11 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 | 経路 | フレーム |
 |---|---|
 | シリアルの口（UART bridge、USB CDC、内蔵の USB シリアル） | COBS + CRC-16、0x00 で区切る（下） |
-| USB の vendor bulk、TCP | `length(u16) message`。CRC なし。length 0 は予約（keepalive。読み飛ばす） |
+| USB の vendor bulk、TCP | `length(u16) message`。CRC なし。length 0 は予約（keepalive。読み飛ばす。下） |
 | USB の HID（vendor 定義の report） | vendor bulk の長さつきのバイト列を report で運ぶ: report = `count(u16)`、その列の count バイト、埋め（report の大きさは HID の記述子のとおり）。規則は下 |
 
+- **長さ 0 のフレーム**（vendor bulk、TCP）: 要求でも応答でもデータでもない。受け手は読み飛ばし、何にも数えない（core §6 の lease を
+  延ばさない。lease を延ばすのは要求だけ）。どちらの向きでも送ってよい（USB では転送を閉じるのに使える。下の束ね方）。
 - **HID の report**: 向きごとに、report は 1 つのバイト列を運ぶ。
   1. report の OEP のバイトは、count の後ろの count バイトである。向きごとに report の順につなげると、1 つの長さつきのバイト列になる。
      vendor bulk と同じ列（`length(u16) message`）である。
@@ -37,7 +39,8 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   （開く前に送られたバイトや、開いた直後に落ちたバイトで前の 0x00 が届かないことがある）。解けない候補、CRC の合わない候補、
   role か corr の合わないフレーム（core §10.1）は、壊れた候補として捨てる。
 - **USB の束ね方**（vendor bulk）: host は、書き込みの長さが wMaxPacketSize の倍数なら長さ 0 の転送を続ける。probe は、送り
-  終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか最後の 1 byte を別の転送に分ける。
+  終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか、長さ 0 のフレーム（2 byte、上）を送るか、
+  最後の 1 byte を別の転送に分ける。
   続きがすぐ来るときは倍数のままでよい。
 - **max_frame より大きい長さ**: probe はそのフレームと、次に `probe_frame_gap_ms` 途切れるまでの入力を捨て、次のフレームを待つ。応答は送らない。TCP では代わりに接続を閉じる。HID では、これは列から読んだ長さに掛かる（report の count は上の規則 6）。
 - どのフレームを使うかは経路の種類だけで決まる（VID:PID で選ばない）。
