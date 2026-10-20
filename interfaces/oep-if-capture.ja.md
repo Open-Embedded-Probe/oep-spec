@@ -446,11 +446,18 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 | 0x0A | block | L(u32)。形式 1 / 2 のブロックの元のサンプルの数（§1.3 / §1.4）。形式 1 / 2 で必ず返す | 両方 |
 | 0x0E | format_name | 使う名前付きの形式の名前（format 0xFF のとき必ず返す） | 両方 |
 | 0x14 | stream_buffer | u32: ストリーミングで、送る前に溜められる最大のバイト数（この設定で。下） | 両方 |
+| 0x15 | judge_latency_ns | u32: このトラックが組の出来事の元（§4.4）の条件を判定するとき、条件の成り立ったサンプルから、probe がそれを出来事と知るまでの最大の時間（ns、この設定で。下） | 両方 |
 
 - **stream_buffer**（任意、mode 3 でだけ返す）: probe が送る前に溜められる量は、configure の時のメモリと rate、チャネルの数で決まるので、
   応答で返す（describe では宣言しない）。query で start の前に分かる。host は、落とさずに済む遅れの目安を
   stream_buffer ÷（rate × w / 8）で求める（形式 1 / 2 では、§1.3 / §1.4 の最悪の帯域で割ると、その遅れの下限が出る）。返さない probe は
   「分からない」。host は、それより長く読みを止めない（非同期の読みを複数出したままにする、など）。
+- **judge_latency_ns**（任意。§4.4 の出来事の元を持つ probe が、その条件を判定できるトラックで返す）: 判定の遅れは、取り込みの塊の
+  大きさや判定の周期で決まり、rate と w で変わるので、describe ではなく応答で返す。出来事の元に参加するほかのトラックは、出来事を
+  知るまでのこの時間ぶんのサンプルを、pretrigger とは別に溜めて持たなければならない。host は bind の前に、判定するトラックの
+  judge_latency_ns と、追う側のトラックの rate × w / 8 から必要な量を計算でき、追う側が溜められない組み合わせ（bind の cause 2）を
+  避けられる。出来事の時刻の不確かさ（trigger_uncertainty_ns、§4.4）とは別のもの: こちらは判定にかかる時間で、時刻の精度ではない。
+  返さない probe は「分からない」（bind で確かめる）。
 
 ### 3.4 通知（core §10）
 
@@ -734,7 +741,7 @@ features の bit 0（`trigger_source`）は §4.4 の出来事の元を持つこ
   比べる（トラックのトリガ §3.3 と同じ）。
 - **宣言**（capture-group の describe）: 0x41 trigger_caps: max_stages(u8)、max_terms(u8: 1 段の項)、max_conds(u8: 1 項の条件)、cross_track(u8: 0 / 1、
   トラックをまたぐ AND)、types(u32: 条件の type のビット集合)、protocols(u8: serial のビット集合)、trigger_out_latency_ns(u32: 出来事から
-  trigger_out の端まで。0xFFFFFFFF は trigger_out を持たない)。trig_in と trig_out の役割は、この組の describe の role_channels で宣言し、plan で割り当てる。
+  trigger_out の端まで。0xFFFFFFFF は trigger_out を持たない)。判定の遅れは、トラックの configure / query の応答の judge_latency_ns（§3.3）。trig_in と trig_out の役割は、この組の describe の role_channels で宣言し、plan で割り当てる。
   宣言を越える式は rejected unsupported（越えた TLV の tag）。
 - **束ねたトラック**の trigger はすべて type 7（linked）で、pretrigger はそのトラック自身の元のサンプルの数で持つ（§3.3）。linked 以外なら bind は
   unavailable（cause 6、payload の TLV fn はそのトラック）。トリガが二重にならない。

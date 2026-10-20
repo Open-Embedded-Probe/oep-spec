@@ -629,6 +629,7 @@ format_name = 0x0E             # the named format in use, with format 0xFF
 timebase = 0x0F                 # num(u32) den(u32): the rate of format 3's delta ticks (oep-if-capture §3.8)
 glitch_used = 0x10              # group(u8) ns(u32)
 stream_buffer = 0x14            # u32: streaming, the most bytes held unsent (oep-if-capture §3.3); optional
+judge_latency_ns = 0x15         # u32: judging a trigger source's condition, the longest to know it (oep-if-capture §3.3, §4.4); optional
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error: why state is 6
 [interface.tlv.data]            # the data frame's TLV tail (core §10.2)
@@ -766,6 +767,7 @@ bandwidth_used = 0x11           # role(u8) hz(u32)
 resolution_used = 0x12          # bits(u8)
 oversample_used = 0x13          # ratio(u16)
 stream_buffer = 0x14            # u32: streaming, the most bytes held unsent (oep-if-capture §3.3); optional
+judge_latency_ns = 0x15         # u32: judging a trigger source's condition, the longest to know it (oep-if-capture §3.3, §4.4); optional
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error
 [interface.tlv.data]
