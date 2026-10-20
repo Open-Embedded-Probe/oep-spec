@@ -714,6 +714,13 @@ features の bit 0（`trigger_source`）は §4.4 の出来事の元を持つこ
   OR が「来るべきもの」で、時間内に来たら段 0 に戻り（来るべきものが来た: 出来事にしない）、時間を越えたら段が成り立つ（ACK が来ない、
   IRQ の後に CS が来ない）。on_timeout 1 の段は within_ns が 0 でない（0 なら rejected malformed）。abort の項が段の
   間に成り立ったら段 0 に戻る（ラント: 段 0 cross_up(low) → 段 1 cross_down(low)、段 1 の abort は cross_up(high)）。
+- **段の入り口**: 段に入った時点で、その段の状態の条件がすでに真のときの扱いは、条件の when に従う（新しい規則を足さない）。when 0 は、
+  段に入った後に偽から真になるまで数えない。when 1 は、入った時点で真なら 1 回目に数える。瞬間の条件（edge、cross、pulse の終わり、
+  timer）は、段に入った後の瞬間だけを数える。例: on_timeout 1 の段で ACK の level が入る前から high のとき、when 0 なら「来た」とは数えない。
+- **段の進み方**: 段が成り立ったサンプルでは次の段を判定せず、次のサンプルから判定する（1 つのサンプルで 2 段は進まない）。同じ瞬間の
+  組み合わせ（A の立ち上がりのとき B が high）は、同じ項の AND で書く。
+- **アーム**: arm 1 では、全トラックの pretrigger が溜まった時点から判定する。edge と cross の最初の比較は、アームの前の最後のサンプルと
+  比べる（トラックのトリガ §3.3 と同じ）。
 - **宣言**（capture-group の describe）: 0x41 trigger_caps: max_stages(u8)、max_terms(u8: 1 段の項)、max_conds(u8: 1 項の条件)、cross_track(u8: 0 / 1、
   トラックをまたぐ AND)、types(u32: 条件の type のビット集合)、protocols(u8: serial のビット集合)、trigger_out_latency_ns(u32: 出来事から
   trigger_out の端まで。0xFFFFFFFF は trigger_out を持たない)。trig_in と trig_out の役割は、この組の describe の role_channels で宣言し、plan で割り当てる。
@@ -724,8 +731,9 @@ features の bit 0（`trigger_source`）は §4.4 の出来事の元を持つこ
   起きると全トラックが自分の pretrigger と samples で区画を切り、組は state 3 になる。**force**（持つときだけ）は、待っている組で出来事が今
   起きたものとする（待っていなければ何もせず成功）。repeat / streaming では、次の区画の出来事を holdoff_ns の後から待つ。
 - **各トラックの trigger_index**: 出来事の時刻に最も近い、そのトラックのサンプル。各区画の不確かさは start_uncertainty_ns。
-- **出来事の時刻**: trigger_ns（probe の時計での推定値）と trigger_uncertainty_ns（判定したトラックのサンプル周期、トラックをまたぐ AND では
-  参加した最も遅いトラックのサンプル周期、判定の遅れから来る ±ns。区画の start_uncertainty_ns とは別）を、status の応答の TLV 0x02 trigger
+- **出来事の時刻**: trigger_ns（probe の時計での推定値）と trigger_uncertainty_ns（出来事を決めた段の項が見るトラックのサンプル周期。
+  トラックをまたぐ AND では参加した最も遅いトラックのサンプル周期。on_timeout 1 で時間を越えたことが出来事を決めたときは、その段を判定した
+  トラックのサンプル周期と probe の時間の判定の細かさの大きいほう。判定の遅れから来る ±ns で、区画の start_uncertainty_ns とは別）を、status の応答の TLV 0x02 trigger
   （fn(u16: 判定したトラック。外部の入力、timer、force では 0)、ns(u64)、uncertainty_ns(u32)）と出来事 triggered で返す。起きるまでは TLV を
   付けない。例: アナログの 1 Msps の below AND ロジックの pattern なら、uncertainty は 1 µs 前後。
 - **出来事** kind 0x03 triggered: trigger_fn(u16)、record(u32: rearm 1 での出来事の通し番号。rearm 0 では 0xFFFFFFFF)、trigger_ns(u64)、
