@@ -1130,8 +1130,8 @@ def ops() -> dict:
     event("logic stopped of the previous generation, after the start answer", "capture §3.4, core §10.4", lg, after, 9, 7, le["stopped"],
           struct.pack("<BBI", reason["host"], 0, 3), 3)
     event("logic triggered of the new generation", "capture §3.4", lg,
-          after + "; the edge at sample 1000 of serial 0 (1 MHz, rearm 0: no record), at 7.05 ms +-1 us", 9, 8,
-          le["triggered"], struct.pack("<IIIQQII", 0, 1000, 0xFFFFFFFF, 1000, 7_050_000, 1000, 4), 4)
+          after + "; the edge at sample 1000 of serial 0 (20 MHz, rearm 0: no record), at 7.05 ms +-50 ns (a sample period)",
+          9, 8, le["triggered"], struct.pack("<IIIQQII", 0, 1000, 0xFFFFFFFF, 1000, 7_050_000, 50, 4), 4)
     event("logic stopped: data dropped inside a segment, error 2", "capture §2.2, §3.4", lg,
           "fn 9 subscribed; generation 1; the capture ring overflowed inside serial 2", 9, 9, le["stopped"],
           struct.pack("<BBI", reason["error"], IFACE["oep.fixture.logic"]["enum"]["error"]["storage"], 1), 1)

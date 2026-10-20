@@ -1635,9 +1635,9 @@
       "fns": {
         "9": "oep.fixture.logic"
       },
-      "state": "fn 9 subscribed; start answered generation 4 while generation 3's stop was still queued; the edge at sample 1000 of serial 0 (1 MHz, rearm 0: no record), at 7.05 ms +-1 us",
+      "state": "fn 9 subscribed; start answered generation 4 while generation 3's stop was still queued; the edge at sample 1000 of serial 0 (20 MHz, rearm 0: no record), at 7.05 ms +-50 ns (a sample period)",
       "generation": 4,
-      "event_hex": "03090008000300000000e8030000ffffffffe80300000000000010936b0000000000e803000004000000"
+      "event_hex": "03090008000300000000e8030000ffffffffe80300000000000010936b00000000003200000004000000"
     },
     {
       "name": "logic stopped: data dropped inside a segment, error 2",
