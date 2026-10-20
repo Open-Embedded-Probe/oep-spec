@@ -232,6 +232,15 @@ target を扱う probe に共通する実装上の注意。
 - **ブロックのループを速くする変更は、線の上のタイミングを変えうる。** 残す前に複数の target で測る。
 - **キャプチャのストリーミングをするなら max_frame は 256 以上を勧める**（[キャプチャ](../interfaces/oep-if-capture.ja.md) §3.4）。データの通知の
   見出しは 17 byte で、max_frame 64 では 27%、256 で 7%、1024 で 2% になる。遅いリンクほど、データの形式 1 の events（§1.3）が効く。
+  max_frame は経路ごと（core §7.1）なので、速い経路（USB の vendor bulk）だけを大きくしてよい。シリアルの口は小さいままでよい。
+- **ストリーミングのバッファは、想定する host の遅れ × 最大の転送の速さ以上にする**。例: 50 ms × 20 MB/s = 1 MB。
+  - 深さは configure の応答の stream_buffer（キャプチャ §3.3）で host に知らせる。
+  - 足りないと、host が平均では追いついていても、読みの揺れのたびに区画を落とす。2026-10-20 の P4X（PSRAM なし、32 KB）では、20 MB/s で
+    1.6 ms ぶんしかなく、同期の読み 1 本の Python の host で 15% を落とした。
+  - 内部 RAM だけで深くできない probe は、保てない rate を configure / query で断る（§1.3、§3.2）。
+  - host の側は、非同期の読みを複数出したままにするのが前提（例: libusb の 64 KB × 32 本）。
+- **条件が成立した通知のバッチは出し切る**（core §10.3）。min_bytes か max_delay_ms が成り立った時点で溜まっていた分は、max_frame に分けて
+  続けて送り、残りに条件を掛け直さない。
 - **コンソールの送りの列**（[コンソール](../interfaces/oep-if-console.ja.md) §2）: write は列の空きに入る分をすぐ受けて答え、target へは列から mechanism の
   運び方で渡す（targetの受け取りを待ってから答えない）。writeを提供する場合の有限な列の大きさはprobeが決める。
   小さい列でもよく、hostはacceptedから未受付の残りを送る。writeなしならTX queueは不要。
