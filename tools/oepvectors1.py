@@ -867,11 +867,11 @@ def ops() -> dict:
     NUM = {name: k + 1 for k, name in enumerate(SET_ORDER)}
     decl = ("fn 0 settings: " + ", ".join(f"{NUM[n]} {n}" for n in SET_ORDER)
             + " (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; "
-            + "fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32)")
+            + "fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32)")
     ce = CORE["enum"]
     origin = ce["setting_origin"]
     item_tag = CORE["tlv"]["unsupported_payload"]["item"]
-    pc = {"0": "core", "3": "io.example.board"}
+    pc = {"0": "core", "8": "io.example.board"}
     pc_set, pc_get, pc_unset, pc_state, pc_save = (op("core", n) for n in ("set", "get", "unset", "state", "save"))
     def it(name, key, data=b"", fn=0):
         """A set value: fn(u16) number(u8) key(u16) len(u16) data."""
@@ -960,11 +960,11 @@ def ops() -> dict:
         ok(0x122, struct.pack("<HB", 4242, 1) + bytes([1, ne["up"]]) + struct.pack("<H", 0)
            + bytes([0, (-52) & 0xFF, 192, 168, 1, 23, 24, 192, 168, 1, 1, 192, 168, 1, 1])))
     add("settings set: an interface's own text item", "core §13.1", pc, f"{decl}; no values generation1",
-        request(0x123, 0, pc_set, b"\1" + it(1, 0, b"pool.ntp.org", fn=3), S), ok(0x123, struct.pack("<I", 2)))
+        request(0x123, 0, pc_set, b"\1" + it(1, 0, b"pool.ntp.org", fn=8), S), ok(0x123, struct.pack("<I", 2)))
     add("settings set: an own text item with no text is malformed", "core §13.3", pc, f"{decl}; no values generation1",
-        request(0x124, 0, pc_set, b"\1" + it(1, 0, fn=3), S), rej(0x124, "malformed"))
+        request(0x124, 0, pc_set, b"\1" + it(1, 0, fn=8), S), rej(0x124, "malformed"))
     add("settings set: a key on an item without keys is unsupported", "core §13.3", pc, f"{decl}; no values generation1",
-        request(0x125, 0, pc_set, b"\1" + it(1, 1, b"x", fn=3), S), rej(0x125, "unsupported", b"\0" + tlv(item_tag, b"\0")))
+        request(0x125, 0, pc_set, b"\1" + it(1, 1, b"x", fn=8), S), rej(0x125, "unsupported", b"\0" + tlv(item_tag, b"\0")))
 
     # subscribe / unsubscribe (core §10.3): ops of the interface that sends notifications, 0x01 / 0x02 in the common operation range, no target fn
     sub, unsub = REG["constants"]["op_subscribe"], REG["constants"]["op_unsubscribe"]
