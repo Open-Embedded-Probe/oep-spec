@@ -7,6 +7,7 @@
 1. [目的と範囲](project-concept.ja.md): OEP が扱う範囲と host / probe の役割。
 2. [はじめに](getting-started.ja.md): 接続から機能の利用までの流れ。
 3. [OEP core](oep-core.ja.md) と [transport](oep-transports.ja.md): メッセージ、セッション、機能の発見、通信経路の規範。
+   [設定のファイル](oep-settings-file.ja.md): probe の設定を書き出し、入れ直すファイルの形（規範）。
 4. [適合要件](conformance.ja.md): 実装が満たす要件と確認方法。
 
 ## 目的別の案内
