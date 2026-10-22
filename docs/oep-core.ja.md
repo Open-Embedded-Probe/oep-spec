@@ -847,7 +847,7 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
   本体が両者を引き換える。起動時に名前から今の番号へ引けない値は使わない。
 - **経路の名前**: kind の短い名前（1 `bridge`、2 `cdc`、3 `usj`、4 `bulk`、5 `hid`、6 `tcp`）と、同じ kind の経路の中での index の小さい順の位置
   （0 から）をつないだもの（`cdc0`、`bridge1`）。
-- **形の検証**: data の長さが form と合わなければ malformed。bool の 2 以上も malformed。text の規則（§2.1）に合わない text も malformed。
+- **形の検証**: data の長さが form と合わなければ malformed。bool の 2 以上も malformed。text は長さだけを確かめる（中身は確かめない。host が見せるときに §2.1 のとおり置き換える）。
   enum の setting_choice に無い値、channels 以上の channel、無い経路、list に無い fn は unsupported。key が key_kind の範囲に無ければ unsupported。
   範囲の中でも、持ち主がその key に項目を置かない（その channel では使えない、など）なら unsupported。
 
