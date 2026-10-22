@@ -92,9 +92,33 @@ RXを割り当てて受信を保持するbufferと位置管理に対し、マー
   hostは必要なデータを読んでplan_releaseしてから作り直す。未configureの割り当て変更は、bufferとマークを解き、未configureのまま置き換える。
   位置とマークのserialは、その変更でも戻さない。
 - **TX の線は、plan で割り当てている間（configure の前も）、送信中を除きUARTの休止（high）に保つ**: plan を取ることが TX を使い始めることである（core §8）（相手の受信が雑音を拾わないため）。plan を
-  解いたら UART の駆動をやめ、core §8 の空きの状態にする。解いた後も相手の入力を浮かせたくない治具は、`oep.probe.config` の idle で
+  解いたら UART の駆動をやめ、core §8 の空きの状態にする。解いた後も相手の入力を浮かせたくない治具は、本体の設定 `channel.{}.idle`（core §13.8）で
   そのピンをプルアップの入力に決めて保存する。
 - 扱える format は describe の formats（tag 0x40、n(u8)、n × u8。configure の TLV 0x01 の値）で宣言する。8N1（0）は必須。
+
+### 2.1 シリアルの口の素通し（任意の設定）
+
+UART bridge しか口の無い probe でも、普通のシリアルモニタで target の出力を見られるようにする任意の設定の項目（core §13。カテゴリはその
+`oep.fixture.uart` の fn）。セッションと独立に効く設定である（core §9）。
+
+| 名前 | form | key_kind | 意味 |
+|---|---|---|---|
+| `passthrough.{}.rx` | channel | transport（シリアルの口） | 受ける channel。値があれば、その口でこの UART の素通しをする |
+| `passthrough.{}.baud` | u32 | transport | 速さ。値が無ければ 115200 |
+| `passthrough.{}.format` | enum | transport | format（configure の TLV 0x01 の値）。値が無ければ 8N1 |
+
+- key はシリアルの口（kind 1〜3、core §7.5）。ほかの経路は unsupported。
+- rx はその fn の role 1（RX）として宣言された channel（ほかは unsupported）。rx が disable なら、または出力の idle を持てば unavailable cause 5。
+- baud と format は configure と同じ規則（baud 0 は malformed、作れない baud は unsupported）。format の選択肢（setting_choice）は formats の値で、
+  名前はデータ長、パリティ（`n`、`e`、`o`）、ストップビットをつないだもの（`8n1`、`7e2`）。
+- **素通しの条件**: その口からセッションの要求が来ていない、その fn の plan が無い、rx をほかの plan・接続・設定が取っていない、のすべてが成り立つ間、
+  probe はその UART を rx だけで受け（TX は使わない。rx を駆動しない）、受けたバイトを [経路](../docs/oep-transports.ja.md) §4 のとおり口へフレームの外で送る。
+  どれかが成り立たなくなったら、受けるのをやめて rx を空きの状態に戻す。条件がまた成り立てば再開する。
+- 素通しはセッションの資源と取り合わない: セッションの plan、接続、口の使用は、素通しを止めて先に通る（素通しを理由に断らない）。
+- 素通しで受けたバイトは OEP のストリーム（read）に入れず、保持しない。口へ送れなかった分は捨てる。
+- 口からフレームの外で来たバイトを target へ送ることは定めない（入力は OEP の write を使う）。
+- 1 つの口に置ける素通しは 1 つだけである（どの UART の fn の素通しとも、コンソールの素通し（[コンソール](oep-if-console.ja.md) §2.1）とも重ねない）。
+  重なる set は unavailable cause 5。
 
 ## 3. `oep.fixture.i2c-target`
 

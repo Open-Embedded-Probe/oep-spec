@@ -5,7 +5,7 @@
 
 文書: core = [OEP core](oep-core.ja.md)、common = [共通部品](../interfaces/oep-if-common.ja.md)、debug = [線とデバッグ](../interfaces/oep-if-debug.ja.md)、
 console = [コンソール](../interfaces/oep-if-console.ja.md)、dmseq = [dmseq](../interfaces/target-console-dmseq.ja.md)、fixture = [fixture](../interfaces/oep-if-fixture.ja.md)、
-capture = [キャプチャ](../interfaces/oep-if-capture.ja.md)、settings = [probe の設定](../interfaces/oep-if-probe-config.ja.md)、plan = [plan](../interfaces/oep-if-plan.ja.md)、
+capture = [キャプチャ](../interfaces/oep-if-capture.ja.md)、settings = [core](oep-core.ja.md) §13、plan = [plan](../interfaces/oep-if-plan.ja.md)、
 restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](../interfaces/oep-if-link.ja.md)。数は `registry/oep-v1.toml`。
 
 ## 登場するものと層
@@ -188,11 +188,14 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
-| 設定、項目、キー | settings, item, key | 項目の並び。set はキーごとに置き換える | settings §1、§2 |
-| label | label (item) | 設定で付けた channel の名前 | settings §1 |
-| idle | idle (item) | channel の空きの状態: Hi-Z、pull、出力 low / high | settings §1 |
-| disable | disable | probe が決して使わない channel | settings §1 |
+| 設定、カテゴリ、項目、キー | settings, category, item, key | 持ち主（本体かインターフェース）ごとのカテゴリの中の、名前つきの項目の値。set は値ごとに置き換える | settings §13.1、§13.5 |
+| 出どころ | origin | 値が firmware の固定か、既定か、利用者のものか | settings §13.4 |
+| channel の名前 | channel name | データシートのピンの名前（`GPIO14`、`PA5`）。保存と書き出しで channel を指す | core §7.5 |
+| label | label (item) | `channel.{}.label`: channel の呼び名（`NRST`） | settings §13.8 |
+| idle | idle (item) | `channel.{}.idle`: channel の空きの状態: Hi-Z、pull、出力 low / high | settings §13.8 |
+| disable | disable | `channel.{}.disable`: probe が決して使わない channel | settings §13.8 |
+| 書き出し、入れ直し | export, import | 利用者の値を JSON のファイルに書き、probe へ戻す | [設定のファイル](oep-settings-file.ja.md) |
 | 線の名前 | line names | `nrst`、`power_hi`、`power_lo`。ほかは `x-` | hostガイド §5.3 |
-| 保存、消去 | save, erase | 保存の写しを書く / 消す | settings §3 |
-| storage_state、読めない理由 | storage_state, unreadable reason | 保存があり、掛かっているか | settings §3 |
-| 設定の世代 | settings generation | boot内で再利用しないu32変更カウンタ。getページとsave済みの状態の等値に使う | settings §2/§3 |
+| 保存 | save | 今の利用者の値を書く（消す op は無い） | settings §13.7 |
+| storage_state、理由 | storage_state, reason | 保存があり、掛かっているか | settings §13.7 |
+| 設定の世代 | settings generation | boot内で再利用しないu32変更カウンタ。getページとsave済みの状態の等値に使う | settings §13.5 |

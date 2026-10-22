@@ -261,7 +261,7 @@
   "storage": [
     {
       "name": "save success, observed new, before [1, 4, 0]",
-      "spec": "probe.config §3",
+      "spec": "core §13.7",
       "action": "save",
       "result": "success",
       "observed": "new",
@@ -276,13 +276,13 @@
         0
       ],
       "generation": 5,
-      "request_hex": "01010008001244332211",
+      "request_hex": "01010000002344332211",
       "answer_hex": "020100010005000000",
       "state_answer_hex": "0202000100010500000000"
     },
     {
       "name": "save failed, observed old, before [1, 4, 0]",
-      "spec": "probe.config §3",
+      "spec": "core §13.7",
       "action": "save",
       "result": "failed",
       "observed": "old",
@@ -297,13 +297,13 @@
         0
       ],
       "generation": 5,
-      "request_hex": "01010008001244332211",
+      "request_hex": "01010000002344332211",
       "answer_hex": "020100010105000000",
       "state_answer_hex": "0202000100010400000000"
     },
     {
       "name": "save failed, observed old, before [3, 0, 2]",
-      "spec": "probe.config §3",
+      "spec": "core §13.7",
       "action": "save",
       "result": "failed",
       "observed": "old",
@@ -318,13 +318,13 @@
         2
       ],
       "generation": 5,
-      "request_hex": "01010008001244332211",
+      "request_hex": "01010000002344332211",
       "answer_hex": "020100010105000000",
       "state_answer_hex": "0202000100030000000002"
     },
     {
       "name": "save failed, observed none, before [0, 0, 0]",
-      "spec": "probe.config §3",
+      "spec": "core §13.7",
       "action": "save",
       "result": "failed",
       "observed": "none",
@@ -339,13 +339,13 @@
         0
       ],
       "generation": 5,
-      "request_hex": "01010008001244332211",
+      "request_hex": "01010000002344332211",
       "answer_hex": "020100010105000000",
       "state_answer_hex": "0202000100000000000000"
     },
     {
       "name": "save failed, observed unreadable, before [1, 4, 0]",
-      "spec": "probe.config §3",
+      "spec": "core §13.7",
       "action": "save",
       "result": "failed",
       "observed": "unreadable",
@@ -360,92 +360,8 @@
         1
       ],
       "generation": 5,
-      "request_hex": "01010008001244332211",
+      "request_hex": "01010000002344332211",
       "answer_hex": "020100010105000000",
-      "state_answer_hex": "0202000100020000000001"
-    },
-    {
-      "name": "erase success, observed none, before [1, 4, 0]",
-      "spec": "probe.config §3",
-      "action": "erase",
-      "result": "success",
-      "observed": "none",
-      "before": [
-        1,
-        4,
-        0
-      ],
-      "expected_state": [
-        0,
-        0,
-        0
-      ],
-      "generation": 5,
-      "request_hex": "01010008001344332211",
-      "answer_hex": "0201000100",
-      "state_answer_hex": "0202000100000000000000"
-    },
-    {
-      "name": "erase failed, observed old, before [1, 4, 0]",
-      "spec": "probe.config §3",
-      "action": "erase",
-      "result": "failed",
-      "observed": "old",
-      "before": [
-        1,
-        4,
-        0
-      ],
-      "expected_state": [
-        1,
-        4,
-        0
-      ],
-      "generation": 5,
-      "request_hex": "01010008001344332211",
-      "answer_hex": "0201000101",
-      "state_answer_hex": "0202000100010400000000"
-    },
-    {
-      "name": "erase failed, observed none, before [1, 4, 0]",
-      "spec": "probe.config §3",
-      "action": "erase",
-      "result": "failed",
-      "observed": "none",
-      "before": [
-        1,
-        4,
-        0
-      ],
-      "expected_state": [
-        0,
-        0,
-        0
-      ],
-      "generation": 5,
-      "request_hex": "01010008001344332211",
-      "answer_hex": "0201000101",
-      "state_answer_hex": "0202000100000000000000"
-    },
-    {
-      "name": "erase failed, observed unreadable, before [1, 4, 0]",
-      "spec": "probe.config §3",
-      "action": "erase",
-      "result": "failed",
-      "observed": "unreadable",
-      "before": [
-        1,
-        4,
-        0
-      ],
-      "expected_state": [
-        2,
-        0,
-        1
-      ],
-      "generation": 5,
-      "request_hex": "01010008001344332211",
-      "answer_hex": "0201000101",
       "state_answer_hex": "0202000100020000000001"
     }
   ],

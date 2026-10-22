@@ -144,7 +144,7 @@ confirm/list/describe/clock/lock_stateには答えるため、これらで公開
 - **出力の強さ**: `io.example.gpio-drive` を、`oep.fixture.gpio` の describe に名前つきの拡張TLV（tag 0x7F）として置き、選べる強さ（mA）を並べる。
   setの要求には同じ名前の拡張TLVをcritical（0xFF）で付け、channelごとの強さを送る。この名前を知らないprobeはunsupportedで断るので、
   強さを指定したつもりで既定の強さで動くことはない。この名前を知らないhostは何も付けず、probeは既定の強さで動く。
-- **設定の独自の項目**: `io.example.ntp-server`（text）を、`oep.probe.config` のdescribeのsettingに並べる（設定 §1.6）。
+- **設定の独自の項目**: `io.example.board` のインターフェースに項目 `ntp-server`（text）を宣言する（core §13.1。設定だけのインターフェースでよい）。
   hostは名前とformで表示と入力ができ、get/set/saveは標準の項目と同じ。
 - **工場の較正**: `oep.fixture.analog` のcalibrationの答えは、schemeに `com.espressif.esp32.adc-efuse` のような名前を付けて生のデータを返す（capture §3.8）。
 

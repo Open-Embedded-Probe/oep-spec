@@ -12,7 +12,8 @@
 - USB とシリアルの経路は、PC のほかの手元の装置と同じく信頼する。**TCP は信頼できる手元の接続か、認証したトンネルの中でだけ使う**
   （transports §1）。
 - targetのメモリやコンソールに秘密が含まれる場合も、OEPのpayloadは暗号化されない。TCPでの保護は上記のトンネル等で行う。
-- Wi-Fiのpassphraseとsecretの項目（probe.config §1.4、§1.7）は書くだけで、probeはどの応答とログにも出さない。
+- Wi-Fiのpassphraseなどsecretの項目（core §13.5、transports §7.1）は書くだけで、probeはどの応答とログにも出さず、どの権限でも読ませない。
+  書き出したファイルにも入らない（[設定のファイル](oep-settings-file.ja.md)）。
   暗号化されずに経路を通るので、hostはUSBなど信頼できる経路で設定する。
 - OEP の要求に自分で答える端点は、後ろに何があっても probe で、probe の規則すべてに従う。中継するだけのブローカーは probe に対して
   host（transports §1）。
@@ -27,8 +28,8 @@ probe は:
 
 - 動く前にすべての要求の長さと符号化を確かめ、malformed で断る（core §4.3）: 合わない数、TLV の符号化の誤り、len が終わりを越える TLV
   （core §2.2）、実装する TLV の長さの誤り（core §2.3）;
-- 実行の前に断る: 要求は core §4.3 のとおりすべて確かめ、すべてを通るまで何も動かさない（plan_apply と probe の設定の set は、全部が受け
-  付けられなければ何も変えない: [plan](../interfaces/oep-if-plan.ja.md) §2.1、probe の設定 §2）;
+- 実行の前に断る: 要求は core §4.3 のとおりすべて確かめ、すべてを通るまで何も動かさない（plan_apply と設定の set / unset は、全部が受け
+  付けられなければ何も変えない: [plan](../interfaces/oep-if-plan.ja.md) §2.1、core §13.5）;
 - max_frame を超える長さのフレームは、次の途切れまでの入力と一緒に捨てる。TCP では接続を閉じる（transports §1）;
 - フレームの途中で `probe_frame_gap_ms` 途切れたら、TCP 以外のどの経路でも読み直す（transports §2）;
 - report が運べるより大きい count の HID の report は、次の途切れまでの流れの入力と一緒に捨て、report の詰め物は無視する（transports §1）;
@@ -60,7 +61,7 @@ host は:
 - **番号**: 資源の番号は u32 で probe に 1 つの空間。同じboot内では再利用せず、閉じた番号はno_resourceになる。
   host は no_resource を受けた番号を捨て、boot_idが変わればすべての番号を捨てる（core §9）。
 - **ためるデータ**: 位置つきのストリームとキャプチャの区画は、古いものから押し出して失ったことを知らせる輪（common §1.1、
-  [キャプチャ](../interfaces/oep-if-capture.ja.md) §2）。probe の設定は max_bytes が上限で、超えれば unavailable cause 3（probe の設定 §2）。
+  [キャプチャ](../interfaces/oep-if-capture.ja.md) §2）。設定は probe が保持できる量が上限で、超える変更と save は unavailable cause 2 / 3（core §13.5、§13.7）。
 
 ## 4. ロックの公平さ
 
@@ -92,15 +93,15 @@ probe は本物の線を駆動する。target、治具、probe 自身を傷め�
   線は弱くしない。具体的な段は probe と外部回路の仕様に従う。
 - **出力の idle**: 解いたピンは空きの状態（設定の idle か Hi-Z）に戻る（core §8）。plan を取ってもピンは変わらず、読むだけの
   インターフェースは駆動しない（core §8、キャプチャ §1.2）。出力の idle は、ピンが空いている間ずっと、起動時から、host なしで level を
-  駆動する。target の出力とぶつからないようにするのは配線の責任（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1）。idle の項目のある
+  駆動する。target の出力とぶつからないようにするのは配線の責任（core §13.8）。idle の値のある
   channel を名指す要求で、idle が出力なら、そのインターフェースが取得を許す場合を除きunavailable cause 5
   （[線とデバッグ](../interfaces/oep-if-debug.ja.md) §1）。
 - **保存した設定と起動**: 起動したら、probe は最初の応答の前に、自分で使うchannelと設定が使用・設定を禁止するchannelを除くすべてのchannelを空きの状態にし、保存した設定では
-  disable と idle をほかの項目より先に掛ける（core §8、[probe の設定](../interfaces/oep-if-probe-config.ja.md) §3）。
-  出力の idle は host の有無にかかわらず駆動する。配線やUARTの設定はhostが明示的に適用する（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §1、§2）。
+  disable と idle をほかの項目より先に掛ける（core §8、§13.7）。
+  出力の idle は host の有無にかかわらず駆動する。配線やUARTの実行時の設定はhostが明示的に適用する（core §13）。
   電源投入やリセットから firmware が設定を掛けるまで、firmware を更新している間、firmware が壊れたときは、ピンは MCU のリセットの状態で、
   設定が定めるものは何も駆動されない。level を誤ると害のある線（target の電源を切り替える線など）にはそれだけで安全な level に保つ外付けの pull が要る。
-  disable は利用者の宣言で、守りではない: ロックを持つ host は unset で外し、その channel を使える。設定のインターフェース自身は認証方式を持たない。方針による制限がなければ、ロックを取ったどのhostもforceを含めて変え、保存できる（§1）。
+  disable は利用者の宣言で、守りではない: ロックを持つ host は unset で外し、その channel を使える。設定の仕組み自身は認証方式を持たない（core §13.6）。方針による制限がなければ、ロックを取ったどのhostもforceを含めて変え、保存できる（§1）。
 - **逆給電**: やり取りが失敗してから、成功するか接続を失うまで、probe は線を駆動せずに休ませ、やり取りの最中だけ駆動する。電源の
   落ちた target をピンの保護ダイオード経由で給電しないため（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）。接続が閉じたら、そのピンは空きの
   状態に戻る（debug §2）。

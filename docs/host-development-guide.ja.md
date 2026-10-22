@@ -75,14 +75,14 @@ TCP で待ち受ける probe が自分を広告するときは、DNS-SD の serv
 
 ### 4.2 TCP の経路を設定する
 
-- probe を Wi-Fi や有線の IPv4 に載せる設定は、どの probe でも probe.config の wifi と ipv4 の項目（設定 §1.3〜§1.5）で行う。
-  同じ項目を送れば、どの probe でも同じ意味になる。項目の無い netif は DHCP、wifi の項目が無ければ Wi-Fi は使わない。
-- 手順の目安: USB でつなぎ、describe の setting（名前 `wifi`、`ipv4`）と netif で扱えるものを確かめ、wifi（と必要なら ipv4）を set する。network で state 2 と
-  アドレス、tcp_port を確かめ、TCP で届く（§4.1 で unit_id を見つけて confirm が通る）ことを確かめてから save する。
+- probe を Wi-Fi や有線の IPv4 に載せる設定は、どの probe でも本体の設定の `wifi.{}.*` と `ipv4.{}.*` の項目（[経路](oep-transports.ja.md) §7）で行う。
+  同じ値を送れば、どの probe でも同じ意味になる。`ipv4.{}.mode` の無い netif は DHCP、`wifi.{}.ssid` が無ければ Wi-Fi は使わない。
+- 手順の目安: USB でつなぎ、fn 0 の describe の setting と netif で扱えるものを確かめ、`wifi.0.ssid` と `wifi.0.passphrase`（と必要なら ipv4 の値）を
+  1 つの set で送る。network で state 2 とアドレス、tcp_port を確かめ、TCP で届く（§4.1 で unit_id を見つけて confirm が通る）ことを確かめてから save する。
   save する前なら、再起動で保存の内容へ戻る。
-- passphrase は書くだけで、get は pass_len 0xFF を返す。get の項目をそのまま set で送り返しても passphrase は変わらない。passphrase を表示もログもしない。
+- passphrase は secret で、get は data を返さない（len 0）。get の値をそのまま set で送り返しても passphrase は変わらない。passphrase を表示もログもしない。
 - mDNS が届かない所では、network の address と tcp_port を利用者へ示し、明示の接続先として使う。
-- **設定の一覧**: 標準の項目も probe 独自の設定も describe の setting（設定 §1、§4）に名前と形で並ぶ。host は意味を知らない独自の項目も、
+- **設定の一覧**: 本体とインターフェースの項目は、それぞれの fn の describe の setting（core §13.2）に名前と形で並ぶ。host は意味を知らない項目も、
   名前を表示し、form に合わせて入力を受けて get / set / save できる。項目は名前で見分け、番号は probe ごとに describe で引く。
 
 ## 5. session_id と発見
@@ -134,7 +134,7 @@ probe の立て直しと、host 自身の「probe が再起動した」ときの
 restartの前に読み、開き直しの期限はそれに外部の待ちを加えてhostが決める。
 
 1. ロックを取る（restart はロックの要る op。session_id 0 なら session_required）。保存したい設定があれば先に save する:
-   保存していない設定は再起動で無くなる（[probe の設定](../interfaces/oep-if-probe-config.ja.md) §2）。
+   保存していない設定は再起動で無くなる（core §13.7）。
 2. restart を送る。後ろに要求を続けない（どの経路にも）: 応答の後の probe は何も処理せず、答えない。
 3. completed success の応答が来たら、その probe の経路をすべて閉じる。UART bridge で port_speed を上げていたら、起動時の速さに
    戻す（[リンク](../interfaces/oep-if-link.ja.md) §3 の host 2）。
@@ -177,12 +177,12 @@ oep://<probe>[/<port>[/<target>]]
 - `any`は「どれでも」を表す予約語で、unit_id、口の名前、targetの名前に使わない。全部を指定するのが基本で、`any`は利用者が明示して書いたときだけ探す。
 - 段を書かないのは「指定しない」ではなく、場所を言い切ったことを表す: `oep://<probe>`はprobe自身、`oep://<probe>/<port>`はその口で、先のチップを確かめない。
 
-**口の名前**: 口はprobeに保存した設定のlabelで名付ける（[設定](../interfaces/oep-if-probe-config.ja.md) §1）。`S.swdio`、`S.swclk`、`S.swio`、`S.nrst`のように
+**口の名前**: 口はprobeの設定の`channel.{}.label`（core §13.8）で名付ける。`S.swdio`、`S.swclk`、`S.swio`、`S.nrst`のように
 `S.N`の形のlabelを持つchannelの組が、名前`S`の口である。probeに保存されるので、どのhostからも同じ名前で見える。
 名前つきの口を1つも持たないprobeは、名前の無い口を1つ持つとみなす（`any`でだけ選べる）。
 口の名前はwireの種類を決めない（rvswdとswdは同じ線の名前を使いうる）。どのwireでつなぐかは、targetの名前の系統、hostの設定、利用者の指定で決める。
 
-線の役目としてのlabelの探し方: 口`S`の線`N`は、`S.N`の設定label、口が1つだけなら`N`の設定label、最後にfirmwareの`N`の順で探す。
+線の役目としてのlabelの探し方: 口`S`の線`N`は、`S.N`のlabel、口が1つだけなら`N`のlabelの順で探す（labelの出どころ、fixed / default / user は問わない）。
 ASCIIの大小文字を区別せず、同じ段で複数channelが見つかれば曖昧として使用しない。probeはこの名前から線を動かさない。
 線の名前は`swdio`、`swclk`、`swio`（debugの線）、`rx`（fixture UARTの受信。targetのTXにつなぐ）、`tx`（fixture UARTの送信）、`nrst`、`power_hi`、`power_lo`を慣行にできる。
 
@@ -392,7 +392,7 @@ captureの世代は同じboot内で使い回さない。0xFFFFFFFFを使い切�
   まま capture を足せる。解くときは plan_release に fn を並べる（n = 0 ならすべて）。
 - ほかの fn や connection が持つピンを取ろうとすると rejected unavailable で、何も変わらない（core §8.1）。
 - 解いたピンは空きの状態になる: probe の設定の idle か、Hi-Z（core §8）。治具の配線で相手の入力が浮くピン（DUT の RX につながる
-  TX など）は、`oep.probe.config` の idle で pull-up の入力にして保存する（§15）。
+  TX など）は、本体の設定の `channel.{}.idle` で pull-up の入力にして保存する（§15）。
 - planはセッションの資源で、end、leaseの期限切れ、forceで解放される（core §9）。hostの配線設定は残せるが、実行中のplanを引き継がない。
 
 ## 14. コンソール
@@ -417,21 +417,26 @@ captureの世代は同じboot内で使い回さない。0xFFFFFFFFを使い切�
 
 ## 15. probeの設定
 
-`oep.probe.config`はdisable/idle/label、任意のシリアルの口の素通し（§1.1、§1.2）、ネットワークの経路（§1.3〜§1.5、§4.2）、probe独自の設定（§1.6）を扱う。配線とUARTの設定はhostが管理する。
-素通しの口を開いた host は、フレームの外のバイト（target の出力）を雑音として読み捨てる。セッションの要求をその口から送れば、そのセッションの間は素通しが止まる。
+設定は本体が取りまとめる（core §13）。項目は本体（fn 0）とインターフェース（そのfn）がそれぞれ宣言し、読み書きはfn 0のget/set/unset/save/stateで行う。
+素通しの項目（[治具](../interfaces/oep-if-fixture.ja.md) §2.1、[コンソール](../interfaces/oep-if-console.ja.md) §2.1）で口を素通しにした場合、その口を開いた host は、
+フレームの外のバイト（target の出力）を雑音として読み捨てる。セッションの要求をその口から送れば、そのセッションの間は素通しが止まる。
+配線とUARTの実行時の設定はhostが管理する。
 
-1. list/describeでopsとsettingを読む。settingのk番目が項目番号kで、名前から番号を引く（番号はboot_idごとに引き直す）。saveがあればstorage.max_bytesは1以上で、無ければ保存を提供しない。
-2. getのcount個の項目を読み、末尾の拡張TLVを別に読む。moreならcountをfirstへ加えて続ける。
+1. fn 0と各fnのdescribeでsettingとsetting_choiceを読む。各fnのk番目のsettingがその項目番号kで、名前から番号を引く（番号はboot_idごとに引き直す）。
+   fn 0のchannel_nameでchannelの名前を、経路の並びで経路の名前（core §13.3）を引く。
+2. getのcount個の値を読み、末尾の拡張TLVを別に読む。moreならcountをfirstへ加えて続ける。
    途中でgenerationが変われば最初から読み直す。generationはboot内の変更カウンタで、hostが計算するhashではない。
-3. 欲しい内容とキーごとに比べ、同じなら何もしない。変更はロックを取り、count付きset/unsetを送る。
-   項目は`number、len、key、data`で、外側のTLVとは別の容器である。
+   出どころがfixedの値は変えられない。defaultの値はunsetで戻る先である。
+3. 欲しい内容と値ごとに比べ、同じなら何もしない。変更はロックを取り、count付きset/unsetを送る。1つの要求の値はまとめて受けられるか、何も変わらない。
+   値は`fn、number、key、len、data`で、外側のTLVとは別の容器である。
 4. 保存したい場合だけsaveする。stateが提供され、saved_generationが現在のgenerationと等しければ保存済み。
-   内容が同じならprobeは不要な書込みを省く。eraseは保存だけを消す。
-5. firmware更新後に部分適用/読めない状態になったら、getで効いている項目を確認し、保存したhost設定と比べて修復する。
+   内容が同じならprobeは不要な書込みを省く。保存を消すには全部のuserの値をunsetしてsaveする。
+5. firmwareを更新する前に設定を書き出し、更新の後に入れ直す（[設定のファイル](oep-settings-file.ja.md)）。stateが部分適用や読めない状態を示したら、
+   getで効いている値を確かめ、書き出したファイルから入れ直す。
    無効なlabelなどを理由に独立したdisable/idleが全て消えたと決め付けない。
+6. 保存を持たないprobeには、利用者が選んだファイルをつなぐたびに入れ直してよい。
 
 idle出力はhostが去った後も空きのpinで効く。保存前に配線とlevelを確認する。
-保存を提供しない最小構成ではstateも必須ではない。
 
 ## 16. wireとtargetの操作を組み合わせる
 

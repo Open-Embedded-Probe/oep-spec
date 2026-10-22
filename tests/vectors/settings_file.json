@@ -1,0 +1,185 @@
+{
+  "about": "The settings file (docs/oep-settings-file.ja.md): a probe's declarations (fn 0's describe TLVs; each listed fn's name, instance and describe TLVs) and its get values (count x value, core §13.5) give the exported file (user values only, names for numbers, secrets as {\"secret\": true}). Importing that file into another probe gives the values to set (in the file's order), the user values to unset, the secrets the probe does not hold, and what does not resolve. Item numbers follow each fn's setting order; set values are listed in the file's category and member order.",
+  "export": [
+    {
+      "name": "export: user values only, numbers to names",
+      "spec": "settings file §2, §3",
+      "probe": {
+        "fn0_describe_tlvs_hex": "42100039343839646432616530393533363530410600727032333530400600302e302e3336430200040044070000004750494f3044070001004750494f3144070002004750494f3544080003004750494f31344903000002ff4903000105ff450400776966690816000201000020006368616e6e656c2e7b7d2e6c6162656c0815000601000000006368616e6e656c2e7b7d2e69646c65090600020068692d7a090900020170756c6c2d7570090b00020270756c6c2d646f776e09050002036c6f770906000204686967680818000501000000006368616e6e656c2e7b7d2e64697361626c65081200020204002000776966692e7b7d2e73736964081800020204004001776966692e7b7d2e70617373706872617365081200060400000000697076342e7b7d2e6d6f64650906000600646863700908000601737461746963081500040400000000697076342e7b7d2e61646472657373081400030400000000697076342e7b7d2e707265666978081500040400000000697076342e7b7d2e67617465776179081100040400000000697076342e7b7d2e646e73",
+        "list": [
+          {
+            "fn": 1,
+            "name": "oep.wire.rvswd",
+            "instance": 0,
+            "describe_tlvs_hex": "080d00060100000000726573742e7b7d09060001006175746f09060001016869676809050001026c6f77080d00050100000000686f6c642e7b7d"
+          },
+          {
+            "fn": 2,
+            "name": "oep.fixture.uart",
+            "instance": 0,
+            "describe_tlvs_hex": "081700070300000000706173737468726f7567682e7b7d2e7278081900030300000000706173737468726f7567682e7b7d2e62617564081b00060300000000706173737468726f7567682e7b7d2e666f726d61740905000300386e310905000304386531"
+          }
+        ]
+      },
+      "get_values_hex": "00000100000103004c454400000103000304004e52535400000203000301000100000301000301000100000400000303006c616200000500000300000000060100030100010000070100030400c0a8011700000801000304001800000001000102000301000201000202000201000102000100000302000100020002000003040000c20100020003000002010000",
+      "file": {
+        "oep_settings": 1,
+        "probe": {
+          "model": "rp2350",
+          "unit_id": "9489dd2ae0953650",
+          "firmware": "0.0.36"
+        },
+        "settings": {
+          "core": {
+            "channel.GPIO14.label": "NRST",
+            "channel.GPIO14.idle": "pull-up",
+            "channel.GPIO1.disable": true,
+            "wifi.0.ssid": "lab",
+            "wifi.0.passphrase": {
+              "secret": true
+            },
+            "ipv4.wifi.mode": "static",
+            "ipv4.wifi.address": "192.168.1.23",
+            "ipv4.wifi.prefix": 24
+          },
+          "oep.wire.rvswd/0": {
+            "rest.GPIO5": "low"
+          },
+          "oep.fixture.uart/0": {
+            "passthrough.cdc0.rx": "GPIO1",
+            "passthrough.cdc0.baud": 115200
+          }
+        }
+      }
+    }
+  ],
+  "import": [
+    {
+      "name": "import into a probe with other numbers",
+      "spec": "settings file §4",
+      "probe": {
+        "fn0_describe_tlvs_hex": "42100039343839646432616530393533363530410600727032333530400600302e302e3336430200040044080000004750494f313444070001004750494f3544070002004750494f3144070003004750494f304903000001ff4903000102ff450400776966690816000201000020006368616e6e656c2e7b7d2e6c6162656c0815000601000000006368616e6e656c2e7b7d2e69646c65090600020068692d7a090900020170756c6c2d7570090b00020270756c6c2d646f776e09050002036c6f770906000204686967680818000501000000006368616e6e656c2e7b7d2e64697361626c65081200020204002000776966692e7b7d2e73736964081800020204004001776966692e7b7d2e70617373706872617365081200060400000000697076342e7b7d2e6d6f64650906000600646863700908000601737461746963081500040400000000697076342e7b7d2e61646472657373081400030400000000697076342e7b7d2e707265666978081500040400000000697076342e7b7d2e67617465776179081100040400000000697076342e7b7d2e646e73",
+        "list": [
+          {
+            "fn": 1,
+            "name": "oep.fixture.uart",
+            "instance": 0,
+            "describe_tlvs_hex": "081700070300000000706173737468726f7567682e7b7d2e7278081900030300000000706173737468726f7567682e7b7d2e62617564081b00060300000000706173737468726f7567682e7b7d2e666f726d61740905000300386e310905000304386531"
+          }
+        ]
+      },
+      "file": {
+        "oep_settings": 1,
+        "probe": {
+          "model": "rp2350",
+          "unit_id": "9489dd2ae0953650",
+          "firmware": "0.0.36"
+        },
+        "settings": {
+          "core": {
+            "channel.GPIO14.label": "NRST",
+            "channel.GPIO14.idle": "pull-up",
+            "channel.GPIO1.disable": true,
+            "wifi.0.ssid": "lab",
+            "wifi.0.passphrase": {
+              "secret": true
+            },
+            "ipv4.wifi.mode": "static",
+            "ipv4.wifi.address": "192.168.1.23",
+            "ipv4.wifi.prefix": 24
+          },
+          "oep.wire.rvswd/0": {
+            "rest.GPIO5": "low"
+          },
+          "oep.fixture.uart/0": {
+            "passthrough.cdc0.rx": "GPIO1",
+            "passthrough.cdc0.baud": 115200
+          },
+          "io.example.gone/0": {
+            "x": 1
+          }
+        }
+      },
+      "current_values_hex": "00000401000303006f6c64",
+      "expected_set": [
+        {
+          "fn": 0,
+          "number": 1,
+          "key": 0,
+          "data_hex": "4e525354"
+        },
+        {
+          "fn": 0,
+          "number": 2,
+          "key": 0,
+          "data_hex": "01"
+        },
+        {
+          "fn": 0,
+          "number": 3,
+          "key": 2,
+          "data_hex": "01"
+        },
+        {
+          "fn": 0,
+          "number": 4,
+          "key": 0,
+          "data_hex": "6c6162"
+        },
+        {
+          "fn": 0,
+          "number": 6,
+          "key": 1,
+          "data_hex": "01"
+        },
+        {
+          "fn": 0,
+          "number": 7,
+          "key": 1,
+          "data_hex": "c0a80117"
+        },
+        {
+          "fn": 0,
+          "number": 8,
+          "key": 1,
+          "data_hex": "18000000"
+        },
+        {
+          "fn": 1,
+          "number": 1,
+          "key": 1,
+          "data_hex": "0200"
+        },
+        {
+          "fn": 1,
+          "number": 2,
+          "key": 1,
+          "data_hex": "00c20100"
+        }
+      ],
+      "expected_unset": [
+        {
+          "fn": 0,
+          "number": 4,
+          "key": 1
+        }
+      ],
+      "secret_without_value": [
+        [
+          "core",
+          "wifi.0.passphrase"
+        ]
+      ],
+      "unresolved": [
+        [
+          "oep.wire.rvswd/0",
+          "rest.GPIO5"
+        ],
+        [
+          "io.example.gone/0",
+          "x"
+        ]
+      ]
+    }
+  ]
+}

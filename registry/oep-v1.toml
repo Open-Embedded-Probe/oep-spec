@@ -27,7 +27,7 @@
 #                      HID usage page / usage u16).
 #   [common.enum.<enum>]  name = integer: one value space shared by every interface (u8 unless the enum's comment says otherwise).
 #   [core]             the core's own numbers (fn 0; the core has no name and is not in list, core §0): the keys and sub-tables of
-#                      [[interface]] below except name, revision, fn, target and line_names.
+#                      [[interface]] below except name, revision, fn, target and family.
 #   [[interface]]      one per interface, with these keys and sub-tables only:
 #     name = string, revision = integer, fn = integer (u16; only where the fn is fixed: none in v1),
 #     target = string (optional: the target family the interface is for, core §12 rule 8; absent = any family),
@@ -38,6 +38,11 @@
 #     [interface.status] [interface.reject_reasons]   name = integer: the interface's own values (0x40-0x7F; none yet);
 #     [interface.retired]        key = "op", an enum name, or "tlv.<context>"; value = array of [lo, hi] integer ranges;
 #     [interface.line_names]      name = string: a standard name and its description (1-32 of a-z 0-9 _ -, no x- prefix).
+#     [interface.names.<list>]    name = string: a standard name of a named list (core §7.7) and its description.
+#     [interface.settings]        "item name" = string: a settings item the interface (or the core) owns (core §13): its name
+#                                 (`{}` = the key) and "form, key_kind[, flags]; meaning". An enum item's form names its choices:
+#                                 `enum <name>` is the enum of that name in the same unit, its keys read with `-` for `_`
+#                                 (hi_z = "hi-z"); `enum (<source>)` is a list the probe declares.
 # A new table kind, or a new key of [[interface]] or of an op, is a registry change made by a pull request (CONTRIBUTING.md).
 
 [registry]
@@ -111,6 +116,8 @@ min_clock_hz = 0x04
 features = 0x05
 channel_group = 0x06            # repeats, one per combination: group(u8) n(u8) n x (role(u8) channel(u16))
 ops = 0x07                      # base(u8) bitmap (1 byte or more, base + 8 x bytes <= 256): bit i = op base + i is offered; every fn's describe carries it, fn 0 included (core §1.2, §7.4)
+setting = 0x08                  # repeats, one per settings item the fn owns: form(u8) key_kind(u8) keys(u16) max_len(u8) flags(u8) name(text); the k-th is item number k (core §13.2)
+setting_choice = 0x09           # repeats, one per choice of an enum item: number(u8) value(u8) name(text, 1-16 of a-z 0-9 -) (core §13.2)
 
 [usb]                           # USB identification and the shape of a probe's interfaces (transports §3)
 project_vid = 0x1209            # the project's USB VID:PID: the only automatic identification of an OEP probe (transports §3)
@@ -133,9 +140,13 @@ lease_min_ms = 1000             # owner processing pauses lease; response genera
 lease_max_ms = 60000
 owner_max_bytes = 32
 unit_id_max_bytes = 32
-wifi_ssid_max_bytes = 32        # probe.config wifi ssid (oep-if-probe-config §1.4)
-wifi_min_max_frame = 114        # max_frame floor for a probe taking wifi: request 10 + count 1 + item header 3 + key 2 + data 98 (§1.4)
-label_max_bytes = 32            # probe.config label text: valid UTF-8 without control characters (oep-if-probe-config §1)
+wifi_ssid_max_bytes = 32        # core setting wifi.{}.ssid (transports §7.1)
+wifi_min_max_frame = 83         # max_frame floor for a probe with the network settings: a get answer 19 + the 64-byte key (transports §7)
+label_max_bytes = 32            # core setting channel.{}.label text: valid UTF-8 without control characters (core §13.8)
+setting_name_max_bytes = 48     # a settings item name, `{}` included; describe setting is 6 + this = 54 bytes (core §13.2)
+setting_choice_name_max_bytes = 16  # setting_choice name, 1-16 of a-z 0-9 - (core §13.2)
+channel_name_max_bytes = 16     # describe channel_name, 1-16 of A-Z a-z 0-9 _ - (core §7.5)
+setting_get_overhead_bytes = 19 # one value's get answer is this + len; max_len <= the smallest max_frame - this (core §13.2, §13.5)
 interface_name_max_bytes = 48   # a list answer with one entry is 5 + 3 + 6 + 48 = 62 bytes, within min_max_frame (core §7.2, §12)
 port_speed_tolerance_pct = 2    # port_speed: the nearest speed the UART can make may differ from the request by at most this percent (oep-if-link §3)
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused (oep-if-fixture §2)
@@ -173,6 +184,12 @@ op = [
   { code = 0x11, name = "end", lock = true },
   { code = 0x12, name = "keepalive", lock = true },
   { code = 0x13, name = "lock_state", lock = false },
+  { code = 0x20, name = "get", lock = false },         # settings (core §13.5); required with settings
+  { code = 0x21, name = "set", lock = true },
+  { code = 0x22, name = "unset", lock = true },
+  { code = 0x23, name = "save", lock = true },         # optional, with state (core §13.7)
+  { code = 0x24, name = "state", lock = false },       # required with save
+  { code = 0x25, name = "network", lock = false },     # required with describe netif (transports §7.3)
 ]
 [core.tlv.confirm_answer]
 transport = 0x01                # u8: index of this endpoint's describe transport entry; always sent (core §7.1)
@@ -185,17 +202,20 @@ owner = 0x01
 [core.tlv.unavailable_payload]   # the rejected unavailable payload (core §4.3), every fn; 0x40+ per interface
 cause = 0x01                    # u8, enum unavailable_cause
 channel = 0x02                  # u16; repeats
+item = 0x03                     # u8: the place (from 0) of the refused value in a settings set / unset (core §13.5)
 fn = 0x05                       # u16: the fn the refusal is about; usable by every interface
 [core.tlv.unsupported_payload]   # the rejected unsupported payload after tag(u8) (0x00 = a fixed-part value), every fn (core §4.3)
 supported = 0x01                # confirm only: min(u8) max(u8), the protocol revisions the probe handles (core §7.1)
 channel = 0x02                  # u16
+item = 0x03                     # u8: the place (from 0) of the refused value in a settings set / unset (core §13.5)
 fn = 0x05                       # u16: the fn the refusal is about; usable by every interface
 [core.tlv.describe]             # the probe itself (fn 0); declarations only (core §7.3)
 firmware = 0x40                 # optional text diagnostic/version information (core §7.5)
 model = 0x41
 unit_id = 0x42
 channels = 0x43                 # u16; channel numbers are 0 .. channels - 1; required when the probe has channels, absent = none (core §7.5)
-label = 0x46                    # optional, repeats, one per channel: channel(u16) text: the firmware's fixed channel names (settings' labels: probe.config get)
+channel_name = 0x44             # repeats, one per channel: channel(u16) text: the datasheet pin name; required with channels (core §7.5)
+netif = 0x45                    # repeats, one per network interface: its name (text); a named list (core §7.7, transports §7)
 transport = 0x49                # repeats, one per transport: index(u8) kind(u8) interface(u8, 0xFF not USB); required
 chip = 0x4C                     # text: the probe MCU's part and revision (optional)
 max_op_ms = 0x4D                # u32, required: validation, internal retries, execution, cleanup and response generation for one request;
@@ -215,6 +235,89 @@ usb_serial_jtag = 3             # built-in USB serial: the MCU hardware's USB se
 vendor_bulk = 4
 hid = 5
 tcp = 6
+[core.enum.route_kind]          # the short names of transport kinds in a route name: kind + ordinal, `cdc0` (core §13.3)
+bridge = 1
+cdc = 2
+usj = 3
+bulk = 4
+hid = 5
+tcp = 6
+[core.enum.setting_form]        # describe setting form (core §13.3)
+bytes = 1
+text = 2
+u32 = 3
+ipv4 = 4
+bool = 5
+enum = 6
+channel = 7
+transport = 8
+fn = 9
+[core.enum.setting_key_kind]    # describe setting key_kind (core §13.3)
+none = 0
+channel = 1
+index = 2
+transport = 3
+netif = 4
+[core.enum.setting_flag]
+secret = 0x01                   # write-only: get returns len 0; set len 0 keeps the value (core §13.5)
+restart = 0x02                  # the new value takes effect after a restart (core §13.2)
+[core.enum.setting_origin]      # get's origin (core §13.4)
+fixed = 1
+default = 2
+user = 3
+[core.enum.storage_state]       # state (core §13.7)
+none = 0
+applied = 1
+unreadable = 2
+partial = 3
+[core.enum.storage_reason]
+none = 0
+form = 1
+item = 2
+capacity = 3
+[core.enum.channel_idle]        # core setting channel.{}.idle (core §13.8)
+hi_z = 0
+pull_up = 1
+pull_down = 2
+low = 3
+high = 4
+[core.enum.ipv4_mode]           # core setting ipv4.{}.mode (transports §7.2)
+dhcp = 0
+static = 1
+[core.enum.network_state]       # network (transports §7.3)
+off = 0
+connecting = 1
+up = 2
+waiting = 3
+[core.enum.network_reason]
+none = 0
+not_found = 1
+auth = 2
+no_address = 3
+other = 4
+[core.names.netif]              # the standard network interfaces (transports §7); others are reverse-DNS names
+wifi = "Wi-Fi station"
+ethernet = "wired Ethernet"
+[core.line_names]               # Host conventions only (host-development-guide §5.3): roles named by channel.{}.label
+swdio = "the debug data line (2 wires: rvswd, swd) (Host only)"
+swclk = "the debug clock line (2 wires: rvswd, swd) (Host only)"
+swio = "the one debug wire (swio) (Host only)"
+rx = "the fixture UART receive, wired to the target TX (Host only)"
+tx = "the fixture UART transmit, wired to the target RX (Host only)"
+nrst = "the target reset line (Host only)"
+power_hi = "target power on when high (Host only)"
+power_lo = "target power on when low (Host only)"
+[core.settings]                 # the core's items (core §13.8, transports §7)
+"channel.{}.label" = "text 1-32, channel; the pin's label (NRST)"
+"channel.{}.idle" = "enum channel_idle, channel; the idle state (core §8)"
+"channel.{}.disable" = "bool, channel; true: the probe neither drives nor configures the pin"
+"wifi.{}.ssid" = "text 1-32, index (entry); the network's name"
+"wifi.{}.passphrase" = "text 8-64, index (entry), secret; 8-63 printable passphrase or 64 hex digits"
+"ipv4.{}.mode" = "enum ipv4_mode, netif; dhcp when absent"
+"ipv4.{}.address" = "ipv4, netif; static address"
+"ipv4.{}.prefix" = "u32 1-32, netif; static prefix length"
+"ipv4.{}.gateway" = "ipv4, netif; static gateway, none when absent"
+"ipv4.{}.dns" = "ipv4, netif; static DNS server, none when absent"
 
 [[interface]]
 name = "oep.probe.plan"                # which channel each role of an interface uses (oep-if-plan); listed when an interface has plan roles
@@ -313,6 +416,14 @@ index = 0x40                    # u8: zero-based candidate index
 [interface.tlv.unsupported_payload]
 index = 0x40                    # same diagnostic after the unsupported fixed tag
 
+[interface.enum.rest]            # setting rest.{} (oep-if-debug §3.1)
+auto = 0                        # the probe's automatic choice from target_id (also when no value)
+high = 1
+low = 2
+[interface.settings]
+"rest.{}" = "enum rest, channel (the port's SWCLK); high / low fix the rest, auto or absent: the automatic choice (oep-if-debug §3.1)"
+"hold.{}" = "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"
+
 [[interface]]
 name = "oep.wire.swio"
 family = "wire"
@@ -356,6 +467,9 @@ reset = 3
 index = 0x40                    # u8: zero-based candidate index
 [interface.tlv.unsupported_payload]
 index = 0x40                    # same diagnostic after the unsupported fixed tag
+
+[interface.settings]
+"hold.{}" = "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"
 
 [[interface]]
 name = "oep.wire.swd"
@@ -401,6 +515,9 @@ reset = 3
 index = 0x40                    # u8: zero-based candidate index
 [interface.tlv.unsupported_payload]
 index = 0x40                    # same diagnostic after the unsupported fixed tag
+
+[interface.settings]
+"hold.{}" = "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"
 
 [[interface]]
 name = "oep.target.riscv-dm"
@@ -481,6 +598,13 @@ target_timeout = 0x40           # console-specific detail of the common lost kin
 sdi = "target to host, DATA0 mailbox (§3.1)"
 dmdata = "both ways, DATA0 mailbox (§3.2)"
 dmseq = "both ways, sequence bit and CRC-8 (target-console-dmseq)"
+[interface.settings]
+"passthrough.{}.wire" = "fn, transport (serial port); oep.wire.rvswd or oep.wire.swio (oep-if-console §2.1)"
+"passthrough.{}.swdio" = "channel, transport"
+"passthrough.{}.swclk" = "channel, transport; rvswd only"
+"passthrough.{}.max-speed" = "u32, transport; the probe's choice when absent"
+"passthrough.{}.mechanism" = "text 1-48, transport; a name of the mechanism list"
+
 [[interface]]
 name = "oep.fixture.gpio"
 revision = 1
@@ -531,6 +655,11 @@ parity_mask = 0x0C
 parity_even = 0x04
 parity_odd = 0x08
 stop_bits_2 = 0x10
+
+[interface.settings]
+"passthrough.{}.rx" = "channel, transport (serial port); the passthrough's RX (oep-if-fixture §2.1)"
+"passthrough.{}.baud" = "u32, transport; 115200 when absent"
+"passthrough.{}.format" = "enum (formats), transport; 8n1 when absent"
 
 [[interface]]
 name = "oep.fixture.i2c-target"
@@ -934,88 +1063,3 @@ complete = 0
 host = 1
 error = 2
 
-[[interface]]
-name = "oep.probe.config"
-revision = 1
-op = [
-  { code = 0x10, name = "get", lock = false },
-  { code = 0x11, name = "set", lock = true },
-  { code = 0x12, name = "save", lock = true },  # optional with erase/state (ops); config §2
-  { code = 0x13, name = "erase", lock = true },  # required with save (ops); config §2
-  { code = 0x14, name = "unset", lock = true },
-  { code = 0x15, name = "state", lock = false },  # required with save, optional otherwise (ops); config §2
-  { code = 0x16, name = "network", lock = false },  # required with describe netifs, not offered otherwise; config §2
-]
-[interface.tlv.describe]
-storage = 0x40                  # max_bytes(u32>=1), canonical item bytes; only with save/erase
-setting = 0x41                  # repeats, one per item it takes: form(u8), keys(u16>=1), max_len(u8), flags(u8), name(text); the k-th is item number k (config §1, §4)
-netif = 0x42                    # repeats, one per network interface: its name (text); a named list (core §7.7); with wifi / ipv4 and the network op
-[interface.names.setting]       # the standard items, a named list (core §7.7, config §1): item = number(u8, the place in describe setting) len(u16) key(u16) data
-label = "key channel; text 1-32 bytes"
-idle = "key channel; mode(u8)"
-disable = "key channel; no data"
-passthrough = "key port; fn(u16) rx(u16) baud(u32) format(u8)"
-console-passthrough = "key port; wire_fn(u16) swdio(u16) swclk(u16) max_speed(u32) console_fn(u16) mechanism(u8)"
-wifi = "key entry; ssid_len(u8) ssid pass_len(u8) passphrase; passphrase write-only"
-ipv4 = "key netif; mode(u8) address(4) prefix(u8) gateway(4) dns(4)"
-rvswd-rest = "key channel (the port's SWCLK); mode(u8): rvswd_rest_mode"
-wire-hold = "key channel (the port's SWDIO); mode(u8): wire_hold_mode"
-[interface.line_names]          # Host conventions only (host-development-guide §5.3)
-swdio = "the debug data line (2 wires: rvswd, swd) (Host only)"
-swclk = "the debug clock line (2 wires: rvswd, swd) (Host only)"
-swio = "the one debug wire (swio) (Host only)"
-rx = "the fixture UART receive, wired to the target TX (Host only)"
-tx = "the fixture UART transmit, wired to the target RX (Host only)"
-nrst = "the target reset line (Host only)"
-power_hi = "target power on when high (Host only)"
-power_lo = "target power on when low (Host only)"
-[interface.enum.idle_mode]
-hi_z = 0
-pull_up = 1
-pull_down = 2
-output_low = 3
-output_high = 4
-[interface.names.netif]         # the standard network interfaces (config §1.3); others are reverse-DNS names
-wifi = "Wi-Fi station"
-ethernet = "wired Ethernet"
-[interface.enum.rvswd_rest_mode] # rvswd-rest: how an rvswd attach without idle_clock rests that SWCLK (oep-if-debug §3.1)
-auto = 0                        # the probe's automatic choice from target_id (also when no item)
-high = 1
-low = 2
-[interface.enum.wire_hold_mode] # wire-hold: the debug wire's lines held at their rest after a close (oep-if-debug §2)
-off = 0
-on = 1                          # also when no item
-[interface.enum.ipv4_mode]
-dhcp = 0
-static = 1
-[interface.enum.network_state]
-off = 0
-connecting = 1
-up = 2
-waiting = 3
-[interface.enum.network_reason]
-none = 0
-not_found = 1
-auth = 2
-no_address = 3
-other = 4
-[interface.enum.setting_form]
-named = 0                       # the layout the standard name defines
-bytes = 1
-text = 2
-u32 = 3
-ipv4 = 4
-bool = 5
-[interface.enum.setting_flag]
-secret = 0x01
-restart = 0x02
-[interface.enum.storage_state]
-none = 0
-applied = 1
-unreadable = 2
-partial = 3
-[interface.enum.storage_unreadable]
-none = 0
-form = 1
-item = 2
-capacity = 3

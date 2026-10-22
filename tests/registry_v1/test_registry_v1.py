@@ -114,7 +114,7 @@ def test_reserved_ranges_and_common_tags_are_checked():
 
 def test_line_names_are_generated_for_every_output():
     reg, digest = gen.load()
-    names = next(i for i in reg["interface"] if i["name"] == "oep.probe.config")["line_names"]
+    names = reg["core"]["line_names"]
     assert names
     h, p, j = gen.cpp(reg, digest), gen.py(reg, digest), gen.js(reg, digest)
     for name in names:
@@ -123,26 +123,30 @@ def test_line_names_are_generated_for_every_output():
         assert f"{name}: " in j
     ns = {}
     exec(p, ns)
-    assert ns["PROBE_CONFIG"].line_names == names
+    assert ns["CORE"].line_names == names
 
 
 def test_a_private_line_name_in_the_registry_is_reported():
     reg, _ = gen.load()
-    next(i for i in reg["interface"] if i["name"] == "oep.probe.config")["line_names"]["x-acme"] = "private"
+    reg["core"]["line_names"]["x-acme"] = "private"
     assert any("not a standard name" in e for e in gen.check(reg))
 
 
 def test_settings_are_named_not_numbered():
     reg,_ = gen.load()
-    settings=next(i for i in reg['interface'] if i['name']=='oep.probe.config')
-    # the standard items by name (config §1); the probe numbers them in its describe setting order: no item numbers here
-    assert list(settings['names']['setting'])==['label','idle','disable','passthrough','console-passthrough','wifi','ipv4','rvswd-rest','wire-hold']
-    assert 'item' not in settings['tlv']
-    assert set(settings['tlv']['describe'])=={'storage','setting','netif'}
-    # the longest wifi item in one set: request header 10, count 1, item header 3, key 2, data 1 + 32 + 1 + 64
-    assert reg['limits']['wifi_min_max_frame'] == 10 + 1 + 3 + 2 + 1 + reg['limits']['wifi_ssid_max_bytes'] + 1 + 64
+    # the items by name (core §13.1); the probe numbers them in its describe setting order: no item numbers here
+    assert list(reg['core']['settings'])[:3]==['channel.{}.label','channel.{}.idle','channel.{}.disable']
+    assert all(isinstance(v, str) for v in reg['core']['settings'].values())
+    owners = {i['name'] for i in reg['interface'] if 'settings' in i}
+    assert owners == {'oep.wire.rvswd','oep.wire.swio','oep.wire.swd','oep.fixture.uart','oep.target.console'}
+    assert not any(i['name'] == 'oep.probe.config' for i in reg['interface'])
+    # one value's get answer: header 5, more 1, generation 4, count 1, the value's fixed part 8 (core §13.5)
+    lim = reg['limits']
+    assert lim['setting_get_overhead_bytes'] == reg['limits']['result_header_bytes'] + 1 + 4 + 1 + 8
+    assert lim['wifi_min_max_frame'] == lim['setting_get_overhead_bytes'] + 64          # the 64-digit key (transports §7)
+    assert lim['label_max_bytes'] <= reg['constants']['min_max_frame'] - lim['setting_get_overhead_bytes']
     # a setting TLV with the longest name fits the core's 64-byte describe value (55 bytes)
-    assert 5 + reg['limits']['interface_name_max_bytes'] <= reg['constants']['min_max_frame'] - 9
+    assert 6 + lim['setting_name_max_bytes'] <= reg['constants']['min_max_frame'] - 9
     gpio=next(i for i in reg['interface'] if i['name']=='oep.fixture.gpio')
     assert 'drive_levels' not in gpio['tlv']['describe']
 
@@ -190,5 +194,4 @@ def test_numbering_rules():
     assert sorted(fams) == ['capture', 'wire']
     console = next(i for i in reg['interface'] if i['name'] == 'oep.target.console')
     assert list(console['names']['mechanism']) == ['sdi', 'dmdata', 'dmseq'] and 'mechanism' not in console.get('enum', {})
-    config = next(i for i in reg['interface'] if i['name'] == 'oep.probe.config')
-    assert list(config['names']['netif']) == ['wifi', 'ethernet'] and 'netif' not in config['enum']
+    assert list(reg['core']['names']['netif']) == ['wifi', 'ethernet'] and 'netif' not in reg['core']['enum']

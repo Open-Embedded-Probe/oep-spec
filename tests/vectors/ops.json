@@ -927,294 +927,345 @@
       "answer_hex": "026300000b00"
     },
     {
-      "name": "probe.config state: no saved settings",
-      "spec": "settings §3",
+      "name": "settings state: no saved settings",
+      "spec": "core §13.7",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); state offered; no saved settings",
-      "request_hex": "01700008001500000000",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); save and state offered; no saved settings",
+      "request_hex": "01700000002400000000",
       "answer_hex": "0270000100000000000000"
     },
     {
-      "name": "probe.config save not offered",
-      "spec": "settings §2",
+      "name": "settings save not offered",
+      "spec": "core §13.7",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); get/set/unset only; no storage",
-      "request_hex": "01710008001244332211",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); get/set/unset only; no storage",
+      "request_hex": "01710000002344332211",
       "answer_hex": "0271000002"
     },
     {
-      "name": "probe.config state not offered",
-      "spec": "settings §2",
+      "name": "settings state not offered",
+      "spec": "core §13.7",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); get/set/unset only; no storage/state",
-      "request_hex": "017d0008001500000000",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); get/set/unset only; no storage/state",
+      "request_hex": "017d0000002400000000",
       "answer_hex": "027d000002"
     },
     {
-      "name": "probe.config set: idle with an extra byte is malformed",
-      "spec": "settings §1",
+      "name": "settings set: idle with an extra byte is malformed",
+      "spec": "core §13.3",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty configuration, generation1 unchanged",
-      "request_hex": "0172000800114433221101020400040000ff",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values, generation1 unchanged",
+      "request_hex": "01720000002144332211010000020400020000ff",
       "answer_hex": "0272000003"
     },
     {
-      "name": "probe.config set: item number 0 is malformed",
-      "spec": "settings §1",
+      "name": "settings set: item number 0 is malformed",
+      "spec": "core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty configuration generation1",
-      "request_hex": "0173000800114433221101000300040000",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values, generation1",
+      "request_hex": "01730000002144332211010000000400010000",
       "answer_hex": "0273000003"
     },
     {
-      "name": "probe.config set: item number 7 past the settings is unsupported",
-      "spec": "settings §1",
+      "name": "settings set: item number 11 past the settings is unsupported",
+      "spec": "core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); no settings/pin change",
-      "request_hex": "01740008001144332211010702000400",
-      "answer_hex": "027400000b07"
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no settings/pin change",
+      "request_hex": "017400000021443322110100000b0400010000",
+      "answer_hex": "027400000b0003010000"
     },
     {
-      "name": "probe.config set: item number 135 past the settings is unsupported",
-      "spec": "settings §1",
+      "name": "settings set: item number 135 past the settings is unsupported",
+      "spec": "core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); no settings/pin change",
-      "request_hex": "01750008001144332211018702000400",
-      "answer_hex": "027500000b87"
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no settings/pin change",
+      "request_hex": "01750000002144332211010000870400010000",
+      "answer_hex": "027500000b0003010000"
     },
     {
-      "name": "probe.config set: unknown outer noncritical TLV ignored",
-      "spec": "settings §1/2, core §2.3",
+      "name": "settings set: unknown outer noncritical TLV ignored",
+      "spec": "core §13.5, §2.3",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty configuration generation1",
-      "request_hex": "01760008001144332211010203000400003e010078",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values, generation1",
+      "request_hex": "017600000021443322110100000204000100003e010078",
       "answer_hex": "027600010002000000"
     },
     {
-      "name": "probe.config get: count separates items from response extensions",
-      "spec": "settings §2",
+      "name": "settings get: count separates values from response extensions",
+      "spec": "core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); one idle item, generation2",
-      "request_hex": "017700080010000000000000",
-      "answer_hex": "02770001000002000000010203000400007f11000f696f2e6578616d706c652e6e6f746578"
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); one user idle value, generation2",
+      "request_hex": "017700000020000000000000",
+      "answer_hex": "02770001000002000000010000020400030100007f11000f696f2e6578616d706c652e6e6f746578"
     },
     {
-      "name": "probe.config get: final empty page still has count and generation",
-      "spec": "settings §2",
+      "name": "settings get: final empty page still has count and generation",
+      "spec": "core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); one item generation2; first1",
-      "request_hex": "017800080010000000000100",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); one value generation2; first1",
+      "request_hex": "017800000020000000000100",
       "answer_hex": "0278000100000200000000"
     },
     {
-      "name": "probe.config unset: number and key",
-      "spec": "settings §2",
+      "name": "settings unset: fn, number and key",
+      "spec": "core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); disable channel4 present, generation2; becomes empty generation3",
-      "request_hex": "0179000800144433221101030400",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); disable channel4 true (user), generation2; becomes empty generation3",
+      "request_hex": "01790000002244332211010000030400",
       "answer_hex": "027900010003000000"
     },
     {
-      "name": "probe.config set: longest label fits frame64",
-      "spec": "settings §1/4",
+      "name": "settings set: longest label fits frame64",
+      "spec": "core §13.2, §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty generation1; channel4 free",
-      "request_hex": "017a00080011443322110101220004004c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values generation1; channel4 free",
+      "request_hex": "017a000000214433221101000001040020004c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c",
       "answer_hex": "027a00010002000000"
     },
     {
-      "name": "probe.config state: independent valid items restored despite invalid label",
-      "spec": "settings §3",
+      "name": "settings set: a fixed value is unsupported",
+      "spec": "core §13.4",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); CRC-valid saved blob; valid disable/idle applied, unsupported label omitted; current generation1",
-      "request_hex": "017b0008001500000000",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); channel 0's label fixed NRST, generation1",
+      "request_hex": "017e00000021443322110100000100000300525354",
+      "answer_hex": "027e00000b0003010000"
+    },
+    {
+      "name": "settings state: independent valid values restored despite an invalid label",
+      "spec": "core §13.7",
+      "fns": {
+        "0": "core",
+        "3": "io.example.board"
+      },
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); complete saved settings; valid disable/idle applied, an unusable label omitted; current generation1",
+      "request_hex": "017b0000002400000000",
       "answer_hex": "027b000100030000000002"
     },
     {
-      "name": "probe.config set: changed contents at exhausted generation refused",
-      "spec": "settings §2",
+      "name": "settings set: changed contents at exhausted generation refused",
+      "spec": "core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); generation0xFFFFFFFF unchanged; current contents retained",
-      "request_hex": "017c000800114433221101020300040000",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); generation0xFFFFFFFF unchanged; current contents retained",
+      "request_hex": "017c0000002144332211010000020400010000",
       "answer_hex": "027c00000401010002"
     },
     {
-      "name": "probe.config set: disable conflicts with existing idle",
-      "spec": "settings §1/2, core §4.3",
+      "name": "settings set: disable conflicts with existing idle",
+      "spec": "core §13.8, §4.3",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); idle channel4 exists, generation2; channel4 not in use; retain configuration, generation and pins",
-      "request_hex": "01170108001144332211010302000400",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); idle channel4 exists, generation2; channel4 not in use; retain configuration, generation and pins",
+      "request_hex": "01170100002144332211010000030400010001",
       "answer_hex": "0217010004010100050202000400"
     },
     {
-      "name": "probe.config set: idle conflicts with existing disable",
-      "spec": "settings §1/2, core §4.3",
+      "name": "settings set: idle conflicts with existing disable",
+      "spec": "core §13.8, §4.3",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); disable channel4 exists, generation2; channel4 not in use; retain configuration, generation and pins",
-      "request_hex": "0118010800114433221101020300040000",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); disable channel4 true, generation2; channel4 not in use; retain configuration, generation and pins",
+      "request_hex": "01180100002144332211010000020400010000",
       "answer_hex": "0218010004010100050202000400"
     },
     {
-      "name": "probe.config set: disable and idle conflict in one set",
-      "spec": "settings §1/2, core §4.3",
+      "name": "settings set: disable and idle conflict in one set",
+      "spec": "core §13.8, §4.3",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty generation1; channel4 not in use; retain configuration, generation and pins",
-      "request_hex": "01190108001144332211020203000400000302000400",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values generation1; channel4 not in use; retain configuration, generation and pins",
+      "request_hex": "011901000021443322110200000204000100000000030400010001",
       "answer_hex": "0219010004010100050202000400"
     },
     {
-      "name": "probe.config set: the longest wifi item fits wifi_min_max_frame",
-      "spec": "settings §1.4",
+      "name": "settings set: the longest passphrase fits wifi_min_max_frame",
+      "spec": "transports §7.1, core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty generation1",
-      "request_hex": "011a01080011443322110104640000002053535353535353535353535353535353535353535353535353535353535353534061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161",
-      "answer_hex": "021a01010002000000"
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); wifi entry 0 ssid lab, generation2",
+      "request_hex": "011a0100002144332211010000050000400061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161",
+      "answer_hex": "021a01010003000000"
     },
     {
-      "name": "probe.config get: wifi passphrase is write-only",
-      "spec": "settings §1.4",
+      "name": "settings get: a secret value has no data",
+      "spec": "core §13.5, transports §7.1",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); wifi entry 0 ssid lab passphrase password1, generation2",
-      "request_hex": "011b01080010000000000000",
-      "answer_hex": "021b0101000002000000010407000000036c6162ff"
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); wifi entry 0 ssid lab passphrase password1 (user), generation2",
+      "request_hex": "011b01000020000000000000",
+      "answer_hex": "021b01010000020000000200000400000303006c61620000050000030000"
     },
     {
-      "name": "probe.config set: pass_len 0xFF without the entry is malformed",
-      "spec": "settings §1.4",
+      "name": "settings set: secret len 0 without a value is malformed",
+      "spec": "core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty generation1",
-      "request_hex": "011c0108001144332211010407000000036c6162ff",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values generation1",
+      "request_hex": "011c01000021443322110100000500000000",
       "answer_hex": "021c010003"
     },
     {
-      "name": "probe.config set: ipv4 dhcp with an address is malformed",
-      "spec": "settings §1.5",
+      "name": "settings set: secret len 0 keeps the value",
+      "spec": "core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty generation1",
-      "request_hex": "011d010800114433221101051000010000c0a80117180000000000000000",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); wifi entry 0 ssid lab passphrase password1 (user), generation2",
+      "request_hex": "0126010000214433221102000004000003006c616200000500000000",
+      "answer_hex": "022601010002000000"
+    },
+    {
+      "name": "settings set: ipv4 address 127.0.0.1 is malformed",
+      "spec": "transports §7.2",
+      "fns": {
+        "0": "core",
+        "3": "io.example.board"
+      },
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values generation1",
+      "request_hex": "011d010000214433221101000007010004007f000001",
       "answer_hex": "021d010003"
     },
     {
-      "name": "probe.config set: ipv4 static on wifi",
-      "spec": "settings §1.5",
+      "name": "settings set: ipv4 static on wifi, four values at once",
+      "spec": "transports §7.2, core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty generation1",
-      "request_hex": "011e010800114433221101051000010001c0a8011718c0a80101c0a80101",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values generation1",
+      "request_hex": "011e010000214433221104000006010001000100000701000400c0a80117000008010004001800000000000901000400c0a80101",
       "answer_hex": "021e01010002000000"
     },
     {
-      "name": "probe.config set: ipv4 on a netif not in the list is unsupported",
-      "spec": "settings §1.5",
+      "name": "settings set: ipv4 on a netif not in the list is unsupported",
+      "spec": "core §13.3",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty generation1",
-      "request_hex": "011f01080011443322110105100002000000000000000000000000000000",
-      "answer_hex": "021f01000b05"
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values generation1",
+      "request_hex": "011f0100002144332211010000060200010000",
+      "answer_hex": "021f01000b0003010000"
     },
     {
-      "name": "probe.config set: ipv4 gateway outside the prefix is malformed",
-      "spec": "settings §1.5",
+      "name": "settings set: ipv4 prefix 33 is malformed",
+      "spec": "transports §7.2",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty generation1",
-      "request_hex": "0120010800114433221101051000010001c0a80117180a00000100000000",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values generation1",
+      "request_hex": "01200100002144332211010000080100040021000000",
       "answer_hex": "0220010003"
     },
     {
-      "name": "probe.config unset: a wifi entry",
-      "spec": "settings §2",
+      "name": "settings unset: a wifi entry's ssid",
+      "spec": "core §13.5",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); wifi entry 0 ssid lab passphrase password1, generation2",
-      "request_hex": "0121010800144433221101040000",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); wifi entry 0 ssid lab passphrase password1 (user), generation2",
+      "request_hex": "01210100002244332211010000040000",
       "answer_hex": "022101010003000000"
     },
     {
-      "name": "probe.config network: wifi connected",
-      "spec": "settings §2 network",
+      "name": "network: wifi connected",
+      "spec": "transports §7.3",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); entry 0 connected, 192.168.1.23/24, gateway and dns 192.168.1.1, -52 dBm; TCP listening on 4242",
-      "request_hex": "01220108001600000000",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); entry 0 connected, 192.168.1.23/24, gateway and dns 192.168.1.1, -52 dBm; TCP listening on 4242",
+      "request_hex": "01220100002500000000",
       "answer_hex": "02220101009210010102000000ccc0a8011718c0a80101c0a80101"
     },
     {
-      "name": "probe.config set: a probe's own text item",
-      "spec": "settings §1.6",
+      "name": "settings set: an interface's own text item",
+      "spec": "core §13.1",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty generation1",
-      "request_hex": "0123010800114433221101060e000000706f6f6c2e6e74702e6f7267",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values generation1",
+      "request_hex": "012301000021443322110103000100000c00706f6f6c2e6e74702e6f7267",
       "answer_hex": "022301010002000000"
     },
     {
-      "name": "probe.config set: an own text item with no text is malformed",
-      "spec": "settings §1.6",
+      "name": "settings set: an own text item with no text is malformed",
+      "spec": "core §13.3",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty generation1",
-      "request_hex": "01240108001144332211010602000000",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values generation1",
+      "request_hex": "012401000021443322110103000100000000",
       "answer_hex": "0224010003"
     },
     {
-      "name": "probe.config set: a key past the setting's keys is unsupported",
-      "spec": "settings §1",
+      "name": "settings set: a key on an item without keys is unsupported",
+      "spec": "core §13.3",
       "fns": {
-        "8": "oep.probe.config"
+        "0": "core",
+        "3": "io.example.board"
       },
-      "state": "settings 1 label, 2 idle, 3 disable, 4 wifi (keys 4), 5 ipv4 (keys 2), 6 com.example.ntp-server (text, keys 1, max_len 32); netif list [wifi] (wifi = 1); empty generation1",
-      "request_hex": "0125010800114433221101060300010078",
-      "answer_hex": "022501000b06"
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 3 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); no values generation1",
+      "request_hex": "01250100002144332211010300010100010078",
+      "answer_hex": "022501000b0003010000"
     },
     {
       "name": "logic subscribe: min_bytes 1024, max_delay_ms 20",

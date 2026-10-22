@@ -45,8 +45,8 @@ def check(reg: dict) -> list[str]:
         errors.append(f"unknown table kinds {sorted(set(reg) - top)} (registry header)")
     if set(reg.get("common", {})) - {"enum"}:
         errors.append(f"unknown common tables {sorted(set(reg['common']) - {'enum'})} (registry header)")
-    iface_keys = {"name", "revision", "fn", "target", "op", "tlv", "enum", "event", "status", "reject_reasons", "retired", "line_names", "names", "family"}
-    core_keys = {"op", "tlv", "enum", "event", "status", "reject_reasons", "retired"}
+    iface_keys = {"name", "revision", "fn", "target", "op", "tlv", "enum", "event", "status", "reject_reasons", "retired", "line_names", "names", "family", "settings"}
+    core_keys = {"op", "tlv", "enum", "event", "status", "reject_reasons", "retired", "line_names", "names", "settings"}
     for iface in reg.get("interface", []):
         if set(iface) - iface_keys:
             errors.append(f"{iface.get('name')}: unknown interface keys {sorted(set(iface) - iface_keys)} (registry header)")
@@ -80,7 +80,7 @@ def check(reg: dict) -> list[str]:
             if set(op) - {"code", "name", "lock"}:
                 errors.append(f"{n}: op {op['name']} has unknown keys {sorted(set(op) - {'code', 'name', 'lock'})}")
         if iface is reg["core"]:
-            ranges = [(0x01, 0x0F), (0x10, 0x1F)]
+            ranges = [(0x01, 0x0F), (0x10, 0x1F), (0x20, 0x2F)]
             for c, opname in codes.items():
                 if not any(a <= c <= b for a, b in ranges):
                     errors.append(f"core: op {opname} = {c:#x} outside the core ranges")
@@ -145,6 +145,11 @@ def check(reg: dict) -> list[str]:
             for name in listed:
                 if "." in name or not 1 <= len(name.encode()) <= 48 or not re.fullmatch(r"[a-z0-9-]+", name):
                     errors.append(f"{n}: names.{lst} {name!r} is not a standard name (1-48 of a-z 0-9 -, no '.', core §7.7)")
+        for item in iface.get("settings", {}):
+            labels = item.split(".")
+            if (not 1 <= len(item.encode()) <= reg["limits"]["setting_name_max_bytes"] or item.count("{}") > 1
+                    or not all(lb == "{}" or re.fullmatch(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?", lb) for lb in labels)):
+                errors.append(f"{n}: settings {item!r} is not an item name (labels of a-z 0-9 - joined by '.', one '{{}}' at most, core §13.1)")
         for kind_name, kind in iface.get("event", {}).items():
             if not 0x01 <= kind <= 0x7F:
                 errors.append(f"{n}: event {kind_name} = {kind:#x} outside the interface range 0x01-0x7F")
@@ -246,6 +251,8 @@ def cpp(reg: dict, digest: str) -> str:
         for lst, names in iface.get("names", {}).items():
             for k in names:
                 L.append(f'constexpr const char *kName{camel(lst)}{camel(k)} = "{k}";')
+        for k in iface.get("settings", {}):
+            L.append(f'constexpr const char *kSetting{camel(k.replace("{}", ""))} = "{k}";')
         L.append(f"}}  // namespace {ns}")
     L += ["", "}  // namespace reg", "}  // namespace v1", "}  // namespace oep", ""]
     return "\n".join(L)
@@ -300,6 +307,8 @@ def c(reg: dict, digest: str) -> str:
         for lst, names in iface.get("names", {}).items():
             for k in names:
                 L.append(d(up(ns, "NAME", lst, k), k))
+        for k in iface.get("settings", {}):
+            L.append(d(up(ns, "SETTING", k.replace("{}", "")), k))
     L += ["", "#endif  // OEP_V1_REGISTRY_C_H", ""]
     return "\n".join(L)
 
@@ -329,12 +338,13 @@ def py(reg: dict, digest: str) -> str:
         own = ", ".join(f'"{k}": 0x{v:02X}' for g in ("status", "reject_reasons") for k, v in iface.get(g, {}).items())
         lines = ", ".join(f"{k!r}: {v!r}" for k, v in iface.get("line_names", {}).items())
         names = ", ".join(f"{lst!r}: {{" + ", ".join(f"{k!r}: {v!r}" for k, v in d.items()) + "}" for lst, d in iface.get("names", {}).items())
+        settings = ", ".join(f"{k!r}: {v!r}" for k, v in iface.get("settings", {}).items())
         head = (f'name="{iface["name"]}", revision={iface["revision"]}, target={json.dumps(iface.get("target")) if "target" in iface else "None"}, '
                 if "name" in iface else "")
         lock_free = f"{{{free}}}" if free else "set()"
         L += [f'{var} = _NS({head}op={{{ops}}}, lock_free={lock_free},',
               f"    tlv={{{tlv}}}, event={{{ev}}}, enum={{{en}}}, own={{{own}}},",
-              f"    line_names={{{lines}}}, names={{{names}}})"]
+              f"    line_names={{{lines}}}, names={{{names}}}, settings={{{settings}}})"]
         if "name" in iface:
             L.append(f'INTERFACES["{iface["name"]}"] = {var}')
     return "\n".join(L) + "\n"
@@ -373,6 +383,7 @@ def js(reg: dict, digest: str) -> str:
               f"  event: {obj(iface.get('event', {}))}, enum: {en}, own: {obj(own)},",
               "  line_names: Object.freeze({" + ", ".join(f"{k}: {json.dumps(v)}" for k, v in iface.get("line_names", {}).items()) + "}),",
               "  names: Object.freeze({" + ", ".join(f"{json.dumps(lst)}: Object.freeze({{" + ", ".join(f"{json.dumps(k)}: {json.dumps(v)}" for k, v in d.items()) + "})" for lst, d in iface.get("names", {}).items()) + "}),",
+              "  settings: Object.freeze({" + ", ".join(f"{json.dumps(k)}: {json.dumps(v)}" for k, v in iface.get("settings", {}).items()) + "}),",
               "};"]
         if "name" in iface:
             L.append(f"INTERFACES['{iface['name']}'] = {var};")

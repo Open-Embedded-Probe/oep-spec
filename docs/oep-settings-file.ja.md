@@ -112,5 +112,5 @@ UTF-8 の JSON（RFC 8259）1 つ。BOM を付けない。拡張子は `.oep-set
 
 ## 5. テストベクタ
 
-`tests/vectors/settings-file/` に、宣言（describe の TLV）、get の応答、ファイルの組を置く。ブラウザ（JS）と CLI（Python）の実装は、同じベクタで
-書き出しと入れ直しの引き換えを確かめる。
+`tests/vectors/settings_file.json` に、宣言（describe の TLV）、get の値、ファイルの組と、別の番号の probe へ入れ直したときの set、unset、
+secret、引けないものの組を置く。ブラウザ（JS）と CLI（Python）の実装は、同じベクタで書き出しと入れ直しの引き換えを確かめる。

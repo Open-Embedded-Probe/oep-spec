@@ -4,6 +4,11 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **設定を本体へ移す（壊す変更）**: `oep.probe.config` を無くし、設定を core §13（任意）にする。カテゴリは本体（fn 0）かインターフェース（名前と instance）で、項目はその持ち主が名前を付けて宣言する（describe の共通 tag setting 0x08、setting_choice 0x09）。値は出どころ（fixed / default / user）を持ち、fn 0 の任意の op get / set / unset / save / state（0x20〜0x24）で読み書きする。erase は無い（全部 unset して save）。secret は誰にも読ませない。保存の形式は決めず、名前で持つ・電源断で原子的・宣言済みの項目だけを使う、を決める。
+- channel に名前（データシートのピン名）を持たせる（fn 0 の describe channel_name 0x44、必須）。wire の番号は起動の間だけで、保存と書き出しは名前で指す。経路の index の不変性を外し、経路は kind と順の名前（`cdc0`）で指す。fn 0 の describe の label（0x46）を無くし、設定の `channel.{}.label` の fixed の値に移す。
+- ネットワークの項目（`wifi.{}.*`、`ipv4.{}.*`）と network（fn 0 の 0x25）、netif（fn 0 の describe 0x45）を transports §7 へ。rvswd の `rest.{}`、各線の `hold.{}` を debug へ、シリアルの口の素通しを fixture §2.1 とコンソール §2.1 へ、それぞれの持ち主の項目として移す。
+- 設定のファイル（docs/oep-settings-file.ja.md、規範）: 書き出しと入れ直しの JSON の形と手順。共有ベクタ settings_file.json。
+- core §12: 最小の拡張は固有操作か設定の項目の 1 つでよい（設定だけのインターフェースを認める）。
 - 明確化（既存契約を保つ。wireskein と合意）: core §10.3 の「両方 0 ならあるだけすぐ送る」は、経路が塞がっている間に溜まった分をまとめてよい（max_frame を超えない）。transports §1 の長さ 0 のフレームは何にも数えず lease を延ばさない、USB の転送を閉じるのに使える。キャプチャ §2.2 のリング・キューのあふれは、区画の外に置ける作りなら隙間を推奨、置けない作りはエラーでよい（置き場が無い場合は従来どおり隙間）。
 - キャプチャ §3.3 / §4.4: configure / query の応答の judge_latency_ns（0x15、任意）。組の出来事の元の条件を判定するトラックが、条件の成り立ったサンプルから出来事と知るまでの最大の時間を、この設定で返す。追う側の溜める量を host が bind の前に計算できる（wireskein と合意）。
 - キャプチャ §2.2: 隙間とエラーを、失ったサンプルがすでに区画に入っていたかで分ける。取り込みのリングやキューのあふれでも、まだ区画にしていないサンプルなら隙間（position を飛ばし、取得は続く）。§2.1 の規則 1、適合の確かめ方、probe の開発ガイド（P4 の例）も合わせる（wireskein と合意）。

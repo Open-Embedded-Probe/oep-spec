@@ -138,20 +138,18 @@
       ]
     },
     {
-      "name": "volatile pin settings",
-      "list_answer_hex": "02010001000100011600000001106f65702e70726f62652e636f6e666967",
+      "name": "settings-only extension",
+      "list_answer_hex": "0201000100010001160000000110696f2e6578616d706c652e626f617264",
       "entries": [
         {
           "fn": 22,
           "instance": 0,
           "revision": 1,
-          "name": "oep.probe.config",
+          "name": "io.example.board",
           "ops": [
-            16,
-            17,
-            20
+            16
           ],
-          "describe_answer_hex": "0216000100000702001013410300020307"
+          "describe_answer_hex": "02160001000007020010010810000200000020006e74702d736572766572"
         }
       ]
     },

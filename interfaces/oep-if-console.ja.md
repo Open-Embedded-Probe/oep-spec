@@ -76,6 +76,33 @@ writeを提供するfnは`dmdata`か`dmseq`を少なくとも1つ提供する。
   それより少なければその全部を載せる。答えに載せたバイトは列から出る。列のバイトの順は write で受け取った順のままである。
 - 列は、ストリームが閉じたときに捨てる（閉じたストリームへの write は rejected no_resource）。clear は読みのバッファだけを捨て、列には触れない。
 
+### 2.1 コンソールの素通し（任意の設定）
+
+UART を空けられない target（debug の郵便受けで出力するもの）の出力を、セッションの無い間もシリアルの口へ流す任意の設定の項目（core §13。
+カテゴリはその `oep.target.console` の fn）。[fixture](oep-if-fixture.ja.md) §2.1 と同じく、セッションと独立に効く設定である。
+
+| 名前 | form | key_kind | 意味 |
+|---|---|---|---|
+| `passthrough.{}.wire` | fn | transport（シリアルの口） | 線の fn（`oep.wire.rvswd` か `oep.wire.swio`）。ほかは unsupported |
+| `passthrough.{}.swdio` | channel | transport | SWDIO |
+| `passthrough.{}.swclk` | channel | transport | SWCLK（rvswd だけ。swio では値を置かない） |
+| `passthrough.{}.max-speed` | u32 | transport | debug の attach の max_speed と同じ値と規則。値が無ければ probe が決める |
+| `passthrough.{}.mechanism` | text（1〜48） | transport | 方式の名前（§1 の mechanism の並びにあるもの。ほかは unsupported） |
+
+- key は [fixture](oep-if-fixture.ja.md) §2.1 と同じ。1 つの口に置ける素通しは 1 つだけ（重なる set は unavailable cause 5）。
+- wire、swdio、mechanism（rvswd では swclk も）の値が揃い、ピンの組がその wire の宣言が許すものであるときだけ、その口で素通しをする。
+  揃った組が宣言の許さないものになる set は unsupported。ピンのどれかが disable なら、または出力の idle を持てば unavailable cause 5。
+- **素通しの条件**: その口からセッションの要求が来ていない、セッションの接続・plan がそのピンを取っていない、のすべてが成り立つ間、probe はその wire で
+  method 0（止めない、reset しない）の attach をして、その方式でコンソールを読み、target の出力を [経路](../docs/oep-transports.ja.md) §4 のとおり口へフレームの外で送る。
+  attach が成らなかったときの試し直しは、wake / 設定の手順が target をリセットしない wire（swio）でだけ、probe が決める間隔で行う。
+  wake が target をリセットしうる wire（rvswd、debug §3）では、条件が成り立つたびに 1 回だけ試す（debug §2 の「target の状態を変えない」）。
+- 条件が成り立たなくなったら、probe はその接続を target に触れずに閉じ（debug §2）、ピンを空きの状態に戻す。セッションの attach は、
+  素通しの接続を理由に断らない（素通しが先に退く）。
+- 素通しの接続とコンソールは OEP の資源ではない: connections と streams に現れず、番号を使わず、マークを付けない。target への入力は送らない。
+- 線切れ（debug §2）では、probe はその接続を閉じ、上の試し直しの規則で扱う: swio は試し直し、rvswd は条件がいったん崩れて
+  また成り立つまで試さない。target の自己リセットは、方式がそのまま読み続けられる間は接続を保つ。
+  rvswd でやり直させたい host は、その口でセッションを開いて終えるか、値を unset して set し直す（どちらも条件の始まりになる）。
+
 ## 3. 方式（mechanism）
 
 標準の 3 つの方式は debug module の DATA0（DMI 0x04）と DATA1（0x05）を郵便受けに使う。hart は止めない。probe は DATA0 を読んで、方式の

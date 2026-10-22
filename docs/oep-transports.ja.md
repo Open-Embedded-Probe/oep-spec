@@ -2,7 +2,7 @@
 
 状態: **規範**（v1）。凍結状態と言語・互換性の方針は[版と安定性](versioning.ja.md)を参照。
 この文書は、OEP のメッセージをどう運ぶかを定める: 経路とそのフレーム、host が probe の口を見つけて開くやり方（USB の見分け方、TCP の probe の見つけ方、探りの規則、口の選び方）、
-1 つの probe の複数の経路、OEP 専用のシリアルの口、長さつきのフレームの区切りの立て直し、host の待ちが数える転送の時間。
+1 つの probe の複数の経路、OEP 専用のシリアルの口、長さつきのフレームの区切りの立て直し、host の待ちが数える転送の時間、ネットワークの設定。
 メッセージ、セッション、そのほかは [OEP core](oep-core.ja.md) が定める。この文書は本体の層に属し、本体の適合（core §1.2）とプロトコルの
 revision（core §7.1）はこの文書も含む。番号の唯一の定義は `registry/oep-v1.toml`。
 
@@ -134,7 +134,7 @@ OEP のシリアル経路はフレームを運ぶ。コンソールの生デー�
 - probe は `0x00 <COBS(message | CRC)> 0x00` の候補だけを処理する。CRC 不一致、解けない候補、途中の timeout は捨てる。
   破損したバイトを target に転送しない。候補を閉じた 0x00 は次の候補の始まりにもなる。
 - 応答と通知は同じフレームで送る。1 つの経路の書き手は 1 つで、フレームの途中に別のフレームを挟まない。
-- **素通し（任意）**: [probe の設定](../interfaces/oep-if-probe-config.ja.md) §1.1 / §1.2 の passthrough / console_passthrough が指すシリアルの口では、
+- **素通し（任意）**: 設定の素通しの項目（[治具](../interfaces/oep-if-fixture.ja.md) §2 の UART、[コンソール](../interfaces/oep-if-console.ja.md) の素通し）が指すシリアルの口では、
   probe はその条件が成り立つ間、フレームとフレームの間にその UART が受けたバイト、または target のコンソールの出力を送ってよい。フレームの途中には挟まない。生のバイトを送った後は、次のフレームの前に
   区切りの 0x00 を送る（生のバイトが次の候補に混ざらないように）。その口からセッションの要求が来たら、そのセッションが終わるまで生のバイトを
   送らない。host はフレームの外のバイトを雑音として読み捨てる（CRC の合わない候補を受けて同じ要求を送り直すことはある）。
@@ -154,7 +154,75 @@ OEP のシリアル経路はフレームを運ぶ。コンソールの生デー�
 
 host が応答を待つ時間（core §4.4）には、次の転送の時間を足す。転送の時間は UART bridge 以外では 0。UART bridge では (L + max_frame × (1 + `notify_pending_max_frames`)) × 10 / baud 秒で、L はその要求のフレームの線の上の長さ、baud は口の今の速さ。その経路で confirm の応答を受け取るまで、host は max_frame として `min_max_frame`（64）を使う。その後は、そこでのいちばん新しい confirm の応答の max_frame を使う。シリアルの口が UART bridge かどうか分からない host（たとえば fn 0 の describe で経路の種類を読む前、core §7.5）は、そのシリアルの口でこの転送の時間を数え、baud は自分がその口に設定した速さとする。
 
-## 7. 参照する仕様
+## 7. ネットワークの設定
+
+TCP の経路は、host が同じ手順でどの probe にも設定できなければならない。だから、Wi-Fi のつなぎ先と IPv4 の決め方を OEP で設定させる probe は、
+この節の本体の項目（core §13.8）を使う。同じ目的の独自の項目や拡張を代わりに出さない（firmware 自身の画面、ボタン、出荷時の値は別にあってよい）。
+
+- **netif** は名前の並び（core §7.7）: probe はネットワークの口ごとに、fn 0 の describe の netif（core §7.5）に名前を 1 つ並べる。
+  標準の名前は `wifi`（Wi-Fi の station。§7.1 の項目が使う）と `ethernet`（有線）。ほかの口（携帯回線など）は逆 DNS の名前で、§7.2 と共通の既定はそれにも掛かる。
+- **共通の既定**: `wifi.{}.ssid` の値が 1 つも無ければ、probe は Wi-Fi を使わない。`ipv4.{}.mode` の値が無い netif は DHCP でアドレスを得る。
+  有線は、値が無くても線がつながれば DHCP で使う。host は同じ値をどの probe へ送っても同じ意味になると考えてよい。
+- **probe が決めるもの**: つなぎ直しの間隔、mDNS の instance の名前、TCP で待ち受ける port（network で読める）、NTP を使うかとそのサーバ。
+  OEP の時刻は probe の時計（core §2.7）で、壁時計に頼らないため、NTP は OEP の項目にしない。IPv6 は v1 では定めない。
+- **効く時**: set か unset が使っている経路の値（使っている Wi-Fi の entry の値、その netif の ipv4 の値）を変えたら、probe はその応答を送ってから、
+  その経路を切り、新しい値でつなぎ直す。ほかの変更では経路を保ち、次につなぎ直すときに使う。保存していない変更は再起動で保存の内容へ戻る。
+  だから、TCP で届かなくなる値を置いても、再起動（電源の入れ直し）で戻せる。
+- **（参考）TCP からの変更**: その経路で使っている値を変えると、その接続も切れる。応答は先に送るので、set の結果は届く。host は新しいアドレスで
+  unit_id を探し直して（§3）届くことを確かめてから save する。
+- **max_frame**: この節の項目を宣言する probe は、どの経路でも confirm の max_frame を 83 以上にする（registry の `wifi_min_max_frame`）。
+  いちばん長い値（64 文字の鍵）の get の応答が 19 + 64 = 83 byte になるためである（core §13.5）。
+
+### 7.1 Wi-Fi のつなぎ先
+
+probe は動く場所によって違うネットワークに会うので、entry を複数持ち、key の entry の順に試す。entry の数は setting の keys。
+
+| 名前 | form | key_kind | 意味 |
+|---|---|---|---|
+| `wifi.{}.ssid` | text（1〜32） | index（entry） | ネットワークの名前。probe が扱えない ssid は unsupported |
+| `wifi.{}.passphrase` | text（8〜64）、secret | index（entry） | 8〜63 byte は 0x20〜0x7E の byte の passphrase。64 byte は 16 進の数字 64 文字の鍵。ほかの長さと byte は malformed。値が無ければ開いたネットワーク |
+
+- passphrase は secret（core §13.5）: 誰にも読ませず、どの応答、出来事、ログにも出さない。OEP は値を暗号化しないので、信頼できる経路（USB など、§1）で送る。
+- ssid の無い entry の passphrase は使わない。
+- **つなぎ方**: probe は ssid のある entry を key の小さい順に試し、最初につながった（IPv4 のアドレスを得た）entry を使う。どれもつながらないとき、
+  つながりを失ったときは、初めからまた試す（間隔は probe が決める）。
+
+### 7.2 IPv4 のアドレスの決め方
+
+key は netif（core §13.3 の key_kind netif）。
+
+| 名前 | form | 意味 |
+|---|---|---|
+| `ipv4.{}.mode` | enum: 0 `dhcp`、1 `static` | 値が無ければ dhcp |
+| `ipv4.{}.address` | ipv4 | static のときのアドレス。0.0.0.0、255.255.255.255、127.0.0.0/8、224.0.0.0/4 は malformed |
+| `ipv4.{}.prefix` | u32（1〜32） | static のときの prefix の長さ。ほかは malformed |
+| `ipv4.{}.gateway` | ipv4 | static のときの gateway。値が無ければ無い |
+| `ipv4.{}.dns` | ipv4 | static のときの DNS のサーバ。値が無ければ無い |
+
+- dhcp では address、prefix、gateway、dns の値を使わない（値は残ってよい）。DHCP が返す gateway と dns を使う。
+- static で address か prefix の値が無いとき、gateway が address と同じ prefix の中に無いときは、その netif はアドレスを得ない（network の state 3、reason 3）。
+- 固定のアドレスが同じネットワークで使われていると分かったときの扱いは probe が決め、network の reason 3 で示す。
+
+### 7.3 network（今の様子）
+
+fn 0 の任意の op（core §11）。fn 0 の describe に netif がある probe は持つ。
+
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x25 | network | [TLV] | tcp_port(u16)、count(u8)、count × 様子、[TLV] | 不要 |
+
+tcp_port は TCP で待ち受けている port（待ち受けていなければ 0）。続いて、netif の並びの順に、netif ごとの様子（19 byte）を返す。
+
+| フィールド | 意味 |
+|---|---|
+| netif(u8) | netif の並びの位置（1 から） |
+| state(u8) | 0 使わない（ssid の値が無い、有線の線がつながっていない）、1 つなごうとしている、2 つながっている、3 つながらず、やり直しを待っている |
+| entry(u16) | Wi-Fi で、state 1 では試している、state 2 では使っている entry の key。ほかは 0xFFFF |
+| reason(u8) | 最後の失敗の理由: 0 なし、1 ネットワークが見つからない（AP が無い、線の link が無い）、2 認証の失敗、3 アドレスが得られない（DHCP の時間切れ、固定のアドレスの重複、static の値の不足）、4 そのほか。つながれば 0 |
+| rssi(i8) | Wi-Fi の state 2 で、受けている電波の強さ（dBm）。ほかは 0 |
+| address(4)、prefix(u8)、gateway(4)、dns(4) | state 2 で使っている値（DHCP で得たものを含む）。ほかは 0 |
+
+## 8. 参照する仕様
 
 OEP のフレームと message は、この文だけで定まる。USB の経路を出す probe は次の USB の仕様にも従い、§3 の広告をする probe と、それで探す host は次の RFC にも従う:
 

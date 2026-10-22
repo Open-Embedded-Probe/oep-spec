@@ -75,10 +75,9 @@ def test_minimal_declaration_bytes(profile):
             assert len(bytes.fromhex(row['describe_answer_hex']))<=64
         elif row['name'] in ('oep.wire.swd','oep.wire.rvswd'):
             assert offered == {0x11, 0x12, 0x13}  # No scan required.
-        elif row['name'] == 'oep.probe.config':
-            assert offered == {0x10,0x11,0x14}
-            assert next(v for t,v in decoded if t==0x41)==b'\2\3\7'
-            assert all(t!=0x40 for t,_ in decoded)
+        elif row['name'] == 'io.example.board':
+            assert offered == {0x10}
+            assert any(t == 0x08 and v.endswith(b'ntp-server') for t, v in decoded)  # a settings item (core §13.2)
         elif row['name'] == 'oep.probe.plan':
             assert offered == {0x10, 0x11}
         elif row['name'] == 'oep.target.console':

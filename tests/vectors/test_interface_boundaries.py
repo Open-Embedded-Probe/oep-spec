@@ -4,9 +4,12 @@ from pathlib import Path
 import struct
 
 import pytest
+import tomllib
 
 
 DATA = json.loads(Path(__file__).with_name("interface_boundaries.json").read_text())
+REG = tomllib.loads((Path(__file__).parents[2] / "registry" / "oep-v1.toml").read_text(encoding="utf-8"))
+CORE_OP = {o["name"]: o["code"] for o in REG["core"]["op"]}
 
 
 @pytest.mark.parametrize("row", DATA["batching"], ids=lambda row: row["name"])
@@ -47,18 +50,15 @@ def test_serial_jump_is_loss_only_within_one_stream(row):
 @pytest.mark.parametrize("row", DATA["storage"], ids=lambda row: row["name"])
 def test_storage_outcomes_and_fixed_payloads(row):
     req = bytes.fromhex(row["request_hex"])
-    code = {"save": 0x12, "erase": 0x13}[row["action"]]
-    assert struct.unpack("<BHHBI", req) == (1, 1, 8, code, 0x11223344)
+    assert row["action"] == "save"                     # the only storage op; no erase (core §13.7)
+    assert struct.unpack("<BHHBI", req) == (REG["roles"]["request"], 1, 0, CORE_OP["save"], 0x11223344)
     raw = bytes.fromhex(row["answer_hex"])
-    outcome = 0 if row["result"] == "success" else 1
-    assert struct.unpack_from("<BHBB", raw) == (2, 1, 1, outcome)
-    if row["action"] == "save":
-        assert len(raw) == 9
-        assert struct.unpack_from("<I", raw, 5)[0] == row["generation"]
-    else:
-        assert len(raw) == 5
-    if outcome == 0:
-        state = [1, row["generation"], 0] if code == 0x12 else [0, 0, 0]
+    outcome = REG["outcomes"][row["result"]]
+    assert struct.unpack_from("<BHBB", raw) == (REG["roles"]["result"], 1, REG["resolutions"]["completed"], outcome)
+    assert len(raw) == 9
+    assert struct.unpack_from("<I", raw, 5)[0] == row["generation"]
+    if row["result"] == "success":
+        state = [1, row["generation"], 0]
     else:
         state = {"old": row["before"], "none": [0, 0, 0], "unreadable": [2, 0, 1]}[row["observed"]]
     assert row["expected_state"] == state
