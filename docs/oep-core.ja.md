@@ -799,7 +799,7 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
 - **値**: 値は（カテゴリ、項目、key）ごとに 0 か 1 つ。1 つの値は 1 つの形（§13.3）を持つ。組の値（アドレスとプレフィックスなど）は、欄ごとに別の項目にする。
 - **名前の意味は変えない**: 同じカテゴリの同じ名前の項目は、firmware の版とインターフェースの revision を越えて同じ意味、同じ形、同じ key の使い方を表す。
   意味を変えるときは新しい名前の項目にする。保存と書き出しは項目を名前で持つ（§13.7、[設定のファイル](oep-settings-file.ja.md)）。
-- **持ち主が決めるもの**: 項目の名前、形、key の種類と範囲、flags、固定と既定の値（§13.4）、値の意味の検証（定義が除く値は malformed、probe が扱えない値は unsupported、§4.3）、値が効く時、変更の可否（§13.6）。
+- **持ち主が決めるもの**: 項目の名前、形、key の種類と範囲、flags、初期値（§13.4）、値の意味の検証（定義が除く値は malformed、probe が扱えない値は unsupported、§4.3）、値が効く時、変更の可否（§13.6）。
   **本体が決めるもの**: 形の検証（§13.3）、読み書きの操作（§13.5）、世代、保存（§13.7）。
 - 持ち主は値をメモリに持って使う。持ち主は §13.5 の操作によらずに値を変えない。値を使うのは設定の読み書きではなく、§13.6 の可否を通らない。
 
@@ -816,7 +816,7 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
 - form、key_kind は §13.3。keys は key_kind index の key の数（1 以上）で、ほかの key_kind では 0。max_len は form bytes と text の最大の長さで、
   ほかの form では 0。flags: bit 0 **secret**（§13.5）、bit 1 **restart**（新しい値は再起動の後に効く。get は新しい値を返す）。ほかの bit は 0。
   restart の無い項目の値が効く時は、項目の定義が決める。
-- max_len は、その項目の値 1 つの get の応答と set の要求が、probe のどの経路の max_frame にも収まる値にする（いちばん小さい max_frame − 19 以下。§13.5）。
+- max_len は、その項目の値 1 つの get の応答と set の要求が、probe のどの経路の max_frame にも収まる値にする（いちばん小さい max_frame − 18 以下。§13.5）。
 - setting の値は 6 + 名前の長さで、名前が 48 byte でも 54 byte となり、64 byte の max_frame の describe に収まる（§7.3）。
 - setting_choice: number はその fn の項目番号、value はその選択肢の wire の値、name は `a-z 0-9 -` の 1〜16 byte。同じ項目の中で value も name も重ねない。
   setting_choice の無い value は、その項目では使えない（unsupported）。
@@ -851,18 +851,16 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
   enum の setting_choice に無い値、channels 以上の channel、無い経路、list に無い fn は unsupported。key が key_kind の範囲に無ければ unsupported。
   範囲の中でも、持ち主がその key に項目を置かない（その channel では使えない、など）なら unsupported。
 
-### 13.4 出どころ
+### 13.4 初期値
 
-値は出どころを持ち、get が値と一緒に返す。
+値は、どこから来たかを持たない。get、set、unset、保存、書き出しは、どの値も同じに扱う。
 
-| 値 | 出どころ | 意味 | set | unset | 書き出し |
-|---:|---|---|---|---|---|
-| 1 | fixed | firmware が決めた値。変えられない（ピンが固定の probe のピンの呼び名など） | unsupported | unsupported | しない |
-| 2 | default | firmware が用意した初めの値 | 利用者の値になる | 値はそのまま（何もしない） | しない |
-| 3 | user | 利用者が set した値 | 置き換える | default があれば default に、無ければ値の無い状態に戻る | する |
-
-- 持ち主は、項目を宣言するときに、key ごとに fixed か default の値を持たせてよい。fixed の key には user の値を置かない。
-- 保存の無い間と unset の後は default が効く。default も無ければ値は無く、項目の定義が「値の無いとき」を決める。
+- 持ち主は、項目の key ごとに初期値（firmware が用意する値）を持ってよい。
+- 本体は、保存の無い起動（保存を持たない probe では毎回の起動、保存を持つ probe では storage_state 0 か 2 の起動、§13.7）で、
+  初期値を set と同じ検証（§13.5、§13.8）を通して置く。通らない初期値は firmware の誤りで、置かない。
+- 保存を使った起動では、初期値を置かない（保存が空でも置かない）。
+- 初期値に戻す op は無い。host は値を unset して、改めて set する（[設定のファイル](oep-settings-file.ja.md)の入れ直しと同じ）。
+- 利用者に変えてほしくない値を持つ probe（治具など）は、保存を持たない構成にする。変更は再起動で初期値に戻る。
 
 ### 13.5 操作
 
@@ -871,24 +869,23 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
 | op | 名前 | 要求 | 応答 | ロック | 要否 |
 |---:|---|---|---|---|---|
 | 0x20 | get | first(u16)、[TLV] | more(u8)、generation(u32)、count(u8)、count × 値、[TLV] | 不要 | 設定を持つなら必須 |
-| 0x21 | set | count(u8)、count × 書く値、[TLV] | generation(u32)、[TLV] | 必要 | 設定を持つなら必須 |
+| 0x21 | set | count(u8)、count × 値、[TLV] | generation(u32)、[TLV] | 必要 | 設定を持つなら必須 |
 | 0x22 | unset | count(u8)、count × (fn(u16)、number(u8)、key(u16))、[TLV] | generation(u32)、[TLV] | 必要 | 設定を持つなら必須 |
 | 0x23 | save | [TLV] | generation(u32)、[TLV] | 必要 | 任意（state と組） |
 | 0x24 | state | [TLV] | storage_state(u8)、saved_generation(u32)、reason(u8)、[TLV] | 不要 | save があれば必須 |
 
 ```text
-値:     fn(u16)、number(u8)、key(u16)、origin(u8)、len(u16)、data（len byte）
-書く値: fn(u16)、number(u8)、key(u16)、len(u16)、data（len byte）
+値:     fn(u16)、number(u8)、key(u16)、len(u16)、data（len byte）
 ```
 
 - fn は項目の持ち主の fn（本体は 0）、number はその fn の項目番号（§13.2）。list に無い fn は unknown_function。number 0 は malformed。
   その fn の setting に無い番号は unsupported。
-- **get** は、値を持つ（fixed、default、user の）すべての（fn、number、key）を、fn、number、key の小さい順に並べ、first 番目から 1 フレームに入る分だけ返す。
+- **get** は、値を持つすべての（fn、number、key）を、fn、number、key の小さい順に並べ、first 番目から 1 フレームに入る分だけ返す。
   値を分割しない。first が数以上なら more 0、count 0。more 1 なら host は受け取った count を first に足して続ける。
   同じ generation のページは同じ内容を表す。途中で generation が変われば host は初めから読む。
-- **set** は（fn、number、key）ごとに値を置き換え、送らない値は保つ。**unset** は指定した値を §13.4 のとおり戻す。値の無い所の unset は何もしない。
+- **set** は（fn、number、key）ごとに値を置き換え、送らない値は保つ。**unset** は指定した値を無くす。値の無い所の unset は何もしない。
   1 つの要求の中の同じ（fn、number、key）の重なりは malformed。count 0 は何もしない。
-- **まとめて受けるか、何もしない**: probe は、set と unset の要求の全部の値について、形（§13.3）、出どころ（§13.4）、可否（§13.6）、持ち主の意味の検証、
+- **まとめて受けるか、何もしない**: probe は、set と unset の要求の全部の値について、形（§13.3）、可否（§13.6）、持ち主の意味の検証、
   変更の後の設定全体の矛盾、保持できる量、実行中の資源とのぶつかりを、何も変える前に確かめる。1 つでも通らなければ、設定、generation、ピン、
   実行中の資源を何も変えずに断る。通れば全部を持ち主に渡し、generation を 1 進める。断りの payload の TLV の item（u8、要求の中の値の位置。0 から）で、
   どの値かを示してよい。保持できない変更は unavailable（cause 2、または 3）で断る。
@@ -899,8 +896,8 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
   set の len 0 は、その値を今のまま保つ（値が無ければ malformed）。だから get の値をそのまま set に送り返しても何も変わらない。secret の項目の値は
   0 byte にできない（無くすには unset）。probe は secret の値を、どの応答、出来事、ログにも出さず、どの権限でも読ませない。host も secret の値を表示せず、
   ログに書かない。OEP は値を暗号化しないので、secret の値は信頼できる経路（USB など、[経路](oep-transports.ja.md) §1）で送る。
-- **フレームの大きさ**: 値 1 つの get の応答は 19 + len byte（見出し 5、more 1、generation 4、count 1、値の固定部分 8）、set の要求は 18 + len byte
-  （見出し 10、count 1、書く値の固定部分 7）。§13.2 の max_len の規則で、どの値も 1 つの要求と 1 つの応答で運べる。
+- **フレームの大きさ**: 値 1 つの get の応答は 18 + len byte（見出し 5、more 1、generation 4、count 1、値の固定部分 7）、set の要求も 18 + len byte
+  （見出し 10、count 1、値の固定部分 7）。§13.2 の max_len の規則で、どの値も 1 つの要求と 1 つの応答で運べる。
 - 要求の末尾の [TLV] は §2.3 のとおりで、値の data には掛からない。
 
 ### 13.6 変更の可否
@@ -917,20 +914,21 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
 
 - **名前で持つ**: 保存は値を、カテゴリ（本体か、インターフェースの名前と instance）、項目の名前、key の名前（§13.3）、値（参照は名前）で持つ。
   起動の間だけの番号を保存しない。firmware の版が変わっても読める形にする。
-- **save** は明示の操作で、今の user の値をすべて書く（fixed と default は書かない）。同じ内容が保存済みなら書き直さない。保存済みかの判定を
+- **save** は明示の操作で、今の値をすべて書く。同じ内容が保存済みなら書き直さない。保存済みかの判定を
   generation だけに頼らない。save は成功しても失敗しても、今の設定、generation、ピンを変えない。保存の全部の処理を max_op_ms（§7.5）の中で終える。
   保存の量に入らない save は、何も変える前に unavailable（cause 3）で断る。
 - **電源断**: 書き込みのどの時点で電源が落ちても、更新の前の完全な保存か、新しい完全な保存のどちらかが残る（保存が無かったなら、無いままか新しい完全な保存）。
   途中まで書いたものを完全な保存として扱わない。
 - **起動**: 持ち主が項目を宣言した後、本体は保存を読み、宣言された項目に当てはまる値だけを、名前を今の番号へ引いて、持ち主の検証を通して使う。
   宣言されていない項目、引けない名前、検証を通らない値は使わない（ほかの値は値ごとに使う）。使わなかった値は次の save で消える
-  （save は今の user の値だけを書くため）。消してよいのは、host が設定を書き出して入れ直せるからである（[設定のファイル](oep-settings-file.ja.md)）。
+  （save は今の値だけを書くため）。消してよいのは、host が設定を書き出して入れ直せるからである（[設定のファイル](oep-settings-file.ja.md)）。
 - **起動の順**: 本体の channel の項目（§13.8）を、どのインターフェースの値より先に、disable、idle の順に効かせ、それから §8 の空きの状態を作る。
   保持できる量が保存より小さいときは、disable、idle、そのほかの本体の項目、インターフェースの項目の順に、同じ項目の中では key の順に使えるだけ使う。
   不正な値を別の channel や別の値に読み替えない。
-- **消す**: 保存を消す op は無い。host は全部の user の値を unset して save する（save は今の値だけを書くので、使わなかった古い値もここで消える）。
+- **消す**: 保存を消す op は無い。host は全部の値を unset して save する（save は今の値だけを書くので、使わなかった古い値もここで消える）。
+  空を save した保存も保存であり、次の起動で初期値を置かない（§13.4）。
   物理的な手段（ボタン、firmware の書き直し）での初期化は OEP の外である。
-- 保存を持たない probe も、get、set、unset をメモリの上で持ってよい。値は再起動で消える。host は書き出したファイルから入れ直す。
+- 保存を持たない probe も、get、set、unset をメモリの上で持ってよい。値は再起動で消え、初期値に戻る。host は書き出したファイルから入れ直す。
 
 **state** の答え:
 
@@ -952,11 +950,14 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
 
 | 名前 | form | key_kind | 意味 |
 |---|---|---|---|
-| `channel.{}.label` | text（1〜32） | channel | ピンの呼び名（`NRST` など）。probe はこの名前で線を動かさない |
+| `channel.{}.label` | text（1〜32） | channel | ピンの呼び名（`NRST`、`V003.swdio` など）。probe はこの名前で線を動かさない |
 | `channel.{}.idle` | enum | channel | 空きの状態（§8）。選択肢: 0 `hi-z`、1 `pull-up`、2 `pull-down`、3 `low`（出力 low）、4 `high`（出力 high） |
 | `channel.{}.disable` | bool | channel | 真なら、probe はそのピンを駆動も設定もしない |
 
-- probe が自分で使う channel は、label の fixed の値だけを持ってよく、idle と disable を unsupported で断る。
+- **label は probe の中で一意**: 変更の後の設定で、2 つの channel の label が ASCII の大小文字を区別せずに等しければ、set を unavailable（cause 5）で断る。
+  label は書いたとおりの大小文字で保ち、get でもそのまま返す。比べるときだけ A〜Z を a〜z にそろえる（ASCII の外の文字はそろえない）。
+  `S.N` の形の label が口を名付ける規則は host が使う（[host 開発ガイド](host-development-guide.ja.md) §5.3）。probe はその形を確かめない。
+- probe が自分で使う channel は、channel の項目を持たない（その key の set を unsupported で断る）。
 - **disable** は、起動時と解いたときの空きの状態より先に効く。宣言を広げない。disable の channel を使う要求は unavailable（cause 5）。
   使用中の channel を disable にする set は unavailable（cause 1）。変更の後の設定で同じ channel に idle と disable（真）が両方あれば unavailable（cause 5）で断る
   （先にぶつかる値を unset する）。disable を unset した、または偽にした channel は、ただちに空きの状態に戻す。

@@ -170,8 +170,8 @@ TCP の経路は、host が同じ手順でどの probe にも設定できなけ�
   だから、TCP で届かなくなる値を置いても、再起動（電源の入れ直し）で戻せる。
 - **（参考）TCP からの変更**: その経路で使っている値を変えると、その接続も切れる。応答は先に送るので、set の結果は届く。host は新しいアドレスで
   unit_id を探し直して（§3）届くことを確かめてから save する。
-- **max_frame**: この節の項目を宣言する probe は、どの経路でも confirm の max_frame を 83 以上にする（registry の `wifi_min_max_frame`）。
-  いちばん長い値（64 文字の鍵）の get の応答が 19 + 64 = 83 byte になるためである（core §13.5）。
+- **max_frame**: この節の項目を宣言する probe は、どの経路でも confirm の max_frame を 82 以上にする（registry の `wifi_min_max_frame`）。
+  いちばん長い値（64 文字の鍵）の get の応答が 18 + 64 = 82 byte になるためである（core §13.5）。
 
 ### 7.1 Wi-Fi のつなぎ先
 

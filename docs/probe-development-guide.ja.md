@@ -150,8 +150,14 @@ firmware に定数として割り当ててよく、動的な割当表を要求�
 保存した設定はカテゴリを (name, instance) で指し、項目の名前の意味は revision を越えて変えない（core §13.1）。既存の契約を壊す変更は revision を上げ、できれば古い revision も別の fn で出し続ける（core §2.8）。
 
 **ピン**（core §7.4）: ピンを集合のどれにでも割り当てられる機能は role_channels を、組が決まっている機能は組ごとに channel_group を
-宣言する。両方を使ってもよい。probe 自身が使う channel はどの宣言にも載せず（インターフェースに割り当てない）、配線の固定の名前は `label`（0x46）に置く。plan に
+宣言する。両方を使ってもよい。probe 自身が使う channel はどの宣言にも載せず（インターフェースに割り当てない）、channel の設定の項目も持たせない。plan に
 上限があれば `oep.probe.plan` の describe に plan_roles を宣言する（[plan](../interfaces/oep-if-plan.ja.md) §1）。
+**口の名前と初期値**（core §13.4、§13.8、[host 開発ガイド](host-development-guide.ja.md) §5.3）: host は口を `S.N` の形の
+`channel.{}.label` で名指す。wire を持つ probe は、配線に合う label を初期値として持たせるとよい（`V003.swio`、`dut.swdio` など。
+`S` は英字で始まる英字・数字・`-` の 16 文字まで）。label が無ければ、host はアドレスでその口を指せない。
+初期値は保存の無い起動で本体が置き、その後は利用者の値と区別しない。配線が基板で決まっていて変えてほしくない治具は、保存を持たない構成にすれば、
+変更は再起動で初期値に戻る。保存を持つ汎用の probe（シルクのある基板など）は、初期値を持たせず利用者に設定してもらってもよい。
+
 片方向だけのUARTは、提供するRXまたはTXのroleだけをplanで割り当てて使う。固定のRX/TX組をchannel_groupで宣言するprobeが
 片方向のplanも受け付けるなら、その片方向に一致するgroupも宣言する。RX専用のprobeにはTXの宣言・実装は要らない
 （[fixture](../interfaces/oep-if-fixture.ja.md) §2）。

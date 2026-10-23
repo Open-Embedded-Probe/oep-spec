@@ -123,7 +123,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | model、chip、firmware | model, chip, firmware | probe の種類、その MCU、firmware の自由な文字列 | core §7.5 |
 | max_op_ms | max_op_ms | 1つの要求自身の検証・内部の再試行・実行・後始末・応答生成を含む最長の処理時間。同じ経路・別経路の先行要求待ちと経路の転送時間は除く | core §4.4、§7.5 |
 | label | label (firmware) | firmware の固定の channel の名前 | core §7.5 |
-| アドレス | address | `oep://<probe>[/<port>[/<target>]]`。probeはunit_id、portは設定のlabel `S.N`の`S`、targetはhostが決める個体の名前。`any`は明示した「どれでも」 | host ガイド §5.3 |
+| アドレス | address | `oep://<probe>[/<port>[/<target>]]`。probeはunit_id、portは設定のlabel `S.N`の`S`、targetはhostが決める個体の名前。いつも全部を書き、比べるときは大小文字を区別しない | host ガイド §5.3 |
 | 線の試験 | link test | `oep.probe.link` の source と sink の op。経路を測る | link §2 |
 | restart | restart | `oep.probe.restart`のop。応答を先に送り、restart_max_msのうちにprobe内部を初期化する。OSの列挙やhostの再接続待ちは別 | restart §2 |
 
@@ -189,7 +189,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
 | 設定、カテゴリ、項目、キー | settings, category, item, key | 持ち主（本体かインターフェース）ごとのカテゴリの中の、名前つきの項目の値。set は値ごとに置き換える | settings §13.1、§13.5 |
-| 出どころ | origin | 値が firmware の固定か、既定か、利用者のものか | settings §13.4 |
+| 初期値 | initial value | 保存の無い起動で本体が置く、firmware が用意した値。置いた後はほかの値と同じ | settings §13.4 |
 | channel の名前 | channel name | データシートのピンの名前（`GPIO14`、`PA5`）。保存と書き出しで channel を指す | core §7.5 |
 | label | label (item) | `channel.{}.label`: channel の呼び名（`NRST`） | settings §13.8 |
 | idle | idle (item) | `channel.{}.idle`: channel の空きの状態: Hi-Z、pull、出力 low / high | settings §13.8 |
