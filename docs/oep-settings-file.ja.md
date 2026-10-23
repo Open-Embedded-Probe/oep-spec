@@ -87,7 +87,8 @@ UTF-8 の JSON（RFC 8259）1 つ。BOM を付けない。拡張子は `.oep-set
 
 1. fn 0 の confirm、list、describe と、各 fn の describe を読み、項目の宣言（setting、setting_choice）、channel の名前、経路、netif の名前を得る。
 2. fn 0 の get で全部の値を読む（generation が途中で変われば初めから）。
-3. 全部の値を、番号を §2 の名前に引き換えて書く（初期値から来た値も区別せずに書く。core §13.4）。
+3. 全部の値を、番号を §2 の名前に引き換えて書く（初期値から来た値も区別せずに書く。core §13.4）。secret の値は §2.3 のとおり
+   `{ "secret": true }` と書く（値があることだけ）。
 
 ## 4. 入れ直し
 
