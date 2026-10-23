@@ -1,8 +1,8 @@
 {
-  "about": "The settings file (docs/oep-settings-file.ja.md): a probe's declarations (fn 0's describe TLVs; each listed fn's name, instance and describe TLVs) and its get values (count x value, core §13.5) give the exported file (user values only, names for numbers, secrets as {\"secret\": true}). Importing that file into another probe gives the values to set (in the file's order), the user values to unset, the secrets the probe does not hold, and what does not resolve. Item numbers follow each fn's setting order; set values are listed in the file's category and member order.",
+  "about": "The settings file (docs/oep-settings-file.ja.md): a probe's declarations (fn 0's describe TLVs; each listed fn's name, instance and describe TLVs) and its get values (count x value, core §13.5) give the exported file (every value, names for numbers, secrets as {\"secret\": true}). Importing that file into another probe gives the values to set (in the file's order), the values to unset, the secrets the probe does not hold, and what does not resolve. Item numbers follow each fn's setting order; set values are listed in the file's category and member order.",
   "export": [
     {
-      "name": "export: user values only, numbers to names",
+      "name": "export: every value, numbers to names",
       "spec": "settings file §2, §3",
       "probe": {
         "fn0_describe_tlvs_hex": "42100039343839646432616530393533363530410600727032333530400600302e302e3336430200040044070000004750494f3044070001004750494f3144070002004750494f3544080003004750494f31344903000002ff4903000105ff450400776966690816000201000020006368616e6e656c2e7b7d2e6c6162656c0815000601000000006368616e6e656c2e7b7d2e69646c65090600020068692d7a090900020170756c6c2d7570090b00020270756c6c2d646f776e09050002036c6f770906000204686967680818000501000000006368616e6e656c2e7b7d2e64697361626c65081200020204002000776966692e7b7d2e73736964081800020204004001776966692e7b7d2e70617373706872617365081200060400000000697076342e7b7d2e6d6f64650906000600646863700908000601737461746963081500040400000000697076342e7b7d2e61646472657373081400030400000000697076342e7b7d2e707265666978081500040400000000697076342e7b7d2e67617465776179081100040400000000697076342e7b7d2e646e73",
@@ -21,7 +21,7 @@
           }
         ]
       },
-      "get_values_hex": "00000100000103004c454400000103000304004e52535400000203000301000100000301000301000100000400000303006c616200000500000300000000060100030100010000070100030400c0a8011700000801000304001800000001000102000301000201000202000201000102000100000302000100020002000003040000c20100020003000002010000",
+      "get_values_hex": "000001030004004e52535400000203000100010000030100010001000004000003006c616200000500000000000006010001000100000701000400c0a801170000080100040018000000010001020001000201000202000100010200010000020001000200020000040000c201000200030000010000",
       "file": {
         "oep_settings": 1,
         "probe": {
@@ -43,11 +43,13 @@
             "ipv4.wifi.prefix": 24
           },
           "oep.wire.rvswd/0": {
-            "rest.GPIO5": "low"
+            "rest.GPIO5": "low",
+            "hold.GPIO5": true
           },
           "oep.fixture.uart/0": {
             "passthrough.cdc0.rx": "GPIO1",
-            "passthrough.cdc0.baud": 115200
+            "passthrough.cdc0.baud": 115200,
+            "passthrough.cdc0.format": "8n1"
           }
         }
       }
@@ -89,18 +91,20 @@
             "ipv4.wifi.prefix": 24
           },
           "oep.wire.rvswd/0": {
-            "rest.GPIO5": "low"
+            "rest.GPIO5": "low",
+            "hold.GPIO5": true
           },
           "oep.fixture.uart/0": {
             "passthrough.cdc0.rx": "GPIO1",
-            "passthrough.cdc0.baud": 115200
+            "passthrough.cdc0.baud": 115200,
+            "passthrough.cdc0.format": "8n1"
           },
           "io.example.gone/0": {
             "x": 1
           }
         }
       },
-      "current_values_hex": "00000401000303006f6c64",
+      "current_values_hex": "000004010003006f6c64",
       "expected_set": [
         {
           "fn": 0,
@@ -155,6 +159,12 @@
           "number": 2,
           "key": 1,
           "data_hex": "00c20100"
+        },
+        {
+          "fn": 1,
+          "number": 3,
+          "key": 1,
+          "data_hex": "00"
         }
       ],
       "expected_unset": [
@@ -174,6 +184,10 @@
         [
           "oep.wire.rvswd/0",
           "rest.GPIO5"
+        ],
+        [
+          "oep.wire.rvswd/0",
+          "hold.GPIO5"
         ],
         [
           "io.example.gone/0",

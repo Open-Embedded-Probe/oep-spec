@@ -1021,9 +1021,9 @@
         "0": "core",
         "8": "io.example.board"
       },
-      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); one user idle value, generation2",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); one idle value, generation2",
       "request_hex": "017700000020000000000000",
-      "answer_hex": "02770001000002000000010000020400030100007f11000f696f2e6578616d706c652e6e6f746578"
+      "answer_hex": "027700010000020000000100000204000100007f11000f696f2e6578616d706c652e6e6f746578"
     },
     {
       "name": "settings get: final empty page still has count and generation",
@@ -1043,7 +1043,7 @@
         "0": "core",
         "8": "io.example.board"
       },
-      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); disable channel4 true (user), generation2; becomes empty generation3",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); disable channel4 true, generation2; becomes empty generation3",
       "request_hex": "01790000002244332211010000030400",
       "answer_hex": "027900010003000000"
     },
@@ -1059,15 +1059,37 @@
       "answer_hex": "027a00010002000000"
     },
     {
-      "name": "settings set: a fixed value is unsupported",
-      "spec": "core §13.4",
+      "name": "settings set: a label equal to another channel's but for ASCII case is refused",
+      "spec": "core §13.8",
       "fns": {
         "0": "core",
         "8": "io.example.board"
       },
-      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); channel 0's label fixed NRST, generation1",
-      "request_hex": "017e00000021443322110100000100000300525354",
-      "answer_hex": "027e00000b0003010000"
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); channel 0's label V003.nrst, generation1; retain configuration and generation",
+      "request_hex": "017e00000021443322110100000104000900763030332e4e525354",
+      "answer_hex": "027e000004010100050202000400"
+    },
+    {
+      "name": "settings set: a label moved to another channel in one set",
+      "spec": "core §13.5, §13.8",
+      "fns": {
+        "0": "core",
+        "8": "io.example.board"
+      },
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); channel 0's label V003.nrst, generation1",
+      "request_hex": "0127010000214433221102000001000003004c454400000104000900563030332e6e727374",
+      "answer_hex": "022701010002000000"
+    },
+    {
+      "name": "settings set not offered: a probe of initial values only",
+      "spec": "core §13.4, §13.5",
+      "fns": {
+        "0": "core",
+        "8": "io.example.board"
+      },
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); get only (no set / unset in fn 0's ops); initial values",
+      "request_hex": "01280100002144332211010000020400010000",
+      "answer_hex": "0228010002"
     },
     {
       "name": "settings state: independent valid values restored despite an invalid label",
@@ -1142,9 +1164,9 @@
         "0": "core",
         "8": "io.example.board"
       },
-      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); wifi entry 0 ssid lab passphrase password1 (user), generation2",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); wifi entry 0 ssid lab passphrase password1, generation2",
       "request_hex": "011b01000020000000000000",
-      "answer_hex": "021b01010000020000000200000400000303006c61620000050000030000"
+      "answer_hex": "021b010100000200000002000004000003006c616200000500000000"
     },
     {
       "name": "settings set: secret len 0 without a value is malformed",
@@ -1164,7 +1186,7 @@
         "0": "core",
         "8": "io.example.board"
       },
-      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); wifi entry 0 ssid lab passphrase password1 (user), generation2",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); wifi entry 0 ssid lab passphrase password1, generation2",
       "request_hex": "0126010000214433221102000004000003006c616200000500000000",
       "answer_hex": "022601010002000000"
     },
@@ -1219,7 +1241,7 @@
         "0": "core",
         "8": "io.example.board"
       },
-      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); wifi entry 0 ssid lab passphrase password1 (user), generation2",
+      "state": "fn 0 settings: 1 channel.{}.label, 2 channel.{}.idle, 3 channel.{}.disable, 4 wifi.{}.ssid, 5 wifi.{}.passphrase, 6 ipv4.{}.mode, 7 ipv4.{}.address, 8 ipv4.{}.prefix, 9 ipv4.{}.gateway, 10 ipv4.{}.dns (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32); wifi entry 0 ssid lab passphrase password1, generation2",
       "request_hex": "01210100002244332211010000040000",
       "answer_hex": "022101010003000000"
     },

@@ -869,7 +869,6 @@ def ops() -> dict:
             + " (wifi keys 4, label max_len 32, passphrase max_len 64); netif list [wifi] (wifi = 1); channels 8; "
             + "fn 8 io.example.board: 1 ntp-server (text, key_kind none, max_len 32)")
     ce = CORE["enum"]
-    origin = ce["setting_origin"]
     item_tag = CORE["tlv"]["unsupported_payload"]["item"]
     pc = {"0": "core", "8": "io.example.board"}
     pc_set, pc_get, pc_unset, pc_state, pc_save = (op("core", n) for n in ("set", "get", "unset", "state", "save"))
@@ -877,10 +876,7 @@ def ops() -> dict:
         """A set value: fn(u16) number(u8) key(u16) len(u16) data."""
         number = NUM[name] if isinstance(name, str) else name
         return struct.pack("<HBHH", fn, number, key, len(data)) + data
-    def got(name, key, org, data=b"", fn=0):
-        """A get value: fn(u16) number(u8) key(u16) origin(u8) len(u16) data."""
-        number = NUM[name] if isinstance(name, str) else name
-        return struct.pack("<HBHBH", fn, number, key, origin[org], len(data)) + data
+    got = it   # a get value has the set value's form: fn(u16) number(u8) key(u16) len(u16) data (core §13.5)
     def unset(*values):
         return bytes([len(values)]) + b"".join(struct.pack("<HBH", fn, NUM[name], key) for fn, name, key in values)
     idle = it("channel.{}.idle", 4, bytes([ce["channel_idle"]["hi_z"]]))
@@ -899,18 +895,27 @@ def ops() -> dict:
             request(corr, 0, pc_set, b"\1" + it(number, 4, b"\0"), S), rej(corr, "unsupported", b"\0" + tlv(item_tag, b"\0")))
     add("settings set: unknown outer noncritical TLV ignored", "core §13.5, §2.3", pc, f"{decl}; no values, generation1",
         request(0x76, 0, pc_set, b"\1" + idle + tlv(0x3E, b"x"), S), ok(0x76, struct.pack("<I", 2)))
-    add("settings get: count separates values from response extensions", "core §13.5", pc, f"{decl}; one user idle value, generation2",
+    add("settings get: count separates values from response extensions", "core §13.5", pc, f"{decl}; one idle value, generation2",
         request(0x77, 0, pc_get, struct.pack("<H", 0)),
-        ok(0x77, struct.pack("<BIB", 0, 2, 1) + got("channel.{}.idle", 4, "user", bytes([ce["channel_idle"]["hi_z"]]))
+        ok(0x77, struct.pack("<BIB", 0, 2, 1) + got("channel.{}.idle", 4, bytes([ce["channel_idle"]["hi_z"]]))
            + tlv(0x7F, bytes([15]) + b"io.example.note" + b"x")))
     add("settings get: final empty page still has count and generation", "core §13.5", pc, f"{decl}; one value generation2; first1",
         request(0x78, 0, pc_get, struct.pack("<H", 1)), ok(0x78, struct.pack("<BIB", 0, 2, 0)))
-    add("settings unset: fn, number and key", "core §13.5", pc, f"{decl}; disable channel4 true (user), generation2; becomes empty generation3",
+    add("settings unset: fn, number and key", "core §13.5", pc, f"{decl}; disable channel4 true, generation2; becomes empty generation3",
         request(0x79, 0, pc_unset, unset((0, "channel.{}.disable", 4)), S), ok(0x79, struct.pack("<I", 3)))
     add("settings set: longest label fits frame64", "core §13.2, §13.5", pc, f"{decl}; no values generation1; channel4 free",
         request(0x7A, 0, pc_set, b"\1" + it("channel.{}.label", 4, b"L" * 32), S), ok(0x7A, struct.pack("<I", 2)))
-    add("settings set: a fixed value is unsupported", "core §13.4", pc, f"{decl}; channel 0's label fixed NRST, generation1",
-        request(0x7E, 0, pc_set, b"\1" + it("channel.{}.label", 0, b"RST"), S), rej(0x7E, "unsupported", b"\0" + tlv(item_tag, b"\0")))
+    add("settings set: a label equal to another channel's but for ASCII case is refused", "core §13.8", pc,
+        f"{decl}; channel 0's label V003.nrst, generation1; retain configuration and generation",
+        request(0x7E, 0, pc_set, b"\1" + it("channel.{}.label", 4, b"v003.NRST"), S),
+        rej(0x7E, "unavailable", tlv(1, bytes([cause["held_by_settings"]])) + tlv(2, struct.pack("<H", 4))))
+    add("settings set: a label moved to another channel in one set", "core §13.5, §13.8", pc,
+        f"{decl}; channel 0's label V003.nrst, generation1",
+        request(0x127, 0, pc_set, b"\2" + it("channel.{}.label", 0, b"LED") + it("channel.{}.label", 4, b"V003.nrst"), S),
+        ok(0x127, struct.pack("<I", 2)))
+    add("settings set not offered: a probe of initial values only", "core §13.4, §13.5", pc,
+        f"{decl}; get only (no set / unset in fn 0's ops); initial values", request(0x128, 0, pc_set, b"\1" + idle, S),
+        rej(0x128, "unknown_operation"))
     add("settings state: independent valid values restored despite an invalid label", "core §13.7", pc,
         f"{decl}; complete saved settings; valid disable/idle applied, an unusable label omitted; current generation1",
         request(0x7B, 0, pc_state, b""), ok(0x7B, struct.pack("<BIB", ce["storage_state"]["partial"], 0, ce["storage_reason"]["item"])))
@@ -932,10 +937,10 @@ def ops() -> dict:
     longest = it("wifi.{}.passphrase", 0, b"a" * 64)
     add("settings set: the longest passphrase fits wifi_min_max_frame", "transports §7.1, core §13.5", pc, f"{decl}; wifi entry 0 ssid lab, generation2",
         request(0x11A, 0, pc_set, b"\1" + longest, S), ok(0x11A, struct.pack("<I", 3)))
-    lab = f"{decl}; wifi entry 0 ssid lab passphrase password1 (user), generation2"
+    lab = f"{decl}; wifi entry 0 ssid lab passphrase password1, generation2"
     add("settings get: a secret value has no data", "core §13.5, transports §7.1", pc, lab,
         request(0x11B, 0, pc_get, struct.pack("<H", 0)),
-        ok(0x11B, struct.pack("<BIB", 0, 2, 2) + got("wifi.{}.ssid", 0, "user", b"lab") + got("wifi.{}.passphrase", 0, "user")))
+        ok(0x11B, struct.pack("<BIB", 0, 2, 2) + got("wifi.{}.ssid", 0, b"lab") + got("wifi.{}.passphrase", 0)))
     add("settings set: secret len 0 without a value is malformed", "core §13.5", pc, f"{decl}; no values generation1",
         request(0x11C, 0, pc_set, b"\1" + it("wifi.{}.passphrase", 0), S), rej(0x11C, "malformed"))
     add("settings set: secret len 0 keeps the value", "core §13.5", pc, lab,
@@ -1620,7 +1625,7 @@ def capture_formats() -> dict:
 # ---- settings file (docs/oep-settings-file.ja.md) ------------------------------------------------------------
 
 SF_FORM, SF_KEY = CORE["enum"]["setting_form"], CORE["enum"]["setting_key_kind"]
-SF_ORIGIN, SF_FLAG = CORE["enum"]["setting_origin"], CORE["enum"]["setting_flag"]
+SF_FLAG = CORE["enum"]["setting_flag"]
 # The forms of the items the registry names (core §13.8, transports §7, the interfaces' documents): form, key_kind, keys, max_len, flags
 SF_ITEMS = {
     "channel.{}.label": ("text", "channel", 0, 32, 0), "channel.{}.idle": ("enum", "channel", 0, 0, 0),
@@ -1664,27 +1669,28 @@ def settings_file() -> dict:
     # probe A: channels GPIO0 GPIO1 GPIO5 GPIO14; transports cdc0 hid0; fn 1 rvswd/0, fn 2 uart/0
     a = sf_probe(["GPIO0", "GPIO1", "GPIO5", "GPIO14"], ["usb_cdc", "hid"],
                  [(1, "oep.wire.rvswd", 0, rvswd_items), (2, "oep.fixture.uart", 0, uart_items)])
-    def v(fn, number, key, origin, data=b""):
-        return struct.pack("<HBHBH", fn, number, key, SF_ORIGIN[origin], len(data)) + data
-    values = (v(0, num(core_items, "channel.{}.label"), 0, "fixed", b"LED") + v(0, num(core_items, "channel.{}.label"), 3, "user", b"NRST")
-              + v(0, num(core_items, "channel.{}.idle"), 3, "user", bytes([ce["channel_idle"]["pull_up"]]))
-              + v(0, num(core_items, "channel.{}.disable"), 1, "user", b"\1")
-              + v(0, num(core_items, "wifi.{}.ssid"), 0, "user", b"lab") + v(0, num(core_items, "wifi.{}.passphrase"), 0, "user")
-              + v(0, num(core_items, "ipv4.{}.mode"), 1, "user", bytes([ce["ipv4_mode"]["static"]]))
-              + v(0, num(core_items, "ipv4.{}.address"), 1, "user", bytes([192, 168, 1, 23]))
-              + v(0, num(core_items, "ipv4.{}.prefix"), 1, "user", struct.pack("<I", 24))
-              + v(1, num(rvswd_items, "rest.{}"), 2, "user", bytes([IFACE["oep.wire.rvswd"]["enum"]["rest"]["low"]]))
-              + v(1, num(rvswd_items, "hold.{}"), 2, "default", b"\1")
-              + v(2, num(uart_items, "passthrough.{}.rx"), 0, "user", struct.pack("<H", 1))
-              + v(2, num(uart_items, "passthrough.{}.baud"), 0, "user", struct.pack("<I", 115200))
-              + v(2, num(uart_items, "passthrough.{}.format"), 0, "default", b"\0"))
+    def v(fn, number, key, data=b""):
+        return struct.pack("<HBHH", fn, number, key, len(data)) + data
+    values = (v(0, num(core_items, "channel.{}.label"), 3, b"NRST")
+              + v(0, num(core_items, "channel.{}.idle"), 3, bytes([ce["channel_idle"]["pull_up"]]))
+              + v(0, num(core_items, "channel.{}.disable"), 1, b"\1")
+              + v(0, num(core_items, "wifi.{}.ssid"), 0, b"lab") + v(0, num(core_items, "wifi.{}.passphrase"), 0)
+              + v(0, num(core_items, "ipv4.{}.mode"), 1, bytes([ce["ipv4_mode"]["static"]]))
+              + v(0, num(core_items, "ipv4.{}.address"), 1, bytes([192, 168, 1, 23]))
+              + v(0, num(core_items, "ipv4.{}.prefix"), 1, struct.pack("<I", 24))
+              + v(1, num(rvswd_items, "rest.{}"), 2, bytes([IFACE["oep.wire.rvswd"]["enum"]["rest"]["low"]]))
+              + v(1, num(rvswd_items, "hold.{}"), 2, b"\1")
+              + v(2, num(uart_items, "passthrough.{}.rx"), 0, struct.pack("<H", 1))
+              + v(2, num(uart_items, "passthrough.{}.baud"), 0, struct.pack("<I", 115200))
+              + v(2, num(uart_items, "passthrough.{}.format"), 0, b"\0"))
     exported = {"oep_settings": 1,
                 "probe": {"model": "rp2350", "unit_id": "9489dd2ae0953650", "firmware": "0.0.36"},
                 "settings": {"core": {"channel.GPIO14.label": "NRST", "channel.GPIO14.idle": "pull-up", "channel.GPIO1.disable": True,
                                       "wifi.0.ssid": "lab", "wifi.0.passphrase": {"secret": True},
                                       "ipv4.wifi.mode": "static", "ipv4.wifi.address": "192.168.1.23", "ipv4.wifi.prefix": 24},
-                             "oep.wire.rvswd/0": {"rest.GPIO5": "low"},
-                             "oep.fixture.uart/0": {"passthrough.cdc0.rx": "GPIO1", "passthrough.cdc0.baud": 115200}}}
+                             "oep.wire.rvswd/0": {"rest.GPIO5": "low", "hold.GPIO5": True},
+                             "oep.fixture.uart/0": {"passthrough.cdc0.rx": "GPIO1", "passthrough.cdc0.baud": 115200,
+                                                    "passthrough.cdc0.format": "8n1"}}}
     # probe B: another firmware: channels renumbered, the UART first, no rvswd, one more transport before the CDC
     b = sf_probe(["GPIO14", "GPIO5", "GPIO1", "GPIO0"], ["uart_bridge", "usb_cdc"],
                  [(1, "oep.fixture.uart", 0, uart_items)])
@@ -1692,7 +1698,7 @@ def settings_file() -> dict:
     file_b["settings"]["io.example.gone/0"] = {"x": 1}
     def setv(fn, items, name, key, data):
         return {"fn": fn, "number": num(items, name), "key": key, "data_hex": hx(data)}
-    import_b = {"current_values_hex": hx(v(0, num(core_items, "wifi.{}.ssid"), 1, "user", b"old")),
+    import_b = {"current_values_hex": hx(v(0, num(core_items, "wifi.{}.ssid"), 1, b"old")),
                 "expected_set": [setv(0, core_items, "channel.{}.label", 0, b"NRST"),
                                  setv(0, core_items, "channel.{}.idle", 0, bytes([ce["channel_idle"]["pull_up"]])),
                                  setv(0, core_items, "channel.{}.disable", 2, b"\1"),
@@ -1701,16 +1707,17 @@ def settings_file() -> dict:
                                  setv(0, core_items, "ipv4.{}.address", 1, bytes([192, 168, 1, 23])),
                                  setv(0, core_items, "ipv4.{}.prefix", 1, struct.pack("<I", 24)),
                                  setv(1, uart_items, "passthrough.{}.rx", 1, struct.pack("<H", 2)),
-                                 setv(1, uart_items, "passthrough.{}.baud", 1, struct.pack("<I", 115200))],
+                                 setv(1, uart_items, "passthrough.{}.baud", 1, struct.pack("<I", 115200)),
+                                 setv(1, uart_items, "passthrough.{}.format", 1, b"\0")],
                 "expected_unset": [{"fn": 0, "number": num(core_items, "wifi.{}.ssid"), "key": 1}],
                 "secret_without_value": [["core", "wifi.0.passphrase"]],
-                "unresolved": [["oep.wire.rvswd/0", "rest.GPIO5"], ["io.example.gone/0", "x"]]}
+                "unresolved": [["oep.wire.rvswd/0", "rest.GPIO5"], ["oep.wire.rvswd/0", "hold.GPIO5"], ["io.example.gone/0", "x"]]}
     return {"about": "The settings file (docs/oep-settings-file.ja.md): a probe's declarations (fn 0's describe TLVs; each listed fn's name, "
-                     "instance and describe TLVs) and its get values (count x value, core §13.5) give the exported file (user values only, "
+                     "instance and describe TLVs) and its get values (count x value, core §13.5) give the exported file (every value, "
                      "names for numbers, secrets as {\"secret\": true}). Importing that file into another probe gives the values to set "
-                     "(in the file's order), the user values to unset, the secrets the probe does not hold, and what does not resolve. "
+                     "(in the file's order), the values to unset, the secrets the probe does not hold, and what does not resolve. "
                      "Item numbers follow each fn's setting order; set values are listed in the file's category and member order.",
-            "export": [{"name": "export: user values only, numbers to names", "spec": "settings file §2, §3",
+            "export": [{"name": "export: every value, numbers to names", "spec": "settings file §2, §3",
                         "probe": a, "get_values_hex": hx(values), "file": exported}],
             "import": [{"name": "import into a probe with other numbers", "spec": "settings file §4",
                         "probe": b, "file": file_b, **import_b}]}

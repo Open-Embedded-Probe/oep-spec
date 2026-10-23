@@ -141,12 +141,12 @@ lease_max_ms = 60000
 owner_max_bytes = 32
 unit_id_max_bytes = 32
 wifi_ssid_max_bytes = 32        # core setting wifi.{}.ssid (transports §7.1)
-wifi_min_max_frame = 83         # max_frame floor for a probe with the network settings: a get answer 19 + the 64-byte key (transports §7)
-label_max_bytes = 32            # core setting channel.{}.label text: valid UTF-8 without control characters (core §13.8)
+wifi_min_max_frame = 82         # max_frame floor for a probe with the network settings: a get answer 18 + the 64-byte key (transports §7)
+label_max_bytes = 32            # core setting channel.{}.label text, unique in a probe ignoring ASCII case (core §13.8)
 setting_name_max_bytes = 48     # a settings item name, `{}` included; describe setting is 6 + this = 54 bytes (core §13.2)
 setting_choice_name_max_bytes = 16  # setting_choice name, 1-16 of a-z 0-9 - (core §13.2)
 channel_name_max_bytes = 16     # describe channel_name, 1-16 of A-Z a-z 0-9 _ - (core §7.5)
-setting_get_overhead_bytes = 19 # one value's get answer is this + len; max_len <= the smallest max_frame - this (core §13.2, §13.5)
+setting_get_overhead_bytes = 18 # one value's get answer is this + len; max_len <= the smallest max_frame - this (core §13.2, §13.5)
 interface_name_max_bytes = 48   # a list answer with one entry is 5 + 3 + 6 + 48 = 62 bytes, within min_max_frame (core §7.2, §12)
 port_speed_tolerance_pct = 2    # port_speed: the nearest speed the UART can make may differ from the request by at most this percent (oep-if-link §3)
 uart_baud_tolerance_pct = 5     # fixture uart: a realisable baud further than this percent from the requested one is refused (oep-if-fixture §2)
@@ -185,7 +185,7 @@ op = [
   { code = 0x12, name = "keepalive", lock = true },
   { code = 0x13, name = "lock_state", lock = false },
   { code = 0x20, name = "get", lock = false },         # settings (core §13.5); required with settings
-  { code = 0x21, name = "set", lock = true },
+  { code = 0x21, name = "set", lock = true },          # required, with unset, for a probe that lets values change
   { code = 0x22, name = "unset", lock = true },
   { code = 0x23, name = "save", lock = true },         # optional, with state (core §13.7)
   { code = 0x24, name = "state", lock = false },       # required with save
@@ -261,10 +261,6 @@ netif = 4
 [core.enum.setting_flag]
 secret = 0x01                   # write-only: get returns len 0; set len 0 keeps the value (core §13.5)
 restart = 0x02                  # the new value takes effect after a restart (core §13.2)
-[core.enum.setting_origin]      # get's origin (core §13.4)
-fixed = 1
-default = 2
-user = 3
 [core.enum.storage_state]       # state (core §13.7)
 none = 0
 applied = 1

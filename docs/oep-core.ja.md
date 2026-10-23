@@ -725,7 +725,7 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
      通知のデータの payload の形。
      データ生成が終了する機能では、送信条件未満の残りをどう扱うかと、欠落を含む終了判定も定める。
    - 読む側が、応答の enum の知らない値と知らない flags をどう扱うか（§2.4、§12.1）。
-   - 設定の項目を持つなら、その名前、form、key、flags、固定と既定の値、意味の検証、効く時（§13）。
+   - 設定の項目を持つなら、その名前、form、key、flags、初期値、意味の検証、効く時（§13）。
    - 頼る外部の仕様と、その版と、使う部分（「参照する仕様」の節）。
 3. **形の規則**: §2.3 のとおり（固定の形、足すものは TLV だけ、可変の並びの前に数を置き要素に長さを置かない、省略できるフィールドを置かない、安全の引数は critical）。
 4. **失敗**: 受け付けなかったものは rejected、受け付けて失敗したものは completed failed / partial（§4.2）。
@@ -863,6 +863,7 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
   host が値を set する。
 - 初期値に戻す op は無い。host は値を unset して、改めて set する（[設定のファイル](oep-settings-file.ja.md)の入れ直しと同じ）。
 - 利用者に変えてほしくない値を持つ probe（治具など）は、保存を持たない構成にする。変更は再起動で初期値に戻る。
+  値を一切変えさせない probe（初期値だけの、完全なプリセット）は、set と unset を持たない（§13.5）。項目ごとに断るなら §13.6。
 
 ### 13.5 操作
 
@@ -871,8 +872,8 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
 | op | 名前 | 要求 | 応答 | ロック | 要否 |
 |---:|---|---|---|---|---|
 | 0x20 | get | first(u16)、[TLV] | more(u8)、generation(u32)、count(u8)、count × 値、[TLV] | 不要 | 設定を持つなら必須 |
-| 0x21 | set | count(u8)、count × 値、[TLV] | generation(u32)、[TLV] | 必要 | 設定を持つなら必須 |
-| 0x22 | unset | count(u8)、count × (fn(u16)、number(u8)、key(u16))、[TLV] | generation(u32)、[TLV] | 必要 | 設定を持つなら必須 |
+| 0x21 | set | count(u8)、count × 値、[TLV] | generation(u32)、[TLV] | 必要 | 値を変えさせるなら必須（unset と組） |
+| 0x22 | unset | count(u8)、count × (fn(u16)、number(u8)、key(u16))、[TLV] | generation(u32)、[TLV] | 必要 | 値を変えさせるなら必須（set と組） |
 | 0x23 | save | [TLV] | generation(u32)、[TLV] | 必要 | 任意（state と組） |
 | 0x24 | state | [TLV] | storage_state(u8)、saved_generation(u32)、reason(u8)、[TLV] | 不要 | save があれば必須 |
 
@@ -880,6 +881,7 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
 値:     fn(u16)、number(u8)、key(u16)、len(u16)、data（len byte）
 ```
 
+- set と unset を持たない probe の値は、初期値（§13.4）だけで決まり、変えられない。host は fn 0 の ops（§7.4）でそれを知り、変更を送らない。
 - fn は項目の持ち主の fn（本体は 0）、number はその fn の項目番号（§13.2）。list に無い fn は unknown_function。number 0 は malformed。
   その fn の setting に無い番号は unsupported。
 - **get** は、値を持つすべての（fn、number、key）を、fn、number、key の小さい順に並べ、first 番目から 1 フレームに入る分だけ返す。
@@ -904,7 +906,8 @@ OEP の[共通部品](../interfaces/oep-if-common.ja.md)は、採用したとき
 
 ### 13.6 変更の可否
 
-- 本体は、set と unset のそれぞれの値について、その持ち主に変更の可否を問う。持ち主は要求の状況（経路など）を見て断ってよい。
+- 本体は、set と unset のそれぞれの値について、その持ち主に変更の可否を問う。持ち主は要求の状況（経路など）を見て断ってよく、
+  利用者に変えさせない項目や key を常に断ってもよい（初期値だけの口の label など）。
   断るときは rejected unavailable に cause 7 を付ける（§4.3）。本体の項目の可否は probe が決める。
 - 本体は認証を定めない（§0）。設定の可否も §4.3 の任意の方針判定と同じく、経路または拡張が定める方針に従う。方針を持たない probe は、ロックを持つ
   セッションのどの変更も受ける。

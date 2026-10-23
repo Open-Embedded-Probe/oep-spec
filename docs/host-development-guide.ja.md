@@ -431,7 +431,7 @@ captureの世代は同じboot内で使い回さない。0xFFFFFFFFを使い切�
    fn 0のchannel_nameでchannelの名前を、経路の並びで経路の名前（core §13.3）を引く。
 2. getのcount個の値を読み、末尾の拡張TLVを別に読む。moreならcountをfirstへ加えて続ける。
    途中でgenerationが変われば最初から読み直す。generationはboot内の変更カウンタで、hostが計算するhashではない。
-   出どころがfixedの値は変えられない。defaultの値はunsetで戻る先である。
+   値はどこから来たかを持たない（core §13.4）。fn 0のopsにset/unsetが無いprobeの値は変えられない。
 3. 欲しい内容と値ごとに比べ、同じなら何もしない。変更はロックを取り、count付きset/unsetを送る。1つの要求の値はまとめて受けられるか、何も変わらない。
    値は`fn、number、key、len、data`で、外側のTLVとは別の容器である。
 4. 保存したい場合だけsaveする。stateが提供され、saved_generationが現在のgenerationと等しければ保存済み。

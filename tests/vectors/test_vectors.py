@@ -587,25 +587,24 @@ def test_capture_minimal_reply_and_analog_diagnostics_fit_frame64():
 def test_settings_counted_container_and_change_counter_shapes():
     cases={row['name']:row for row in load('ops.json')['cases']}
     number={name: k + 1 for k, name in enumerate(CORE['settings'])}       # fn 0's items in describe order (core §13.2)
-    origin=CORE['enum']['setting_origin']
     response=bytes.fromhex(cases['settings get: count separates values from response extensions']['answer_hex'])
     more,generation,count=struct.unpack_from('<BIB',response,5)
     assert (more,generation,count)==(0,2,1)
-    # Decode count values (fn number key origin len data, core §13.5), then the extension tail separately
-    fn,num,key,org,size=struct.unpack_from('<HBHBH',response,11)
-    assert (fn,num,key,org,size)==(0,number['channel.{}.idle'],4,origin['user'],1)
-    assert response[19]==CORE['enum']['channel_idle']['hi_z']
-    assert tlvs(response[20:])==[(REG['constants']['tag_named_extension'],bytes([15])+b'io.example.note'+b'x')]   # core §2.2
+    # Decode count values (fn number key len data, core §13.5), then the extension tail separately
+    fn,num,key,size=struct.unpack_from('<HBHH',response,11)
+    assert (fn,num,key,size)==(0,number['channel.{}.idle'],4,1)
+    assert response[18]==CORE['enum']['channel_idle']['hi_z']
+    assert tlvs(response[19:])==[(REG['constants']['tag_named_extension'],bytes([15])+b'io.example.note'+b'x')]   # core §2.2
     request=bytes.fromhex(cases['settings unset: fn, number and key']['request_hex'])
     assert request[10:]==bytes([1])+struct.pack('<HBH',0,number['channel.{}.disable'],4)
     request=bytes.fromhex(cases['settings set: longest label fits frame64']['request_hex'])
     overhead=REG['limits']['setting_get_overhead_bytes']
-    assert len(request)==overhead-1+32 and len(request)<=REG['constants']['min_max_frame'] and request[-32:]==b'L'*32
+    assert len(request)==overhead+32 and len(request)<=REG['constants']['min_max_frame'] and request[-32:]==b'L'*32
     request=bytes.fromhex(cases['settings set: the longest passphrase fits wifi_min_max_frame']['request_hex'])
-    assert len(request)==overhead-1+64 and REG['limits']['wifi_min_max_frame']==overhead+64
+    assert len(request)==overhead+64 and REG['limits']['wifi_min_max_frame']==overhead+64
     response=bytes.fromhex(cases['settings get: a secret value has no data']['answer_hex'])
-    secret=struct.unpack_from('<HBHBH',response,11+8+3)
-    assert secret==(0,number['wifi.{}.passphrase'],0,origin['user'],0) and len(response)==11+8+3+8
+    secret=struct.unpack_from('<HBHH',response,11+7+3)
+    assert secret==(0,number['wifi.{}.passphrase'],0,0) and len(response)==11+7+3+7
     response=bytes.fromhex(cases['settings state: independent valid values restored despite an invalid label']['answer_hex'])
     st=CORE['enum']
     assert struct.unpack_from('<BIB',response,5)==(st['storage_state']['partial'],0,st['storage_reason']['item'])

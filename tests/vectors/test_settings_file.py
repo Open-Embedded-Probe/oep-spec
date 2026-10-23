@@ -11,7 +11,6 @@ CORE = REG["core"]
 DATA = json.loads(Path(__file__).with_name("settings_file.json").read_text(encoding="utf-8"))
 FORM = {v: k for k, v in CORE["enum"]["setting_form"].items()}
 KEY_KIND = {v: k for k, v in CORE["enum"]["setting_key_kind"].items()}
-ORIGIN = {v: k for k, v in CORE["enum"]["setting_origin"].items()}
 KIND_ROUTE = {CORE["enum"]["transport_kind"][t]: r for t, r in (
     ("uart_bridge", "bridge"), ("usb_cdc", "cdc"), ("usb_serial_jtag", "usj"), ("vendor_bulk", "bulk"), ("hid", "hid"), ("tcp", "tcp"))}
 assert {CORE["enum"]["route_kind"][r] for r in KIND_ROUTE.values()} == set(KIND_ROUTE)   # the route names' short names (core §13.3)
@@ -116,18 +115,16 @@ class Probe:
 def values(raw: bytes):
     at = 0
     while at < len(raw):
-        fn, number, key, origin, n = struct.unpack_from("<HBHBH", raw, at)
-        yield fn, number, key, ORIGIN[origin], raw[at + 8:at + 8 + n]
-        at += 8 + n
+        fn, number, key, n = struct.unpack_from("<HBHH", raw, at)     # core §13.5: no origin (core §13.4)
+        yield fn, number, key, raw[at + 7:at + 7 + n]
+        at += 7 + n
 
 
 def test_export():
     for case in DATA["export"]:
         p = Probe(case["probe"])
         out = {"oep_settings": 1, "probe": p.info, "settings": {}}
-        for fn, number, key, origin, data in values(bytes.fromhex(case["get_values_hex"])):
-            if origin != "user":
-                continue                                      # fixed and default stay with the firmware (settings file §3)
+        for fn, number, key, data in values(bytes.fromhex(case["get_values_hex"])):   # every value (settings file §3)
             category, its = p.fns[fn]
             item = its[number - 1]
             out["settings"].setdefault(category, {})[p.flat(item, key)] = {"secret": True} if item["secret"] else p.to_json(item, data)
@@ -137,7 +134,7 @@ def test_export():
 def test_import():
     for case in DATA["import"]:
         p = Probe(case["probe"])
-        current = {(fn, number, key): (origin, data) for fn, number, key, origin, data in values(bytes.fromhex(case["current_values_hex"]))}
+        current = {(fn, number, key): data for fn, number, key, data in values(bytes.fromhex(case["current_values_hex"]))}
         sets, unresolved, secret_missing, wanted = [], [], [], set()
         for category, members in case["file"]["settings"].items():
             for flat, value in members.items():
@@ -152,10 +149,9 @@ def test_import():
                         secret_missing.append([category, flat])
                     continue
                 data = p.from_json(item, value)
-                if current.get((fn, number, key)) != ("user", data):
+                if current.get((fn, number, key)) != data:
                     sets.append({"fn": fn, "number": number, "key": key, "data_hex": data.hex()})
-        unsets = [{"fn": fn, "number": n, "key": k} for (fn, n, k), (origin, _) in current.items()
-                  if origin == "user" and (fn, n, k) not in wanted]
+        unsets = [{"fn": fn, "number": n, "key": k} for (fn, n, k) in current if (fn, n, k) not in wanted]
         assert sets == case["expected_set"], case["name"]
         assert unsets == case["expected_unset"]
         assert secret_missing == case["secret_without_value"]

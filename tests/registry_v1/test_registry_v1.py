@@ -140,9 +140,9 @@ def test_settings_are_named_not_numbered():
     owners = {i['name'] for i in reg['interface'] if 'settings' in i}
     assert owners == {'oep.wire.rvswd','oep.wire.swio','oep.wire.swd','oep.fixture.uart','oep.target.console'}
     assert not any(i['name'] == 'oep.probe.config' for i in reg['interface'])
-    # one value's get answer: header 5, more 1, generation 4, count 1, the value's fixed part 8 (core §13.5)
+    # one value's get answer: header 5, more 1, generation 4, count 1, the value's fixed part 7 (core §13.5)
     lim = reg['limits']
-    assert lim['setting_get_overhead_bytes'] == reg['limits']['result_header_bytes'] + 1 + 4 + 1 + 8
+    assert lim['setting_get_overhead_bytes'] == reg['limits']['result_header_bytes'] + 1 + 4 + 1 + 7
     assert lim['wifi_min_max_frame'] == lim['setting_get_overhead_bytes'] + 64          # the 64-digit key (transports §7)
     assert lim['label_max_bytes'] <= reg['constants']['min_max_frame'] - lim['setting_get_overhead_bytes']
     # a setting TLV with the longest name fits the core's 64-byte describe value (55 bytes)
