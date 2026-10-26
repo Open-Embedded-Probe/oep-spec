@@ -5,6 +5,9 @@
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
 - **設定を本体へ移す（壊す変更）**: `oep.probe.config` を無くし、設定を core §13（任意）にする。カテゴリは本体（fn 0）かインターフェース（名前と instance）で、項目はその持ち主が名前を付けて宣言する（describe の共通 tag setting 0x08、setting_choice 0x09）。値は出どころ（fixed / default / user）を持ち、fn 0 の任意の op get / set / unset / save / state（0x20〜0x24）で読み書きする。erase は無い（全部 unset して save）。secret は誰にも読ませない。保存の形式は決めず、名前で持つ・電源断で原子的・宣言済みの項目だけを使う、を決める。
+- **target は名前ごとに 1 つ（壊す変更）**: connection を使う `oep.target.*` と `oep.target.console` は、名前ごとに probe に 1 つで、
+  wire の定義が対応させたすべての wire の connection を受ける（common §2）。どの instance がどの wire の connection を受けるかを host が
+  知る手段が無かった（2 本の wire に console を 1 つずつ持つ probe で、host は開いて断られるまで分からなかった）。
 - **名前と初期値（壊す変更）**: 設定の値の出どころ（fixed / default / user）を無くし、get の値の origin(u8) を外す（値の固定部分 7 byte、
   wifi_min_max_frame 82）。firmware の初期値は保存の無い起動で本体が置き、その後はほかの値と同じ（core §13.4）。set / unset は値を変えさせる
   probe だけが持つ（初期値だけの probe は get だけ）。channel.{}.label は probe の中で ASCII の大小文字を区別せずに一意で、書いたとおりの大小文字で保つ

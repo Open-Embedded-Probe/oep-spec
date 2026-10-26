@@ -115,6 +115,8 @@ readで回収できるかは、インターフェースの保持規則とreadの
 - detach、セッションの終わり、線切れ、または提供するtarget opが定める後始末の失敗で閉じる。connection に依存する stream は先に解放する。
 - connectionを作るwireのfnと、それを使うtargetのfnは別でよい。wireの定義が対応するtargetを定め、target要求のconnection番号で明示的に選ぶ。
   対応しないwireのconnectionはunavailable（cause 6）、存在しない/閉じた番号はno_resource。最後にattachした接続を暗黙に使わない。
+- connection を使う `oep.target.*` と `oep.target.console` は、名前ごとに probe に 1 つ（list に同じ名前の別の instance を出さない）。
+  その 1 つが、wire の定義が対応させたすべての wire の connection を受ける。host は名前で fn を引き、wire ごとに選び分けない。
 
 ## 3. 線と target の操作の status
 
