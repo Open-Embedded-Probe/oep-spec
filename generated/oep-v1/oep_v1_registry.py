@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "2fdee123ed6fb422"
+REGISTRY_HASH = "d981eac6e881bda1"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -81,6 +81,14 @@ FIXTURE_SPI_TARGET = _NS(name="oep.fixture.spi-target", revision=1, target=None,
     tlv={"describe": {"queue_depth": 0x40, "modes": 0x41, "cs_setup_ns": 0x42}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sck": 0x01, "mosi": 0x02, "miso": 0x03, "cs": 0x04}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"lsb_first": 0x01}}, own={},
     line_names={}, names={}, settings={})
 INTERFACES["oep.fixture.spi-target"] = FIXTURE_SPI_TARGET
+FIXTURE_I2C_CONTROLLER = _NS(name="oep.fixture.i2c-controller", revision=1, target=None, op={"configure": 0x10, "transfer": 0x11, "status": 0x12}, lock_free={0x12},
+    tlv={"describe": {"max_stretch_timeout_us": 0x40}}, event={}, enum={"role": {"sda": 0x01, "scl": 0x02}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"internal_pullups": 0x01}, "transfer_flags": {"stop": 0x01}, "dir": {"write": 0x00, "read": 0x01}, "result": {"done": 0x00, "address_nack": 0x01, "data_nack": 0x02, "bus_error": 0x03, "stretch_timeout": 0x04}}, own={},
+    line_names={}, names={}, settings={})
+INTERFACES["oep.fixture.i2c-controller"] = FIXTURE_I2C_CONTROLLER
+FIXTURE_SPI_CONTROLLER = _NS(name="oep.fixture.spi-controller", revision=1, target=None, op={"configure": 0x10, "transfer": 0x11, "status": 0x12}, lock_free={0x12},
+    tlv={"describe": {"time_step_ns": 0x40, "modes": 0x41, "max_delay_ns": 0x42}}, event={}, enum={"role": {"sck": 0x01, "mosi": 0x02, "miso": 0x03, "cs": 0x04}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"lsb_first": 0x01}}, own={},
+    line_names={}, names={}, settings={})
+INTERFACES["oep.fixture.spi-controller"] = FIXTURE_SPI_CONTROLLER
 FIXTURE_LOGIC = _NS(name="oep.fixture.logic", revision=1, target=None, op={"configure": 0x10, "start": 0x11, "stop": 0x12, "force": 0x13, "status": 0x14, "read": 0x15, "segments": 0x16, "release": 0x17, "query": 0x18, "triggers": 0x1B, "subscribe": 0x01, "unsubscribe": 0x02}, lock_free={0x14, 0x15, 0x16, 0x18, 0x1B},
     tlv={"configure": {"mode": 0x01, "rate": 0x02, "samples": 0x03, "segments": 0x04, "trigger": 0x05, "pretrigger": 0x06, "format": 0x08, "carriage": 0x09, "threshold": 0x0C, "clock": 0x0F, "format_name": 0x10, "data_path": 0x11, "trigger_opts": 0x0A, "block_max": 0x0B, "overflow": 0x12, "glitch_filter": 0x13}, "configure_answer": {"actual_rate": 0x01, "layout": 0x02, "actual_samples": 0x03, "actual_segments": 0x04, "format": 0x09, "block": 0x0A, "threshold_used": 0x0B, "format_name": 0x0E, "timebase": 0x0F, "glitch_used": 0x10, "stream_buffer": 0x14, "judge_latency_ns": 0x15}, "status_answer": {"error": 0x01}, "data": {"generation": 0x01, "segment_info": 0x02}, "describe": {"mode": 0x40, "rate_range": 0x41, "channels": 0x42, "trigger": 0x43, "formats": 0x45, "carriage": 0x46, "threshold": 0x47, "format_names": 0x4A, "external_data": 0x4B, "external_clock": 0x4C, "trigger_records": 0x52, "glitch_filter": 0x4D}}, event={"segment": 0x01, "stopped": 0x02, "triggered": 0x03}, enum={"external_kind": {"usb_bulk_in": 0x01, "tcp": 0x02, "udp": 0x03, "usb_iso_in": 0x04}, "external_mux": {"single": 0x00, "chunks": 0x01}, "data_path": {"oep": 0x00, "external": 0x01}, "data_format": {"packed": 0x00, "logic_blocks": 0x01, "analog_blocks": 0x02, "state_timed": 0x03, "test_counter": 0x04, "named": 0xFF}, "logic_carriage": {"raw": 0x00, "events": 0x01}, "features": {}, "mode": {"one_shot": 0x01, "repeat": 0x02, "streaming": 0x03}, "trigger": {"immediate": 0x00, "level": 0x01, "edge": 0x02, "linked": 0x07}, "state": {"unconfigured": 0x00, "configured": 0x01, "waiting": 0x02, "capturing": 0x03, "done": 0x04, "paused": 0x05, "error": 0x06}, "stopped_reason": {"complete": 0x00, "host": 0x01, "error": 0x02}, "error": {"peripheral": 0x01, "storage": 0x02, "clock": 0x03}, "status_flag": {"dropped": 0x01, "slipped": 0x02, "rearm_waiting": 0x04}, "segment_flag": {"gap": 0x01, "short": 0x02, "slipped": 0x04, "rearm": 0x08}}, own={},
     line_names={}, names={}, settings={})

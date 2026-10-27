@@ -1681,6 +1681,96 @@
       "answer_hex": "028d000100000c0000000200030d"
     },
     {
+      "name": "i2c-controller configure: the SCL used at or below the one asked",
+      "spec": "fixture §5",
+      "fns": {
+        "15": "oep.fixture.i2c-controller"
+      },
+      "state": "session S; fn 15 has its plan; the probe makes 100 kHz or 380 kHz; asked 400 kHz, stretch timeout 10 ms",
+      "request_hex": "01a0000f001044332211801a060010270000",
+      "answer_hex": "02a000010060cc0500"
+    },
+    {
+      "name": "i2c-controller transfer: a register read (write, repeated START, read, STOP)",
+      "spec": "fixture §5",
+      "fns": {
+        "15": "oep.fixture.i2c-controller"
+      },
+      "state": "session S; configured; the target at 0x50 ACKs the register 0x10 and answers 0xAB 0xCD",
+      "request_hex": "01a1000f0011443322110102005001001001500200",
+      "answer_hex": "02a1000100000000000200abcd"
+    },
+    {
+      "name": "i2c-controller transfer: nobody at the address",
+      "spec": "fixture §5",
+      "fns": {
+        "15": "oep.fixture.i2c-controller"
+      },
+      "state": "session S; configured; nothing ACKs 0x51; a STOP goes out, the bus is not held",
+      "request_hex": "01a2000f001144332211010100510000",
+      "answer_hex": "02a2000100010000000000"
+    },
+    {
+      "name": "i2c-controller transfer: the target NACKs the second data byte",
+      "spec": "fixture §5",
+      "fns": {
+        "15": "oep.fixture.i2c-controller"
+      },
+      "state": "session S; configured; 0x50 ACKs its address and 0x01, NACKs 0x02; a STOP goes out",
+      "request_hex": "01a3000f001144332211010100500300010203",
+      "answer_hex": "02a3000100020001000000"
+    },
+    {
+      "name": "i2c-controller transfer: a read count 0 is malformed",
+      "spec": "fixture §5",
+      "fns": {
+        "15": "oep.fixture.i2c-controller"
+      },
+      "state": "session S; configured; nothing on the bus",
+      "request_hex": "01a4000f001144332211010101500000",
+      "answer_hex": "02a4000003"
+    },
+    {
+      "name": "i2c-controller status: holding the bus after a transfer without STOP",
+      "spec": "fixture §5",
+      "fns": {
+        "15": "oep.fixture.i2c-controller"
+      },
+      "state": "configured; one transfer answered with flags 0 (no STOP), result 0",
+      "request_hex": "01a5000f001200000000",
+      "answer_hex": "02a500010001010100000000000000"
+    },
+    {
+      "name": "spi-controller configure: the SCK used at or below the one asked",
+      "spec": "fixture §6",
+      "fns": {
+        "16": "oep.fixture.spi-controller"
+      },
+      "state": "session S; fn 16 has its plan; modes declares mode 0; the probe makes 1 MHz from 1.2 MHz asked",
+      "request_hex": "01a600100010443322110000804f1200",
+      "answer_hex": "02a600010040420f00"
+    },
+    {
+      "name": "spi-controller transfer: two transfers, the times used at or above the ones asked",
+      "spec": "fixture §6",
+      "fns": {
+        "16": "oep.fixture.spi-controller"
+      },
+      "state": "session S; configured mode 0 MSB first; time_step_ns 25; the target answers 0x5A then 0x00 0xFF; the first transfer's gap is 0",
+      "request_hex": "01a700100011443322110200000000e8030000f401000001009fda070000e8030000f401000002000102",
+      "answer_hex": "02a700010000000000e8030000f401000001005ae9070000e8030000f4010000020000ff"
+    },
+    {
+      "name": "spi-controller transfer: n 0 is malformed",
+      "spec": "fixture §6",
+      "fns": {
+        "16": "oep.fixture.spi-controller"
+      },
+      "state": "session S; configured",
+      "request_hex": "01a8001000114433221100",
+      "answer_hex": "02a8000003"
+    },
+    {
       "name": "logic status: streaming stopped in error, write_pos at the lost segment's start",
       "spec": "capture §2.2, §3.2",
       "fns": {

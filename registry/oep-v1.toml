@@ -708,6 +708,59 @@ running = 1
 lsb_first = 0x01
 
 [[interface]]
+name = "oep.fixture.i2c-controller"
+revision = 1
+op = [
+  { code = 0x10, name = "configure", lock = true },      # clock_hz(u32) stretch_timeout_us(u32) -> clock_hz(u32): the SCL used
+  { code = 0x11, name = "transfer", lock = true },       # flags(u8) n(u8) n x (dir address count [data]) -> result at index count data
+  { code = 0x12, name = "status", lock = false },
+]
+[interface.tlv.describe]
+max_stretch_timeout_us = 0x40   # required u32: the largest stretch_timeout_us configure accepts, 1 or more (oep-if-fixture §5)
+[interface.enum.role]
+sda = 1
+scl = 2
+[interface.enum.state]
+unconfigured = 0
+running = 1
+[interface.enum.features]
+internal_pullups = 0x01         # as i2c-target's (oep-if-fixture §3)
+[interface.enum.transfer_flags]
+stop = 0x01                     # a STOP after the last segment; without it the bus is held, the next transfer starts with a repeated START
+[interface.enum.dir]
+write = 0
+read = 1
+[interface.enum.result]
+done = 0
+address_nack = 1
+data_nack = 2
+bus_error = 3                   # arbitration lost or a bus error
+stretch_timeout = 4
+
+[[interface]]
+name = "oep.fixture.spi-controller"
+revision = 1
+op = [
+  { code = 0x10, name = "configure", lock = true },      # mode(u8) bit_order(u8) clock_hz(u32) -> clock_hz(u32): the SCK used
+  { code = 0x11, name = "transfer", lock = true },       # n(u8) n x (gap_ns setup_ns hold_ns count tx) -> n x (gap_ns setup_ns hold_ns count rx): the times used
+  { code = 0x12, name = "status", lock = false },
+]
+[interface.tlv.describe]
+time_step_ns = 0x40             # required u32: the step of gap_ns / setup_ns / hold_ns (oep-if-fixture §6)
+modes = 0x41                    # required u8 bitmap of supported SPI modes 0..3, at least one (as spi-target's)
+max_delay_ns = 0x42             # required u32: the largest gap_ns / setup_ns / hold_ns accepted
+[interface.enum.role]
+sck = 1
+mosi = 2
+miso = 3
+cs = 4
+[interface.enum.state]
+unconfigured = 0
+running = 1
+[interface.enum.features]
+lsb_first = 0x01
+
+[[interface]]
 name = "oep.fixture.logic"
 family = "capture"
 revision = 1

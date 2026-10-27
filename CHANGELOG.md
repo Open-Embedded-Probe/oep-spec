@@ -4,6 +4,10 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **I2C と SPI の controller（追加）**: `oep.fixture.i2c-controller`（fixture §5）と `oep.fixture.spi-controller`（§6）。probe が主側になり、
+  DUT の target を試す。I2C は repeated START でつないだ区切りの並びと STOP を出さない終わり方、ACK / NACK と stretch の打ち切りを result で
+  返す。SPI は CS の時間（gap_ns、setup_ns、hold_ns）を指定した転送の並びを 1 回の要求で続けて行い、実際に守った時間を返す。
+  clock_hz はどちらも頼んだ値以下の出せる値を選んで返す。ArduinoCore-CH32RV の Wire のスレーブと SPI のスレーブの試験のため。
 - **設定を本体へ移す（壊す変更）**: `oep.probe.config` を無くし、設定を core §13（任意）にする。カテゴリは本体（fn 0）かインターフェース（名前と instance）で、項目はその持ち主が名前を付けて宣言する（describe の共通 tag setting 0x08、setting_choice 0x09）。値は出どころ（fixed / default / user）を持ち、fn 0 の任意の op get / set / unset / save / state（0x20〜0x24）で読み書きする。erase は無い（全部 unset して save）。secret は誰にも読ませない。保存の形式は決めず、名前で持つ・電源断で原子的・宣言済みの項目だけを使う、を決める。
 - **target は名前ごとに 1 つ（壊す変更）**: connection を使う `oep.target.*` と `oep.target.console` は、名前ごとに probe に 1 つで、
   wire の定義が対応させたすべての wire の connection を受ける（common §2）。どの instance がどの wire の connection を受けるかを host が

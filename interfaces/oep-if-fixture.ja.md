@@ -9,6 +9,8 @@
 | `oep.fixture.uart` | 1 | UART の送受信 | 1 = RX、2 = TX | どの系統にも使う |
 | `oep.fixture.i2c-target` | 1 | I2C の target（被制御側）。DUT の I2C controller を試す | 1 = SDA、2 = SCL | どの系統にも使う |
 | `oep.fixture.spi-target` | 1 | SPI の target。DUT の SPI controller を試す | 1 = SCK、2 = MOSI、3 = MISO、4 = CS | どの系統にも使う |
+| `oep.fixture.i2c-controller` | 1 | I2C の controller（制御側）。DUT の I2C target を試す | 1 = SDA、2 = SCL | どの系統にも使う |
+| `oep.fixture.spi-controller` | 1 | SPI の controller。DUT の SPI target を試す | 1 = SCK、2 = MOSI、3 = MISO、4 = CS | どの系統にも使う |
 
 どれも[plan](oep-if-plan.ja.md)で割り当てたチャンネルだけを扱う。同じ割り当ての状態不変はplan §2.1に従う。下の表の op は、その節が任意と書かない限り、すべて必須（core §1.2）。
 
@@ -229,7 +231,99 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   なったのを見てからソフトウェアで MISO を駆動し始める probe は、これを宣言する。host はこの値を利用者に見せる。CS が有効になってから cs_setup_ns より
   早く SCK を始める master は、最初のビットに頼れない。
 
-## 5. 参照する仕様
+## 5. `oep.fixture.i2c-controller`
+
+probe が I2C の controller になり、DUT の target へ書き込み、読み出す。1 回の transfer は、repeated START でつないだ区切りの並びで、
+最後に STOP を出すか、出さずにバスを持ったまま終わる。
+
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x10 | configure | clock_hz(u32)、stretch_timeout_us(u32)、[TLV] | clock_hz(u32)、[TLV] | 必要 |
+| 0x11 | transfer | flags(u8)、n(u8)、n × 区切り、[TLV] | result(u8)、at(u8)、index(u16)、count(u16)、data、[TLV] | 必要 |
+| 0x12 | status | — | state(u8)、held(u8)、transfers(u32)、errors(u32)、[TLV] | 不要 |
+
+- このfnのplanはrole 1と2をちょうど1つずつ、別々のchannelで持つ。満たさない組のplan_applyはunsupported（role_assignmentのtag）で断る。
+  動作中（state 1）の割り当て（role, channel）の集合の変更はunavailable（cause 6）。planを解くか未設定の役割を置き換えると、
+  バスを持っていれば STOP を出してから初期状態へ戻る（state 0、held 0、累計を消す）。セッションの終わりも同じ。
+- SDA と SCL は**オープンドレインだけ**で駆動する（§3 と同じ）。内部のプルアップは §3 と同じく features の bit0 で宣言する。
+  state 0 では駆動・内部プルアップをやめ、channel を core §8 の空きの状態にする。
+- configure は controller を作り直す: バスを持っていれば STOP を出し、transfers と errors を 0 にする。この fn の plan が無いときは
+  rejected unavailable（cause 6）。clock_hz 0、stretch_timeout_us 0 は rejected malformed。clock_hz は、その値以下で probe が出せる
+  いちばん近い SCL の周波数を選び、応答の clock_hz で返す。min_clock_hz より低い値と max_clock_hz を超える値、max_stretch_timeout_us を
+  超える stretch_timeout_us は rejected unsupported（payload `0x00`）で、状態を変えない。configureの成功はstate 1となってから返す。
+  初期化に失敗したらstate 0へ戻し、completed failed（固定部分なし、[TLV]）で答える。
+- **区切り**: dir(u8: 0 書き込み、1 読み出し)、address(u8: 7 ビット)、count(u16)、書き込みなら続けて data(count byte)。
+  区切りは並びの順に行い、最初の区切りは START（バスを持っていれば repeated START）、続く区切りは repeated START で始める。
+  address の後ろに dir を R/W のビットとして付けて送る。address は 0x00〜0x7F をすべて受ける（§3 と違い、予約されたアドレスも断らない）。
+  書き込みの count 0 はアドレスの byte だけの書き込み（相手がいるかを確かめる）。読み出しは count 個を読み、最後の byte に NACK、
+  それより前の byte に ACK を返す。
+- **flags**: bit0 = 1 なら、すべての区切りが終わった後に STOP を出す。0 なら STOP を出さずにバスを持ったまま返し（held 1）、次の
+  transfer は repeated START で始まる。n 0 で bit0 = 1 は STOP だけを出す（バスを持っていなければ何もしない）。bit1〜7 は 0（core §2.5）。
+- 要求の確かめ（どれも、何もせずに断る）: state 0 は rejected unavailable（cause 6）。n 0 で bit0 = 0、dir が 1 を超える、address が
+  0x7F を超える、読み出しの count 0、区切りの長さが要求に合わない は rejected malformed。書き込みと読み出しの count の合計が max_length を
+  超えるなら rejected unsupported。
+- **result**: 0 すべて終えた、1 アドレスの byte に NACK、2 書き込みのデータの byte に NACK、3 arbitration に負けたかバスのエラー（STOP の
+  外の SDA の変化など）、4 target が SCL を stretch_timeout_us より長く low に保った。at は止まった区切りの位置（0 から。result 0 では 0）、
+  index は result 2 で NACK された byte の、その区切りの中の位置（0 から。ほかでは 0）。result 2 の NACK は、その区切りの最後の byte でも
+  result 2 とする（I2C は書き込みの最後の byte の NACK も許すので、host が判断する）。count と data は、止まるまでに読んだ byte を
+  読み出しの区切りの順につないだもの。transfer は result によらず completed success で答える。
+- result 1〜4 のときは、その場で区切りの並びをやめる。1、2、4 は STOP を出し、3 は SDA と SCL を離す。どちらも held 0。
+- 1 回の transfer は core の max_op_ms に収める。収まらない長さ（clock_hz と count から probe が決める）は、max_length を超える
+  ときと同じく rejected unsupported で、何もしない。
+- status: state 0 未設定、1 動いている。held はバスを持っている（STOP 前）なら 1。transfers は答えた transfer の累計（n 0 で何もしなかった
+  ものは数えない）、errors はそのうち result が 0 でないものの累計。どちらも 0xFFFFFFFF で飽和し、configure または plan の解放で 0 へ戻る。
+- describe: ops、role_channels、max_length（1 回の transfer の書き込みと読み出しの byte の合計の上限）、max_clock_hz（確かめた SCL の上限）、
+  features（bit0 内部プルアップ）、max_stretch_timeout_us（tag 0x40、u32。必須。1 以上）、min_clock_hz（configure が受ける SCL の下限。無ければ 1）。
+- max_lengthは、書き込みだけの最大の transfer の要求（見出し10 + flags 1 + n 1 + 区切り 4 + data）と、読み出しだけの最大の答え
+  （見出し5 + result 1 + at 1 + index 2 + count 2 + data）が、どの経路のmax_frameにも収まる値にする。
+
+## 6. `oep.fixture.spi-controller`
+
+probe が SPI の controller になり、CS を有効にして SCK を出し、MOSI に送ったバイトと MISO から受けたバイトを返す。1 回の transfer は、
+CS の時間を指定した転送の並びで、host の往復に左右されない間隔で続けて行う。
+
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x10 | configure | mode(u8)、bit_order(u8)、clock_hz(u32)、[TLV] | clock_hz(u32)、[TLV] | 必要 |
+| 0x11 | transfer | n(u8)、n × 転送、[TLV] | n × (gap_ns(u32)、setup_ns(u32)、hold_ns(u32)、count(u16)、rx(count byte))、[TLV] | 必要 |
+| 0x12 | status | — | state(u8)、mode(u8)、bit_order(u8)、transfers(u32)、[TLV] | 不要 |
+
+- mode、bit_order、CS が low で有効なこと、ビットのとり方は §4 のとおり（controller の側から見て同じ線）。
+- このfnのplanはrole 1〜4をちょうど1つずつ、別々のchannelで持つ。満たさない組のplan_applyはunsupported（role_assignmentのtag）で断る。
+  動作中（state 1）の割り当て（role, channel）の集合の変更はunavailable（cause 6）。planを解くか未設定の役割を置き換えると初期状態へ戻る
+  （state 0、mode と bit_order は 0、累計を消す）。
+- state 1 の間、probe は CS を high に、SCK を CPOL の level に駆動する。MOSI は駆動し、転送の外の level は probe が決める。MISO は
+  プルの無い入力。state 0 では channel を core §8 の空きの状態にする。
+- configure は controller を作り直す（transfers を 0 にする）。この fn の plan が無いときは rejected unavailable（cause 6）。mode が 3 を
+  超える、bit_order が 1 を超える、clock_hz 0 は rejected malformed。describe の modes に無い mode、features の bit0 が無いのに bit_order 1、
+  min_clock_hz より低いか max_clock_hz を超える clock_hz は rejected unsupported（payload `0x00`）で、状態を変えない。clock_hz は、その値以下で
+  probe が出せるいちばん近い SCK の周波数を選び、応答の clock_hz で返す。configureの成功はstate 1となってから返す。初期化に失敗したら
+  state 0へ戻し、completed failed（固定部分なし、[TLV]）で答える。
+- **転送**: gap_ns(u32)、setup_ns(u32)、hold_ns(u32)、count(u16)、tx(count byte)。
+  - gap_ns: 前の転送で CS が無効になってから、この転送で CS が有効になるまで。並びの最初の転送では使わない。
+  - setup_ns: CS が有効になってから、最初の SCK のエッジまで。
+  - hold_ns: 最後の SCK のエッジから、CS が無効になるまで。
+  - count 0 は、SCK を出さずに CS を有効にして無効に戻す（setup_ns と hold_ns を合わせた間、CS を有効に保つ）。
+  - tx の byte を bit_order の順に MOSI に出し、同じ数の byte を MISO から受けて rx にする（§4 のビットの置き方）。バイトの間に SCK の
+    周期より長い間が空くことがある。
+- **時間**: probe は、頼まれた値以上で出せるいちばん近い時間を使い、実際に使った値を答えの gap_ns、setup_ns、hold_ns で返す（ns。
+  並びの最初の転送の gap_ns は 0）。返す値は、その値以上の時間が線で守られたことを表す。max_delay_ns を超える値は rejected unsupported。
+  頼まれた時間を守れずに短くなることは無い。
+- 要求の確かめ（どれも、何もせずに断る）: state 0 は rejected unavailable（cause 6）。n 0、転送の長さが要求に合わない は rejected malformed。
+  count の合計が max_length を超える、または core の max_op_ms に収まらない並びは rejected unsupported。
+- 答えは転送の順に n 個を並べる。transfer は completed success で答える。transfers は終えた転送の数だけ増える（0xFFFFFFFF で飽和し、
+  configure または plan の解放で 0 へ戻る）。
+- status: state 0 未設定、1 動いている。mode、bit_order は configure の値（state 0 では 0）。
+- describe: ops、role_channels、max_length（1 回の transfer の count の合計の上限）、max_clock_hz（確かめた SCK の上限）、features（bit0 LSBが先）、
+  time_step_ns（tag 0x40、u32。必須: 時間の刻み。返す値はこの倍数とは限らない）、modes（tag 0x41、u8。必須。§4 と同じ）、
+  max_delay_ns（tag 0x42、u32。必須: gap_ns、setup_ns、hold_ns が受ける最大）、min_clock_hz（configure が受ける SCK の下限。無ければ 1）。
+- max_lengthは、1 つの転送で最大の transfer の要求（見出し10 + n 1 + 転送 14 + tx）と答え（見出し5 + 14 + rx）が、どの経路の
+  max_frameにも収まる値にする。
+
+ほかの fn との同時使用で clock_hz や時間を保てない probe は、§4 の cs_setup_ns と同じく、後から来た configure などを core §8.1 に従い
+副作用の前に unavailable（cause 2）で断る。
+
+## 7. 参照する仕様
 
 この文書の OEP のメッセージは、本文だけで定まる。バスを動かすのに使うもの:
 
@@ -237,4 +331,6 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
 |---|---|---|
 | `oep.fixture.i2c-target` | I2C-bus specification and user manual (NXP UM10204) | アドレスの指定（7 bit のアドレス）、ACK、clock stretching、予約されたアドレス 0x00〜0x07 と 0x78〜0x7F |
 | `oep.fixture.spi-target` | 無し: SPI には正式な標準が無い | mode、CS、ビットの順は §4 が定める |
+| `oep.fixture.i2c-controller` | I2C-bus specification and user manual (NXP UM10204) | START、repeated START、STOP、7 bit のアドレスと R/W、ACK / NACK、clock stretching、arbitration |
+| `oep.fixture.spi-controller` | 無し: SPI には正式な標準が無い | mode、CS、ビットの順は §4、時間は §6 が定める |
 | `oep.fixture.uart` | 無し | configure の format のとおりの線（スタートビット、LSB を先にしたデータビット、パリティ、ストップビット）（§2） |

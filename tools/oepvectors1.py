@@ -1141,6 +1141,47 @@ def ops() -> dict:
             request(corr, 14, op("oep.fixture.spi-target", "read_rx"), b"", S),
             ok(corr, struct.pack("<BIH", 0, len(wire), 2) + spi_pack(wire, lsb)))
 
+    # oep.fixture.i2c-controller (fixture §5): segments dir address count [data]; result at index count data
+    i2c = {"15": "oep.fixture.i2c-controller"}
+    i2c_tr = op("oep.fixture.i2c-controller", "transfer")
+    add("i2c-controller configure: the SCL used at or below the one asked", "fixture §5", i2c,
+        "session S; fn 15 has its plan; the probe makes 100 kHz or 380 kHz; asked 400 kHz, stretch timeout 10 ms",
+        request(0xA0, 15, op("oep.fixture.i2c-controller", "configure"), struct.pack("<II", 400000, 10000), S),
+        ok(0xA0, struct.pack("<I", 380000)))
+    add("i2c-controller transfer: a register read (write, repeated START, read, STOP)", "fixture §5", i2c,
+        "session S; configured; the target at 0x50 ACKs the register 0x10 and answers 0xAB 0xCD",
+        request(0xA1, 15, i2c_tr, bytes([1, 2]) + struct.pack("<BBH", 0, 0x50, 1) + b"\x10" + struct.pack("<BBH", 1, 0x50, 2), S),
+        ok(0xA1, struct.pack("<BBHH", 0, 0, 0, 2) + b"\xAB\xCD"))
+    add("i2c-controller transfer: nobody at the address", "fixture §5", i2c,
+        "session S; configured; nothing ACKs 0x51; a STOP goes out, the bus is not held",
+        request(0xA2, 15, i2c_tr, bytes([1, 1]) + struct.pack("<BBH", 0, 0x51, 0), S),
+        ok(0xA2, struct.pack("<BBHH", 1, 0, 0, 0)))
+    add("i2c-controller transfer: the target NACKs the second data byte", "fixture §5", i2c,
+        "session S; configured; 0x50 ACKs its address and 0x01, NACKs 0x02; a STOP goes out",
+        request(0xA3, 15, i2c_tr, bytes([1, 1]) + struct.pack("<BBH", 0, 0x50, 3) + b"\x01\x02\x03", S),
+        ok(0xA3, struct.pack("<BBHH", 2, 0, 1, 0)))
+    add("i2c-controller transfer: a read count 0 is malformed", "fixture §5", i2c,
+        "session S; configured; nothing on the bus",
+        request(0xA4, 15, i2c_tr, bytes([1, 1]) + struct.pack("<BBH", 1, 0x50, 0), S), rej(0xA4, "malformed"))
+    add("i2c-controller status: holding the bus after a transfer without STOP", "fixture §5", i2c,
+        "configured; one transfer answered with flags 0 (no STOP), result 0",
+        request(0xA5, 15, op("oep.fixture.i2c-controller", "status"), b""), ok(0xA5, struct.pack("<BBII", 1, 1, 1, 0)))
+
+    # oep.fixture.spi-controller (fixture §6): n x (gap_ns setup_ns hold_ns count tx) -> n x (the times used, count, rx)
+    spic = {"16": "oep.fixture.spi-controller"}
+    add("spi-controller configure: the SCK used at or below the one asked", "fixture §6", spic,
+        "session S; fn 16 has its plan; modes declares mode 0; the probe makes 1 MHz from 1.2 MHz asked",
+        request(0xA6, 16, op("oep.fixture.spi-controller", "configure"), b"\0\0" + struct.pack("<I", 1200000), S),
+        ok(0xA6, struct.pack("<I", 1000000)))
+    add("spi-controller transfer: two transfers, the times used at or above the ones asked", "fixture §6", spic,
+        "session S; configured mode 0 MSB first; time_step_ns 25; the target answers 0x5A then 0x00 0xFF; the first transfer's gap is 0",
+        request(0xA7, 16, op("oep.fixture.spi-controller", "transfer"),
+                bytes([2]) + struct.pack("<IIIH", 0, 1000, 500, 1) + b"\x9F" + struct.pack("<IIIH", 2010, 1000, 500, 2) + b"\x01\x02", S),
+        ok(0xA7, struct.pack("<IIIH", 0, 1000, 500, 1) + b"\x5A" + struct.pack("<IIIH", 2025, 1000, 500, 2) + b"\x00\xFF"))
+    add("spi-controller transfer: n 0 is malformed", "fixture §6", spic,
+        "session S; configured",
+        request(0xA8, 16, op("oep.fixture.spi-controller", "transfer"), b"\0", S), rej(0xA8, "malformed"))
+
     # events (core §10.2): role, fn, seq, kind, the fixed part; every capture event carries its generation (capture §3.4, §4.2)
     events, data = [], []
 
