@@ -14,7 +14,7 @@ host は list で見つけて要るものだけを使う。
 | [共通部品](oep-if-common.ja.md) | 位置つきのストリーム、debug の connection（インターフェースではない。使うと書いたインターフェースにだけ効く） |
 | [線とデバッグ](oep-if-debug.ja.md) | `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`、`oep.target.riscv-dm`、`oep.target.arm-adi` |
 | [コンソール](oep-if-console.ja.md) | `oep.target.console`（framing の dmseq は [target-console-dmseq](target-console-dmseq.ja.md)） |
-| [fixture](oep-if-fixture.ja.md) | `oep.fixture.gpio`、`oep.fixture.uart`、`oep.fixture.i2c-target`、`oep.fixture.spi-target`、`oep.fixture.i2c-controller`、`oep.fixture.spi-controller` |
+| [fixture](oep-if-fixture.ja.md) | `oep.fixture.gpio`、`oep.fixture.uart`、`oep.fixture.i2c-target`、`oep.fixture.spi-target`、`oep.fixture.i2c-controller`、`oep.fixture.spi-controller`、`oep.fixture.pwm`、`oep.fixture.counter`、`oep.fixture.dac` |
 | [キャプチャ](oep-if-capture.ja.md) | `oep.fixture.logic`、`oep.fixture.analog`、`oep.fixture.capture-group` |
 | [plan](oep-if-plan.ja.md) | `oep.probe.plan`（どの役にどの channel を使うかの割り当て） |
 | [再起動](oep-if-restart.ja.md) | `oep.probe.restart`（probe 自身の再起動） |

@@ -4,6 +4,9 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **PWM、counter、DAC（追加）**: `oep.fixture.pwm`（fixture §7: 周波数とデューティを指定した方形波、出した値を返す）、
+  `oep.fixture.counter`（§8: ゲートのうちのエッジの数と実際の時間。聞くだけでほかの機能のピンと共有してよいので、同じ probe の
+  出力を配線なしで数えられる）、`oep.fixture.dac`（§9: アナログの値、公称の範囲を describe で示す）。
 - **I2C と SPI の controller（追加）**: `oep.fixture.i2c-controller`（fixture §5）と `oep.fixture.spi-controller`（§6）。probe が主側になり、
   DUT の target を試す。I2C は repeated START でつないだ区切りの並びと STOP を出さない終わり方、ACK / NACK と stretch の打ち切りを result で
   返す。SPI は CS の時間（gap_ns、setup_ns、hold_ns）を指定した転送の並びを 1 回の要求で続けて行い、実際に守った時間を返す。

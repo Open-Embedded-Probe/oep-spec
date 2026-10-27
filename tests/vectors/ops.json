@@ -1741,6 +1741,66 @@
       "answer_hex": "02a500010001010100000000000000"
     },
     {
+      "name": "pwm set: the nearest frequency and duty, and an output stopped",
+      "spec": "fixture §7",
+      "fns": {
+        "17": "oep.fixture.pwm"
+      },
+      "state": "session S; fn 17 has roles 0 and 1 planned; the probe makes 1 kHz exactly and 32767 of 65535 as 32768",
+      "request_hex": "01a900110010443322110200e8030000ff7f01000000000000",
+      "answer_hex": "02a900010000e80300000100000000800100000000010000000000"
+    },
+    {
+      "name": "pwm set: a role past channels is unsupported",
+      "spec": "fixture §7",
+      "fns": {
+        "17": "oep.fixture.pwm"
+      },
+      "state": "session S; channels 2",
+      "request_hex": "01aa00110010443322110102e80300000100",
+      "answer_hex": "02aa00000b00"
+    },
+    {
+      "name": "counter measure: the edges in the window, every planned role",
+      "spec": "fixture §8",
+      "fns": {
+        "18": "oep.fixture.counter"
+      },
+      "state": "session S; roles 0 and 1 planned; 1 kHz on role 0, nothing on role 1; a 100 ms gate counted 100.002 ms",
+      "request_hex": "01ab0012001044332211a086010000",
+      "answer_hex": "02ab000100d0e8f505000000000200640000000100000000"
+    },
+    {
+      "name": "counter measure: gate 0 is malformed",
+      "spec": "fixture §8",
+      "fns": {
+        "18": "oep.fixture.counter"
+      },
+      "state": "session S",
+      "request_hex": "01ac00120010443322110000000000",
+      "answer_hex": "02ac000003"
+    },
+    {
+      "name": "dac set: a value past 2^bits - 1 is unsupported",
+      "spec": "fixture §9",
+      "fns": {
+        "19": "oep.fixture.dac"
+      },
+      "state": "session S; bits 8",
+      "request_hex": "01ad0013001044332211010000010000",
+      "answer_hex": "02ad00000b00"
+    },
+    {
+      "name": "dac status: the value set, on",
+      "spec": "fixture §9",
+      "fns": {
+        "19": "oep.fixture.dac"
+      },
+      "state": "roles 0 and 1 planned; role 0 set to 128, role 1 not set",
+      "request_hex": "01ae0013001100000000",
+      "answer_hex": "02ae00010002008000000001010000000000"
+    },
+    {
       "name": "spi-controller configure: the SCK used at or below the one asked",
       "spec": "fixture §6",
       "fns": {

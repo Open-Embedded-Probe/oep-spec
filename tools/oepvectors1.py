@@ -1167,6 +1167,31 @@ def ops() -> dict:
         "configured; one transfer answered with flags 0 (no STOP), result 0",
         request(0xA5, 15, op("oep.fixture.i2c-controller", "status"), b""), ok(0xA5, struct.pack("<BBII", 1, 1, 1, 0)))
 
+    # oep.fixture.pwm (fixture §7): n x (role hz duty) -> n x (role num den duty): the output made
+    pwm = {"17": "oep.fixture.pwm"}
+    add("pwm set: the nearest frequency and duty, and an output stopped", "fixture §7", pwm,
+        "session S; fn 17 has roles 0 and 1 planned; the probe makes 1 kHz exactly and 32767 of 65535 as 32768",
+        request(0xA9, 17, op("oep.fixture.pwm", "set"), bytes([2]) + struct.pack("<BIH", 0, 1000, 32767) + struct.pack("<BIH", 1, 0, 0), S),
+        ok(0xA9, struct.pack("<BIIH", 0, 1000, 1, 32768) + struct.pack("<BIIH", 1, 0, 1, 0)))
+    add("pwm set: a role past channels is unsupported", "fixture §7", pwm,
+        "session S; channels 2", request(0xAA, 17, op("oep.fixture.pwm", "set"), bytes([1]) + struct.pack("<BIH", 2, 1000, 1), S),
+        rej(0xAA, "unsupported", b"\0"))
+    # oep.fixture.counter (fixture §8): gate_us edge -> window_ns n x (role count)
+    cnt = {"18": "oep.fixture.counter"}
+    add("counter measure: the edges in the window, every planned role", "fixture §8", cnt,
+        "session S; roles 0 and 1 planned; 1 kHz on role 0, nothing on role 1; a 100 ms gate counted 100.002 ms",
+        request(0xAB, 18, op("oep.fixture.counter", "measure"), struct.pack("<IB", 100000, 0), S),
+        ok(0xAB, struct.pack("<QB", 100002000, 2) + struct.pack("<BI", 0, 100) + struct.pack("<BI", 1, 0)))
+    add("counter measure: gate 0 is malformed", "fixture §8", cnt, "session S",
+        request(0xAC, 18, op("oep.fixture.counter", "measure"), struct.pack("<IB", 0, 0), S), rej(0xAC, "malformed"))
+    # oep.fixture.dac (fixture §9): n x (role value); status n x (role value on)
+    dac = {"19": "oep.fixture.dac"}
+    add("dac set: a value past 2^bits - 1 is unsupported", "fixture §9", dac, "session S; bits 8",
+        request(0xAD, 19, op("oep.fixture.dac", "set"), bytes([1]) + struct.pack("<BI", 0, 256), S), rej(0xAD, "unsupported", b"\0"))
+    add("dac status: the value set, on", "fixture §9", dac, "roles 0 and 1 planned; role 0 set to 128, role 1 not set",
+        request(0xAE, 19, op("oep.fixture.dac", "status"), b""),
+        ok(0xAE, bytes([2]) + struct.pack("<BIB", 0, 128, 1) + struct.pack("<BIB", 1, 0, 0)))
+
     # oep.fixture.spi-controller (fixture §6): n x (gap_ns setup_ns hold_ns count tx) -> n x (the times used, count, rx)
     spic = {"16": "oep.fixture.spi-controller"}
     add("spi-controller configure: the SCK used at or below the one asked", "fixture §6", spic,

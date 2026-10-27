@@ -11,6 +11,9 @@
 | `oep.fixture.spi-target` | 1 | SPI の target。DUT の SPI controller を試す | 1 = SCK、2 = MOSI、3 = MISO、4 = CS | どの系統にも使う |
 | `oep.fixture.i2c-controller` | 1 | I2C の controller（制御側）。DUT の I2C target を試す | 1 = SDA、2 = SCL | どの系統にも使う |
 | `oep.fixture.spi-controller` | 1 | SPI の controller。DUT の SPI target を試す | 1 = SCK、2 = MOSI、3 = MISO、4 = CS | どの系統にも使う |
+| `oep.fixture.pwm` | 1 | 周波数とデューティを指定した方形波を出す（DUT のクロック、PWM の入力、刺激） | k = 出力 k（0 から） | どの系統にも使う |
+| `oep.fixture.counter` | 1 | 決めた時間のうちにエッジを数える（周波数、パルスの数） | k = 入力 k（0 から） | どの系統にも使う |
+| `oep.fixture.dac` | 1 | アナログの値を出す（DUT の ADC の入力、基準） | k = 出力 k（0 から） | どの系統にも使う |
 
 どれも[plan](oep-if-plan.ja.md)で割り当てたチャンネルだけを扱う。同じ割り当ての状態不変はplan §2.1に従う。下の表の op は、その節が任意と書かない限り、すべて必須（core §1.2）。
 
@@ -323,7 +326,67 @@ CS の時間を指定した転送の並びで、host の往復に左右されな
 ほかの fn との同時使用で clock_hz や時間を保てない probe は、§4 の cs_setup_ns と同じく、後から来た configure などを core §8.1 に従い
 副作用の前に unavailable（cause 2）で断る。
 
-## 7. 参照する仕様
+## 7. `oep.fixture.pwm`
+
+probe が出力 k に方形波を出す。周波数とデューティ（1 周期のうち high の割合）を指定し、probe が実際に出す値を返す。
+
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x10 | set | n(u8)、n × (role(u8)、hz(u32)、duty(u16))、[TLV] | n × (role(u8)、num(u32)、den(u32)、duty(u16))、[TLV] | 必要 |
+| 0x11 | status | — | n(u8)、n × (role(u8)、num(u32)、den(u32)、duty(u16))、[TLV] | 不要 |
+
+- role は出力の番号（0 から、describe の channels 未満）。plan はそれぞれの role を多くて 1 つ、別々の channel で持つ。0 から続けて
+  割り当てる必要は無い。
+- **set** は並びの順に行う。hz は周波数（Hz）。duty は 1 周期のうち high の割合で、0 は常に low、65535 は常に high、その間は
+  duty / 65535。hz 0 は出力を止め、その線を low に駆動する（duty は見ない）。probe はいちばん近い周波数とデューティで出し、応答の
+  num / den（Hz、分数）と duty で返す。止めた出力は num 0、den 1、duty 0。
+- 要求の確かめ（どれも、何もせずに断る）: n 0、長さが合わない は rejected malformed。role が channels 以上、同じ role が 2 回、
+  0 でない hz が min_clock_hz より低いか max_clock_hz を超える は rejected unsupported（payload `0x00`）。plan に無い role は rejected
+  unavailable（cause 6）。
+- plan で取った channel は、最初の set までそれまでの状態を保つ（fixture §1 の gpio と同じ）。plan の解放で出力を止め、channel を
+  core §8 の空きの状態に戻す。同じ plan のままなら、セッションが終わっても出力を続ける。
+- status は、plan に有る role ごとに今の出力を返す（まだ set していない role は num 0、den 1、duty 0）。
+- describe: role_channels（role ごと）、max_clock_hz（出せる周波数の上限）、min_clock_hz（下限、無ければ 1）、channels（tag 0x40、u8: 出力の数）、
+  duty_bits（tag 0x41、u8: max_clock_hz でのデューティの分解能のビット数。周波数が低いほど細かくなってよい）。
+
+## 8. `oep.fixture.counter`
+
+probe が入力 k のエッジを、決めた時間（ゲート）のうちに数える。周波数は count を時間で割って求める。
+
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x10 | measure | gate_us(u32)、edge(u8)、[TLV] | window_ns(u64)、n(u8)、n × (role(u8)、count(u32))、[TLV] | 必要 |
+
+- role は入力の番号（0 から、describe の channels 未満）。plan はそれぞれの role を多くて 1 つ持つ。**counter は聞くだけなので、
+  ほかの機能のピン（出力を含む）と共有してよい**（キャプチャ §1.2 のロジックと同じ）。plan を取ってもピンの電気的な状態は変わらない。
+- **measure** は、plan に有るすべての role で同時に数え始め、gate_us のあいだ数えて答える。edge は 0 立ち上がり、1 立ち下がり、2 両方。
+  window_ns は実際に数えた時間（probe の clock、ns）で、count はその間のエッジの数（0xFFFFFFFF で止める）。答えの並びは role の順。
+- 要求の確かめ（どれも、何もせずに断る）: gate_us 0、edge が 2 を超える は rejected malformed。gate_us が max_gate_us を超える は rejected
+  unsupported（payload `0x00`）。plan が無い は rejected unavailable（cause 6）。
+- max_clock_hz を超える速さのエッジは数え落としてよい（数え落とした分は count に入らない）。
+- describe: role_channels、max_clock_hz（数え落とさない入力の周波数の上限）、channels（tag 0x40、u8）、max_gate_us（tag 0x41、u32: core の
+  max_op_ms に収まる値）。
+
+## 9. `oep.fixture.dac`
+
+probe が出力 k にアナログの値を出す。値と電圧の対応は describe の範囲（公称）で示す。
+
+| op | 名前 | 要求 | 応答 | ロック |
+|---:|---|---|---|---|
+| 0x10 | set | n(u8)、n × (role(u8)、value(u32))、[TLV] | — | 必要 |
+| 0x11 | status | — | n(u8)、n × (role(u8)、value(u32)、on(u8))、[TLV] | 不要 |
+
+- role は出力の番号（0 から、describe の channels 未満）。plan はそれぞれの role を多くて 1 つ、別々の channel で持つ。アナログの出力は
+  pad をアナログの機能に切り替えるので、**ほかの fn の plan、線の接続、設定が使うピンとは共有しない**（plan_apply を rejected unavailable で断る）。
+- **set** は並びの順に行い、その出力を value（0〜2^bits − 1）にする。電圧は公称で min_mv + (max_mv − min_mv) × value / (2^bits − 1)。
+  要求の確かめ: n 0、長さが合わない は rejected malformed。role が channels 以上、value が 2^bits − 1 を超える は rejected unsupported
+  （payload `0x00`）。plan に無い role は rejected unavailable（cause 6）。
+- plan で取った channel は、最初の set まで出力しない（空きの状態のまま）。plan の解放で出力をやめ、channel を core §8 の空きの状態に戻す。
+- status は、plan に有る role ごとに最後に set した値と、出力しているか（on 1）を返す。
+- describe: role_channels、channels（tag 0x40、u8）、bits（tag 0x41、u8: 分解能）、range（tag 0x42、min_mv(i32)、max_mv(i32): value 0 と
+  2^bits − 1 の公称の電圧）。
+
+## 10. 参照する仕様
 
 この文書の OEP のメッセージは、本文だけで定まる。バスを動かすのに使うもの:
 
@@ -333,4 +396,5 @@ CS の時間を指定した転送の並びで、host の往復に左右されな
 | `oep.fixture.spi-target` | 無し: SPI には正式な標準が無い | mode、CS、ビットの順は §4 が定める |
 | `oep.fixture.i2c-controller` | I2C-bus specification and user manual (NXP UM10204) | START、repeated START、STOP、7 bit のアドレスと R/W、ACK / NACK、clock stretching、arbitration |
 | `oep.fixture.spi-controller` | 無し: SPI には正式な標準が無い | mode、CS、ビットの順は §4、時間は §6 が定める |
+| `oep.fixture.pwm`、`oep.fixture.counter`、`oep.fixture.dac` | 無し | §7〜§9 が定める |
 | `oep.fixture.uart` | 無し | configure の format のとおりの線（スタートビット、LSB を先にしたデータビット、パリティ、ストップビット）（§2） |

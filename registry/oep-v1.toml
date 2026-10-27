@@ -761,6 +761,43 @@ running = 1
 lsb_first = 0x01
 
 [[interface]]
+name = "oep.fixture.pwm"
+revision = 1
+op = [
+  { code = 0x10, name = "set", lock = true },            # n(u8) n x (role hz(u32) duty(u16)) -> n x (role num den duty): the output made
+  { code = 0x11, name = "status", lock = false },
+]
+[interface.tlv.describe]
+channels = 0x40                 # required u8: the outputs (roles 0 .. channels - 1)
+duty_bits = 0x41                # u8: the duty's resolution at max_clock_hz (oep-if-fixture §7)
+
+[[interface]]
+name = "oep.fixture.counter"
+revision = 1
+op = [
+  { code = 0x10, name = "measure", lock = true },        # gate_us(u32) edge(u8) -> window_ns(u64) n(u8) n x (role count(u32))
+]
+[interface.tlv.describe]
+channels = 0x40                 # required u8: the inputs (roles 0 .. channels - 1)
+max_gate_us = 0x41              # required u32: the longest gate measure takes (inside max_op_ms)
+[interface.enum.edge]
+rising = 0
+falling = 1
+both = 2
+
+[[interface]]
+name = "oep.fixture.dac"
+revision = 1
+op = [
+  { code = 0x10, name = "set", lock = true },            # n(u8) n x (role value(u32))
+  { code = 0x11, name = "status", lock = false },
+]
+[interface.tlv.describe]
+channels = 0x40                 # required u8: the outputs (roles 0 .. channels - 1)
+bits = 0x41                     # required u8: the resolution
+range = 0x42                    # required: min_mv(i32) max_mv(i32), value 0 and 2^bits - 1 (nominal)
+
+[[interface]]
 name = "oep.fixture.logic"
 family = "capture"
 revision = 1
