@@ -17,7 +17,7 @@ UTF-8 の JSON（RFC 8259）1 つ。BOM を付けない。拡張子は `.oep-set
 ```json
 {
   "oep_settings": 1,
-  "probe": { "model": "rp2350", "unit_id": "9489dd2ae0953650", "firmware": "0.0.36+cff9253" },
+  "probe": { "model": "rp2350", "unit_id": "9489dd2ae0953650", "firmware": "1.0.0" },
   "settings": {
     "core": {
       "channel.GPIO14.label": "NRST",
