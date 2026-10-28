@@ -552,7 +552,7 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
 | 0x02 | vrefint | raw(u32)、ns(u64)、nominal_mv(u32)。内部の基準電圧（Vrefint など）を、最後の start（capture-group の start を含む）の直後に同じ ADC で測った生の値、その時刻、その基準電圧の公称値（mV。電源電圧の逆算に使う）。基準電圧が電源の ADC で、実際の電源電圧を逆算するのに使う。測れない probe は返さない |
 
 - チップの型番とリビジョンは core の describe の chip（core §7.5）、firmware の版は同じく firmware。
-- frontend ごとの減衰と測れる範囲は describe の frontend（§3.5）、チャネルごとに選ばれた frontend は configure の応答の
+- frontend ごとの測れる範囲（入力ピンの電圧）は describe の frontend（§3.5）、チャネルごとに選ばれた frontend は configure の応答の
   frontend_used、基準電圧は reference（§3.3）。
 
 ### 3.8 前段と外部クロック（任意）

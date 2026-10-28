@@ -4,6 +4,9 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **capture §3.7 の残り（表記）**: describe の frontend から減衰が外れた後も、§3.7 が「frontend ごとの減衰」を describe の frontend にあると
+  書いていた。測れる範囲（入力ピンの電圧）だけを指すように直した。規則は変わらない。
+
 - **PWM、counter、DAC（追加）**: `oep.fixture.pwm`（fixture §7: 周波数とデューティを指定した方形波、出した値を返す）、
   `oep.fixture.counter`（§8: ゲートのうちのエッジの数と実際の時間。聞くだけでほかの機能のピンと共有してよいので、同じ probe の
   出力を配線なしで数えられる）、`oep.fixture.dac`（§9: アナログの値、公称の範囲を describe で示す）。
