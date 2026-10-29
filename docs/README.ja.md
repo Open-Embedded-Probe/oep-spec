@@ -18,7 +18,7 @@
 | probe を実装する | [probe 開発ガイド](probe-development-guide.ja.md) |
 | 独自の機能と検査を定義する | [拡張開発ガイド](extension-development-guide.ja.md) |
 | 自己更新や権限付きの操作を拡張する | [利用場面ごとの拡張例](extension-use-cases.ja.md) |
-| MCU の周辺の試験に使える機能を確かめる | [周辺の試験と probe の機能](peripheral-testing.ja.md) |
+| 周辺の試験をどの層で行うか、probe の機能で何を試せるかを確かめる | [周辺の試験の層と probe の機能](peripheral-testing.ja.md) |
 | 用語を確認する | [用語集](glossary.ja.md) |
 | 安全性と接続先の信頼を扱う | [安全とセキュリティ](security.ja.md) |
 | USB デバイスを識別する | [USB の識別](usb-identity.ja.md) |

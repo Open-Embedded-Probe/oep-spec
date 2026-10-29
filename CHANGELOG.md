@@ -4,9 +4,9 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
-- **周辺の試験（ガイド）**: [周辺の試験と probe の機能](docs/peripheral-testing.ja.md)。MCU の周辺（GPIO、時間とクロック、UART、PWM、
-  I2C、SPI、タイマの入力、ADC と DAC、1 本の線のプロトコル、I2S、CAN と LIN など）の試験を、判定、刺激、相手に分け、標準の機能で
-  行えるもの、標準に無い機能が要るもの、原理的に難しいものを整理した。規則は変わらない。
+- **周辺の試験の層（ガイド）**: [周辺の試験の層と probe の機能](docs/peripheral-testing.ja.md)。試験を、論理、DUT の中、物理的な IF の
+  観測、汎用の相手、専用の相手、実物の層に分け、MCU の周辺ごとにどの層で何を試すかを例で示した。OEP の probe が受け持つ観測と汎用の相手
+  の層で、標準の機能で行える試験、標準に無い機能が要る試験、原理的に難しいものを整理した。規則は変わらない。
 
 - **capture §3.7 の残り（表記）**: describe の frontend から減衰が外れた後も、§3.7 が「frontend ごとの減衰」を describe の frontend にあると
   書いていた。測れる範囲（入力ピンの電圧）だけを指すように直した。規則は変わらない。
