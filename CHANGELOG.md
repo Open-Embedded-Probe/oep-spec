@@ -4,8 +4,9 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
-- **バスの試験（ガイド）**: [バスの試験と probe の機能](docs/bus-testing.ja.md)。MCU の SPI と I2C の試験を、取り込みでの判定と相手の機能に
-  分け、標準の機能で行えるもの、標準に無い機能が要るもの、原理的に難しいものを整理した。規則は変わらない。
+- **周辺の試験（ガイド）**: [周辺の試験と probe の機能](docs/peripheral-testing.ja.md)。MCU の周辺（GPIO、時間とクロック、UART、PWM、
+  I2C、SPI、タイマの入力、ADC と DAC、1 本の線のプロトコル、I2S、CAN と LIN など）の試験を、判定、刺激、相手に分け、標準の機能で
+  行えるもの、標準に無い機能が要るもの、原理的に難しいものを整理した。規則は変わらない。
 
 - **capture §3.7 の残り（表記）**: describe の frontend から減衰が外れた後も、§3.7 が「frontend ごとの減衰」を describe の frontend にあると
   書いていた。測れる範囲（入力ピンの電圧）だけを指すように直した。規則は変わらない。
