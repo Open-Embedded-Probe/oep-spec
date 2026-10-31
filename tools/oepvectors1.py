@@ -1699,12 +1699,12 @@ SF_ITEMS = {
     "wifi.{}.passphrase": ("text", "index", 4, 64, SF_FLAG["secret"]), "ipv4.{}.mode": ("enum", "netif", 0, 0, 0),
     "ipv4.{}.address": ("ipv4", "netif", 0, 0, 0), "ipv4.{}.prefix": ("u32", "netif", 0, 0, 0),
     "ipv4.{}.gateway": ("ipv4", "netif", 0, 0, 0), "ipv4.{}.dns": ("ipv4", "netif", 0, 0, 0),
-    "rest.{}": ("enum", "channel", 0, 0, 0), "hold.{}": ("bool", "channel", 0, 0, 0),
+    "channel.{}.rest": ("enum", "channel", 0, 0, 0), "channel.{}.hold": ("bool", "channel", 0, 0, 0),
     "passthrough.{}.rx": ("channel", "transport", 0, 0, 0), "passthrough.{}.baud": ("u32", "transport", 0, 0, 0),
     "passthrough.{}.format": ("enum", "transport", 0, 0, 0),
 }
 SF_CHOICES = {"channel.{}.idle": CORE["enum"]["channel_idle"], "ipv4.{}.mode": CORE["enum"]["ipv4_mode"],
-              "rest.{}": IFACE["oep.wire.rvswd"]["enum"]["rest"], "passthrough.{}.format": {"8n1": 0, "8e1": 0x04}}
+              "channel.{}.rest": IFACE["oep.wire.rvswd"]["enum"]["rest"], "passthrough.{}.format": {"8n1": 0, "8e1": 0x04}}
 
 
 def sf_probe(channels, transports, fns):
@@ -1744,8 +1744,8 @@ def settings_file() -> dict:
               + v(0, num(core_items, "ipv4.{}.mode"), 1, bytes([ce["ipv4_mode"]["static"]]))
               + v(0, num(core_items, "ipv4.{}.address"), 1, bytes([192, 168, 1, 23]))
               + v(0, num(core_items, "ipv4.{}.prefix"), 1, struct.pack("<I", 24))
-              + v(1, num(rvswd_items, "rest.{}"), 2, bytes([IFACE["oep.wire.rvswd"]["enum"]["rest"]["low"]]))
-              + v(1, num(rvswd_items, "hold.{}"), 2, b"\1")
+              + v(1, num(rvswd_items, "channel.{}.rest"), 2, bytes([IFACE["oep.wire.rvswd"]["enum"]["rest"]["low"]]))
+              + v(1, num(rvswd_items, "channel.{}.hold"), 2, b"\1")
               + v(2, num(uart_items, "passthrough.{}.rx"), 0, struct.pack("<H", 1))
               + v(2, num(uart_items, "passthrough.{}.baud"), 0, struct.pack("<I", 115200))
               + v(2, num(uart_items, "passthrough.{}.format"), 0, b"\0"))
@@ -1754,7 +1754,7 @@ def settings_file() -> dict:
                 "settings": {"core": {"channel.GPIO14.label": "NRST", "channel.GPIO14.idle": "pull-up", "channel.GPIO1.disable": True,
                                       "wifi.0.ssid": "lab", "wifi.0.passphrase": {"secret": True},
                                       "ipv4.wifi.mode": "static", "ipv4.wifi.address": "192.168.1.23", "ipv4.wifi.prefix": 24},
-                             "oep.wire.rvswd/0": {"rest.GPIO5": "low", "hold.GPIO5": True},
+                             "oep.wire.rvswd/0": {"channel.GPIO5.rest": "low", "channel.GPIO5.hold": True},
                              "oep.fixture.uart/0": {"passthrough.cdc0.rx": "GPIO1", "passthrough.cdc0.baud": 115200,
                                                     "passthrough.cdc0.format": "8n1"}}}
     # probe B: another firmware: channels renumbered, the UART first, no rvswd, one more transport before the CDC
@@ -1777,7 +1777,7 @@ def settings_file() -> dict:
                                  setv(1, uart_items, "passthrough.{}.format", 1, b"\0")],
                 "expected_unset": [{"fn": 0, "number": num(core_items, "wifi.{}.ssid"), "key": 1}],
                 "secret_without_value": [["core", "wifi.0.passphrase"]],
-                "unresolved": [["oep.wire.rvswd/0", "rest.GPIO5"], ["oep.wire.rvswd/0", "hold.GPIO5"], ["io.example.gone/0", "x"]]}
+                "unresolved": [["oep.wire.rvswd/0", "channel.GPIO5.rest"], ["oep.wire.rvswd/0", "channel.GPIO5.hold"], ["io.example.gone/0", "x"]]}
     return {"about": "The settings file (docs/oep-settings-file.ja.md): a probe's declarations (fn 0's describe TLVs; each listed fn's name, "
                      "instance and describe TLVs) and its get values (count x value, core §13.5) give the exported file (every value, "
                      "names for numbers, secrets as {\"secret\": true}). Importing that file into another probe gives the values to set "

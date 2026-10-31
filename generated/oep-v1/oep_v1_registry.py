@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "21057dbfc117365e"
+REGISTRY_HASH = "e3a38d162ae5aefb"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -43,15 +43,15 @@ PROBE_LINK = _NS(name="oep.probe.link", revision=1, target=None, op={"source": 0
 INTERFACES["oep.probe.link"] = PROBE_LINK
 WIRE_RVSWD = _NS(name="oep.wire.rvswd", revision=1, target="RISC-V targets whose debug module is reached over the two-wire RVSWD line", op={"scan": 0x10, "attach": 0x11, "detach": 0x12, "connections": 0x13, "holds": 0x14}, lock_free={0x13, 0x14},
     tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "idle_clock": 0x03}, "attach": {"idle_clock": 0x03, "reset": 0x04}, "attach_answer": {"target_id": 0x01, "dpc": 0x02, "idle_clock": 0x03}, "connections_answer": {"idle_clock": 0x02}, "unavailable_payload": {"index": 0x40}, "unsupported_payload": {"index": 0x40}}, event={}, enum={"scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "halted": 0x08}, "features": {"attach_halt": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}, "idle_clock": {"high": 0x00, "low": 0x01}, "target_id_family": {"shift": 0x14}, "idle_low_family": {"ch32l103": 0x103}, "rest": {"auto": 0x00, "high": 0x01, "low": 0x02}}, own={},
-    line_names={}, names={}, settings={'rest.{}': "enum rest, channel (the port's SWCLK); high / low fix the rest, auto or absent: the automatic choice (oep-if-debug §3.1)", 'hold.{}': "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"})
+    line_names={}, names={}, settings={'channel.{}.rest': "enum rest, channel (the port's SWCLK); high / low fix the rest, auto or absent: the automatic choice (oep-if-debug §3.1)", 'channel.{}.hold': "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"})
 INTERFACES["oep.wire.rvswd"] = WIRE_RVSWD
 WIRE_SWIO = _NS(name="oep.wire.swio", revision=1, target="RISC-V targets whose debug module is reached over the one-wire SWIO line", op={"scan": 0x10, "attach": 0x11, "detach": 0x12, "connections": 0x13, "holds": 0x14}, lock_free={0x13, 0x14},
     tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01}, "attach": {"reset": 0x04}, "attach_answer": {"target_id": 0x01, "dpc": 0x02}, "unavailable_payload": {"index": 0x40}, "unsupported_payload": {"index": 0x40}}, event={}, enum={"scan_kind": {"riscv_dm": 0x01}, "attach_flags": {"havereset_acked": 0x01, "halted": 0x08}, "features": {"attach_halt": 0x01}, "attach_method": {"run": 0x00, "halt": 0x01}, "pin_role": {"swdio": 0x01, "reset": 0x03}}, own={},
-    line_names={}, names={}, settings={'hold.{}': "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"})
+    line_names={}, names={}, settings={'channel.{}.hold': "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"})
 INTERFACES["oep.wire.swio"] = WIRE_SWIO
 WIRE_SWD = _NS(name="oep.wire.swd", revision=1, target="ARM targets with an SWD debug port", op={"scan": 0x10, "attach": 0x11, "detach": 0x12, "connections": 0x13, "holds": 0x14}, lock_free={0x13, 0x14},
     tlv={"describe": {"max_connections": 0x40}, "scan": {"max_speed": 0x01, "targetsel": 0x02}, "attach": {"targetsel": 0x02, "reset": 0x04}, "attach_answer": {"target_id": 0x01}, "connections_answer": {"selected_target": 0x01}, "unavailable_payload": {"index": 0x40}, "unsupported_payload": {"index": 0x40}}, event={}, enum={"scan_kind": {"arm_adi": 0x02}, "attach_flags": {"dormant_woken": 0x04}, "features": {}, "attach_method": {"run": 0x00}, "pin_role": {"swdio": 0x01, "swclk": 0x02, "reset": 0x03}}, own={},
-    line_names={}, names={}, settings={'hold.{}': "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"})
+    line_names={}, names={}, settings={'channel.{}.hold': "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"})
 INTERFACES["oep.wire.swd"] = WIRE_SWD
 TARGET_RISCV_DM = _NS(name="oep.target.riscv-dm", revision=1, target="RISC-V targets with a RISC-V Debug Module", op={"dmi": 0x10, "halt": 0x11, "resume": 0x12, "reset": 0x13, "read_block": 0x14, "write_block": 0x15, "run": 0x16, "step": 0x17}, lock_free=set(),
     tlv={"describe": {}, "step_answer": {"step_left": 0x01}}, event={}, enum={"run_stopped": {"timeout_halted": 0x00, "stopped": 0x01, "not_halted": 0x02, "not_run": 0x03}, "reset_flags": {"reached": 0x01}, "dmi_step": {"write": 0x01, "read": 0x02, "poll_reads": 0x03, "wait_us": 0x04, "poll_us": 0x05}, "reset_mode": {"run": 0x00, "halt_at_reset": 0x01}}, own={},

@@ -118,12 +118,12 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   その connection の休みの状態（rvswd は §3.1 の休ませ方、swio は §3.2、swd は §5）で駆動したまま**保持**する。target によっては、線が駆動されなくなると
   数 ms でデバッグの状態を失う（CH32L103 は約 5 ms で halt を失い、hart がリセットされる）。host から間に合わないので probe が自動で保つ
   （core §12 規則 8）。
-  - **OFF にできる**: その wire の設定の項目 `hold.{}`（下）が偽なら保持せず、core §8 の空きの状態にする。
+  - **OFF にできる**: その wire の設定の項目 `channel.{}.hold`（下）が偽なら保持せず、core §8 の空きの状態にする。
     値が無ければ保持する。ピンに本体の設定の idle か disable（core §13.8）があれば、保持せずにそれに従う。
   - **保持は空きの状態の一種**（core §8）: 保持中のピンは、どのインターフェースも空きのピンと同じに取れる（attach、plan、scan。保持を理由に cause 1
     にも cause 5 にもしない）。取ったインターフェースが線を引き継ぎ、その組の保持は終わる。attach は wake から始め（2 本とも high から始まる）、
     休ませ方はその接続で決め直す（§3.1）。口の target が差し替わっていても同じである。
-  - **保持が終わるとき**: ピンが取られた、`hold.{}` が偽になった、そのピンに idle か disable の値が置かれた、probe が再起動した。終わったピンは
+  - **保持が終わるとき**: ピンが取られた、`channel.{}.hold` が偽になった、そのピンに idle か disable の値が置かれた、probe が再起動した。終わったピンは
     空きの状態にする。
   - **線切れでは保持しない**: 線切れで閉じたら、上の「線が応えない間の線」のとおり駆動せず、空きの状態にする。
   - **見える**: 保持中の口は holds（§2.2）で読める。保持は connection ではなく、connections には出ない。
@@ -134,7 +134,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 
 | 名前 | form | key_kind | 意味 |
 |---|---|---|---|
-| `hold.{}` | bool | channel（その口の SWDIO） | 偽なら、その口は閉じた後に保持しない。値が無いか真なら保持する |
+| `channel.{}.hold` | bool | channel（その口の SWDIO） | 偽なら、その口は閉じた後に保持しない。値が無いか真なら保持する |
 
 key は、その wire の宣言が SWDIO に許す channel。ほかは unsupported。
 
@@ -268,7 +268,7 @@ pin の role（1 swdio、2 swclk、3 reset）、scan の kind（1 riscv-dm、2 a
   （scheme 1、DMI 0x7F）までは読める。host から接続先を確かめて直すのでは間に合わないので、probe の自動の判定を置く（core §12 規則 8）。
   休ませ方は次の順で決める:
   1. attach の idle_clock の TLV（host の明示）があれば、それ;
-  2. 無ければ、`oep.wire.rvswd` の設定の項目 `rest.{}`（下）のその SWCLK の channel の値が high か low なら、それ（自動の判定を OFF にした口）;
+  2. 無ければ、`oep.wire.rvswd` の設定の項目 `channel.{}.rest`（下）のその SWCLK の channel の値が high か low なら、それ（自動の判定を OFF にした口）;
   3. 無いか auto なら自動の判定: probe は wake から target_id を読むまでを high で行い、読んだ target_id の bit 31〜20（系統、registry
      `oep.wire.rvswd` の `target_id_family`）が `idle_low_family` にあれば low、無ければ（target_id が読めないときも）high にする。
   どの場合も、使う休ませ方を attach の応答と connections の TLV idle_clock で返す（自動の判定をしたことが host に分かる）。
@@ -280,7 +280,7 @@ pin の role（1 swdio、2 swclk、3 reset）、scan の kind（1 riscv-dm、2 a
 
 | 名前 | form | key_kind | 意味 |
 |---|---|---|---|
-| `rest.{}` | enum: 0 `auto`、1 `high`、2 `low` | channel（その口の SWCLK） | high / low はその値に固定し、自動の判定をしない。値が無いか auto なら自動の判定 |
+| `channel.{}.rest` | enum: 0 `auto`、1 `high`、2 `low` | channel（その口の SWCLK） | high / low はその値に固定し、自動の判定をしない。値が無いか auto なら自動の判定 |
 
 key は、`oep.wire.rvswd` の宣言が SWCLK に許す channel。ほかは unsupported。attach の idle_clock の TLV がいつも優先する。
 

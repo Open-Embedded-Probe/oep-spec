@@ -28,7 +28,7 @@ UTF-8 の JSON（RFC 8259）1 つ。BOM を付けない。拡張子は `.oep-set
       "ipv4.wifi.mode": "static",
       "ipv4.wifi.address": "192.168.1.23"
     },
-    "oep.wire.rvswd/0": { "rest.GPIO5": "low" },
+    "oep.wire.rvswd/0": { "channel.GPIO5.rest": "low" },
     "oep.fixture.uart/0": { "passthrough.cdc0.rx": "GPIO1", "passthrough.cdc0.baud": 115200 }
   }
 }

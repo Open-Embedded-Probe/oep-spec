@@ -11,7 +11,7 @@
             "fn": 1,
             "name": "oep.wire.rvswd",
             "instance": 0,
-            "describe_tlvs_hex": "080d00060100000000726573742e7b7d09060001006175746f09060001016869676809050001026c6f77080d00050100000000686f6c642e7b7d"
+            "describe_tlvs_hex": "0815000601000000006368616e6e656c2e7b7d2e7265737409060001006175746f09060001016869676809050001026c6f770815000501000000006368616e6e656c2e7b7d2e686f6c64"
           },
           {
             "fn": 2,
@@ -43,8 +43,8 @@
             "ipv4.wifi.prefix": 24
           },
           "oep.wire.rvswd/0": {
-            "rest.GPIO5": "low",
-            "hold.GPIO5": true
+            "channel.GPIO5.rest": "low",
+            "channel.GPIO5.hold": true
           },
           "oep.fixture.uart/0": {
             "passthrough.cdc0.rx": "GPIO1",
@@ -91,8 +91,8 @@
             "ipv4.wifi.prefix": 24
           },
           "oep.wire.rvswd/0": {
-            "rest.GPIO5": "low",
-            "hold.GPIO5": true
+            "channel.GPIO5.rest": "low",
+            "channel.GPIO5.hold": true
           },
           "oep.fixture.uart/0": {
             "passthrough.cdc0.rx": "GPIO1",
@@ -183,11 +183,11 @@
       "unresolved": [
         [
           "oep.wire.rvswd/0",
-          "rest.GPIO5"
+          "channel.GPIO5.rest"
         ],
         [
           "oep.wire.rvswd/0",
-          "hold.GPIO5"
+          "channel.GPIO5.hold"
         ],
         [
           "io.example.gone/0",

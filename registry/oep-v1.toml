@@ -412,13 +412,13 @@ index = 0x40                    # u8: zero-based candidate index
 [interface.tlv.unsupported_payload]
 index = 0x40                    # same diagnostic after the unsupported fixed tag
 
-[interface.enum.rest]            # setting rest.{} (oep-if-debug §3.1)
+[interface.enum.rest]            # setting channel.{}.rest (oep-if-debug §3.1)
 auto = 0                        # the probe's automatic choice from target_id (also when no value)
 high = 1
 low = 2
 [interface.settings]
-"rest.{}" = "enum rest, channel (the port's SWCLK); high / low fix the rest, auto or absent: the automatic choice (oep-if-debug §3.1)"
-"hold.{}" = "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"
+"channel.{}.rest" = "enum rest, channel (the port's SWCLK); high / low fix the rest, auto or absent: the automatic choice (oep-if-debug §3.1)"
+"channel.{}.hold" = "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"
 
 [[interface]]
 name = "oep.wire.swio"
@@ -465,7 +465,7 @@ index = 0x40                    # u8: zero-based candidate index
 index = 0x40                    # same diagnostic after the unsupported fixed tag
 
 [interface.settings]
-"hold.{}" = "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"
+"channel.{}.hold" = "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"
 
 [[interface]]
 name = "oep.wire.swd"
@@ -513,7 +513,7 @@ index = 0x40                    # u8: zero-based candidate index
 index = 0x40                    # same diagnostic after the unsupported fixed tag
 
 [interface.settings]
-"hold.{}" = "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"
+"channel.{}.hold" = "bool, channel (the port's SWDIO); false: no hold after a close (oep-if-debug §2)"
 
 [[interface]]
 name = "oep.target.riscv-dm"

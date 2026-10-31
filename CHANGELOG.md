@@ -4,6 +4,9 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **debug の線の設定の項目名（壊す変更）**: `rest.{}` を `channel.{}.rest`、`hold.{}` を `channel.{}.hold` にした（debug §2、§3.1）。
+  channel ごとの値は、本体の `channel.{}.label` と同じ「もの.名前.性質」の並びにそろえる。持ち主はカテゴリ（`oep.wire.rvswd/0` など）で分かる。
+
 - **アドレスの経路（host ガイド §5.3、追加）**: アドレスに `?via=<経路>` を1つ添えて、同じ probe へ届く経路を選べるようにした
   （`usb`、`bulk`、`hid`、`cdc`、`net`、`tcp:<host>:<port>`、`tty:<path>`）。場所の書き方は変えない。どの経路でも unit_id を確かめる。
   比べるときと機器の排他の鍵では `via` を除く。知らない query は断る。
