@@ -4,6 +4,10 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **アドレスの経路（host ガイド §5.3、追加）**: アドレスに `?via=<経路>` を1つ添えて、同じ probe へ届く経路を選べるようにした
+  （`usb`、`bulk`、`hid`、`cdc`、`net`、`tcp:<host>:<port>`、`tty:<path>`）。場所の書き方は変えない。どの経路でも unit_id を確かめる。
+  比べるときと機器の排他の鍵では `via` を除く。知らない query は断る。
+
 - **label にピン（host ガイド §5.3、追加）**: 口の線の label に、つながる target のピンを `@P` で添えられるようにした
   （`x035.nrst@pa21`）。役目の無い線は `S@P`（`x035@pb6`）。役目の探し方は `@` より前の `S.N` で、今の label はそのまま使える。
   同じピンが設定で役目を変える target（CH32X035 の PA21 など）は、役目と `@P` の両方を書き、役目が効くかは host が target の設定で確かめる。

@@ -232,6 +232,31 @@ targetの段は、探す鍵ではなく、作業の前に照合する値であ�
 | `oep://<probe>/<port>` | その口。先のチップは確かめない |
 | `oep://<probe>/<port>/<target>` | その口で、作業の前にそのチップかを照合する |
 
+**経路**: 同じprobeに複数の経路で届くことがあるので、アドレスに経路を1つ添えて選べる。場所（probe、口、target）は変えず、そこへ届く経路だけを決める。
+
+```text
+oep://<probe>[/<port>[/<target>]][?via=<経路>]
+```
+
+| via | 経路 |
+|---|---|
+| 無し | hostが選ぶ。候補はunit_idで見つけられる経路（USBのVID:PIDとserial number、DNS-SDのTXTのunit_id） |
+| `usb` | USBの経路のどれか。bulk、hid、cdcのどれを使うかはhostが決める |
+| `bulk`、`hid`、`cdc` | USBの、そのkindの経路（kindの短い名前はcore §13.3） |
+| `net` | DNS-SDで見つけたTCP |
+| `tcp:<host>:<port>` | そのアドレスとportのTCP。`<host>`は名前かIPv4、IPv6は`[...]`で囲む |
+| `tty:<path>` | OSのシリアルの口（`/dev/ttyACM0`、`/dev/serial/by-id/...`、`COM3`）。USB-UARTの変換、USB-Serial/JTAG、ほかのVID:PIDのCDCのように、unit_idで見つけられない経路はこれで書く |
+
+- どの経路で開いても、hostはconfirmとfn 0のdescribeのunit_idが`<probe>`と同じかを確かめ、違えば閉じる（transports §3）。経路の指定は、別のprobeを受け入れる理由にならない。
+- `via`は場所の一部ではない。2つのアドレスが同じ場所かを比べるときは、`via`を除いて比べる。
+- アドレスを読む道具は、`?`から後を先に外してから、場所の段を`/`で割る（`tty:`の値は`/`を含む）。
+- `via`の値はURLのqueryとして`/`と`:`をそのまま書ける。`?`、`#`、`&`、`%`、空白は`%XX`で書く。
+- queryは`via`の1つだけ。知らない名前のqueryを持つアドレスは断る（後で足す名前と取り違えないため）。
+- discovery（IDEのポートの一覧など）は、`via`の無い形を1つの場所につき1行出す。経路を選ぶ利用者は、CLIや設定で`via`を添える。
+  アドレスを文字列のまま覚えて比べる道具（Arduino IDE）では、`via`はアドレスとは別の設定（boardのメニューなど）で足すと、覚えた場所が変わらない。
+- 機器の排他の鍵をアドレスから作る道具は、`via`を除いたprobe（unit_id）で作る。経路や口が違っても、同じprobeは同じ鍵になる。
+- unit_idを知らないときにttyのpathだけを受けるなど、短い入力は道具の機能として持ってよい。保存するとき（設定のファイル、IDEが覚えるポート）は全部を書いた形にする。
+
 **インターフェース**: 文字で1つのインターフェースを指すとき（CLI、設定のファイル、ログ）は`name#instance`と書く（instanceはlistの値、
 0も有効で、`#0`は省いてよい）。例: `oep.fixture.uart#1`はinstance=1の`oep.fixture.uart`であり、listの2番目という意味ではない。
 revisionは別に明示して保存・選択し、(name, instance, revision)を解決する。欠番なら未提供として扱う。
