@@ -307,6 +307,9 @@ def refusals() -> dict:
         request(0x0015, 4, rv_attach, fixed_attach + tlv(0x3E | CRITICAL, b""), s), "unsupported", bytes([0x3E | CRITICAL]))
     add("a TLV whose length runs past the end of the request", "core §2.2, §4.3", {"4": "oep.wire.rvswd"},
         request(0x0017, 4, rv_attach, fixed_attach + bytes([0x3E]) + struct.pack("<H", 8) + struct.pack("<I", 0), s), "malformed")
+    idle_tag = IFACE["oep.wire.rvswd"]["tlv"]["attach"]["idle_clock"] | CRITICAL
+    add("a known tag that does not repeat, given twice (each copy valid)", "core §2.3", {"4": "oep.wire.rvswd"},
+        request(0x0016, 4, rv_attach, fixed_attach + tlv(idle_tag, b"\x00") + tlv(idle_tag, b"\x00"), s), "malformed")
     add("read from 4", "core §2.5, §4.3; common §1.2", {"5": "oep.fixture.uart"},
         request(0x0018, 5, uart_read, bytes([4]) + struct.pack("<QH", 0, 64)), "unsupported", b"\x00")
     add("riscv-dm reset mode 3", "core §2.5, §4.3; debug §4.3", {"6": "oep.target.riscv-dm"},

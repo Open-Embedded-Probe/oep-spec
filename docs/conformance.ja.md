@@ -24,7 +24,7 @@
 |---|---|
 | framing/transport | 分割・結合、CRC/COBS/count/length破損、frame gap、過大frame、TCP切断・再接続、未知role/待っていないcorr、複数経路の独立性 |
 | confirm/discovery | confirm前の64byte、revision範囲の境界、frame/window/inflight、transport照合、list/describeの末尾・ページ進行・不変性・必須宣言 |
-| 見出し・拒否・TLV | 短い要求の無応答、corr 0、未知fn/op、session_required、拒否優先順、長さ/値域、未知非critical/critical、重複した既知TLVの後続も検証、ID 0、0x7F、応答の補助情報 |
+| 見出し・拒否・TLV | 短い要求の無応答、corr 0、未知fn/op、session_required、拒否優先順、長さ/値域、未知非critical/critical、要求の中の繰り返さない既知TLVの重複はmalformed、ID 0、0x7F、応答の補助情報 |
 | session | lease最小/最大/既定、keepalive、owner、他IDとの排他、end/期限切れ/force、session 0の無副作用、boot_idの変化 |
 | 再送 | openを含む保持した同一要求の結果、保持した要求と内容の違う同corrの拒否、0件cache/eviction/保持サイズ上限とresult_lost、rejectedでも進む順序状態、同ID open後の履歴、終了後の履歴、重複によるlease/通知の変更禁止 |
 | corrと寿命 | u16循環/zero飛ばし、半周の境界、未解決要求の前進制限、セッション間の旧応答排出、再接続時のqueue破棄、旧経路の未解決応答、資源IDの非再利用/枯渇、終了時の解放、古いIDと他種/非対応の作成元のIDの拒否、定義されたfn間の資源利用 |

@@ -4,6 +4,10 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **要求の中の重複した tag（壊す変更）**: 要求で、probe が実装する、繰り返すと定義が言わない tag が 2 つ以上あれば rejected malformed
+  （core §2.3）。probe は 2 つ目以降の値を検証しなくてよい。知らない tag は数えない。応答、出来事、データの読み手は、これまでどおり最初のものを使う。
+  共有ベクタ refusals.json に、正しい値の idle_clock を 2 回入れた attach を足した。
+
 - **debug の線の設定の項目名（壊す変更）**: `rest.{}` を `channel.{}.rest`、`hold.{}` を `channel.{}.hold` にした（debug §2、§3.1）。
   channel ごとの値は、本体の `channel.{}.label` と同じ「もの.名前.性質」の並びにそろえる。持ち主はカテゴリ（`oep.wire.rvswd/0` など）で分かる。
 

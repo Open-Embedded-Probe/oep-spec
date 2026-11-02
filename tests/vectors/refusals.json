@@ -72,6 +72,16 @@
       "answer_hex": "0217000003"
     },
     {
+      "name": "a known tag that does not repeat, given twice (each copy valid)",
+      "spec": "core §2.3",
+      "fns": {
+        "4": "oep.wire.rvswd"
+      },
+      "request_hex": "01160004001144332211000100020040420f008301000083010000",
+      "answer": "malformed",
+      "answer_hex": "0216000003"
+    },
+    {
       "name": "read from 4",
       "spec": "core §2.5, §4.3; common §1.2",
       "fns": {
