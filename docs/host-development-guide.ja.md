@@ -298,7 +298,8 @@ client 向けに実装し、上流の probe との対応は内部で管理する
 
 broker が自分の道具どうしに 1 つのロックを相乗りさせるときは、その broker の名前つき拡張（core §12）を open に付けた client
 だけを相乗りさせ、拡張を付けない client には core のとおりに答える（1 つのロック、再送履歴、lease、force）。相乗りの間、
-拡張を付けない client の open は locked になる。相乗りの拡張は critical で送る: 拡張を知らない probe が黙って無視すると、
+拡張を付けない client の open は locked になる。force 付きの open は core のとおりロックを奪い、相乗りの全員がセッションを
+失う（相乗りは 1 つの持ち主として扱う）。相乗りの拡張は critical で送る: 拡張を知らない probe が黙って無視すると、
 道具は相乗りできていないことに気づけないので、unsupported で断らせる（core §2.3）。
 
 
