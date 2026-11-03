@@ -296,6 +296,11 @@ OEP へ自分で答える broker は独立した OEP の端点として動かす
 client 向けに実装し、上流の probe との対応は内部で管理する。core の 5 個の op だけを特別扱いする端点にはしない。
 同じ資源を長く保持したい複数の道具は、broker のセッション内で処理をまとめる。client 向けの共有方針は core が決めない。
 
+broker が自分の道具どうしに 1 つのロックを相乗りさせるときは、その broker の名前つき拡張（core §12）を open に付けた client
+だけを相乗りさせ、拡張を付けない client には core のとおりに答える（1 つのロック、再送履歴、lease、force）。相乗りの間、
+拡張を付けない client の open は locked になる。相乗りの拡張は critical で送る: 拡張を知らない probe が黙って無視すると、
+道具は相乗りできていないことに気づけないので、unsupported で断らせる（core §2.3）。
+
 
 
 任意の方針によるunavailable cause 7は、認証した経路や在席確認などの製品条件を満たしていないことを表す（core §4.3）。

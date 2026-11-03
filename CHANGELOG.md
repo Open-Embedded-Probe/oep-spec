@@ -4,6 +4,9 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **ブローカーの相乗り（host ガイド §7、明確化）**: broker が自分の道具どうしに 1 つのロックを相乗りさせるのは、その broker の
+  名前つき拡張を critical で open に付けた client だけ。付けない client には core のとおり（1 つのロック、再送履歴、lease、force）。
+
 - **要求の中の重複した tag（壊す変更）**: 要求で、probe が実装する、繰り返すと定義が言わない tag が 2 つ以上あれば rejected malformed
   （core §2.3）。probe は 2 つ目以降の値を検証しなくてよい。知らない tag は数えない。応答、出来事、データの読み手は、これまでどおり最初のものを使う。
   共有ベクタ refusals.json に、正しい値の idle_clock を 2 回入れた attach を足した。
