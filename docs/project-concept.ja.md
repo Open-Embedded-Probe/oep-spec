@@ -63,7 +63,7 @@ USB、UART、network等のconnection interfaceが異なる場合も、その上�
 
 独自機能の意味やdata形式は、OEPの共通部分や一般的なhostが理解できないものであってもよい。その機能に対応する専用hostとprobeは、独自に合意した意味やdataをOEP native pathまたは明示的なexternal bindingで交換できる。独自機能の仕様公開は必須としない。
 
-独自機能であること、仕様が非公開であること、data内部に別protocolの表現を使うこと、または独自protocolをexternal bindingとして使うことは許容する。ただし、一般的なhostが利用できる標準的な経路と誤認されないよう区別する。この原則は、独自機能やexternal bindingの識別方法、拡張形式またはdata表現をこの段階で決めるものではない。
+独自機能であること、仕様が非公開であること、data内部に別protocolの表現を使うこと、または独自protocolをexternal bindingとして使うことは許容する。ただし、一般的なhostが利用できる標準的な経路と誤認されないよう区別する。この文書は、独自機能やexternal bindingの識別方法、拡張形式またはdata表現を決めない（仕様が定める: [OEP core](oep-core.ja.md) §12、[キャプチャ](../interfaces/oep-if-capture.ja.md) §3.9 など）。
 
 次の通信は、それ自体が未宣言の外部通信を意味しない。
 
@@ -99,7 +99,6 @@ OEPが対象とする中心的な関係は、次の二者間の相互運用で�
 ## Projectの範囲
 
 OEPは、probeが提供する機能について、probe側とhost側が相互運用するために必要な共通仕様を対象とする。
-
 
 - 機能と操作の共通の意味
 - 提供される機能とその制約の表現
