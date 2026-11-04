@@ -4,6 +4,11 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **メモ欄（新しいインターフェース `oep.probe.memo`）**: host が probe ごとの記録（つないだ target、治具の配線など）を probe に置き、
+  別の host からも読めるようにする任意のインターフェースを足した（oep-if-memo）。オブジェクトは名前（1〜64 byte）、データ、CRC-32 で、
+  持ち主の区別は無い。probe は中身を使わず、OEP のどの規則も中身に頼らない（probe の振る舞いを決める値は設定、core §13）。
+  op は list、read、write（offset の順に分けて書く）、delete。量は describe の max_object と max_objects でprobe ごとに宣言し、下限は無い。
+  電源断で壊れうるのは書いていたオブジェクトだけで、probe は不可分にしなくてよい。壊れたものは crc が合わないので host が見つけて書き直す。
 - **凍結とタグ（版と安定性 §2、§6）**: 凍結は `v1.0.0` の正式リリースで行い、その前の `v0` のタグは付けない。英訳は `v1.0.0` の前に作る。
   凍結の前の実装は、実装する仕様の commit を示す。
 - **capture の実装の無い任意の機能を外した（削除）**: どの実機の probe も持たず、仮想ベンチにだけあった機能を v1 から外した。

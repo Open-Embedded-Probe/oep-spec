@@ -337,6 +337,19 @@ op = [
 restart_max_ms = 0x40           # u32, required: Probe-controlled internal restart readiness; excludes OS enumeration/network availability (restart §1)
 
 [[interface]]
+name = "oep.probe.memo"                # optional: named host data kept on the probe; the probe never reads it (oep-if-memo)
+revision = 1
+op = [
+  { code = 0x10, name = "list", lock = false },       # first(u16) prefix(text) -> more(u8) count(u8) {name size(u32) crc(u32)}
+  { code = 0x11, name = "read", lock = false },       # name offset(u32) max(u16) -> size(u32) crc(u32) len(u16) data
+  { code = 0x12, name = "write", lock = true },       # name size(u32) offset(u32) crc(u32) len(u16) data: in pieces (oep-if-memo §2.3)
+  { code = 0x13, name = "delete", lock = true },      # name
+]
+[interface.tlv.describe]
+max_object = 0x40               # u32, required, >= 1: the longest data of one object (oep-if-memo §1)
+max_objects = 0x41              # u32, required, >= 1: the objects held at once (oep-if-memo §1)
+
+[[interface]]
 name = "oep.probe.link"                # optional: the link test and a UART bridge's speed for a session (oep-if-link)
 revision = 1
 op = [

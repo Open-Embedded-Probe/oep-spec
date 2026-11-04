@@ -50,6 +50,7 @@ def test_documented_operation_tables_match_registry():
         'oep-if-plan.ja.md': 'oep.probe.plan',
         'oep-if-restart.ja.md': 'oep.probe.restart',
         'oep-if-link.ja.md': 'oep.probe.link',
+        'oep-if-memo.ja.md': 'oep.probe.memo',
         'oep-if-console.ja.md': 'oep.target.console',
     }
     count = 0

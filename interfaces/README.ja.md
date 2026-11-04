@@ -19,6 +19,7 @@ host は list で見つけて要るものだけを使う。
 | [plan](oep-if-plan.ja.md) | `oep.probe.plan`（どの役にどの channel を使うかの割り当て） |
 | [再起動](oep-if-restart.ja.md) | `oep.probe.restart`（probe 自身の再起動） |
 | [リンク](oep-if-link.ja.md) | `oep.probe.link`（線の試験と port_speed） |
+| [メモ欄](oep-if-memo.ja.md) | `oep.probe.memo`（host が probe に置く名前つきのデータ。probe は使わない） |
 
 インターフェースの書き方（逆 DNS の名前で、誰でも足せる）は core §12。
 

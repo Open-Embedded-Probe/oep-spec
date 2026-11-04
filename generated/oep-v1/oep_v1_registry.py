@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "2781599356499997"
+REGISTRY_HASH = "46c9da661fcdf07b"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -37,6 +37,10 @@ PROBE_RESTART = _NS(name="oep.probe.restart", revision=1, target=None, op={"rest
     tlv={"describe": {"restart_max_ms": 0x40}}, event={}, enum={}, own={},
     line_names={}, names={}, settings={})
 INTERFACES["oep.probe.restart"] = PROBE_RESTART
+PROBE_MEMO = _NS(name="oep.probe.memo", revision=1, target=None, op={"list": 0x10, "read": 0x11, "write": 0x12, "delete": 0x13}, lock_free={0x10, 0x11},
+    tlv={"describe": {"max_object": 0x40, "max_objects": 0x41}}, event={}, enum={}, own={},
+    line_names={}, names={}, settings={})
+INTERFACES["oep.probe.memo"] = PROBE_MEMO
 PROBE_LINK = _NS(name="oep.probe.link", revision=1, target=None, op={"source": 0x10, "sink": 0x11, "port_speed": 0x12, "port_state": 0x13}, lock_free={0x10, 0x11, 0x13},
     tlv={}, event={}, enum={"port_speed_step": {"try": 0x00, "commit": 0x01, "revert": 0x02}, "port_state": {"boot": 0x00, "trying": 0x01, "committed": 0x02, "recovery_pending": 0x03}}, own={},
     line_names={}, names={}, settings={})
