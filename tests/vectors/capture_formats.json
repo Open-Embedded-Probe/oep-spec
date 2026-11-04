@@ -1,5 +1,5 @@
 {
-  "about": "capture data formats and the trigger expression. Vectors fix fallback to the required blocks only (a probe may fall back earlier; a host reads the header). logic: per segment the raw / events channels' levels, the fallback chosen per block, the stream. analog: values per channel, the stream. external: marks and headers. trigger: bind TLVs.",
+  "about": "capture data formats and the trigger expression. Vectors fix fallback to the required blocks only (a probe may fall back earlier; a host reads the header). logic: per segment the raw / events channels' levels, the fallback chosen per block, the stream. analog: values per channel, the stream. trigger: bind TLVs.",
   "logic_blocks": [
     {
       "name": "raw and events mixed: a raw channel and a D 4 events channel",
@@ -315,32 +315,6 @@
       ],
       "samples": 3,
       "stream_hex": "0500000001ffffffff0007000000020100000003"
-    }
-  ],
-  "external": [
-    {
-      "name": "the generation's start mark",
-      "spec": "capture §3.9",
-      "generation": 7,
-      "fn": 9,
-      "format": 1,
-      "bytes_hex": "4f455058070000000900010000000000"
-    },
-    {
-      "name": "a mux 1 chunk",
-      "spec": "capture §3.9 mux 1",
-      "fn": 9,
-      "data_hex": "010203",
-      "bytes_hex": "09000300010203"
-    },
-    {
-      "name": "a UDP / isochronous packet header",
-      "spec": "capture §3.9 kind 3 / 4",
-      "position": 4096,
-      "generation": 7,
-      "fn": 9,
-      "data_hex": "aabb",
-      "bytes_hex": "00100000000000000700000009000000aabb"
     }
   ],
   "trigger_expressions": [

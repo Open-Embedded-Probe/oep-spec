@@ -1654,15 +1654,6 @@ def capture_formats() -> dict:
     st.append({"name": "format 3 with a long stop (delta 0xFFFFFFFF advances time only)", "spec": "capture §3.8 形式 3",
                "w": 2, "entries": [{"delta": d, "state": v} for d, v in tb], "samples": 3, "stream_hex": hx(raw)})
 
-    ext = []
-    mark = b"OEPX" + struct.pack("<IHB", 7, 9, 1) + bytes(5)
-    ext.append({"name": "the generation's start mark", "spec": "capture §3.9", "generation": 7, "fn": 9, "format": 1, "bytes_hex": hx(mark)})
-    chunk = struct.pack("<HH", 9, 3) + b"\x01\x02\x03"
-    ext.append({"name": "a mux 1 chunk", "spec": "capture §3.9 mux 1", "fn": 9, "data_hex": "010203", "bytes_hex": hx(chunk)})
-    pkt = struct.pack("<QIHH", 4096, 7, 9, 0) + b"\xaa\xbb"
-    ext.append({"name": "a UDP / isochronous packet header", "spec": "capture §3.9 kind 3 / 4", "position": 4096, "generation": 7, "fn": 9,
-                "data_hex": "aabb", "bytes_hex": hx(pkt)})
-
     tx = []
     G = IFACE["oep.fixture.capture-group"]
     bt, ce = G["tlv"]["bind"], G["enum"]["trigger_cond"]
@@ -1687,8 +1678,8 @@ def capture_formats() -> dict:
                "refusal": "unsupported"})
     return {"about": "capture data formats and the trigger expression. Vectors fix fallback to the required blocks only (a probe may fall back "
                      "earlier; a host reads the header). logic: per segment the raw / events channels' levels, the fallback chosen per block, "
-                     "the stream. analog: values per channel, the stream. external: marks and headers. trigger: bind TLVs.",
-            "logic_blocks": lc, "analog_blocks": ac, "state_timed": st, "external": ext, "trigger_expressions": tx}
+                     "the stream. analog: values per channel, the stream. trigger: bind TLVs.",
+            "logic_blocks": lc, "analog_blocks": ac, "state_timed": st, "trigger_expressions": tx}
 
 
 # ---- settings file (docs/oep-settings-file.ja.md) ------------------------------------------------------------

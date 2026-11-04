@@ -133,17 +133,6 @@ def test_state_timed_escape_is_not_a_sample():
         assert sum(d != 0xFFFFFFFF for d in deltas) == case["samples"]
 
 
-def test_external_marks_and_headers():
-    mark, chunk, pkt = DATA["external"]
-    raw = bytes.fromhex(mark["bytes_hex"])
-    assert len(raw) == 16 and raw[:4] == b"OEPX" and struct.unpack_from("<IHB", raw, 4) == (mark["generation"], mark["fn"], mark["format"])
-    raw = bytes.fromhex(chunk["bytes_hex"])
-    fn, ln = struct.unpack_from("<HH", raw)
-    assert fn == chunk["fn"] and raw[4:4 + ln].hex() == chunk["data_hex"]
-    raw = bytes.fromhex(pkt["bytes_hex"])
-    assert struct.unpack_from("<QIHH", raw) == (pkt["position"], pkt["generation"], pkt["fn"], 0) and raw[16:].hex() == pkt["data_hex"]
-
-
 def test_trigger_expressions_one_instant_per_term():
     group = IFACE["oep.fixture.capture-group"]
     bt, ce = group["tlv"]["bind"], group["enum"]["trigger_cond"]

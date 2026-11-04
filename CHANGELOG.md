@@ -4,6 +4,13 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **capture の実装の無い任意の機能を外した（削除）**: どの実機の probe も持たず、仮想ベンチにだけあった機能を v1 から外した。
+  データの外部の経路（旧 §3.9: configure の data_path と overflow、describe の external_data、OEPX の印、落ちうる経路の見出し、enum
+  `external_kind` / `external_mux` / `data_path`）、名前付きのデータの形式（format 0xFF、configure と応答の format_name、describe の
+  format_names）、前段の設定（ロジックの threshold、アナログの coupling、offset、bandwidth、impedance、resolution、oversample と、その
+  応答）。どれも任意の機能で、要るときに実機で確かめてから revision を上げずに足せる（capture §3.6）。外した番号は凍結前なので使い直せる。
+  §3.8 は「グリッチフィルタと外部クロック」になり、グリッチフィルタの群は 0（全チャネル）だけにした（群の中身を threshold の宣言に
+  頼っていた。今の probe と仮想ベンチの扱いのとおり）。トリガの記録は §3.10 から §3.9 になった。外部の経路のベクタを消した。
 - **節の参照（文言）**: ほかの文書の節を指す `§N` には、どれも文書の名前を付けた（`core §4.3`、`capture §1.3`）。適合のガイドの
   表の行のように、文脈で決まっていた番号だけの参照も同じ。fixture と capture の頭（§1 の前）に `§0` の見出しを付け、そこを指していた
   `§0` の参照が見出しを指すようにした。用語集の `settings §13` は `core §13`、ベクタの無い節 `oep-if-restart §3` は消した。規則は変わらない。
