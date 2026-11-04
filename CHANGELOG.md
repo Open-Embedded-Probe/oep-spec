@@ -7,6 +7,9 @@ OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装
 - **節の参照（文言）**: ほかの文書の節を指す `§N` には、どれも文書の名前を付けた（`core §4.3`、`capture §1.3`）。適合のガイドの
   表の行のように、文脈で決まっていた番号だけの参照も同じ。fixture と capture の頭（§1 の前）に `§0` の見出しを付け、そこを指していた
   `§0` の参照が見出しを指すようにした。用語集の `settings §13` は `core §13`、ベクタの無い節 `oep-if-restart §3` は消した。規則は変わらない。
+- **host ガイドの直し（文言）**: §9 の断りの表の unavailable の cause に、core §4.3 の 7（方針で許されない）と host がすることを足した。
+  §7 の「core の 5 個の op だけを特別扱いする端点にはしない」を、fn 0 の一部の op だけを自分で答える端点にはしない、に直した（数が今の
+  fn 0 の op と合わなかった）。
 - **capture §3.3 の critical の bit（文言）**: 「この表の TLV は critical を付けずに送る」を、表の「送るか」の欄が critical と書かない TLV に
   限った。欄が critical と書く任意の機能（format の 0 以外、format_name、data_path の 1、carriage、trigger_opts）は critical で送る。規則は変わらない。
 - **capture の状態の遷移の表（誤りの訂正）**: エラーで state 6 に入るときの stopped を `stopped 3` と書いていたのを `stopped 2` に直した。
