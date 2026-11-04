@@ -146,7 +146,7 @@ confirm/list/describe/clock/lock_stateには答えるため、これらで公開
   強さを指定したつもりで既定の強さで動くことはない。この名前を知らないhostは何も付けず、probeは既定の強さで動く。
 - **設定の独自の項目**: `io.example.board` のインターフェースに項目 `ntp-server`（text）を宣言する（core §13.1。設定だけのインターフェースでよい）。
   hostは名前とformで表示と入力ができ、get/set/saveは標準の項目と同じ。
-- **工場の較正**: `oep.fixture.analog` のcalibrationの答えは、schemeに `com.espressif.esp32.adc-efuse` のような名前を付けて生のデータを返す（capture §3.8）。
+- **工場の較正**: `oep.fixture.analog` のcalibrationの答えは、schemeに `com.espressif.esp32.adc-efuse` のような名前を付けて生のデータを返す（capture §3.7）。
 
 どれも、名前を知らない側は読み飛ばすか断るだけで、標準の動作は変わらない。標準の動作の意味を変える必要が出たら、
 名前つきの拡張にせず、自分の名前のインターフェースにするか、その名前の持ち主（`oep.` ならproject）に定義の変更を求める。
