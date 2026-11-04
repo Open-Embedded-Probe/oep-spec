@@ -337,8 +337,8 @@ segment : serial(u32), position(u64), samples(u32), start_ns(u64), start_uncerta
 |---:|---|---|---|---|---|---|
 | 0 未設定 | → 1 | unavailable 6 | — | — | — | plan 無しの configure / query も unavailable 6 |
 | 1 設定済み | → 1 | → 2（トリガあり）/ 3。世代 +1、区画は消える | — | — | — | |
-| 2 トリガ待ち | unavailable 6 | unavailable 6 | → 1（stopped 1） | → 3 | — | トリガ → 3（triggered）、エラー → 6（stopped 3） |
-| 3 取得中 | unavailable 6 | unavailable 6 | → 1（stopped 1、短い区画 bit1） | — | 空きを返す | 完了 → 4（stopped 0）、空き無し → 5、エラー → 6（stopped 3） |
+| 2 トリガ待ち | unavailable 6 | unavailable 6 | → 1（stopped 1） | → 3 | — | トリガ → 3（triggered）、エラー → 6（stopped 2） |
+| 3 取得中 | unavailable 6 | unavailable 6 | → 1（stopped 1、短い区画 bit1） | — | 空きを返す | 完了 → 4（stopped 0）、空き無し → 5、エラー → 6（stopped 2） |
 | 4 完了 | → 1 | → 2 / 3（世代 +1） | — | — | — | |
 | 5 止まっている | unavailable 6 | unavailable 6 | → 1 | — | 空きができれば → 3（flags bit0） | |
 | 6 エラー | → 1 | → 2 / 3（世代 +1） | → 1 | — | — | |

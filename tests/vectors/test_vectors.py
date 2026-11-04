@@ -763,7 +763,7 @@ def test_logic_layout_streams_decode_back():
 
 def test_a_segment_with_dropped_data_is_not_handed_out():
     """capture §2.2: status says state 6, flags bit0, error 2 (storage) and write_pos at the dropped segment's start; segments and read
-    give nothing of it; the stopped event has reason 3, error 2."""
+    give nothing of it; the stopped event has reason 2, error 2."""
     logic = next(i for i in REG["interface"] if i["name"] == "oep.fixture.logic")
     e = logic["enum"]
     by = {c["name"]: bytes.fromhex(c["answer_hex"])[5:] for c in load("ops.json")["cases"]}
