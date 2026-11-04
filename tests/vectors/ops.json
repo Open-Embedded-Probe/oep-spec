@@ -23,7 +23,7 @@
     },
     {
       "name": "restart while no session holds the lock: no_session",
-      "spec": "core §6.2; oep-if-restart §2, §3",
+      "spec": "core §6.2; oep-if-restart §2",
       "fns": {
         "11": "oep.probe.restart"
       },

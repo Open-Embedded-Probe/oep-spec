@@ -554,7 +554,7 @@ def ops() -> dict:
         request(0x10, 11, restart, b"", S), ok(0x10))
     add("restart without a session: session_required", "core §4.1, §4.3 order 1; oep-if-restart §2", rs, "—",
         request(0x11, 11, restart, b""), rej(0x11, "session_required"))
-    add("restart while no session holds the lock: no_session", "core §6.2; oep-if-restart §2, §3", rs,
+    add("restart while no session holds the lock: no_session", "core §6.2; oep-if-restart §2", rs,
         "lock free (for example: the probe has restarted since S opened)",
         request(0x12, 11, restart, b"", S), rej(0x12, "no_session"))
 

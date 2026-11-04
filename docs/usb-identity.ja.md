@@ -16,7 +16,7 @@ USB の VID:PID で見分けるのは、「OEP の probe か」だけである�
 - プロジェクトの USB の VID:PID は `1209:4F45`（registry の `usb` の `project_vid` / `project_pid`）。
 - host が知らない device を自動で OEP の probe と見分けるのは、**プロジェクトの USB の VID:PID で列挙する device** だけ（transports §3）。
 - iProduct は人のための名前であり、host は probe の判定や機能の選択に使わない。
-- 利用者が unit_id で名指した probe（アドレス `oep://<unit_id>`、host 開発ガイド §5.3）は、serial number が同じ device を開き、confirm と describe の unit_id で
+- 利用者が unit_id で名指した probe（アドレス `oep://<unit_id>`、[host 開発ガイド](host-development-guide.ja.md) §5.3）は、serial number が同じ device を開き、confirm と describe の unit_id で
   確かめる（transports §3）。
 - device の中の口は、OEP と分かった device の中で interface の記述子で選ぶ（CDC はすべてシリアルの口、class 0xFF / subclass 0x4F /
   protocol 0x45 の bulk の組、usage page 0xFF4F / usage 0x45 の HID。registry の `usb`）。interface の文字列は表示のためだけ。

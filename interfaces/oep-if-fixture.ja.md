@@ -3,6 +3,8 @@
 状態: **規範**（v1）。凍結状態と言語・互換性の方針は[版と安定性](../docs/versioning.ja.md)を参照。本体は [OEP core](../docs/oep-core.ja.md)、共通部品は [共通部品](oep-if-common.ja.md)（§1 位置つきの
 ストリーム）。番号の唯一の定義は `registry/oep-v1.toml`。キャプチャは [キャプチャ](oep-if-capture.ja.md)。
 
+## 0. インターフェースと共通の規則
+
 | 名前 | revision | 役割 | plan の role | 対象の系統 |
 |---|---:|---|---|---|
 | `oep.fixture.gpio` | 1 | ピンを駆動し、読む | 1 = 線 | どの系統にも使う |

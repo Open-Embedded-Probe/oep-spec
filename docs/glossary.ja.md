@@ -181,21 +181,21 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | トラック | track | 1 つのロジックかアナログのキャプチャのインターフェース | capture の冒頭 |
 | mode | mode | one-shot、repeat、streaming | capture §2.1 |
 | 区画 | segment | 自分の時刻とサンプル数を持つキャプチャの一部 | capture §2.2 |
-| 世代 | generation | 受理したstartごとに進む（最初は1、0はstart前。0xFFFFFFFF後はstartを断り再起動まで再利用しない）。read と release が指し、出来事も持つ。capture-group は組の世代を持つ | capture の冒頭、§4.1 |
+| 世代 | generation | 受理したstartごとに進む（最初は1、0はstart前。0xFFFFFFFF後はstartを断り再起動まで再利用しない）。read と release が指し、出来事も持つ。capture-group は組の世代を持つ | capture §0、§4.1 |
 | capture-group | capture-group | 複数のトラックを一緒に始める | capture §4 |
 
 ## probe の設定
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
-| 設定、カテゴリ、項目、キー | settings, category, item, key | 持ち主（本体かインターフェース）ごとのカテゴリの中の、名前つきの項目の値。set は値ごとに置き換える | settings §13.1、§13.5 |
-| 初期値 | initial value | 保存の無い起動で本体が置く、firmware が用意した値。置いた後はほかの値と同じ | settings §13.4 |
+| 設定、カテゴリ、項目、キー | settings, category, item, key | 持ち主（本体かインターフェース）ごとのカテゴリの中の、名前つきの項目の値。set は値ごとに置き換える | core §13.1、§13.5 |
+| 初期値 | initial value | 保存の無い起動で本体が置く、firmware が用意した値。置いた後はほかの値と同じ | core §13.4 |
 | channel の名前 | channel name | データシートのピンの名前（`GPIO14`、`PA5`）。保存と書き出しで channel を指す | core §7.5 |
-| label | label (item) | `channel.{}.label`: channel の呼び名（`NRST`） | settings §13.8 |
-| idle | idle (item) | `channel.{}.idle`: channel の空きの状態: Hi-Z、pull、出力 low / high | settings §13.8 |
-| disable | disable | `channel.{}.disable`: probe が決して使わない channel | settings §13.8 |
+| label | label (item) | `channel.{}.label`: channel の呼び名（`NRST`） | core §13.8 |
+| idle | idle (item) | `channel.{}.idle`: channel の空きの状態: Hi-Z、pull、出力 low / high | core §13.8 |
+| disable | disable | `channel.{}.disable`: probe が決して使わない channel | core §13.8 |
 | 書き出し、入れ直し | export, import | 利用者の値を JSON のファイルに書き、probe へ戻す | [設定のファイル](oep-settings-file.ja.md) |
 | 線の名前 | line names | `nrst`、`power_hi`、`power_lo`。ほかは `x-` | hostガイド §5.3 |
-| 保存 | save | 今の利用者の値を書く（消す op は無い） | settings §13.7 |
-| storage_state、理由 | storage_state, reason | 保存があり、掛かっているか | settings §13.7 |
-| 設定の世代 | settings generation | boot内で再利用しないu32変更カウンタ。getページとsave済みの状態の等値に使う | settings §13.5 |
+| 保存 | save | 今の利用者の値を書く（消す op は無い） | core §13.7 |
+| storage_state、理由 | storage_state, reason | 保存があり、掛かっているか | core §13.7 |
+| 設定の世代 | settings generation | boot内で再利用しないu32変更カウンタ。getページとsave済みの状態の等値に使う | core §13.5 |

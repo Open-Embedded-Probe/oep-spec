@@ -51,7 +51,7 @@ writeを提供するfnは`dmdata`か`dmseq`を少なくとも1つ提供する。
 
   | kind | 名前 | detail |
   |---:|---|---|
-  | 0x40 | reset | 1 ndmreset。契機は線とデバッグ §4.3/§4.6 |
+  | 0x40 | reset | 1 ndmreset。契機は debug §4.3、§4.6 |
   | 0x41 | restart | 1 havereset、2 再同期 |
   | 0x01 | lost | 共通のdetailに加え、0x40 targetのTO |
 
