@@ -240,8 +240,9 @@ target を扱う probe に共通する実装上の注意。
 - **resume と run は出し直さない**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4.2、§4.4）。resume の要求が 2 回要る target や、すべて再開したと
   知らせない target は host が扱う: 汎用の名前のインターフェースに target 固有の知識を入れると core §12 の規則 8 に反する。
 - **ブロックのループを速くする変更は、線の上のタイミングを変えうる。** 残す前に複数の target で測る。
-- **キャプチャのストリーミングをするなら max_frame は 256 以上を勧める**（[キャプチャ](../interfaces/oep-if-capture.ja.md) §3.4）。データの通知の
-  見出しは 17 byte で、max_frame 64 では 27%、256 で 7%、1024 で 2% になる。遅いリンクほど、データの形式 1 の events（capture §1.3）が効く。
+- **キャプチャのストリーミングをするなら max_frame は 1024 以上を勧める**（[キャプチャ](../interfaces/oep-if-capture.ja.md) §3.4）。データの通知は
+  フレームごとに、見出し 15 byte と必須の TLV（generation 7 byte、segment_info 27 byte）の 49 byte を持つ。max_frame 64 では 77%、256 で 19%、
+  1024 で 5% になる。遅いリンクほど、データの形式 1 の events（capture §1.3）が効く。
   max_frame は経路ごと（core §7.1）なので、速い経路（USB の vendor bulk）だけを大きくしてよい。シリアルの口は小さいままでよい。
 - **ストリーミングのバッファは、想定する host の遅れ × 最大の転送の速さ以上にする**。例: 50 ms × 20 MB/s = 1 MB。
   - 深さは configure の応答の stream_buffer（キャプチャ §3.3）で host に知らせる。
