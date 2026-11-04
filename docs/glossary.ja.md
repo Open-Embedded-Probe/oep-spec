@@ -54,7 +54,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
-| role | role (of a frame) | 先頭の 1 byte: 要求 0x01、応答 0x02、出来事 0x05、データ 0x06 | core §2.5、§4.1 |
+| role | role (of a frame) | 先頭の 1 byte: 要求 0x01、応答 0x02、出来事 0x03、データ 0x04 | core §2.5、§4.1 |
 | 要求 | request | host からのメッセージ | core §4.1 |
 | 応答 | answer | 要求に対する probe の 1 つの返事 | core §4.2 |
 | 出来事 | event | kind と固定部分を持つ通知 | core §10.2 |
@@ -70,7 +70,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | cause | cause | unavailable の断りの TLV: 理由（ピンが使われている、上限、設定が持つ、状態が違う…） | core §4.3 |
 | status | status | 線と target の操作の結果: ok、wait、line、fault、timeout、state | common §3 |
 | TLV | TLV | `tag(u8) len(u16) value`。どの長さでも形は一つ | core §2.2 |
-| tag の文脈 | tag context | tag の空間: (fn, op) ごと | core §2.2 |
+| tag の文脈 | tag context | tag の空間は payload の定義ごと: 要求と応答は (fn, op)、describe とデータは fn、出来事は (fn, kind) | core §2.2 |
 | critical | critical | 要求の TLV の tag の bit 7: その tag を実装しない probe は断る（印が無ければ無視する） | core §2.2、§2.3 |
 | 固定部分 | fixed part | (name, revision) が形を決める payload の部分 | core §2.3、§2.8 |
 | 末尾、後ろ | tail | 要求、応答、出来事、データの固定部分の後ろに続く TLV | core §2.3 |
@@ -80,7 +80,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 知らない値 | unknown value | 読む側が知らない値の扱い | core §2.4 |
 | 一周する値 | wrapping value | corr、seqなど: 通し番号の算術で比べる。資源の番号は同じboot内で再利用しない | core §2.6、§4.1、§9 |
 | 時計 | clock | probe の 1 つの時計: 起動からの ns（u64）。全ビット 1 は「まだ」。今の値は op の clock で読む | core §2.7、§7.6 |
-| revision | revision | プロトコルの revision（confirm）とインターフェースの revision（list）。固定部分が変わるときだけ上げる | core §2.8、§7.1 |
+| revision | revision | プロトコルの revision（confirm）とインターフェースの revision（list）。既存の契約を壊すとき（固定の形、必須の op、状態の遷移、資源の寿命などを変えるとき）だけ上げる | core §2.8、§7.1 |
 | max_frame、window、max_inflight | max_frame, window, max_inflight | 経路ごとの、メッセージの長さ、待っている byte、待っている要求の上限 | core §4.4 |
 | 待ち時間（の下限） | wait floor | host が応答を待つ最短の時間 | core §4.4 |
 | 転送の時間 | transfer time | UART bridge の線の速さのための、待ち時間の一部 | core §4.4 |
@@ -122,7 +122,6 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | `x-` の unit_id | `x-` unit_id | 一意でない unit_id。まとめにも名指しにも使わない | core §7.5 |
 | model、chip、firmware | model, chip, firmware | probe の種類、その MCU、firmware の自由な文字列 | core §7.5 |
 | max_op_ms | max_op_ms | 1つの要求自身の検証・内部の再試行・実行・後始末・応答生成を含む最長の処理時間。同じ経路・別経路の先行要求待ちと経路の転送時間は除く | core §4.4、§7.5 |
-| label | label (firmware) | firmware の固定の channel の名前 | core §7.5 |
 | アドレス | address | `oep://<probe>[/<port>[/<target>]][?via=<経路>]`。probeはunit_id、portは設定のlabel `S.N`の`S`、targetはhostが決める個体の名前、viaはそこへ届く経路。場所はいつも全部を書き、比べるときは大小文字を区別せず、viaを除く | host ガイド §5.3 |
 | 線の試験 | link test | `oep.probe.link` の source と sink の op。経路を測る | link §2 |
 | restart | restart | `oep.probe.restart`のop。応答を先に送り、restart_max_msのうちにprobe内部を初期化する。OSの列挙やhostの再接続待ちは別 | restart §2 |
@@ -162,7 +161,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | ピンの組 | combination | 線の 1 回の試しの channel | debug §1 |
 | scan、attach、detach | scan, attach, detach | target を探す、つなぐ、離れる | debug §1、§2 |
 | 席、max_connections | seat, max_connections | 線が一度に持てる接続の数 | debug §1 |
-| リセットの後の待ち | reset settle wait | リセットを解いた後、黙った debug module が答えるまでの待ち。多くても max_op_ms、線の再試行に数えない | debug §3、§4.3 |
+| リセットの後の待ち | reset settle wait | リセットを解いた後、黙った debug module が答えるまでの待ち。多くても max_op_ms、線の再試行に数えない | debug §2 |
 | 立ち上げ | bring-up | wireのwake、速さを選んで確かめること | debug §1 |
 | スクラッチのレジスタ | scratch register | 書き込みの確かめに使い、後で元に戻すレジスタ | debug §1 |
 | target_id、scheme | target_id, scheme | probe が読んだ識別子と、その読み方 | debug §1 |
@@ -178,7 +177,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 
 | 日本語 | English | 意味 | 定めた所 |
 |---|---|---|---|
-| トラック | track | 1 つのロジックかアナログのキャプチャのインターフェース | capture の冒頭 |
+| トラック | track | 1 つのロジックかアナログのキャプチャのインターフェース | capture §0 |
 | mode | mode | one-shot、repeat、streaming | capture §2.1 |
 | 区画 | segment | 自分の時刻とサンプル数を持つキャプチャの一部 | capture §2.2 |
 | 世代 | generation | 受理したstartごとに進む（最初は1、0はstart前。0xFFFFFFFF後はstartを断り再起動まで再利用しない）。read と release が指し、出来事も持つ。capture-group は組の世代を持つ | capture §0、§4.1 |
@@ -195,7 +194,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | idle | idle (item) | `channel.{}.idle`: channel の空きの状態: Hi-Z、pull、出力 low / high | core §13.8 |
 | disable | disable | `channel.{}.disable`: probe が決して使わない channel | core §13.8 |
 | 書き出し、入れ直し | export, import | 利用者の値を JSON のファイルに書き、probe へ戻す | [設定のファイル](oep-settings-file.ja.md) |
-| 線の名前 | line names | `nrst`、`power_hi`、`power_lo`。ほかは `x-` | hostガイド §5.3 |
+| 線の名前 | line names | label `S.N` の `N` の慣行: `swdio`、`swclk`、`swio`、`rx`、`tx`、`nrst`、`power_hi`、`power_lo` | hostガイド §5.3 |
 | 保存 | save | 今の利用者の値を書く（消す op は無い） | core §13.7 |
 | storage_state、理由 | storage_state, reason | 保存があり、掛かっているか | core §13.7 |
 | 設定の世代 | settings generation | boot内で再利用しないu32変更カウンタ。getページとsave済みの状態の等値に使う | core §13.5 |
