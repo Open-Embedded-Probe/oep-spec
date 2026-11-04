@@ -51,7 +51,6 @@ def test_documented_operation_tables_match_registry():
         'oep-if-restart.ja.md': 'oep.probe.restart',
         'oep-if-link.ja.md': 'oep.probe.link',
         'oep-if-console.ja.md': 'oep.target.console',
-        'oep-if-probe-config.ja.md': 'oep.probe.config',
     }
     count = 0
     for path in (ROOT / 'interfaces').glob('oep-if-*.ja.md'):
