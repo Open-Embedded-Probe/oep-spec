@@ -7,6 +7,8 @@ OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装
 - **節の参照（文言）**: ほかの文書の節を指す `§N` には、どれも文書の名前を付けた（`core §4.3`、`capture §1.3`）。適合のガイドの
   表の行のように、文脈で決まっていた番号だけの参照も同じ。fixture と capture の頭（§1 の前）に `§0` の見出しを付け、そこを指していた
   `§0` の参照が見出しを指すようにした。用語集の `settings §13` は `core §13`、ベクタの無い節 `oep-if-restart §3` は消した。規則は変わらない。
+- **capture §3.3 の critical の bit（文言）**: 「この表の TLV は critical を付けずに送る」を、表の「送るか」の欄が critical と書かない TLV に
+  限った。欄が critical と書く任意の機能（format の 0 以外、format_name、data_path の 1、carriage、trigger_opts）は critical で送る。規則は変わらない。
 - **capture の状態の遷移の表（誤りの訂正）**: エラーで state 6 に入るときの stopped を `stopped 3` と書いていたのを `stopped 2` に直した。
   本文（§2.2、§3.2 のエラー）と registry の `stopped_reason`（2 error、3 は無い）のとおりで、規則は変わらない。
 - **規範の中の製品名（文言）**: capture の出来事の作り方と式の費用の説明から、特定の probe（ESP32-P4）の名前と性能の話を外した。probe

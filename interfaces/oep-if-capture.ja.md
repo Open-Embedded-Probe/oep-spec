@@ -391,8 +391,9 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
   後）以上なら rejected unsupported（pretrigger の tag）。mode 3 では samples が無いので、pretrigger を縛るのは max_pretrigger と、下の
   挙げていない断りだけ。表が「1 以上」とする値（rate、samples、segments）の 0 は rejected malformed（定義が除く値、core §2.3）。
   断るときは何も変えない。
-- **critical の bit**: この表の TLV は、その対象の probe がどれも実装するので、host は critical の bit を付けずに送る（付いていても probe は
-  同じに扱う、core §2.3）。critical で送るのは、実装しない probe がありうる TLV（将来の任意機能など）だけ。
+- **critical の bit**: 「送るか」の欄が critical と書かない TLV は、その対象の probe がどれも実装するので、host は critical の bit を付けずに
+  送る（付いていても probe は同じに扱う、core §2.3）。欄が critical と書く TLV（format の 0 以外、format_name、data_path の 1、carriage、
+  trigger_opts）は、実装しない probe がありうる任意の機能なので、critical で送る。
 - **挙げていない断り**: この節が挙げる断りは全部ではない。probe は、自分が扱えないほかの値と値の組み合わせ（宣言で表せない
   probe 自身の上限。例: pretrigger と samples の差の下限）も、core §2.3 のとおり rejected unsupported で断る。tag はその値を持つ TLV の
   受け取ったままのtagで、組合せならそのTLVのどれか1つ。samples/segmentsの容量超過とrateの丸めは下の規則に従う。
