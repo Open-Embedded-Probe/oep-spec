@@ -74,7 +74,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   hostからはどちらも結果不明であり、再接続後の状態確認と再送はcore §5.1に従う。再送の順序状態を巻き戻さない。
 - **1 つのセッションの id を持つ要求は 1 つの経路で送る**（core §5.1 の順序の判定が経路の遅れで誤らないため）。session_id 0 の要求は
   別の経路から送ってよい。host が 1 つのセッションの要求を 2 つの経路から送ったときの誤判定は host の責任で、probe は確かめない。
-- host は、同じ probe に複数の経路があれば、自分が対応する経路を vendor bulk、HID、シリアルの口の順に試す（§4）。
+- host は、同じ probe に複数の経路があれば、できれば自分が対応する経路を vendor bulk、HID、シリアルの口の順に試す（§4）。
   host はすべての種類の経路を実装する義務はなく、利用者が指定した対応経路を直接使ってよい。probe の経路の一覧は fn 0 の describe の transport（core §7.5）で分かる。
 - **USB の OEP の probe の見分け方**: host が知らない device の中から OEP の probe を自動で見分けるのは、**プロジェクトの USB の
   VID:PID `1209:4F45` で列挙する device** だけである（VID 0x1209、PID 0x4F45。registry の `usb` の `project_vid` / `project_pid`）。ほかの値で
@@ -115,7 +115,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - **confirm の前**: どの probe も 64 byte（registry の `min_max_frame`）までの message を受ける（confirm の max_frame は 64 以上）。
   host は confirm の応答を受けるまで、64 byte を超える message を送らない。host は probe から長さ 65535 byte までの message を
   受けられるようにする。
-- host は、OS が許すところでは、シリアルの口と HID を排他で開く（Linux では tty に TIOCEXCL）。
+- host は、OS が許すところでは、できればシリアルの口と HID を排他で開く（Linux では tty に TIOCEXCL。ほかの道具との取り違えを防ぐ）。
 - HID を出す probe は、output の report を、interrupt OUT の endpoint でも SET_REPORT（Output）でも受ける。
 - vendor bulk を出す probe は、できれば（SHOULD）その interface に Microsoft OS 2.0 の compatible ID `WINUSB` を付ける。
 

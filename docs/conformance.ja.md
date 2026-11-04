@@ -156,7 +156,7 @@ fn 0のconfirm / list / describe / clock / lock_stateは方針の対象から除
 | インターフェース | 必須 | 任意（宣言するもの） |
 |---|---|---|
 | 位置つきのストリーム（[共通部品](../interfaces/oep-if-common.ja.md) §1） | 採用するopだけに共通の形・非消費read・寿命を適用する。marksがあれば通し番号でページングし、from 3を扱う | marks/clear/mark/write。markがあればmarksも提供 |
-| `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（[線とデバッグ](../interfaces/oep-if-debug.ja.md)） | attach（固定部分method/pins/max_speed、method 0必須）、detach、connections。資源はセッション所有。暗黙の join / eviction をしない。debug §1 の attach の規範と max_op_ms。debug §2 の再試行と寿命 | scan（候補count ≥ 1、有限探索）、attachのreset TLV、RISC-Vのmethod 1（features bit0） |
+| `oep.wire.rvswd`、`oep.wire.swio`、`oep.wire.swd`（[線とデバッグ](../interfaces/oep-if-debug.ja.md)） | attach（固定部分method/pins/max_speed、method 0必須）、detach、connections。資源はセッション所有。暗黙の join / eviction をしない。debug §1 の attach の規範と max_op_ms。debug §2 の再試行と寿命 | 閉じた後の線の保持（debug §2。保持するなら holds に出し、設定を持つなら `channel.{}.hold` を宣言する）、scan（候補count ≥ 1、有限探索）、attachのreset TLV、RISC-Vのmethod 1（features bit0） |
 | `oep.target.riscv-dm`（debug §4） | dmi。名前ごとに1つで、対応するすべてのwireのconnectionを受ける（common §2） | halt/resume/reset、read_block / write_block、run/step: ops。reset があれば、ndmreset を解いた後に DM を待つ（debug §4.3、max_op_ms のうち）。read_block / write_block があれば max_length。successは一時的な値の後始末を済ませた場合だけ。失敗時もmax_op_msのうちに試み、後始末できなければ失敗を返してconnectionとstreamを閉じる（debug §4）。step が ok でなければ moved と dpc を 0、run の elapsed_us は resumereq から（debug §4.2、§4.4） |
 | `oep.target.arm-adi`（debug §6） | transfer（n = 0 は success、ack 0）。対応するwireのconnectionを明示して使う。名前ごとに1つ（common §2） | read_block/write_blockは組でopsへ宣言。提供時だけmax_lengthが必須 |
 | `oep.target.console`（[コンソール](../interfaces/oep-if-console.ja.md)） | open/read/close/streams。名前ごとに1つで、対応するすべてのwireのconnectionに開ける（common §2）。describeのmechanism（方式の名前の並び、core §7.7）は1つ以上必須。console §3の読みの順と採用方式のframing | marks/clear/mark/writeはops。marksなしでもdmseqの同期・重複排除を行う。writeなしでは空の答えだけを返し、SDIへのwriteはunsupported |
@@ -186,7 +186,7 @@ fn 0のconfirm / list / describe / clock / lock_stateは方針の対象から除
 | fixture §3/§4 | I2Cの同一読み出しでpreload末尾以後は0xFF、次slotは消費しない。SPIの空queueはpending/bits/countが0。累計u32は飽和し、configure/plan解放で初期化 |
 | capture §2.1、core §10.3 | min_bytes未満・max_delay_ms=0でstopしても残りは送信対象。応答優先と有限保持を保つ。受信区間に穴があれば末尾がwrite_posでも全量受信にしない |
 | capture §4.1 | 取得中/空き区画待ちのgroup.startを拒否して状態・世代・データを保つ。受理後の開始失敗では未開始trackを含む世代が進み、失敗trackは6、未開始trackは1 |
-| core §13.7 | save失敗の固定形と後続state。初回save中の電源断は保存なし/完全な新保存。既存保存の原子性と、読めない保存を適用しないこと |
+| core §13.7 | save失敗の固定形と後続state。電源断で壊れた保存を完全な保存として使わず、読めない保存（storage_state 2、reason 1）にすること。保存の原子性（前か新しい完全な保存が残る）は推奨で、持つ実装は電源断で確かめる |
 | debug §4.1 | console併用時に不可分なraw DMI手順。consoleを閉じた分割手順は原子的ではなく、途中失敗後は状態を確認して復旧 |
 
 ## 4. 確かめ方

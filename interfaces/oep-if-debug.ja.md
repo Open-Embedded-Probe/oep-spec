@@ -114,11 +114,12 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
   pull 無しか pull-down で、pull-up にはしない。やり取りがまた成功したら、probe は次のやり取りの前に connection の休み方（クロックの線は
   idle_clock の level、データの線はその休み方: rvswd は §3.1、swio は §3.2、swd は §5）に戻す。やり取りが成功している間の、やり取りの間の休み方は wire の節が定めるとおりで、この規則では変わらない。
 - **connectionを閉じる手順はtargetをreset/resumeしない**。外部回路によるtargetの状態変化までは保証しない。
-- **閉じた後の線（保持）**: 線切れ以外で connection が閉じたら（detach、セッションの end / lease の期限切れ / force、core §9）、probe はその線のピンを
+- **閉じた後の線（保持）**: 線切れ以外で connection が閉じたら（detach、セッションの end / lease の期限切れ / force、core §9）、probe はできればその線のピンを
   その connection の休みの状態（rvswd は §3.1 の休ませ方、swio は §3.2、swd は §5）で駆動したまま**保持**する。target によっては、線が駆動されなくなると
   数 ms でデバッグの状態を失う（CH32L103 は約 5 ms で halt を失い、hart がリセットされる）。host から間に合わないので probe が自動で保つ
-  （core §12 規則 8）。
-  - **OFF にできる**: その wire の設定の項目 `channel.{}.hold`（下）が偽なら保持せず、core §8 の空きの状態にする。
+  （core §12 規則 8）。保持しない probe は、閉じた線を core §8 の空きの状態にする（holds はいつも空を返す）。
+  以下は保持する probe の規則である。
+  - **OFF にできる**: 設定を持つ probe は、その wire に設定の項目 `channel.{}.hold`（下）を宣言する。その値が偽なら保持せず、core §8 の空きの状態にする。
     値が無ければ保持する。ピンに本体の設定の idle か disable（core §13.8）があれば、保持せずにそれに従う。
   - **保持は空きの状態の一種**（core §8）: 保持中のピンは、どのインターフェースも空きのピンと同じに取れる（attach、plan、scan。保持を理由に cause 1
     にも cause 5 にもしない）。取ったインターフェースが線を引き継ぎ、その組の保持は終わる。attach は wake から始め（2 本とも high から始まる）、
@@ -130,7 +131,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 
 - connection が閉じたら、その組の channel は上の保持になるか、core §8 の空きの状態になる（保持しないときは idle_clock の駆動もやめる）。
 
-**設定の項目**（core §13。カテゴリはその wire の fn。本書の 3 つの wire は、どれもこれを宣言する）:
+**設定の項目**（core §13。カテゴリはその wire の fn。保持する probe が設定を持つなら、本書の 3 つの wire はどれもこれを宣言する）:
 
 | 名前 | form | key_kind | 意味 |
 |---|---|---|---|
