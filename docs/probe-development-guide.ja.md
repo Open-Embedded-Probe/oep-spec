@@ -263,7 +263,7 @@ target を扱う probe に共通する実装上の注意。
   小さい列でもよく、hostはacceptedから未受付の残りを送る。writeなしならTX queueは不要。
 - **一時的なdebug状態の後始末**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §4）: 保存する値は実行中のopだけに保持してよい。
   successの前に戻す。線の失敗や時間切れで戻せなければ失敗を返してconnection/streamを閉じ、後続opへ復元作業を持ち越さない。
-- **リセットを解いた後の待ち**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §3、§4.3）: ndmreset やリセットの線を解いた後に DM が答えない間は、
+- **リセットを解いた後の待ち**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）: ndmreset やリセットの線を解いた後に DM が答えない間は、
   DMSTATUS を読み直して待つ（多くても max_op_ms）。この間の失敗を、線の再試行にも線切れにも数えない。
 - **線の再試行は書き込みを繰り返さない**（[線とデバッグ](../interfaces/oep-if-debug.ja.md) §2）: target のメモリへの store と host の dmi の手順を書いた後の
   確かめで線の失敗が分かったら、やり直さずに failed / partial で答え、done は失敗より前に済んだ数にする（target が受けなかったと答えた DMI の busy と
