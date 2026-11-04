@@ -4,6 +4,8 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **凍結とタグ（版と安定性 §2、§6）**: 凍結は `v1.0.0` の正式リリースで行い、その前の `v0` のタグは付けない。英訳は `v1.0.0` の前に作る。
+  凍結の前の実装は、実装する仕様の commit を示す。
 - **capture の実装の無い任意の機能を外した（削除）**: どの実機の probe も持たず、仮想ベンチにだけあった機能を v1 から外した。
   データの外部の経路（旧 §3.9: configure の data_path と overflow、describe の external_data、OEPX の印、落ちうる経路の見出し、enum
   `external_kind` / `external_mux` / `data_path`）、名前付きのデータの形式（format 0xFF、configure と応答の format_name、describe の
