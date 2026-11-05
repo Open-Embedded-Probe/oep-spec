@@ -290,7 +290,7 @@ CS の時間を指定した転送の並びで、host の往復に左右されな
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
 | 0x10 | configure | mode(u8)、bit_order(u8)、clock_hz(u32)、[TLV] | clock_hz(u32)、[TLV] | 必要 |
-| 0x11 | transfer | n(u8)、n × 転送、[TLV] | n × (gap_ns(u32)、setup_ns(u32)、hold_ns(u32)、count(u16)、rx(count byte))、[TLV] | 必要 |
+| 0x11 | transfer | n(u8)、n × 転送、[TLV] | n(u8)、n × (gap_ns(u32)、setup_ns(u32)、hold_ns(u32)、count(u16)、rx(count byte))、[TLV] | 必要 |
 | 0x12 | status | — | state(u8)、mode(u8)、bit_order(u8)、transfers(u32)、[TLV] | 不要 |
 
 - mode、bit_order、CS が low で有効なこと、ビットのとり方は §4 のとおり（controller の側から見て同じ線）。
@@ -334,7 +334,7 @@ probe が出力 k に方形波を出す。周波数とデューティ（1 周期
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x10 | set | n(u8)、n × (role(u8)、hz(u32)、duty(u16))、[TLV] | n × (role(u8)、num(u32)、den(u32)、duty(u16))、[TLV] | 必要 |
+| 0x10 | set | n(u8)、n × (role(u8)、hz(u32)、duty(u16))、[TLV] | n(u8)、n × (role(u8)、num(u32)、den(u32)、duty(u16))、[TLV] | 必要 |
 | 0x11 | status | — | n(u8)、n × (role(u8)、num(u32)、den(u32)、duty(u16))、[TLV] | 不要 |
 
 - role は出力の番号（0 から、describe の channels 未満）。plan はそれぞれの role を多くて 1 つ、別々の channel で持つ。0 から続けて
@@ -346,7 +346,7 @@ probe が出力 k に方形波を出す。周波数とデューティ（1 周期
   0 でない hz が min_clock_hz より低いか max_clock_hz を超える は rejected unsupported（payload `0x00`）。plan に無い role は rejected
   unavailable（cause 6）。
 - plan で取った channel は、最初の set までそれまでの状態を保つ（fixture §1 の gpio と同じ）。plan の解放で出力を止め、channel を
-  core §8 の空きの状態に戻す。同じ plan のままなら、セッションが終わっても出力を続ける。
+  core §8 の空きの状態に戻す。plan はセッションの資源なので、セッションの終わり（end、lease の期限切れ、force、core §9）でも止まる。
 - status は、plan に有る role ごとに今の出力を返す（まだ set していない role は num 0、den 1、duty 0）。
 - describe: role_channels（role ごと）、max_clock_hz（出せる周波数の上限）、min_clock_hz（下限、無ければ 1）、channels（tag 0x40、u8: 出力の数）、
   duty_bits（tag 0x41、u8: max_clock_hz でのデューティの分解能のビット数。周波数が低いほど細かくなってよい）。

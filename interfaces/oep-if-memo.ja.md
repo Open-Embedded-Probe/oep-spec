@@ -31,7 +31,7 @@ describe（core §7.4 の共通の tag のほか）:
 | tag | 名前 | 値 |
 |---:|---|---|
 | 0x40 | max_object | u32。**必須**。1 以上。オブジェクトのデータの最大の長さ（byte） |
-| 0x41 | max_objects | u32。**必須**。1 以上。同時に持てるオブジェクトの数 |
+| 0x41 | max_objects | u16。**必須**。1 以上。同時に持てるオブジェクトの数（list の first（u16）でどれも指せる） |
 
 - probe は、名前が 64 byte でデータが max_object byte のオブジェクトを、max_objects 個まで同時に持てることを保証する。宣言は保証なので、
   宣言より多く持てても、宣言より少なくしか持てない probe にはしない。
@@ -71,7 +71,8 @@ text はどれも `len(u8)、bytes` の形で置く。
 - **続き**: offset が 0 でない write は、書きかけのオブジェクトの続きである。name、size、crc は始めの write と同じ値、offset はそれまでに
   受け取った byte の数でなければならない。そうでなければ rejected unavailable（cause 6、wrong_state）で、書きかけのものは変えない。
 - **終わり**: 受け取った byte の数が size になった write で、probe はデータ全体の CRC-32 を crc と比べる。合えばオブジェクトを書き終え、
-  completed success で答える。合わなければそのオブジェクトを消し、rejected malformed で答える。size 0 のオブジェクトは、offset 0、len 0 の
+  completed success で答える。合わなければ completed failed で答える。そのとき、そのオブジェクトは無い（前のものも消える。§2.2 の read は
+  no_resource）。size 0 のオブジェクトは、offset 0、len 0 の
   write 1 回で書く。
 - **書きかけは 1 つ**: probe が持つ書きかけのオブジェクトは高々 1 つ。別の書き込みを始める write（offset 0）と、そのオブジェクトの delete、
   ロックを持つセッションの終わり（end、期限切れ、force。core §6、§9）は、書きかけのオブジェクトを消す。

@@ -689,8 +689,8 @@ subscribe と unsubscribe は、通知を送り出すインターフェース自
 | 0x12 | keepalive | — | — | 必要 | 必須 |
 | 0x13 | lock_state | — | locked(u8)、remaining_ms(u32)、[TLV owner] | 不要 | 必須 |
 | 0x20 | get | §13.5 | §13.5 | 不要 | 設定を持つなら必須 |
-| 0x21 | set | §13.5 | §13.5 | 必要 | 設定を持つなら必須 |
-| 0x22 | unset | §13.5 | §13.5 | 必要 | 設定を持つなら必須 |
+| 0x21 | set | §13.5 | §13.5 | 必要 | 値を変えさせるなら必須（unset と組） |
+| 0x22 | unset | §13.5 | §13.5 | 必要 | 値を変えさせるなら必須（set と組） |
 | 0x23 | save | §13.7 | §13.7 | 必要 | 任意（state と組） |
 | 0x24 | state | §13.7 | §13.7 | 不要 | save があれば必須 |
 | 0x25 | network | [経路](oep-transports.ja.md) §7.3 | 同 | 不要 | describe に netif があれば必須 |

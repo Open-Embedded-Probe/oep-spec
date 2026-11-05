@@ -1170,12 +1170,12 @@ def ops() -> dict:
         "configured; one transfer answered with flags 0 (no STOP), result 0",
         request(0xA5, 15, op("oep.fixture.i2c-controller", "status"), b""), ok(0xA5, struct.pack("<BBII", 1, 1, 1, 0)))
 
-    # oep.fixture.pwm (fixture §7): n x (role hz duty) -> n x (role num den duty): the output made
+    # oep.fixture.pwm (fixture §7): n x (role hz duty) -> n n x (role num den duty): the output made
     pwm = {"17": "oep.fixture.pwm"}
     add("pwm set: the nearest frequency and duty, and an output stopped", "fixture §7", pwm,
         "session S; fn 17 has roles 0 and 1 planned; the probe makes 1 kHz exactly and 32767 of 65535 as 32768",
         request(0xA9, 17, op("oep.fixture.pwm", "set"), bytes([2]) + struct.pack("<BIH", 0, 1000, 32767) + struct.pack("<BIH", 1, 0, 0), S),
-        ok(0xA9, struct.pack("<BIIH", 0, 1000, 1, 32768) + struct.pack("<BIIH", 1, 0, 1, 0)))
+        ok(0xA9, bytes([2]) + struct.pack("<BIIH", 0, 1000, 1, 32768) + struct.pack("<BIIH", 1, 0, 1, 0)))
     add("pwm set: a role past channels is unsupported", "fixture §7", pwm,
         "session S; channels 2", request(0xAA, 17, op("oep.fixture.pwm", "set"), bytes([1]) + struct.pack("<BIH", 2, 1000, 1), S),
         rej(0xAA, "unsupported", b"\0"))
@@ -1195,7 +1195,7 @@ def ops() -> dict:
         request(0xAE, 19, op("oep.fixture.dac", "status"), b""),
         ok(0xAE, bytes([2]) + struct.pack("<BIB", 0, 128, 1) + struct.pack("<BIB", 1, 0, 0)))
 
-    # oep.fixture.spi-controller (fixture §6): n x (gap_ns setup_ns hold_ns count tx) -> n x (the times used, count, rx)
+    # oep.fixture.spi-controller (fixture §6): n x (gap_ns setup_ns hold_ns count tx) -> n n x (the times used, count, rx)
     spic = {"16": "oep.fixture.spi-controller"}
     add("spi-controller configure: the SCK used at or below the one asked", "fixture §6", spic,
         "session S; fn 16 has its plan; modes declares mode 0; the probe makes 1 MHz from 1.2 MHz asked",
@@ -1205,7 +1205,7 @@ def ops() -> dict:
         "session S; configured mode 0 MSB first; time_step_ns 25; the target answers 0x5A then 0x00 0xFF; the first transfer's gap is 0",
         request(0xA7, 16, op("oep.fixture.spi-controller", "transfer"),
                 bytes([2]) + struct.pack("<IIIH", 0, 1000, 500, 1) + b"\x9F" + struct.pack("<IIIH", 2010, 1000, 500, 2) + b"\x01\x02", S),
-        ok(0xA7, struct.pack("<IIIH", 0, 1000, 500, 1) + b"\x5A" + struct.pack("<IIIH", 2025, 1000, 500, 2) + b"\x00\xFF"))
+        ok(0xA7, bytes([2]) + struct.pack("<IIIH", 0, 1000, 500, 1) + b"\x5A" + struct.pack("<IIIH", 2025, 1000, 500, 2) + b"\x00\xFF"))
     add("spi-controller transfer: n 0 is malformed", "fixture §6", spic,
         "session S; configured",
         request(0xA8, 16, op("oep.fixture.spi-controller", "transfer"), b"\0", S), rej(0xA8, "malformed"))

@@ -1748,7 +1748,7 @@
       },
       "state": "session S; fn 17 has roles 0 and 1 planned; the probe makes 1 kHz exactly and 32767 of 65535 as 32768",
       "request_hex": "01a900110010443322110200e8030000ff7f01000000000000",
-      "answer_hex": "02a900010000e80300000100000000800100000000010000000000"
+      "answer_hex": "02a90001000200e80300000100000000800100000000010000000000"
     },
     {
       "name": "pwm set: a role past channels is unsupported",
@@ -1818,7 +1818,7 @@
       },
       "state": "session S; configured mode 0 MSB first; time_step_ns 25; the target answers 0x5A then 0x00 0xFF; the first transfer's gap is 0",
       "request_hex": "01a700100011443322110200000000e8030000f401000001009fda070000e8030000f401000002000102",
-      "answer_hex": "02a700010000000000e8030000f401000001005ae9070000e8030000f4010000020000ff"
+      "answer_hex": "02a70001000200000000e8030000f401000001005ae9070000e8030000f4010000020000ff"
     },
     {
       "name": "spi-controller transfer: n 0 is malformed",
