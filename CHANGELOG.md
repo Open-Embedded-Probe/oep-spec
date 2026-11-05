@@ -15,6 +15,7 @@ OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装
   - capture 形式 1 の fallback は、出来事が L / 8 byte を超えるブロックだけにした（最悪の帯域の式が上限になる）。
   - メモ欄の最後の write の crc の不一致は completed failed で、そのオブジェクトは無くなる（rejected は何も変えない）。
   - メモ欄の max_objects を u16 にした（list の first で全部を指せる）。
+  - fixture §6 の max_length の答えの大きさの式に n の 1 byte を入れ、capture のベクタの説明から任意の fallback の記述を消した。
 - **消えた保存は storage_state 0 でよい（core §13.7）**: 電源断で保存が何も残らず、保存が無いのと見分けられないときは 0 と答えてよい。
   どちらでも probe は何も使わず、host がすることも同じ。完全か確かめられない保存を使わず 2 と答えることは必須のまま。
 - **メモ欄を出す probe の経路の max_frame は 128 以上（oep-if-memo 冒頭）**: 名前が 64 byte の write の固定の部分は見出しを含めて 89 byte で、

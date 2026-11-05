@@ -1676,8 +1676,8 @@ def capture_formats() -> dict:
     tx.append({"name": "two instantaneous conditions in one term are refused", "spec": "capture §4.4 評価",
                "fns": {"9": "oep.fixture.logic", "13": "oep.fixture.analog"}, "bind_tlvs_hex": hx(two), "accepted": False,
                "refusal": "unsupported"})
-    return {"about": "capture data formats and the trigger expression. Vectors fix fallback to the required blocks only (a probe may fall back "
-                     "earlier; a host reads the header). logic: per segment the raw / events channels' levels, the fallback chosen per block, "
+    return {"about": "capture data formats and the trigger expression. A block falls back exactly when a channel's events pass L / 8 bytes "
+                     "(capture §1.3). logic: per segment the raw / events channels' levels, the fallback chosen per block, "
                      "the stream. analog: values per channel, the stream. trigger: bind TLVs.",
             "logic_blocks": lc, "analog_blocks": ac, "state_timed": st, "trigger_expressions": tx}
 

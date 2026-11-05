@@ -322,7 +322,7 @@ CS の時間を指定した転送の並びで、host の往復に左右されな
 - describe: ops、role_channels、max_length（1 回の transfer の count の合計の上限）、max_clock_hz（確かめた SCK の上限）、features（bit0 LSBが先）、
   time_step_ns（tag 0x40、u32。必須: 時間の刻み。返す値はこの倍数とは限らない）、modes（tag 0x41、u8。必須。§4 と同じ）、
   max_delay_ns（tag 0x42、u32。必須: gap_ns、setup_ns、hold_ns が受ける最大）、min_clock_hz（configure が受ける SCK の下限。無ければ 1）。
-- max_lengthは、1 つの転送で最大の transfer の要求（見出し10 + n 1 + 転送 14 + tx）と答え（見出し5 + 14 + rx）が、どの経路の
+- max_lengthは、1 つの転送で最大の transfer の要求（見出し10 + n 1 + 転送 14 + tx）と答え（見出し5 + n 1 + 転送 14 + rx）が、どの経路の
   max_frameにも収まる値にする。
 
 ほかの fn との同時使用で clock_hz や時間を保てない probe は、§4 の cs_setup_ns と同じく、後から来た configure などを core §8.1 に従い
