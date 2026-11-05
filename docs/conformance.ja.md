@@ -186,7 +186,7 @@ fn 0のconfirm / list / describe / clock / lock_stateは方針の対象から除
 | fixture §3/§4 | I2Cの同一読み出しでpreload末尾以後は0xFF、次slotは消費しない。SPIの空queueはpending/bits/countが0。累計u32は飽和し、configure/plan解放で初期化 |
 | capture §2.1、core §10.3 | min_bytes未満・max_delay_ms=0でstopしても残りは送信対象。応答優先と有限保持を保つ。受信区間に穴があれば末尾がwrite_posでも全量受信にしない |
 | capture §4.1 | 取得中/空き区画待ちのgroup.startを拒否して状態・世代・データを保つ。受理後の開始失敗では未開始trackを含む世代が進み、失敗trackは6、未開始trackは1 |
-| core §13.7 | save失敗の固定形と後続state。電源断で壊れた保存を完全な保存として使わず、読めない保存（storage_state 2、reason 1）にすること。保存の原子性（前か新しい完全な保存が残る）は推奨で、持つ実装は電源断で確かめる |
+| core §13.7 | save失敗の固定形と後続state。電源断で壊れた保存を完全な保存として使わないこと（完全か確かめられない保存は storage_state 2、reason 1）。保存の原子性（前か新しい完全な保存が残る）は推奨で、持つ実装は電源断で確かめる |
 | debug §4.1 | console併用時に不可分なraw DMI手順。consoleを閉じた分割手順は原子的ではなく、途中失敗後は状態を確認して復旧 |
 
 ## 4. 確かめ方
