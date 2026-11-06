@@ -87,7 +87,7 @@ connection、§3 status）。番号の唯一の定義は `registry/oep-v1.toml`�
 
 [共通部品](oep-if-common.ja.md) §2 に加えて:
 
-- **reset後のDMの待ち**: attachのreset線またはreset opのndmresetを解いた後、DMSTATUSが線からの応答を得るまで読み直して待つ。
+- **reset後のDMの待ち**: attachのreset線を解いた後と、reset opのリセット（§4.3）の後、DMSTATUSが線からの応答を得るまで読み直して待つ。
   attachではwireの最も遅い速さで読む。待ちの間だけwireのwake/設定手順（§1）を送り直してよい。
   待ちと後始末を含め要求全体のmax_op_msのうちに終える。hostの待ちはcore §4.4。
 - **detach は connection と、その上の stream を解放する。** force の TLV は持たない。
@@ -356,7 +356,7 @@ hostは必要ならattachし直し、targetの状態を確かめて復旧する�
 | halt | haltreq | allhaltedを確かめてからhaltreqを下ろす。待ち切れたときも下ろすことを試みる |
 | resume | haltreq = 0、resumereq = 1 を 1 回 | 何も覚えず、何も戻さない |
 | step | dcsr.step、DATA0 / DATA1（dcsr の読み書き）、haltreq | dcsr.step を下ろし、DATA1、DATA0 を戻し、haltreq を下ろす。hart をもう一度止められなければ、応答が step_left を示す（§4.2） |
-| reset | haltreq、ndmreset、havereset の確認応答 | ndmresetを解き、haveresetを確認応答し、haltreqを下ろす。mode 1のhartは止めたまま |
+| reset | haltreq、ndmreset、havereset の確認応答、target のシステムリセット（§4.3）とそのために使う RAM | ndmresetを解き、haveresetを確認応答し、haltreqを下ろす。使った RAM は戻す。mode 1のhartは止めたまま |
 | read_block / write_block | GPR（s0、s1、a0、a1）、DATA1 / DATA0、abstractauto、program buffer、sysbus | GPR、DATA1、DATA0、abstractauto を戻す。program buffer と SBCS / SBADDRESS は戻さない（host が使うなら設定し直す） |
 | run | pc、host が指定した GPR、dcsr（ebreakm、prv）、haltreq | **host の指示どおりに変えたまま返す**（host の責任）。abstractauto と haltreq は戻す |
 | dmi | host が書いたもの | 何も触らず、何も戻さない（host が DATA を使ったら host が戻す） |
@@ -444,7 +444,7 @@ probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ�
 | mode | 意味 |
 |---:|---|
 | 0 | 走らせる |
-| 1 | 最初の命令の前で止める（haltreq を保ったまま ndmreset を解く） |
+| 1 | 最初の命令の前で止める |
 
 応答:
 
@@ -456,10 +456,21 @@ probe の中で再試行し、諦めたら status wait（§6 の WAIT と同じ�
 - mode 0と1だけを定める。ほかはunsupported（固定部分の印0）。successはflags bit0が立ち、後始末も済んだ場合だけ。
   flags bit0は後始末の成功を意味しない。満たさなければcompleted failed（形は同じ。statusは
   止まらない/走らない = timeout、DMが応えない = line、cmderr = fault）。待ちと後始末はmax_op_msのうちに行う。
-- ndmresetを解いた後の待ちは§2。DMが答えなければstatus lineのcompleted failed。必要な後始末が済まなければconnectionを閉じる（§4）。
+- リセットの後の待ちは§2。DMが答えなければstatus lineのcompleted failed。必要な後始末が済まなければconnectionを閉じる（§4）。
 - flags のほかの bit は 0。reset の後は havereset を確認応答し、haltreq を下ろす（mode 1 は止めたまま）。
 
-reset は ndmreset を使う。**reset の op はリセットの線を動かさない**: リセットの線が動くのは、attach の reset TLV（§3）か、host が自分で治具のインターフェースを使うときだけ。
+reset は target の**システムリセット**である: hart だけでなく、周辺も既定の値に戻す。ndmreset で周辺まで戻る target では ndmreset を使う。
+ndmreset が hart（と debug module）しか戻さない target では、probe はその target のシステムリセットを使う。
+
+- CH32（WCH の RISC-V）の ndmreset は hart しか戻さない。前のイメージが動かした周辺（SysTick、USART、RCC など）が残ったまま新しいイメージが
+  起動し、その割り込みで止まることがある。probe は PFIC のシステムリセット（PFIC_CFGR に KEY3 と SYSRESET、PFIC_CFGR を持たない系列は
+  PFIC_SCTLR の SYSRESET）を使う。その書き込みは、debug module の command の外で、probe が線にフレームを出していない間に起こす
+  （command の途中やフレームの途中でかかったリセットで、以後のフレームが失敗し続ける系列がある）。
+- システムリセットの後、hart を止めるまでの間に、target のイメージが少し走ることがある（リセットで debug module まで戻る系列）。mode 1 は、
+  その後で hart を最初の命令の前に止める（ndmreset と haltreq）。周辺はシステムリセットの後の状態から始まる。
+- probe がシステムリセットのために RAM を使うときは、使った分を、hart を止めた後に元の値に戻す。
+
+**reset の op はリセットの線を動かさない**: リセットの線が動くのは、attach の reset TLV（§3）か、host が自分で治具のインターフェースを使うときだけ。
 
 ### 4.4 run
 

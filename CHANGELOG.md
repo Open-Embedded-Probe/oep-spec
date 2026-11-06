@@ -4,6 +4,10 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **reset はシステムリセット（oep-if-debug §4.3、§2、§4 の表）**: reset の op は、hart だけでなく周辺も既定の値に戻す。ndmreset で周辺が
+  戻らない target（CH32）では、probe はその target のシステムリセット（PFIC の SYSRESET）を、debug module の command の外で、線にフレームを
+  出していない間に起こす。mode 1 はその後で最初の命令の前に止める。システムリセットのために使った RAM は戻す。CH32 の ndmreset だけでは、
+  前のイメージの SysTick や USART が動いたまま新しいイメージが起動し、その割り込みで止まっていた。
 - **メモ欄の使い方の推奨（oep-if-memo §4、規範ではない）**: 名前は `<持ち主>/<残り>` で、持ち主は自分の逆 DNS の名前か、形を定める
   インターフェースの名前。名前は版を持たず、形を変えるときは新しい名前にする。口や target は小文字にそろえて入れる。中身は
   UTF-8 の JSON、書き直しは同じセッションで読んでから書き、知らないメンバーを残す。project の形として口の記録
