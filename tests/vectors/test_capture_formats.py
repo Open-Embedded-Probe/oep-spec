@@ -19,82 +19,73 @@ def uint(data: bytes, j: int, n: int) -> int:
     return sum(bit(data, j + k) << k for k in range(n))
 
 
-def read_logic_segment(data: bytes, n: int, R: int, ds: list[int], L: int):
-    """-> (raw levels per raw channel, per events channel a list of blocks' (start_level, fallback raw | events))."""
-    E = len(ds)
-    nb = (E + 7) // 8
-    pos, raws, evs = 0, [[] for _ in range(R)], [[] for _ in range(E)]
+BITS = {"sample": 1, "any_high": 1, "any_low": 1, "change_latch": 2}
+
+
+def read_logic_segment(data: bytes, n: int, R: int, kinds: list[str], ds: list[int], L: int):
+    """-> (raw levels per raw channel (w = R), per reduced channel its values in interval order)."""
+    pos, raws, vals = 0, [[] for _ in range(R)], [[] for _ in kinds]
     for first in range(0, n, L):
         r = min(L, n - first)
-        fb = [bit(data[pos:pos + nb], e) for e in range(E)]
-        start = [bit(data[pos + nb:pos + 2 * nb], e) for e in range(E)]
-        count = struct.unpack_from("<I", data, pos + 2 * nb)[0]
-        pos += 2 * nb + 4
-        cols = list(range(R)) + [("fb", e) for e in range(E) if fb[e]]
-        wb = len(cols)
-        rb = (r * wb + 7) // 8
+        rb = (r * R + 7) // 8
         raw = data[pos:pos + rb]
         pos += rb
-        got = {e: [] for e in range(E)}
-        for i in range(count):
-            t, e, st = struct.unpack_from("<HBB", data, pos + 4 * i)
-            got[e].append((t, st >> 7, st & 0x7F))
-        pos += 4 * count
         for i in range(r):
-            for k, c in enumerate(cols):
-                v = bit(raw, i * wb + k)
-                if isinstance(c, int):
-                    raws[c].append(v)
-                else:
-                    evs[c[1]].append(("raw", v))
-        for e in range(E):
-            if not fb[e]:
-                evs[e].append(("block", start[e], r, got[e]))
+            for c in range(R):
+                raws[c].append(bit(raw, i * R + c))
+        counts = [(r + d - 1) // d for d in ds]
+        total = sum(k * BITS[kind] for k, kind in zip(counts, kinds))
+        red = data[pos:pos + (total + 7) // 8]
+        pos += (total + 7) // 8
+        off = 0
+        for c, (kind, k) in enumerate(zip(kinds, counts)):
+            b = BITS[kind]
+            for j in range(k):
+                vals[c].append(uint(red, off + j * b, b))
+            off += k * b
     assert pos == len(data)
-    return raws, evs
+    return raws, vals
 
 
-def expect_ticks(levels: str, first: int, r: int, D: int, before: int):
+def expect_values(kind: str, levels: str, D: int, before):
+    """The values capture §1.3 gives a segment's channel (before: the level before the segment, or None)."""
     out, last = [], before
-    for t in range((r + D - 1) // D):
-        c = 0
-        for i in range(t * D, min((t + 1) * D, r)):
-            v = int(levels[first + i])
-            c += v != last
-            last = v
-        if c:
-            out.append((t, last, min(c, 127)))
+    for lo in range(0, len(levels), D):
+        seg = [int(v) for v in levels[lo:lo + D]]
+        if kind == "sample":
+            out.append(seg[0])
+        elif kind == "any_high":
+            out.append(int(1 in seg))
+        elif kind == "any_low":
+            out.append(0 if 0 in seg else 1)
+        else:
+            ch = 0
+            for v in seg:
+                ch |= last is not None and v != last
+                last = v
+            out.append(seg[-1] | (ch << 1))
     return out
 
 
 def test_logic_blocks_read_back():
     for case in DATA["logic_blocks"]:
-        L, R, ds = case["L"], case["R"], case["events_d"]
+        L, R, kinds, ds = case["L"], case["R"], case["kinds"], case["d"]
+        assert set(kinds) <= set(IFACE["oep.fixture.logic"]["enum"]["logic_carriage"]), case["name"]
         prev_end = None
         for seg in case["segments"]:
-            n = len((seg["raw"] + seg["events"])[0])
-            raws, evs = read_logic_segment(bytes.fromhex(seg["stream_hex"]), n, R, ds, L)
+            n = len((seg["raw"] + seg["reduced"])[0])
+            raws, vals = read_logic_segment(bytes.fromhex(seg["stream_hex"]), n, R, kinds, ds, L)
             assert ["".join(map(str, r)) for r in raws] == seg["raw"], case["name"]
-            for e, levels in enumerate(seg["events"]):
-                before = prev_end[e] if seg["contiguous"] and prev_end else int(levels[0])
-                first, items = 0, evs[e]
-                k = 0
-                while first < n:
-                    r = min(L, n - first)
-                    item = items[k]
-                    if item[0] == "raw":
-                        got = "".join(str(items[k + i][1]) for i in range(r))
-                        assert got == levels[first:first + r], case["name"]
-                        k += r
-                    else:
-                        _, start, rr, ticks = item
-                        assert start == before and rr == r, case["name"]
-                        assert ticks == expect_ticks(levels, first, r, ds[e], before), case["name"]
-                        assert len(ticks) * 4 <= L // 8, f"{case['name']}: fallback was required"
-                        k += 1
-                    before = int(levels[first + r - 1])
-                    first += r
-            prev_end = [int(ch[-1]) for ch in seg["events"]]
+            assert vals == seg["values"], case["name"]
+            for c, levels in enumerate(seg["reduced"]):
+                before = prev_end[c] if seg["contiguous"] and prev_end else None
+                assert vals[c] == expect_values(kinds[c], levels, ds[c], before), case["name"]
+                if kinds[c] == "change_latch":   # the bits' relation: a different level always has the change bit
+                    last = before if before is not None else int(levels[0])
+                    for v in vals[c]:
+                        assert (v & 1) == last or v >> 1, case["name"]
+                        last = v & 1
+            prev_end = [int(ch[-1]) for ch in seg["reduced"]]
 
 
 def test_analog_blocks_read_back():

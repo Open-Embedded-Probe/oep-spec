@@ -4,6 +4,15 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **キャプチャの形式 1 を、区間ごとに決まったビット数の縮約に替えた（oep-if-capture §1.3）**: 線ごとに運び方と区間 D を選ぶ。
+  運び方は raw、sample（区間の先頭の 1 サンプル）、any_high（区間の OR）、any_low（区間の AND）、change_latch（区間末のレベル＋区間の中の
+  変化の有無、2 ビット）。5 以上は予約。ブロックは raw の部分（形式 0 の詰め方）と、縮約の値をビットで詰めた部分。帯域は信号によらず決まる。
+  前の形式 1（変わった刻みだけ出来事を送る events、fallback、start_level の見出し）は消した: 費用が線の動きで約 10 倍ぶれ、最悪を保証できる
+  速さが低かった（ESP32-P4 で 3 本全速＋5 本 1/64 が約 1.5 MHz）。WireSkein と相談して決めた。
+- **キャプチャの rate は「取り込めるか」で決め、送り出しが間に合うかでは下げない（oep-if-capture §3.3）**: 取り込みの回路とメモリへ移す
+  経路が動かない値だけを断る（丸める）。USB などの帯域、host の読み、ほかの機能と同時の CPU は環境で変わるので、probe はそれを理由に
+  rate を下げたり断ったりせず、間に合わなければ隙間にする。ストリーミングの応答に data_rate（0x16、byte/s）を足し、mode 3 で必ず返す
+  （形式 3 を除く）。余裕は host と利用者が決める。
 - **reset はシステムリセット（oep-if-debug §4.3、§2、§4 の表）**: reset の op は、hart だけでなく周辺も既定の値に戻す。ndmreset で周辺が
   戻らない target（CH32）では、probe はその target のシステムリセット（PFIC の SYSRESET）を、debug module の command の外で、線にフレームを
   出していない間に起こす。mode 1 はその後で最初の命令の前に止める。システムリセットのために使った RAM は戻す。CH32 の ndmreset だけでは、

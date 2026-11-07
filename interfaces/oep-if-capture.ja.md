@@ -59,7 +59,8 @@ status、区画の情報、出来事、ストリーミングのデータの TLV 
   rate とチャネルの数が形式 0 で出す量を、そのとおりの速さで出す（ストリーミングでは通知をそのまま通る）。host は
   値の並びで欠落と化けを、届いた量で速さを測る。サンプルの数と区画の規則は形式 0 と同じ。probe はカウンタを流すだけで、宣言は formats。
 - **確かさ**: 形式とチャネルの運び方ごとに、可逆（値と時刻が確か）か要約（何が確かかを §1.3 / §1.4 が決める）かが決まっている。
-- **最悪の帯域**は configure の応答から start の前に計算できる（§1.3 / §1.4 の式）。
+- **データの速さ**は configure の応答から start の前に計算できる（§1.1 / §1.3 / §1.4 の式）。形式 0、1、2、4 では信号によらず決まっている。
+  ストリーミングの応答は data_rate（§3.3）でも返す。
 
 ### 1.1 ロジック
 
@@ -131,41 +132,48 @@ configure の応答で probe が返す値:
 
 ### 1.3 ロジックのブロック（形式 1）
 
-host は configure でチャネル（役割）ごとに**分解能 D**（元のサンプルの数、1 以上）と**運び方**（`carriage`: raw か events）を選ぶ（§3.3 の
-carriage。選ばない役割は raw、D = 1）。D > 1 は events だけ（間引きは短い変化を黙って消すので持たない）。
+host は configure でチャネル（役割）ごとに**運び方**（`carriage`、registry の enum `logic_carriage`）と**区間 D**（元のサンプルの数）を選ぶ
+（§3.3 の carriage。選ばない役割は raw、D = 1）。raw は全サンプルを運び、ほかの運び方は元のサンプルを D 個ずつの**区間**にまとめ、
+区間ごとに決まったビット数の値を 1 つ運ぶ（**縮約**）。どの運び方も、1 区間のビット数は信号によらず決まっている。
 
-**ブロック**: 区画のデータはブロックの並び。ブロックは元のサンプル L 個を表す（区画の最後のブロックは r = samples mod L 個、r ≥ 1 のとき）。
-L は configure の応答の block で返し、**8 の倍数で、どの D の倍数でもあり、L / D ≤ 65536**、host が block_max（§3.3）を送ればそれ以下。
-ブロックの格子は区画ごとに、区画のサンプル 0 から始まる。1 つのブロックは、次をこの順に並べる（E は events のチャネルの数、役割の
-番号の小さい順に e = 0 … E−1。R は raw のチャネルの数）:
+| 値 | 運び方 | D | ビット数 b | 区間 k の値（区間 k は区画の元のサンプル `[k·D, min((k+1)·D, r_end))`、r_end は区画の終わり） |
+|---:|---|---|---:|---|
+| 0 | raw | 1 | — | 全サンプル（下の raw の部分） |
+| 1 | sample | 2 以上 | 1 | 元のサンプル k·D の値（区間の先頭の 1 サンプル。区間をまとめた値ではない） |
+| 2 | any_high | 2 以上 | 1 | 区間に 1 のサンプルが 1 つでもあれば 1、無ければ 0（区間の OR） |
+| 3 | any_low | 2 以上 | 1 | 区間に 0 のサンプルが 1 つでもあれば 0、無ければ 1（区間の AND） |
+| 4 | change_latch | 2 以上 | 2 | ビット 0: 区間の最後のサンプルの値。ビット 1: 区間の中に、前のサンプルと値の違うサンプルがあれば 1、無ければ 0 |
+
+- 5 以上は予約。OEP が足す（たとえば区間の変化の数）。足す運び方も、1 区間のビット数を決まった値にする。
+- **change_latch の「前のサンプル」**: 区間の最初のサンプルは、その前の元のサンプル（前の区間の最後）と比べる。区画の元のサンプル 0 は、
+  その区画が前の区画から隙間なく続く（flags bit0 が 0。§2.2）とき前の区画の最後の元のサンプルと比べ、そうでなければ（世代の最初の区画、
+  隙間の後の区画）何とも比べない（そこに変化は無い）。host は、続く区画の最初の区間を、前の区画の最後の区間のビット 0 と比べて読む。
+- **change_latch のビットの関係**: 前の区間のビット 0（区画の最初の区間では上の比べる相手の値）と、この区間のビット 0 が違えば、ビット 1 は
+  必ず 1（区間の中の変化は奇数回）。同じでビット 1 が 1 なら、区間の中の変化は 2 回以上の偶数回。同じでビット 1 が 0 なら、変化は無い。
+  これに合わないデータは壊れている。
+- **ブロック**: 区画のデータはブロックの並び。ブロックは元のサンプル L 個を表す（区画の最後のブロックは r = samples mod L 個、r ≥ 1 の
+  とき）。L は configure の応答の block で返し、**8 の倍数で、どの D の倍数でもあり**、host が block_max（§3.3）を送ればそれ以下。ブロックの
+  格子は区画ごとに、区画の元のサンプル 0 から始まる。区間の格子も同じ（区間 k の先頭は元のサンプル k·D）。1 つのブロックは、次の 2 つの
+  部分をこの順に並べる:
 
 | 部分 | 長さ | 中身 |
 |---|---|---|
-| fallback | ceil(E / 8) byte | ビット e が 1: events のチャネル e を、このブロックでは raw の部分で運ぶ（D によらない） |
-| start_level | ceil(E / 8) byte | ビット e: events のチャネル e の、ブロックの**直前**のサンプルのレベル（下） |
-| n | u32 | 出来事の数 |
-| raw の部分 | ceil(r · w_b / 8) byte | サンプルごとに w_b ビット（R + そのブロックの fallback の数）。ビット j（j < R）は raw のチャネル j（役割の順）、ビット R + f は fallback の f 番目のチャネル（e の順）。サンプル i はビット `i · w_b` から（§1 のビットの定義）。区画の最後のブロックでは後ろを次のバイトの境目まで 0 で埋める |
-| 出来事 | n × 4 byte | tick(u16)、ch(u8: e)、state(u8: bit 7 = 刻みの後のレベル、bit 0〜6 = 刻みの中の変化の数、127 で飽和) |
+| raw の部分 | ceil(r · w / 8) byte | raw のチャネルを応答の layout（w、C、pos）で、ブロックの元のサンプルを §1.1 の規則 1〜3 のとおりに置いたもの（ブロックの最初の元のサンプルが §1.1 のサンプル 0）。後ろを次のバイトの境目まで 0 で埋める。raw のチャネルが無ければ 0 byte |
+| 縮約の部分 | ceil(R / 8) byte | 縮約のチャネルを役割の番号の小さい順に並べ、各チャネルの、このブロックの区間の値を区間の順に、チャネルの間を空けずにビットで詰める（§1 のビットの定義どおり、部分の最初のバイトのビット 0 から。b = 2 の値はビット 0 を先に）。合計 R ビットの後ろを、次のバイトの境目まで 0 で埋める。縮約のチャネルが無ければ 0 byte |
 
-- 形式 1 の応答の layout は w = R、C = R、pos = 0 … R−1（raw のチャネルの並び）。全部が events なら w = C = 0（§1.1 の w の範囲の例外。host は分岐なしに読める）。L は 8 の倍数なので、raw の部分は w_b によらずバイトの境目で終わる。
-- **start_level**: 直前のサンプルが同じ世代にあり、隙間なく続いている（区画の境目でも flags bit0 が 0）なら、そのサンプルのレベル。そうでなければ
-  （世代の最初の区画、隙間の後の区画）、ブロックの最初のサンプルのレベル。これで、ブロックと区画の境目の変化も、どれかの刻みで数える。
-- **刻み**: チャネル e の刻み t はブロックの元のサンプル `[t · D_e, min((t+1) · D_e, r))`。区画の最後のブロックで r が D_e の倍数でなければ、
-  最後の刻みは部分的な刻み（長さは r から分かる）。
-- **出来事**: その刻みの中で、レベルが 1 回以上変わったときだけ 1 つ出す。変化は前のサンプルとの比較で、刻みの最初のサンプルは前の刻みの
-  最後のサンプル（ブロックの最初の刻みでは start_level）と比べる。**並びはチャネルの順（e の小さい順）、その中で刻みの順**。fallback のチャネルの
-  出来事は出さない。
-- **fallback**: そのチャネルの、このブロックの出来事が L / 8 byte（raw で運ぶ大きさ）を超えるなら、probe は**必ず** fallback にし、超えないときは fallback にしない（下の最悪の帯域が上限であるため）。host は見出しのとおりに読む。fallback のチャネルの raw は元のサンプル（可逆）。
-- **確かさ**: D = 1 のチャネルは可逆。D > 1 のチャネルは、変化の時刻が刻みの中まで、刻みの後のレベルと変化の数が確か（数が 127 なら
-  「少なくとも 127」）。刻みの中の位置と途中のレベルは分からない（数の偶奇は分かる）。
-- **最悪の帯域**（byte / ブロック）: `2·ceil(E/8) + 4 + L·R/8 + Σ_e min(L/8, (L / D_e)·4)`。
-  例: 16 チャネル、125 MHz、速い 4 本を raw、遅い 12 本を D = 64 の events、L = 4096: 見出し 8 byte、raw 2048 byte、出来事は最悪
-  12 · min(512, 256) = 3072 byte。最悪 5128 byte / 32.8 µs = 156 MB/s、遅い線が UART 115200 程度なら約 63.6 MB/s（形式 0 では 250 MB/s）。
-  D < 32 の events は最悪が raw と同じ L/8 で頭打ちになる。
-- **遅れ**: probe は出来事の数 n を先頭に置くので、1 ブロックを溜めてから送る。streaming の遅れはブロックあたり最大 L / rate（125 MHz・L 4096 で
-  33 µs）。host は block_max で上限を決められる。
-- 出来事をソフトで作る probe は、32 bit の語で比べて変化の無い語を飛ばせば、アイドルの多い線で間に合う。間に合わない
-  rate やチャネルの数は configure / query で断る。
+- ブロックの中のチャネル c の区間の数は `ceil(r / D_c)`（完全なブロックでは L / D_c）。区画の最後の区間が D 個に満たないときも値を出し、
+  any_high、any_low、change_latch はその区間にあるサンプルだけで決める。`R = Σ_c ceil(r / D_c) · b_c`（縮約のチャネルの和）。
+  チャネル c の j 番目の値は、縮約の部分のビット `off_c + j · b_c` から b_c ビット（off_c は役割の順で c より前の縮約のチャネルの
+  `ceil(r / D) · b` の和）。
+- 形式 1 の応答の layout は raw のチャネルだけ: C = raw のチャネルの数、pos は役割の小さい順に 0 … C−1、w は probe が選ぶ（C 以上、§1.1）。
+  全部が縮約なら w = C = 0（§1.1 の w の範囲の例外。host は分岐なしに読める）。
+- **帯域は決まっている**: 完全なブロックはどれも `B = ceil(L · w / 8) + ceil(Σ_c (L / D_c) · b_c / 8)` byte。データの速さは
+  `actual_rate · B / L` byte/s で、信号によらない。
+- **確かさ**: raw は可逆。sample は区間の先頭の 1 サンプルが確かで、区間の中のほかのサンプルは分からない（D より短いパルスは、
+  記録から消え、消えたことも分からない）。any_high と any_low は、区間にそのレベルがあったかが確か（区間の中の位置と長さは分からない。
+  D より短い反対のレベルは消える）。change_latch は、区間の最後のレベル、変化の有無、変化の回数の偶奇が確か（区間の中の位置と途中の
+  レベルは分からない）。
+- **遅れ**: probe はブロックごとに送ってよいので、streaming の遅れはブロックあたり最大 L / rate。host は block_max で上限を決められる。
 
 ### 1.4 アナログのブロック（形式 2）
 
@@ -184,7 +192,7 @@ host は configure でチャネル（役割）ごとに**運び方**（`carriage
 | minmax と sum | 区間ごとに min、max、sum の順 | 両方 |
 
 - 値は §1.2 の規則 1 の値（offset binary を含む）、規則 4〜6 は同じ。
-- **最悪の帯域**は固定の大きさ: 各チャネルの部分の byte 数の和（例: 12 bit、D = 256 の minmax と sum は 1 区間 44 ビット、元の値の約 1/70）。
+- **帯域**は決まっている: 各チャネルの部分の byte 数の和（例: 12 bit、D = 256 の minmax と sum は 1 区間 44 ビット、元の値の約 1/70）。
 
 **ピンの共有**（core §8.1）: ロジックのキャプチャは聞くだけなので、ほかの機能のピンと共有してよい。アナログの入力は
 チップによっては pad をアナログの機能に切り替え、そのピンのデジタルの入出力を切る。
@@ -373,7 +381,7 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 | 0x06 | pretrigger | u32（トリガより前に残すサンプル数） | 両方 | trigger の type が 0 でないときだけ（0） |
 | 0x07 | frontend | role(u8)、frontend(u8: describe の frontend の番号)。チャネルごとに 1 つ。繰り返す（core §2.3）。同じ role に 2 つあれば rejected malformed | アナログ | 任意（そのチャネルは probe が選ぶ） |
 | 0x08 | format | u8: データの形式（§1、registry `data_format`）。describe の formats に無い番号は unsupported（受け取った tag） | 両方 | 任意（0）。0 以外は critical で送る |
-| 0x09 | carriage | role(u8)、kind(u8)、d(u32)。チャネルの運び方と分解能（§1.3 / §1.4）。ロジックの kind は enum `logic_carriage`（0 raw、1 events）。アナログの kind はビットの集合 `analog_carriage`（bit 0 packed、bit 1 minmax、bit 2 sum。packed は単独、minmax と sum は併せてよい）。役割ごとに 1 つ、繰り返す | 両方 | format 1 / 2 のときだけ（無い役割は raw / packed、d 1）。critical で送る |
+| 0x09 | carriage | role(u8)、kind(u8)、d(u32)。チャネルの運び方と分解能（§1.3 / §1.4）。ロジックの kind は enum `logic_carriage`（0 raw、1 sample、2 any_high、3 any_low、4 change_latch。§1.3）。アナログの kind はビットの集合 `analog_carriage`（bit 0 packed、bit 1 minmax、bit 2 sum。packed は単独、minmax と sum は併せてよい）。役割ごとに 1 つ、繰り返す | 両方 | format 1 / 2 のときだけ（無い役割は raw / packed、d 1）。critical で送る |
 | 0x0A | trigger_opts | arm(u8: 0 すぐ、1 プリトリガが溜まってから)、rearm(u8: 0 最初の区画だけ、1 区画ごと)、when(u8: level の条件で 0 偽から真になったとき、1 アームの時点ですでに真でも立つ)、hysteresis(u32: cross の値の単位。0 は無し) | 両方 | 任意（arm 1、rearm 0、when 0、hysteresis 0）。critical で送る |
 | 0x0B | block_max | u32: ブロックの長さ L の上限（元のサンプル、§1.3 / §1.4）。streaming の遅れを縛る | 両方 | 任意（probe が決める） |
 
@@ -411,22 +419,26 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
   trigger の opts bit 0）で、start からすぐ見て、早く立てば区画は短い（trigger_index はそのまま小さい）。
 - **トリガは元のサンプルで判定する**: 形式 1 / 2 で縮約するチャネル（D > 1、minmax、sum）でも、条件は縮約の前の値で判定し、パルスの幅も
   元のサンプルで数える。
-- **carriage**（形式 1 / 2）: d = 0、ロジックの raw で d > 1、同じ role に 2 つ、format 1 / 2 の無い要求の carriage は rejected malformed。
+- **carriage**（形式 1 / 2）: d = 0、ロジックの raw で d が 1 でない、ロジックの raw 以外で d < 2、同じ role に 2 つ、format 1 / 2 の無い要求の carriage は rejected malformed。
   describe の carriage に無い kind か範囲の外の d は rejected unsupported（受け取った tag）。plan に無い role は rejected unavailable（cause 6）。
-  L の条件（§1.3 / §1.4）を満たせない d の組み合わせ、その rate とチャネルの数で間に合わない設定は rejected unsupported（carriage の tag）。
+  L の条件（§1.3 / §1.4）を満たせない d の組み合わせは rejected unsupported（carriage の tag）。
 - linked の trigger は、出来事の元を持つ組（§4.4）に束ねたときだけ使える。束ねずに start すれば rejected unavailable（cause 6）。pretrigger を
   付けてよい（そのトラックの元のサンプルの数）。
 - **samplesは区画のsample総数**（pretriggerを含む）。トリガが早く立ってプリトリガの分が足りなければ、区画は短く、trigger_indexはそのまま
   小さい。force で始めたときは trigger_index = その瞬間のサンプルで triggered を送る。type 0（即時）では triggered を送らない。
-- **rate**: 宣言したrate_rangeの中で、その役割/モード/設定で保てる最も近い値を使う（同距離はどちらでもよい）。
+- **rate**: 宣言したrate_rangeの中で、その役割/モード/設定で取り込める最も近い値を使う（同距離はどちらでもよい）。
   役割数などで上限が下がる場合も、この集合で丸めてactual_rateを返す。
-  要求値がrate_rangeの外か、この構成で範囲内の値を1つも保てなければunsupported（rateのtag）。
+  要求値がrate_rangeの外か、この構成で範囲内の値を1つも取り込めなければunsupported（rateのtag）。
+- **取り込める**とは、probe の取り込みの回路と、データをメモリへ移す経路が、その rate とチャネルの数で動くこと（どの host、どの使い方でも
+  間に合わない設定は取り込めない）。**ストリーミングで、送り出しの経路（USB などの帯域、host の読み）や、ほかの機能と同時に動くときの CPU が
+  間に合うかは、環境と使い方で変わるので、probe はそれを理由に rate を下げたり断ったりしない。** 間に合わなければ、その分を隙間として記録する
+  （§2.2）。どれだけ余裕を見るかは host と利用者が、応答の data_rate と自分の環境から決める。
 - probe が持てる量を超える samples は、その上限に切り下げ、応答の actual_samples（0x03）
   が正である。host は送った値を仮定せず、actual_samples と actual_segments を読む。
 - mode 2のsegmentsも、実際のsamplesと役割数で持てる上限へ切り下げる。省略時はprobeが決め、actual_segmentsは常に1以上。
   samples/segmentsの切り下げだけでは断らない。切り下げ後にpretriggerなどの条件を満たせなければ、その条件のtagで断る。
 
-**応答のTLV**: successはactual_rate/layoutを必ず返す。actual_samplesはmode 1/2、actual_segmentsはmode 2で必須。
+**応答のTLV**: successはactual_rate/layoutを必ず返す。actual_samplesはmode 1/2、actual_segmentsはmode 2、data_rateはmode 3（形式 3 を除く）で必須。
 アナログのscaleはplanの役割ごとに必須、skewは遅れが0の役割を省いてよい。frontend_used/referenceは任意の診断情報である。
 必要な応答が要求経路のframeに収まらなければ、設定を変える前にunsupportedで断る（core §4.4）。
 
@@ -444,10 +456,11 @@ configure成功は旧データ/区画を消し、state 1へ戻す。generation�
 | 0x0A | block | L(u32)。形式 1 / 2 のブロックの元のサンプルの数（§1.3 / §1.4）。形式 1 / 2 で必ず返す | 両方 |
 | 0x14 | stream_buffer | u32: ストリーミングで、送る前に溜められる最大のバイト数（この設定で。下） | 両方 |
 | 0x15 | judge_latency_ns | u32: このトラックが組の出来事の元（§4.4）の条件を判定するとき、条件の成り立ったサンプルから、probe がそれを出来事と知るまでの最大の時間（ns、この設定で。下） | 両方 |
+| 0x16 | data_rate | u32: ストリーミングで、この設定のデータの速さ（byte/s、切り上げ。§1 の式）。mode 3 で必ず返す。信号で量が変わる形式（形式 3）では返さない | 両方 |
 
 - **stream_buffer**（任意、mode 3 でだけ返す）: probe が送る前に溜められる量は、configure の時のメモリと rate、チャネルの数で決まるので、
   応答で返す（describe では宣言しない）。query で start の前に分かる。host は、落とさずに済む遅れの目安を
-  stream_buffer ÷（rate × w / 8）で求める（形式 1 / 2 では、§1.3 / §1.4 の最悪の帯域で割ると、その遅れの下限が出る）。返さない probe は
+  stream_buffer ÷ data_rate で求める。返さない probe は
   「分からない」。host は、それより長く読みを止めない（非同期の読みを複数出したままにする、など）。
 - **judge_latency_ns**（任意。§4.4 の出来事の元を持つ probe が、その条件を判定できるトラックで返す）: 判定の遅れは、取り込みの塊の
   大きさや判定の周期で決まり、rate と w で変わるので、describe ではなく応答で返す。出来事の元に参加するほかのトラックは、出来事を
@@ -493,7 +506,7 @@ probeはより大きい経路を使え、mode 3を提供しない最小構成に
 | 0x43 | trigger | types(u32: type のビット集合)、max_pretrigger(u32)、opts(u8: trigger_opts で持つもの: bit 0 arm 0、bit 1 rearm 1、bit 2 when 1、bit 3 hysteresis（アナログだけ。ロジックでは立てない）) |
 | 0x44 | frontend | frontend(u8: 番号)、range_min_mv(i32)、range_max_mv(i32)。入力ピンの範囲の候補ごとに1つ（アナログ）。番号はconfigureのfrontendで選ぶ |
 | 0x45 | formats | u8 の列: 0 のほかに使えるデータの形式（§1）。無ければ 0 だけ |
-| 0x46 | carriage | kinds(u8: kind のビット集合)、min_d(u32)、max_d(u32)（D > 1 で使える範囲。D = 1 はいつも使える）。形式 1 / 2 を宣言するとき |
+| 0x46 | carriage | kinds(u8: kind のビット集合。ロジックはビット k が `logic_carriage` の値 k、アナログは `analog_carriage` のビット)、min_d(u32)、max_d(u32)（D > 1 で使える範囲。D = 1 はいつも使える）。形式 1 / 2 を宣言するとき |
 
 - 必須の宣言はops、1つ以上のmode、rate_range、channels、trigger、およびplanで使うrole_channels/channel_group。
   アナログはfrontendも1つ以上宣言する。featuresは値0なら省略できる。

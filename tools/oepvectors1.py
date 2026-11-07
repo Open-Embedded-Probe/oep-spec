@@ -1526,59 +1526,63 @@ def _uint_bits(v: int, n: int) -> list[int]:
     return [(v >> k) & 1 for k in range(n)]
 
 
-def logic_block(raw_chans, ev_chans, ev_d, prev_level, first, r, L):
-    """One format 1 block (capture §1.3) for samples [first, first + r) of the segment's channel strings. raw_chans: the raw
-    channels' level strings (role order); ev_chans / ev_d: the events channels and their D; prev_level[e]: the level of
-    the sample before the block (start_level). fallback only where it is required (events > L / 8 bytes)."""
-    E = len(ev_chans)
-    events, fallback = [], []
-    for e, ch in enumerate(ev_chans):
-        D = ev_d[e]
-        mine = []
-        last = prev_level[e]
-        t = 0
-        while t * D < r:
-            lo, hi = t * D, min((t + 1) * D, r)
-            n = 0
-            for i in range(lo, hi):
-                v = int(ch[first + i])
-                if v != last:
-                    n += 1
+def logic_values(kind, levels, first, r, D, before):
+    """One reduced channel's values for samples [first, first + r) (capture §1.3): kind a logic_carriage name; before: the
+    level of the sample before `first` for change_latch (None: nothing to compare the first sample with)."""
+    out, last = [], before
+    for lo in range(0, r, D):
+        seg = [int(levels[first + i]) for i in range(lo, min(lo + D, r))]
+        if kind == "sample":
+            out.append(seg[0])
+        elif kind == "any_high":
+            out.append(1 if 1 in seg else 0)
+        elif kind == "any_low":
+            out.append(0 if 0 in seg else 1)
+        else:   # change_latch: bit 0 the last level, bit 1 a change from the sample before
+            changed = 0
+            for v in seg:
+                if last is not None and v != last:
+                    changed = 1
                 last = v
-            if n:
-                mine.append((t, e, (last << 7) | min(n, 127)))
-            t += 1
-        fb = len(mine) * 4 > L // 8
-        fallback.append(fb)
-        if not fb:
-            events += mine
-    head = bytearray(_bits_to_bytes([1 if f else 0 for f in fallback]).ljust((E + 7) // 8, b"\0"))
-    head += _bits_to_bytes(prev_level).ljust((E + 7) // 8, b"\0")
-    head += struct.pack("<I", len(events))
-    fb_chans = [ch for ch, f in zip(ev_chans, fallback) if f]
-    cols = list(raw_chans) + fb_chans
+            out.append(seg[-1] | (changed << 1))
+    return out
+
+
+LOGIC_BITS = {"sample": 1, "any_high": 1, "any_low": 1, "change_latch": 2}
+
+
+def logic_block(raw_chans, red, prev_level, first, r):
+    """One format 1 block (capture §1.3) for samples [first, first + r): raw_chans the raw channels' level strings (role
+    order, w = their count); red: [(kind, D, levels)] the reduced channels in role order; prev_level: per reduced channel
+    the level of the sample before the block (None at a segment's start after a gap)."""
     bits = []
     for i in range(r):
-        for ch in cols:
+        for ch in raw_chans:
             bits.append(int(ch[first + i]))
-    raw = _bits_to_bytes(bits)
-    body = b"".join(struct.pack("<HBB", t, e, st) for t, e, st in events)
-    return bytes(head) + raw + body, fallback
+    out = _bits_to_bytes(bits)
+    bits, vals = [], []
+    for (kind, D, levels), before in zip(red, prev_level):
+        v = logic_values(kind, levels, first, r, D, before)
+        vals.append(v)
+        for x in v:
+            bits += _uint_bits(x, LOGIC_BITS[kind])
+    return out + _bits_to_bytes(bits), vals
 
 
-def logic_segment(raw_chans, ev_chans, ev_d, L, start_levels):
-    """A segment's blocks; start_levels: the level before the segment per events channel (contiguous with the segment
-    before) or None (the segment's first sample)."""
-    n = len((raw_chans + ev_chans)[0])
-    prev = [int(ch[0]) for ch in ev_chans] if start_levels is None else list(start_levels)
-    out, fbs = b"", []
+def logic_segment(raw_chans, red, L, before):
+    """A segment's blocks; before: per reduced channel the level of the sample before the segment (contiguous with the
+    segment before) or None (after a gap: the first sample is compared with nothing)."""
+    n = len((list(raw_chans) + [lv for _, _, lv in red])[0])
+    prev = list(before) if before is not None else [None] * len(red)
+    out, vals = b"", [[] for _ in red]
     for first in range(0, n, L):
         r = min(L, n - first)
-        blk, fb = logic_block(raw_chans, ev_chans, ev_d, prev, first, r, L)
+        blk, v = logic_block(raw_chans, red, prev, first, r)
         out += blk
-        fbs.append(fb)
-        prev = [int(ch[first + r - 1]) for ch in ev_chans]
-    return out, fbs
+        for c, x in enumerate(v):
+            vals[c] += x
+        prev = [int(lv[first + r - 1]) for _, _, lv in red]
+    return out, vals
 
 
 def analog_block(chans, kinds, ds, b, first, r):
@@ -1604,36 +1608,33 @@ def analog_block(chans, kinds, ds, b, first, r):
 def capture_formats() -> dict:
     lc = []
 
-    def add_logic(name, spec, raw, ev, ev_d, L, segments):
-        """segments: [(contiguous_with_before, {chan strings})]"""
+    def add_logic(name, spec, R, kinds, ds, L, segments):
+        """segments: [(contiguous_with_before, raw level strings, reduced level strings)]"""
         streams, prev_end = [], None
-        for contiguous, (raws, evs) in segments:
-            start = prev_end if contiguous else None
-            data, fbs = logic_segment(raws, evs, ev_d, L, start)
-            streams.append({"contiguous": contiguous, "raw": raws, "events": evs, "fallback": fbs, "stream_hex": hx(data)})
-            prev_end = [int(ch[-1]) for ch in evs]
-        lc.append({"name": name, "spec": spec, "L": L, "R": len(raw), "events_d": ev_d, "segments": streams})
+        for contiguous, raws, reds in segments:
+            red = list(zip(kinds, ds, reds))
+            data, vals = logic_segment(raws, red, L, prev_end if contiguous else None)
+            streams.append({"contiguous": contiguous, "raw": raws, "reduced": reds, "values": vals, "stream_hex": hx(data)})
+            prev_end = [int(lv[-1]) for lv in reds]
+        lc.append({"name": name, "spec": spec, "L": L, "R": R, "kinds": kinds, "d": ds, "segments": streams})
 
-    raw0 = levels(128, range(0, 128, 2))
-    slow = levels(128, (3, 4, 5, 9, 70))
-    add_logic("raw and events mixed: a raw channel and a D 4 events channel", "capture §1.3", [raw0], [slow], [4], 128,
-              [(False, ([raw0], [slow]))])
-    busy = levels(128, range(0, 128, 2))
-    add_logic("D 1 events past L / 8 bytes: fallback required", "capture §1.3 fallback", [], [busy], [1], 128,
-              [(False, ([], [busy]))])
-    busyd = levels(128, range(0, 128, 4))
-    add_logic("D 2 events past L / 8 bytes: fallback for D > 1", "capture §1.3 fallback (any D)", [], [busyd], [2], 128,
-              [(False, ([], [busyd]))])
-    a = levels(128, range(100, 128)); b2 = levels(128, ())
-    add_logic("start_level across contiguous segments: the change at the boundary is counted in the next segment", "capture §1.3 start_level",
-              [], [a], [1], 128, [(False, ([], [a])), (True, ([], [b2]))])
-    add_logic("start_level after a gap is the segment's first sample: no change counted at the boundary", "capture §1.3 start_level",
-              [], [a], [1], 128, [(False, ([], [a])), (False, ([], [b2]))])
-    part = levels(136, (5, 130))
-    add_logic("a partial last block (r 8) and a partial last tick (D 16)", "capture §1.3 刻み", [], [part], [16], 128,
-              [(False, ([], [part]))])
-    sat = levels(512, range(0, 512, 2))
-    add_logic("a count saturates at 127 (D 256)", "capture §1.3 出来事", [], [sat], [256], 512, [(False, ([], [sat]))])
+    raw0 = levels(72, range(0, 72, 2))
+    slow = levels(72, (3, 4, 5, 9, 41, 70))
+    cs = levels(72, set(range(72)) - {10} - set(range(30, 50)))   # a CS: high, a 1-sample low at 10, low over 30-49
+    add_logic("raw and the four reductions, a partial last block (r 8) and a partial last interval (D 16)", "capture §1.3",
+              1, ["sample", "any_high", "any_low", "change_latch"], [4, 8, 8, 16], 32,
+              [(False, [raw0], [slow, slow, cs, slow])])
+    pulse = levels(32, (5, 6, 20, 21, 22))
+    add_logic("change_latch: a pulse inside an interval (level the same, the change bit 1) and an odd count", "capture §1.3 change_latch",
+              0, ["change_latch"], [8], 32, [(False, [], [pulse])])
+    a = levels(32, range(28, 32)); b2 = levels(32, ())
+    add_logic("change_latch across contiguous segments: the change at the boundary is counted in the next segment's interval 0",
+              "capture §1.3 change_latch", 0, ["change_latch"], [8], 32, [(False, [], [a]), (True, [], [b2])])
+    add_logic("change_latch after a gap: the segment's first sample is compared with nothing", "capture §1.3 change_latch",
+              0, ["change_latch"], [8], 32, [(False, [], [a]), (False, [], [b2])])
+    short = levels(32, (13, 14))
+    add_logic("sample drops a pulse shorter than D; any_high and any_low keep their level", "capture §1.3 確かさ",
+              0, ["sample", "any_high", "any_low"], [8, 8, 8], 32, [(False, [], [short, short, levels(32, (0, 13, 14))])])
 
     ac = []
 
@@ -1676,9 +1677,9 @@ def capture_formats() -> dict:
     tx.append({"name": "two instantaneous conditions in one term are refused", "spec": "capture §4.4 評価",
                "fns": {"9": "oep.fixture.logic", "13": "oep.fixture.analog"}, "bind_tlvs_hex": hx(two), "accepted": False,
                "refusal": "unsupported"})
-    return {"about": "capture data formats and the trigger expression. A block falls back exactly when a channel's events pass L / 8 bytes "
-                     "(capture §1.3). logic: per segment the raw / events channels' levels, the fallback chosen per block, "
-                     "the stream. analog: values per channel, the stream. trigger: bind TLVs.",
+    return {"about": "capture data formats and the trigger expression. logic (format 1, capture §1.3): per segment the raw "
+                     "channels' and the reduced channels' levels, the reduced channels' values (change_latch: bit 0 the level, "
+                     "bit 1 the change), the stream. analog: values per channel, the stream. trigger: bind TLVs.",
             "logic_blocks": lc, "analog_blocks": ac, "state_timed": st, "trigger_expressions": tx}
 
 

@@ -852,6 +852,7 @@ timebase = 0x0F                 # num(u32) den(u32): the rate of format 3's delt
 glitch_used = 0x10              # group(u8) ns(u32)
 stream_buffer = 0x14            # u32: streaming, the most bytes held unsent (oep-if-capture §3.3); optional
 judge_latency_ns = 0x15         # u32: judging a trigger source's condition, the longest to know it (oep-if-capture §3.3, §4.4); optional
+data_rate = 0x16                # u32: streaming, the data's bytes a second (rounded up, oep-if-capture §3.3); required in mode 3 but format 3
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error: why state is 6
 [interface.tlv.data]            # the data frame's TLV tail (core §10.2)
@@ -873,13 +874,16 @@ stopped = 0x02                  # reason(u8) error(u8) generation(u32)
 triggered = 0x03                # serial(u32) trigger_index(u32) trigger_ns(u64) generation(u32)
 [interface.enum.data_format]     # oep-if-capture §1; OEP adds numbers
 packed = 0                      # §1.1 / §1.2
-logic_blocks = 1                # §1.3: per-channel D, raw / events
+logic_blocks = 1                # §1.3: per-channel raw or a reduction over D samples (fixed bits an interval)
 analog_blocks = 2               # §1.4: per-channel packed / minmax / mean
 state_timed = 3                 # §3.8: per sample delta(u32 timebase ticks) + state, with an external clock
 test_counter = 4                # §1: byte k is k & 0xFF, at the format 0 volume and rate (measures the path)
-[interface.enum.logic_carriage] # oep-if-capture §1.3
-raw = 0
-events = 1
+[interface.enum.logic_carriage] # oep-if-capture §1.3; 5 and up reserved (fixed bits an interval)
+raw = 0                         # every sample, d 1
+sample = 1                      # the interval's first sample, 1 bit
+any_high = 2                    # OR over the interval, 1 bit
+any_low = 3                     # AND over the interval, 1 bit
+change_latch = 4                # bit 0 the interval's last level, bit 1 a change in it (from the sample before), 2 bits
 [interface.enum.features]       # none in revision 1; unused values are unallocated (query, force, subscribe and unsubscribe are declared by ops)
 
 [interface.enum.mode]
@@ -961,6 +965,7 @@ format = 0x09                   # u8: the data format in use; required when not 
 block = 0x0A                    # L(u32): original samples a block, formats 1 / 2
 stream_buffer = 0x14            # u32: streaming, the most bytes held unsent (oep-if-capture §3.3); optional
 judge_latency_ns = 0x15         # u32: judging a trigger source's condition, the longest to know it (oep-if-capture §3.3, §4.4); optional
+data_rate = 0x16                # u32: streaming, the data's bytes a second (rounded up, oep-if-capture §3.3); required in mode 3 but format 3
 [interface.tlv.status_answer]
 error = 0x01                    # u8, enum error
 [interface.tlv.data]
