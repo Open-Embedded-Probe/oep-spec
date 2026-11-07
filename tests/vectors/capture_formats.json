@@ -81,7 +81,7 @@
               2
             ]
           ],
-          "stream_hex": "5555555502530255555555008202552c"
+          "stream_hex": "5555555504a604555555550004055558"
         }
       ]
     },
@@ -111,7 +111,7 @@
               0
             ]
           ],
-          "stream_hex": "22"
+          "stream_hex": "4400"
         }
       ]
     },
@@ -141,7 +141,7 @@
               3
             ]
           ],
-          "stream_hex": "c0"
+          "stream_hex": "8001"
         },
         {
           "contiguous": true,
@@ -157,7 +157,7 @@
               0
             ]
           ],
-          "stream_hex": "02"
+          "stream_hex": "0500"
         }
       ]
     },
@@ -187,7 +187,7 @@
               3
             ]
           ],
-          "stream_hex": "c0"
+          "stream_hex": "8001"
         },
         {
           "contiguous": false,
@@ -203,7 +203,7 @@
               0
             ]
           ],
-          "stream_hex": "00"
+          "stream_hex": "0000"
         }
       ]
     },

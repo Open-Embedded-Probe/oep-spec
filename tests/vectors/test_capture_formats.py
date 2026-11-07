@@ -23,8 +23,8 @@ BITS = {"sample": 1, "any_high": 1, "any_low": 1, "change_latch": 2}
 
 
 def read_logic_segment(data: bytes, n: int, R: int, kinds: list[str], ds: list[int], L: int):
-    """-> (raw levels per raw channel (w = R), per reduced channel its values in interval order)."""
-    pos, raws, vals = 0, [[] for _ in range(R)], [[] for _ in kinds]
+    """-> (raw levels per raw channel (w = R), per reduced channel its values in interval order, per block the starts)."""
+    pos, raws, vals, starts = 0, [[] for _ in range(R)], [[] for _ in kinds], []
     for first in range(0, n, L):
         r = min(L, n - first)
         rb = (r * R + 7) // 8
@@ -34,17 +34,19 @@ def read_logic_segment(data: bytes, n: int, R: int, kinds: list[str], ds: list[i
             for c in range(R):
                 raws[c].append(bit(raw, i * R + c))
         counts = [(r + d - 1) // d for d in ds]
-        total = sum(k * BITS[kind] for k, kind in zip(counts, kinds))
+        S = kinds.count("change_latch")
+        total = S + sum(k * BITS[kind] for k, kind in zip(counts, kinds))
         red = data[pos:pos + (total + 7) // 8]
         pos += (total + 7) // 8
-        off = 0
+        starts.append([bit(red, i) for i in range(S)])
+        off = S
         for c, (kind, k) in enumerate(zip(kinds, counts)):
             b = BITS[kind]
             for j in range(k):
                 vals[c].append(uint(red, off + j * b, b))
             off += k * b
     assert pos == len(data)
-    return raws, vals
+    return raws, vals, starts
 
 
 def expect_values(kind: str, levels: str, D: int, before):
@@ -74,17 +76,22 @@ def test_logic_blocks_read_back():
         prev_end = None
         for seg in case["segments"]:
             n = len((seg["raw"] + seg["reduced"])[0])
-            raws, vals = read_logic_segment(bytes.fromhex(seg["stream_hex"]), n, R, kinds, ds, L)
+            raws, vals, starts = read_logic_segment(bytes.fromhex(seg["stream_hex"]), n, R, kinds, ds, L)
             assert ["".join(map(str, r)) for r in raws] == seg["raw"], case["name"]
             assert vals == seg["values"], case["name"]
             for c, levels in enumerate(seg["reduced"]):
                 before = prev_end[c] if seg["contiguous"] and prev_end else None
                 assert vals[c] == expect_values(kinds[c], levels, ds[c], before), case["name"]
-                if kinds[c] == "change_latch":   # the bits' relation: a different level always has the change bit
-                    last = before if before is not None else int(levels[0])
-                    for v in vals[c]:
-                        assert (v & 1) == last or v >> 1, case["name"]
-                        last = v & 1
+                if kinds[c] == "change_latch":   # each block's start, and the bits' relation read from it alone
+                    s_idx = [i for i, k in enumerate(kinds) if k == "change_latch"].index(c)
+                    for blk, first in enumerate(range(0, n, L)):
+                        want = (before if before is not None else int(levels[0])) if first == 0 else int(levels[first - 1])
+                        assert starts[blk][s_idx] == want, case["name"]
+                        last = starts[blk][s_idx]
+                        per = L // ds[c]
+                        for v in vals[c][blk * per:(blk + 1) * per]:
+                            assert (v & 1) == last or v >> 1, case["name"]
+                            last = v & 1
             prev_end = [int(ch[-1]) for ch in seg["reduced"]]
 
 

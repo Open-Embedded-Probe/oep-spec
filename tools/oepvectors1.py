@@ -1561,6 +1561,9 @@ def logic_block(raw_chans, red, prev_level, first, r):
             bits.append(int(ch[first + i]))
     out = _bits_to_bytes(bits)
     bits, vals = [], []
+    for (kind, D, levels), before in zip(red, prev_level):   # start: change_latch's level before the block
+        if kind == "change_latch":
+            bits.append(int(levels[first]) if before is None else before)
     for (kind, D, levels), before in zip(red, prev_level):
         v = logic_values(kind, levels, first, r, D, before)
         vals.append(v)
