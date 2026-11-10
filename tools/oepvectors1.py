@@ -1700,9 +1700,11 @@ SF_ITEMS = {
     "channel.{}.rest": ("enum", "channel", 0, 0, 0), "channel.{}.hold": ("bool", "channel", 0, 0, 0),
     "passthrough.{}.rx": ("channel", "transport", 0, 0, 0), "passthrough.{}.baud": ("u32", "transport", 0, 0, 0),
     "passthrough.{}.format": ("enum", "transport", 0, 0, 0),
+    "usb.transports": ("enum", "none", 0, 0, SF_FLAG["restart"]),
 }
 SF_CHOICES = {"channel.{}.idle": CORE["enum"]["channel_idle"], "ipv4.{}.mode": CORE["enum"]["ipv4_mode"],
-              "channel.{}.rest": IFACE["oep.wire.rvswd"]["enum"]["rest"], "passthrough.{}.format": {"8n1": 0, "8e1": 0x04}}
+              "channel.{}.rest": IFACE["oep.wire.rvswd"]["enum"]["rest"], "passthrough.{}.format": {"8n1": 0, "8e1": 0x04},
+              "usb.transports": {"cdc-hid": 0, "cdc": 1}}   # the example probe's sets (transports §3.1)
 
 
 def sf_probe(channels, transports, fns):
