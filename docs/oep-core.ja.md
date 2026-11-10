@@ -497,6 +497,8 @@ fn の宣言を、first 番目の TLV から 1 フレームに入る分だけ返
 | 0x07 | ops | base(u8)、bitmap。bit i が立っていれば op base + i を持つ（§1.2）。fn 0 を含むすべての fn の describe が付ける |
 | 0x08 | setting | form(u8)、key_kind(u8)、keys(u16)、max_len(u8)、flags(u8)、name（text）。その fn が持ち主の設定の項目ごとに 1 つ（§13.2） |
 | 0x09 | setting_choice | number(u8)、value(u8)、name（text）。form enum の項目の選択肢ごとに 1 つ（§13.2） |
+| 0x0A | op_name | op(u8)、flags(u8)、name（text）。名前を付ける op ごとに 1 つ（任意、下の「op の名前と形」） |
+| 0x0B | op_field | op(u8)、part(u8)、type(u8)、name（text）。op_name の flags が form を立てた op の欄ごとに 1 つ（任意、下） |
 
 role の番号はインターフェースが定める。これらの値は固定の形で、足す情報は新しい tag にする（§2.3）。
 
@@ -511,6 +513,37 @@ role の番号はインターフェースが定める。これらの値は固定
   例えばgroupがrole 1/2を固定し、role_channelsがrole 3だけを挙げる場合、role 1/2の一致とrole 3の候補を別々に確かめる。
 - role_channels と channel_group は、インターフェースがピンを選ぶどのやり方（ほかのインターフェースによる割り当て、要求の引数）でも、
   選べるピンの宣言である。role の番号と、どのやり方でピンを選ぶかは、インターフェースの文書が定める。
+
+**op の名前と形**（op_name、op_field。任意）: インターフェースは、自分の op の名前と、要求と応答の固定部分の欄を describe で示してよい。
+host はインターフェースを知らなくても、名前で op を選び、欄で要求を組み立て、応答を読める。形の正は、今までどおりインターフェースの名前と
+revision である（§2.8）。形を変えるときは revision を上げる。
+
+- op_name: op は ops に立てた op。flags は bit 0 `form`（その op の要求と、completed success と completed failed の応答の固定部分の欄を、
+  op_field ですべて示した。欄が 0 個でもよい）、bit 1 `lock_free`（その op はロック無しで受ける。§6）。ほかの bit は 0。
+  name は 1〜24 byte、使える文字は `a-z 0-9 - _`。同じ fn の中で重ならない。
+- op_field: op は form を立てた op_name の op。part は 0 要求、1 completed success の応答、2 completed failed の応答。type は下の表。
+  name は op の名前と同じ文字と長さで、同じ op と part の中で重ならない。同じ op と part の op_field が describe に出る順が、固定部分の欄の順である。
+- 欄の後ろは、今までどおり TLV の並び（§2.3）。欄で書けない形（数を前に置いた構造の並び、中身で変わる形）の op は form を立てない。
+  名前だけを示し、host はバイト列で要求を送る。
+- 標準のインターフェースの op の名前と形は registry が持つ。示してもよく、そのときは registry と同じにする（違えば registry が正）。
+- 値の大きさ: op_name は 2 + 24 byte、op_field は 4 + 24 byte まで。どちらも最小の max_frame の describe の TLV に収まる（§7.3）。
+
+| type | 名前 | 形（数はリトルエンディアン、§2） |
+|---:|---|---|
+| 1 | u8 | 1 byte |
+| 2 | u16 | 2 byte |
+| 3 | u32 | 4 byte |
+| 4 | u64 | 8 byte |
+| 5 | i8 | 1 byte、2 の補数 |
+| 6 | i16 | 2 byte、2 の補数 |
+| 7 | i32 | 4 byte、2 の補数 |
+| 8 | i64 | 8 byte、2 の補数 |
+| 9 | bool | 1 byte、0 か 1（ほかの値の要求は malformed） |
+| 10 | bytes | len(u16)、len byte |
+| 11 | text | len(u16)、UTF-8 の len byte |
+
+- type の bit 7 は並び: `count(u16)` の後に、その型（1〜9）の要素が count 個。bytes と text の並びは無い。
+- 時間などの単位は、欄の名前の終わりで示すことを勧める（`_ns`、`_us`、`_ms`、`_hz`、`_samples`）。規範ではない。
 
 ### 7.5 probe 全体の宣言（fn 0 の describe、0x40〜）
 

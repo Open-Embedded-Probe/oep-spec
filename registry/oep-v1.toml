@@ -118,6 +118,8 @@ channel_group = 0x06            # repeats, one per combination: group(u8) n(u8) 
 ops = 0x07                      # base(u8) bitmap (1 byte or more, base + 8 x bytes <= 256): bit i = op base + i is offered; every fn's describe carries it, fn 0 included (core §1.2, §7.4)
 setting = 0x08                  # repeats, one per settings item the fn owns: form(u8) key_kind(u8) keys(u16) max_len(u8) flags(u8) name(text); the k-th is item number k (core §13.2)
 setting_choice = 0x09           # repeats, one per choice of an enum item: number(u8) value(u8) name(text, 1-16 of a-z 0-9 -) (core §13.2)
+op_name = 0x0A                  # optional, one per named op: op(u8) flags(u8: bit 0 form, bit 1 lock_free) name(text, 1-24 of a-z 0-9 - _) (core §7.4)
+op_field = 0x0B                 # optional, one per field of an op whose op_name sets form: op(u8) part(u8) type(u8) name(text); the order of an op's part is its fixed part's (core §7.4)
 
 [usb]                           # USB identification and the shape of a probe's interfaces (transports §3)
 project_vid = 0x1209            # the project's USB VID:PID: the only automatic identification of an OEP probe (transports §3)
@@ -144,6 +146,7 @@ wifi_ssid_max_bytes = 32        # core setting wifi.{}.ssid (transports §7.1)
 wifi_min_max_frame = 82         # max_frame floor for a probe with the network settings: a get answer 18 + the 64-byte key (transports §7)
 label_max_bytes = 32            # core setting channel.{}.label text, unique in a probe ignoring ASCII case (core §13.8)
 setting_name_max_bytes = 48     # a settings item name, `{}` included; describe setting is 6 + this = 54 bytes (core §13.2)
+op_name_max_bytes = 24          # describe op_name / op_field names, 1-24 of a-z 0-9 - _: op_field is 4 + this = 28 bytes (core §7.4)
 setting_choice_name_max_bytes = 16  # setting_choice name, 1-16 of a-z 0-9 - (core §13.2)
 channel_name_max_bytes = 16     # describe channel_name, 1-16 of A-Z a-z 0-9 _ - (core §7.5)
 setting_get_overhead_bytes = 18 # one value's get answer is this + len; max_len <= the smallest max_frame - this (core §13.2, §13.5)
@@ -261,6 +264,26 @@ netif = 4
 [core.enum.setting_flag]
 secret = 0x01                   # write-only: get returns len 0; set len 0 keeps the value (core §13.5)
 restart = 0x02                  # the new value takes effect after a restart (core §13.2)
+[core.enum.op_name_flag]        # describe op_name flags (core §7.4)
+form = 0x01                     # the op's request, completed success and completed failed fixed parts given whole by op_field
+lock_free = 0x02                # taken without the lock (core §6)
+[core.enum.op_field_part]       # describe op_field part (core §7.4)
+request = 0
+success = 1
+failed = 2
+[core.enum.op_field_type]       # describe op_field type (core §7.4); bit 7 = a list: count(u16) then count elements of types 1-9
+u8 = 1
+u16 = 2
+u32 = 3
+u64 = 4
+i8 = 5
+i16 = 6
+i32 = 7
+i64 = 8
+bool = 9
+bytes = 10                      # len(u16) then len bytes
+text = 11                       # len(u16) then len bytes of UTF-8
+list = 0x80
 [core.enum.storage_state]       # state (core §13.7)
 none = 0
 applied = 1

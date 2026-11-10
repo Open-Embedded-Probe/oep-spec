@@ -4,6 +4,10 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **op の名前と形を describe で示す共通タグを足した（core §7.4、任意）**: op_name（0x0A: op、flags、名前。flags は form と lock_free）と
+  op_field（0x0B: op、part、type、名前）。form を立てた op は、要求と completed success / failed の応答の固定部分の欄を順に示す。型は
+  u8〜u64、i8〜i64、bool、bytes、text（長さ付き）と、数の型の並び（type の bit 7、count(u16) 付き）。host はインターフェースを
+  知らなくても、名前で op を選び、要求を組み立て、応答を読める。形の正は今までどおり名前と revision。
 - **USB の経路の組を選ぶ本体の項目 `usb.transports` を足した（transports §3.1、任意）**: enum、restart。probe は自分の USB device で
   開始できる組だけを選択肢に並べ、名前は経路の短い名前を describe の順に `-` でつなぎ、2 つ以上の種類に数を付ける（`bulk-hid-cdc2`）。
   どの組も vendor bulk か HID を含む。開始できない組は、その起動では既定の組にする。
