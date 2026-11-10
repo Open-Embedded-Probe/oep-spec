@@ -119,6 +119,25 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 - HID を出す probe は、output の report を、interrupt OUT の endpoint でも SET_REPORT（Output）でも受ける。
 - vendor bulk を出す probe は、できれば（SHOULD）その interface に Microsoft OS 2.0 の compatible ID `WINUSB` を付ける。
 
+### 3.1 USB の経路の組（任意）
+
+probe 自身の USB device が出す OEP の経路の組を利用者に選ばせる probe は、この節の本体の項目（core §13.8）を使う。同じ目的の独自の項目を代わりに出さない。
+組を選ばせない probe は、この項目を宣言しない。
+
+| 名前 | form | key_kind | flags | 意味 |
+|---|---|---|---|---|
+| `usb.transports` | enum | none | restart | 再起動の後に probe 自身の USB device が出す OEP の経路の組。値が無ければ probe の既定の組 |
+
+- **選択肢**: probe は、自分の USB device で開始できる組だけを setting_choice に並べる。並べない組は選べない（unsupported、core §13.3）。
+- **選択肢の名前**: 経路の短い名前（core §13.3 の `bulk`、`hid`、`cdc`）を describe の transport の順に `-` でつなぎ、同じ種類が 2 つ以上なら
+  名前の後に数を付ける（`bulk-hid-cdc`、`bulk-hid-cdc2`、`bulk-cdc3`）。vendor bulk と HID は高々 1 つ（§3）なので、数が付くのは `cdc` だけである。
+  host は名前を表示に使い、組の中身は再起動の後の describe の transport で知る。
+- **どの組も vendor bulk か HID を含む**（§3 の、raw CDC を併設する probe の発見の規則と同じ理由）。
+- **含めないもの**: 内蔵の USB シリアル、UART bridge、TCP の経路と、OEP の経路でない USB の機能（DFU、raw CDC など）は組に含めない。
+- **効く時**: 再起動の後（restart、core §13.2）。経路の index と名前（core §13.3）は組で変わるので、経路を名前で持つ値（素通しの項目など）は、
+  起動時に名前から今の経路へ引けなければ使わない（core §13.7）。host は boot_id の変化の後に describe を読み直す。
+- **開始できないとき**: 選んだ組の USB device を開始できなければ、probe はその起動では既定の組で開始する（値は変えない）。
+
 ## 4. シリアルの口
 
 OEP のシリアル経路はフレームを運ぶ。コンソールの生データ、ログ、起動メッセージは、下の素通しのほかは同じ経路へ混ぜない。

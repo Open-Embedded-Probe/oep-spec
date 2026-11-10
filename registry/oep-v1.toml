@@ -303,7 +303,7 @@ tx = "the fixture UART transmit, wired to the target RX (Host only)"
 nrst = "the target reset line (Host only)"
 power_hi = "target power on when high (Host only)"
 power_lo = "target power on when low (Host only)"
-[core.settings]                 # the core's items (core §13.8, transports §7)
+[core.settings]                 # the core's items (core §13.8, transports §3.1, §7)
 "channel.{}.label" = "text 1-32, channel; the pin's label (NRST)"
 "channel.{}.idle" = "enum channel_idle, channel; the idle state (core §8)"
 "channel.{}.disable" = "bool, channel; true: the probe neither drives nor configures the pin"
@@ -314,6 +314,7 @@ power_lo = "target power on when low (Host only)"
 "ipv4.{}.prefix" = "u32 1-32, netif; static prefix length"
 "ipv4.{}.gateway" = "ipv4, netif; static gateway, none when absent"
 "ipv4.{}.dns" = "ipv4, netif; static DNS server, none when absent"
+"usb.transports" = "enum (the probe's choices: transport short names in describe order joined by -, a count after a repeated one: bulk-hid-cdc2), restart; the OEP transports the probe's own USB device offers after a restart, its default set when absent (transports §3.1)"
 
 [[interface]]
 name = "oep.probe.plan"                # which channel each role of an interface uses (oep-if-plan); listed when an interface has plan roles

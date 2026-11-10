@@ -4,6 +4,9 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **USB の経路の組を選ぶ本体の項目 `usb.transports` を足した（transports §3.1、任意）**: enum、restart。probe は自分の USB device で
+  開始できる組だけを選択肢に並べ、名前は経路の短い名前を describe の順に `-` でつなぎ、2 つ以上の種類に数を付ける（`bulk-hid-cdc2`）。
+  どの組も vendor bulk か HID を含む。開始できない組は、その起動では既定の組にする。
 - **キャプチャの形式 1 を、区間ごとに決まったビット数の縮約に替えた（oep-if-capture §1.3）**: 線ごとに運び方と区間 D を選ぶ。
   運び方は raw、sample（区間の先頭の 1 サンプル）、any_high（区間の OR）、any_low（区間の AND）、change_latch（区間末のレベル＋区間の中の
   変化の有無、2 ビット）。5 以上は予約。ブロックは raw の部分（形式 0 の詰め方）と、縮約の部分（change_latch の線ごとにブロックの前のレベル 1 ビット、続けて値をビットで詰める）。どのブロックも単独で読め、帯域は信号によらず決まる。
