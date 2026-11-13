@@ -4,6 +4,7 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **どの日本語の文書にも英語の URL を置いた（版と安定性 §2）**: `X.ja.md` ごとに `X.md`。英訳ができるまでは、見出しと日本語版へのリンクだけを持つ（試験が中身を確かめる）。英語のリンクを今から張れる。
 - **broker の相乗りと見つけ方を決めた（host ガイド §7.1、§7.2）**: 相乗りは名前つきの拡張 `oep.probe.share`（critical、data は空）。
   中身は 1 つ（broker が 1 つの持ち主として probe のロックと lease を持ち、session と資源は client ごと、要求は届いた順、force で全員が外れる）。
   broker は利用者ごとの `oep/brokers/<unit_id>.json`（endpoints の種類、受ける share の名前、pid、起動時刻、実装）で自分を公開し、

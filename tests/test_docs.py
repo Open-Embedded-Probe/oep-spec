@@ -16,14 +16,29 @@ def maintained_markdown():
         yield from sorted((ROOT / directory).rglob("*.ja.md"))
 
 
-def test_normative_and_guide_copies_are_japanese_only():
-    stale_copies = [
-        path.relative_to(ROOT)
-        for directory in (ROOT / "docs", ROOT / "interfaces")
-        for path in directory.glob("*.md")
-        if not path.name.endswith(".ja.md")
-    ]
-    assert stale_copies == []
+PLACEHOLDER = "The English text of this document is not written yet."
+
+
+def test_every_japanese_document_has_its_english_url():
+    """Each X.ja.md has an X.md, so English links can point at a fixed URL before the translation."""
+    missing = [path.relative_to(ROOT) for path in maintained_markdown()
+               if path.name.endswith(".ja.md") and not path.with_name(path.name[:-6] + ".md").exists()]
+    assert missing == []
+
+
+def test_english_pages_are_placeholders_until_the_freeze():
+    """Until OEP v1 is frozen the Japanese text is the only maintained one (docs/versioning): an English page holds a
+    title, a link to its Japanese version and the placeholder sentence, never a translation that could go stale."""
+    wrong = []
+    for directory in ("docs", "interfaces", "registry", "generated", "tools", "tests"):
+        for path in sorted((ROOT / directory).rglob("*.md")):
+            if path.name.endswith(".ja.md") or any(part.startswith(".") for part in path.relative_to(ROOT).parts):
+                continue
+            text = path.read_text(encoding="utf-8")
+            ja = path.name[:-3] + ".ja.md"
+            if PLACEHOLDER not in text or f"]({ja})" not in text or len(text.splitlines()) > 6:
+                wrong.append(path.relative_to(ROOT))
+    assert wrong == []
 
 
 def test_local_document_links_exist():
