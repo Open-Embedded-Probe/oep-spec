@@ -297,11 +297,60 @@ OEP へ自分で答える broker は独立した OEP の端点として動かす
 client 向けに実装し、上流の probe との対応は内部で管理する。fn 0 の一部の op だけを自分で答え、ほかを素通しする端点にはしない。
 同じ資源を長く保持したい複数の道具は、broker のセッション内で処理をまとめる。client 向けの共有方針は core が決めない。
 
-broker が自分の道具どうしに 1 つのロックを相乗りさせるときは、その broker の名前つき拡張（core §12）を open に付けた client
-だけを相乗りさせ、拡張を付けない client には core のとおりに答える（1 つのロック、再送履歴、lease、force）。相乗りの間、
-拡張を付けない client の open は locked になる。force 付きの open は core のとおりロックを奪い、相乗りの全員がセッションを
-失う（相乗りは 1 つの持ち主として扱う）。相乗りの拡張は critical で送る: 拡張を知らない probe が黙って無視すると、
-道具は相乗りできていないことに気づけないので、unsupported で断らせる（core §2.3）。
+### 7.1 相乗り `oep.probe.share`
+
+broker が複数の道具（client）に 1 つのロックを相乗りさせるときは、名前つきの拡張 `oep.probe.share`（core §2.2、data は空）を
+open に付けた client だけを相乗りさせる。
+
+- client は `oep.probe.share` を critical（0xFF）で付ける。拡張を知らない端点（probe、相乗りしない broker）は unsupported で断る
+  （core §2.2）ので、client は相乗りできていないことに気づける。断られたら、拡張を付けずに開き直すか、止まる。
+- 相乗りの間、broker は probe のロックを 1 つの持ち主として持ち、probe への lease を保つ。session は client ごとで、client が end するか
+  接続が切れると、その client の分だけを外す。client が作った資源（接続、plan、購読）は client ごとに記録し、その client が外れたときに
+  放す。最後の client が外れたら、broker は probe のロックを放してよい。
+- client の要求は、1 つの client の中では順を崩さず、client をまたいでは届いた順に probe へ流す。
+- 拡張を付けない client には core のとおりに答える（1 つのロック、再送履歴、lease、force）。相乗りの間、拡張を付けない client の open は
+  locked になる。force 付きの open は core のとおりロックを奪い、相乗りの全員が session を失う（相乗りは 1 つの持ち主として扱う）。
+  拡張を付けない client がロックを持つ間は、相乗りの open が locked になる。
+- 相乗りの中身を変えるときは、新しい名前の拡張を足す（core §2.2）。
+
+### 7.2 broker を見つける
+
+broker は、どの道具からも、道具の場所や broker の実装によらず見つけられるように、利用者ごとの場所にファイルを置く。
+
+- **置き場所**: 利用者ごとのディレクトリの `oep/brokers/`。Linux は `$XDG_RUNTIME_DIR/oep/brokers/`、`XDG_RUNTIME_DIR` が無いとき
+  （ssh、cron、コンテナなど）は `$TMPDIR/oep-<uid>/brokers/`（`TMPDIR` が無ければ `/tmp`）。macOS は `$TMPDIR/oep/brokers/`、
+  Windows は `%LOCALAPPDATA%\oep\brokers\`。作る側も読む側も、ディレクトリの持ち主が自分で、権限が 0700 であることを確かめ、違えば使わない。
+- **対象**: unit_id を持つ probe（core §7.5）。`x-` で始まる unit_id と、unit_id で名指せない経路（UART の変換だけ、serial の無い
+  device など）は置かない。
+- **ファイル**: `<unit_id>.json`（権限 0600）。broker が待ち受けていて client がつなげる間だけ置く。一時ファイルに書いてから名前を変え、
+  読む側に書きかけを見せない。中身は UTF-8 の JSON（BOM なし）1 つで、最上位はオブジェクト。読む側は知らないメンバーを読み飛ばす。
+
+  | メンバー | 値 |
+  |---|---|
+  | `unit_id` | 文字列。broker が開いている probe の unit_id |
+  | `endpoints` | 並び。client がつなぐ先。要素は `kind` を持つオブジェクトで、`{"kind": "tcp", "address": "127.0.0.1:<port>"}` は transports §1 の TCP の形。読む側は知らない `kind` を飛ばす |
+  | `share` | 文字列の並び。broker が受ける相乗りの拡張の名前（`oep.probe.share` など）。読む側は知っている名前だけを使う |
+  | `pid` | 数。broker のプロセスの番号 |
+  | `started` | 文字列。broker が起動した時刻（RFC 3339） |
+  | `implementation` | オブジェクト。`name` と `version`（表示と診断のため） |
+  | `via` | 文字列、任意。broker が probe まで使っている経路（表示のため） |
+
+- **起動の取り合い**: broker になるものは、同じディレクトリの `<unit_id>.lock` を排他で取る（Linux と macOS は flock、Windows は
+  LockFileEx）。取れたものだけが broker になり、取れなかったものは broker を起動しない。実装が違っても同じファイルで排他する。
+- **掃除**:
+  - broker は終わるときに `<unit_id>.json` を消す。
+  - `<unit_id>.lock` は消さない。排他はファイルがあることではなくロックを持っていることで決まり、プロセスが落ちても OS がロックを放すので、
+    残ったファイルは次に取るものがそのまま使える。消すと、ロックを持つ broker がいる間に別のものが新しいファイルでロックを取れてしまう。
+  - 落ちた broker の `<unit_id>.json` は、次に `<unit_id>.lock` を取った broker が消すか書き直す。`<unit_id>.json` を消してよいのは、
+    そのロックを持つ broker だけで、読む側は消さない。
+- **道具の手順**:
+  1. 環境変数 `OEP_BROKER`（`<host>:<port>`）があれば、そこへ TCP でつなぐ（離れたマシンの broker や試験のための上書き）。
+  2. 無ければ `<unit_id>.json` を読み、知っている `kind` の `endpoints` につなぐ。つないだら fn 0 の describe の unit_id がファイルの
+     unit_id と同じことを必ず確かめる（落ちた broker の待ち受けの場所を、別の probe の broker が使い回していることがある）。合えば、
+     知っている `share` の拡張を付けて open する。
+  3. ファイルが無いか、つながらないか、unit_id が違えば、probe を直接開く。生きているかを `<unit_id>.lock` を試しに取って確かめない
+     （起動中の broker と競る）。
+- 認証は無い。`endpoints` の TCP は transports §1 のとおり、信頼できるローカルの接続でだけ使う。
 
 任意の方針によるunavailable cause 7は、認証した経路や在席確認などの製品条件を満たしていないことを表す（core §4.3）。
 hostは同じ要求やforceを繰り返して回避せず、その製品の接続・認可手順へ進む。過去の成功応答は現在の許可の証明にしない。

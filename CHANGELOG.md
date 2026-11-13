@@ -4,6 +4,11 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **broker の相乗りと見つけ方を決めた（host ガイド §7.1、§7.2）**: 相乗りは名前つきの拡張 `oep.probe.share`（critical、data は空）。
+  中身は 1 つ（broker が 1 つの持ち主として probe のロックと lease を持ち、session と資源は client ごと、要求は届いた順、force で全員が外れる）。
+  broker は利用者ごとの `oep/brokers/<unit_id>.json`（endpoints の種類、受ける share の名前、pid、起動時刻、実装）で自分を公開し、
+  `<unit_id>.lock` で起動を 1 つにする。`.lock` は消さず、残った `.json` は次にロックを取った broker だけが消す。道具は `OEP_BROKER`、
+  ファイル、直接の順に試し、つないだら describe の unit_id を必ず確かめる。
 - **op の名前と形を describe で示す共通タグを足した（core §7.4、任意）**: op_name（0x0A: op、flags、名前。flags は form と lock_free）と
   op_field（0x0B: op、part、type、名前）。form を立てた op は、要求と completed success / failed の応答の固定部分の欄を順に示す。型は
   u8〜u64、i8〜i64、bool、bytes、text（長さ付き）と、数の型の並び（type の bit 7、count(u16) 付き）。host はインターフェースを
