@@ -141,6 +141,8 @@ def check(reg: dict) -> list[str]:
             for tag_name, tag in tags.items():
                 if tag == reg["constants"]["tag_named_extension"]:
                     errors.append(f"{n}: tlv.{context} {tag_name} uses {tag:#x}, the named extension in every context (core §2.2)")
+                if context == "data" and tag == reg["constants"]["tag_data_padding"]:
+                    errors.append(f"{n}: tlv.data {tag_name} uses {tag:#x}, the padding in every data frame (core §10.2)")
         for lst, listed in iface.get("names", {}).items():
             for name in listed:
                 if "." in name or not 1 <= len(name.encode()) <= 48 or not re.fullmatch(r"[a-z0-9-]+", name):

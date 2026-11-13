@@ -162,6 +162,11 @@ def test_interface_operation_and_tlv_boundaries():
     iface['tlv']['future']['named'] = 0x7F               # every context's named extension (core §2.2)
     assert any('named extension' in e for e in gen.check(reg))
     del iface['tlv']['future']['named']
+    iface['tlv'].setdefault('data', {})['pad'] = 0x7E      # every data frame's padding (core §10.2); 0x7E elsewhere is free
+    assert any('padding in every data frame' in e for e in gen.check(reg))
+    del iface['tlv']['data']['pad']
+    if not iface['tlv']['data']:
+        del iface['tlv']['data']
     iface['tlv']['future']['zero'] = 0
     assert any('is reserved' in e for e in gen.check(reg))
 
