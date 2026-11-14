@@ -561,7 +561,7 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
 - frontend ごとの測れる範囲（入力ピンの電圧）は describe の frontend（§3.5）、チャネルごとに選ばれた frontend は configure の応答の
   frontend_used、基準電圧は reference（§3.3）。
 
-### 3.8 グリッチフィルタと外部クロック（任意）
+### 3.8 グリッチフィルタ、入力のヒステリシスと外部クロック（任意）
 
 どれも任意で、describe の宣言を持つ probe だけが受ける。configure の TLV は動作を変えるので critical で
 送り（持たない probe は unsupported）、応答で使った値を返す。費用は configure の数 byte で、サンプルごとの費用は無い。
@@ -571,13 +571,21 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
 | describe | 0x4D | glitch_filter | group(u8)、min_ns(u32)、max_ns(u32)、step_ns(u32) | ロジック |
 | configure | 0x13 | glitch_filter | group(u8)、ns(u32: これより短いパルスを無視する。0 は無し) | ロジック |
 | 応答 | 0x10 | glitch_used | group(u8)、ns(u32) | ロジック |
+| describe | 0x4E | input_hysteresis | states(u8: bit 0 切り、bit 1 入り。選べる状態の集合) | ロジック |
+| configure | 0x0C | input_hysteresis | on(u8: 0 切り、1 入り) | ロジック |
+| 応答 | 0x11 | hysteresis_used | on(u8) | ロジック |
 | configure | 0x0F | clock | role(u8)、edge(u8: 0 立ち上がり、1 立ち下がり、2 両方）、qualifier_role(u8: 0xFF なし)、qualifier_level(u8) | ロジック |
 | describe | 0x4C | external_clock | max_hz(u32)、edges(u8: ビット集合)、qualifier(u8: 0 / 1) | ロジック |
 | 応答 | 0x0F | timebase | num(u32)、den(u32): 形式 3（時刻つきのステート）の delta の刻みの rate（Hz） | ロジック |
 
 - グリッチフィルタは、取ったデータとトリガの判定の両方に効く（フィルタの後の値で判定する）。group は 0 だけで、トラックの全チャネルに
   同じ幅を使う（describe も configure も group 0 を 1 つ）。0 以外の group は rejected unsupported（glitch_filter の tag）。probe は ns に最も近い
-  step の値を使い、glitch_used で返す。範囲の外は unsupported。
+  step の値を使い、glitch_used で返す。範囲の外は unsupported。probe が宣言するのは、遅い縁や雑音の乗った縁でも出力が入力に
+  従い続けるフィルタだけ（窓の中で固まる・発振するものは宣言しない。黙ってデータが欠けるため）。固定の幅だけなら min_ns = max_ns。
+- 入力のヒステリシス（input_hysteresis）: トラックの全チャネルの入力の段に、しきい値のヒステリシス（シュミット）を入れるかどうか。
+  遅い縁や弱いプルアップの線で、しきい値の近くの揺れが短いパルスとして写るのを減らす。縁の位置はしきい値の分だけずれうる（遅い縁ほど
+  大きい）。configure で送らないとき、states の bit 1 を持つ probe は入れる。states にない状態は unsupported。describe を持つ probe は、
+  configure の応答に hysteresis_used を必ず付ける。グリッチフィルタと同じく、データとトリガの判定の両方に効く。
 - 外部クロック（clock、ステートの取得）: サンプルは clock の役割の線の edge で取る（qualifier があれば、その線が qualifier_level のときだけ）。
   clock の役割は plan に割り当て、サンプルのチャネルには含めない。rate は「来うる最も速いクロック」（区画とバッファの計算と、max_hz との照合）。
   応答の actual_rate は 0 / 1（時間は分からない）。区画の samples と trigger_index はサンプル（エッジ）で数え、start_ns は最初のエッジの推定値。

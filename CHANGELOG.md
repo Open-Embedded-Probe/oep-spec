@@ -4,6 +4,9 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **取り込みに入力のヒステリシスを足し、グリッチフィルタの宣言を絞った（capture §3.8、任意）**: input_hysteresis（describe 0x4E の
+  states、configure 0x0C、応答 0x11 hysteresis_used）。送らないとき、入れられる probe は入れる。グリッチフィルタは、遅い縁や雑音の乗った
+  縁でも固まらず発振しないものだけを宣言する（固定の幅は min_ns = max_ns）。
 - **データのフレームに詰め物の TLV を足した（core §10.2）**: どのインターフェースのデータでも tag 0x7E は詰め物（任意の長さの任意の byte、
   意味なし、繰り返してよい）。host は読み飛ばす。probe は、取り込んだバッファーを写さずにそのまま送るとき、フレームの位置を DMA の
   境界にそろえるために使える。
