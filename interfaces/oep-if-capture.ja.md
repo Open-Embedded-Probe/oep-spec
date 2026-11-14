@@ -583,9 +583,10 @@ core §4.4に従いrejected unsupported（固定部分の印0）で断る。容�
   step の値を使い、glitch_used で返す。範囲の外は unsupported。probe が宣言するのは、遅い縁や雑音の乗った縁でも出力が入力に
   従い続けるフィルタだけ（窓の中で固まる・発振するものは宣言しない。黙ってデータが欠けるため）。固定の幅だけなら min_ns = max_ns。
 - 入力のヒステリシス（input_hysteresis）: トラックの全チャネルの入力の段に、しきい値のヒステリシス（シュミット）を入れるかどうか。
-  遅い縁や弱いプルアップの線で、しきい値の近くの揺れが短いパルスとして写るのを減らす。縁の位置はしきい値の分だけずれうる（遅い縁ほど
-  大きい）。configure で送らないとき、states の bit 1 を持つ probe は入れる。states にない状態は unsupported。describe を持つ probe は、
-  configure の応答に hysteresis_used を必ず付ける。グリッチフィルタと同じく、データとトリガの判定の両方に効く。
+  入れると、遅い縁や弱いプルアップの線で、しきい値の近くの揺れが短いパルスとして写るのを減らす（トリガが揺れで誤らない）。その代わり、
+  しきい値を一瞬だけ越える本物のパルス（遅い縁で短く切られたクロックなど）は写らなくなり、縁の位置もしきい値の分だけずれる（遅い縁
+  ほど大きい）。configure で送らないとき、states の bit 0 を持つ probe は切る（写るものを減らさない）。states にない状態は unsupported。
+  describe を持つ probe は、configure の応答に hysteresis_used を必ず付ける。グリッチフィルタと同じく、データとトリガの判定の両方に効く。
 - 外部クロック（clock、ステートの取得）: サンプルは clock の役割の線の edge で取る（qualifier があれば、その線が qualifier_level のときだけ）。
   clock の役割は plan に割り当て、サンプルのチャネルには含めない。rate は「来うる最も速いクロック」（区画とバッファの計算と、max_hz との照合）。
   応答の actual_rate は 0 / 1（時間は分からない）。区画の samples と trigger_index はサンプル（エッジ）で数え、start_ns は最初のエッジの推定値。
