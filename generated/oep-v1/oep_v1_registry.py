@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "86ed40372f3c53f6"
+REGISTRY_HASH = "8a7ae26a195cfdbe"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -79,7 +79,7 @@ FIXTURE_UART = _NS(name="oep.fixture.uart", revision=1, target=None, op={"config
     line_names={}, names={}, settings={'passthrough.{}.rx': "channel, transport (serial port); the passthrough's RX (oep-if-fixture §2.1)", 'passthrough.{}.baud': 'u32, transport; 115200 when absent', 'passthrough.{}.format': 'enum (formats), transport; 8n1 when absent'})
 INTERFACES["oep.fixture.uart"] = FIXTURE_UART
 FIXTURE_I2C_TARGET = _NS(name="oep.fixture.i2c-target", revision=1, target=None, op={"configure": 0x10, "read_rx": 0x11, "preload_tx": 0x12, "status": 0x13, "stretch": 0x14}, lock_free={0x13},
-    tlv={"describe": {"queue_depth": 0x40, "max_stretch_us": 0x41}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sda": 0x01, "scl": 0x02}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"internal_pullups": 0x01}}, own={},
+    tlv={"configure": {"nack_from": 0x01}, "describe": {"queue_depth": 0x40, "max_stretch_us": 0x41}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sda": 0x01, "scl": 0x02}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"internal_pullups": 0x01, "nack_from": 0x02}}, own={},
     line_names={}, names={}, settings={})
 INTERFACES["oep.fixture.i2c-target"] = FIXTURE_I2C_TARGET
 FIXTURE_SPI_TARGET = _NS(name="oep.fixture.spi-target", revision=1, target=None, op={"configure": 0x10, "arm": 0x11, "read_rx": 0x12, "status": 0x13}, lock_free={0x13},

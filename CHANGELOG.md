@@ -4,6 +4,10 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **i2c-target の nack_from（fixture §3。任意）**: configure の TLV nack_from（u16、critical）で、書き込みごとに n 番目のデータの byte
+  （1 が最初）から後に NACK を返す。それより前とアドレスの byte は ACK、NACK した byte もフレームに入る、読み出しには効かない。features の
+  bit1 で宣言する。controller がデータの NACK を受けたときの扱い（Arduino の endTransmission() の 3 など）を確かめるためのもの。registry の
+  `[interface.tlv.configure] nack_from`、`[interface.enum.features] nack_from`。
 - **HID の report に first を足した（transports §1、§2、§5。互換のない変更）**: report = count(u16)、first(u16)、その列の count バイト、埋め。
   first はその report で最初に始まるフレームの位置（無ければ `hid_no_frame_start` = 0xFFFF、registry の usb）。受ける側は first を自分の読みと比べ、
   違えば読みかけを捨てて first から読み直す。開いた直後と壊れた列（count が入る量を超える、first が count 以上、max_frame を超える長さ、

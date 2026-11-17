@@ -707,6 +707,8 @@ op = [
   { code = 0x13, name = "status", lock = false },
   { code = 0x14, name = "stretch", lock = true },       # optional (ops)
 ]
+[interface.tlv.configure]
+nack_from = 0x01                # u16, critical: NACK the n-th data byte of each write and every one after (1 = the first; 0 = none); features bit1 (oep-if-fixture §3)
 [interface.tlv.describe]
 queue_depth = 0x40              # u8: frames the queue holds, and the most unread preload_tx slots
 max_stretch_us = 0x41           # u32: the largest stretch_us the stretch op accepts (required when ops offers stretch; oep-if-fixture §3)
@@ -720,6 +722,7 @@ unconfigured = 0
 running = 1
 [interface.enum.features]
 internal_pullups = 0x01         # the probe enables pull-ups of its own on SDA / SCL while configured (oep-if-fixture §3)
+nack_from = 0x02                # configure takes TLV nack_from (oep-if-fixture §3)
 
 [[interface]]
 name = "oep.fixture.spi-target"

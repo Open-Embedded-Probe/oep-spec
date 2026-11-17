@@ -134,7 +134,7 @@ read_rx で取り出す。
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x10 | configure | address(u8、7 ビット)、[TLV] | — | 必要 |
+| 0x10 | configure | address(u8、7 ビット)、[TLV nack_from(u16)] | — | 必要 |
 | 0x11 | read_rx | — | pending(u8)、count(u16)、data、[TLV ns(u64): そのフレームを終えた STOP か次の START の時刻、任意] | 必要 |
 | 0x12 | preload_tx | count(u16)、data | — | 必要 |
 | 0x13 | status | — | state(u8)、queued(u8)、rx_frames(u32)、tx_slots(u8)、errors(u32)、[TLV] | 不要 |
@@ -152,9 +152,13 @@ read_rx で取り出す。
   無いときは rejected unavailable（cause 6）。address が 0x7F を超えるなら rejected malformed。0x00〜0x07 と 0x78〜0x7F のアドレス（I2C の仕様が予約するもの: general call、start byte、10 bit の前置きなど）は rejected unsupported（payload `0x00`）。
 - configureの成功はstate 1となってから返す。初期化に失敗したらstate 0へ戻し、受信の列と送信の置き場を空にしてrx_frames・errorsを0にする。
   stretchの値は失敗でも保つ。成功・failedとも応答の固定部分はなく、末尾は[TLV]。
-- **書き込み**: controller の書き込みは 1 回のトランザクション（START から STOP または次の START まで）を単位に扱い、各 byte に ACK を返す。データの
+- **書き込み**: controller の書き込みは 1 回のトランザクション（START から STOP または次の START まで）を単位に扱い、各 byte に ACK を返す（nack_from を除く）。データの
   ある書き込み 1 回が 1 フレームで、列に積む。max_length を超えた分は捨て（フレームは max_length までの data で積む）、errors を 1 増やす。
   データの無い書き込み（アドレスの byte だけのもの）は何も積まず、何も数えない。
+- **nack_from**（configure の TLV、u16、critical。任意）: 書き込みごとに、アドレスの後の n 番目のデータの byte（1 が最初）から後のすべてに
+  NACK を返す。それより前の byte と、アドレスの byte には ACK を返す。0 か無いときは、すべてに ACK を返す。NACK を返した byte も受けた
+  byte としてフレームに入れる（数え方と max_length の規則は上と同じ）。読み出しには効かない。値は configure で置き換わり、configure
+  し直すまで保つ。持つ probe は features の bit1 で宣言する。宣言しない probe はこの TLV を unsupported で断る（critical、core §2.3）。
 - read_rx は、いちばん古いフレームを取り出して返す（無ければ count 0）。state 0 では rejected unavailable（cause 6）。pending は、
   取り出した後に残っている数（255 で止める）。列に queue_depth 個あるときに次のフレームが来たら、その新しいフレームを捨て、errors を
   1 増やす（rx_frames には数えない）。列の深さは describe の queue_depth。errors は書き込み 1 回につき多くても 1 増える（max_length を超え、
@@ -170,7 +174,7 @@ read_rx で取り出す。
 - stretch は、受けたデータの byte ごとに、8 bit 目の後、ACK を出した状態で ACK の clock の前に SCL を low に保つ時間（µs、0 = しない）。
   read では、アドレスが一致した後に同じだけ保つ。write のアドレスの byte では保たない。stretchは任意（core §1.2）。stretch_us が describe の max_stretch_us を超えれば rejected unsupported。state によらず受け
   （state 0 でも）、値は次に受ける byte から効く。configure は値を変えない。
-- describe: ops、role_channels、max_length（1 フレームの最大 byte）、max_clock_hz（確かめた SCL の上限）、features（bit0 内部プルアップ）、
+- describe: ops、role_channels、max_length（1 フレームの最大 byte）、max_clock_hz（確かめた SCL の上限）、features（bit0 内部プルアップ、bit1 nack_from）、
   queue_depth（tag 0x40、u8: 積めるフレームの数と、未読の置き場の数の上限）、
   max_stretch_us（tag 0x41、u32: stretch が受ける最大の µs。1 以上。stretch を持つ probe は必ず載せる）。
 - max_lengthは、preload_txの要求（見出し10 + count 2 + data）とread_rxの応答（見出し5 + pending 1 + count 2 + data）が
