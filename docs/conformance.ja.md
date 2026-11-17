@@ -43,7 +43,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - vendor bulk と TCP: `length(u16) message`（transports §1）、vendor bulk の長さ 0 の転送の規則（transports §1）、TCP では途切れで読み直さない（transports §2）。
 - フレームの区切りを書き込み、転送、report、TCP の segment の区切りに頼らない。TCP 以外では、送るフレームの途中で `probe_frame_gap_ms` 止めない（transports §2）。
 - 経路（TCP の接続を含む）が閉じても、セッション、ロック、購読、送り直しの表は残し、閉じた経路への応答と通知は捨てる（transports §3）。
-- HID: `count(u16)` の report が運ぶ長さつきの流れ、report をまたぐフレーム、count 0 は飛ばす、詰め物は 0 で送り無視する、report ID は 1 つか無し、流れの上のフレームの途切れ、長すぎる count（transports §1）。出力 report を interrupt OUT と SET_REPORT の両方で受ける（transports §3）。
+- HID: `count(u16)`、`first(u16)` の report が運ぶ長さつきの流れ、report をまたぐフレーム、first はその report で最初に始まるフレームの位置（無ければ `hid_no_frame_start`）、count 0 は飛ばす、詰め物は 0 で送り無視する、report ID は 1 つか無し、first が自分の読みと違えば読みかけを捨てて first から読み直す、開いた直後と壊れた列は first を持つ次の report から、長すぎる count と count 以上の first（transports §1、ベクタ `hid_reports.json`）。出力 report を interrupt OUT と SET_REPORT の両方で受ける（transports §3）。
 - max_frame を超える長さ: 捨てて待つ。TCP では閉じる（transports §1）。`probe_frame_gap_ms` の途切れで読み直す。TCP を除く（transports §2）。
 - confirm の前でも 64 バイトまでのメッセージを受ける（transports §3）。max_frame を超えて送らない（transports §3）。
 - TCP で待ち受けて自分を広告するなら、DNS-SD の `_oep._tcp` を mDNS で広告し、TXT に `unit_id=<unit_id>` を載せる（port は SRV、transports §3）。
@@ -131,7 +131,7 @@ fn 0のconfirm / list / describe / clock / lock_stateは方針の対象から除
 - **待ち**: すべての要求に core §4.4 の下限、自分のリンクの要求も含む。UART ブリッジでの転送時間、その transport での最初の confirm の
   答えまでは `min_max_frame` で（core §4.4）。状態変更前にmax_op_msを取得し、操作が要求全体の短い上限を定めない限りmax_op_msを使う。
   DMIの明示的な待ちの和やrunのtimeout_msだけで内部再試行・準備・後始末の時間を省かない（core §4.4）。
-- **再送と回復**: 送り直しは同じ corr で（core §5.1）。corr は session_id ごとに循環して前進し、0 を使わず、未解決要求との距離を半周未満に保つ（core §4.1）。TCP の区切り破損は再接続、vendor bulk / HID の再同期では最後に書いてから `probe_frame_gap_ms` より長く待つこと（transports §5）。再送にも答えが無ければその transport は失敗した: そこで何かを送る前に、transports §5 の手順で立て直すか開き直し、状態を変える要求を繰り返す前に状態を読む（core §5.1）。
+- **再送と回復**: 送り直しは同じ corr で（core §5.1）。corr は session_id ごとに循環して前進し、0 を使わず、未解決要求との距離を半周未満に保つ（core §4.1）。TCP の区切り破損は再接続、vendor bulk の再同期では最後に書いてから `probe_frame_gap_ms` より長く待ち、通知が続くあいだは lease が終わるまで静かにならないこと、HID は first を持つ次の report から読み直すこと（transports §5）。再送にも答えが無ければその transport は失敗した: そこで何かを送る前に、transports §5 の手順で立て直すか開き直し、状態を変える要求を繰り返す前に状態を読む（core §5.1）。
 - **セッション**: 0 でない乱数の session_id（core §6.1）。答えの lease_ms が正で、keepalive が延ばす（core §6.4）。no_session /
   locked への対応（core §4.3、§6.2）。no_session の後は新しいセッションを開いて設定し直す。boot_id が（confirm でも open でも）変われば自分の状態は無効で、
   list し直す（core §6.5）。一つのセッションの要求は一つの transport で（transports §3）。セッションの要らないロック不要の要求は session_id 0 で（core §4.1）。

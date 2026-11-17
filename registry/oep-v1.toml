@@ -131,6 +131,8 @@ vendor_bulk_subclass = 0x4F     # 'O'
 vendor_bulk_protocol = 0x45     # 'E'
 hid_usage_page = 0xFF4F
 hid_usage = 0x45
+hid_report_header_bytes = 4     # an OEP HID report's count(u16) and first(u16) after the report ID, if any (transports §1)
+hid_no_frame_start = 0xFFFF     # first when no frame starts in the report (transports §1)
 
 [limits]                        # values the spec text states; generated code may check them
 request_header_bytes = 10

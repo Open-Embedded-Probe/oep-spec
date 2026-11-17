@@ -16,21 +16,27 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
 |---|---|
 | シリアルの口（UART bridge、USB CDC、内蔵の USB シリアル） | COBS + CRC-16、0x00 で区切る（下） |
 | USB の vendor bulk、TCP | `length(u16) message`。CRC なし。length 0 は予約（keepalive。読み飛ばす。下） |
-| USB の HID（vendor 定義の report） | vendor bulk の長さつきのバイト列を report で運ぶ: report = `count(u16)`、その列の count バイト、埋め（report の大きさは HID の記述子のとおり）。規則は下 |
+| USB の HID（vendor 定義の report） | vendor bulk の長さつきのバイト列を report で運ぶ: report = `count(u16)`、`first(u16)`、その列の count バイト、埋め（report の大きさは HID の記述子のとおり）。規則は下 |
 
 - **長さ 0 のフレーム**（vendor bulk、TCP）: 要求でも応答でもデータでもない。受け手は読み飛ばし、何にも数えない（core §6 の lease を
   延ばさない。lease を延ばすのは要求だけ）。どちらの向きでも送ってよい（USB では転送を閉じるのに使える。下の束ね方）。
-- **HID の report**: 向きごとに、report は 1 つのバイト列を運ぶ。
-  1. report の OEP のバイトは、count の後ろの count バイトである。向きごとに report の順につなげると、1 つの長さつきのバイト列になる。
+- **HID の report**: 向きごとに、report は 1 つのバイト列を運ぶ。OS の HID のドライバーは、読まれずにたまった report を捨てる
+  ことがあり、送る側も送れない report を捨てることがある。first はそこから列を読み直す位置を示す。
+  1. report の OEP のバイトは、count と first の後ろの count バイトである。向きごとに report の順につなげると、1 つの長さつきのバイト列になる。
      vendor bulk と同じ列（`length(u16) message`）である。
-  2. count が 0 の report は空で、読み飛ばす。
-  3. 送る側は埋めを 0 にする。受ける側は、埋めをその値によらず無視する。
-  4. OEP の HID の interface は、report ID を宣言しないか、その input の report と output の report が使う report ID を 1 つ宣言する。宣言するときは、
-     両方向のすべての report がそれで始まり、count はその後ろから数える。受ける側は、別の ID で始まる report を捨てる。
-  5. §2 の途切れの規則はこの列に掛かる: フレームが途中で、report が 200 ms（`probe_frame_gap_ms`）来ないとき、probe は
-     途中のフレームを捨て、列の次のバイトを長さの始まりとして読む。host は §5 で立て直す。
-  6. count が report に入る量（report の長さ − 2、report ID があれば − 3）より大きい report は捨て、受ける側は列が壊れたとして
-     扱う: 200 ms 途切れるまで入力を捨てる。max_frame より大きい長さ（下）と同じ。
+  2. **first** は、その count バイトの中で最初に始まるフレームの、長さの最初のバイトの位置（0 から数える）である。長さ 0 のフレームも
+     フレームとして数える。その report で始まるフレームが無ければ `hid_no_frame_start`（0xFFFF）にする。count が 0 の report の first も
+     `hid_no_frame_start` である。
+  3. count が 0 の report は空で、読み飛ばす。
+  4. 送る側は埋めを 0 にする。受ける側は、埋めをその値によらず無視する。
+  5. OEP の HID の interface は、report ID を宣言しないか、その input の report と output の report が使う report ID を 1 つ宣言する。宣言するときは、
+     両方向のすべての report がそれで始まり、count と first はその後ろにある。受ける側は、別の ID で始まる report を捨てる。
+  6. **読み直し**: 受ける側は、自分の読みでその report の中に最初に始まるフレームの位置を first と比べる。違えば（どちらか一方だけが
+     始まりを持つ場合を含む）、その前に report が欠けている: 読みかけのフレームを捨て、その report の first から読み直す。first が
+     `hid_no_frame_start` なら、first を持つ次の report まで入力を捨てる。列が壊れた受ける側（下の規則 7、max_frame より大きい長さ、
+     受けたバイトを置けなかった）と、経路を開いたばかりの受ける側も、first を持つ次の report から読み直す。HID の列には §2 の途切れの規則（200 ms）を掛けない。
+  7. count が report に入る量（report の長さ − 4、report ID があれば − 5）より大きい report と、first が `hid_no_frame_start` でも
+     count より小さくもない report は捨て、受ける側は列が壊れたとして扱う。
 - **COBS のフレーム**: message の後ろに CRC-16/CCITT-FALSE（多項式 0x1021、初期値 0xFFFF、反転なし、"123456789" → 0x29B1）を
   little endian で付け、COBS（254 byte のブロックに分ける標準の形）で符号にし、**前後を 0x00 で囲んで送る**（`0x00 <COBS> 0x00`）。
   probe も host も前の 0x00 を省かない。最後のブロックが 254 byte の data を持つ（code 0xFF）とき、符号にする側は後ろに空のブロックを付けず、解く側は
@@ -42,7 +48,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   終えて後ろに続かないとき、最後の転送が wMaxPacketSize の倍数なら、長さ 0 の転送を送るか、長さ 0 のフレーム（2 byte、上）を送るか、
   最後の 1 byte を別の転送に分ける。
   続きがすぐ来るときは倍数のままでよい。
-- **max_frame より大きい長さ**: probe はそのフレームと、次に `probe_frame_gap_ms` 途切れるまでの入力を捨て、次のフレームを待つ。応答は送らない。TCP では代わりに接続を閉じる。HID では、これは列から読んだ長さに掛かる（report の count は上の規則 6）。
+- **max_frame より大きい長さ**: probe はそのフレームと、次に `probe_frame_gap_ms` 途切れるまでの入力を捨て、次のフレームを待つ。応答は送らない。TCP では代わりに接続を閉じる。HID では、捨てる範囲は first を持つ次の report まで（上の規則 6）。
 - どのフレームを使うかは経路の種類だけで決まる（VID:PID で選ばない）。
 - **TCP は、信頼できるローカルの接続か、認証したトンネルの内側でだけ使う。** OEP は認証を持たない（core §6.4 の force を含む）。
   1 つの probe を複数の host で使うときは、ブローカーが 1 つのセッションに束ねる（probe の規則がブローカーに何を求めるかは次の項目）。
@@ -62,7 +68,7 @@ UART を USB-UART の変換チップで出したもの、USB CDC、内蔵の USB
   host と broker は、解決済み要求を後から再投入せず、旧経路の queue を新しい経路へ自動的に持ち越さない（core §4.1、§5.1）。
 - フレームは、何回の書き込み、USB の転送、HID の report、TCP の segment に分けても、ほかのフレームと 1 回にまとめてもよい。受ける側はその区切りに頼らない。
 - 送る側（host も probe も）は、TCP を除き、1 つのフレームの途中で `probe_frame_gap_ms` 止めない。
-- シリアルの口、vendor bulk、HID では、フレームの途中で 200 ms（`probe_frame_gap_ms`）入力が途切れたら、probe は読み取りを最初からやり直す。**TCP ではやり直さない。** TCP は区切りを失わず、流れの壊れた TCP の接続は閉じる。
+- シリアルの口と vendor bulk では、フレームの途中で 200 ms（`probe_frame_gap_ms`）入力が途切れたら、probe は読み取りを最初からやり直す。**TCP ではやり直さない。** TCP は区切りを失わず、流れの壊れた TCP の接続は閉じる。HID は report の first で読み直す（§1）。
 
 ## 3. 複数の経路
 
@@ -162,8 +168,10 @@ OEP のシリアル経路はフレームを運ぶ。コンソールの生デー�
 
 - TCP のフレームの長さや形が壊れた場合は接続を閉じて開き直す。入力を静かにして confirm を送っても、TCP の parser はリセットされない。
   フレームの途中の休みだけでは壊れたと判断しない。待っていない corr の正常な応答は捨てるだけで、区切りの破損とは扱わない。
-- vendor bulk と HID の区切りを失った host は入力を読み捨て、その口への最後の書き込みから probe_frame_gap_ms より長く待つ。
-  自分の corr の confirm 応答を確認して再開する。静かにできなければ経路を閉じて開き直す。
+- vendor bulk の区切りを失った host は入力を読み捨て、その口への最後の書き込みから probe_frame_gap_ms より長く待つ。
+  自分の corr の confirm 応答を確認して再開する。購読した通知が届き続けるあいだは静かにならない: 通知は購読したセッションのロックと
+  一緒に終わる（core §10.3）ので、要求を送らずに待てば、遅くとも lease_max_ms で静かになる。静かにできなければ経路を閉じて開き直す。
+- HID は first を持つ次の report から読み直す（§1）。静かになるのを待たない。結果の届かなかった要求は core §5.1 の再送規則に従う。
 - COBS は壊れた候補を捨て、次の区切りから読む。要求の結果が不明な場合は core §5.1 の再送規則を使う。
 - 開き直してもセッションと再送履歴は残る（§3）。新しい経路で confirm して boot_id を確認する。
   これは旧経路の未送信/未読 queue を持ち越す意味ではない。同一要求を再送する場合も、core §4.1、§5.1 の半周と番号再使用の規則を守る。

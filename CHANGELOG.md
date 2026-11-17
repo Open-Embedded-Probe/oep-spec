@@ -4,6 +4,14 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **HID の report に first を足した（transports §1、§2、§5。互換のない変更）**: report = count(u16)、first(u16)、その列の count バイト、埋め。
+  first はその report で最初に始まるフレームの位置（無ければ `hid_no_frame_start` = 0xFFFF、registry の usb）。受ける側は first を自分の読みと比べ、
+  違えば読みかけを捨てて first から読み直す。開いた直後と壊れた列（count が入る量を超える、first が count 以上、max_frame を超える長さ、
+  受けたバイトを置けない）は、first を持つ次の report から読む。HID の列には 200 ms の途切れの規則を掛けない。OS の HID のドライバーは
+  読まれずにたまった report を捨て（ESP32-P4X で、host の受け取りを 2 秒ごとに 0.3 秒止めると、20 秒の取り込みで長さ 65535 を 6 回読んで
+  終わった）、その後の列は静かにならず立て直せなかった。共有ベクタ `hid_reports.json`。
+- **vendor bulk の立て直しで静かになるまでの待ち（transports §5）**: 購読した通知が届き続けるあいだは静かにならず、通知はセッションの
+  ロックと一緒に終わる（core §10.3）ので、要求を送らずに待てば遅くとも lease_max_ms で静かになる、と書き足した（規則は変えていない）。
 - **取り込みに入力のヒステリシスを足し、グリッチフィルタの宣言を絞った（capture §3.8、任意）**: input_hysteresis（describe 0x4E の
   states、configure 0x0C、応答 0x11 hysteresis_used）。送らないとき、切れる probe は切る（入れると、遅い縁で短く切られた本物のクロックが写らなくなる）。グリッチフィルタは、遅い縁や雑音の乗った
   縁でも固まらず発振しないものだけを宣言する（固定の幅は min_ns = max_ns）。

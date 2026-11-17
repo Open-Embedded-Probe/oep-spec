@@ -1,0 +1,92 @@
+{
+  "about": "HID reports (transports §1): count(u16), first(u16), the stream's count bytes, zero padding - after the report ID when the descriptor declares one. room: each report's length after the report ID (12 bytes of the stream here). A reader starts as one that has just opened the transport.",
+  "room": 16,
+  "hid_no_frame_start": 65535,
+  "pack": [
+    {
+      "name": "an 18-, a 14-, a length 0 and a 7-byte frame (41 bytes): firsts 0, 6, 8, none - the report holding only the last frame's tail has none",
+      "messages_hex": [
+        "010100000001000000004f45503f0101",
+        "02010000005a5a5a5a5a5a5a",
+        "",
+        "0202000000"
+      ],
+      "reports_hex": [
+        "0c000000100001010000000100000000",
+        "0c0006004f45503f01010c0002010000",
+        "0c000800005a5a5a5a5a5a5a00000500",
+        "0500ffff020200000000000000000000"
+      ]
+    }
+  ],
+  "read": [
+    {
+      "name": "every report: every message, the length 0 frame read past",
+      "reports_hex": [
+        "0c000000100001010000000100000000",
+        "0c0006004f45503f01010c0002010000",
+        "0c000800005a5a5a5a5a5a5a00000500",
+        "0500ffff020200000000000000000000"
+      ],
+      "messages_hex": [
+        "010100000001000000004f45503f0101",
+        "02010000005a5a5a5a5a5a5a",
+        "0202000000"
+      ]
+    },
+    {
+      "name": "the second report missing: its first does not match where the reader's frame ends (6 against 8), the two frames it cut are lost, the reading goes on from 8",
+      "reports_hex": [
+        "0c000000100001010000000100000000",
+        "0c000800005a5a5a5a5a5a5a00000500",
+        "0500ffff020200000000000000000000"
+      ],
+      "messages_hex": [
+        "0202000000"
+      ]
+    },
+    {
+      "name": "opened at the second report: read from its first (6)",
+      "reports_hex": [
+        "0c0006004f45503f01010c0002010000",
+        "0c000800005a5a5a5a5a5a5a00000500",
+        "0500ffff020200000000000000000000"
+      ],
+      "messages_hex": [
+        "02010000005a5a5a5a5a5a5a",
+        "0202000000"
+      ]
+    },
+    {
+      "name": "opened at the last report: no first, nothing read",
+      "reports_hex": [
+        "0500ffff020200000000000000000000"
+      ],
+      "messages_hex": []
+    },
+    {
+      "name": "a count over what the report holds: dropped, broken till the next first",
+      "reports_hex": [
+        "0c000000100001010000000100000000",
+        "0d0000004f45503f01010c0002010000",
+        "0c000800005a5a5a5a5a5a5a00000500",
+        "0500ffff020200000000000000000000"
+      ],
+      "messages_hex": [
+        "0202000000"
+      ]
+    },
+    {
+      "name": "a first not below count: dropped, broken till the next first",
+      "reports_hex": [
+        "0c000000100001010000000100000000",
+        "0c000c004f45503f01010c0002010000",
+        "0c000800005a5a5a5a5a5a5a00000500",
+        "0500ffff020200000000000000000000"
+      ],
+      "messages_hex": [
+        "0202000000"
+      ]
+    }
+  ]
+}

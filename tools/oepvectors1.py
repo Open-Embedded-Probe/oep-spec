@@ -1789,13 +1789,117 @@ def settings_file() -> dict:
                         "probe": b, "file": file_b, **import_b}]}
 
 
+# ---- HID reports (transports §1, the HID rules) -------------------------------------------------------------------
+
+HID_HEAD = REG["usb"]["hid_report_header_bytes"]
+HID_NONE = REG["usb"]["hid_no_frame_start"]
+
+
+def hid_pack(messages: list[bytes], room: int) -> list[bytes]:
+    """The length-prefixed stream of `messages` in reports of `room` bytes after the report ID (count, first, the
+    stream's bytes, zero padding), each as full as it takes: first is where the first frame starting in it begins."""
+    stream, starts = b"", []
+    for msg in messages:
+        starts.append(len(stream))
+        stream += struct.pack("<H", len(msg)) + msg
+    cap, reports = room - HID_HEAD, []
+    for at in range(0, len(stream), cap):
+        chunk = stream[at:at + cap]
+        first = next((x - at for x in starts if at <= x < at + len(chunk)), HID_NONE)
+        reports.append(struct.pack("<HH", len(chunk), first) + chunk + bytes(cap - len(chunk)))
+    return reports
+
+
+def hid_next_start(partial: bytes, data: bytes) -> int:
+    """Where the next frame starts in `data` for a reader holding `partial` (the frame begun so far; b"" at a frame's
+    start): its position, or HID_NONE when the frame begun runs past `data`."""
+    if not partial:
+        return 0 if data else HID_NONE
+    if len(partial) == 1:
+        if not data:
+            return HID_NONE
+        need = 2 + (partial[0] | data[0] << 8) - 1
+    else:
+        need = 2 + (partial[0] | partial[1] << 8) - len(partial)
+    return need if need < len(data) else HID_NONE
+
+
+def hid_unpack(reports: list[bytes], room: int, max_frame: int = 1024) -> list[bytes]:
+    """A receiver of the HID rules 6 and 7 on `reports` (each `room` bytes after the report ID): the messages read. It
+    starts as one that has just opened the transport, so it reads from the first report with a first."""
+    cap, out = room - HID_HEAD, []
+    partial, synced = b"", False
+    for rep in reports:
+        count, first = struct.unpack_from("<HH", rep)
+        if count > cap or (first != HID_NONE and first >= count):
+            partial, synced = b"", False                      # rule 7: dropped, the stream broken
+            continue
+        if count == 0:
+            continue
+        data = rep[HID_HEAD:HID_HEAD + count]
+        if synced and hid_next_start(partial, data) != first:
+            partial, synced = b"", False                      # rule 6: a report is missing before this one
+        if not synced:
+            if first == HID_NONE:
+                continue
+            partial, synced, data = b"", True, data[first:]
+        stream = partial + data
+        while len(stream) >= 2:
+            n = stream[0] | stream[1] << 8
+            if n > max_frame:
+                stream, synced = b"", False                   # a length over max_frame: broken till the next first
+                break
+            if len(stream) < 2 + n:
+                break
+            if n:
+                out.append(stream[2:2 + n])
+            stream = stream[2 + n:]
+        partial = stream
+    return out
+
+
+def hid_reports() -> dict:
+    room = 16                                                 # 12 of the stream per report: small, to show the cases
+    a = request(1, 0, op("core", "confirm"), b"OEP?\x01\x01")   # 16 bytes: an 18-byte frame
+    b = answer(1, 0, 0, b"\x5a" * 7)                         # 12 bytes: a 14-byte frame
+    c = answer(2, 0, 0)                                       # 5 bytes: a 7-byte frame
+    msgs = [a, b, b"", c]                                     # with a length 0 frame between b and c (2 bytes)
+    reps = hid_pack(msgs, room)                               # stream 41 bytes: frames at 0, 18, 32, 34
+    firsts = [struct.unpack_from("<HH", r)[1] for r in reps]
+    assert firsts == [0, 6, 8, HID_NONE], firsts              # R3 holds only c's last 5 bytes
+
+    def case(name: str, reports: list[bytes], want: list[bytes]) -> dict:
+        got = hid_unpack(reports, room)
+        assert got == want, (name, [hx(g) for g in got])
+        return {"name": name, "reports_hex": [hx(r) for r in reports], "messages_hex": [hx(m) for m in want]}
+    broken_count = struct.pack("<HH", room - HID_HEAD + 1, 0) + reps[1][HID_HEAD:]
+    first_past = struct.pack("<HH", 12, 12) + reps[1][HID_HEAD:]
+    return {
+        "about": "HID reports (transports §1): count(u16), first(u16), the stream's count bytes, zero padding - after the "
+                 "report ID when the descriptor declares one. room: each report's length after the report ID (12 bytes "
+                 "of the stream here). A reader starts as one that has just opened the transport.",
+        "room": room, "hid_no_frame_start": HID_NONE,
+        "pack": [{"name": "an 18-, a 14-, a length 0 and a 7-byte frame (41 bytes): firsts 0, 6, 8, none - the report "
+                          "holding only the last frame's tail has none",
+                  "messages_hex": [hx(m) for m in msgs], "reports_hex": [hx(r) for r in reps]}],
+        "read": [
+            case("every report: every message, the length 0 frame read past", reps, [a, b, c]),
+            case("the second report missing: its first does not match where the reader's frame ends (6 against 8), "
+                 "the two frames it cut are lost, the reading goes on from 8", reps[:1] + reps[2:], [c]),
+            case("opened at the second report: read from its first (6)", reps[1:], [b, c]),
+            case("opened at the last report: no first, nothing read", reps[3:], []),
+            case("a count over what the report holds: dropped, broken till the next first", [reps[0], broken_count] + reps[2:], [c]),
+            case("a first not below count: dropped, broken till the next first", [reps[0], first_past] + reps[2:], [c]),
+        ],
+    }
+
 FILES = {"checks.json": checks, "cobs.json": cobs, "headers.json": headers, "confirm.json": confirm,
          "refusals.json": refusals, "core_extensions.json": core_extensions,
          "discovery.json": discovery, "sessions.json": sessions, "ops.json": ops, "ops_encoding.json": ops_encoding,
          "logic_layout.json": logic_layout, "interface_profiles.json": interface_profiles,
          "core_lifecycle.json": core_lifecycle, "core_policy.json": core_policy,
          "interface_boundaries.json": interface_boundaries, "capture_formats.json": capture_formats,
-         "settings_file.json": settings_file}
+         "settings_file.json": settings_file, "hid_reports.json": hid_reports}
 
 
 def render(build) -> str:

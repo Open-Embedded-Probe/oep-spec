@@ -5,6 +5,7 @@
 | ファイル | 対象 |
 |---|---|
 | `checks.json`、`cobs.json` | checksum と COBS encoding |
+| `hid_reports.json` | HID の report（transports §1）: フレームを report に詰めたときの count と first、report が欠けたとき・途中から開いたとき・count や first が壊れたときに読めるメッセージ |
 | `headers.json`、`confirm.json` | メッセージヘッダと接続確認 |
 | `refusals.json` | 要求の拒否とエラー応答 |
 | `discovery.json`、`sessions.json` | 機能の発見とセッション |
