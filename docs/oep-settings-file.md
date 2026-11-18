@@ -124,7 +124,7 @@ Importing makes the probe's values the values of the file. If the file has `memo
      - Among the file's objects, those whose size and crc in list are the same as their data are not written (oep-if-memo §4.2). The others are written.
        Those whose data is longer than max_object are not sent, and are shown as things that cannot be looked up.
      - Objects on the probe that are not in the file are deleted.
-3. Where possible, show the following to the user and get confirmation (it MAY be skipped when the user specified skipping confirmation beforehand, for example `--yes` of a CLI):
+3. The host SHOULD show the following to the user and get confirmation (it MAY be skipped when the user specified skipping confirmation beforehand, for example `--yes` of a CLI):
    - what cannot be looked up;
    - values that are rewritten, values newly put, values unset (values of the probe not in the file);
    - objects to write, objects to delete;
