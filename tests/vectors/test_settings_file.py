@@ -3,6 +3,7 @@ import ipaddress
 import json
 import struct
 import tomllib
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -128,7 +129,24 @@ def test_export():
             category, its = p.fns[fn]
             item = its[number - 1]
             out["settings"].setdefault(category, {})[p.flat(item, key)] = {"secret": True} if item["secret"] else p.to_json(item, data)
+        memo, skipped = {}, []
+        for o in case["memo_objects"]:                                # every memo object, list order (settings file §2.4, §3)
+            name, data = bytes.fromhex(o["name_hex"]), bytes.fromhex(o["data_hex"])
+            try:
+                key = name.decode("utf-8")
+            except UnicodeDecodeError:
+                skipped.append(o["name_hex"])
+                continue
+            if zlib.crc32(data) != o["crc"]:
+                skipped.append(o["name_hex"])
+                continue
+            try:
+                memo[key] = data.decode("utf-8")
+            except UnicodeDecodeError:
+                memo[key] = {"bytes": data.hex()}
+        out["memo"] = memo
         assert out == case["file"], case["name"]
+        assert skipped == case["memo_not_written_hex"]
 
 
 def test_import():
@@ -152,6 +170,18 @@ def test_import():
                 if current.get((fn, number, key)) != data:
                     sets.append({"fn": fn, "number": number, "key": key, "data_hex": data.hex()})
         unsets = [{"fn": fn, "number": n, "key": k} for (fn, n, k) in current if (fn, n, k) not in wanted]
+        have = {bytes.fromhex(o["name_hex"]): (o["size"], o["crc"]) for o in case["current_memo"]}
+        file_memo = {k.encode(): (v.encode() if isinstance(v, str) else bytes.fromhex(v["bytes"]))
+                     for k, v in case["file"]["memo"].items()}
+        writes = []
+        for name, data in file_memo.items():
+            if len(data) > case["memo_max_object"]:
+                unresolved.append(["memo", name.decode()])
+            elif have.get(name) != (len(data), zlib.crc32(data)):
+                writes.append({"name_hex": name.hex(), "data_hex": data.hex()})
+        deletes = [n.hex() for n in have if n not in file_memo]
+        assert writes == case["expected_memo_write"]
+        assert deletes == case["expected_memo_delete_hex"]
         assert sets == case["expected_set"], case["name"]
         assert unsets == case["expected_unset"]
         assert secret_missing == case["secret_without_value"]

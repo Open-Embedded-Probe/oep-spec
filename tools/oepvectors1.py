@@ -18,6 +18,7 @@ import json
 import struct
 import sys
 import tomllib
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -1757,11 +1758,27 @@ def settings_file() -> dict:
                              "oep.wire.rvswd/0": {"channel.GPIO5.rest": "low", "channel.GPIO5.hold": True},
                              "oep.fixture.uart/0": {"passthrough.cdc0.rx": "GPIO1", "passthrough.cdc0.baud": 115200,
                                                     "passthrough.cdc0.format": "8n1"}}}
+    # probe A's memo area (oep-if-memo): text and binary data; one torn (its crc not its data's) and one whose name is
+    # not UTF-8 stay out of the file
+    port_rec = b'{"target":"ch32x035-1a2b3c4d"}'
+    memo_a = [(b"oep.probe.memo/port/x035", port_rec, zlib.crc32(port_rec)),
+              (b"io.github.example.bench/blob", b"\x00\xff\x10", zlib.crc32(b"\x00\xff\x10")),
+              (b"io.github.example.bench/torn", b"abc", zlib.crc32(b"abd")),
+              (b"io.github.example.bench/\xff", b"x", zlib.crc32(b"x")),
+              (b"io.github.example.bench/log", b"L" * 80, zlib.crc32(b"L" * 80))]
+    exported["memo"] = {"oep.probe.memo/port/x035": port_rec.decode(),
+                        "io.github.example.bench/blob": {"bytes": "00ff10"},
+                        "io.github.example.bench/log": "L" * 80}
     # probe B: another firmware: channels renumbered, the UART first, no rvswd, one more transport before the CDC
     b = sf_probe(["GPIO14", "GPIO5", "GPIO1", "GPIO0"], ["uart_bridge", "usb_cdc"],
                  [(1, "oep.fixture.uart", 0, uart_items)])
     file_b = json.loads(json.dumps(exported))
     file_b["settings"]["io.example.gone/0"] = {"x": 1}
+    file_b["memo"]["io.github.example.bench/new"] = "n"
+    # B's memo area: the port record as in the file (not written again), blob with other data, one the file lacks
+    memo_b = [(b"oep.probe.memo/port/x035", len(port_rec), zlib.crc32(port_rec)),
+              (b"io.github.example.bench/blob", 2, zlib.crc32(b"\x00\x01")),
+              (b"io.github.example.bench/old", 1, zlib.crc32(b"o"))]
     def setv(fn, items, name, key, data):
         return {"fn": fn, "number": num(items, name), "key": key, "data_hex": hx(data)}
     import_b = {"current_values_hex": hx(v(0, num(core_items, "wifi.{}.ssid"), 1, b"old")),
@@ -1777,14 +1794,27 @@ def settings_file() -> dict:
                                  setv(1, uart_items, "passthrough.{}.format", 1, b"\0")],
                 "expected_unset": [{"fn": 0, "number": num(core_items, "wifi.{}.ssid"), "key": 1}],
                 "secret_without_value": [["core", "wifi.0.passphrase"]],
-                "unresolved": [["oep.wire.rvswd/0", "channel.GPIO5.rest"], ["oep.wire.rvswd/0", "channel.GPIO5.hold"], ["io.example.gone/0", "x"]]}
+                "unresolved": [["oep.wire.rvswd/0", "channel.GPIO5.rest"], ["oep.wire.rvswd/0", "channel.GPIO5.hold"], ["io.example.gone/0", "x"],
+                               ["memo", "io.github.example.bench/log"]],
+                "memo_max_object": 64,
+                "current_memo": [{"name_hex": hx(n), "size": z, "crc": c} for n, z, c in memo_b],
+                "expected_memo_delete_hex": [hx(b"io.github.example.bench/old")],
+                "expected_memo_write": [{"name_hex": hx(b"io.github.example.bench/blob"), "data_hex": "00ff10"},
+                                        {"name_hex": hx(b"io.github.example.bench/new"), "data_hex": hx(b"n")}]}
     return {"about": "The settings file (docs/oep-settings-file.ja.md): a probe's declarations (fn 0's describe TLVs; each listed fn's name, "
                      "instance and describe TLVs) and its get values (count x value, core §13.5) give the exported file (every value, "
                      "names for numbers, secrets as {\"secret\": true}). Importing that file into another probe gives the values to set "
                      "(in the file's order), the values to unset, the secrets the probe does not hold, and what does not resolve. "
-                     "Item numbers follow each fn's setting order; set values are listed in the file's category and member order.",
+                     "Item numbers follow each fn's setting order; set values are listed in the file's category and member order. "
+                     "memo (§2.4): the probe's memo objects (name, data, the crc it keeps) give the file's memo in list order, UTF-8 "
+                     "data as a string and other data as {\"bytes\": hex}; a torn object and one whose name is not UTF-8 stay out "
+                     "(memo_not_written_hex). Importing deletes what the probe has and the file lacks, writes in the file's order "
+                     "what differs in size or crc, and lists a datum longer than memo_max_object as unresolved [\"memo\", name].",
             "export": [{"name": "export: every value, numbers to names", "spec": "settings file §2, §3",
-                        "probe": a, "get_values_hex": hx(values), "file": exported}],
+                        "probe": a, "get_values_hex": hx(values),
+                        "memo_objects": [{"name_hex": hx(n), "data_hex": hx(d), "crc": c} for n, d, c in memo_a],
+                        "memo_not_written_hex": [hx(b"io.github.example.bench/torn"), hx(b"io.github.example.bench/\xff")],
+                        "file": exported}],
             "import": [{"name": "import into a probe with other numbers", "spec": "settings file §4",
                         "probe": b, "file": file_b, **import_b}]}
 

@@ -1,5 +1,5 @@
 {
-  "about": "The settings file (docs/oep-settings-file.ja.md): a probe's declarations (fn 0's describe TLVs; each listed fn's name, instance and describe TLVs) and its get values (count x value, core §13.5) give the exported file (every value, names for numbers, secrets as {\"secret\": true}). Importing that file into another probe gives the values to set (in the file's order), the values to unset, the secrets the probe does not hold, and what does not resolve. Item numbers follow each fn's setting order; set values are listed in the file's category and member order.",
+  "about": "The settings file (docs/oep-settings-file.ja.md): a probe's declarations (fn 0's describe TLVs; each listed fn's name, instance and describe TLVs) and its get values (count x value, core §13.5) give the exported file (every value, names for numbers, secrets as {\"secret\": true}). Importing that file into another probe gives the values to set (in the file's order), the values to unset, the secrets the probe does not hold, and what does not resolve. Item numbers follow each fn's setting order; set values are listed in the file's category and member order. memo (§2.4): the probe's memo objects (name, data, the crc it keeps) give the file's memo in list order, UTF-8 data as a string and other data as {\"bytes\": hex}; a torn object and one whose name is not UTF-8 stay out (memo_not_written_hex). Importing deletes what the probe has and the file lacks, writes in the file's order what differs in size or crc, and lists a datum longer than memo_max_object as unresolved [\"memo\", name].",
   "export": [
     {
       "name": "export: every value, numbers to names",
@@ -22,6 +22,37 @@
         ]
       },
       "get_values_hex": "000001030004004e52535400000203000100010000030100010001000004000003006c616200000500000000000006010001000100000701000400c0a801170000080100040018000000010001020001000201000202000100010200010000020001000200020000040000c201000200030000010000",
+      "memo_objects": [
+        {
+          "name_hex": "6f65702e70726f62652e6d656d6f2f706f72742f78303335",
+          "data_hex": "7b22746172676574223a2263683332783033352d3161326233633464227d",
+          "crc": 1886105473
+        },
+        {
+          "name_hex": "696f2e6769746875622e6578616d706c652e62656e63682f626c6f62",
+          "data_hex": "00ff10",
+          "crc": 1909601284
+        },
+        {
+          "name_hex": "696f2e6769746875622e6578616d706c652e62656e63682f746f726e",
+          "data_hex": "616263",
+          "crc": 2873152609
+        },
+        {
+          "name_hex": "696f2e6769746875622e6578616d706c652e62656e63682fff",
+          "data_hex": "78",
+          "crc": 2363233923
+        },
+        {
+          "name_hex": "696f2e6769746875622e6578616d706c652e62656e63682f6c6f67",
+          "data_hex": "4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c",
+          "crc": 98820168
+        }
+      ],
+      "memo_not_written_hex": [
+        "696f2e6769746875622e6578616d706c652e62656e63682f746f726e",
+        "696f2e6769746875622e6578616d706c652e62656e63682fff"
+      ],
       "file": {
         "oep_settings": 1,
         "probe": {
@@ -51,6 +82,13 @@
             "passthrough.cdc0.baud": 115200,
             "passthrough.cdc0.format": "8n1"
           }
+        },
+        "memo": {
+          "oep.probe.memo/port/x035": "{\"target\":\"ch32x035-1a2b3c4d\"}",
+          "io.github.example.bench/blob": {
+            "bytes": "00ff10"
+          },
+          "io.github.example.bench/log": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
         }
       }
     }
@@ -102,6 +140,14 @@
           "io.example.gone/0": {
             "x": 1
           }
+        },
+        "memo": {
+          "oep.probe.memo/port/x035": "{\"target\":\"ch32x035-1a2b3c4d\"}",
+          "io.github.example.bench/blob": {
+            "bytes": "00ff10"
+          },
+          "io.github.example.bench/log": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL",
+          "io.github.example.bench/new": "n"
         }
       },
       "current_values_hex": "000004010003006f6c64",
@@ -192,7 +238,42 @@
         [
           "io.example.gone/0",
           "x"
+        ],
+        [
+          "memo",
+          "io.github.example.bench/log"
         ]
+      ],
+      "memo_max_object": 64,
+      "current_memo": [
+        {
+          "name_hex": "6f65702e70726f62652e6d656d6f2f706f72742f78303335",
+          "size": 30,
+          "crc": 1886105473
+        },
+        {
+          "name_hex": "696f2e6769746875622e6578616d706c652e62656e63682f626c6f62",
+          "size": 2,
+          "crc": 920527465
+        },
+        {
+          "name_hex": "696f2e6769746875622e6578616d706c652e62656e63682f6f6c64",
+          "size": 1,
+          "crc": 252678980
+        }
+      ],
+      "expected_memo_delete_hex": [
+        "696f2e6769746875622e6578616d706c652e62656e63682f6f6c64"
+      ],
+      "expected_memo_write": [
+        {
+          "name_hex": "696f2e6769746875622e6578616d706c652e62656e63682f626c6f62",
+          "data_hex": "00ff10"
+        },
+        {
+          "name_hex": "696f2e6769746875622e6578616d706c652e62656e63682f6e6577",
+          "data_hex": "6e"
+        }
       ]
     }
   ]

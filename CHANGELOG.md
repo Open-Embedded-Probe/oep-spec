@@ -4,6 +4,10 @@
 
 OEP v1は凍結前。現行の規範文書とregistryが仕様を定め、実装は対応するcommit/tagを明記する。core/transportsの変更方針と正式凍結の手続きは[版と安定性](docs/versioning.ja.md)に従う。
 
+- **設定のファイルにメモ欄を足した（settings file §2.4、§3、§4。任意のメンバー）**: 最上位の `memo` にメモ欄のオブジェクトの全部を
+  名前からデータへ入れる（UTF-8 のデータは文字列、ほかは `{ "bytes": "<16 進>" }`）。書き出しは list と read で全部を入れ、crc の合わない
+  ものと名前が UTF-8 でないものは入れずに示す。入れ直しは、ファイルに無いものを delete し、size か crc の違うものを write する
+  （delete が先）。`memo` の無いファイルはメモ欄に触らない。ファイルの形の版は 1 のまま。共有ベクタ settings_file.json に memo の組。
 - **i2c-target の nack_from（fixture §3。任意）**: configure の TLV nack_from（u16、critical）で、書き込みごとに n 番目のデータの byte
   （1 が最初）から後に NACK を返す。それより前とアドレスの byte は ACK、NACK した byte もフレームに入る、読み出しには効かない。features の
   bit1 で宣言する。controller がデータの NACK を受けたときの扱い（Arduino の endTransmission() の 3 など）を確かめるためのもの。registry の

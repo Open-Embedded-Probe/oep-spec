@@ -1,7 +1,8 @@
 # Open Embedded Probe — 設定のファイル v1
 
 状態: **規範**（v1）。凍結状態と言語・互換性の方針は[版と安定性](versioning.ja.md)を参照。
-この文書は、probe の設定（[OEP core](oep-core.ja.md) §13）を host が書き出し、同じ probe や別の probe へ入れ直すためのファイルの形と手順を定める。
+この文書は、probe の設定（[OEP core](oep-core.ja.md) §13）とメモ欄（[oep.probe.memo](../interfaces/oep-if-memo.ja.md)）を host が書き出し、
+同じ probe や別の probe へ入れ直すためのファイルの形と手順を定める。
 probe の中の保存の形式は定めない（core §13.7）。ブラウザと CLI など、違う host が書いたファイルを互いに読めるようにするのが目的である。
 
 ## 1. なぜ要るか
@@ -30,6 +31,10 @@ UTF-8 の JSON（RFC 8259）1 つ。BOM を付けない。拡張子は `.oep-set
     },
     "oep.wire.rvswd/0": { "channel.GPIO5.rest": "low" },
     "oep.fixture.uart/0": { "passthrough.cdc0.rx": "GPIO1", "passthrough.cdc0.baud": 115200 }
+  },
+  "memo": {
+    "oep.probe.memo/port/x035": "{\"target\":\"ch32x035-1a2b3c4d\"}",
+    "io.github.example.bench/blob": { "bytes": "00ff10" }
   }
 }
 ```
@@ -41,6 +46,7 @@ UTF-8 の JSON（RFC 8259）1 つ。BOM を付けない。拡張子は `.oep-set
 | `oep_settings` | 数。ファイルの形の版。この文書は 1。読む側は知らない版のファイルを使わない |
 | `probe` | オブジェクト。書き出した probe: `unit_id`（必須）、`model`、`firmware`（fn 0 の describe にあれば、その text のまま。core §7.5） |
 | `settings` | オブジェクト。カテゴリごとのメンバー（§2.1） |
+| `memo` | オブジェクト。任意。メモ欄のオブジェクトの全部（§2.4） |
 
 - 読む側は、知らないメンバー（最上位、`probe` の中）を読み飛ばす。書く側は、この文書に無いメンバーを最上位と `probe` に置かない。
 - 同じオブジェクトの中に同じ名前のメンバーを 2 回置かない。読む側は、重なりのあるファイルを使わない。
@@ -83,30 +89,52 @@ UTF-8 の JSON（RFC 8259）1 つ。BOM を付けない。拡張子は `.oep-set
 - secret の項目（core §13.5）の値は、値の代わりに `{ "secret": true }` を書く。値は probe から読めないので、ファイルにも入らない。
 - 読む側は、form と合わない JSON の値（形の違い、範囲の外、整数でない数）を使わず、利用者に示す。
 
+### 2.4 メモ欄
+
+`memo` のメンバーの名前はメモ欄のオブジェクトの名前（oep-if-memo §1）、値はそのデータ:
+
+- データが UTF-8 として正しければ、そのままの文字列。中身が JSON でも、解かずに文字列として入れる（バイトを変えないため）。
+- そうでなければ `{ "bytes": "<16 進>" }`（§2.3 の bytes と同じ書き方）。
+
+- 名前が UTF-8 として正しくないオブジェクトは、ファイルに書けない（JSON の名前は文字列）。
+- `memo` の無いファイルは、メモ欄について何も言わない。入れ直しはメモ欄に触らない。
+- 空のオブジェクト `{}` は、メモ欄が空であることを表す。
+
 ## 3. 書き出し
 
 1. fn 0 の confirm、list、describe と、各 fn の describe を読み、項目の宣言（setting、setting_choice）、channel の名前、経路、netif の名前を得る。
 2. fn 0 の get で全部の値を読む（generation が途中で変われば初めから）。
 3. 全部の値を、番号を §2 の名前に引き換えて書く（初期値から来た値も区別せずに書く。core §13.4）。secret の値は §2.3 のとおり
    `{ "secret": true }` と書く（値があることだけ）。
+4. probe が `oep.probe.memo` を持てば、list で全部のオブジェクトを並べ、それぞれを read で読んで `memo` に書く（無ければ `{}`）。
+   データの CRC-32 が crc と合わないもの（oep-if-memo §3）と、名前が UTF-8 でないものは書かず、利用者に示す。
+   `oep.probe.memo` を持たない probe のファイルには `memo` を書かない。
 
 ## 4. 入れ直し
 
-入れ直しは、probe の値をファイルの値にすることである。
+入れ直しは、probe の値をファイルの値にすることである。ファイルに `memo` があれば、probe のメモ欄もファイルのオブジェクトにする。
 
 1. 書き出しの 1 と同じに宣言を読み、今の値を get で読む。
 2. ファイルの各値について、カテゴリの fn（`core` は fn 0。インターフェースは list で名前と instance の同じもの）、項目と key（§2.2）、値（§2.3）を
    今の番号へ引く。引けないもの（カテゴリ、項目、key、参照が今の probe に無い）は送らない。
+   - ファイルに `memo` があれば、メモ欄の list を読み、次のように決める:
+     - probe が `oep.probe.memo` を持たなければ、どのオブジェクトも送らず、引けないものとして示す。
+     - ファイルのオブジェクトのうち、list の size と crc がそのデータと同じものは書かない（oep-if-memo §4.2）。ほかは書く。
+       データが max_object より長いものは送らず、引けないものとして示す。
+     - probe にあってファイルに無いオブジェクトは delete する。
 3. できれば、次を利用者に示し、確認を得る（利用者が前もって確認を省くと指定したとき、たとえば CLI の `--yes` では省いてよい）:
    - 引けないもの;
    - 書き換わる値、新しく置く値、unset する値（probe の値でファイルに無いもの）;
+   - 書くオブジェクト、delete するオブジェクト;
    - `probe` の unit_id か model が今の probe と違うこと。
 4. secret の値:
    - 今の probe にその値があれば、触らない（unset もしない）;
    - 無ければ、利用者に入力を求めるか、置かない。
 5. unset を先に、set を後に送る（label を別の channel へ移すときに、一意の規則（core §13.8）にぶつからないため）。値が多ければ要求を分けてよい
    （要求ごとに、まとめて受けるか何もしない。core §13.5）。断られた値は利用者に示す。
-6. probe が save を持てば save し、state で確かめる。
+6. メモ欄は、delete を先に、write を後に送る（max_objects にぶつからないため）。オブジェクトは書き終えたときに残る（oep-if-memo §3）。
+   設定の save とは関係しない。断られたものは利用者に示す。
+7. probe が save を持てば save し、state で確かめる。
 
 - 保存を持たない probe に、host はつないだときに自動で入れ直してよい（利用者が選んだファイルに限る）。
 - host は、ファイルを書き出すとき、secret の値をファイルに入れる手段を持たない（probe から読めないため）。利用者が手で入れた secret をファイルに足すことも
@@ -114,5 +142,5 @@ UTF-8 の JSON（RFC 8259）1 つ。BOM を付けない。拡張子は `.oep-set
 
 ## 5. テストベクタ
 
-`tests/vectors/settings_file.json` に、宣言（describe の TLV）、get の値、ファイルの組と、別の番号の probe へ入れ直したときの set、unset、
-secret、引けないものの組を置く。ブラウザ（JS）と CLI（Python）の実装は、同じベクタで書き出しと入れ直しの引き換えを確かめる。
+`tests/vectors/settings_file.json` に、宣言（describe の TLV）、get の値、メモ欄のオブジェクト、ファイルの組と、別の番号の probe へ
+入れ直したときの set、unset、secret、メモ欄の write と delete、引けないものの組を置く。ブラウザ（JS）と CLI（Python）の実装は、同じベクタで書き出しと入れ直しの引き換えを確かめる。
