@@ -1,8 +1,10 @@
 # OEP 仕様への貢献
 
+[English](CONTRIBUTING.md)
+
 ## 変更する場所
 
-OEP の仕様の正は、規範文書（`docs/oep-core.ja.md`、`docs/oep-transports.ja.md`、`interfaces/*.ja.md`）と `registry/oep-v1.toml` である。凍結までは日本語だけを変更する。実装の挙動を仕様として採用する場合も、先にこのリポジトリの規範文書へ書く。
+OEP の仕様の正は、規範文書（`docs/oep-core.ja.md`、`docs/oep-transports.ja.md`、`interfaces/*.ja.md`）と `registry/oep-v1.toml` である。日本語と英語の文書は同じ変更で両方を直す（凍結までは日本語が正、[版と安定性](docs/versioning.ja.md) §2）。実装の挙動を仕様として採用する場合も、先にこのリポジトリの規範文書へ書く。
 
 このリポジトリに置く情報と実装側に置く情報は [リポジトリ間の責務](docs/repository-boundaries.ja.md) に従う。日付付きの提案、会議録、レビュー回答、旧仕様の写しは追加しない。採用した結論は規範またはガイドへ直接反映し、必要な理由だけをその近くに残す。不採用案と検討の順序は Git 履歴または issue で扱う。
 

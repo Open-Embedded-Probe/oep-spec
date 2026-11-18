@@ -518,8 +518,8 @@ After restart, check the boot_id, and configure again from a new session and pla
 ## 15. Probe settings
 
 The core coordinates the settings (core §13). Items are declared by the core (fn 0) and by interfaces (their fn), and are read and written with get/set/unset/save/state of fn 0.
-When a port is made passthrough by a passthrough item ([fixture](../interfaces/oep-if-fixture.md) §2.1, [console](../interfaces/oep-if-console.md) §2.1), a host that opened that port
-reads and discards bytes outside frames (the target's output) as noise. If a session's requests are sent from that port, passthrough stops for that session.
+When a port is made pass-through by a pass-through item ([fixture](../interfaces/oep-if-fixture.md) §2.1, [console](../interfaces/oep-if-console.md) §2.1), a host that opened that port
+reads and discards bytes outside frames (the target's output) as noise. If a session's requests are sent from that port, pass-through stops for that session.
 Runtime settings of wiring and UART are managed by the host.
 
 1. Read setting and setting_choice in the describe of fn 0 and of each fn. The k-th setting of each fn is its item number k; look up the number from the name (look it up again per boot_id).

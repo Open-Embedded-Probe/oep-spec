@@ -3,7 +3,7 @@
 [日本語](README.ja.md) - until OEP v1.0.0 the Japanese text is authoritative.
 
 Status: **guide** (not normative). A list of the documents of the interfaces whose names start with `oep.`. The normative text is in each document; the core is [OEP core](../docs/oep-core.md) and
-[OEP transports](../docs/oep-transports.md). The only definition of the numbers is [`registry/oep-v1.toml`](../registry/oep-v1.toml). Until the freeze, only the Japanese text (`.ja.md`) is maintained.
+[OEP transports](../docs/oep-transports.md). The only definition of the numbers is [`registry/oep-v1.toml`](../registry/oep-v1.toml). The Japanese and English documents are maintained together; until the freeze the Japanese text is authoritative ([versioning](../docs/versioning.md) §2).
 
 An interface is a named function defined only with the mechanisms of the core. The ones listed here belong to the project itself and have
 short `oep.` names instead of reverse-DNS names (core §12 rule 1). On the protocol they are treated the same as any other interface. A probe puts the ones it has in list, and

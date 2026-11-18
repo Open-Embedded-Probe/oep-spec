@@ -26,18 +26,21 @@ def test_every_japanese_document_has_its_english_url():
     assert missing == []
 
 
-def test_english_pages_are_placeholders_until_the_freeze():
-    """Until OEP v1 is frozen the Japanese text is the only maintained one (docs/versioning): an English page holds a
-    title, a link to its Japanese version and the placeholder sentence, never a translation that could go stale."""
+def test_every_japanese_page_has_its_english_translation():
+    """docs/versioning §2: every Japanese document has an English one, maintained together; until the freeze the Japanese
+    text is authoritative and the English page says so on its third line, after its title."""
     wrong = []
-    for directory in ("docs", "interfaces", "registry", "generated", "tools", "tests"):
-        for path in sorted((ROOT / directory).rglob("*.md")):
-            if path.name.endswith(".ja.md") or any(part.startswith(".") for part in path.relative_to(ROOT).parts):
-                continue
-            text = path.read_text(encoding="utf-8")
-            ja = path.name[:-3] + ".ja.md"
-            if PLACEHOLDER not in text or f"]({ja})" not in text or len(text.splitlines()) > 6:
-                wrong.append(path.relative_to(ROOT))
+    for path in sorted(ROOT.rglob("*.ja.md")):
+        if any(part.startswith(".") for part in path.relative_to(ROOT).parts):
+            continue
+        en = path.with_name(path.name[:-6] + ".md")
+        if not en.exists():
+            wrong.append((path.relative_to(ROOT), "no English page"))
+            continue
+        lines = en.read_text(encoding="utf-8").splitlines()
+        notice = f"[日本語]({path.name}) - until OEP v1.0.0 the Japanese text is authoritative."
+        if len(lines) < 4 or not lines[0].startswith("# ") or lines[1] or lines[2] != notice or PLACEHOLDER in "\n".join(lines):
+            wrong.append((en.relative_to(ROOT), "not a translation with the notice"))
     assert wrong == []
 
 

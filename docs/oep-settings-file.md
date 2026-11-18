@@ -41,7 +41,7 @@ One UTF-8 JSON (RFC 8259). No BOM. The extension `.oep-settings.json` is recomme
 }
 ```
 
-(The wifi, ipv4, rest and passthrough items of the example are defined by their own documents.)
+(The wifi, ipv4, rest and pass-through items of the example are defined by their own documents.)
 
 | Member | Value |
 |---|---|

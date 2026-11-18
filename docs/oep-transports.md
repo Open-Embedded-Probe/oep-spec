@@ -141,13 +141,13 @@ A probe that does not let the set be chosen does not declare this item.
   The host uses the name for display, and learns the content of the set from the describe transports after restart.
 - **Every set includes vendor bulk or HID** (for the same reason as the discovery rule of §3 for probes that also have raw CDC).
 - **Not included**: built-in USB serial, UART bridge, TCP transports, and USB functions that are not OEP transports (DFU, raw CDC and so on) are not included in a set.
-- **When it takes effect**: after restart (restart, core §13.2). Transport indexes and names (core §13.3) change with the set, so values that hold a transport by name (passthrough items and so on) are
+- **When it takes effect**: after restart (restart, core §13.2). Transport indexes and names (core §13.3) change with the set, so values that hold a transport by name (pass-through items and so on) are
   not used if the name cannot be looked up to a current transport at boot (core §13.7). The host reads describe again after the boot_id changes.
 - **When it cannot start**: if the USB device of the chosen set cannot be started, the probe starts with the default set for that boot (the value does not change).
 
 ## 4. Serial ports
 
-An OEP serial transport carries frames. Raw console data, logs and boot messages are not mixed into the same transport, except the passthrough below.
+An OEP serial transport carries frames. Raw console data, logs and boot messages are not mixed into the same transport, except the pass-through below.
 The console uses OEP read / write. A separate raw endpoint MAY be offered, but it is not treated as an OEP transport, and
 the identification of that endpoint and the settings of what it connects to are stated explicitly outside the OEP core. confirm is not sent to a raw endpoint on the basis of CDC enumeration alone.
 
@@ -160,7 +160,7 @@ the identification of that endpoint and the settings of what it connects to are 
 - The probe processes only candidates of `0x00 <COBS(message | CRC)> 0x00`. CRC mismatches, candidates that do not decode, and timeouts midway are discarded.
   Corrupted bytes are not forwarded to the target. The 0x00 that closed a candidate also becomes the start of the next candidate.
 - Answers and notifications are sent in the same frames. A transport has one writer, and no other frame is inserted in the middle of a frame.
-- **Passthrough (optional)**: on a serial port pointed at by a passthrough settings item (the UART of [fixture](../interfaces/oep-if-fixture.md) §2, the passthrough of [console](../interfaces/oep-if-console.md)),
+- **Pass-through (optional)**: on a serial port pointed at by a pass-through settings item (the UART of [fixture](../interfaces/oep-if-fixture.md) §2, the pass-through of [console](../interfaces/oep-if-console.md)),
   the probe MAY, while its condition holds, send between frames the bytes that UART received or the output of the target's console. Not in the middle of a frame. After sending raw bytes, it sends
   a delimiting 0x00 before the next frame (so that raw bytes do not mix into the next candidate). When a session's request comes from that port, it does not send raw bytes until that session
   ends. The host reads and discards bytes outside frames as noise (it may receive a candidate whose CRC does not match and resend the same request).

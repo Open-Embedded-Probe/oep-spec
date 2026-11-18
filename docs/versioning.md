@@ -21,7 +21,7 @@ where this page disagrees with them, they are right.
 
 OEP v1 is before its freeze. Until the freeze, breaking changes go in **without raising any revision**. Since revision 1 alone cannot decide compatibility, an implementation states the specification commit or tag it follows. Numbers removed before the freeze may be reused. The specification keeps no migration steps between pre-freeze versions.
 
-The freeze happens with the official `v1.0.0` release (§6). Until the freeze the Japanese documents (`.ja.md`) are maintained as authoritative. Every Japanese document has an English URL (`.md`) with the same name without `.ja`; until its English translation exists, that file holds only a link to the Japanese version (links can point at the English URL from now on; no translation that goes stale is kept). The English translation is made before `v1.0.0`; after that English is normative and Japanese is the parallel translation, and both are maintained together.
+The freeze happens with the official `v1.0.0` release (§6). Every Japanese document (`.ja.md`) has an English document (`.md`) with the same name without `.ja`, and the two are maintained together (a change to one is made to the other in the same change). Until the freeze the Japanese text is authoritative and the English one its translation, and each English document says so at its top. From `v1.0.0` English is normative and Japanese is the translation.
 
 ### 2.1 Provisional fixing of the core
 

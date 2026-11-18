@@ -9,7 +9,7 @@ Open Embedded Probe (OEP) is a protocol by which embedded-development probes (de
 OEP v1 is before its freeze. Until the freeze, incompatible changes can go in without changing the revision, so an implementation states the Git commit or tag of the specification it follows.
 The existing contracts of the core and transports are [provisionally fixed](docs/versioning.md#21-provisional-fixing-of-the-core), and ordinary functional additions are made in optional interfaces.
 
-Until the freeze only the Japanese documents (`.ja.md`) are maintained, and they are authoritative. The English translation is made before the freeze (the official `v1.0.0` release); after that English is normative and Japanese is the parallel translation, and both are maintained together.
+The Japanese documents (`.ja.md`) and the English ones (`.md`) are maintained together. Until the freeze (the official `v1.0.0` release) the Japanese text is authoritative and the English one its translation; from the freeze English is normative and Japanese the translation ([versioning](docs/versioning.md) §2).
 
 ## Sources of truth of the specification
 

@@ -6,7 +6,7 @@ This directory holds only checks of the current specification itself.
 
 - [registry_v1/](registry_v1/README.md): consistency of `registry/oep-v1.toml`, the generated files and the numbering rules
 - [vectors/](vectors/README.md): shared wire vectors computed from the normative rules, and their self-consistency
-- `test_docs.py`: the layout where only the Japanese version is maintained, and local document links
+- `test_docs.py`: every Japanese document has an English one whose top links the Japanese version and says it is authoritative until the freeze, and local document links
 
 ```sh
 cd tests

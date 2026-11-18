@@ -4,7 +4,7 @@
 
 - [registry_v1/](registry_v1/README.ja.md): `registry/oep-v1.toml`、生成物、番号の規則の整合
 - [vectors/](vectors/README.ja.md): 規範の規則から計算した共有 wire ベクタと、その自己整合
-- `test_docs.py`: 日本語版だけを保守する構成と、ローカル文書リンク
+- `test_docs.py`: どの日本語の文書にも英語の文書があり、その冒頭が日本語版へのリンクと凍結までの正の示しであること、ローカル文書リンク
 
 ```sh
 cd tests
