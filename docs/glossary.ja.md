@@ -40,7 +40,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | 候補 | candidate | 0x00 から次の 0x00 までのバイト。フレームかもしれないものとして解く | transports §1、§4 |
 | 壊れた候補 | broken candidate | 解けないか CRC の合わない候補 | transports §4 |
 | 生のバイト | raw bytes | 別の raw endpoint が運ぶバイト。OEP のシリアル経路には混ぜない | transports §4 |
-| フレームの途切れ | frame gap | フレームの途中の `probe_frame_gap_ms` の途切れ。probe は読み直す（TCP では読み直さない） | transports §2 |
+| フレームの途切れ | frame gap | フレームの途中の `probe_frame_gap_ms` の途切れ。シリアルの口と vendor bulk では probe は読み直す（TCP では読み直さず、HID は report の first で読み直す） | transports §1、§2 |
 | 区切りの立て直し | resync | 長さつきのフレームで、host が区切りを取り戻すこと | transports §5 |
 | 起動時の速さ | boot speed | UART bridge の起動時の速さ、`uart_bridge_boot_baud` | transports §4、link §3 |
 | port_speed | port_speed | セッションの間だけ UART bridge を速くする任意の握手: 試す、決める、戻す | link §3 |
@@ -62,7 +62,7 @@ restart = [再起動](../interfaces/oep-if-restart.ja.md)、link = [リンク](.
 | corr | corr | host が要求に付ける u16 の番号。0 を飛ばして循環し、未解決要求の距離は半周未満。応答が同じ値を持つ | core §4.1 |
 | fn | fn | 同じ boot_id の間、インターフェースを指す u16。fn 0 は本体（list に載らない） | core §1、§7.2 |
 | op | op | インターフェースの中の操作の u8 の番号 | core §1、§2.5 |
-| resolution | resolution | completed（0x01）か rejected（0x00）。0x02 は予約 | core §4.2 |
+| resolution | resolution | completed（0x01）か rejected（0x00） | core §4.2 |
 | outcome | outcome | completed の success 0、failed 1、partial 2 | core §4.2 |
 | 断り（rejected） | rejected / refusal | 要求が受け付けられなかった | core §4.2 |
 | 断りの理由 | reject reason | rejected の detail（unknown_function … result_lost） | core §4.3 |

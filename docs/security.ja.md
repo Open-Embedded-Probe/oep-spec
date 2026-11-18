@@ -31,8 +31,8 @@ probe は:
 - 実行の前に断る: 要求は core §4.3 のとおりすべて確かめ、すべてを通るまで何も動かさない（plan_apply と設定の set / unset は、全部が受け
   付けられなければ何も変えない: [plan](../interfaces/oep-if-plan.ja.md) §2.1、core §13.5）;
 - max_frame を超える長さのフレームは、次の途切れまでの入力と一緒に捨てる。TCP では接続を閉じる（transports §1）;
-- フレームの途中で `probe_frame_gap_ms` 途切れたら、TCP 以外のどの経路でも読み直す（transports §2）;
-- report が運べるより大きい count の HID の report は、次の途切れまでの流れの入力と一緒に捨て、report の詰め物は無視する（transports §1）;
+- シリアルの口と vendor bulk では、フレームの途中で `probe_frame_gap_ms` 途切れたら読み直す（transports §2）;
+- report が運べるより大きい count の HID の report は捨て、first を持つ次の report から読み直し、report の詰め物は無視する（transports §1）;
 - role が要求の role でないメッセージと、10 byte のヘッダより短い要求は、答えずに捨てる（core §2.4）。
 
 host は:
