@@ -186,7 +186,7 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
 
 | op | 名前 | 要求 | 応答 | ロック |
 |---:|---|---|---|---|
-| 0x10 | configure | mode(u8: SPI の mode 0〜3)、bit_order(u8: 0 MSB が先、1 LSB が先)、[TLV] | — | 必要 |
+| 0x10 | configure | mode(u8: SPI の mode 0〜3)、bit_order(u8: 0 MSB が先、1 LSB が先)、[TLV sck_filter(u8)] | — | 必要 |
 | 0x11 | arm | length(u16)、count(u16)、tx(count byte)、[TLV] | — | 必要 |
 | 0x12 | read_rx | — | pending(u8)、bits(u32)、count(u16)、data、[TLV ns(u64): その転送で CS が無効になった時刻、任意] | 必要 |
 | 0x13 | status | — | state(u8)、mode(u8)、bit_order(u8)、armed(u8)、queued(u8)、transactions(u32)、errors(u32)、[TLV] | 不要 |
@@ -202,6 +202,10 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
   （cause 6）。mode が 3 を超える、bit_order が 1 を超える は rejected malformed。features の bit0 が無いのに bit_order 1 は rejected
   unsupported。describeのmodesに無いmodeもunsupported（固定部分の印0）で、状態を変えない。
   mode 0〜3のすべての実装は要求せず、1つ以上を提供する。**CS は low で有効**。
+- **sck_filter**（configure の TLV、u8、critical。任意）: 1 は、SCK の入力で sck_filter_ns（describe）より短いパルスを数えない（遅いエッジや隣の線から
+  乗ったひげで、余分なエッジを数えない）。0 は掛けない（TLV が無いときと同じ）。2 以上は rejected malformed。features の bit1 が無い probe は、
+  critical の知らない TLV として rejected unsupported で答える。掛けている間に probe が受けられるのは、SCK の High と Low のどちらも sck_filter_ns より
+  長い転送だけである（max_clock_hz はフィルタを掛けないときの上限）。host は、その速さの controller の相手のときだけ選ぶ。
 - configureの成功はstate 1となってから返す。初期化に失敗したらstate 0へ戻し、mode・bit_order・armed・queued・transactions・errorsを0にする。
   受信の列とarmの送信データを捨て、SPI機能としての駆動をやめ、channelをcore §8の空きの状態へ戻す。
   成功・failedとも応答の固定部分はなく、末尾は[TLV]。state 0の外部転送は受信・計数せず、armも消費しない。
@@ -225,9 +229,9 @@ probe が SPI の target になり、CS で区切った 1 回の転送に、先�
 - status: state 0 未設定、1 動いている。armed は転送を待っているか。queued（255 で止める）、transactions（終わった転送の累計）、
   errors（あふれ、未 arm、length 超過のどれかがあった転送の数の累計、u32）。
   transactionsとerrorsは0xFFFFFFFFで飽和し、configureまたはplan解放で0へ戻る。
-- describe: ops、role_channels、max_length（1回の転送の最大byte）、max_clock_hz（確かめたSCKの上限）、features（bit0 LSBが先）、
+- describe: ops、role_channels、max_length（1回の転送の最大byte）、max_clock_hz（確かめたSCKの上限）、features（bit0 LSBが先、bit1 sck_filter）、
   queue_depth（tag 0x40、u8）、modes（tag 0x41、u8。必須。bit kがmode kの対応を表す。bits 4〜7は0、値は1以上）、
-  cs_setup_ns（tag 0x42、u32、下）。
+  cs_setup_ns（tag 0x42、u32、下）、sck_filter_ns（tag 0x43、u32、ns。features の bit1 を立てる probe は必ず付ける。1 以上）。
 - max_lengthは、最大長のarm要求（見出し10 + length 2 + count 2 + tx）とread_rx応答（見出し5 + pending 1 + bits 4 + count 2 + data）が
   どの経路のmax_frameにも収まる値にする。外部controllerの転送をread_rxで分割できるとは仮定しない。任意のtimestamp TLVは収まる場合だけ付ける。
 - **cs_setup_ns**（describe の tag 0x42、u32、ns）: CS が有効になってから最初の SCK のエッジまでの時間で、MISO が最初のビットで駆動されていることを

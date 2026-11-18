@@ -733,10 +733,13 @@ op = [
   { code = 0x12, name = "read_rx", lock = true },
   { code = 0x13, name = "status", lock = false },
 ]
+[interface.tlv.configure]
+sck_filter = 0x01               # u8, critical: 1 = SCK pulses shorter than sck_filter_ns not counted; 0 = none; features bit1 (oep-if-fixture §4)
 [interface.tlv.describe]
 queue_depth = 0x40              # u8: transactions the queue holds
 modes = 0x41                    # required u8 bitmap of supported SPI modes 0..3, at least one
 cs_setup_ns = 0x42              # u32 ns: CS active to the first SCK edge with MISO driven with the first bit, worst case (oep-if-fixture §4)
+sck_filter_ns = 0x43            # u32 ns, 1 or more: the shortest SCK pulse counted with sck_filter on; required with features bit1
 [interface.tlv.read_rx_answer]
 ns = 0x01                       # u64: when CS went inactive, ending the transaction (probe clock; optional)
 [interface.enum.role]
@@ -749,6 +752,7 @@ unconfigured = 0
 running = 1
 [interface.enum.features]
 lsb_first = 0x01
+sck_filter = 0x02               # configure takes TLV sck_filter (oep-if-fixture §4)
 
 [[interface]]
 name = "oep.fixture.i2c-controller"

@@ -3,7 +3,7 @@
 
 from types import SimpleNamespace as _NS
 
-REGISTRY_HASH = "8a7ae26a195cfdbe"
+REGISTRY_HASH = "63fde8f5b5602dac"
 SCHEMA = 1
 PROTOCOL_REVISION = 1
 CONFIRM_REQUEST_MAGIC = 'OEP?'
@@ -83,7 +83,7 @@ FIXTURE_I2C_TARGET = _NS(name="oep.fixture.i2c-target", revision=1, target=None,
     line_names={}, names={}, settings={})
 INTERFACES["oep.fixture.i2c-target"] = FIXTURE_I2C_TARGET
 FIXTURE_SPI_TARGET = _NS(name="oep.fixture.spi-target", revision=1, target=None, op={"configure": 0x10, "arm": 0x11, "read_rx": 0x12, "status": 0x13}, lock_free={0x13},
-    tlv={"describe": {"queue_depth": 0x40, "modes": 0x41, "cs_setup_ns": 0x42}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sck": 0x01, "mosi": 0x02, "miso": 0x03, "cs": 0x04}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"lsb_first": 0x01}}, own={},
+    tlv={"configure": {"sck_filter": 0x01}, "describe": {"queue_depth": 0x40, "modes": 0x41, "cs_setup_ns": 0x42, "sck_filter_ns": 0x43}, "read_rx_answer": {"ns": 0x01}}, event={}, enum={"role": {"sck": 0x01, "mosi": 0x02, "miso": 0x03, "cs": 0x04}, "state": {"unconfigured": 0x00, "running": 0x01}, "features": {"lsb_first": 0x01, "sck_filter": 0x02}}, own={},
     line_names={}, names={}, settings={})
 INTERFACES["oep.fixture.spi-target"] = FIXTURE_SPI_TARGET
 FIXTURE_I2C_CONTROLLER = _NS(name="oep.fixture.i2c-controller", revision=1, target=None, op={"configure": 0x10, "transfer": 0x11, "status": 0x12}, lock_free={0x12},
