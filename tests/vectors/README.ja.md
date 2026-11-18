@@ -16,7 +16,7 @@
 | `logic_layout.json` | logic capture の区画内の layout |
 | `capture_formats.json` | キャプチャのデータの形式（capture §1.3 ロジックのブロック、capture §1.4 アナログのブロック、capture §3.8 時刻つきのステート）、トリガの式（capture §4.4）。ロジックは raw と 4 つの縮約（sample、any_high、any_low、change_latch）、区画の最後の部分的なブロックと区間、隙間なく続く区画と隙間の後の区画の change_latch |
 | `interface_profiles.json` | 名前付き機能なし、独自拡張、受信専用UART、生のARM転送の小さい宣言例。動作traceではない |
-| `settings_file.json` | 設定のファイル（[設定のファイル](../../docs/oep-settings-file.ja.md)）: 宣言と get の値から書き出すファイル、別の番号の probe への入れ直し。`test_settings_file.py` が独立に書き出しと入れ直しを計算する |
+| `settings_file.json` | 設定のファイル（[設定のファイル](../../docs/oep-settings-file.ja.md)）: 宣言と get の値とメモ欄のオブジェクトから書き出すファイル、別の番号の probe への入れ直し（メモ欄の write と delete を含む）。`test_settings_file.py` が独立に書き出しと入れ直しを計算する |
 | `interface_boundaries.json` | 通知の閾値・停止端数・frame分割、欠落時の受信範囲、serialの飛びを欠落数とする条件、保存失敗の応答/state、group開始の拒否/失敗、I2C/SPIの境界。前提と外部観測を伴う例 |
 
 各 JSON の `about` に読み方を示し、`spec` を持つ case は対応する規範の箇所も示す。前提状態がある case は、その状態を用意して検査する。共有ベクタは列挙した場面を検査するものであり、適合全体を証明しない。各実装に必要な追加試験は [適合要件](../../docs/conformance.ja.md) に従う。

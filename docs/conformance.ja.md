@@ -44,7 +44,7 @@ probe は、自分が出す transport とインターフェースについてこ
 - フレームの区切りを書き込み、転送、report、TCP の segment の区切りに頼らない。TCP 以外では、送るフレームの途中で `probe_frame_gap_ms` 止めない（transports §2）。
 - 経路（TCP の接続を含む）が閉じても、セッション、ロック、購読、送り直しの表は残し、閉じた経路への応答と通知は捨てる（transports §3）。
 - HID: `count(u16)`、`first(u16)` の report が運ぶ長さつきの流れ、report をまたぐフレーム、first はその report で最初に始まるフレームの位置（無ければ `hid_no_frame_start`）、count 0 は飛ばす、詰め物は 0 で送り無視する、report ID は 1 つか無し、first が自分の読みと違えば読みかけを捨てて first から読み直す、開いた直後と壊れた列は first を持つ次の report から、長すぎる count と count 以上の first（transports §1、ベクタ `hid_reports.json`）。出力 report を interrupt OUT と SET_REPORT の両方で受ける（transports §3）。
-- max_frame を超える長さ: 捨てて待つ。TCP では閉じる（transports §1）。`probe_frame_gap_ms` の途切れで読み直す。TCP を除く（transports §2）。
+- max_frame を超える長さ: 捨てて待つ。TCP では閉じる。HID では first を持つ次の report から読み直す（transports §1）。`probe_frame_gap_ms` の途切れで読み直す。TCP と HID を除く（transports §2）。
 - confirm の前でも 64 バイトまでのメッセージを受ける（transports §3）。max_frame を超えて送らない（transports §3）。
 - TCP で待ち受けて自分を広告するなら、DNS-SD の `_oep._tcp` を mDNS で広告し、TXT に `unit_id=<unit_id>` を載せる（port は SRV、transports §3）。
 - USB: probe が選べる口では シリアル番号 = unit_id（transports §3）。vendor bulk と HID は transports §3 の形で、それぞれ一つまで。
@@ -199,8 +199,11 @@ fn 0のconfirm / list / describe / clock / lock_stateは方針の対象から除
 | `interface_boundaries.json` | 通知のまとめ/停止/欠落、保存の失敗応答とstate、groupの開始境界、fixtureの末尾/空queue/飽和。保存の電源断と実際のバス動作は各実装で別途観測する |
 | `checks.json` | CRC-16（transports §1）、dmseq の CRC-8 |
 | `cobs.json` | COBS の符号とシリアルの口のフレーム全体。復号が受け入れるもう一つの形も含む（transports §1） |
+| `hid_reports.json` | HID の report（transports §1）: フレームを report に詰めたときの count と first、report が欠けたとき・途中から開いたとき・count や first が壊れたときに読めるメッセージ |
 | `headers.json` | 要求と答えのヘッダ、TLV の符号（core §2.2、§4.1、§4.2） |
 | `core_extensions.json` | open/keepalive/end/clock と拒否の固定部分の後ろに未知応答 TLV を足す例。固定部分が空でも拡張規則は同じ（core §2.3、§4.3） |
+| `core_lifecycle.json` | 未完了の再送の credit、lease の処理と送信の境界、監視と経路の喪失（core §4.4、§5.1、§6.1） |
+| `core_policy.json` | 任意の方針判定と、再送、force、公開発見の順序（core §4.3） |
 | `confirm.json` | confirm のやりとり（core §7.1） |
 | `discovery.json` | list（core §7.2。fn 0 を載せないので、インターフェースの無い例の probe では空）、fn 0 の describe（core §7.3、§7.5）、終わりを越えた describe、ヘッダの断り unknown_function / unknown_operation（core §4.3 の順 1） |
 | `refusals.json` | core §2.3 と §4.3 の断り方（理由が 1 つだけ当たる状態）と、無視される知らない TLV について、要求とそのとおりの答え。core §4.3 の順 4 で理由が 2 つ以上当たる要求は、どれで断ってもよいので（意図した単純化）、ベクタは持たず、試験はどれか 1 つを受ける |
@@ -208,6 +211,9 @@ fn 0のconfirm / list / describe / clock / lock_stateは方針の対象から除
 | `ops_encoding.json` | describe の共通の tag ops の値の境（最短、最長、長さの誤り、op 0xFF の境、同じ集合の別の符号）と、正しい値が表す op の集合（core §7.4） |
 | `ops.json` | op ごとのバイト列: 要求、それが前提とする probe の状態、答え（`oep.probe.restart`、`oep.probe.plan`、`oep.probe.link`、gpio、rvswd、riscv-dm、console（marks の通し番号のページング、streams の最後のページ）、logic（configure の契約、即時の trigger の role を見ない query、samples 0 の malformed、segments の空のページ、区画の中で落としたときの status / segments / read と stopped、ストリーミングで落とした区画に入りかけたデータのフレーム（`data`）とその後の status、segments、capture-groupの即時bindと非対応trigger/将来critical selectorの拒否）、riscv-dm の失敗した step、arm-adi の n = 0 の transfer、spi-target の部分の byte（MSB / LSB が先）、capture-groupのstartと非即時trackのbind拒否、キャプチャの出来事のフレーム（`events`、世代）、設定（fn 0 の count付きget/set/unset、任意state、最大長label、labelの一意、部分適用、変更カウンタの枯渇、secret の passphrase、ipv4 の形、network の答え、インターフェースの項目）、logic のほかの一部）。並びの答えは要素の長さ無しの `count × 要素`（core §2.3） |
 | `logic_layout.json` | ロジックのキャプチャのストリーム（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1.1）: layout の w と pos、チャネルのレベル、区画のバイト列。2 の冪でない w（w = 3、サンプルがバイトをまたぐ） |
+| `capture_formats.json` | キャプチャのデータの形式（[キャプチャ](../interfaces/oep-if-capture.ja.md) §1.3 ロジックのブロック、§1.4 アナログのブロック、§3.8 時刻つきのステート）とトリガの式（capture §4.4） |
+| `interface_profiles.json` | 名前つきの機能の無い probe、独自拡張、受信だけの UART、生の ARM / RISC-V、コンソールの小さい宣言の例（list と describe のバイト列） |
+| `settings_file.json` | [設定のファイル](oep-settings-file.ja.md): 宣言と get の値とメモ欄から書き出すファイル、別の番号の probe への入れ直し |
 
 実装は JSON を読み、自分の符号器、復号器、答えをバイト単位で比べる。ベクタが文書と registry に合っているかを確かめるには:
 
