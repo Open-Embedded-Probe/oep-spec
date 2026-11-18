@@ -33,7 +33,7 @@ host は list で見つけて要るものだけを使う。
 | plan | 選んだfnのpinを割り当てて解放 | 他の拡張へのplan採用 |
 | GPIO | set/read、入力mode0 | 出力mode |
 | UART | configure/read/status、明示configureからのRXだけ | marks/clear/mark/write、TX queue、暗黙の既定baud初期化 |
-| I2C target | 1つの7bit address、小さいframe/queue | stretch、内部pull-up、受信timestampのTLV |
+| I2C target | 1つの7bit address、小さいframe/queue | stretch、内部pull-up、nack_from、受信timestampのTLV |
 | SPI target | 1つの対応mode、1回のarm、小さいframe/queue | 全mode、LSB先、受信timestamp、全fnとの同時使用 |
 | capture | 1トラック/1役割/ワンショットmode1、即時trigger、polling | query/force/calibration/通知/group、mode2を採らない場合のrelease、残るmode。別modeを選ぶ場合はそのmodeの契約を満たす |
 | capture-group | 必要なトラックだけを宣言し、bind/start/stop/statusで組を扱う | 通知、全トラックの組合せ、出来事の元（トリガの式、capture §4.4、features bit 0）とforce |
@@ -42,7 +42,7 @@ host は list で見つけて要るものだけを使う。
 | ARM target | transferだけ | read_block/write_block |
 | console | open/read/close/streams、1connection/1stream、対応mechanismだけ | marks/clear/mark/write、送信queue、全mechanism |
 | 設定（core §13） | 対応項目だけ、RAM上の設定 | save/state、不揮発領域、ネットワークの項目とnetwork、インターフェースの項目 |
-| link / restart | 提供する場合だけ採用 | coreへの一律の採用、linkのport_speed |
+| link / restart / memo | 提供する場合だけ採用 | coreへの一律の採用、linkのport_speed |
 
 有限buffer、同じboot内で再利用しない資源ID、session終了時の解放はcoreの共通契約である。
 frameへ収まる要求の数と、必要な成功応答の量を別々に確かめる。例えばcaptureのアナログ説明は役割数に応じて増え、最小64byteでは収まらない構成もある。
