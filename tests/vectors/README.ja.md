@@ -9,7 +9,9 @@
 | `headers.json`、`confirm.json` | メッセージヘッダと接続確認 |
 | `refusals.json` | 要求の拒否とエラー応答 |
 | `discovery.json`、`sessions.json` | 機能の発見とセッション |
+| `core_extensions.json` | 固定部分（空のものを含む）の後ろの知らない名前つきの拡張 TLV、要求の中の知らない名前（無視、critical なら unsupported）と長さの誤り |
 | `core_lifecycle.json` | 未完了再送のcredit、leaseの処理/送信の境界、監視と経路喪失 |
+| `core_policy.json` | 任意の方針判定と再送/force/公開発見の順序。認証方式や本番endpointは実装しない |
 | `ops.json`、`ops_encoding.json` | 各 op の要求・応答と encoding |
 | `logic_layout.json` | logic capture の区画内の layout |
 | `capture_formats.json` | キャプチャのデータの形式（capture §1.3 ロジックのブロック、capture §1.4 アナログのブロック、capture §3.8 時刻つきのステート）、トリガの式（capture §4.4）。ロジックは raw と 4 つの縮約（sample、any_high、any_low、change_latch）、区画の最後の部分的なブロックと区間、隙間なく続く区画と隙間の後の区画の change_latch |
@@ -30,7 +32,4 @@ cd tests
 uv run pytest vectors
 ```
 
-`test_vectors.py` は encoding の復号、独立した checksum 計算、規範で定めた値などで出力を検査する。`test_replay_state.py` は独立した状態モデルで、再送履歴、open の再送、終了したセッション、16 bit の境界を検査する。実装側の unit test と実機試験は、それぞれの実装リポジトリで行う。
-`test_interface_boundaries.py`は境界例の独立した復号と状態・区間の計算を行う。保存媒体の電源断耐性やSPIの電気的動作を証明するものではない。
-
-- `core_policy.json`: 任意の方針判定と再送/force/公開発見の順序。認証方式や本番endpointは実装しない。
+`test_*.py` は、生成ツールとは別に本文から書いた復号、checksum、状態モデルで各 JSON を読み直し、規範で定めた値と比べる。`test_replay_state.py` は再送履歴、open の再送、終了したセッション、16 bit の境界を独立した状態モデルで検査する。境界例の検査は、保存媒体の電源断耐性や SPI の電気的動作を証明するものではない。実装側の unit test と実機試験は、それぞれの実装リポジトリで行う。
