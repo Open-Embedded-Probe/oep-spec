@@ -6,7 +6,7 @@ OEP を初めて見る人のためのページ。**confirm**、**list**、**desc
 describe を読むいちばん小さい host を、線の上のすべてのバイトと一緒に作る。これはまだ適合する実装ではない: 次に足すものは §6、
 全体のチェックリストは [適合](conformance.ja.md)。
 
-開いておくもの: [OEP core](oep-core.ja.md)（規則）、`registry/oep-v1.toml`（すべての数。`generated/oep-v1/` に C++、Python、JS の形が
+開いておくもの: [OEP core](oep-core.ja.md)（規則）、`registry/oep-v1.toml`（すべての数。`generated/oep-v1/` に C、C++、Python、JS の形が
 ある）、[`tests/vectors/`](../tests/vectors/)（確かめに使うバイト列）。
 
 ## 1. 部品を 1 ページで

@@ -1,7 +1,7 @@
 # Open Embedded Probe — probe 開発ガイド
 
 状態: **ガイド**（規範ではない）。probe を作る人のために、[OEP core](oep-core.ja.md) と
-`oep-if-*.ja.md` が probe に求めることを満たす実務のやり方と、実際に踏んだ罠をまとめる。規範と食い違えば規範が正しい。host の側は [host 開発ガイド](host-development-guide.ja.md)。
+`oep-if-*.ja.md` が probe に求めることを満たす実務のやり方と、陥りやすい罠をまとめる。規範と食い違えば規範が正しい。host の側は [host 開発ガイド](host-development-guide.ja.md)。
 
 - 最初の一歩（confirm、list、describe に答えるいちばん小さい probe とバイト列）は [はじめに](getting-started.ja.md)、probe が
   しなければならないことのチェックリストは [適合](conformance.ja.md) §1。

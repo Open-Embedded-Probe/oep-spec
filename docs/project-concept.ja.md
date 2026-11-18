@@ -132,7 +132,7 @@ Projectの中心的な成功条件は、次の状態を実証できることで�
 
 ## 技術的な決定の置き場
 
-次の事項は、この文書では決めず仕様に任せる。今はv1の仕様（[OEP core](oep-core.ja.md)、名前が`oep.`で始まるインターフェースの`oep-if-*.ja.md`、`registry/oep-v1.toml`）が定めている。
+次の事項は、この文書では決めず仕様に任せる。v1の仕様（[OEP core](oep-core.ja.md)、名前が`oep.`で始まるインターフェースの`oep-if-*.ja.md`、`registry/oep-v1.toml`）が定めている。
 
 - 機能の分類と、最初に標準化する機能
 - protocolの構造、message modelおよびwire encoding
